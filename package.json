@@ -36,18 +36,19 @@
 				"extensions": [
 					".mongo"
 				],
-				"firstLine": "^#!/.*\\bmongo*\\b"
+				"firstLine": "^#!/.*\\bmongo*\\b",
+				"configuration": "./grammar/configuration.json"
 			}
 		],
 		"grammars": [
 			{
 				"language": "mongo",
 				"scopeName": "source.js",
-				"path": "./syntaxes/JavaScript.tmLanguage.json"
+				"path": "./grammar/JavaScript.tmLanguage.json"
 			},
 			{
 				"scopeName": "source.js.regexp",
-				"path": "./syntaxes/Regular Expressions (JavaScript).tmLanguage"
+				"path": "./grammar/Regular Expressions (JavaScript).tmLanguage"
 			}
 		],
 		"commands": [
@@ -135,7 +136,6 @@
 		"vscode": "^1.0.0"
 	},
 	"dependencies": {
-		"antlr4": "^4.7.0",
 		"antlr4ts": "^0.4.0-alpha.4",
 		"mongodb": "^2.2.25",
 		"request-light": "^0.2.0",

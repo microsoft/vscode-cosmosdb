@@ -202,13 +202,6 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 			this.createFunctionCompletion('aggregate', rangeContext),
 			this.createFunctionCompletion('remove', rangeContext),
 			this.createFunctionCompletion('replaceOne', rangeContext),
-			this.createFunctionCompletion('insert', rangeContext),
-			this.createFunctionCompletion('insertOne', rangeContext),
-			this.createFunctionCompletion('insertMany', rangeContext),
-			this.createFunctionCompletion('mapReduce', rangeContext),
-			this.createFunctionCompletion('aggregate', rangeContext),
-			this.createFunctionCompletion('remove', rangeContext),
-			this.createFunctionCompletion('replaceOne', rangeContext),
 			this.createFunctionCompletion('renameCollection', rangeContext),
 			this.createFunctionCompletion('runCommand', rangeContext),
 			this.createFunctionCompletion('save', rangeContext),
@@ -232,7 +225,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 	private createFunctionCompletion(label: string, rangeContext: ParseTree): CompletionItem {
 		return {
 			textEdit: {
-				newText: label + '()',
+				newText: label,
 				range: this.createRange(rangeContext)
 			},
 			kind: CompletionItemKind.Function,

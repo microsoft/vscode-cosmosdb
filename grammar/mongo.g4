@@ -1,21 +1,26 @@
 grammar mongo;
 
+@lexer::members {
+	private isExternalIdentifierText(text) {
+		return text === 'db';
+	}
+}
+
 mongoCommands: commands EOF;
 
-commands: command ;
+commands: (command)+;
 
-command: DB DOT (functionCall | (STRING_LITERAL DOT functionCall)) (COMMAND_DELIMITTER | EOL);
+command: DB DOT (functionCall | (STRING_LITERAL DOT functionCall)) COMMAND_DELIMITTER;
 
 functionCall: STRING_LITERAL '()';
 
-COMMAND_DELIMITTER: ';';
-EOL: [\n];
+COMMAND_DELIMITTER: ';' | ';\n' | '\n';
 DOT: '.';
 DB: 'db';
 
-STRING_LITERAL: ((~["\\ \t:.'db']) | STRING_ESCAPE )+;
+STRING_LITERAL: ((~["\\ \t\n:.;()]) | STRING_ESCAPE )+ {!this.isExternalIdentifierText(this.text)}?;
 
 fragment
 STRING_ESCAPE: '\\' [\\"];
 
-WHITESPACE: [ \r\n\t] -> skip;
+WHITESPACE: [ \t] -> skip;

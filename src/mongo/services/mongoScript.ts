@@ -4,6 +4,7 @@ import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
+import { Interval } from 'antlr4ts/misc/Interval';
 import { Token } from 'antlr4ts/Token';
 import { Db } from 'mongodb';
 import * as mongoParser from './../../grammar/mongoParser';
@@ -26,22 +27,62 @@ export class MongoScriptDocumentManager {
 
 export class MongoScriptDocument {
 
-	private readonly _mongoScripts: MongoScript[];
+	private readonly _lexer: mongoLexer;
 
 	constructor(private textDocument: TextDocument, private db: Db) {
-		const lexer = new mongoLexer(new InputStream(textDocument.getText()));
-		const parser = new mongoParser.mongoParser(new CommonTokenStream(lexer));
-
-		// Make parser and lexer silent
-		lexer.removeErrorListeners();
-		parser.removeErrorListeners();
-
-		this._mongoScripts = new MongoScriptDocumentVisitor().visit(parser.commands());
+		this._lexer = new mongoLexer(new InputStream(textDocument.getText()));
+		this._lexer.removeErrorListeners();
 	}
 
 	provideCompletionItemsAt(position: Position): Promise<CompletionItem[]> {
-		const lastScript = this._mongoScripts[this._mongoScripts.length - 1];
-		return new CompletionItemsVisitor(this.textDocument, this.db).visit(lastScript.lastNode);
+		const parser = new mongoParser.mongoParser(new CommonTokenStream(this._lexer));
+		parser.removeErrorListeners();
+
+		const offset = this.textDocument.offsetAt(position);
+		const lastNode = new NodeFinder(offset).visit(parser.commands());
+		if (lastNode) {
+			return new CompletionItemsVisitor(this.textDocument, this.db, offset).visit(lastNode);
+		}
+		return Promise.resolve([]);
+	}
+}
+
+class NodeFinder extends MongoVisitor<ParseTree> {
+
+	constructor(private offset: number) {
+		super();
+	}
+
+	protected defaultResult(ctx: ParseTree): ParseTree {
+		if (ctx instanceof ParserRuleContext) {
+			const stop = ctx.stop ? ctx.stop.stopIndex : ctx.start.stopIndex;
+			if (stop < this.offset) {
+				return ctx
+			}
+			return null;
+		}
+		if (ctx instanceof TerminalNode) {
+			if (ctx.symbol.stopIndex < this.offset) {
+				return ctx
+			}
+			return null;
+		}
+		return null;
+	}
+
+	protected aggregateResult(aggregate: ParseTree, nextResult: ParseTree): ParseTree {
+		if (aggregate && nextResult) {
+			const aggregateStart = aggregate instanceof ParserRuleContext ? aggregate.start.startIndex : (<TerminalNode>aggregate).symbol.startIndex;
+			const aggregateStop = aggregate instanceof ParserRuleContext ? aggregate.start.stopIndex : (<TerminalNode>aggregate).symbol.stopIndex;
+			const nextResultStart = nextResult instanceof ParserRuleContext ? nextResult.start.startIndex : (<TerminalNode>nextResult).symbol.startIndex;
+			const nextResultStop = nextResult instanceof ParserRuleContext ? nextResult.start.stopIndex : (<TerminalNode>nextResult).symbol.stopIndex;
+
+			if (Interval.of(aggregateStart, aggregateStop).properlyContains(Interval.of(nextResultStart, nextResultStop))) {
+				return aggregate;
+			}
+			return nextResult;
+		}
+		return nextResult ? nextResult : aggregate;
 	}
 }
 

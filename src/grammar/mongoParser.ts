@@ -30,11 +30,10 @@ import { mongoVisitor } from './mongoVisitor';
 export class mongoParser extends Parser {
 	public static readonly T__0=1;
 	public static readonly COMMAND_DELIMITTER=2;
-	public static readonly EOL=3;
-	public static readonly DOT=4;
-	public static readonly DB=5;
-	public static readonly STRING_LITERAL=6;
-	public static readonly WHITESPACE=7;
+	public static readonly DOT=3;
+	public static readonly DB=4;
+	public static readonly STRING_LITERAL=5;
+	public static readonly WHITESPACE=6;
 	public static readonly RULE_mongoCommands = 0;
 	public static readonly RULE_commands = 1;
 	public static readonly RULE_command = 2;
@@ -44,10 +43,10 @@ export class mongoParser extends Parser {
 	];
 
 	private static readonly _LITERAL_NAMES: (string | undefined)[] = [
-		undefined, "'()'", "';'", undefined, "'.'", "'db'"
+		undefined, "'()'", undefined, "'.'", "'db'"
 	];
 	private static readonly _SYMBOLIC_NAMES: (string | undefined)[] = [
-		undefined, undefined, "COMMAND_DELIMITTER", "EOL", "DOT", "DB", "STRING_LITERAL", 
+		undefined, undefined, "COMMAND_DELIMITTER", "DOT", "DB", "STRING_LITERAL", 
 		"WHITESPACE"
 	];
 	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoParser._LITERAL_NAMES, mongoParser._SYMBOLIC_NAMES, []);
@@ -102,11 +101,24 @@ export class mongoParser extends Parser {
 	public commands(): CommandsContext {
 		let _localctx: CommandsContext = new CommandsContext(this._ctx, this.state);
 		this.enterRule(_localctx, 2, mongoParser.RULE_commands);
+		let _la: number;
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 11;
-			this.command();
+			this.state = 12; 
+			this._errHandler.sync(this);
+			_la = this._input.LA(1);
+			do {
+				{
+				{
+				this.state = 11;
+				this.command();
+				}
+				}
+				this.state = 14; 
+				this._errHandler.sync(this);
+				_la = this._input.LA(1);
+			} while ( _la===mongoParser.DB );
 			}
 		}
 		catch (re) {
@@ -127,20 +139,19 @@ export class mongoParser extends Parser {
 	public command(): CommandContext {
 		let _localctx: CommandContext = new CommandContext(this._ctx, this.state);
 		this.enterRule(_localctx, 4, mongoParser.RULE_command);
-		let _la: number;
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 13;
+			this.state = 16;
 			this.match(mongoParser.DB);
-			this.state = 14;
+			this.state = 17;
 			this.match(mongoParser.DOT);
-			this.state = 19;
+			this.state = 22;
 			this._errHandler.sync(this);
-			switch ( this.interpreter.adaptivePredict(this._input,0,this._ctx) ) {
+			switch ( this.interpreter.adaptivePredict(this._input,1,this._ctx) ) {
 			case 1:
 				{
-				this.state = 15;
+				this.state = 18;
 				this.functionCall();
 				}
 				break;
@@ -148,28 +159,18 @@ export class mongoParser extends Parser {
 			case 2:
 				{
 				{
-				this.state = 16;
+				this.state = 19;
 				this.match(mongoParser.STRING_LITERAL);
-				this.state = 17;
+				this.state = 20;
 				this.match(mongoParser.DOT);
-				this.state = 18;
+				this.state = 21;
 				this.functionCall();
 				}
 				}
 				break;
 			}
-			this.state = 21;
-			_la = this._input.LA(1);
-			if ( !(_la===mongoParser.COMMAND_DELIMITTER || _la===mongoParser.EOL) ) {
-			this._errHandler.recoverInline(this);
-			} else {
-				if (this._input.LA(1) === Token.EOF) {
-					this.matchedEOF = true;
-				}
-
-				this._errHandler.reportMatch(this);
-				this.consume();
-			}
+			this.state = 24;
+			this.match(mongoParser.COMMAND_DELIMITTER);
 			}
 		}
 		catch (re) {
@@ -193,9 +194,9 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 23;
+			this.state = 26;
 			this.match(mongoParser.STRING_LITERAL);
-			this.state = 24;
+			this.state = 27;
 			this.match(mongoParser.T__0);
 			}
 		}
@@ -215,19 +216,20 @@ export class mongoParser extends Parser {
 	}
 
 	public static readonly _serializedATN: string =
-		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\t\x1D\x04\x02"+
-		"\t\x02\x04\x03\t\x03\x04\x04\t\x04\x04\x05\t\x05\x03\x02\x03\x02\x03\x02"+
-		"\x03\x03\x03\x03\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x05\x04"+
-		"\x16\n\x04\x03\x04\x03\x04\x03\x05\x03\x05\x03\x05\x03\x05\x02\x02\x02"+
-		"\x06\x02\x02\x04\x02\x06\x02\b\x02\x02\x03\x03\x02\x04\x05\x19\x02\n\x03"+
-		"\x02\x02\x02\x04\r\x03\x02\x02\x02\x06\x0F\x03\x02\x02\x02\b\x19\x03\x02"+
-		"\x02\x02\n\v\x05\x04\x03\x02\v\f\x07\x02\x02\x03\f\x03\x03\x02\x02\x02"+
-		"\r\x0E\x05\x06\x04\x02\x0E\x05\x03\x02\x02\x02\x0F\x10\x07\x07\x02\x02"+
-		"\x10\x15\x07\x06\x02\x02\x11\x16\x05\b\x05\x02\x12\x13\x07\b\x02\x02\x13"+
-		"\x14\x07\x06\x02\x02\x14\x16\x05\b\x05\x02\x15\x11\x03\x02\x02\x02\x15"+
-		"\x12\x03\x02\x02\x02\x16\x17\x03\x02\x02\x02\x17\x18\t\x02\x02\x02\x18"+
-		"\x07\x03\x02\x02\x02\x19\x1A\x07\b\x02\x02\x1A\x1B\x07\x03\x02\x02\x1B"+
-		"\t\x03\x02\x02\x02\x03\x15";
+		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\b \x04\x02\t"+
+		"\x02\x04\x03\t\x03\x04\x04\t\x04\x04\x05\t\x05\x03\x02\x03\x02\x03\x02"+
+		"\x03\x03\x06\x03\x0F\n\x03\r\x03\x0E\x03\x10\x03\x04\x03\x04\x03\x04\x03"+
+		"\x04\x03\x04\x03\x04\x05\x04\x19\n\x04\x03\x04\x03\x04\x03\x05\x03\x05"+
+		"\x03\x05\x03\x05\x02\x02\x02\x06\x02\x02\x04\x02\x06\x02\b\x02\x02\x02"+
+		"\x1D\x02\n\x03\x02\x02\x02\x04\x0E\x03\x02\x02\x02\x06\x12\x03\x02\x02"+
+		"\x02\b\x1C\x03\x02\x02\x02\n\v\x05\x04\x03\x02\v\f\x07\x02\x02\x03\f\x03"+
+		"\x03\x02\x02\x02\r\x0F\x05\x06\x04\x02\x0E\r\x03\x02\x02\x02\x0F\x10\x03"+
+		"\x02\x02\x02\x10\x0E\x03\x02\x02\x02\x10\x11\x03\x02\x02\x02\x11\x05\x03"+
+		"\x02\x02\x02\x12\x13\x07\x06\x02\x02\x13\x18\x07\x05\x02\x02\x14\x19\x05"+
+		"\b\x05\x02\x15\x16\x07\x07\x02\x02\x16\x17\x07\x05\x02\x02\x17\x19\x05"+
+		"\b\x05\x02\x18\x14\x03\x02\x02\x02\x18\x15\x03\x02\x02\x02\x19\x1A\x03"+
+		"\x02\x02\x02\x1A\x1B\x07\x04\x02\x02\x1B\x07\x03\x02\x02\x02\x1C\x1D\x07"+
+		"\x07\x02\x02\x1D\x1E\x07\x03\x02\x02\x1E\t\x03\x02\x02\x02\x04\x10\x18";
 	public static __ATN: ATN;
 	public static get _ATN(): ATN {
 		if (!mongoParser.__ATN) {
@@ -267,8 +269,14 @@ export class MongoCommandsContext extends ParserRuleContext {
 
 
 export class CommandsContext extends ParserRuleContext {
-	public command(): CommandContext {
-		return this.getRuleContext(0, CommandContext);
+	public command(): CommandContext[];
+	public command(i: number): CommandContext;
+	public command(i?: number): CommandContext | CommandContext[] {
+		if (i === undefined) {
+			return this.getRuleContexts(CommandContext);
+		} else {
+			return this.getRuleContext(i, CommandContext);
+		}
 	}
 	constructor(parent: ParserRuleContext, invokingState: number);
 	constructor(parent: ParserRuleContext, invokingState: number) {
@@ -303,8 +311,7 @@ export class CommandContext extends ParserRuleContext {
 			return this.getToken(mongoParser.DOT, i);
 		}
 	}
-	public COMMAND_DELIMITTER(): TerminalNode | undefined { return this.tryGetToken(mongoParser.COMMAND_DELIMITTER, 0); }
-	public EOL(): TerminalNode | undefined { return this.tryGetToken(mongoParser.EOL, 0); }
+	public COMMAND_DELIMITTER(): TerminalNode { return this.getToken(mongoParser.COMMAND_DELIMITTER, 0); }
 	public functionCall(): FunctionCallContext | undefined {
 		return this.tryGetRuleContext(0, FunctionCallContext);
 	}

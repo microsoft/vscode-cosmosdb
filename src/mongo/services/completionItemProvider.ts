@@ -13,13 +13,17 @@ import { TextDocument, CompletionItem, Position, Range, CompletionItemKind } fro
 
 export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[]>> {
 
-	constructor(private textDocument: TextDocument, private db: Db) {
+	constructor(private textDocument: TextDocument, private db: Db, private offset: number) {
 		super();
+	}
+
+	visitCommands(ctx: mongoParser.CommandsContext): Promise<CompletionItem[]> {
+		return this.thenable(this.createDbKeywordCompletion(this.createRange(ctx)));
 	}
 
 	visitCommand(ctx: mongoParser.CommandContext): Promise<CompletionItem[]> {
 		if (ctx.childCount === 0) {
-			return this.thenable(this.createDbKeywordCompletion(ctx));
+			return this.thenable(this.createDbKeywordCompletion(this.createRange(ctx)));
 		}
 
 		const lastTerminalNode = this.getLastTerminalNode(ctx);
@@ -47,17 +51,20 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 
 	private getCompletionItemsFromTerminalNode(node: TerminalNode): Promise<CompletionItem[]> {
 		if (node._symbol.type === mongoParser.mongoParser.DB) {
-			return this.thenable(this.createDbKeywordCompletion(node.parent));
+			return this.thenable(this.createDbKeywordCompletion(this.createRange(node)));
+		}
+		if (node._symbol.type === mongoParser.mongoParser.COMMAND_DELIMITTER) {
+			return this.thenable(this.createDbKeywordCompletion(this.createRangeAfterTerminalNode(node)));
 		}
 		if (node._symbol.type === mongoParser.mongoParser.DOT) {
 			const previousNode = this.getPreviousNode(node);
 			if (previousNode && previousNode instanceof TerminalNode) {
 				if (previousNode._symbol.type === mongoParser.mongoParser.DB) {
-					return Promise.all([this.createCollectionCompletions(node), this.createDbFunctionCompletions(node)])
+					return Promise.all([this.createCollectionCompletions(this.createRangeAfterTerminalNode(node)), this.createDbFunctionCompletions(this.createRangeAfterTerminalNode(node))])
 						.then(([collectionCompletions, dbFunctionCompletions]) => [...collectionCompletions, ...dbFunctionCompletions]);
 				}
 				if (previousNode._symbol.type === mongoParser.mongoParser.STRING_LITERAL) {
-					return this.createCollectionFunctionsCompletions(node);
+					return this.createCollectionFunctionsCompletions(this.createRangeAfterTerminalNode(node));
 				}
 			}
 		}
@@ -67,13 +74,14 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 				if (previousNode instanceof TerminalNode) {
 					return this.getCompletionItemsFromTerminalNode(previousNode);
 				}
+				return previousNode.accept(this);
 			}
 		}
 		return this.thenable();
 	}
 
 	private getLastTerminalNode(ctx: ParserRuleContext): TerminalNode {
-		return <TerminalNode>ctx.children.slice().reverse().filter(node => node instanceof TerminalNode)[0];
+		return <TerminalNode>ctx.children.slice().reverse().filter(node => node instanceof TerminalNode && node.symbol.stopIndex > -1 && node.symbol.stopIndex < this.offset)[0];
 	}
 
 	private getPreviousNode(node: ParseTree): ParseTree {
@@ -89,77 +97,77 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		return previousNode;
 	}
 
-	private createDbKeywordCompletion(rangeContext: ParseTree): CompletionItem {
+	private createDbKeywordCompletion(range: Range): CompletionItem {
 		return {
 			textEdit: {
-				newText: 'db.',
-				range: this.createRange(rangeContext)
+				newText: 'db',
+				range
 			},
 			kind: CompletionItemKind.Keyword,
 			label: 'db'
 		};
 	}
 
-	private createDbFunctionCompletions(rangeContext: ParseTree): Promise<CompletionItem[]> {
+	private createDbFunctionCompletions(range: Range): Promise<CompletionItem[]> {
 		return this.thenable(
-			this.createFunctionCompletion('adminCommand', rangeContext),
-			this.createFunctionCompletion('auth', rangeContext),
-			this.createFunctionCompletion('cloneDatabase', rangeContext),
-			this.createFunctionCompletion('commandHelp', rangeContext),
-			this.createFunctionCompletion('copyDatabase', rangeContext),
-			this.createFunctionCompletion('createCollection', rangeContext),
-			this.createFunctionCompletion('createView', rangeContext),
-			this.createFunctionCompletion('createUser', rangeContext),
-			this.createFunctionCompletion('currentOp', rangeContext),
-			this.createFunctionCompletion('dropDatabase', rangeContext),
-			this.createFunctionCompletion('eval', rangeContext),
-			this.createFunctionCompletion('fsyncLock', rangeContext),
-			this.createFunctionCompletion('fsyncUnLock', rangeContext),
-			this.createFunctionCompletion('getCollection', rangeContext),
-			this.createFunctionCompletion('getCollectionInfos', rangeContext),
-			this.createFunctionCompletion('getCollectionNames', rangeContext),
-			this.createFunctionCompletion('getLastError', rangeContext),
-			this.createFunctionCompletion('getLastErrorObj', rangeContext),
-			this.createFunctionCompletion('getLogComponents', rangeContext),
-			this.createFunctionCompletion('getMongo', rangeContext),
-			this.createFunctionCompletion('getName', rangeContext),
-			this.createFunctionCompletion('getPrevError', rangeContext),
-			this.createFunctionCompletion('getProfilingLevel', rangeContext),
-			this.createFunctionCompletion('getProfilingStatus', rangeContext),
-			this.createFunctionCompletion('getReplicationInfo', rangeContext),
-			this.createFunctionCompletion('getSiblingDB', rangeContext),
-			this.createFunctionCompletion('getWriteConcern', rangeContext),
-			this.createFunctionCompletion('hostInfo', rangeContext),
-			this.createFunctionCompletion('isMaster', rangeContext),
-			this.createFunctionCompletion('killOp', rangeContext),
-			this.createFunctionCompletion('listCommands', rangeContext),
-			this.createFunctionCompletion('loadServerScripts', rangeContext),
-			this.createFunctionCompletion('logout', rangeContext),
-			this.createFunctionCompletion('printCollectionStats', rangeContext),
-			this.createFunctionCompletion('printReplicationInfo', rangeContext),
-			this.createFunctionCompletion('printShardingStatus', rangeContext),
-			this.createFunctionCompletion('printSlaveReplicationInfo', rangeContext),
-			this.createFunctionCompletion('dropUser', rangeContext),
-			this.createFunctionCompletion('repairDatabase', rangeContext),
-			this.createFunctionCompletion('runCommand', rangeContext),
-			this.createFunctionCompletion('serverStatus', rangeContext),
-			this.createFunctionCompletion('setLogLevel', rangeContext),
-			this.createFunctionCompletion('setProfilingLevel', rangeContext),
-			this.createFunctionCompletion('setWriteConcern', rangeContext),
-			this.createFunctionCompletion('unsetWriteConcern', rangeContext),
-			this.createFunctionCompletion('setVerboseShell', rangeContext),
-			this.createFunctionCompletion('shotdownServer', rangeContext),
-			this.createFunctionCompletion('stats', rangeContext),
-			this.createFunctionCompletion('version', rangeContext),
+			this.createFunctionCompletion('adminCommand', range),
+			this.createFunctionCompletion('auth', range),
+			this.createFunctionCompletion('cloneDatabase', range),
+			this.createFunctionCompletion('commandHelp', range),
+			this.createFunctionCompletion('copyDatabase', range),
+			this.createFunctionCompletion('createCollection', range),
+			this.createFunctionCompletion('createView', range),
+			this.createFunctionCompletion('createUser', range),
+			this.createFunctionCompletion('currentOp', range),
+			this.createFunctionCompletion('dropDatabase', range),
+			this.createFunctionCompletion('eval', range),
+			this.createFunctionCompletion('fsyncLock', range),
+			this.createFunctionCompletion('fsyncUnLock', range),
+			this.createFunctionCompletion('getCollection', range),
+			this.createFunctionCompletion('getCollectionInfos', range),
+			this.createFunctionCompletion('getCollectionNames', range),
+			this.createFunctionCompletion('getLastError', range),
+			this.createFunctionCompletion('getLastErrorObj', range),
+			this.createFunctionCompletion('getLogComponents', range),
+			this.createFunctionCompletion('getMongo', range),
+			this.createFunctionCompletion('getName', range),
+			this.createFunctionCompletion('getPrevError', range),
+			this.createFunctionCompletion('getProfilingLevel', range),
+			this.createFunctionCompletion('getProfilingStatus', range),
+			this.createFunctionCompletion('getReplicationInfo', range),
+			this.createFunctionCompletion('getSiblingDB', range),
+			this.createFunctionCompletion('getWriteConcern', range),
+			this.createFunctionCompletion('hostInfo', range),
+			this.createFunctionCompletion('isMaster', range),
+			this.createFunctionCompletion('killOp', range),
+			this.createFunctionCompletion('listCommands', range),
+			this.createFunctionCompletion('loadServerScripts', range),
+			this.createFunctionCompletion('logout', range),
+			this.createFunctionCompletion('printCollectionStats', range),
+			this.createFunctionCompletion('printReplicationInfo', range),
+			this.createFunctionCompletion('printShardingStatus', range),
+			this.createFunctionCompletion('printSlaveReplicationInfo', range),
+			this.createFunctionCompletion('dropUser', range),
+			this.createFunctionCompletion('repairDatabase', range),
+			this.createFunctionCompletion('runCommand', range),
+			this.createFunctionCompletion('serverStatus', range),
+			this.createFunctionCompletion('setLogLevel', range),
+			this.createFunctionCompletion('setProfilingLevel', range),
+			this.createFunctionCompletion('setWriteConcern', range),
+			this.createFunctionCompletion('unsetWriteConcern', range),
+			this.createFunctionCompletion('setVerboseShell', range),
+			this.createFunctionCompletion('shotdownServer', range),
+			this.createFunctionCompletion('stats', range),
+			this.createFunctionCompletion('version', range),
 		);
 	}
 
-	private createCollectionCompletions(rangeContext: ParseTree): Promise<CompletionItem[]> {
+	private createCollectionCompletions(range: Range): Promise<CompletionItem[]> {
 		return <Promise<CompletionItem[]>>this.db.collections().then(collections => {
 			return collections.map(collection => (<CompletionItem>{
 				textEdit: {
-					newText: collection.collectionName + '.',
-					range: this.createRange(rangeContext)
+					newText: collection.collectionName,
+					range
 				},
 				label: collection.collectionName,
 				kind: CompletionItemKind.Property,
@@ -168,65 +176,65 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		})
 	}
 
-	private createCollectionFunctionsCompletions(rangeContext: ParseTree): Promise<CompletionItem[]> {
+	private createCollectionFunctionsCompletions(range: Range): Promise<CompletionItem[]> {
 		return this.thenable(
-			this.createFunctionCompletion('bulkWrite', rangeContext),
-			this.createFunctionCompletion('count', rangeContext),
-			this.createFunctionCompletion('copyTo', rangeContext),
-			this.createFunctionCompletion('converToCapped', rangeContext),
-			this.createFunctionCompletion('createIndex', rangeContext),
-			this.createFunctionCompletion('createIndexes', rangeContext),
-			this.createFunctionCompletion('dataSize', rangeContext),
-			this.createFunctionCompletion('deleteOne', rangeContext),
-			this.createFunctionCompletion('deleteMany', rangeContext),
-			this.createFunctionCompletion('distinct', rangeContext),
-			this.createFunctionCompletion('drop', rangeContext),
-			this.createFunctionCompletion('dropIndex', rangeContext),
-			this.createFunctionCompletion('dropIndexes', rangeContext),
-			this.createFunctionCompletion('ensureIndex', rangeContext),
-			this.createFunctionCompletion('explain', rangeContext),
-			this.createFunctionCompletion('reIndex', rangeContext),
-			this.createFunctionCompletion('find', rangeContext),
-			this.createFunctionCompletion('findOne', rangeContext),
-			this.createFunctionCompletion('findOneAndDelete', rangeContext),
-			this.createFunctionCompletion('findOneAndReplace', rangeContext),
-			this.createFunctionCompletion('findOneAndUpdate', rangeContext),
-			this.createFunctionCompletion('getDB', rangeContext),
-			this.createFunctionCompletion('getPlanCache', rangeContext),
-			this.createFunctionCompletion('getIndexes', rangeContext),
-			this.createFunctionCompletion('group', rangeContext),
-			this.createFunctionCompletion('insert', rangeContext),
-			this.createFunctionCompletion('insertOne', rangeContext),
-			this.createFunctionCompletion('insertMany', rangeContext),
-			this.createFunctionCompletion('mapReduce', rangeContext),
-			this.createFunctionCompletion('aggregate', rangeContext),
-			this.createFunctionCompletion('remove', rangeContext),
-			this.createFunctionCompletion('replaceOne', rangeContext),
-			this.createFunctionCompletion('renameCollection', rangeContext),
-			this.createFunctionCompletion('runCommand', rangeContext),
-			this.createFunctionCompletion('save', rangeContext),
-			this.createFunctionCompletion('stats', rangeContext),
-			this.createFunctionCompletion('storageSize', rangeContext),
-			this.createFunctionCompletion('totalIndexSize', rangeContext),
-			this.createFunctionCompletion('update', rangeContext),
-			this.createFunctionCompletion('updateOne', rangeContext),
-			this.createFunctionCompletion('updateMany', rangeContext),
-			this.createFunctionCompletion('validate', rangeContext),
-			this.createFunctionCompletion('getShardVersion', rangeContext),
-			this.createFunctionCompletion('getShardDistribution', rangeContext),
-			this.createFunctionCompletion('getSplitKeysForChunks', rangeContext),
-			this.createFunctionCompletion('getWriteConcern', rangeContext),
-			this.createFunctionCompletion('setWriteConcern', rangeContext),
-			this.createFunctionCompletion('unsetWriteConcern', rangeContext),
-			this.createFunctionCompletion('latencyStats', rangeContext),
+			this.createFunctionCompletion('bulkWrite', range),
+			this.createFunctionCompletion('count', range),
+			this.createFunctionCompletion('copyTo', range),
+			this.createFunctionCompletion('converToCapped', range),
+			this.createFunctionCompletion('createIndex', range),
+			this.createFunctionCompletion('createIndexes', range),
+			this.createFunctionCompletion('dataSize', range),
+			this.createFunctionCompletion('deleteOne', range),
+			this.createFunctionCompletion('deleteMany', range),
+			this.createFunctionCompletion('distinct', range),
+			this.createFunctionCompletion('drop', range),
+			this.createFunctionCompletion('dropIndex', range),
+			this.createFunctionCompletion('dropIndexes', range),
+			this.createFunctionCompletion('ensureIndex', range),
+			this.createFunctionCompletion('explain', range),
+			this.createFunctionCompletion('reIndex', range),
+			this.createFunctionCompletion('find', range),
+			this.createFunctionCompletion('findOne', range),
+			this.createFunctionCompletion('findOneAndDelete', range),
+			this.createFunctionCompletion('findOneAndReplace', range),
+			this.createFunctionCompletion('findOneAndUpdate', range),
+			this.createFunctionCompletion('getDB', range),
+			this.createFunctionCompletion('getPlanCache', range),
+			this.createFunctionCompletion('getIndexes', range),
+			this.createFunctionCompletion('group', range),
+			this.createFunctionCompletion('insert', range),
+			this.createFunctionCompletion('insertOne', range),
+			this.createFunctionCompletion('insertMany', range),
+			this.createFunctionCompletion('mapReduce', range),
+			this.createFunctionCompletion('aggregate', range),
+			this.createFunctionCompletion('remove', range),
+			this.createFunctionCompletion('replaceOne', range),
+			this.createFunctionCompletion('renameCollection', range),
+			this.createFunctionCompletion('runCommand', range),
+			this.createFunctionCompletion('save', range),
+			this.createFunctionCompletion('stats', range),
+			this.createFunctionCompletion('storageSize', range),
+			this.createFunctionCompletion('totalIndexSize', range),
+			this.createFunctionCompletion('update', range),
+			this.createFunctionCompletion('updateOne', range),
+			this.createFunctionCompletion('updateMany', range),
+			this.createFunctionCompletion('validate', range),
+			this.createFunctionCompletion('getShardVersion', range),
+			this.createFunctionCompletion('getShardDistribution', range),
+			this.createFunctionCompletion('getSplitKeysForChunks', range),
+			this.createFunctionCompletion('getWriteConcern', range),
+			this.createFunctionCompletion('setWriteConcern', range),
+			this.createFunctionCompletion('unsetWriteConcern', range),
+			this.createFunctionCompletion('latencyStats', range),
 		);
 	}
 
-	private createFunctionCompletion(label: string, rangeContext: ParseTree): CompletionItem {
+	private createFunctionCompletion(label: string, range: Range): CompletionItem {
 		return {
 			textEdit: {
 				newText: label,
-				range: this.createRange(rangeContext)
+				range
 			},
 			kind: CompletionItemKind.Function,
 			label
@@ -242,16 +250,21 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 			}
 
 			var stop = stopToken.stopIndex;
-			return this._createSelection(startToken.startIndex, stop);
+			return this._createRange(startToken.startIndex, stop);
 		}
 
 		if (parserRuleContext instanceof TerminalNode) {
-			var startToken = parserRuleContext._symbol;
-			return this._createSelection(startToken.stopIndex + 1, startToken.stopIndex + 1);
+			return this._createRange(parserRuleContext.symbol.startIndex, parserRuleContext.symbol.stopIndex);
 		}
+
+		return null;
 	}
 
-	private _createSelection(start: number, end: number): Range {
+	private createRangeAfterTerminalNode(terminalNode: TerminalNode): Range {
+		return this._createRange(terminalNode.symbol.stopIndex + 1, terminalNode.symbol.stopIndex + 1)
+	}
+
+	private _createRange(start: number, end: number): Range {
 		const startPosition = this.textDocument.positionAt(start);
 		const endPosition = this.textDocument.positionAt(end);
 		return Range.create(startPosition, endPosition);

@@ -29,7 +29,7 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 	}
 
 	visitChildren(ctx: ParserRuleContext): T {
-		var result = this.defaultResult();
+		var result = this.defaultResult(ctx);
 		var n = ctx.childCount
 		for (var i = 0; i < n; i++) {
 			if (!this.shouldVisitNextChild(ctx, result)) {
@@ -44,14 +44,14 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 	}
 
 	visitTerminal(node: TerminalNode): T {
-		return this.defaultResult();
+		return this.defaultResult(node);
 	}
 
 	visitErrorNode(node: ErrorNode): T {
-		return this.defaultResult();
+		return this.defaultResult(node);
 	}
 
-	protected defaultResult(): T {
+	protected defaultResult(node: ParseTree): T {
 		return null;
 	}
 

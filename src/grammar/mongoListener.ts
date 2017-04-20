@@ -6,6 +6,7 @@ import { ParseTreeListener } from 'antlr4ts/tree/ParseTreeListener';
 import { MongoCommandsContext } from './mongoParser';
 import { CommandsContext } from './mongoParser';
 import { CommandContext } from './mongoParser';
+import { EmptyCommandContext } from './mongoParser';
 import { FunctionCallContext } from './mongoParser';
 
 
@@ -46,6 +47,17 @@ export interface mongoListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitCommand?: (ctx: CommandContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `mongoParser.emptyCommand`.
+	 * @param ctx the parse tree
+	 */
+	enterEmptyCommand?: (ctx: EmptyCommandContext) => void;
+	/**
+	 * Exit a parse tree produced by `mongoParser.emptyCommand`.
+	 * @param ctx the parse tree
+	 */
+	exitEmptyCommand?: (ctx: EmptyCommandContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `mongoParser.functionCall`.

@@ -21,6 +21,10 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		return this.thenable(this.createDbKeywordCompletion(this.createRange(ctx)));
 	}
 
+	visitEmptyCommand(ctx: mongoParser.EmptyCommandContext): Promise<CompletionItem[]> {
+		return this.thenable(this.createDbKeywordCompletion(this.createRangeAfter(ctx)));
+	}
+
 	visitCommand(ctx: mongoParser.CommandContext): Promise<CompletionItem[]> {
 		if (ctx.childCount === 0) {
 			return this.thenable(this.createDbKeywordCompletion(this.createRange(ctx)));
@@ -54,17 +58,17 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 			return this.thenable(this.createDbKeywordCompletion(this.createRange(node)));
 		}
 		if (node._symbol.type === mongoParser.mongoParser.COMMAND_DELIMITTER) {
-			return this.thenable(this.createDbKeywordCompletion(this.createRangeAfterTerminalNode(node)));
+			return this.thenable(this.createDbKeywordCompletion(this.createRangeAfter(node)));
 		}
 		if (node._symbol.type === mongoParser.mongoParser.DOT) {
 			const previousNode = this.getPreviousNode(node);
 			if (previousNode && previousNode instanceof TerminalNode) {
 				if (previousNode._symbol.type === mongoParser.mongoParser.DB) {
-					return Promise.all([this.createCollectionCompletions(this.createRangeAfterTerminalNode(node)), this.createDbFunctionCompletions(this.createRangeAfterTerminalNode(node))])
+					return Promise.all([this.createCollectionCompletions(this.createRangeAfter(node)), this.createDbFunctionCompletions(this.createRangeAfter(node))])
 						.then(([collectionCompletions, dbFunctionCompletions]) => [...collectionCompletions, ...dbFunctionCompletions]);
 				}
 				if (previousNode._symbol.type === mongoParser.mongoParser.STRING_LITERAL) {
-					return this.createCollectionFunctionsCompletions(this.createRangeAfterTerminalNode(node));
+					return this.createCollectionFunctionsCompletions(this.createRangeAfter(node));
 				}
 			}
 		}
@@ -260,8 +264,20 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		return null;
 	}
 
-	private createRangeAfterTerminalNode(terminalNode: TerminalNode): Range {
-		return this._createRange(terminalNode.symbol.stopIndex + 1, terminalNode.symbol.stopIndex + 1)
+	private createRangeAfter(parserRuleContext: ParseTree): Range {
+		if (parserRuleContext instanceof ParserRuleContext) {
+			var stopToken = parserRuleContext.stop;
+			if (stopToken === null) {
+				stopToken = parserRuleContext.start;
+			}
+
+			var stop = stopToken.stopIndex;
+			return this._createRange(stop + 1, stop + 1);
+		}
+
+		if (parserRuleContext instanceof TerminalNode) {
+			return this._createRange(parserRuleContext.symbol.stopIndex + 1, parserRuleContext.symbol.stopIndex + 1);
+		}
 	}
 
 	private _createRange(start: number, end: number): Range {

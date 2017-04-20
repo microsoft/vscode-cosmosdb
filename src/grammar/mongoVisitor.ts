@@ -6,6 +6,7 @@ import { ParseTreeVisitor } from 'antlr4ts/tree/ParseTreeVisitor';
 import { MongoCommandsContext } from './mongoParser';
 import { CommandsContext } from './mongoParser';
 import { CommandContext } from './mongoParser';
+import { EmptyCommandContext } from './mongoParser';
 import { FunctionCallContext } from './mongoParser';
 
 
@@ -37,6 +38,13 @@ export interface mongoVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitCommand?: (ctx: CommandContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `mongoParser.emptyCommand`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitEmptyCommand?: (ctx: EmptyCommandContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `mongoParser.functionCall`.

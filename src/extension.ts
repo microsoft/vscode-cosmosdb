@@ -1,12 +1,16 @@
 'use strict';
 
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 import { MongoExplorer } from './mongo/explorer';
 import { MongoCommands, ResultDocument } from './mongo/commands';
 import { Model } from './mongo/mongo';
-import * as fs from 'fs';
+import MongoDBLanguageClient from './mongo/languageClient';
 
 export function activate(context: vscode.ExtensionContext) {
+
+	const languageClient = new MongoDBLanguageClient(context);
+
 	// Create the storage folder
 	if (context.storagePath) {
 		createStorageFolder(context).then(() => {
@@ -19,7 +23,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// Commands
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.addServer', () => { MongoCommands.addServer(model, context) }));
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.openShellEditor', node => { MongoCommands.openShell(node.element) }));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.openShellEditor', node => {
+				languageClient.connect(node.element);
+				MongoCommands.openShell(node.element);
+			}));
+
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.execute', () => MongoCommands.executeScript(model, resultDocument, outputChannel, true)));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.executeLine', () => MongoCommands.executeScript(model, resultDocument, outputChannel, false)));
 		});

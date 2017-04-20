@@ -103,7 +103,7 @@ export class Database implements IMongoResource {
 	private shell: Shell;
 	private shellUri: vscode.Uri;
 
-	constructor(readonly id: string, private server: Server, private context: IMongoContext) {
+	constructor(readonly id: string, readonly server: Server, private context: IMongoContext) {
 		this.shellUri = vscode.Uri.file(this.context.extensionContext.storagePath + '/' + this.server.id + '_' + this.id + '.mongo')
 		if (!fs.existsSync(this.shellUri.fsPath)) {
 			this.shellUri = this.shellUri.with({ scheme: 'untitled' });

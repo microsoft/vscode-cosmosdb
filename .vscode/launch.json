@@ -28,6 +28,17 @@
 			"sourceMaps": true,
 			"outDir": "${workspaceRoot}/out/test",
 			"preLaunchTask": "npm"
+		},
+		{
+			"type": "node",
+			"request": "attach",
+			"name": "Attach to Server",
+			"protocol": "legacy",
+			"port": 6005,
+			"sourceMaps": true,
+			"outFiles": [
+				"${workspaceRoot}/out/**/*.js"
+			]
 		}
 	]
 }

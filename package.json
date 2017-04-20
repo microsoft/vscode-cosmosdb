@@ -39,6 +39,17 @@
 				"firstLine": "^#!/.*\\bmongo*\\b"
 			}
 		],
+		"grammars": [
+			{
+				"language": "mongo",
+				"scopeName": "source.js",
+				"path": "./syntaxes/JavaScript.tmLanguage.json"
+			},
+			{
+				"scopeName": "source.js.regexp",
+				"path": "./syntaxes/Regular Expressions (JavaScript).tmLanguage"
+			}
+		],
 		"commands": [
 			{
 				"category": "Mongo",
@@ -112,16 +123,25 @@
 	"scripts": {
 		"vscode:prepublish": "tsc -p ./",
 		"compile": "tsc -watch -p ./",
-		"postinstall": "node ./node_modules/vscode/bin/install"
+		"postinstall": "node ./node_modules/vscode/bin/install",
+		"antlr4ts": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src"
 	},
 	"devDependencies": {
-		"typescript": "^2.0.3",
-		"vscode": "^1.0.0",
-		"mocha": "^2.3.3",
+		"@types/mocha": "^2.2.32",
 		"@types/node": "^6.0.40",
-		"@types/mocha": "^2.2.32"
+		"antlr4ts-cli": "^0.4.0-alpha.4",
+		"mocha": "^2.3.3",
+		"typescript": "^2.0.3",
+		"vscode": "^1.0.0"
 	},
 	"dependencies": {
-		"mongodb": "^2.2.25"
+		"antlr4": "^4.7.0",
+		"antlr4ts": "^0.4.0-alpha.4",
+		"mongodb": "^2.2.25",
+		"request-light": "^0.2.0",
+		"vscode-languageclient": "^3.1.0-alpha.1",
+		"vscode-languageserver": "^3.1.0-alpha.1",
+		"vscode-nls": "^2.0.2",
+		"vscode-uri": "^1.0.0"
 	}
 }

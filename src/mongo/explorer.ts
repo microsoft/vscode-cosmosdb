@@ -1,37 +1,48 @@
-import { TreeExplorerNodeProvider } from 'vscode';
-import { Model, Server, Database, IMongoResource } from './mongo';
+import { TreeExplorerNodeProvider, TreeNode, Command, Event, EventEmitter, Disposable } from 'vscode';
+import { Model, Server, Database } from './mongo';
 
-interface INode {
-	element: IMongoResource;
-}
+export class MongoExplorer implements TreeExplorerNodeProvider<TreeNode> {
 
-export class MongoExplorer implements TreeExplorerNodeProvider<INode> {
+	private _disposables: Map<TreeNode, Disposable[]> = new Map<TreeNode, Disposable[]>();
 
-	constructor(private model: Model) { }
+	private _onChange: EventEmitter<TreeNode> = new EventEmitter<TreeNode>();
+	readonly onChange: Event<TreeNode> = this._onChange.event;
 
-	getLabel(node: INode): string {
-		return node.element.id;
+	constructor(private model: Model) {
+		this.model.onChange(() => this._onChange.fire());
+	 }
+
+	provideRootNode(): TreeNode {
+		return this.model;
 	}
 
-	getHasChildren(node: INode): boolean {
-		return node.element.hasChildren();
+	getLabel(node: TreeNode): string {
+		return node.label;
 	}
 
-	getClickCommand(node: INode): string {
-		if (node.element instanceof Database) {
-			return 'mongo.openShellEditor'
+	getHasChildren(node: TreeNode): boolean {
+		return !!node.getChildren;
+	}
+
+	getClickCommand(node: TreeNode): Command {
+		return node.command;
+	}
+
+	resolveChildren(node: TreeNode): Thenable<TreeNode[]> {
+		const disposables = this._disposables.get(node);
+		if (disposables) {
+			for (const disposable of disposables) {
+				disposable.dispose();
+			}
 		}
-		return '';
-	}
-
-	provideRootNode(): INode {
-		if (this.model) {
-			// TODO: dispose
-		}
-		return { element: this.model };
-	}
-
-	resolveChildren(node: INode): Thenable<INode[]> {
-		return node.element.loadChildren().then(children => children.map(element => ({ element })));
+		return node.getChildren().then(children => {
+			this._disposables.set(node, children.map(child => {
+				if (child.onChange) {
+					return child.onChange(() => this._onChange.fire(child));
+				}
+				return new Disposable(() => {});
+			}));
+			return children;
+		});
 	}
 }

@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { MongoExplorer } from './mongo/explorer';
 import { MongoCommands, ResultDocument } from './mongo/commands';
-import { Model } from './mongo/mongo';
+import { Model, Database } from './mongo/mongo';
 import MongoDBLanguageClient from './mongo/languageClient';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -19,13 +19,14 @@ export function activate(context: vscode.ExtensionContext) {
 			const resultDocument = new ResultDocument(context);
 
 			// Mongo explorer
-			context.subscriptions.push(vscode.window.registerTreeExplorerNodeProvider('mongoExplorer', new MongoExplorer(model)));
+			// context.subscriptions.push(vscode.window.registerTreeExplorerNodeProvider('mongoExplorer', new MongoExplorer(model)));
+			context.subscriptions.push(vscode.window.registerTree('mongoExplorer', model));
 
 			// Commands
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.addServer', () => { MongoCommands.addServer(model, context) }));
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.openShellEditor', node => {
-				languageClient.connect(node.element);
-				MongoCommands.openShell(node.element);
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.openShellEditor', (database: Database) => {
+				languageClient.connect(database);
+				MongoCommands.openShell(database);
 			}));
 
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.execute', () => MongoCommands.executeScript(model, resultDocument, outputChannel, true)));
@@ -33,29 +34,13 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	} else {
 		context.subscriptions.push(vscode.window.registerTreeExplorerNodeProvider('mongoExplorer', {
-
-			getLabel(): string {
-				return '';
-			},
-
-			getHasChildren(): boolean {
-				return false;
-			},
-
-			getClickCommand(): string {
-				return '';
-			},
-
 			provideRootNode(): any {
 				vscode.window.showInformationMessage('Open a workspace first.')
 				return {};
 			},
-
-			resolveChildren(): Thenable<any[]> {
-				return null;
-			}
 		}));
 	}
+
 }
 
 async function createStorageFolder(context: vscode.ExtensionContext): Promise<void> {

@@ -3,14 +3,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import { MongoClient, Db, ReadPreference, Code } from 'mongodb';
 import { Shell } from './shell';
-
-export interface IMongoResource {
-
-	id: string
-
-	hasChildren(): boolean;
-	loadChildren(): Promise<IMongoResource[]>;
-}
+import { TreeNode, EventEmitter, Event, Command } from 'vscode';
 
 export interface IMongoContext {
 	extensionContext: vscode.ExtensionContext;
@@ -40,23 +33,27 @@ class ServersJson {
 	}
 
 	async write(servers: string[]) {
-		fs.writeFile(this._filePath, JSON.stringify(servers));
+		fs.writeFile(this._filePath, JSON.stringify(servers), (err) => {});
 	}
 }
 
-export class Model implements IMongoResource {
+export class Model implements TreeNode {
 
-	public readonly id: string = '';
+	readonly id: string = 'mongoExplorer';
+	readonly label: string = 'Mongo';
+	readonly canHaveChildren: boolean = true;
+
 	private _serversJson: ServersJson;
-	private _servers: Server[];
+	private _servers: Server[] = [];
+
+	private _onChange: EventEmitter<void> = new EventEmitter<void>();
+	readonly onChange: Event<void> = this._onChange.event;
 
 	constructor(private context: IMongoContext) {
 		this._serversJson = new ServersJson(context.extensionContext);
 	}
 
-	hasChildren(): boolean { return true; }
-
-	loadChildren(): Promise<IMongoResource[]> {
+	getChildren(): Promise<TreeNode[]> {
 		return this._serversJson.load().then(servers => {
 			this._servers = servers.map(server => new Server(server, this.context));
 			return this._servers;
@@ -70,20 +67,26 @@ export class Model implements IMongoResource {
 	add(connectionString: string) {
 		this._servers.push(new Server(connectionString, this.context));
 		this._serversJson.write(this._servers.map(server => server.id));
+		this._onChange.fire();
 	}
 }
 
-export class Server implements IMongoResource {
+export class Server implements TreeNode {
 
 	private _databases: Database[] = [];
 
 	constructor(public readonly id: string, private context: IMongoContext) {
 	}
 
-	hasChildren(): boolean { return true; }
+	get label(): string {
+		return this.id;
+	}
 
-	loadChildren(): Promise<IMongoResource[]> {
-		return <Promise<IMongoResource[]>>MongoClient.connect(this.id)
+
+	readonly canHaveChildren: boolean = true;
+
+	getChildren(): Promise<TreeNode[]> {
+		return <Promise<TreeNode[]>>MongoClient.connect(this.id)
 			.then(db => db.admin().listDatabases()
 				.then((value: { databases: { name }[] }) => {
 					this._databases = value.databases.map(database => new Database(database.name, this, this.context));
@@ -98,7 +101,7 @@ export class Server implements IMongoResource {
 	}
 }
 
-export class Database implements IMongoResource {
+export class Database implements TreeNode {
 
 	private shell: Shell;
 	private shellUri: vscode.Uri;
@@ -109,17 +112,17 @@ export class Database implements IMongoResource {
 			this.shellUri = this.shellUri.with({ scheme: 'untitled' });
 		}
 		this.context.extensionContext.subscriptions.push(vscode.window.onDidChangeActiveTextEditor((editor => {
-			if (editor.document.uri.toString() === this.shellUri.toString()) {
+			if (editor && editor.document.uri.toString() === this.shellUri.toString()) {
 				vscode.window.setStatusBarMessage('Connected to ' + id);
 			}
 		})));
 	}
 
-	hasChildren(): boolean { return false; }
-
-	loadChildren(): Promise<IMongoResource[]> {
-		return Promise.resolve([]);
+	get label(): string {
+		return this.id;
 	}
+
+	readonly canHaveChildren: boolean = false;
 
 	getDb(): Promise<Db> {
 		const uri = vscode.Uri.parse(this.server.id);
@@ -161,6 +164,12 @@ export class Database implements IMongoResource {
 				this.shell = shell;
 				return this.shell.useDatabase(this.id).then(() => null);
 			}, error => vscode.window.showErrorMessage(error));
+	}
+
+	command: Command = {
+		command: 'mongo.openShellEditor',
+		title: '',
+		arguments: [this]
 	}
 
 	_executeScript(script: string): Promise<string> {

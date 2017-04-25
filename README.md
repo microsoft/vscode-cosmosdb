@@ -22,8 +22,7 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 ## Mongo explorer view
 
 - Open Mongo Explorer view `View: Show Mongo`
-- Add a server `Mongo: Add Server`. Connection string for local Mongo DB: `mongodb://locahost:27017`. **Note**: Start Mongo DB locally for connecting.
-- Refresh the View
+- Add a server by clicking the `+` button in the title. Connection string for local Mongo DB: `mongodb://locahost:27017`. **Note**: Start Mongo DB locally for connecting.
 - Expand the connected server to see the DBs
 
 ## Mongo shell playground
@@ -33,4 +32,5 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 
 - Click on any DB to open the Mongo shell playground editor
 - Type some scripts, eg: `db.<collectionName>.find()`
+- Intelli-sense will be provided to write scripts
 - Select the script, right click and execute script to see results.

@@ -18,9 +18,12 @@ export function activate(context: vscode.ExtensionContext) {
 			const model = new Model({ extensionContext: context, outputChannel });
 			const resultDocument = new ResultDocument(context);
 
-			// Mongo explorer
-			// context.subscriptions.push(vscode.window.registerTreeExplorerNodeProvider('mongoExplorer', new MongoExplorer(model)));
-			context.subscriptions.push(vscode.window.registerTree('mongoExplorer', model));
+			// Mongo Tree View
+			const treeDataProvider = new MongoExplorer(model);
+			const treeView = vscode.window.createTreeView('mongoExplorer', treeDataProvider);
+			context.subscriptions.push(treeView);
+			const disposable = treeDataProvider.onChange((node) => treeView.refresh(node));
+			context.subscriptions.push(new vscode.Disposable(() => disposable.dispose()))
 
 			// Commands
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.addServer', () => { MongoCommands.addServer(model, context) }));
@@ -33,7 +36,7 @@ export function activate(context: vscode.ExtensionContext) {
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.executeLine', () => MongoCommands.executeScript(model, resultDocument, outputChannel, false)));
 		});
 	} else {
-		context.subscriptions.push(vscode.window.registerTreeExplorerNodeProvider('mongoExplorer', {
+		context.subscriptions.push(vscode.window.createTreeView('mongoExplorer', {
 			provideRootNode(): any {
 				vscode.window.showInformationMessage('Open a workspace first.')
 				return {};

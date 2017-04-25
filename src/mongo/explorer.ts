@@ -1,34 +1,34 @@
-import { TreeExplorerNodeProvider, TreeNode, Command, Event, EventEmitter, Disposable } from 'vscode';
-import { Model, Server, Database } from './mongo';
+import { TreeDataProvider, Command, Event, EventEmitter, Disposable } from 'vscode';
+import { Model, Server, Database, IMongoResource } from './mongo';
 
-export class MongoExplorer implements TreeExplorerNodeProvider<TreeNode> {
+export class MongoExplorer implements TreeDataProvider<IMongoResource> {
 
-	private _disposables: Map<TreeNode, Disposable[]> = new Map<TreeNode, Disposable[]>();
+	private _disposables: Map<IMongoResource, Disposable[]> = new Map<IMongoResource, Disposable[]>();
 
-	private _onChange: EventEmitter<TreeNode> = new EventEmitter<TreeNode>();
-	readonly onChange: Event<TreeNode> = this._onChange.event;
+	private _onChange: EventEmitter<IMongoResource> = new EventEmitter<IMongoResource>();
+	readonly onChange: Event<IMongoResource> = this._onChange.event;
 
 	constructor(private model: Model) {
 		this.model.onChange(() => this._onChange.fire());
-	 }
+	}
 
-	provideRootNode(): TreeNode {
+	provideRootNode(): IMongoResource {
 		return this.model;
 	}
 
-	getLabel(node: TreeNode): string {
+	getLabel(node: IMongoResource): string {
 		return node.label;
 	}
 
-	getHasChildren(node: TreeNode): boolean {
+	getHasChildren(node: IMongoResource): boolean {
 		return !!node.getChildren;
 	}
 
-	getClickCommand(node: TreeNode): Command {
+	getClickCommand(node: IMongoResource): Command {
 		return node.command;
 	}
 
-	resolveChildren(node: TreeNode): Thenable<TreeNode[]> {
+	resolveChildren(node: IMongoResource): Thenable<IMongoResource[]> {
 		const disposables = this._disposables.get(node);
 		if (disposables) {
 			for (const disposable of disposables) {
@@ -40,7 +40,7 @@ export class MongoExplorer implements TreeExplorerNodeProvider<TreeNode> {
 				if (child.onChange) {
 					return child.onChange(() => this._onChange.fire(child));
 				}
-				return new Disposable(() => {});
+				return new Disposable(() => { });
 			}));
 			return children;
 		});

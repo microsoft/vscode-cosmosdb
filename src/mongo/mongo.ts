@@ -3,11 +3,18 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import { MongoClient, Db, ReadPreference, Code } from 'mongodb';
 import { Shell } from './shell';
-import { TreeNode, EventEmitter, Event, Command } from 'vscode';
+import { EventEmitter, Event, Command } from 'vscode';
 
 export interface IMongoContext {
 	extensionContext: vscode.ExtensionContext;
 	outputChannel: vscode.OutputChannel;
+}
+
+export interface IMongoResource {
+	label: string;
+	getChildren?(): Thenable<IMongoResource[]>;
+	command?: Command;
+	onChange?: Event<void>
 }
 
 class ServersJson {
@@ -33,11 +40,11 @@ class ServersJson {
 	}
 
 	async write(servers: string[]) {
-		fs.writeFile(this._filePath, JSON.stringify(servers), (err) => {});
+		fs.writeFile(this._filePath, JSON.stringify(servers), (err) => { });
 	}
 }
 
-export class Model implements TreeNode {
+export class Model implements IMongoResource {
 
 	readonly id: string = 'mongoExplorer';
 	readonly label: string = 'Mongo';
@@ -53,7 +60,7 @@ export class Model implements TreeNode {
 		this._serversJson = new ServersJson(context.extensionContext);
 	}
 
-	getChildren(): Promise<TreeNode[]> {
+	getChildren(): Promise<IMongoResource[]> {
 		return this._serversJson.load().then(servers => {
 			this._servers = servers.map(server => new Server(server, this.context));
 			return this._servers;
@@ -71,7 +78,7 @@ export class Model implements TreeNode {
 	}
 }
 
-export class Server implements TreeNode {
+export class Server implements IMongoResource {
 
 	private _databases: Database[] = [];
 
@@ -85,13 +92,13 @@ export class Server implements TreeNode {
 
 	readonly canHaveChildren: boolean = true;
 
-	getChildren(): Promise<TreeNode[]> {
-		return <Promise<TreeNode[]>>MongoClient.connect(this.id)
+	getChildren(): Promise<IMongoResource[]> {
+		return <Promise<IMongoResource[]>>MongoClient.connect(this.id)
 			.then(db => db.admin().listDatabases()
 				.then((value: { databases: { name }[] }) => {
 					this._databases = value.databases.map(database => new Database(database.name, this, this.context));
 					db.close();
-					return this._databases;
+					return <IMongoResource[]>this._databases;
 				}), error => {
 				});
 	}
@@ -101,7 +108,7 @@ export class Server implements TreeNode {
 	}
 }
 
-export class Database implements TreeNode {
+export class Database implements IMongoResource {
 
 	private shell: Shell;
 	private shellUri: vscode.Uri;

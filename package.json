@@ -25,11 +25,13 @@
 	],
 	"main": "./out/src/extension",
 	"contributes": {
-		"explorer": {
-			"treeLabel": "Mongo",
-			"treeExplorerNodeProviderId": "mongoExplorer",
-			"icon": "resources/icons/database.png"
-		},
+		"treeViews": [
+			{
+				"id": "mongoExplorer",
+				"label": "Mongo",
+				"icon": "resources/icons/database.png"
+			}
+		],
 		"languages": [
 			{
 				"id": "mongo",

@@ -40,13 +40,6 @@ export class MongoCommands {
 		vscode.workspace.openTextDocument(uri)
 			.then(textDocument => {
 				return vscode.window.showTextDocument(textDocument)
-					.then(editor => {
-						if (uri.scheme === 'untitled' && !textDocument.getText()) {
-							editor.edit(builder => {
-								builder.insert(new vscode.Position(0, 0), '#!/usr/bin/env mongo\n');
-							});
-						}
-					})
 			});
 	}
 

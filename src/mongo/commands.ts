@@ -5,7 +5,7 @@ export class ResultDocument implements vscode.TextDocumentContentProvider {
 
 	private _result: Map<string, string> = new Map<string, any>();
 
-	private _onDidChange: vscode.EventEmitter<vscode.Uri> = new vscode.EventEmitter();
+	private _onDidChange: vscode.EventEmitter<vscode.Uri> = new vscode.EventEmitter<vscode.Uri>();
 	public readonly onDidChange: vscode.Event<vscode.Uri> = this._onDidChange.event;
 
 	constructor(context: vscode.ExtensionContext) {

@@ -55,16 +55,20 @@ export class MongoCommands {
 		if (editor.document.languageId === 'mongo' || editor.document.uri.fsPath.endsWith('.mongo')) {
 			const text = selection ? MongoCommands.getSelectedText(editor) : editor.document.lineAt(editor.selection.start.line).text;
 			const database = MongoCommands.getDatabaseWithUri(editor.document.uri, model);
-			database.executeScript(text)
-				.then(result => {
-					const uri = vscode.Uri.parse('mongo://test/result.json');
-					resultDocument.setResult(uri, result);
-					vscode.workspace.openTextDocument(uri)
-						.then(textDocument => {
-							vscode.window.showTextDocument(textDocument, vscode.ViewColumn.Two, true);
-						});
-					outputChannel.append(result);
-				});
+			if (database) {
+				database.executeScript(text)
+					.then(result => {
+						const uri = vscode.Uri.parse('mongo://test/result.json');
+						resultDocument.setResult(uri, result);
+						vscode.workspace.openTextDocument(uri)
+							.then(textDocument => {
+								vscode.window.showTextDocument(textDocument, vscode.ViewColumn.Two, true);
+							});
+						outputChannel.append(result);
+					});
+			} else {
+				vscode.window.showErrorMessage('Please connect to the database first');
+			}
 		}
 	}
 

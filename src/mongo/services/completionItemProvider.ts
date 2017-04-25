@@ -167,17 +167,20 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 	}
 
 	private createCollectionCompletions(range: Range): Promise<CompletionItem[]> {
-		return <Promise<CompletionItem[]>>this.db.collections().then(collections => {
-			return collections.map(collection => (<CompletionItem>{
-				textEdit: {
-					newText: collection.collectionName,
-					range
-				},
-				label: collection.collectionName,
-				kind: CompletionItemKind.Property,
-				filterText: 'collection'
-			}));
-		})
+		if (this.db) {
+			return <Promise<CompletionItem[]>>this.db.collections().then(collections => {
+				return collections.map(collection => (<CompletionItem>{
+					textEdit: {
+						newText: collection.collectionName,
+						range
+					},
+					label: collection.collectionName,
+					kind: CompletionItemKind.Property,
+					filterText: 'collection'
+				}));
+			});
+		}
+		return Promise.resolve([]);
 	}
 
 	private createCollectionFunctionsCompletions(range: Range): Promise<CompletionItem[]> {

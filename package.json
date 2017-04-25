@@ -25,7 +25,7 @@
 	],
 	"main": "./out/src/extension",
 	"contributes": {
-		"treeViews": [
+		"views": [
 			{
 				"id": "mongoExplorer",
 				"label": "Mongo",
@@ -55,8 +55,7 @@
 		],
 		"commands": [
 			{
-				"category": "Mongo",
-				"command": "mongo.openShellEditor",
+				"command": "mongo.resource.onClick",
 				"title": "Open Mongo Shell Editor"
 			},
 			{
@@ -77,6 +76,11 @@
 					"light": "resources/icons/light/add.svg",
 					"dark": "resources/icons/dark/add.svg"
 				}
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.removeServer",
+				"title": "Remove Server"
 			}
 		],
 		"menus": {
@@ -90,10 +94,17 @@
 					"when": "resourceLangId==mongo"
 				}
 			],
-			"viewlet/title": [
+			"view/title": [
 				{
 					"command": "mongo.addServer",
-					"when": "treeExplorerProvider == mongoExplorer",
+					"when": "view == mongoExplorer",
+					"group": "navigation"
+				}
+			],
+			"view/resource": [
+				{
+					"command": "mongo.removeServer",
+					"when": "view == mongoExplorer",
 					"group": "navigation"
 				}
 			]

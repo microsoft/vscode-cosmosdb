@@ -12,8 +12,8 @@ export interface IMongoContext {
 
 export interface IMongoResource {
 	label: string;
+	type: string;
 	getChildren?(): Thenable<IMongoResource[]>;
-	command?: Command;
 	onChange?: Event<void>
 }
 
@@ -48,6 +48,7 @@ export class Model implements IMongoResource {
 
 	readonly id: string = 'mongoExplorer';
 	readonly label: string = 'Mongo';
+	readonly type: string = 'mongoRoot';
 	readonly canHaveChildren: boolean = true;
 
 	private _serversJson: ServersJson;
@@ -76,9 +77,21 @@ export class Model implements IMongoResource {
 		this._serversJson.write(this._servers.map(server => server.id));
 		this._onChange.fire();
 	}
+
+	remove(id: string) {
+		const index = this._servers.findIndex((value) => value.id === id);
+		if (index !== -1) {
+			this._servers.splice(index, 1);
+			this._serversJson.write(this._servers.map(server => server.id));
+			this._onChange.fire();
+		}
+	}
+
 }
 
 export class Server implements IMongoResource {
+
+	readonly type: string = 'mongoServer';
 
 	private _databases: Database[] = [];
 
@@ -110,6 +123,7 @@ export class Server implements IMongoResource {
 
 export class Database implements IMongoResource {
 
+	readonly type: string = 'mongoDb';
 	private shell: Shell;
 	private shellUri: vscode.Uri;
 
@@ -171,12 +185,6 @@ export class Database implements IMongoResource {
 				this.shell = shell;
 				return this.shell.useDatabase(this.id).then(() => null);
 			}, error => vscode.window.showErrorMessage(error));
-	}
-
-	command: Command = {
-		command: 'mongo.openShellEditor',
-		title: '',
-		arguments: [this]
 	}
 
 	_executeScript(script: string): Promise<string> {

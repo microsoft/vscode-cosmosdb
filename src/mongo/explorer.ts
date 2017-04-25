@@ -25,7 +25,11 @@ export class MongoExplorer implements TreeDataProvider<IMongoResource> {
 	}
 
 	getClickCommand(node: IMongoResource): Command {
-		return node.command;
+		return {
+			command: 'mongo.resource.onClick',
+			title: '',
+			arguments: [node]
+		};
 	}
 
 	resolveChildren(node: IMongoResource): Thenable<IMongoResource[]> {

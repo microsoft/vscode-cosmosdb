@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { MongoExplorer } from './mongo/explorer';
 import { MongoCommands, ResultDocument } from './mongo/commands';
-import { Model, Database } from './mongo/mongo';
+import { Model, Database, Server, IMongoResource } from './mongo/mongo';
 import MongoDBLanguageClient from './mongo/languageClient';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -27,9 +27,18 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// Commands
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.addServer', () => { MongoCommands.addServer(model, context) }));
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.openShellEditor', (database: Database) => {
-				languageClient.connect(database);
-				MongoCommands.openShell(database);
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.removeServer', (element: IMongoResource) => {
+				if (element instanceof Server) {
+					model.remove(element.id);
+				} else if (element instanceof Database) {
+					model.remove(element.server.id);
+				}
+			}));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.resource.onClick', (element: IMongoResource) => {
+				if (element instanceof Database) {
+					languageClient.connect(element);
+					MongoCommands.openShell(element);
+				}
 			}));
 
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.execute', () => MongoCommands.executeScript(model, resultDocument, outputChannel, true)));

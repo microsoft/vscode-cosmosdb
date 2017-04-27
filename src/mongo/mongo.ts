@@ -86,7 +86,6 @@ export class Model implements IMongoResource {
 			this._onChange.fire();
 		}
 	}
-
 }
 
 export class Server implements IMongoResource {
@@ -124,19 +123,11 @@ export class Server implements IMongoResource {
 export class Database implements IMongoResource {
 
 	readonly type: string = 'mongoDb';
+	readonly connectionString: string;
 	private shell: Shell;
-	private shellUri: vscode.Uri;
 
 	constructor(readonly id: string, readonly server: Server, private context: IMongoContext) {
-		this.shellUri = vscode.Uri.file(this.context.extensionContext.storagePath + '/' + this.server.id + '_' + this.id + '.mongo')
-		if (!fs.existsSync(this.shellUri.fsPath)) {
-			this.shellUri = this.shellUri.with({ scheme: 'untitled' });
-		}
-		this.context.extensionContext.subscriptions.push(vscode.window.onDidChangeActiveTextEditor((editor => {
-			if (editor && editor.document.uri.toString() === this.shellUri.toString()) {
-				vscode.window.setStatusBarMessage('Connected to ' + id);
-			}
-		})));
+		this.connectionString = '//connection:' + this.server.id + '/' + this.id;
 	}
 
 	get label(): string {
@@ -152,10 +143,6 @@ export class Database implements IMongoResource {
 			.then(db => {
 				return db.db(this.id)
 			});
-	}
-
-	getMongoShellUri(): vscode.Uri {
-		return this.shellUri;
 	}
 
 	executeScript(script: string): Promise<string> {

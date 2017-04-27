@@ -19,46 +19,36 @@
 	"autoClosingPairs": [
 		{
 			"open": "{",
-			"close": "}",
-			"notIn": [
-				"string"
-			]
+			"close": "}"
 		},
 		{
 			"open": "[",
-			"close": "]",
-			"notIn": [
-				"string"
-			]
+			"close": "]"
 		},
 		{
 			"open": "(",
-			"close": ")",
-			"notIn": [
-				"string"
-			]
+			"close": ")"
 		},
 		{
 			"open": "'",
 			"close": "'",
 			"notIn": [
-				"string"
+				"string",
+				"comment"
 			]
 		},
 		{
 			"open": "\"",
 			"close": "\"",
 			"notIn": [
-				"string",
-				"comment"
+				"string"
 			]
 		},
 		{
-			"open": "`",
-			"close": "`",
+			"open": "/**",
+			"close": " */",
 			"notIn": [
-				"string",
-				"comment"
+				"string"
 			]
 		}
 	]

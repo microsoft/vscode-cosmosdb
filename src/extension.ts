@@ -26,7 +26,7 @@ export function activate(context: vscode.ExtensionContext) {
 			context.subscriptions.push(new vscode.Disposable(() => disposable.dispose()))
 
 			// Commands
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.addServer', () => { MongoCommands.addServer(model, context) }));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.addServer', () => { MongoCommands.addServer(model) }));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.removeServer', (element: IMongoResource) => {
 				if (element instanceof Server) {
 					model.remove(element.id);
@@ -43,6 +43,15 @@ export function activate(context: vscode.ExtensionContext) {
 
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.execute', () => MongoCommands.executeScript(model, resultDocument, outputChannel, true)));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.executeLine', () => MongoCommands.executeScript(model, resultDocument, outputChannel, false)));
+
+			context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor((editor => {
+				if (editor) {
+					const database = MongoCommands.getDatabaseForDocument(editor.document, model);
+					if (database) {
+						vscode.window.setStatusBarMessage('Connected to ' + database.id);
+					}
+				}
+			})));
 		});
 	} else {
 		context.subscriptions.push(vscode.window.createTreeView('mongoExplorer', {

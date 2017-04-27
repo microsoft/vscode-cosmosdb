@@ -29,12 +29,15 @@ import { mongoVisitor } from './mongoVisitor';
 
 export class mongoParser extends Parser {
 	public static readonly T__0=1;
-	public static readonly COMMAND_DELIMITTER=2;
-	public static readonly DOT=3;
-	public static readonly DB=4;
-	public static readonly EOL=5;
-	public static readonly STRING_LITERAL=6;
-	public static readonly WHITESPACE=7;
+	public static readonly Comment=2;
+	public static readonly SingleLineComment=3;
+	public static readonly MultiLineComment=4;
+	public static readonly COMMAND_DELIMITTER=5;
+	public static readonly DOT=6;
+	public static readonly DB=7;
+	public static readonly EOL=8;
+	public static readonly STRING_LITERAL=9;
+	public static readonly WHITESPACE=10;
 	public static readonly RULE_mongoCommands = 0;
 	public static readonly RULE_commands = 1;
 	public static readonly RULE_command = 2;
@@ -45,11 +48,12 @@ export class mongoParser extends Parser {
 	];
 
 	private static readonly _LITERAL_NAMES: (string | undefined)[] = [
-		undefined, "'()'", undefined, "'.'", "'db'", "'\n'"
+		undefined, "'()'", undefined, undefined, undefined, undefined, "'.'", 
+		"'db'", "'\n'"
 	];
 	private static readonly _SYMBOLIC_NAMES: (string | undefined)[] = [
-		undefined, undefined, "COMMAND_DELIMITTER", "DOT", "DB", "EOL", "STRING_LITERAL", 
-		"WHITESPACE"
+		undefined, undefined, "Comment", "SingleLineComment", "MultiLineComment", 
+		"COMMAND_DELIMITTER", "DOT", "DB", "EOL", "STRING_LITERAL", "WHITESPACE"
 	];
 	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoParser._LITERAL_NAMES, mongoParser._SYMBOLIC_NAMES, []);
 
@@ -107,12 +111,12 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 15; 
+			this.state = 16; 
 			this._errHandler.sync(this);
 			_la = this._input.LA(1);
 			do {
 				{
-				this.state = 15;
+				this.state = 16;
 				this._errHandler.sync(this);
 				switch (this._input.LA(1)) {
 				case mongoParser.DB:
@@ -127,14 +131,20 @@ export class mongoParser extends Parser {
 					this.emptyCommand();
 					}
 					break;
+				case mongoParser.Comment:
+					{
+					this.state = 15;
+					this.match(mongoParser.Comment);
+					}
+					break;
 				default:
 					throw new NoViableAltException(this);
 				}
 				}
-				this.state = 17; 
+				this.state = 18; 
 				this._errHandler.sync(this);
 				_la = this._input.LA(1);
-			} while ( _la===mongoParser.COMMAND_DELIMITTER || _la===mongoParser.DB );
+			} while ( (((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.Comment) | (1 << mongoParser.COMMAND_DELIMITTER) | (1 << mongoParser.DB))) !== 0) );
 			}
 		}
 		catch (re) {
@@ -158,16 +168,16 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 19;
-			this.match(mongoParser.DB);
 			this.state = 20;
+			this.match(mongoParser.DB);
+			this.state = 21;
 			this.match(mongoParser.DOT);
-			this.state = 25;
+			this.state = 26;
 			this._errHandler.sync(this);
 			switch ( this.interpreter.adaptivePredict(this._input,2,this._ctx) ) {
 			case 1:
 				{
-				this.state = 21;
+				this.state = 22;
 				this.functionCall();
 				}
 				break;
@@ -175,17 +185,17 @@ export class mongoParser extends Parser {
 			case 2:
 				{
 				{
-				this.state = 22;
-				this.match(mongoParser.STRING_LITERAL);
 				this.state = 23;
-				this.match(mongoParser.DOT);
+				this.match(mongoParser.STRING_LITERAL);
 				this.state = 24;
+				this.match(mongoParser.DOT);
+				this.state = 25;
 				this.functionCall();
 				}
 				}
 				break;
 			}
-			this.state = 27;
+			this.state = 28;
 			this.match(mongoParser.COMMAND_DELIMITTER);
 			}
 		}
@@ -210,7 +220,7 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 29;
+			this.state = 30;
 			this.match(mongoParser.COMMAND_DELIMITTER);
 			}
 		}
@@ -235,9 +245,9 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 31;
-			this.match(mongoParser.STRING_LITERAL);
 			this.state = 32;
+			this.match(mongoParser.STRING_LITERAL);
+			this.state = 33;
 			this.match(mongoParser.T__0);
 			}
 		}
@@ -257,22 +267,23 @@ export class mongoParser extends Parser {
 	}
 
 	public static readonly _serializedATN: string =
-		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\t%\x04\x02\t"+
+		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\f&\x04\x02\t"+
 		"\x02\x04\x03\t\x03\x04\x04\t\x04\x04\x05\t\x05\x04\x06\t\x06\x03\x02\x03"+
-		"\x02\x03\x02\x03\x03\x03\x03\x06\x03\x12\n\x03\r\x03\x0E\x03\x13\x03\x04"+
-		"\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x05\x04\x1C\n\x04\x03\x04\x03"+
-		"\x04\x03\x05\x03\x05\x03\x06\x03\x06\x03\x06\x03\x06\x02\x02\x02\x07\x02"+
-		"\x02\x04\x02\x06\x02\b\x02\n\x02\x02\x02\"\x02\f\x03\x02\x02\x02\x04\x11"+
-		"\x03\x02\x02\x02\x06\x15\x03\x02\x02\x02\b\x1F\x03\x02\x02\x02\n!\x03"+
-		"\x02\x02\x02\f\r\x05\x04\x03\x02\r\x0E\x07\x02\x02\x03\x0E\x03\x03\x02"+
-		"\x02\x02\x0F\x12\x05\x06\x04\x02\x10\x12\x05\b\x05\x02\x11\x0F\x03\x02"+
-		"\x02\x02\x11\x10\x03\x02\x02\x02\x12\x13\x03\x02\x02\x02\x13\x11\x03\x02"+
-		"\x02\x02\x13\x14\x03\x02\x02\x02\x14\x05\x03\x02\x02\x02\x15\x16\x07\x06"+
-		"\x02\x02\x16\x1B\x07\x05\x02\x02\x17\x1C\x05\n\x06\x02\x18\x19\x07\b\x02"+
-		"\x02\x19\x1A\x07\x05\x02\x02\x1A\x1C\x05\n\x06\x02\x1B\x17\x03\x02\x02"+
-		"\x02\x1B\x18\x03\x02\x02\x02\x1C\x1D\x03\x02\x02\x02\x1D\x1E\x07\x04\x02"+
-		"\x02\x1E\x07\x03\x02\x02\x02\x1F \x07\x04\x02\x02 \t\x03\x02\x02\x02!"+
-		"\"\x07\b\x02\x02\"#\x07\x03\x02\x02#\v\x03\x02\x02\x02\x05\x11\x13\x1B";
+		"\x02\x03\x02\x03\x03\x03\x03\x03\x03\x06\x03\x13\n\x03\r\x03\x0E\x03\x14"+
+		"\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x05\x04\x1D\n\x04\x03"+
+		"\x04\x03\x04\x03\x05\x03\x05\x03\x06\x03\x06\x03\x06\x03\x06\x02\x02\x02"+
+		"\x07\x02\x02\x04\x02\x06\x02\b\x02\n\x02\x02\x02$\x02\f\x03\x02\x02\x02"+
+		"\x04\x12\x03\x02\x02\x02\x06\x16\x03\x02\x02\x02\b \x03\x02\x02\x02\n"+
+		"\"\x03\x02\x02\x02\f\r\x05\x04\x03\x02\r\x0E\x07\x02\x02\x03\x0E\x03\x03"+
+		"\x02\x02\x02\x0F\x13\x05\x06\x04\x02\x10\x13\x05\b\x05\x02\x11\x13\x07"+
+		"\x04\x02\x02\x12\x0F\x03\x02\x02\x02\x12\x10\x03\x02\x02\x02\x12\x11\x03"+
+		"\x02\x02\x02\x13\x14\x03\x02\x02\x02\x14\x12\x03\x02\x02\x02\x14\x15\x03"+
+		"\x02\x02\x02\x15\x05\x03\x02\x02\x02\x16\x17\x07\t\x02\x02\x17\x1C\x07"+
+		"\b\x02\x02\x18\x1D\x05\n\x06\x02\x19\x1A\x07\v\x02\x02\x1A\x1B\x07\b\x02"+
+		"\x02\x1B\x1D\x05\n\x06\x02\x1C\x18\x03\x02\x02\x02\x1C\x19\x03\x02\x02"+
+		"\x02\x1D\x1E\x03\x02\x02\x02\x1E\x1F\x07\x07\x02\x02\x1F\x07\x03\x02\x02"+
+		"\x02 !\x07\x07\x02\x02!\t\x03\x02\x02\x02\"#\x07\v\x02\x02#$\x07\x03\x02"+
+		"\x02$\v\x03\x02\x02\x02\x05\x12\x14\x1C";
 	public static __ATN: ATN;
 	public static get _ATN(): ATN {
 		if (!mongoParser.__ATN) {
@@ -328,6 +339,15 @@ export class CommandsContext extends ParserRuleContext {
 			return this.getRuleContexts(EmptyCommandContext);
 		} else {
 			return this.getRuleContext(i, EmptyCommandContext);
+		}
+	}
+	public Comment(): TerminalNode[];
+	public Comment(i: number): TerminalNode;
+	public Comment(i?: number): TerminalNode | TerminalNode[] {
+		if (i === undefined) {
+			return this.getTokens(mongoParser.Comment);
+		} else {
+			return this.getToken(mongoParser.Comment, i);
 		}
 	}
 	constructor(parent: ParserRuleContext, invokingState: number);

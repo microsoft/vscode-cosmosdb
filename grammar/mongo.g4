@@ -8,7 +8,19 @@ grammar mongo;
 
 mongoCommands: commands EOF;
 
-commands: (command | emptyCommand)+;
+commands: (command | emptyCommand | Comment )+;
+
+Comment: SingleLineComment
+			| MultiLineComment
+			;
+
+SingleLineComment
+	: '//' ~[\r\n\u2028\u2029]* -> channel(HIDDEN)
+ 	;
+
+MultiLineComment
+	: '/*' .*? '*/' -> channel(HIDDEN)
+	;
 
 command: DB DOT (functionCall | (STRING_LITERAL DOT functionCall)) COMMAND_DELIMITTER;
 emptyCommand: COMMAND_DELIMITTER;

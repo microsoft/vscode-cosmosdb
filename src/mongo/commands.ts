@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Model, Server, Database } from './mongo';
+import * as fs from 'fs';
 
 export class ResultDocument implements vscode.TextDocumentContentProvider {
 
@@ -25,21 +26,32 @@ export class ResultDocument implements vscode.TextDocumentContentProvider {
 
 export class MongoCommands {
 
-	public static addServer(model: Model, context: vscode.ExtensionContext): void {
+	public static addServer(model: Model): void {
 		vscode.window.showInputBox({
-			placeHolder: 'Server connection string'
+			placeHolder: 'mongodb://host:port'
 		}).then(value => {
 			if (value) {
 				model.add(value);
 			}
-		})
+		});
 	}
 
 	public static openShell(database: Database): void {
-		const uri = database.getMongoShellUri();
+		let uri = vscode.Uri.file(vscode.workspace.rootPath + '/' + database.id + '.mongo');
+		const exists = fs.existsSync(uri.fsPath);
+		if (!exists) {
+			uri = uri.with({ scheme: 'untitled' });
+		}
 		vscode.workspace.openTextDocument(uri)
 			.then(textDocument => {
 				return vscode.window.showTextDocument(textDocument)
+					.then(editor => {
+						if (!exists && !MongoCommands.isShellDocument(textDocument, database)) {
+							editor.edit(builder => {
+								builder.insert(new vscode.Position(0, 0), database.connectionString + '\n');
+							});
+						}
+					});
 			});
 	}
 
@@ -47,7 +59,7 @@ export class MongoCommands {
 		const editor = vscode.window.activeTextEditor;
 		if (editor.document.languageId === 'mongo' || editor.document.uri.fsPath.endsWith('.mongo')) {
 			const text = selection ? MongoCommands.getSelectedText(editor) : editor.document.lineAt(editor.selection.start.line).text;
-			const database = MongoCommands.getDatabaseWithUri(editor.document.uri, model);
+			const database = MongoCommands.getDatabaseForDocument(editor.document, model);
 			if (database) {
 				database.executeScript(text)
 					.then(result => {
@@ -73,14 +85,20 @@ export class MongoCommands {
 		return editor.document.getText(selection);
 	}
 
-	private static getDatabaseWithUri(uri: vscode.Uri, model: Model) {
-		for (const server of model.servers) {
-			for (const database of server.databases) {
-				if (database.getMongoShellUri().toString() === uri.toString()) {
-					return database;
+	public static getDatabaseForDocument(document: vscode.TextDocument, model: Model) {
+		if (document.languageId === 'mongo' || document.uri.fsPath.endsWith('.mongo')) {
+			for (const server of model.servers) {
+				for (const database of server.databases) {
+					if (MongoCommands.isShellDocument(document, database)) {
+						return database;
+					}
 				}
 			}
 		}
 		return null;
+	}
+
+	public static isShellDocument(document: vscode.TextDocument, database: Database): boolean {
+		return database.connectionString === document.lineAt(0).text;
 	}
 }

@@ -1,3 +1,4 @@
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { Model, Server, Database } from './mongo';
 import * as fs from 'fs';
@@ -37,7 +38,7 @@ export class MongoCommands {
 	}
 
 	public static openShell(database: Database): void {
-		let uri = vscode.Uri.file(vscode.workspace.rootPath + '/' + database.id + '.mongo');
+		let uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, database.id + '.mongo'));
 		const exists = fs.existsSync(uri.fsPath);
 		if (!exists) {
 			uri = uri.with({ scheme: 'untitled' });

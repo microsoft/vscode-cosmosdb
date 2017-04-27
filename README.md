@@ -22,7 +22,7 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 ## Mongo explorer view
 
 - Open Mongo Explorer view `View: Show Mongo`
-- Add a server by clicking the `+` button in the title. Connection string for local Mongo DB: `mongodb://locahost:27017`. **Note**: Start Mongo DB locally for connecting.
+- Add a server by clicking the `+` button in the title. Connection string for local Mongo DB: `mongodb://localhost:27017`. **Note**: Start Mongo DB locally for connecting.
 - Expand the connected server to see the DBs
 - Remove the server by right clicking on the server and selecting `Remove Server` action.
 

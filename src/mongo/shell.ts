@@ -14,13 +14,8 @@ export class Shell {
 	public static create(execPath: string, connectionString: string): Promise<Shell> {
 		return new Promise((c, e) => {
 			try {
-				cp.exec(`which ${execPath}`, err => {
-					if (err) {
-						e(`Error while creating mongo shell with path ${execPath}: ${err}`);
-					}
-					const shellProcess = cp.spawn(execPath, ['--quiet', connectionString]);
-					return c(new Shell(shellProcess));
-				});
+				const shellProcess = cp.spawn(execPath, ['--quiet', connectionString]);
+				return c(new Shell(shellProcess));
 			} catch (error) {
 				e(`Error while creating mongo shell with path ${execPath}: ${error}`);
 			}
@@ -47,8 +42,10 @@ export class Shell {
 
 		let buffers: string[] = [];
 		on(this.mongoShell.stdout, 'data', b => {
-			if ((<string>b.toString()).endsWith(`${this.executionId}\n`)) {
-				const result = buffers.join('');
+			let data: string = b.toString()
+			const delimitter = `${this.executionId}${os.EOL}`;
+			if (data.endsWith(delimitter)) {
+				const result = buffers.join('') + data.substring(0, data.length - delimitter.length);
 				buffers = [];
 				this.onResult.fire({
 					exitCode: void 0,
@@ -90,16 +87,16 @@ export class Shell {
 		return await new Promise<string>((c, e) => {
 			const disposable = this.onResult.event(result => {
 				disposable.dispose();
-				let lines = (<string>result.result).split('\n').filter(line => !!line && line !== 'Type "it" for more');
+				let lines = (<string>result.result).split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');
 				lines = lines[lines.length - 1] === 'Type "it" for more' ? lines.splice(lines.length - 1, 1) : lines;
-				let value = lines.join('\n');
-				c(lines.join('\n'));
+				let value = lines.join(os.EOL);
+				c(lines.join(os.EOL));
 			})
 		});
 	}
 
 	private convertToSingleLine(script: string): string {
-		return script.split('\n')
+		return script.split(os.EOL)
 			.map(line => line.trim())
 			.join('')
 			.trim();

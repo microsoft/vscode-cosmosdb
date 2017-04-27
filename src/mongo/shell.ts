@@ -69,7 +69,7 @@ export class Shell {
 	}
 
 	async exec(script: string): Promise<string> {
-
+		script = this.convertToSingleLine(script);
 		const executionId = this._generateExecutionSequenceId();
 
 		try {
@@ -96,6 +96,14 @@ export class Shell {
 				c(lines.join('\n'));
 			})
 		});
+	}
+
+	private convertToSingleLine(script: string): string {
+		return script.split('\n')
+			.map(line => line.trim())
+			.join('')
+			.trim();
+
 	}
 
 	private _generateExecutionSequenceId(): string {

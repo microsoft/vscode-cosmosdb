@@ -63,7 +63,11 @@ export class Model implements IMongoResource {
 
 	getChildren(): Promise<IMongoResource[]> {
 		return this._serversJson.load().then(servers => {
-			return Promise.all(servers.map(server => this.resolveServer(server)));
+			return Promise.all(servers.map(server => this.resolveServer(server)))
+				.then(servers => {
+					this._servers = servers;
+					return this._servers;
+				});
 		});
 	}
 

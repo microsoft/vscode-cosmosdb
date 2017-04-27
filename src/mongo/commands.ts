@@ -38,7 +38,7 @@ export class MongoCommands {
 	}
 
 	public static openShell(database: Database): void {
-		let uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, database.server.label + '_' + database.label + '.mongo'));
+		let uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, database.server.host + '_' + database.server.port + '_' + database.label + '.mongo'));
 		const exists = fs.existsSync(uri.fsPath);
 		if (!exists) {
 			uri = uri.with({ scheme: 'untitled' });

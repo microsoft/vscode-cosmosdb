@@ -35,9 +35,10 @@ export class mongoParser extends Parser {
 	public static readonly COMMAND_DELIMITTER=5;
 	public static readonly DOT=6;
 	public static readonly DB=7;
-	public static readonly EOL=8;
-	public static readonly STRING_LITERAL=9;
-	public static readonly WHITESPACE=10;
+	public static readonly LF=8;
+	public static readonly CRLF=9;
+	public static readonly STRING_LITERAL=10;
+	public static readonly WHITESPACE=11;
 	public static readonly RULE_mongoCommands = 0;
 	public static readonly RULE_commands = 1;
 	public static readonly RULE_command = 2;
@@ -49,11 +50,11 @@ export class mongoParser extends Parser {
 
 	private static readonly _LITERAL_NAMES: (string | undefined)[] = [
 		undefined, "'()'", undefined, undefined, undefined, undefined, "'.'", 
-		"'db'", "'\n'"
+		"'db'", "'\n'", "'\r\n'"
 	];
 	private static readonly _SYMBOLIC_NAMES: (string | undefined)[] = [
 		undefined, undefined, "Comment", "SingleLineComment", "MultiLineComment", 
-		"COMMAND_DELIMITTER", "DOT", "DB", "EOL", "STRING_LITERAL", "WHITESPACE"
+		"COMMAND_DELIMITTER", "DOT", "DB", "LF", "CRLF", "STRING_LITERAL", "WHITESPACE"
 	];
 	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoParser._LITERAL_NAMES, mongoParser._SYMBOLIC_NAMES, []);
 
@@ -267,7 +268,7 @@ export class mongoParser extends Parser {
 	}
 
 	public static readonly _serializedATN: string =
-		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\f&\x04\x02\t"+
+		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\r&\x04\x02\t"+
 		"\x02\x04\x03\t\x03\x04\x04\t\x04\x04\x05\t\x05\x04\x06\t\x06\x03\x02\x03"+
 		"\x02\x03\x02\x03\x03\x03\x03\x03\x03\x06\x03\x13\n\x03\r\x03\x0E\x03\x14"+
 		"\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x05\x04\x1D\n\x04\x03"+
@@ -279,10 +280,10 @@ export class mongoParser extends Parser {
 		"\x04\x02\x02\x12\x0F\x03\x02\x02\x02\x12\x10\x03\x02\x02\x02\x12\x11\x03"+
 		"\x02\x02\x02\x13\x14\x03\x02\x02\x02\x14\x12\x03\x02\x02\x02\x14\x15\x03"+
 		"\x02\x02\x02\x15\x05\x03\x02\x02\x02\x16\x17\x07\t\x02\x02\x17\x1C\x07"+
-		"\b\x02\x02\x18\x1D\x05\n\x06\x02\x19\x1A\x07\v\x02\x02\x1A\x1B\x07\b\x02"+
+		"\b\x02\x02\x18\x1D\x05\n\x06\x02\x19\x1A\x07\f\x02\x02\x1A\x1B\x07\b\x02"+
 		"\x02\x1B\x1D\x05\n\x06\x02\x1C\x18\x03\x02\x02\x02\x1C\x19\x03\x02\x02"+
 		"\x02\x1D\x1E\x03\x02\x02\x02\x1E\x1F\x07\x07\x02\x02\x1F\x07\x03\x02\x02"+
-		"\x02 !\x07\x07\x02\x02!\t\x03\x02\x02\x02\"#\x07\v\x02\x02#$\x07\x03\x02"+
+		"\x02 !\x07\x07\x02\x02!\t\x03\x02\x02\x02\"#\x07\f\x02\x02#$\x07\x03\x02"+
 		"\x02$\v\x03\x02\x02\x02\x05\x12\x14\x1C";
 	public static __ATN: ATN;
 	public static get _ATN(): ATN {

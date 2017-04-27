@@ -27,10 +27,11 @@ emptyCommand: COMMAND_DELIMITTER;
 
 functionCall: STRING_LITERAL '()';
 
-COMMAND_DELIMITTER: ';' | ';\n' | EOL;
+COMMAND_DELIMITTER: ';' | ';\n' | LF | CRLF;
 DOT: '.';
 DB: 'db';
-EOL: '\n';
+LF: '\n';
+CRLF: '\r\n';
 
 STRING_LITERAL: ((~["\\ \t\n:.;()]) | STRING_ESCAPE )+ {!this.isExternalIdentifierText(this.text)}?;
 

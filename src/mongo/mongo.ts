@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as fs from 'fs';
-import { MongoClient, Db, ReadPreference, Code } from 'mongodb';
+import { MongoClient, Db, ReadPreference, Code, Server as MongoServer } from 'mongodb';
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 
@@ -63,8 +63,7 @@ export class Model implements IMongoResource {
 
 	getChildren(): Promise<IMongoResource[]> {
 		return this._serversJson.load().then(servers => {
-			this._servers = servers.map(server => new Server(server, this.context));
-			return this._servers;
+			return Promise.all(servers.map(server => this.resolveServer(server)));
 		});
 	}
 
@@ -73,7 +72,6 @@ export class Model implements IMongoResource {
 	}
 
 	add(connectionString: string) {
-		this._servers.push(new Server(connectionString, this.context));
 		this._serversJson.write(this._servers.map(server => server.id));
 		this._onChange.fire();
 	}
@@ -86,6 +84,13 @@ export class Model implements IMongoResource {
 			this._onChange.fire();
 		}
 	}
+
+	private resolveServer(connectionString: string): Promise<Server> {
+		return <Promise<Server>>MongoClient.connect(connectionString)
+			.then(db => {
+				return new Server(connectionString, db.serverConfig, this.context);
+			});
+	}
 }
 
 export class Server implements IMongoResource {
@@ -94,13 +99,20 @@ export class Server implements IMongoResource {
 
 	private _databases: Database[] = [];
 
-	constructor(public readonly id: string, private context: IMongoContext) {
+	constructor(public readonly id: string, private readonly mongoServer: MongoServer, private context: IMongoContext) {
+	}
+
+	get host(): string {
+		return this.mongoServer['host'];
+	}
+
+	get port(): string {
+		return this.mongoServer['port'];
 	}
 
 	get label(): string {
-		return this.id;
+		return `${this.host}:${this.port}`;
 	}
-
 
 	readonly canHaveChildren: boolean = true;
 
@@ -111,8 +123,7 @@ export class Server implements IMongoResource {
 					this._databases = value.databases.map(database => new Database(database.name, this, this.context));
 					db.close();
 					return <IMongoResource[]>this._databases;
-				}), error => {
-				});
+				}));
 	}
 
 	get databases(): Database[] {

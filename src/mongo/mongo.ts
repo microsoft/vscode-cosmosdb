@@ -39,8 +39,16 @@ class ServersJson {
 		});
 	}
 
-	async write(servers: string[]) {
-		fs.writeFile(this._filePath, JSON.stringify(servers), (err) => { });
+	async write(servers: string[]): Promise<void> {
+		return new Promise<void>((c, e) => {
+			fs.writeFile(this._filePath, JSON.stringify(servers), (err) => {
+				if (err) {
+					e(err);
+				} else {
+					c(null);
+				}
+			});
+		});
 	}
 }
 
@@ -53,6 +61,7 @@ export class Model implements IMongoResource {
 
 	private _serversJson: ServersJson;
 	private _servers: Server[] = [];
+	private _serverConnections: string[] = [];
 
 	private _onChange: EventEmitter<void> = new EventEmitter<void>();
 	readonly onChange: Event<void> = this._onChange.event;
@@ -62,8 +71,9 @@ export class Model implements IMongoResource {
 	}
 
 	getChildren(): Promise<IMongoResource[]> {
-		return this._serversJson.load().then(servers => {
-			return Promise.all(servers.map(server => this.resolveServer(server)))
+		return this._serversJson.load().then(serverConnections => {
+			this._serverConnections = serverConnections;
+			return Promise.all(this._serverConnections.map(server => this.resolveServer(server)))
 				.then(servers => {
 					this._servers = servers;
 					return this._servers;
@@ -76,8 +86,11 @@ export class Model implements IMongoResource {
 	}
 
 	add(connectionString: string) {
-		this._serversJson.write(this._servers.map(server => server.id));
-		this._onChange.fire();
+		this._serverConnections.push(connectionString);
+		this._serversJson.write(this._serverConnections)
+			.then(() => {
+				this._onChange.fire();
+			});
 	}
 
 	remove(id: string) {

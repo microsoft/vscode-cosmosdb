@@ -2,31 +2,34 @@
 
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as path from 'path';
 import { MongoExplorer } from './mongo/explorer';
-import { MongoCommands, ResultDocument } from './mongo/commands';
+import { MongoCommands } from './mongo/commands';
 import { Model, Database, Server, IMongoResource } from './mongo/mongo';
 import MongoDBLanguageClient from './mongo/languageClient';
 
+let connectedDb: Database = null;
+let languageClient: MongoDBLanguageClient = null;
+let model: Model;
+let mongoDocumentCounter = 0;
+
 export function activate(context: vscode.ExtensionContext) {
-
-	const languageClient = new MongoDBLanguageClient(context);
-
 	// Create the storage folder
 	if (context.storagePath) {
 		createStorageFolder(context).then(() => {
-			const outputChannel = vscode.window.createOutputChannel('Mongo');
-			const model = new Model({ extensionContext: context, outputChannel });
-			const resultDocument = new ResultDocument(context);
+			languageClient = new MongoDBLanguageClient(context);
+			model = new Model(context.storagePath);
 
 			// Mongo Tree View
 			const treeDataProvider = new MongoExplorer(model);
-			const treeView = vscode.window.createTreeView('mongoExplorer', treeDataProvider);
-			context.subscriptions.push(treeView);
-			const disposable = treeDataProvider.onChange((node) => treeView.refresh(node));
+			const view = vscode.window.createExplorerView('mongoExplorer', 'Mongo', treeDataProvider);
+			context.subscriptions.push(view);
+			const disposable = treeDataProvider.onChange((node) => view.refresh(node));
 			context.subscriptions.push(new vscode.Disposable(() => disposable.dispose()))
 
 			// Commands
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.addServer', () => { MongoCommands.addServer(model) }));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.addServer', () => addServer()));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.refreshExplorer', () => view.refresh(model)));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.removeServer', (element: IMongoResource) => {
 				if (element instanceof Server) {
 					model.remove(element.id);
@@ -34,34 +37,62 @@ export function activate(context: vscode.ExtensionContext) {
 					model.remove(element.server.id);
 				}
 			}));
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.resource.onClick', (element: IMongoResource) => {
-				if (element instanceof Database) {
-					languageClient.connect(element);
-					MongoCommands.openShell(element);
-				}
+
+			vscode.window.setStatusBarMessage('Mongo: Not connected');
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.connect', (element: Database) => connectToDatabase(element)));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.connectDb', () => {
+				vscode.window.showQuickPick(getDatabaseQuickPicks()).then(pick => connectToDatabase(pick.database));
 			}));
-
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.execute', () => MongoCommands.executeScript(model, resultDocument, outputChannel, true)));
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.executeLine', () => MongoCommands.executeScript(model, resultDocument, outputChannel, false)));
-
-			context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor((editor => {
-				if (editor) {
-					const database = MongoCommands.getDatabaseForDocument(editor.document, model);
-					if (database) {
-						vscode.window.setStatusBarMessage('Connected to ' + database.id);
-					}
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.newScrapbook', (element: IMongoResource) => {
+				if (element instanceof Database) {
+					connectToDatabase(element);
 				}
-			})));
+				let uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, `Scrapbook-${++mongoDocumentCounter}.mongo`));
+				uri = uri.with({ scheme: 'untitled' });
+				vscode.workspace.openTextDocument(uri)
+					.then(textDocument => vscode.window.showTextDocument(textDocument));
+			}));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.execute', () => MongoCommands.executeScript(connectedDb)));
 		});
-	} else {
-		context.subscriptions.push(vscode.window.createTreeView('mongoExplorer', {
-			provideRootNode(): any {
-				vscode.window.showInformationMessage('Open a workspace first.')
-				return {};
-			},
-		}));
 	}
+}
 
+function addServer(): void {
+	vscode.window.showInputBox({
+		placeHolder: 'mongodb://host:port'
+	}).then(value => {
+		if (value) {
+			model.add(value);
+		}
+	});
+}
+
+class DatabaseQuickPick implements vscode.QuickPickItem {
+	readonly label: string;
+	readonly description: string;
+	constructor(readonly database: Database) {
+		this.label = database.label;
+		this.description = database.server.label + '/' + database.label;
+	}
+}
+
+function getDatabaseQuickPicks(): Thenable<DatabaseQuickPick[]> {
+	const quickPicks: DatabaseQuickPick[] = [];
+	return model.getChildren().then(servers => {
+		return Promise.all(servers.map(server => server.getChildren()))
+			.then(allDatabases => {
+				allDatabases.forEach(databases => {
+					quickPicks.push(...databases.map(database => new DatabaseQuickPick(<Database>database)));
+				});
+				return quickPicks;
+			})
+	});
+}
+
+function connectToDatabase(database: Database): void {
+	connectedDb = database;
+	languageClient.connect(database);
+	vscode.window.setStatusBarMessage('Mongo: Connected to ' + database.server.host + '/' + connectedDb.id);
 }
 
 async function createStorageFolder(context: vscode.ExtensionContext): Promise<void> {

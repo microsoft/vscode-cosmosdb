@@ -25,13 +25,6 @@
 	],
 	"main": "./out/src/extension",
 	"contributes": {
-		"views": [
-			{
-				"id": "mongoExplorer",
-				"label": "Mongo",
-				"icon": "resources/icons/database.png"
-			}
-		],
 		"languages": [
 			{
 				"id": "mongo",
@@ -55,18 +48,9 @@
 		],
 		"commands": [
 			{
-				"command": "mongo.resource.onClick",
-				"title": "Open Mongo Shell Editor"
-			},
-			{
 				"category": "Mongo",
 				"command": "mongo.execute",
 				"title": "Execute Script"
-			},
-			{
-				"category": "Mongo",
-				"command": "mongo.executeLine",
-				"title": "Execute Script at cursor"
 			},
 			{
 				"category": "Mongo",
@@ -81,6 +65,34 @@
 				"category": "Mongo",
 				"command": "mongo.removeServer",
 				"title": "Remove Server"
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.connect",
+				"title": "Connect"
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.connectDb",
+				"title": "Connect Database"
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.newScrapbook",
+				"title": "New Scrapbook",
+				"icon": {
+					"light": "resources/icons/light/addFile.svg",
+					"dark": "resources/icons/dark/addFile.svg"
+				}
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.refreshExplorer",
+				"title": "Refresh",
+				"icon": {
+					"light": "resources/icons/light/refresh.svg",
+					"dark": "resources/icons/dark/refresh.svg"
+				}
 			}
 		],
 		"menus": {
@@ -88,15 +100,21 @@
 				{
 					"command": "mongo.execute",
 					"when": "resourceLangId==mongo"
-				},
-				{
-					"command": "mongo.executeLine",
-					"when": "resourceLangId==mongo"
 				}
 			],
 			"view/title": [
 				{
+					"command": "mongo.refreshExplorer",
+					"when": "view == mongoExplorer",
+					"group": "navigation"
+				},
+				{
 					"command": "mongo.addServer",
+					"when": "view == mongoExplorer",
+					"group": "navigation"
+				},
+				{
+					"command": "mongo.newScrapbook",
 					"when": "view == mongoExplorer",
 					"group": "navigation"
 				}
@@ -104,19 +122,27 @@
 			"view/resource": [
 				{
 					"command": "mongo.removeServer",
-					"when": "view == mongoExplorer",
+					"when": "view == mongoExplorer && resource == mongoServer",
 					"group": "navigation"
+				},
+				{
+					"command": "mongo.connect",
+					"when": "view == mongoExplorer && resource == mongoDb",
+					"group": "navigation"
+				}
+			],
+			"commandPalette": [
+				{
+					"command": "mongo.connect",
+					"when": "view == mongoExplorer && resource == mongoDb"
 				}
 			]
 		},
 		"keybindings": [
 			{
 				"command": "mongo.execute",
-				"key": "shift+f8"
-			},
-			{
-				"command": "mongo.executeLine",
-				"key": "f8"
+				"key": "cmd+`",
+				"when": "resourceLangId==mongo"
 			}
 		],
 		"configuration": {

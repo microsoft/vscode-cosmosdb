@@ -32,6 +32,10 @@ export class MongoExplorer implements TreeDataProvider<IMongoResource> {
 		};
 	}
 
+	getContextKey(node: IMongoResource): string {
+		return node.contextKey;
+	}
+
 	resolveChildren(node: IMongoResource): Thenable<IMongoResource[]> {
 		const disposables = this._disposables.get(node);
 		if (disposables) {

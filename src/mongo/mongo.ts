@@ -1,28 +1,23 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as fs from 'fs';
-import { MongoClient, Db, ReadPreference, Code, Server as MongoServer } from 'mongodb';
+import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collection as MongoCollection } from 'mongodb';
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 
-export interface IMongoContext {
-	extensionContext: vscode.ExtensionContext;
-	outputChannel: vscode.OutputChannel;
-}
-
 export interface IMongoResource {
 	label: string;
-	type: string;
 	getChildren?(): Thenable<IMongoResource[]>;
 	onChange?: Event<void>
+	contextKey?: string;
 }
 
 class ServersJson {
 
 	private _filePath: string;
 
-	constructor(context: vscode.ExtensionContext) {
-		this._filePath = context.storagePath + '/servers.json';
+	constructor(storagePath: string) {
+		this._filePath = storagePath + '/servers.json';
 	}
 
 	async load(): Promise<string[]> {
@@ -66,8 +61,8 @@ export class Model implements IMongoResource {
 	private _onChange: EventEmitter<void> = new EventEmitter<void>();
 	readonly onChange: Event<void> = this._onChange.event;
 
-	constructor(private context: IMongoContext) {
-		this._serversJson = new ServersJson(context.extensionContext);
+	constructor(storagePath: string) {
+		this._serversJson = new ServersJson(storagePath);
 	}
 
 	getChildren(): Promise<IMongoResource[]> {
@@ -105,18 +100,18 @@ export class Model implements IMongoResource {
 	private resolveServer(connectionString: string): Promise<Server> {
 		return <Promise<Server>>MongoClient.connect(connectionString)
 			.then(db => {
-				return new Server(connectionString, db.serverConfig, this.context);
+				return new Server(connectionString, db.serverConfig);
 			});
 	}
 }
 
 export class Server implements IMongoResource {
 
-	readonly type: string = 'mongoServer';
+	readonly contextKey: string = 'mongoServer';
 
 	private _databases: Database[] = [];
 
-	constructor(public readonly id: string, private readonly mongoServer: MongoServer, private context: IMongoContext) {
+	constructor(public readonly id: string, private readonly mongoServer: MongoServer) {
 	}
 
 	get host(): string {
@@ -137,7 +132,7 @@ export class Server implements IMongoResource {
 		return <Promise<IMongoResource[]>>MongoClient.connect(this.id)
 			.then(db => db.admin().listDatabases()
 				.then((value: { databases: { name }[] }) => {
-					this._databases = value.databases.map(database => new Database(database.name, this, this.context));
+					this._databases = value.databases.map(database => new Database(database.name, this));
 					db.close();
 					return <IMongoResource[]>this._databases;
 				}));
@@ -150,19 +145,26 @@ export class Server implements IMongoResource {
 
 export class Database implements IMongoResource {
 
-	readonly type: string = 'mongoDb';
-	readonly connectionString: string;
+	readonly contextKey: string = 'mongoDb';
 	private shell: Shell;
 
-	constructor(readonly id: string, readonly server: Server, private context: IMongoContext) {
-		this.connectionString = '//connection:' + this.server.id + '/' + this.id;
+	constructor(readonly id: string, readonly server: Server) {
 	}
 
 	get label(): string {
 		return this.id;
 	}
 
-	readonly canHaveChildren: boolean = false;
+	readonly canHaveChildren: boolean = true;
+
+	getChildren(): Promise<IMongoResource[]> {
+		return <Promise<IMongoResource[]>>this.getDb().then(db => {
+			return db.collections().then(collections => {
+				return collections.map(collection => new Collection(collection));
+			})
+		});
+	}
+
 
 	getDb(): Promise<Db> {
 		const uri = vscode.Uri.parse(this.server.id);
@@ -223,4 +225,16 @@ export class Database implements IMongoResource {
 				});
 		});
 	}
+}
+
+export class Collection implements IMongoResource {
+
+	constructor(private collection: MongoCollection) {
+	}
+
+	get label(): string {
+		return this.collection.collectionName;
+	}
+
+	readonly canHaveChildren: boolean = false;
 }

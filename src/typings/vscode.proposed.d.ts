@@ -524,34 +524,26 @@ declare module 'vscode' {
 
 	export namespace window {
 
-		/**
-		 * Show window-wide progress, e.g. in the status bar, for the provided task. The task is
-		 * considering running as long as the promise it returned isn't resolved or rejected.
-		 *
-		 * @param task A function callback that represents a long running operation.
-		 */
-		export function withWindowProgress<R>(title: string, task: (progress: Progress<string>, token: CancellationToken) => Thenable<R>): Thenable<R>;
-
 		export function sampleFunction(): Thenable<any>;
 	}
 
 	export namespace window {
 
 		/**
-		 * Create a new [TreeView](#TreeView) instance.
+		 * Create a new explorer view.
 		 *
-		 * @param viewId A unique id that identifies the view.
-		 * @param provider A [TreeDataProvider](#TreeDataProvider).
-		 * @return An instance of [TreeView](#TreeView).
+		 * @param id View id.
+		 * @param name View name.
+		 * @param dataProvider A [TreeDataProvider](#TreeDataProvider).
+		 * @return An instance of [View](#View).
 		 */
-		export function createTreeView<T>(viewId: string, provider: TreeDataProvider<T>): TreeView<T>;
+		export function createExplorerView<T>(id: string, name: string, dataProvider: TreeDataProvider<T>): View<T>;
 	}
 
 	/**
-	 * An source control is able to provide [resource states](#SourceControlResourceState)
-	 * to the editor and interact with the editor in several source control related ways.
+	 * A view to interact with nodes
 	 */
-	export interface TreeView<T> {
+	export interface View<T> {
 
 		/**
 		 * Refresh the given nodes
@@ -609,6 +601,14 @@ declare module 'vscode' {
 		 * @return A boolean that determines if `node` has children and is expandable.
 		 */
 		getHasChildren?(node: T): boolean;
+
+		/**
+		 * Provider a context key to be set for the node. This can be used to describe actions for each node.
+		 *
+		 * @param node The node from which the provider computes context key.
+		 * @return A context key.
+		 */
+		getContextKey?(node: T): string;
 
 		/**
 		 * Get the command to execute when `node` is clicked.

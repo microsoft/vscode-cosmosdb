@@ -13,9 +13,7 @@ import { MongoVisitor } from './../../grammar/visitors';
 import { CompletionItemsVisitor } from './completionItemProvider';
 import { TextDocument, CompletionItem, Position, Range, CompletionItemKind } from 'vscode-languageserver';
 
-export interface MongoScript {
-	lastNode: ParseTree;
-}
+
 
 export class MongoScriptDocumentManager {
 
@@ -85,39 +83,3 @@ class NodeFinder extends MongoVisitor<ParseTree> {
 		return nextResult ? nextResult : aggregate;
 	}
 }
-
-export class MongoScriptDocumentVisitor extends MongoVisitor<MongoScript[]> {
-
-	private mongoScripts: MongoScript[] = [];
-
-	visitCommand(ctx: mongoParser.CommandContext): MongoScript[] {
-		this.mongoScripts.push({
-			lastNode: ctx
-		});
-		return super.visitCommand(ctx);
-	}
-
-	visitFunctionCall(ctx: mongoParser.FunctionCallContext): MongoScript[] {
-		this.mongoScripts[this.mongoScripts.length - 1].lastNode = ctx;
-		return super.visitFunctionCall(ctx);
-	}
-
-	visitTerminal(ctx: TerminalNode): MongoScript[] {
-		this.mongoScripts[this.mongoScripts.length - 1].lastNode = ctx;
-		return super.visitTerminal(ctx);
-	}
-
-	visitErrorNode(ctx: ErrorNode): MongoScript[] {
-		this.mongoScripts[this.mongoScripts.length - 1].lastNode = ctx;
-		return super.visitErrorNode(ctx);
-	}
-
-	protected defaultResult(): MongoScript[] {
-		return this.mongoScripts;
-	}
-
-	protected aggregateResult(aggregate: MongoScript[], nextResult: MongoScript[]): MongoScript[] {
-		return nextResult
-	}
-}
-

@@ -39,6 +39,16 @@
 			"outFiles": [
 				"${workspaceRoot}/out/**/*.js"
 			]
+		},
+		{
+			"type": "node",
+			"request": "attach",
+			"name": "Attach to Extension Host",
+			"protocol": "legacy",
+			"port": 5870,
+			"sourceMaps": true,
+			"restart": true,
+			"outDir": "${workspaceRoot}/out/src"
 		}
 	]
 }

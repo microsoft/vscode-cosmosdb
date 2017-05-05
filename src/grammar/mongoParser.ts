@@ -29,32 +29,62 @@ import { mongoVisitor } from './mongoVisitor';
 
 export class mongoParser extends Parser {
 	public static readonly T__0=1;
-	public static readonly Comment=2;
-	public static readonly SingleLineComment=3;
-	public static readonly MultiLineComment=4;
-	public static readonly COMMAND_DELIMITTER=5;
-	public static readonly DOT=6;
-	public static readonly DB=7;
-	public static readonly LF=8;
-	public static readonly CRLF=9;
-	public static readonly STRING_LITERAL=10;
-	public static readonly WHITESPACE=11;
+	public static readonly T__1=2;
+	public static readonly T__2=3;
+	public static readonly T__3=4;
+	public static readonly T__4=5;
+	public static readonly T__5=6;
+	public static readonly T__6=7;
+	public static readonly T__7=8;
+	public static readonly Comment=9;
+	public static readonly SingleLineComment=10;
+	public static readonly MultiLineComment=11;
+	public static readonly NullLiteral=12;
+	public static readonly BooleanLiteral=13;
+	public static readonly DecimalLiteral=14;
+	public static readonly LineTerminator=15;
+	public static readonly SEMICOLON=16;
+	public static readonly DOT=17;
+	public static readonly DB=18;
+	public static readonly LF=19;
+	public static readonly CRLF=20;
+	public static readonly STRING_LITERAL=21;
+	public static readonly QUOTED_STRING_LITERAL=22;
+	public static readonly WHITESPACE=23;
 	public static readonly RULE_mongoCommands = 0;
 	public static readonly RULE_commands = 1;
 	public static readonly RULE_command = 2;
 	public static readonly RULE_emptyCommand = 3;
 	public static readonly RULE_functionCall = 4;
+	public static readonly RULE_arguments = 5;
+	public static readonly RULE_argumentList = 6;
+	public static readonly RULE_objectLiteral = 7;
+	public static readonly RULE_arrayLiteral = 8;
+	public static readonly RULE_elementList = 9;
+	public static readonly RULE_propertyNameAndValueList = 10;
+	public static readonly RULE_propertyAssignment = 11;
+	public static readonly RULE_propertyValue = 12;
+	public static readonly RULE_literal = 13;
+	public static readonly RULE_propertyName = 14;
+	public static readonly RULE_numericLiteral = 15;
 	public static readonly ruleNames: string[] = [
-		"mongoCommands", "commands", "command", "emptyCommand", "functionCall"
+		"mongoCommands", "commands", "command", "emptyCommand", "functionCall", 
+		"arguments", "argumentList", "objectLiteral", "arrayLiteral", "elementList", 
+		"propertyNameAndValueList", "propertyAssignment", "propertyValue", "literal", 
+		"propertyName", "numericLiteral"
 	];
 
 	private static readonly _LITERAL_NAMES: (string | undefined)[] = [
-		undefined, "'()'", undefined, undefined, undefined, undefined, "'.'", 
-		"'db'", "'\n'", "'\r\n'"
+		undefined, "'('", "')'", "'{'", "','", "'}'", "'['", "']'", "':'", undefined, 
+		undefined, undefined, "'null'", undefined, undefined, undefined, "';'", 
+		"'.'", "'db'", "'\n'", "'\r\n'"
 	];
 	private static readonly _SYMBOLIC_NAMES: (string | undefined)[] = [
+		undefined, undefined, undefined, undefined, undefined, undefined, undefined, 
 		undefined, undefined, "Comment", "SingleLineComment", "MultiLineComment", 
-		"COMMAND_DELIMITTER", "DOT", "DB", "LF", "CRLF", "STRING_LITERAL", "WHITESPACE"
+		"NullLiteral", "BooleanLiteral", "DecimalLiteral", "LineTerminator", "SEMICOLON", 
+		"DOT", "DB", "LF", "CRLF", "STRING_LITERAL", "QUOTED_STRING_LITERAL", 
+		"WHITESPACE"
 	];
 	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoParser._LITERAL_NAMES, mongoParser._SYMBOLIC_NAMES, []);
 
@@ -84,9 +114,9 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 10;
+			this.state = 32;
 			this.commands();
-			this.state = 11;
+			this.state = 33;
 			this.match(mongoParser.EOF);
 			}
 		}
@@ -112,29 +142,29 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 16; 
+			this.state = 38; 
 			this._errHandler.sync(this);
 			_la = this._input.LA(1);
 			do {
 				{
-				this.state = 16;
+				this.state = 38;
 				this._errHandler.sync(this);
 				switch (this._input.LA(1)) {
 				case mongoParser.DB:
 					{
-					this.state = 13;
+					this.state = 35;
 					this.command();
 					}
 					break;
-				case mongoParser.COMMAND_DELIMITTER:
+				case mongoParser.SEMICOLON:
 					{
-					this.state = 14;
+					this.state = 36;
 					this.emptyCommand();
 					}
 					break;
 				case mongoParser.Comment:
 					{
-					this.state = 15;
+					this.state = 37;
 					this.match(mongoParser.Comment);
 					}
 					break;
@@ -142,10 +172,10 @@ export class mongoParser extends Parser {
 					throw new NoViableAltException(this);
 				}
 				}
-				this.state = 18; 
+				this.state = 40; 
 				this._errHandler.sync(this);
 				_la = this._input.LA(1);
-			} while ( (((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.Comment) | (1 << mongoParser.COMMAND_DELIMITTER) | (1 << mongoParser.DB))) !== 0) );
+			} while ( (((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.Comment) | (1 << mongoParser.SEMICOLON) | (1 << mongoParser.DB))) !== 0) );
 			}
 		}
 		catch (re) {
@@ -169,16 +199,16 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 20;
+			this.state = 42;
 			this.match(mongoParser.DB);
-			this.state = 21;
+			this.state = 43;
 			this.match(mongoParser.DOT);
-			this.state = 26;
+			this.state = 48;
 			this._errHandler.sync(this);
 			switch ( this.interpreter.adaptivePredict(this._input,2,this._ctx) ) {
 			case 1:
 				{
-				this.state = 22;
+				this.state = 44;
 				this.functionCall();
 				}
 				break;
@@ -186,18 +216,26 @@ export class mongoParser extends Parser {
 			case 2:
 				{
 				{
-				this.state = 23;
+				this.state = 45;
 				this.match(mongoParser.STRING_LITERAL);
-				this.state = 24;
+				this.state = 46;
 				this.match(mongoParser.DOT);
-				this.state = 25;
+				this.state = 47;
 				this.functionCall();
 				}
 				}
 				break;
 			}
-			this.state = 28;
-			this.match(mongoParser.COMMAND_DELIMITTER);
+			this.state = 51;
+			this._errHandler.sync(this);
+			switch ( this.interpreter.adaptivePredict(this._input,3,this._ctx) ) {
+			case 1:
+				{
+				this.state = 50;
+				this.match(mongoParser.SEMICOLON);
+				}
+				break;
+			}
 			}
 		}
 		catch (re) {
@@ -221,8 +259,8 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 30;
-			this.match(mongoParser.COMMAND_DELIMITTER);
+			this.state = 53;
+			this.match(mongoParser.SEMICOLON);
 			}
 		}
 		catch (re) {
@@ -246,10 +284,459 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 32;
+			this.state = 55;
 			this.match(mongoParser.STRING_LITERAL);
-			this.state = 33;
-			this.match(mongoParser.T__0);
+			this.state = 56;
+			this.arguments();
+			}
+		}
+		catch (re) {
+			if (re instanceof RecognitionException) {
+				_localctx.exception = re;
+				this._errHandler.reportError(this, re);
+				this._errHandler.recover(this, re);
+			} else {
+				throw re;
+			}
+		}
+		finally {
+			this.exitRule();
+		}
+		return _localctx;
+	}
+	@RuleVersion(0)
+	public arguments(): ArgumentsContext {
+		let _localctx: ArgumentsContext = new ArgumentsContext(this._ctx, this.state);
+		this.enterRule(_localctx, 10, mongoParser.RULE_arguments);
+		let _la: number;
+		try {
+			this.enterOuterAlt(_localctx, 1);
+			{
+			this.state = 58;
+			_localctx._OPEN_PARENTHESIS = this.match(mongoParser.T__0);
+			this.state = 60;
+			this._errHandler.sync(this);
+			_la = this._input.LA(1);
+			if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__2) | (1 << mongoParser.T__5) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.DecimalLiteral) | (1 << mongoParser.QUOTED_STRING_LITERAL))) !== 0)) {
+				{
+				this.state = 59;
+				this.argumentList();
+				}
+			}
+
+			this.state = 62;
+			_localctx._CLOSED_PARENTHESIS = this.match(mongoParser.T__1);
+			}
+		}
+		catch (re) {
+			if (re instanceof RecognitionException) {
+				_localctx.exception = re;
+				this._errHandler.reportError(this, re);
+				this._errHandler.recover(this, re);
+			} else {
+				throw re;
+			}
+		}
+		finally {
+			this.exitRule();
+		}
+		return _localctx;
+	}
+	@RuleVersion(0)
+	public argumentList(): ArgumentListContext {
+		let _localctx: ArgumentListContext = new ArgumentListContext(this._ctx, this.state);
+		this.enterRule(_localctx, 12, mongoParser.RULE_argumentList);
+		try {
+			this.state = 67;
+			this._errHandler.sync(this);
+			switch (this._input.LA(1)) {
+			case mongoParser.NullLiteral:
+			case mongoParser.BooleanLiteral:
+			case mongoParser.DecimalLiteral:
+			case mongoParser.QUOTED_STRING_LITERAL:
+				this.enterOuterAlt(_localctx, 1);
+				{
+				this.state = 64;
+				this.literal();
+				}
+				break;
+			case mongoParser.T__2:
+				this.enterOuterAlt(_localctx, 2);
+				{
+				this.state = 65;
+				this.objectLiteral();
+				}
+				break;
+			case mongoParser.T__5:
+				this.enterOuterAlt(_localctx, 3);
+				{
+				this.state = 66;
+				this.arrayLiteral();
+				}
+				break;
+			default:
+				throw new NoViableAltException(this);
+			}
+		}
+		catch (re) {
+			if (re instanceof RecognitionException) {
+				_localctx.exception = re;
+				this._errHandler.reportError(this, re);
+				this._errHandler.recover(this, re);
+			} else {
+				throw re;
+			}
+		}
+		finally {
+			this.exitRule();
+		}
+		return _localctx;
+	}
+	@RuleVersion(0)
+	public objectLiteral(): ObjectLiteralContext {
+		let _localctx: ObjectLiteralContext = new ObjectLiteralContext(this._ctx, this.state);
+		this.enterRule(_localctx, 14, mongoParser.RULE_objectLiteral);
+		let _la: number;
+		try {
+			this.enterOuterAlt(_localctx, 1);
+			{
+			this.state = 69;
+			this.match(mongoParser.T__2);
+			this.state = 71;
+			this._errHandler.sync(this);
+			_la = this._input.LA(1);
+			if (_la===mongoParser.QUOTED_STRING_LITERAL) {
+				{
+				this.state = 70;
+				this.propertyNameAndValueList();
+				}
+			}
+
+			this.state = 74;
+			this._errHandler.sync(this);
+			_la = this._input.LA(1);
+			if (_la===mongoParser.T__3) {
+				{
+				this.state = 73;
+				this.match(mongoParser.T__3);
+				}
+			}
+
+			this.state = 76;
+			this.match(mongoParser.T__4);
+			}
+		}
+		catch (re) {
+			if (re instanceof RecognitionException) {
+				_localctx.exception = re;
+				this._errHandler.reportError(this, re);
+				this._errHandler.recover(this, re);
+			} else {
+				throw re;
+			}
+		}
+		finally {
+			this.exitRule();
+		}
+		return _localctx;
+	}
+	@RuleVersion(0)
+	public arrayLiteral(): ArrayLiteralContext {
+		let _localctx: ArrayLiteralContext = new ArrayLiteralContext(this._ctx, this.state);
+		this.enterRule(_localctx, 16, mongoParser.RULE_arrayLiteral);
+		let _la: number;
+		try {
+			this.enterOuterAlt(_localctx, 1);
+			{
+			this.state = 78;
+			this.match(mongoParser.T__5);
+			this.state = 80;
+			this._errHandler.sync(this);
+			_la = this._input.LA(1);
+			if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__2) | (1 << mongoParser.T__5) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.DecimalLiteral) | (1 << mongoParser.STRING_LITERAL) | (1 << mongoParser.QUOTED_STRING_LITERAL))) !== 0)) {
+				{
+				this.state = 79;
+				this.elementList();
+				}
+			}
+
+			this.state = 82;
+			this.match(mongoParser.T__6);
+			}
+		}
+		catch (re) {
+			if (re instanceof RecognitionException) {
+				_localctx.exception = re;
+				this._errHandler.reportError(this, re);
+				this._errHandler.recover(this, re);
+			} else {
+				throw re;
+			}
+		}
+		finally {
+			this.exitRule();
+		}
+		return _localctx;
+	}
+	@RuleVersion(0)
+	public elementList(): ElementListContext {
+		let _localctx: ElementListContext = new ElementListContext(this._ctx, this.state);
+		this.enterRule(_localctx, 18, mongoParser.RULE_elementList);
+		let _la: number;
+		try {
+			this.enterOuterAlt(_localctx, 1);
+			{
+			this.state = 84;
+			this.propertyValue();
+			this.state = 89;
+			this._errHandler.sync(this);
+			_la = this._input.LA(1);
+			while (_la===mongoParser.T__3) {
+				{
+				{
+				this.state = 85;
+				this.match(mongoParser.T__3);
+				this.state = 86;
+				this.propertyValue();
+				}
+				}
+				this.state = 91;
+				this._errHandler.sync(this);
+				_la = this._input.LA(1);
+			}
+			}
+		}
+		catch (re) {
+			if (re instanceof RecognitionException) {
+				_localctx.exception = re;
+				this._errHandler.reportError(this, re);
+				this._errHandler.recover(this, re);
+			} else {
+				throw re;
+			}
+		}
+		finally {
+			this.exitRule();
+		}
+		return _localctx;
+	}
+	@RuleVersion(0)
+	public propertyNameAndValueList(): PropertyNameAndValueListContext {
+		let _localctx: PropertyNameAndValueListContext = new PropertyNameAndValueListContext(this._ctx, this.state);
+		this.enterRule(_localctx, 20, mongoParser.RULE_propertyNameAndValueList);
+		try {
+			let _alt: number;
+			this.enterOuterAlt(_localctx, 1);
+			{
+			this.state = 92;
+			this.propertyAssignment();
+			this.state = 97;
+			this._errHandler.sync(this);
+			_alt = this.interpreter.adaptivePredict(this._input,10,this._ctx);
+			while ( _alt!==2 && _alt!==ATN.INVALID_ALT_NUMBER ) {
+				if ( _alt===1 ) {
+					{
+					{
+					this.state = 93;
+					this.match(mongoParser.T__3);
+					this.state = 94;
+					this.propertyAssignment();
+					}
+					} 
+				}
+				this.state = 99;
+				this._errHandler.sync(this);
+				_alt = this.interpreter.adaptivePredict(this._input,10,this._ctx);
+			}
+			}
+		}
+		catch (re) {
+			if (re instanceof RecognitionException) {
+				_localctx.exception = re;
+				this._errHandler.reportError(this, re);
+				this._errHandler.recover(this, re);
+			} else {
+				throw re;
+			}
+		}
+		finally {
+			this.exitRule();
+		}
+		return _localctx;
+	}
+	@RuleVersion(0)
+	public propertyAssignment(): PropertyAssignmentContext {
+		let _localctx: PropertyAssignmentContext = new PropertyAssignmentContext(this._ctx, this.state);
+		this.enterRule(_localctx, 22, mongoParser.RULE_propertyAssignment);
+		try {
+			this.enterOuterAlt(_localctx, 1);
+			{
+			this.state = 100;
+			this.propertyName();
+			this.state = 101;
+			this.match(mongoParser.T__7);
+			this.state = 102;
+			this.propertyValue();
+			}
+		}
+		catch (re) {
+			if (re instanceof RecognitionException) {
+				_localctx.exception = re;
+				this._errHandler.reportError(this, re);
+				this._errHandler.recover(this, re);
+			} else {
+				throw re;
+			}
+		}
+		finally {
+			this.exitRule();
+		}
+		return _localctx;
+	}
+	@RuleVersion(0)
+	public propertyValue(): PropertyValueContext {
+		let _localctx: PropertyValueContext = new PropertyValueContext(this._ctx, this.state);
+		this.enterRule(_localctx, 24, mongoParser.RULE_propertyValue);
+		try {
+			this.state = 108;
+			this._errHandler.sync(this);
+			switch (this._input.LA(1)) {
+			case mongoParser.STRING_LITERAL:
+				this.enterOuterAlt(_localctx, 1);
+				{
+				this.state = 104;
+				this.functionCall();
+				}
+				break;
+			case mongoParser.T__2:
+				this.enterOuterAlt(_localctx, 2);
+				{
+				this.state = 105;
+				this.objectLiteral();
+				}
+				break;
+			case mongoParser.T__5:
+				this.enterOuterAlt(_localctx, 3);
+				{
+				this.state = 106;
+				this.arrayLiteral();
+				}
+				break;
+			case mongoParser.NullLiteral:
+			case mongoParser.BooleanLiteral:
+			case mongoParser.DecimalLiteral:
+			case mongoParser.QUOTED_STRING_LITERAL:
+				this.enterOuterAlt(_localctx, 4);
+				{
+				this.state = 107;
+				this.literal();
+				}
+				break;
+			default:
+				throw new NoViableAltException(this);
+			}
+		}
+		catch (re) {
+			if (re instanceof RecognitionException) {
+				_localctx.exception = re;
+				this._errHandler.reportError(this, re);
+				this._errHandler.recover(this, re);
+			} else {
+				throw re;
+			}
+		}
+		finally {
+			this.exitRule();
+		}
+		return _localctx;
+	}
+	@RuleVersion(0)
+	public literal(): LiteralContext {
+		let _localctx: LiteralContext = new LiteralContext(this._ctx, this.state);
+		this.enterRule(_localctx, 26, mongoParser.RULE_literal);
+		let _la: number;
+		try {
+			this.state = 112;
+			this._errHandler.sync(this);
+			switch (this._input.LA(1)) {
+			case mongoParser.NullLiteral:
+			case mongoParser.BooleanLiteral:
+			case mongoParser.QUOTED_STRING_LITERAL:
+				this.enterOuterAlt(_localctx, 1);
+				{
+				this.state = 110;
+				_la = this._input.LA(1);
+				if ( !((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.QUOTED_STRING_LITERAL))) !== 0)) ) {
+				this._errHandler.recoverInline(this);
+				} else {
+					if (this._input.LA(1) === Token.EOF) {
+						this.matchedEOF = true;
+					}
+
+					this._errHandler.reportMatch(this);
+					this.consume();
+				}
+				}
+				break;
+			case mongoParser.DecimalLiteral:
+				this.enterOuterAlt(_localctx, 2);
+				{
+				this.state = 111;
+				this.numericLiteral();
+				}
+				break;
+			default:
+				throw new NoViableAltException(this);
+			}
+		}
+		catch (re) {
+			if (re instanceof RecognitionException) {
+				_localctx.exception = re;
+				this._errHandler.reportError(this, re);
+				this._errHandler.recover(this, re);
+			} else {
+				throw re;
+			}
+		}
+		finally {
+			this.exitRule();
+		}
+		return _localctx;
+	}
+	@RuleVersion(0)
+	public propertyName(): PropertyNameContext {
+		let _localctx: PropertyNameContext = new PropertyNameContext(this._ctx, this.state);
+		this.enterRule(_localctx, 28, mongoParser.RULE_propertyName);
+		try {
+			this.enterOuterAlt(_localctx, 1);
+			{
+			this.state = 114;
+			this.match(mongoParser.QUOTED_STRING_LITERAL);
+			}
+		}
+		catch (re) {
+			if (re instanceof RecognitionException) {
+				_localctx.exception = re;
+				this._errHandler.reportError(this, re);
+				this._errHandler.recover(this, re);
+			} else {
+				throw re;
+			}
+		}
+		finally {
+			this.exitRule();
+		}
+		return _localctx;
+	}
+	@RuleVersion(0)
+	public numericLiteral(): NumericLiteralContext {
+		let _localctx: NumericLiteralContext = new NumericLiteralContext(this._ctx, this.state);
+		this.enterRule(_localctx, 30, mongoParser.RULE_numericLiteral);
+		try {
+			this.enterOuterAlt(_localctx, 1);
+			{
+			this.state = 116;
+			this.match(mongoParser.DecimalLiteral);
 			}
 		}
 		catch (re) {
@@ -268,23 +755,52 @@ export class mongoParser extends Parser {
 	}
 
 	public static readonly _serializedATN: string =
-		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\r&\x04\x02\t"+
-		"\x02\x04\x03\t\x03\x04\x04\t\x04\x04\x05\t\x05\x04\x06\t\x06\x03\x02\x03"+
-		"\x02\x03\x02\x03\x03\x03\x03\x03\x03\x06\x03\x13\n\x03\r\x03\x0E\x03\x14"+
-		"\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x05\x04\x1D\n\x04\x03"+
-		"\x04\x03\x04\x03\x05\x03\x05\x03\x06\x03\x06\x03\x06\x03\x06\x02\x02\x02"+
-		"\x07\x02\x02\x04\x02\x06\x02\b\x02\n\x02\x02\x02$\x02\f\x03\x02\x02\x02"+
-		"\x04\x12\x03\x02\x02\x02\x06\x16\x03\x02\x02\x02\b \x03\x02\x02\x02\n"+
-		"\"\x03\x02\x02\x02\f\r\x05\x04\x03\x02\r\x0E\x07\x02\x02\x03\x0E\x03\x03"+
-		"\x02\x02\x02\x0F\x13\x05\x06\x04\x02\x10\x13\x05\b\x05\x02\x11\x13\x07"+
-		"\x04\x02\x02\x12\x0F\x03\x02\x02\x02\x12\x10\x03\x02\x02\x02\x12\x11\x03"+
-		"\x02\x02\x02\x13\x14\x03\x02\x02\x02\x14\x12\x03\x02\x02\x02\x14\x15\x03"+
-		"\x02\x02\x02\x15\x05\x03\x02\x02\x02\x16\x17\x07\t\x02\x02\x17\x1C\x07"+
-		"\b\x02\x02\x18\x1D\x05\n\x06\x02\x19\x1A\x07\f\x02\x02\x1A\x1B\x07\b\x02"+
-		"\x02\x1B\x1D\x05\n\x06\x02\x1C\x18\x03\x02\x02\x02\x1C\x19\x03\x02\x02"+
-		"\x02\x1D\x1E\x03\x02\x02\x02\x1E\x1F\x07\x07\x02\x02\x1F\x07\x03\x02\x02"+
-		"\x02 !\x07\x07\x02\x02!\t\x03\x02\x02\x02\"#\x07\f\x02\x02#$\x07\x03\x02"+
-		"\x02$\v\x03\x02\x02\x02\x05\x12\x14\x1C";
+		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\x19y\x04\x02"+
+		"\t\x02\x04\x03\t\x03\x04\x04\t\x04\x04\x05\t\x05\x04\x06\t\x06\x04\x07"+
+		"\t\x07\x04\b\t\b\x04\t\t\t\x04\n\t\n\x04\v\t\v\x04\f\t\f\x04\r\t\r\x04"+
+		"\x0E\t\x0E\x04\x0F\t\x0F\x04\x10\t\x10\x04\x11\t\x11\x03\x02\x03\x02\x03"+
+		"\x02\x03\x03\x03\x03\x03\x03\x06\x03)\n\x03\r\x03\x0E\x03*\x03\x04\x03"+
+		"\x04\x03\x04\x03\x04\x03\x04\x03\x04\x05\x043\n\x04\x03\x04\x05\x046\n"+
+		"\x04\x03\x05\x03\x05\x03\x06\x03\x06\x03\x06\x03\x07\x03\x07\x05\x07?"+
+		"\n\x07\x03\x07\x03\x07\x03\b\x03\b\x03\b\x05\bF\n\b\x03\t\x03\t\x05\t"+
+		"J\n\t\x03\t\x05\tM\n\t\x03\t\x03\t\x03\n\x03\n\x05\nS\n\n\x03\n\x03\n"+
+		"\x03\v\x03\v\x03\v\x07\vZ\n\v\f\v\x0E\v]\v\v\x03\f\x03\f\x03\f\x07\fb"+
+		"\n\f\f\f\x0E\fe\v\f\x03\r\x03\r\x03\r\x03\r\x03\x0E\x03\x0E\x03\x0E\x03"+
+		"\x0E\x05\x0Eo\n\x0E\x03\x0F\x03\x0F\x05\x0Fs\n\x0F\x03\x10\x03\x10\x03"+
+		"\x11\x03\x11\x03\x11\x02\x02\x02\x12\x02\x02\x04\x02\x06\x02\b\x02\n\x02"+
+		"\f\x02\x0E\x02\x10\x02\x12\x02\x14\x02\x16\x02\x18\x02\x1A\x02\x1C\x02"+
+		"\x1E\x02 \x02\x02\x03\x04\x02\x0E\x0F\x18\x18y\x02\"\x03\x02\x02\x02\x04"+
+		"(\x03\x02\x02\x02\x06,\x03\x02\x02\x02\b7\x03\x02\x02\x02\n9\x03\x02\x02"+
+		"\x02\f<\x03\x02\x02\x02\x0EE\x03\x02\x02\x02\x10G\x03\x02\x02\x02\x12"+
+		"P\x03\x02\x02\x02\x14V\x03\x02\x02\x02\x16^\x03\x02\x02\x02\x18f\x03\x02"+
+		"\x02\x02\x1An\x03\x02\x02\x02\x1Cr\x03\x02\x02\x02\x1Et\x03\x02\x02\x02"+
+		" v\x03\x02\x02\x02\"#\x05\x04\x03\x02#$\x07\x02\x02\x03$\x03\x03\x02\x02"+
+		"\x02%)\x05\x06\x04\x02&)\x05\b\x05\x02\')\x07\v\x02\x02(%\x03\x02\x02"+
+		"\x02(&\x03\x02\x02\x02(\'\x03\x02\x02\x02)*\x03\x02\x02\x02*(\x03\x02"+
+		"\x02\x02*+\x03\x02\x02\x02+\x05\x03\x02\x02\x02,-\x07\x14\x02\x02-2\x07"+
+		"\x13\x02\x02.3\x05\n\x06\x02/0\x07\x17\x02\x0201\x07\x13\x02\x0213\x05"+
+		"\n\x06\x022.\x03\x02\x02\x022/\x03\x02\x02\x0235\x03\x02\x02\x0246\x07"+
+		"\x12\x02\x0254\x03\x02\x02\x0256\x03\x02\x02\x026\x07\x03\x02\x02\x02"+
+		"78\x07\x12\x02\x028\t\x03\x02\x02\x029:\x07\x17\x02\x02:;\x05\f\x07\x02"+
+		";\v\x03\x02\x02\x02<>\x07\x03\x02\x02=?\x05\x0E\b\x02>=\x03\x02\x02\x02"+
+		">?\x03\x02\x02\x02?@\x03\x02\x02\x02@A\x07\x04\x02\x02A\r\x03\x02\x02"+
+		"\x02BF\x05\x1C\x0F\x02CF\x05\x10\t\x02DF\x05\x12\n\x02EB\x03\x02\x02\x02"+
+		"EC\x03\x02\x02\x02ED\x03\x02\x02\x02F\x0F\x03\x02\x02\x02GI\x07\x05\x02"+
+		"\x02HJ\x05\x16\f\x02IH\x03\x02\x02\x02IJ\x03\x02\x02\x02JL\x03\x02\x02"+
+		"\x02KM\x07\x06\x02\x02LK\x03\x02\x02\x02LM\x03\x02\x02\x02MN\x03\x02\x02"+
+		"\x02NO\x07\x07\x02\x02O\x11\x03\x02\x02\x02PR\x07\b\x02\x02QS\x05\x14"+
+		"\v\x02RQ\x03\x02\x02\x02RS\x03\x02\x02\x02ST\x03\x02\x02\x02TU\x07\t\x02"+
+		"\x02U\x13\x03\x02\x02\x02V[\x05\x1A\x0E\x02WX\x07\x06\x02\x02XZ\x05\x1A"+
+		"\x0E\x02YW\x03\x02\x02\x02Z]\x03\x02\x02\x02[Y\x03\x02\x02\x02[\\\x03"+
+		"\x02\x02\x02\\\x15\x03\x02\x02\x02][\x03\x02\x02\x02^c\x05\x18\r\x02_"+
+		"`\x07\x06\x02\x02`b\x05\x18\r\x02a_\x03\x02\x02\x02be\x03\x02\x02\x02"+
+		"ca\x03\x02\x02\x02cd\x03\x02\x02\x02d\x17\x03\x02\x02\x02ec\x03\x02\x02"+
+		"\x02fg\x05\x1E\x10\x02gh\x07\n\x02\x02hi\x05\x1A\x0E\x02i\x19\x03\x02"+
+		"\x02\x02jo\x05\n\x06\x02ko\x05\x10\t\x02lo\x05\x12\n\x02mo\x05\x1C\x0F"+
+		"\x02nj\x03\x02\x02\x02nk\x03\x02\x02\x02nl\x03\x02\x02\x02nm\x03\x02\x02"+
+		"\x02o\x1B\x03\x02\x02\x02ps\t\x02\x02\x02qs\x05 \x11\x02rp\x03\x02\x02"+
+		"\x02rq\x03\x02\x02\x02s\x1D\x03\x02\x02\x02tu\x07\x18\x02\x02u\x1F\x03"+
+		"\x02\x02\x02vw\x07\x10\x02\x02w!\x03\x02\x02\x02\x0F(*25>EILR[cnr";
 	public static __ATN: ATN;
 	public static get _ATN(): ATN {
 		if (!mongoParser.__ATN) {
@@ -384,10 +900,10 @@ export class CommandContext extends ParserRuleContext {
 			return this.getToken(mongoParser.DOT, i);
 		}
 	}
-	public COMMAND_DELIMITTER(): TerminalNode { return this.getToken(mongoParser.COMMAND_DELIMITTER, 0); }
 	public functionCall(): FunctionCallContext | undefined {
 		return this.tryGetRuleContext(0, FunctionCallContext);
 	}
+	public SEMICOLON(): TerminalNode | undefined { return this.tryGetToken(mongoParser.SEMICOLON, 0); }
 	public STRING_LITERAL(): TerminalNode | undefined { return this.tryGetToken(mongoParser.STRING_LITERAL, 0); }
 	constructor(parent: ParserRuleContext, invokingState: number);
 	constructor(parent: ParserRuleContext, invokingState: number) {
@@ -412,7 +928,7 @@ export class CommandContext extends ParserRuleContext {
 
 
 export class EmptyCommandContext extends ParserRuleContext {
-	public COMMAND_DELIMITTER(): TerminalNode { return this.getToken(mongoParser.COMMAND_DELIMITTER, 0); }
+	public SEMICOLON(): TerminalNode { return this.getToken(mongoParser.SEMICOLON, 0); }
 	constructor(parent: ParserRuleContext, invokingState: number);
 	constructor(parent: ParserRuleContext, invokingState: number) {
 		super(parent, invokingState);
@@ -437,6 +953,9 @@ export class EmptyCommandContext extends ParserRuleContext {
 
 export class FunctionCallContext extends ParserRuleContext {
 	public STRING_LITERAL(): TerminalNode { return this.getToken(mongoParser.STRING_LITERAL, 0); }
+	public arguments(): ArgumentsContext {
+		return this.getRuleContext(0, ArgumentsContext);
+	}
 	constructor(parent: ParserRuleContext, invokingState: number);
 	constructor(parent: ParserRuleContext, invokingState: number) {
 		super(parent, invokingState);
@@ -454,6 +973,323 @@ export class FunctionCallContext extends ParserRuleContext {
 	@Override
 	public accept<Result>(visitor: mongoVisitor<Result>): Result {
 		if (visitor.visitFunctionCall) return visitor.visitFunctionCall(this);
+		else return visitor.visitChildren(this);
+	}
+}
+
+
+export class ArgumentsContext extends ParserRuleContext {
+	public _OPEN_PARENTHESIS: Token;
+	public _CLOSED_PARENTHESIS: Token;
+	public argumentList(): ArgumentListContext | undefined {
+		return this.tryGetRuleContext(0, ArgumentListContext);
+	}
+	constructor(parent: ParserRuleContext, invokingState: number);
+	constructor(parent: ParserRuleContext, invokingState: number) {
+		super(parent, invokingState);
+
+	}
+	@Override public get ruleIndex(): number { return mongoParser.RULE_arguments; }
+	@Override
+	public enterRule(listener: mongoListener): void {
+		if (listener.enterArguments) listener.enterArguments(this);
+	}
+	@Override
+	public exitRule(listener: mongoListener): void {
+		if (listener.exitArguments) listener.exitArguments(this);
+	}
+	@Override
+	public accept<Result>(visitor: mongoVisitor<Result>): Result {
+		if (visitor.visitArguments) return visitor.visitArguments(this);
+		else return visitor.visitChildren(this);
+	}
+}
+
+
+export class ArgumentListContext extends ParserRuleContext {
+	public literal(): LiteralContext | undefined {
+		return this.tryGetRuleContext(0, LiteralContext);
+	}
+	public objectLiteral(): ObjectLiteralContext | undefined {
+		return this.tryGetRuleContext(0, ObjectLiteralContext);
+	}
+	public arrayLiteral(): ArrayLiteralContext | undefined {
+		return this.tryGetRuleContext(0, ArrayLiteralContext);
+	}
+	constructor(parent: ParserRuleContext, invokingState: number);
+	constructor(parent: ParserRuleContext, invokingState: number) {
+		super(parent, invokingState);
+
+	}
+	@Override public get ruleIndex(): number { return mongoParser.RULE_argumentList; }
+	@Override
+	public enterRule(listener: mongoListener): void {
+		if (listener.enterArgumentList) listener.enterArgumentList(this);
+	}
+	@Override
+	public exitRule(listener: mongoListener): void {
+		if (listener.exitArgumentList) listener.exitArgumentList(this);
+	}
+	@Override
+	public accept<Result>(visitor: mongoVisitor<Result>): Result {
+		if (visitor.visitArgumentList) return visitor.visitArgumentList(this);
+		else return visitor.visitChildren(this);
+	}
+}
+
+
+export class ObjectLiteralContext extends ParserRuleContext {
+	public propertyNameAndValueList(): PropertyNameAndValueListContext | undefined {
+		return this.tryGetRuleContext(0, PropertyNameAndValueListContext);
+	}
+	constructor(parent: ParserRuleContext, invokingState: number);
+	constructor(parent: ParserRuleContext, invokingState: number) {
+		super(parent, invokingState);
+
+	}
+	@Override public get ruleIndex(): number { return mongoParser.RULE_objectLiteral; }
+	@Override
+	public enterRule(listener: mongoListener): void {
+		if (listener.enterObjectLiteral) listener.enterObjectLiteral(this);
+	}
+	@Override
+	public exitRule(listener: mongoListener): void {
+		if (listener.exitObjectLiteral) listener.exitObjectLiteral(this);
+	}
+	@Override
+	public accept<Result>(visitor: mongoVisitor<Result>): Result {
+		if (visitor.visitObjectLiteral) return visitor.visitObjectLiteral(this);
+		else return visitor.visitChildren(this);
+	}
+}
+
+
+export class ArrayLiteralContext extends ParserRuleContext {
+	public elementList(): ElementListContext | undefined {
+		return this.tryGetRuleContext(0, ElementListContext);
+	}
+	constructor(parent: ParserRuleContext, invokingState: number);
+	constructor(parent: ParserRuleContext, invokingState: number) {
+		super(parent, invokingState);
+
+	}
+	@Override public get ruleIndex(): number { return mongoParser.RULE_arrayLiteral; }
+	@Override
+	public enterRule(listener: mongoListener): void {
+		if (listener.enterArrayLiteral) listener.enterArrayLiteral(this);
+	}
+	@Override
+	public exitRule(listener: mongoListener): void {
+		if (listener.exitArrayLiteral) listener.exitArrayLiteral(this);
+	}
+	@Override
+	public accept<Result>(visitor: mongoVisitor<Result>): Result {
+		if (visitor.visitArrayLiteral) return visitor.visitArrayLiteral(this);
+		else return visitor.visitChildren(this);
+	}
+}
+
+
+export class ElementListContext extends ParserRuleContext {
+	public propertyValue(): PropertyValueContext[];
+	public propertyValue(i: number): PropertyValueContext;
+	public propertyValue(i?: number): PropertyValueContext | PropertyValueContext[] {
+		if (i === undefined) {
+			return this.getRuleContexts(PropertyValueContext);
+		} else {
+			return this.getRuleContext(i, PropertyValueContext);
+		}
+	}
+	constructor(parent: ParserRuleContext, invokingState: number);
+	constructor(parent: ParserRuleContext, invokingState: number) {
+		super(parent, invokingState);
+
+	}
+	@Override public get ruleIndex(): number { return mongoParser.RULE_elementList; }
+	@Override
+	public enterRule(listener: mongoListener): void {
+		if (listener.enterElementList) listener.enterElementList(this);
+	}
+	@Override
+	public exitRule(listener: mongoListener): void {
+		if (listener.exitElementList) listener.exitElementList(this);
+	}
+	@Override
+	public accept<Result>(visitor: mongoVisitor<Result>): Result {
+		if (visitor.visitElementList) return visitor.visitElementList(this);
+		else return visitor.visitChildren(this);
+	}
+}
+
+
+export class PropertyNameAndValueListContext extends ParserRuleContext {
+	public propertyAssignment(): PropertyAssignmentContext[];
+	public propertyAssignment(i: number): PropertyAssignmentContext;
+	public propertyAssignment(i?: number): PropertyAssignmentContext | PropertyAssignmentContext[] {
+		if (i === undefined) {
+			return this.getRuleContexts(PropertyAssignmentContext);
+		} else {
+			return this.getRuleContext(i, PropertyAssignmentContext);
+		}
+	}
+	constructor(parent: ParserRuleContext, invokingState: number);
+	constructor(parent: ParserRuleContext, invokingState: number) {
+		super(parent, invokingState);
+
+	}
+	@Override public get ruleIndex(): number { return mongoParser.RULE_propertyNameAndValueList; }
+	@Override
+	public enterRule(listener: mongoListener): void {
+		if (listener.enterPropertyNameAndValueList) listener.enterPropertyNameAndValueList(this);
+	}
+	@Override
+	public exitRule(listener: mongoListener): void {
+		if (listener.exitPropertyNameAndValueList) listener.exitPropertyNameAndValueList(this);
+	}
+	@Override
+	public accept<Result>(visitor: mongoVisitor<Result>): Result {
+		if (visitor.visitPropertyNameAndValueList) return visitor.visitPropertyNameAndValueList(this);
+		else return visitor.visitChildren(this);
+	}
+}
+
+
+export class PropertyAssignmentContext extends ParserRuleContext {
+	public propertyName(): PropertyNameContext {
+		return this.getRuleContext(0, PropertyNameContext);
+	}
+	public propertyValue(): PropertyValueContext {
+		return this.getRuleContext(0, PropertyValueContext);
+	}
+	constructor(parent: ParserRuleContext, invokingState: number);
+	constructor(parent: ParserRuleContext, invokingState: number) {
+		super(parent, invokingState);
+
+	}
+	@Override public get ruleIndex(): number { return mongoParser.RULE_propertyAssignment; }
+	@Override
+	public enterRule(listener: mongoListener): void {
+		if (listener.enterPropertyAssignment) listener.enterPropertyAssignment(this);
+	}
+	@Override
+	public exitRule(listener: mongoListener): void {
+		if (listener.exitPropertyAssignment) listener.exitPropertyAssignment(this);
+	}
+	@Override
+	public accept<Result>(visitor: mongoVisitor<Result>): Result {
+		if (visitor.visitPropertyAssignment) return visitor.visitPropertyAssignment(this);
+		else return visitor.visitChildren(this);
+	}
+}
+
+
+export class PropertyValueContext extends ParserRuleContext {
+	public functionCall(): FunctionCallContext | undefined {
+		return this.tryGetRuleContext(0, FunctionCallContext);
+	}
+	public objectLiteral(): ObjectLiteralContext | undefined {
+		return this.tryGetRuleContext(0, ObjectLiteralContext);
+	}
+	public arrayLiteral(): ArrayLiteralContext | undefined {
+		return this.tryGetRuleContext(0, ArrayLiteralContext);
+	}
+	public literal(): LiteralContext | undefined {
+		return this.tryGetRuleContext(0, LiteralContext);
+	}
+	constructor(parent: ParserRuleContext, invokingState: number);
+	constructor(parent: ParserRuleContext, invokingState: number) {
+		super(parent, invokingState);
+
+	}
+	@Override public get ruleIndex(): number { return mongoParser.RULE_propertyValue; }
+	@Override
+	public enterRule(listener: mongoListener): void {
+		if (listener.enterPropertyValue) listener.enterPropertyValue(this);
+	}
+	@Override
+	public exitRule(listener: mongoListener): void {
+		if (listener.exitPropertyValue) listener.exitPropertyValue(this);
+	}
+	@Override
+	public accept<Result>(visitor: mongoVisitor<Result>): Result {
+		if (visitor.visitPropertyValue) return visitor.visitPropertyValue(this);
+		else return visitor.visitChildren(this);
+	}
+}
+
+
+export class LiteralContext extends ParserRuleContext {
+	public NullLiteral(): TerminalNode | undefined { return this.tryGetToken(mongoParser.NullLiteral, 0); }
+	public BooleanLiteral(): TerminalNode | undefined { return this.tryGetToken(mongoParser.BooleanLiteral, 0); }
+	public QUOTED_STRING_LITERAL(): TerminalNode | undefined { return this.tryGetToken(mongoParser.QUOTED_STRING_LITERAL, 0); }
+	public numericLiteral(): NumericLiteralContext | undefined {
+		return this.tryGetRuleContext(0, NumericLiteralContext);
+	}
+	constructor(parent: ParserRuleContext, invokingState: number);
+	constructor(parent: ParserRuleContext, invokingState: number) {
+		super(parent, invokingState);
+
+	}
+	@Override public get ruleIndex(): number { return mongoParser.RULE_literal; }
+	@Override
+	public enterRule(listener: mongoListener): void {
+		if (listener.enterLiteral) listener.enterLiteral(this);
+	}
+	@Override
+	public exitRule(listener: mongoListener): void {
+		if (listener.exitLiteral) listener.exitLiteral(this);
+	}
+	@Override
+	public accept<Result>(visitor: mongoVisitor<Result>): Result {
+		if (visitor.visitLiteral) return visitor.visitLiteral(this);
+		else return visitor.visitChildren(this);
+	}
+}
+
+
+export class PropertyNameContext extends ParserRuleContext {
+	public QUOTED_STRING_LITERAL(): TerminalNode { return this.getToken(mongoParser.QUOTED_STRING_LITERAL, 0); }
+	constructor(parent: ParserRuleContext, invokingState: number);
+	constructor(parent: ParserRuleContext, invokingState: number) {
+		super(parent, invokingState);
+
+	}
+	@Override public get ruleIndex(): number { return mongoParser.RULE_propertyName; }
+	@Override
+	public enterRule(listener: mongoListener): void {
+		if (listener.enterPropertyName) listener.enterPropertyName(this);
+	}
+	@Override
+	public exitRule(listener: mongoListener): void {
+		if (listener.exitPropertyName) listener.exitPropertyName(this);
+	}
+	@Override
+	public accept<Result>(visitor: mongoVisitor<Result>): Result {
+		if (visitor.visitPropertyName) return visitor.visitPropertyName(this);
+		else return visitor.visitChildren(this);
+	}
+}
+
+
+export class NumericLiteralContext extends ParserRuleContext {
+	public DecimalLiteral(): TerminalNode { return this.getToken(mongoParser.DecimalLiteral, 0); }
+	constructor(parent: ParserRuleContext, invokingState: number);
+	constructor(parent: ParserRuleContext, invokingState: number) {
+		super(parent, invokingState);
+
+	}
+	@Override public get ruleIndex(): number { return mongoParser.RULE_numericLiteral; }
+	@Override
+	public enterRule(listener: mongoListener): void {
+		if (listener.enterNumericLiteral) listener.enterNumericLiteral(this);
+	}
+	@Override
+	public exitRule(listener: mongoListener): void {
+		if (listener.exitNumericLiteral) listener.exitNumericLiteral(this);
+	}
+	@Override
+	public accept<Result>(visitor: mongoVisitor<Result>): Result {
+		if (visitor.visitNumericLiteral) return visitor.visitNumericLiteral(this);
 		else return visitor.visitChildren(this);
 	}
 }

@@ -13,8 +13,11 @@ import { TextDocument, CompletionItem, Position, Range, CompletionItemKind } fro
 
 export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[]>> {
 
+	private at: Position;
+
 	constructor(private textDocument: TextDocument, private db: Db, private offset: number) {
 		super();
+		this.at = this.textDocument.positionAt(this.offset);
 	}
 
 	visitCommands(ctx: mongoParser.CommandsContext): Promise<CompletionItem[]> {
@@ -45,6 +48,14 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		return this.thenable();
 	}
 
+	visitArguments(ctx: mongoParser.ArgumentsContext): Promise<CompletionItem[]> {
+		const terminalNode = this.getLastTerminalNode(ctx);
+		if (terminalNode.symbol === ctx._CLOSED_PARENTHESIS) {
+			return this.thenable(this.createDbKeywordCompletion(this.createRangeAfter(terminalNode)));
+		}
+		return ctx.parent.accept(this);
+	}
+
 	visitTerminal(ctx: TerminalNode): Promise<CompletionItem[]> {
 		return ctx.parent.accept(this);
 	}
@@ -57,7 +68,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		if (node._symbol.type === mongoParser.mongoParser.DB) {
 			return this.thenable(this.createDbKeywordCompletion(this.createRange(node)));
 		}
-		if (node._symbol.type === mongoParser.mongoParser.COMMAND_DELIMITTER) {
+		if (node._symbol.type === mongoParser.mongoParser.SEMICOLON) {
 			return this.thenable(this.createDbKeywordCompletion(this.createRangeAfter(node)));
 		}
 		if (node._symbol.type === mongoParser.mongoParser.DOT) {
@@ -284,8 +295,11 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 	}
 
 	private _createRange(start: number, end: number): Range {
-		const startPosition = this.textDocument.positionAt(start);
 		const endPosition = this.textDocument.positionAt(end);
+		if (endPosition.line < this.at.line) {
+			return Range.create(Position.create(this.at.line, 0), this.at);
+		}
+		const startPosition = this.textDocument.positionAt(start);
 		return Range.create(startPosition, endPosition);
 	}
 

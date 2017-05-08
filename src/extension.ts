@@ -88,7 +88,7 @@ function getDatabaseQuickPicks(): Thenable<DatabaseQuickPick[]> {
 function connectToDatabase(database: Database): void {
 	connectedDb = database;
 	languageClient.connect(database);
-	vscode.window.setStatusBarMessage('Mongo: Connected to ' + database.server.host + '/' + connectedDb.id);
+	vscode.window.setStatusBarMessage('Mongo: ' + database.server.host + '/' + connectedDb.id);
 }
 
 async function createStorageFolder(context: vscode.ExtensionContext): Promise<void> {

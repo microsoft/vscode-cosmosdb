@@ -106,12 +106,17 @@ function getDatabaseQuickPicks(): Thenable<DatabaseQuickPick[]> {
 }
 
 function dropDatabase(database: Database): void {
-	if (connectedDb && connectedDb.server.id === database.server.id && connectedDb.id === database.id) {
-		connectedDb = null;
-		languageClient.disconnect();
-		vscode.window.setStatusBarMessage('Mongo: Not connected');
-	}
-	database.server.dropDb(database);
+	vscode.window.showInformationMessage('Are you sure you want to drop the database \'' + database.id + '\' and its collections?', { modal: true }, 'Drop')
+		.then(result => {
+			if (result === 'Drop') {
+				if (connectedDb && connectedDb.server.id === database.server.id && connectedDb.id === database.id) {
+					connectedDb = null;
+					languageClient.disconnect();
+					vscode.window.setStatusBarMessage('Mongo: Not connected');
+				}
+				database.server.dropDb(database);
+			}
+		})
 }
 
 function connectToDatabase(database: Database): void {

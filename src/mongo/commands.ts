@@ -25,7 +25,7 @@ export class MongoCommands {
 		const selection = activeEditor.selection;
 		const script = MongoCommands.provideScriptAt(activeEditor.document, selection.start);
 		let uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, 'result.json'));
-		if (!fs.existsSync) {
+		if (!fs.existsSync(uri.fsPath)) {
 			uri = uri.with({ scheme: 'untitled' });
 		}
 		vscode.workspace.openTextDocument(uri)

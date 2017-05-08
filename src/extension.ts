@@ -5,13 +5,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { MongoExplorer } from './mongo/explorer';
 import { MongoCommands } from './mongo/commands';
-import { Model, Database, Server, IMongoResource } from './mongo/mongo';
+import { Model, Database, Server, IMongoResource, MongoScript } from './mongo/mongo';
 import MongoDBLanguageClient from './mongo/languageClient';
 
 let connectedDb: Database = null;
 let languageClient: MongoDBLanguageClient = null;
 let model: Model;
 let mongoDocumentCounter = 0;
+let lastScript: MongoScript;
 
 export function activate(context: vscode.ExtensionContext) {
 	// Create the storage folder
@@ -52,7 +53,8 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.workspace.openTextDocument(uri)
 					.then(textDocument => vscode.window.showTextDocument(textDocument));
 			}));
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.execute', () => MongoCommands.executeScript(connectedDb)));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.execute', () => lastScript = MongoCommands.executeScript(connectedDb)));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.updateDocuments', () => MongoCommands.updateDocuments(connectedDb, lastScript)));
 		});
 	}
 }

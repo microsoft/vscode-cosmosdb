@@ -40,6 +40,11 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		return this.thenable();
 	}
 
+	visitCollection(ctx: mongoParser.CollectionContext): Promise<CompletionItem[]> {
+		return Promise.all([this.createCollectionCompletions(this.createRange(ctx)), this.createDbFunctionCompletions(this.createRange(ctx))])
+			.then(([collectionCompletions, dbFunctionCompletions]) => [...collectionCompletions, ...dbFunctionCompletions]);
+	}
+
 	visitFunctionCall(ctx: mongoParser.FunctionCallContext): Promise<CompletionItem[]> {
 		const previousNode = this.getPreviousNode(ctx);
 		if (previousNode instanceof TerminalNode) {
@@ -53,6 +58,42 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		if (terminalNode.symbol === ctx._CLOSED_PARENTHESIS) {
 			return this.thenable(this.createDbKeywordCompletion(this.createRangeAfter(terminalNode)));
 		}
+		return ctx.parent.accept(this);
+	}
+
+	visitArgumentList(ctx: mongoParser.ArgumentListContext): Promise<CompletionItem[]> {
+		return ctx.parent.accept(this);
+	}
+
+	visitObjectLiteral(ctx: mongoParser.ObjectLiteralContext): Promise<CompletionItem[]> {
+		return ctx.parent.accept(this);
+	}
+
+	visitArrayLiteral(ctx: mongoParser.ArrayLiteralContext): Promise<CompletionItem[]> {
+		return ctx.parent.accept(this);
+	}
+
+	visitElementList(ctx: mongoParser.ElementListContext): Promise<CompletionItem[]> {
+		return ctx.parent.accept(this);
+	}
+
+	visitPropertyNameAndValueList(ctx: mongoParser.PropertyNameAndValueListContext): Promise<CompletionItem[]> {
+		return ctx.parent.accept(this);
+	}
+
+	visitPropertyAssignment(ctx: mongoParser.PropertyAssignmentContext): Promise<CompletionItem[]> {
+		return ctx.parent.accept(this);
+	}
+
+	visitPropertyValue(ctx: mongoParser.PropertyValueContext): Promise<CompletionItem[]> {
+		return ctx.parent.accept(this);
+	}
+
+	visitPropertyName(ctx: mongoParser.PropertyNameContext): Promise<CompletionItem[]> {
+		return ctx.parent.accept(this);
+	}
+
+	visitLiteral(ctx: mongoParser.LiteralContext): Promise<CompletionItem[]> {
 		return ctx.parent.accept(this);
 	}
 
@@ -78,9 +119,9 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 					return Promise.all([this.createCollectionCompletions(this.createRangeAfter(node)), this.createDbFunctionCompletions(this.createRangeAfter(node))])
 						.then(([collectionCompletions, dbFunctionCompletions]) => [...collectionCompletions, ...dbFunctionCompletions]);
 				}
-				if (previousNode._symbol.type === mongoParser.mongoParser.STRING_LITERAL) {
-					return this.createCollectionFunctionsCompletions(this.createRangeAfter(node));
-				}
+			}
+			if (previousNode instanceof mongoParser.CollectionContext) {
+				return this.createCollectionFunctionsCompletions(this.createRangeAfter(node));
 			}
 		}
 		if (node instanceof ErrorNode) {

@@ -3,7 +3,7 @@ import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
-import { CommandsContext, CommandContext, FunctionCallContext, MongoCommandsContext } from './mongoParser';
+import { CommandsContext, CommandContext, FunctionCallContext, MongoCommandsContext, CollectionContext, ArgumentListContext } from './mongoParser';
 import { mongoVisitor } from './mongoVisitor';
 
 export class MongoVisitor<T> implements mongoVisitor<T> {
@@ -20,7 +20,15 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 		return this.visitChildren(ctx);
 	}
 
+	visitCollection(ctx: CollectionContext): T {
+		return this.visitChildren(ctx);
+	}
+
 	visitFunctionCall(ctx: FunctionCallContext): T {
+		return this.visitChildren(ctx);
+	}
+
+	visitArgumentList(ctx: ArgumentListContext): T {
 		return this.visitChildren(ctx);
 	}
 

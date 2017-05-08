@@ -7,6 +7,7 @@ import { MongoCommandsContext } from './mongoParser';
 import { CommandsContext } from './mongoParser';
 import { CommandContext } from './mongoParser';
 import { EmptyCommandContext } from './mongoParser';
+import { CollectionContext } from './mongoParser';
 import { FunctionCallContext } from './mongoParser';
 import { ArgumentsContext } from './mongoParser';
 import { ArgumentListContext } from './mongoParser';
@@ -56,6 +57,13 @@ export interface mongoVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	visitEmptyCommand?: (ctx: EmptyCommandContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `mongoParser.collection`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitCollection?: (ctx: CollectionContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `mongoParser.functionCall`.

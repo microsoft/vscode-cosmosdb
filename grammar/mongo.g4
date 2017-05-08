@@ -10,16 +10,19 @@ mongoCommands
 	: commands EOF
 	;
 
-commands: (command | emptyCommand | Comment )+;
+commands: (command | emptyCommand | comment )+;
 
-command: DB DOT (functionCall | (STRING_LITERAL DOT functionCall)) SEMICOLON?;
+command: DB DOT (functionCall | (collection DOT functionCall)) SEMICOLON?;
 
 emptyCommand
 	: SEMICOLON
 	;
 
+collection
+	: STRING_LITERAL;
+
 functionCall
-	: STRING_LITERAL arguments
+	: FUNCTION_NAME = STRING_LITERAL arguments
 	;
 
 arguments
@@ -71,7 +74,7 @@ propertyName
 	: QUOTED_STRING_LITERAL
 	;
 
-Comment
+comment
 	: SingleLineComment
 	| MultiLineComment
 	;

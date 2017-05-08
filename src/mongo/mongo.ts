@@ -1,9 +1,17 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as fs from 'fs';
-import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collection as MongoCollection } from 'mongodb';
+import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collection as MongoCollection, Cursor, ObjectID } from 'mongodb';
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
+
+export interface MongoScript {
+	range: vscode.Range;
+	script: string;
+	collection?: string;
+	command: string;
+	arguments?: string;
+}
 
 export interface IMongoResource {
 	label: string;
@@ -165,7 +173,6 @@ export class Database implements IMongoResource {
 		});
 	}
 
-
 	getDb(): Promise<Db> {
 		const uri = vscode.Uri.parse(this.server.id);
 		const connectionString = `${uri.scheme}://${uri.authority}/${this.id}?${uri.query}`
@@ -175,9 +182,35 @@ export class Database implements IMongoResource {
 			});
 	}
 
-	executeScript(script: string): Promise<string> {
-		return this.getShell()
-			.then(() => this.shell.exec(script));
+	executeScript(script: MongoScript): Thenable<string> {
+		if (script.collection) {
+			return this.getDb()
+				.then(db => {
+					const collection = db.collection(script.collection);
+					if (collection) {
+						const result = new Collection(collection).executeCommand(script.command, script.arguments);
+						if (result) {
+							return result;
+						}
+					}
+					return reportProgress(this.getShell().then(() => this.shell.exec(script.script)), 'Executing script');
+				});
+		}
+		return reportProgress(this.getShell().then(() => this.shell.exec(script.script)), 'Executing script');
+	}
+
+	updateDocuments(documents: any[], collectionName: string): Thenable<string> {
+		return this.getDb()
+			.then(db => {
+				const collection = db.collection(collectionName);
+				if (collection) {
+					return new Collection(collection).update(documents);
+				}
+			});
+	}
+
+	private getCollection(collection: string): Promise<Collection> {
+		return this.getDb().then(db => new Collection(db.collection(collection)));
 	}
 
 	private getShell(): Promise<void> {
@@ -237,4 +270,87 @@ export class Collection implements IMongoResource {
 	}
 
 	readonly canHaveChildren: boolean = false;
+
+	executeCommand(command: string, args?: string): Thenable<string> {
+		if (command === 'find') {
+			return reportProgress(this.find(args ? JSON.parse(args) : undefined), 'Running find query');
+		}
+		if (command === 'findOne') {
+			return reportProgress(this.findOne(args ? JSON.parse(args) : undefined), 'Running find query');
+		}
+		return null;
+	}
+
+	update(documents: any[]): Thenable<string> {
+		let operations = this.toOperations(documents);
+		return reportProgress(this.collection.bulkWrite(operations, { w: 1 })
+			.then(result => {
+				return this.stringify(result);
+			}, (error) => {
+				console.log(error);
+			}), 'Updating');
+	}
+
+	private find(args?: any): Promise<string> {
+		const promise = new Promise((c, e) => {
+			let cursor = this.collection.find(args);
+			this.readNext([], cursor, 20, c);
+		});
+		return promise;
+	}
+
+	private findOne(args?: any): Promise<string> {
+		return new Promise((c, e) => {
+			this.collection.findOne(args)
+				.then(result => c(this.stringify(result)));
+		});
+	}
+
+	private readNext(result: any[], cursor: Cursor<any>, batchSize: number, callback: (result: string) => void): void {
+		if (result.length === batchSize) {
+			callback(this.stringify(result));
+			return;
+		}
+
+		cursor.hasNext().then(hasNext => {
+			if (!hasNext) {
+				callback(this.stringify(result));
+				return;
+			}
+
+			cursor.next().then(doc => {
+				result.push(doc);
+				this.readNext(result, cursor, batchSize, callback);
+			})
+		})
+	}
+
+	private stringify(result: any): string {
+		return JSON.stringify(result, null, '\t')
+	}
+
+	private toOperations(documents: any[]): any[] {
+		return documents.reduce((result, doc) => {
+			const id = doc._id;
+			delete doc._id;
+			result.push({
+				updateOne: {
+					filter: {
+						_id: new ObjectID(id)
+					},
+					update: doc
+				}
+			});
+			return result;
+		}, []);
+	}
+}
+
+function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
+	return vscode.window.withProgress<T>({
+		location: vscode.ProgressLocation.Window,
+		title
+	}, (progress) => {
+		return promise;
+	})
 }

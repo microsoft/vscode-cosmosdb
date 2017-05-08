@@ -7,6 +7,7 @@ import { MongoCommandsContext } from './mongoParser';
 import { CommandsContext } from './mongoParser';
 import { CommandContext } from './mongoParser';
 import { EmptyCommandContext } from './mongoParser';
+import { CollectionContext } from './mongoParser';
 import { FunctionCallContext } from './mongoParser';
 import { ArgumentsContext } from './mongoParser';
 import { ArgumentListContext } from './mongoParser';
@@ -69,6 +70,17 @@ export interface mongoListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitEmptyCommand?: (ctx: EmptyCommandContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `mongoParser.collection`.
+	 * @param ctx the parse tree
+	 */
+	enterCollection?: (ctx: CollectionContext) => void;
+	/**
+	 * Exit a parse tree produced by `mongoParser.collection`.
+	 * @param ctx the parse tree
+	 */
+	exitCollection?: (ctx: CollectionContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `mongoParser.functionCall`.

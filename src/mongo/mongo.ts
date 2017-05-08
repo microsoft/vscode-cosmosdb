@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as fs from 'fs';
-import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collection as MongoCollection, Cursor, ObjectID } from 'mongodb';
+import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collection as MongoCollection, Cursor, ObjectID, MongoError } from 'mongodb';
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 
@@ -76,9 +76,9 @@ export class Model implements IMongoResource {
 	getChildren(): Promise<IMongoResource[]> {
 		return this._serversJson.load().then(serverConnections => {
 			this._serverConnections = serverConnections;
-			return Promise.all(this._serverConnections.map(server => this.resolveServer(server)))
+			return Promise.all(this._serverConnections.map(server => this.resolveServer(server, false)))
 				.then(servers => {
-					this._servers = servers;
+					this._servers = servers.filter(server => !!server);
 					return this._servers;
 				});
 		});
@@ -89,14 +89,18 @@ export class Model implements IMongoResource {
 	}
 
 	add(connectionString: string) {
-		this._serverConnections.push(connectionString);
-		this._serversJson.write(this._serverConnections)
-			.then(() => {
-				this._onChange.fire();
+		this.resolveServer(connectionString, true)
+			.then(server => {
+				this._serverConnections.push(connectionString);
+				this._serversJson.write(this._serverConnections)
+					.then(() => {
+						this._onChange.fire();
+					});
 			});
 	}
 
-	remove(id: string) {
+	remove(server: IMongoResource) {
+		const id = server instanceof Server ? server.id : server instanceof NoConnectionServer ? server.id : null;
 		const index = this._servers.findIndex((value) => value.id === id);
 		if (index !== -1) {
 			this._servers.splice(index, 1);
@@ -105,12 +109,33 @@ export class Model implements IMongoResource {
 		}
 	}
 
-	private resolveServer(connectionString: string): Promise<Server> {
-		return <Promise<Server>>MongoClient.connect(connectionString)
-			.then(db => {
-				return new Server(connectionString, db.serverConfig);
+	private resolveServer(connectionString: string, throwError: boolean): Promise<Server> {
+		return new Promise((c, e) => {
+			MongoClient.connect(connectionString, (error: MongoError, db: Db) => {
+				if (error) {
+					vscode.window.showErrorMessage(error.message);
+					if (throwError) {
+						e(error.message);
+					} else {
+						c(new NoConnectionServer(connectionString, error.message));
+					}
+				} else {
+					c(new Server(connectionString, db.serverConfig));
+				}
 			});
+		})
 	}
+}
+
+export class NoConnectionServer implements IMongoResource {
+
+	readonly contextKey: string = 'mongoServer';
+	readonly label: string;
+
+	constructor(readonly id: string, private readonly error: string) {
+		this.label = id;
+	}
+
 }
 
 export class Server implements IMongoResource {

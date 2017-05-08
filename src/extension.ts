@@ -31,13 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
 			// Commands
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.addServer', () => addServer()));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.refreshExplorer', () => view.refresh(model)));
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.removeServer', (element: IMongoResource) => {
-				if (element instanceof Server) {
-					model.remove(element.id);
-				} else if (element instanceof Database) {
-					model.remove(element.server.id);
-				}
-			}));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.removeServer', (element: IMongoResource) => model.remove(element)));
 
 			vscode.window.setStatusBarMessage('Mongo: Not connected');
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.connect', (element: Database) => connectToDatabase(element)));

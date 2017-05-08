@@ -1,195 +1,195 @@
 {
-  "name": "vscode-mongodb",
-  "displayName": "vscode-mongodb",
-  "description": "VS Code extension for Mongo db",
-  "version": "0.0.1",
-  "publisher": "sandy081",
-  "engines": {
-    "vscode": "^1.12.0"
-  },
-  "enableProposedApi": true,
-  "categories": [
-    "Other"
-  ],
-  "homepage": "https://github.com/sandy081/vscode-mongodb/blob/master/README.md",
-  "bugs": {
-    "url": "https://github.com/sandy081/vscode-mongodb/issues"
-  },
-  "license": "SEE LICENSE IN LICENSE.md",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/sandy081/vscode-mongodb"
-  },
-  "activationEvents": [
-    "*"
-  ],
-  "main": "./out/src/extension",
-  "contributes": {
-    "languages": [
-      {
-        "id": "mongo",
-        "extensions": [
-          ".mongo"
-        ],
-        "firstLine": "^#!/.*\\bmongo*\\b",
-        "configuration": "./grammar/configuration.json"
-      }
-    ],
-    "grammars": [
-      {
-        "language": "mongo",
-        "scopeName": "source.js",
-        "path": "./grammar/JavaScript.tmLanguage.json"
-      },
-      {
-        "scopeName": "source.js.regexp",
-        "path": "./grammar/Regular Expressions (JavaScript).tmLanguage"
-      }
-    ],
-    "commands": [
-      {
-        "category": "Mongo",
-        "command": "mongo.execute",
-        "title": "Execute Script"
-      },
-      {
-        "category": "Mongo",
-        "command": "mongo.addServer",
-        "title": "Add Server",
-        "icon": {
-          "light": "resources/icons/light/add.svg",
-          "dark": "resources/icons/dark/add.svg"
-        }
-      },
-      {
-        "category": "Mongo",
-        "command": "mongo.removeServer",
-        "title": "Remove Server"
-      },
-      {
-        "category": "Mongo",
-        "command": "mongo.connect",
-        "title": "Connect"
-      },
-      {
-        "category": "Mongo",
-        "command": "mongo.connectDb",
-        "title": "Connect Database"
-      },
-      {
-        "category": "Mongo",
-        "command": "mongo.newScrapbook",
-        "title": "New Scrapbook",
-        "icon": {
-          "light": "resources/icons/light/addFile.svg",
-          "dark": "resources/icons/dark/addFile.svg"
-        }
-      },
-      {
-        "category": "Mongo",
-        "command": "mongo.refreshExplorer",
-        "title": "Refresh",
-        "icon": {
-          "light": "resources/icons/light/refresh.svg",
-          "dark": "resources/icons/dark/refresh.svg"
-        }
-      },
-      {
-        "category": "Mongo",
-        "command": "mongo.updateDocuments",
-        "title": "Update"
-      }
-    ],
-    "menus": {
-      "editor/context": [
-        {
-          "command": "mongo.execute",
-          "when": "resourceLangId==mongo"
-        },
-        {
-          "command": "mongo.updateDocuments",
-          "when": "resourceFilename==result.json"
-        }
-      ],
-      "view/title": [
-        {
-          "command": "mongo.refreshExplorer",
-          "when": "view == mongoExplorer",
-          "group": "navigation"
-        },
-        {
-          "command": "mongo.addServer",
-          "when": "view == mongoExplorer",
-          "group": "navigation"
-        },
-        {
-          "command": "mongo.newScrapbook",
-          "when": "view == mongoExplorer",
-          "group": "navigation"
-        }
-      ],
-      "view/resource": [
-        {
-          "command": "mongo.removeServer",
-          "when": "view == mongoExplorer && resource == mongoServer",
-          "group": "navigation"
-        },
-        {
-          "command": "mongo.connect",
-          "when": "view == mongoExplorer && resource == mongoDb",
-          "group": "navigation"
-        }
-      ],
-      "commandPalette": [
-        {
-          "command": "mongo.connect",
-          "when": "view == mongoExplorer && resource == mongoDb"
-        }
-      ]
-    },
-    "keybindings": [
-      {
-        "command": "mongo.execute",
-        "key": "cmd+`",
-        "when": "resourceLangId==mongo"
-      }
-    ],
-    "configuration": {
-      "title": "Mongo",
-      "properties": {
-        "mongo.shell.path": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Path to the mongo shell executable",
-          "default": null,
-          "isExecutable": true
-        }
-      }
-    }
-  },
-  "scripts": {
-    "vscode:prepublish": "tsc -p ./",
-    "compile": "tsc -watch -p ./",
-    "postinstall": "node ./node_modules/vscode/bin/install",
-    "antlr4ts": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src"
-  },
-  "devDependencies": {
-    "@types/mocha": "^2.2.32",
-    "@types/node": "^6.0.40",
-    "antlr4ts-cli": "^0.4.0-alpha.4",
-    "mocha": "^2.3.3",
-    "typescript": "^2.0.3",
-    "vscode": "^1.0.0"
-  },
-  "dependencies": {
-    "antlr4ts": "^0.4.0-alpha.4",
-    "mongodb": "^2.2.25",
-    "request-light": "^0.2.0",
-    "vscode-languageclient": "^3.1.0-alpha.1",
-    "vscode-languageserver": "^3.1.0-alpha.1",
-    "vscode-nls": "^2.0.2",
-    "vscode-uri": "^1.0.0"
-  }
+	"name": "vscode-mongodb",
+	"displayName": "vscode-mongodb",
+	"description": "VS Code extension for Mongo db",
+	"version": "0.0.1",
+	"publisher": "sandy081",
+	"engines": {
+		"vscode": "^1.12.0"
+	},
+	"enableProposedApi": true,
+	"categories": [
+		"Other"
+	],
+	"homepage": "https://github.com/sandy081/vscode-mongodb/blob/master/README.md",
+	"bugs": {
+		"url": "https://github.com/sandy081/vscode-mongodb/issues"
+	},
+	"license": "SEE LICENSE IN LICENSE.md",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/sandy081/vscode-mongodb"
+	},
+	"activationEvents": [
+		"*"
+	],
+	"main": "./out/src/extension",
+	"contributes": {
+		"languages": [
+			{
+				"id": "mongo",
+				"extensions": [
+					".mongo"
+				],
+				"firstLine": "^#!/.*\\bmongo*\\b",
+				"configuration": "./grammar/configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "mongo",
+				"scopeName": "source.js",
+				"path": "./grammar/JavaScript.tmLanguage.json"
+			},
+			{
+				"scopeName": "source.js.regexp",
+				"path": "./grammar/Regular Expressions (JavaScript).tmLanguage"
+			}
+		],
+		"commands": [
+			{
+				"category": "Mongo",
+				"command": "mongo.execute",
+				"title": "Execute Script"
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.addServer",
+				"title": "Add Server",
+				"icon": {
+					"light": "resources/icons/light/add.svg",
+					"dark": "resources/icons/dark/add.svg"
+				}
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.removeServer",
+				"title": "Remove Server"
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.connect",
+				"title": "Connect"
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.connectDb",
+				"title": "Connect Database"
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.newScrapbook",
+				"title": "New Scrapbook",
+				"icon": {
+					"light": "resources/icons/light/addFile.svg",
+					"dark": "resources/icons/dark/addFile.svg"
+				}
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.refreshExplorer",
+				"title": "Refresh",
+				"icon": {
+					"light": "resources/icons/light/refresh.svg",
+					"dark": "resources/icons/dark/refresh.svg"
+				}
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.updateDocuments",
+				"title": "Update"
+			}
+		],
+		"menus": {
+			"editor/context": [
+				{
+					"command": "mongo.execute",
+					"when": "resourceLangId==mongo"
+				},
+				{
+					"command": "mongo.updateDocuments",
+					"when": "resourceFilename==result.json"
+				}
+			],
+			"view/title": [
+				{
+					"command": "mongo.refreshExplorer",
+					"when": "view == mongoExplorer",
+					"group": "navigation"
+				},
+				{
+					"command": "mongo.addServer",
+					"when": "view == mongoExplorer",
+					"group": "navigation"
+				},
+				{
+					"command": "mongo.newScrapbook",
+					"when": "view == mongoExplorer",
+					"group": "navigation"
+				}
+			],
+			"view/resource": [
+				{
+					"command": "mongo.removeServer",
+					"when": "view == mongoExplorer && resource == mongoServer",
+					"group": "navigation"
+				},
+				{
+					"command": "mongo.connect",
+					"when": "view == mongoExplorer && resource == mongoDb",
+					"group": "navigation"
+				}
+			],
+			"commandPalette": [
+				{
+					"command": "mongo.connect",
+					"when": "view == mongoExplorer && resource == mongoDb"
+				}
+			]
+		},
+		"keybindings": [
+			{
+				"command": "mongo.execute",
+				"key": "cmd+'",
+				"when": "resourceLangId==mongo"
+			}
+		],
+		"configuration": {
+			"title": "Mongo",
+			"properties": {
+				"mongo.shell.path": {
+					"type": [
+						"string",
+						"null"
+					],
+					"description": "Path to the mongo shell executable",
+					"default": null,
+					"isExecutable": true
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "tsc -p ./",
+		"compile": "tsc -watch -p ./",
+		"postinstall": "node ./node_modules/vscode/bin/install",
+		"antlr4ts": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src"
+	},
+	"devDependencies": {
+		"@types/mocha": "^2.2.32",
+		"@types/node": "^6.0.40",
+		"antlr4ts-cli": "^0.4.0-alpha.4",
+		"mocha": "^2.3.3",
+		"typescript": "^2.0.3",
+		"vscode": "^1.0.0"
+	},
+	"dependencies": {
+		"antlr4ts": "^0.4.0-alpha.4",
+		"mongodb": "^2.2.25",
+		"request-light": "^0.2.0",
+		"vscode-languageclient": "^3.1.0-alpha.1",
+		"vscode-languageserver": "^3.1.0-alpha.1",
+		"vscode-nls": "^2.0.2",
+		"vscode-uri": "^1.0.0"
+	}
 }

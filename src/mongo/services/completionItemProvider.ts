@@ -58,7 +58,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		if (terminalNode.symbol === ctx._CLOSED_PARENTHESIS) {
 			return this.thenable(this.createDbKeywordCompletion(this.createRangeAfter(terminalNode)));
 		}
-		return ctx.parent.accept(this);
+		return this.thenable();
 	}
 
 	visitArgumentList(ctx: mongoParser.ArgumentListContext): Promise<CompletionItem[]> {

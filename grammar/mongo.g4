@@ -97,7 +97,7 @@ BooleanLiteral
 	;
 
 numericLiteral
-	: DecimalLiteral
+	: '-'?DecimalLiteral
 	;
 
 DecimalLiteral
@@ -117,7 +117,7 @@ DB: 'db';
 LF: '\n';
 CRLF: '\r\n';
 
-STRING_LITERAL: ((~["\\ \t\n:.;()]) | STRING_ESCAPE )+ {!this.isExternalIdentifierText(this.text)}?;
+STRING_LITERAL: ((~["\\ \t\n:.;()-]) | STRING_ESCAPE )+ {!this.isExternalIdentifierText(this.text)}?;
 QUOTED_STRING_LITERAL: '"' ((~["\\]) | STRING_ESCAPE)* '"';
 
 fragment

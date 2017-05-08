@@ -322,13 +322,26 @@ export class Collection implements IMongoResource {
 	readonly canHaveChildren: boolean = false;
 
 	executeCommand(command: string, args?: string): Thenable<string> {
-		if (command === 'find') {
-			return reportProgress(this.find(args ? JSON.parse(args) : undefined), 'Running find query');
+		try {
+			if (command === 'find') {
+				return reportProgress(this.find(args ? this.parseJson(args) : undefined), 'Running find query');
+			}
+			if (command === 'findOne') {
+				return reportProgress(this.findOne(args ? this.parseJson(args) : undefined), 'Running find query');
+			}
+			if (command === 'insertMany') {
+				return reportProgress(this.insertMany(args ? this.parseJson(args) : undefined), 'Inserting documents');
+			}
+			if (command === 'insert') {
+				return reportProgress(this.insert(args ? this.parseJson(args) : undefined), 'Inserting document');
+			}
+			if (command === 'insertOne') {
+				return reportProgress(this.insertOne(args ? this.parseJson(args) : undefined), 'Inserting document');
+			}
+			return null;
+		} catch (error) {
+			return Promise.resolve(error);
 		}
-		if (command === 'findOne') {
-			return reportProgress(this.findOne(args ? JSON.parse(args) : undefined), 'Running find query');
-		}
-		return null;
 	}
 
 	update(documents: any[]): Thenable<string> {
@@ -349,11 +362,30 @@ export class Collection implements IMongoResource {
 		return promise;
 	}
 
-	private findOne(args?: any): Promise<string> {
-		return new Promise((c, e) => {
-			this.collection.findOne(args)
-				.then(result => c(this.stringify(result)));
-		});
+	private findOne(args?: any): Thenable<string> {
+		return this.collection.findOne(args)
+			.then(result => this.stringify(result));
+	}
+
+	private insert(document: any): Thenable<string> {
+		return this.collection.insert(document)
+			.then(({ insertedCount, insertedId, result }) => {
+				return this.stringify({ insertedCount, insertedId, result })
+			});
+	}
+
+	private insertOne(document: any): Thenable<string> {
+		return this.collection.insertOne(document)
+			.then(({ insertedCount, insertedId, result }) => {
+				return this.stringify({ insertedCount, insertedId, result })
+			});
+	}
+
+	private insertMany(documents: any[]): Thenable<string> {
+		return this.collection.insertMany(documents)
+			.then(({ insertedCount, insertedIds, result }) => {
+				return this.stringify({ insertedCount, insertedIds, result })
+			});
 	}
 
 	private readNext(result: any[], cursor: Cursor<any>, batchSize: number, callback: (result: string) => void): void {
@@ -373,6 +405,14 @@ export class Collection implements IMongoResource {
 				this.readNext(result, cursor, batchSize, callback);
 			})
 		})
+	}
+
+	private parseJson(content: string): any {
+		try {
+			return JSON.parse(content)
+		} catch (error) {
+			throw error.message;
+		}
 	}
 
 	private stringify(result: any): string {

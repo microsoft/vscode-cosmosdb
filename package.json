@@ -150,8 +150,8 @@
 		"keybindings": [
 			{
 				"command": "mongo.execute",
-				"key": "cmd+'",
-				"when": "resourceLangId==mongo"
+				"key": "shift+cmd+'",
+				"when": "resourceLangId==mongo && editorTextFocus"
 			}
 		],
 		"configuration": {

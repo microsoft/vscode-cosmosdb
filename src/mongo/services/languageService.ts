@@ -31,6 +31,10 @@ export class LanguageService {
 		connection.onRequest('connect', (connectionParams) => {
 			MongoClient.connect(connectionParams.connectionString).then(db => this.db = db);
 		});
+
+		connection.onRequest('disconnect', () => {
+			this.db = null;
+		});
 	}
 
 	provideCompletionItems(positionParams: TextDocumentPositionParams): Promise<CompletionItem[]> {

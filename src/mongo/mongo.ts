@@ -143,6 +143,8 @@ export class Server implements IMongoResource {
 	readonly contextKey: string = 'mongoServer';
 
 	private _databases: Database[] = [];
+	private _onChange: EventEmitter<void> = new EventEmitter<void>();
+	readonly onChange: Event<void> = this._onChange.event;
 
 	constructor(public readonly id: string, private readonly mongoServer: MongoServer) {
 	}
@@ -173,6 +175,19 @@ export class Server implements IMongoResource {
 
 	get databases(): Database[] {
 		return this._databases;
+	}
+
+	createDatabase(name: string, collection: string): Thenable<Database> {
+		const database = new Database(name, this);
+		return database.createCollection(collection)
+			.then(() => {
+				this._onChange.fire();
+				return database;
+			});
+	}
+
+	dropDb(database: Database): void {
+		database.drop().then(() => this._onChange.fire());
 	}
 }
 
@@ -232,6 +247,16 @@ export class Database implements IMongoResource {
 					return new Collection(collection).update(documents);
 				}
 			});
+	}
+
+	createCollection(collectionName: string): Promise<Collection> {
+		return this.getDb()
+			.then(db => db.createCollection(collectionName))
+			.then(collection => new Collection(collection))
+	}
+
+	drop(): Thenable<any> {
+		return this.getDb().then(db => db.dropDatabase());
 	}
 
 	private getCollection(collection: string): Promise<Collection> {

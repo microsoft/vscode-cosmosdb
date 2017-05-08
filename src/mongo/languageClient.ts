@@ -51,4 +51,8 @@ export default class MongoDBLanguageClient {
 		const connectionString = `${uri.scheme}://${uri.authority}/${database.id}?${uri.query}`
 		this.client.sendRequest('connect', { connectionString });
 	}
+
+	disconnect(): void {
+		this.client.sendRequest('disconnect');
+	}
 }

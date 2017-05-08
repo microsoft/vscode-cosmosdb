@@ -63,6 +63,11 @@
 			},
 			{
 				"category": "Mongo",
+				"command": "mongo.createDatabase",
+				"title": "Create Database"
+			},
+			{
+				"category": "Mongo",
 				"command": "mongo.removeServer",
 				"title": "Remove Server"
 			},
@@ -75,6 +80,11 @@
 				"category": "Mongo",
 				"command": "mongo.connectDb",
 				"title": "Connect Database"
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.dropDb",
+				"title": "Drop"
 			},
 			{
 				"category": "Mongo",
@@ -130,12 +140,22 @@
 			],
 			"view/resource": [
 				{
+					"command": "mongo.createDatabase",
+					"when": "view == mongoExplorer && resource == mongoServer",
+					"group": "navigation"
+				},
+				{
 					"command": "mongo.removeServer",
 					"when": "view == mongoExplorer && resource == mongoServer",
 					"group": "navigation"
 				},
 				{
 					"command": "mongo.connect",
+					"when": "view == mongoExplorer && resource == mongoDb",
+					"group": "navigation"
+				},
+				{
+					"command": "mongo.dropDb",
 					"when": "view == mongoExplorer && resource == mongoDb",
 					"group": "navigation"
 				}

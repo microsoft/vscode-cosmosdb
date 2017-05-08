@@ -32,9 +32,11 @@ export function activate(context: vscode.ExtensionContext) {
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.addServer', () => addServer()));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.refreshExplorer', () => view.refresh(model)));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.removeServer', (element: IMongoResource) => model.remove(element)));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.createDatabase', (server: Server) => createDatabase(server)));
 
 			vscode.window.setStatusBarMessage('Mongo: Not connected');
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.connect', (element: Database) => connectToDatabase(element)));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.dropDb', (element: Database) => dropDatabase(element)));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.connectDb', () => {
 				vscode.window.showQuickPick(getDatabaseQuickPicks()).then(pick => connectToDatabase(pick.database));
 			}));
@@ -63,6 +65,24 @@ function addServer(): void {
 	});
 }
 
+function createDatabase(server: Server): void {
+	vscode.window.showInputBox({
+		placeHolder: 'Database Name'
+	}).then(database => {
+		if (database) {
+			vscode.window.showInputBox({
+				placeHolder: 'Collection Name',
+				prompt: 'A collection is must to create a database'
+			}).then(collection => {
+				if (collection) {
+					server.createDatabase(database, collection)
+						.then(database => connectToDatabase(database));
+				}
+			})
+		}
+	});
+}
+
 class DatabaseQuickPick implements vscode.QuickPickItem {
 	readonly label: string;
 	readonly description: string;
@@ -83,6 +103,15 @@ function getDatabaseQuickPicks(): Thenable<DatabaseQuickPick[]> {
 				return quickPicks;
 			})
 	});
+}
+
+function dropDatabase(database: Database): void {
+	if (connectedDb && connectedDb.server.id === database.server.id && connectedDb.id === database.id) {
+		connectedDb = null;
+		languageClient.disconnect();
+		vscode.window.setStatusBarMessage('Mongo: Not connected');
+	}
+	database.server.dropDb(database);
 }
 
 function connectToDatabase(database: Database): void {

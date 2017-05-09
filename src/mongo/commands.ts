@@ -108,7 +108,9 @@ export class MongoScriptDocumentVisitor extends MongoVisitor<MongoScript[]> {
 	}
 
 	visitFunctionCall(ctx: mongoParser.FunctionCallContext): MongoScript[] {
-		this.mongoScripts[this.mongoScripts.length - 1].command = ctx._FUNCTION_NAME.text;
+		if (ctx.parent instanceof mongoParser.CommandContext) {
+			this.mongoScripts[this.mongoScripts.length - 1].command = ctx._FUNCTION_NAME.text;
+		}
 		return super.visitFunctionCall(ctx);
 	}
 

@@ -56,22 +56,22 @@ propertyAssignment
 	;
 
 propertyValue
-	: functionCall
+	: literal
 	| objectLiteral
 	| arrayLiteral
-	| literal
+	| functionCall
 	;
 
 literal
 	: (NullLiteral
 	| BooleanLiteral
-	| QUOTED_STRING_LITERAL
+	| StringLiteral
 	)
-	| numericLiteral
+	| NumericLiteral
 	;
 
 propertyName
-	: QUOTED_STRING_LITERAL
+	: StringLiteral
 	;
 
 comment
@@ -87,6 +87,11 @@ MultiLineComment
 	: '/*' .*? '*/' -> channel(HIDDEN)
 	;
 
+StringLiteral
+	: SINGLE_QUOTED_STRING_LITERAL
+	| DOUBLE_QUOTED_STRING_LITERAL
+	;
+
 NullLiteral
 	: 'null'
 	;
@@ -96,7 +101,7 @@ BooleanLiteral
 	| 'false'
 	;
 
-numericLiteral
+NumericLiteral
 	: '-'?DecimalLiteral
 	;
 
@@ -117,11 +122,12 @@ DB: 'db';
 LF: '\n';
 CRLF: '\r\n';
 
-STRING_LITERAL: ((~["\\ \t\n:.;()-]) | STRING_ESCAPE )+ {!this.isExternalIdentifierText(this.text)}?;
-QUOTED_STRING_LITERAL: '"' ((~["\\]) | STRING_ESCAPE)* '"';
+STRING_LITERAL: ((~["\\ \t\n:.;(){}\-]) | STRING_ESCAPE )+ {!this.isExternalIdentifierText(this.text)}?;
+DOUBLE_QUOTED_STRING_LITERAL: '"' ((~["\\]) | STRING_ESCAPE)* '"';
+SINGLE_QUOTED_STRING_LITERAL: '\'' ((~['\\]) | STRING_ESCAPE)* '\'';
 
 fragment
-STRING_ESCAPE: '\\' [\\"];
+STRING_ESCAPE: '\\' [\\"\\'];
 
 fragment DecimalIntegerLiteral
 	: '0'

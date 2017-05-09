@@ -20,7 +20,6 @@ import { PropertyValueContext } from './mongoParser';
 import { LiteralContext } from './mongoParser';
 import { PropertyNameContext } from './mongoParser';
 import { CommentContext } from './mongoParser';
-import { NumericLiteralContext } from './mongoParser';
 
 
 /**
@@ -214,16 +213,5 @@ export interface mongoListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitComment?: (ctx: CommentContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `mongoParser.numericLiteral`.
-	 * @param ctx the parse tree
-	 */
-	enterNumericLiteral?: (ctx: NumericLiteralContext) => void;
-	/**
-	 * Exit a parse tree produced by `mongoParser.numericLiteral`.
-	 * @param ctx the parse tree
-	 */
-	exitNumericLiteral?: (ctx: NumericLiteralContext) => void;
 }
 

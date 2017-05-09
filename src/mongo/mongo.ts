@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as vm from 'vm';
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collection as MongoCollection, Cursor, ObjectID, MongoError } from 'mongodb';
@@ -324,19 +325,19 @@ export class Collection implements IMongoResource {
 	executeCommand(command: string, args?: string): Thenable<string> {
 		try {
 			if (command === 'find') {
-				return reportProgress(this.find(args ? this.parseJson(args) : undefined), 'Running find query');
+				return reportProgress(this.find(args ? parseJSContent(args) : undefined), 'Running find query');
 			}
 			if (command === 'findOne') {
-				return reportProgress(this.findOne(args ? this.parseJson(args) : undefined), 'Running find query');
+				return reportProgress(this.findOne(args ? parseJSContent(args) : undefined), 'Running find query');
 			}
 			if (command === 'insertMany') {
-				return reportProgress(this.insertMany(args ? this.parseJson(args) : undefined), 'Inserting documents');
+				return reportProgress(this.insertMany(args ? parseJSContent(args) : undefined), 'Inserting documents');
 			}
 			if (command === 'insert') {
-				return reportProgress(this.insert(args ? this.parseJson(args) : undefined), 'Inserting document');
+				return reportProgress(this.insert(args ? parseJSContent(args) : undefined), 'Inserting document');
 			}
 			if (command === 'insertOne') {
-				return reportProgress(this.insertOne(args ? this.parseJson(args) : undefined), 'Inserting document');
+				return reportProgress(this.insertOne(args ? parseJSContent(args) : undefined), 'Inserting document');
 			}
 			return null;
 		} catch (error) {
@@ -407,14 +408,6 @@ export class Collection implements IMongoResource {
 		})
 	}
 
-	private parseJson(content: string): any {
-		try {
-			return JSON.parse(content)
-		} catch (error) {
-			throw error.message;
-		}
-	}
-
 	private stringify(result: any): string {
 		return JSON.stringify(result, null, '\t')
 	}
@@ -443,4 +436,16 @@ function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
 	}, (progress) => {
 		return promise;
 	})
+}
+
+function parseJSContent(content: string): any {
+	try {
+		const sandbox = {};
+		const key = 'parse' + Math.floor(Math.random() * 1000000);
+		sandbox[key] = {};
+		vm.runInNewContext(key + '=' + content, sandbox);
+		return sandbox[key];
+	} catch (error) {
+		throw error.message;
+	}
 }

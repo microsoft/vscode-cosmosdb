@@ -36,21 +36,23 @@ export class mongoParser extends Parser {
 	public static readonly T__5=6;
 	public static readonly T__6=7;
 	public static readonly T__7=8;
-	public static readonly T__8=9;
-	public static readonly SingleLineComment=10;
-	public static readonly MultiLineComment=11;
+	public static readonly SingleLineComment=9;
+	public static readonly MultiLineComment=10;
+	public static readonly StringLiteral=11;
 	public static readonly NullLiteral=12;
 	public static readonly BooleanLiteral=13;
-	public static readonly DecimalLiteral=14;
-	public static readonly LineTerminator=15;
-	public static readonly SEMICOLON=16;
-	public static readonly DOT=17;
-	public static readonly DB=18;
-	public static readonly LF=19;
-	public static readonly CRLF=20;
-	public static readonly STRING_LITERAL=21;
-	public static readonly QUOTED_STRING_LITERAL=22;
-	public static readonly WHITESPACE=23;
+	public static readonly NumericLiteral=14;
+	public static readonly DecimalLiteral=15;
+	public static readonly LineTerminator=16;
+	public static readonly SEMICOLON=17;
+	public static readonly DOT=18;
+	public static readonly DB=19;
+	public static readonly LF=20;
+	public static readonly CRLF=21;
+	public static readonly STRING_LITERAL=22;
+	public static readonly DOUBLE_QUOTED_STRING_LITERAL=23;
+	public static readonly SINGLE_QUOTED_STRING_LITERAL=24;
+	public static readonly WHITESPACE=25;
 	public static readonly RULE_mongoCommands = 0;
 	public static readonly RULE_commands = 1;
 	public static readonly RULE_command = 2;
@@ -68,25 +70,24 @@ export class mongoParser extends Parser {
 	public static readonly RULE_literal = 14;
 	public static readonly RULE_propertyName = 15;
 	public static readonly RULE_comment = 16;
-	public static readonly RULE_numericLiteral = 17;
 	public static readonly ruleNames: string[] = [
 		"mongoCommands", "commands", "command", "emptyCommand", "collection", 
 		"functionCall", "arguments", "argumentList", "objectLiteral", "arrayLiteral", 
 		"elementList", "propertyNameAndValueList", "propertyAssignment", "propertyValue", 
-		"literal", "propertyName", "comment", "numericLiteral"
+		"literal", "propertyName", "comment"
 	];
 
 	private static readonly _LITERAL_NAMES: (string | undefined)[] = [
-		undefined, "'('", "')'", "'{'", "','", "'}'", "'['", "']'", "':'", "'-'", 
-		undefined, undefined, "'null'", undefined, undefined, undefined, "';'", 
-		"'.'", "'db'", "'\n'", "'\r\n'"
+		undefined, "'('", "')'", "'{'", "','", "'}'", "'['", "']'", "':'", undefined, 
+		undefined, undefined, "'null'", undefined, undefined, undefined, undefined, 
+		"';'", "'.'", "'db'", "'\n'", "'\r\n'"
 	];
 	private static readonly _SYMBOLIC_NAMES: (string | undefined)[] = [
 		undefined, undefined, undefined, undefined, undefined, undefined, undefined, 
-		undefined, undefined, undefined, "SingleLineComment", "MultiLineComment", 
-		"NullLiteral", "BooleanLiteral", "DecimalLiteral", "LineTerminator", "SEMICOLON", 
-		"DOT", "DB", "LF", "CRLF", "STRING_LITERAL", "QUOTED_STRING_LITERAL", 
-		"WHITESPACE"
+		undefined, undefined, "SingleLineComment", "MultiLineComment", "StringLiteral", 
+		"NullLiteral", "BooleanLiteral", "NumericLiteral", "DecimalLiteral", "LineTerminator", 
+		"SEMICOLON", "DOT", "DB", "LF", "CRLF", "STRING_LITERAL", "DOUBLE_QUOTED_STRING_LITERAL", 
+		"SINGLE_QUOTED_STRING_LITERAL", "WHITESPACE"
 	];
 	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoParser._LITERAL_NAMES, mongoParser._SYMBOLIC_NAMES, []);
 
@@ -116,9 +117,9 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 36;
+			this.state = 34;
 			this.commands();
-			this.state = 37;
+			this.state = 35;
 			this.match(mongoParser.EOF);
 			}
 		}
@@ -144,30 +145,30 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 42; 
+			this.state = 40; 
 			this._errHandler.sync(this);
 			_la = this._input.LA(1);
 			do {
 				{
-				this.state = 42;
+				this.state = 40;
 				this._errHandler.sync(this);
 				switch (this._input.LA(1)) {
 				case mongoParser.DB:
 					{
-					this.state = 39;
+					this.state = 37;
 					this.command();
 					}
 					break;
 				case mongoParser.SEMICOLON:
 					{
-					this.state = 40;
+					this.state = 38;
 					this.emptyCommand();
 					}
 					break;
 				case mongoParser.SingleLineComment:
 				case mongoParser.MultiLineComment:
 					{
-					this.state = 41;
+					this.state = 39;
 					this.comment();
 					}
 					break;
@@ -175,7 +176,7 @@ export class mongoParser extends Parser {
 					throw new NoViableAltException(this);
 				}
 				}
-				this.state = 44; 
+				this.state = 42; 
 				this._errHandler.sync(this);
 				_la = this._input.LA(1);
 			} while ( (((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.SingleLineComment) | (1 << mongoParser.MultiLineComment) | (1 << mongoParser.SEMICOLON) | (1 << mongoParser.DB))) !== 0) );
@@ -202,16 +203,16 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 46;
+			this.state = 44;
 			this.match(mongoParser.DB);
-			this.state = 47;
+			this.state = 45;
 			this.match(mongoParser.DOT);
-			this.state = 53;
+			this.state = 51;
 			this._errHandler.sync(this);
 			switch ( this.interpreter.adaptivePredict(this._input,2,this._ctx) ) {
 			case 1:
 				{
-				this.state = 48;
+				this.state = 46;
 				this.functionCall();
 				}
 				break;
@@ -219,22 +220,22 @@ export class mongoParser extends Parser {
 			case 2:
 				{
 				{
-				this.state = 49;
+				this.state = 47;
 				this.collection();
-				this.state = 50;
+				this.state = 48;
 				this.match(mongoParser.DOT);
-				this.state = 51;
+				this.state = 49;
 				this.functionCall();
 				}
 				}
 				break;
 			}
-			this.state = 56;
+			this.state = 54;
 			this._errHandler.sync(this);
 			switch ( this.interpreter.adaptivePredict(this._input,3,this._ctx) ) {
 			case 1:
 				{
-				this.state = 55;
+				this.state = 53;
 				this.match(mongoParser.SEMICOLON);
 				}
 				break;
@@ -262,7 +263,7 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 58;
+			this.state = 56;
 			this.match(mongoParser.SEMICOLON);
 			}
 		}
@@ -287,7 +288,7 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 60;
+			this.state = 58;
 			this.match(mongoParser.STRING_LITERAL);
 			}
 		}
@@ -312,9 +313,9 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 62;
+			this.state = 60;
 			_localctx._FUNCTION_NAME = this.match(mongoParser.STRING_LITERAL);
-			this.state = 63;
+			this.state = 61;
 			this.arguments();
 			}
 		}
@@ -340,19 +341,19 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 65;
+			this.state = 63;
 			_localctx._OPEN_PARENTHESIS = this.match(mongoParser.T__0);
-			this.state = 67;
+			this.state = 65;
 			this._errHandler.sync(this);
 			_la = this._input.LA(1);
-			if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__2) | (1 << mongoParser.T__5) | (1 << mongoParser.T__8) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.DecimalLiteral) | (1 << mongoParser.QUOTED_STRING_LITERAL))) !== 0)) {
+			if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__2) | (1 << mongoParser.T__5) | (1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.NumericLiteral))) !== 0)) {
 				{
-				this.state = 66;
+				this.state = 64;
 				this.argumentList();
 				}
 			}
 
-			this.state = 69;
+			this.state = 67;
 			_localctx._CLOSED_PARENTHESIS = this.match(mongoParser.T__1);
 			}
 		}
@@ -375,31 +376,30 @@ export class mongoParser extends Parser {
 		let _localctx: ArgumentListContext = new ArgumentListContext(this._ctx, this.state);
 		this.enterRule(_localctx, 14, mongoParser.RULE_argumentList);
 		try {
-			this.state = 74;
+			this.state = 72;
 			this._errHandler.sync(this);
 			switch (this._input.LA(1)) {
-			case mongoParser.T__8:
+			case mongoParser.StringLiteral:
 			case mongoParser.NullLiteral:
 			case mongoParser.BooleanLiteral:
-			case mongoParser.DecimalLiteral:
-			case mongoParser.QUOTED_STRING_LITERAL:
+			case mongoParser.NumericLiteral:
 				this.enterOuterAlt(_localctx, 1);
 				{
-				this.state = 71;
+				this.state = 69;
 				this.literal();
 				}
 				break;
 			case mongoParser.T__2:
 				this.enterOuterAlt(_localctx, 2);
 				{
-				this.state = 72;
+				this.state = 70;
 				this.objectLiteral();
 				}
 				break;
 			case mongoParser.T__5:
 				this.enterOuterAlt(_localctx, 3);
 				{
-				this.state = 73;
+				this.state = 71;
 				this.arrayLiteral();
 				}
 				break;
@@ -429,29 +429,29 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 76;
+			this.state = 74;
 			this.match(mongoParser.T__2);
-			this.state = 78;
+			this.state = 76;
 			this._errHandler.sync(this);
 			_la = this._input.LA(1);
-			if (_la===mongoParser.QUOTED_STRING_LITERAL) {
+			if (_la===mongoParser.StringLiteral) {
 				{
-				this.state = 77;
+				this.state = 75;
 				this.propertyNameAndValueList();
 				}
 			}
 
-			this.state = 81;
+			this.state = 79;
 			this._errHandler.sync(this);
 			_la = this._input.LA(1);
 			if (_la===mongoParser.T__3) {
 				{
-				this.state = 80;
+				this.state = 78;
 				this.match(mongoParser.T__3);
 				}
 			}
 
-			this.state = 83;
+			this.state = 81;
 			this.match(mongoParser.T__4);
 			}
 		}
@@ -477,19 +477,19 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 85;
+			this.state = 83;
 			this.match(mongoParser.T__5);
-			this.state = 87;
+			this.state = 85;
 			this._errHandler.sync(this);
 			_la = this._input.LA(1);
-			if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__2) | (1 << mongoParser.T__5) | (1 << mongoParser.T__8) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.DecimalLiteral) | (1 << mongoParser.STRING_LITERAL) | (1 << mongoParser.QUOTED_STRING_LITERAL))) !== 0)) {
+			if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__2) | (1 << mongoParser.T__5) | (1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.NumericLiteral) | (1 << mongoParser.STRING_LITERAL))) !== 0)) {
 				{
-				this.state = 86;
+				this.state = 84;
 				this.elementList();
 				}
 			}
 
-			this.state = 89;
+			this.state = 87;
 			this.match(mongoParser.T__6);
 			}
 		}
@@ -515,21 +515,21 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 91;
+			this.state = 89;
 			this.propertyValue();
-			this.state = 96;
+			this.state = 94;
 			this._errHandler.sync(this);
 			_la = this._input.LA(1);
 			while (_la===mongoParser.T__3) {
 				{
 				{
-				this.state = 92;
+				this.state = 90;
 				this.match(mongoParser.T__3);
-				this.state = 93;
+				this.state = 91;
 				this.propertyValue();
 				}
 				}
-				this.state = 98;
+				this.state = 96;
 				this._errHandler.sync(this);
 				_la = this._input.LA(1);
 			}
@@ -557,23 +557,23 @@ export class mongoParser extends Parser {
 			let _alt: number;
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 99;
+			this.state = 97;
 			this.propertyAssignment();
-			this.state = 104;
+			this.state = 102;
 			this._errHandler.sync(this);
 			_alt = this.interpreter.adaptivePredict(this._input,10,this._ctx);
 			while ( _alt!==2 && _alt!==ATN.INVALID_ALT_NUMBER ) {
 				if ( _alt===1 ) {
 					{
 					{
-					this.state = 100;
+					this.state = 98;
 					this.match(mongoParser.T__3);
-					this.state = 101;
+					this.state = 99;
 					this.propertyAssignment();
 					}
 					} 
 				}
-				this.state = 106;
+				this.state = 104;
 				this._errHandler.sync(this);
 				_alt = this.interpreter.adaptivePredict(this._input,10,this._ctx);
 			}
@@ -600,11 +600,11 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 107;
+			this.state = 105;
 			this.propertyName();
-			this.state = 108;
+			this.state = 106;
 			this.match(mongoParser.T__7);
-			this.state = 109;
+			this.state = 107;
 			this.propertyValue();
 			}
 		}
@@ -627,39 +627,38 @@ export class mongoParser extends Parser {
 		let _localctx: PropertyValueContext = new PropertyValueContext(this._ctx, this.state);
 		this.enterRule(_localctx, 26, mongoParser.RULE_propertyValue);
 		try {
-			this.state = 115;
+			this.state = 113;
 			this._errHandler.sync(this);
 			switch (this._input.LA(1)) {
-			case mongoParser.STRING_LITERAL:
+			case mongoParser.StringLiteral:
+			case mongoParser.NullLiteral:
+			case mongoParser.BooleanLiteral:
+			case mongoParser.NumericLiteral:
 				this.enterOuterAlt(_localctx, 1);
 				{
-				this.state = 111;
-				this.functionCall();
+				this.state = 109;
+				this.literal();
 				}
 				break;
 			case mongoParser.T__2:
 				this.enterOuterAlt(_localctx, 2);
 				{
-				this.state = 112;
+				this.state = 110;
 				this.objectLiteral();
 				}
 				break;
 			case mongoParser.T__5:
 				this.enterOuterAlt(_localctx, 3);
 				{
-				this.state = 113;
+				this.state = 111;
 				this.arrayLiteral();
 				}
 				break;
-			case mongoParser.T__8:
-			case mongoParser.NullLiteral:
-			case mongoParser.BooleanLiteral:
-			case mongoParser.DecimalLiteral:
-			case mongoParser.QUOTED_STRING_LITERAL:
+			case mongoParser.STRING_LITERAL:
 				this.enterOuterAlt(_localctx, 4);
 				{
-				this.state = 114;
-				this.literal();
+				this.state = 112;
+				this.functionCall();
 				}
 				break;
 			default:
@@ -686,17 +685,17 @@ export class mongoParser extends Parser {
 		this.enterRule(_localctx, 28, mongoParser.RULE_literal);
 		let _la: number;
 		try {
-			this.state = 119;
+			this.state = 117;
 			this._errHandler.sync(this);
 			switch (this._input.LA(1)) {
+			case mongoParser.StringLiteral:
 			case mongoParser.NullLiteral:
 			case mongoParser.BooleanLiteral:
-			case mongoParser.QUOTED_STRING_LITERAL:
 				this.enterOuterAlt(_localctx, 1);
 				{
-				this.state = 117;
+				this.state = 115;
 				_la = this._input.LA(1);
-				if ( !((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.QUOTED_STRING_LITERAL))) !== 0)) ) {
+				if ( !((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral))) !== 0)) ) {
 				this._errHandler.recoverInline(this);
 				} else {
 					if (this._input.LA(1) === Token.EOF) {
@@ -708,12 +707,11 @@ export class mongoParser extends Parser {
 				}
 				}
 				break;
-			case mongoParser.T__8:
-			case mongoParser.DecimalLiteral:
+			case mongoParser.NumericLiteral:
 				this.enterOuterAlt(_localctx, 2);
 				{
-				this.state = 118;
-				this.numericLiteral();
+				this.state = 116;
+				this.match(mongoParser.NumericLiteral);
 				}
 				break;
 			default:
@@ -741,8 +739,8 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 121;
-			this.match(mongoParser.QUOTED_STRING_LITERAL);
+			this.state = 119;
+			this.match(mongoParser.StringLiteral);
 			}
 		}
 		catch (re) {
@@ -767,7 +765,7 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-			this.state = 123;
+			this.state = 121;
 			_la = this._input.LA(1);
 			if ( !(_la===mongoParser.SingleLineComment || _la===mongoParser.MultiLineComment) ) {
 			this._errHandler.recoverInline(this);
@@ -795,95 +793,56 @@ export class mongoParser extends Parser {
 		}
 		return _localctx;
 	}
-	@RuleVersion(0)
-	public numericLiteral(): NumericLiteralContext {
-		let _localctx: NumericLiteralContext = new NumericLiteralContext(this._ctx, this.state);
-		this.enterRule(_localctx, 34, mongoParser.RULE_numericLiteral);
-		let _la: number;
-		try {
-			this.enterOuterAlt(_localctx, 1);
-			{
-			this.state = 126;
-			this._errHandler.sync(this);
-			_la = this._input.LA(1);
-			if (_la===mongoParser.T__8) {
-				{
-				this.state = 125;
-				this.match(mongoParser.T__8);
-				}
-			}
-
-			this.state = 128;
-			this.match(mongoParser.DecimalLiteral);
-			}
-		}
-		catch (re) {
-			if (re instanceof RecognitionException) {
-				_localctx.exception = re;
-				this._errHandler.reportError(this, re);
-				this._errHandler.recover(this, re);
-			} else {
-				throw re;
-			}
-		}
-		finally {
-			this.exitRule();
-		}
-		return _localctx;
-	}
 
 	public static readonly _serializedATN: string =
-		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\x19\x85\x04\x02"+
+		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\x1B~\x04\x02"+
 		"\t\x02\x04\x03\t\x03\x04\x04\t\x04\x04\x05\t\x05\x04\x06\t\x06\x04\x07"+
 		"\t\x07\x04\b\t\b\x04\t\t\t\x04\n\t\n\x04\v\t\v\x04\f\t\f\x04\r\t\r\x04"+
-		"\x0E\t\x0E\x04\x0F\t\x0F\x04\x10\t\x10\x04\x11\t\x11\x04\x12\t\x12\x04"+
-		"\x13\t\x13\x03\x02\x03\x02\x03\x02\x03\x03\x03\x03\x03\x03\x06\x03-\n"+
-		"\x03\r\x03\x0E\x03.\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x03"+
-		"\x04\x05\x048\n\x04\x03\x04\x05\x04;\n\x04\x03\x05\x03\x05\x03\x06\x03"+
-		"\x06\x03\x07\x03\x07\x03\x07\x03\b\x03\b\x05\bF\n\b\x03\b\x03\b\x03\t"+
-		"\x03\t\x03\t\x05\tM\n\t\x03\n\x03\n\x05\nQ\n\n\x03\n\x05\nT\n\n\x03\n"+
-		"\x03\n\x03\v\x03\v\x05\vZ\n\v\x03\v\x03\v\x03\f\x03\f\x03\f\x07\fa\n\f"+
-		"\f\f\x0E\fd\v\f\x03\r\x03\r\x03\r\x07\ri\n\r\f\r\x0E\rl\v\r\x03\x0E\x03"+
-		"\x0E\x03\x0E\x03\x0E\x03\x0F\x03\x0F\x03\x0F\x03\x0F\x05\x0Fv\n\x0F\x03"+
-		"\x10\x03\x10\x05\x10z\n\x10\x03\x11\x03\x11\x03\x12\x03\x12\x03\x13\x05"+
-		"\x13\x81\n\x13\x03\x13\x03\x13\x03\x13\x02\x02\x02\x14\x02\x02\x04\x02"+
-		"\x06\x02\b\x02\n\x02\f\x02\x0E\x02\x10\x02\x12\x02\x14\x02\x16\x02\x18"+
-		"\x02\x1A\x02\x1C\x02\x1E\x02 \x02\"\x02$\x02\x02\x04\x04\x02\x0E\x0F\x18"+
-		"\x18\x03\x02\f\r\x84\x02&\x03\x02\x02\x02\x04,\x03\x02\x02\x02\x060\x03"+
-		"\x02\x02\x02\b<\x03\x02\x02\x02\n>\x03\x02\x02\x02\f@\x03\x02\x02\x02"+
-		"\x0EC\x03\x02\x02\x02\x10L\x03\x02\x02\x02\x12N\x03\x02\x02\x02\x14W\x03"+
-		"\x02\x02\x02\x16]\x03\x02\x02\x02\x18e\x03\x02\x02\x02\x1Am\x03\x02\x02"+
-		"\x02\x1Cu\x03\x02\x02\x02\x1Ey\x03\x02\x02\x02 {\x03\x02\x02\x02\"}\x03"+
-		"\x02\x02\x02$\x80\x03\x02\x02\x02&\'\x05\x04\x03\x02\'(\x07\x02\x02\x03"+
-		"(\x03\x03\x02\x02\x02)-\x05\x06\x04\x02*-\x05\b\x05\x02+-\x05\"\x12\x02"+
-		",)\x03\x02\x02\x02,*\x03\x02\x02\x02,+\x03\x02\x02\x02-.\x03\x02\x02\x02"+
-		".,\x03\x02\x02\x02./\x03\x02\x02\x02/\x05\x03\x02\x02\x0201\x07\x14\x02"+
-		"\x0217\x07\x13\x02\x0228\x05\f\x07\x0234\x05\n\x06\x0245\x07\x13\x02\x02"+
-		"56\x05\f\x07\x0268\x03\x02\x02\x0272\x03\x02\x02\x0273\x03\x02\x02\x02"+
-		"8:\x03\x02\x02\x029;\x07\x12\x02\x02:9\x03\x02\x02\x02:;\x03\x02\x02\x02"+
-		";\x07\x03\x02\x02\x02<=\x07\x12\x02\x02=\t\x03\x02\x02\x02>?\x07\x17\x02"+
-		"\x02?\v\x03\x02\x02\x02@A\x07\x17\x02\x02AB\x05\x0E\b\x02B\r\x03\x02\x02"+
-		"\x02CE\x07\x03\x02\x02DF\x05\x10\t\x02ED\x03\x02\x02\x02EF\x03\x02\x02"+
-		"\x02FG\x03\x02\x02\x02GH\x07\x04\x02\x02H\x0F\x03\x02\x02\x02IM\x05\x1E"+
-		"\x10\x02JM\x05\x12\n\x02KM\x05\x14\v\x02LI\x03\x02\x02\x02LJ\x03\x02\x02"+
-		"\x02LK\x03\x02\x02\x02M\x11\x03\x02\x02\x02NP\x07\x05\x02\x02OQ\x05\x18"+
-		"\r\x02PO\x03\x02\x02\x02PQ\x03\x02\x02\x02QS\x03\x02\x02\x02RT\x07\x06"+
-		"\x02\x02SR\x03\x02\x02\x02ST\x03\x02\x02\x02TU\x03\x02\x02\x02UV\x07\x07"+
-		"\x02\x02V\x13\x03\x02\x02\x02WY\x07\b\x02\x02XZ\x05\x16\f\x02YX\x03\x02"+
-		"\x02\x02YZ\x03\x02\x02\x02Z[\x03\x02\x02\x02[\\\x07\t\x02\x02\\\x15\x03"+
-		"\x02\x02\x02]b\x05\x1C\x0F\x02^_\x07\x06\x02\x02_a\x05\x1C\x0F\x02`^\x03"+
-		"\x02\x02\x02ad\x03\x02\x02\x02b`\x03\x02\x02\x02bc\x03\x02\x02\x02c\x17"+
-		"\x03\x02\x02\x02db\x03\x02\x02\x02ej\x05\x1A\x0E\x02fg\x07\x06\x02\x02"+
-		"gi\x05\x1A\x0E\x02hf\x03\x02\x02\x02il\x03\x02\x02\x02jh\x03\x02\x02\x02"+
-		"jk\x03\x02\x02\x02k\x19\x03\x02\x02\x02lj\x03\x02\x02\x02mn\x05 \x11\x02"+
-		"no\x07\n\x02\x02op\x05\x1C\x0F\x02p\x1B\x03\x02\x02\x02qv\x05\f\x07\x02"+
-		"rv\x05\x12\n\x02sv\x05\x14\v\x02tv\x05\x1E\x10\x02uq\x03\x02\x02\x02u"+
-		"r\x03\x02\x02\x02us\x03\x02\x02\x02ut\x03\x02\x02\x02v\x1D\x03\x02\x02"+
-		"\x02wz\t\x02\x02\x02xz\x05$\x13\x02yw\x03\x02\x02\x02yx\x03\x02\x02\x02"+
-		"z\x1F\x03\x02\x02\x02{|\x07\x18\x02\x02|!\x03\x02\x02\x02}~\t\x03\x02"+
-		"\x02~#\x03\x02\x02\x02\x7F\x81\x07\v\x02\x02\x80\x7F\x03\x02\x02\x02\x80"+
-		"\x81\x03\x02\x02\x02\x81\x82\x03\x02\x02\x02\x82\x83\x07\x10\x02\x02\x83"+
-		"%\x03\x02\x02\x02\x10,.7:ELPSYbjuy\x80";
+		"\x0E\t\x0E\x04\x0F\t\x0F\x04\x10\t\x10\x04\x11\t\x11\x04\x12\t\x12\x03"+
+		"\x02\x03\x02\x03\x02\x03\x03\x03\x03\x03\x03\x06\x03+\n\x03\r\x03\x0E"+
+		"\x03,\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x03\x04\x05\x04"+
+		"6\n\x04\x03\x04\x05\x049\n\x04\x03\x05\x03\x05\x03\x06\x03\x06\x03\x07"+
+		"\x03\x07\x03\x07\x03\b\x03\b\x05\bD\n\b\x03\b\x03\b\x03\t\x03\t\x03\t"+
+		"\x05\tK\n\t\x03\n\x03\n\x05\nO\n\n\x03\n\x05\nR\n\n\x03\n\x03\n\x03\v"+
+		"\x03\v\x05\vX\n\v\x03\v\x03\v\x03\f\x03\f\x03\f\x07\f_\n\f\f\f\x0E\fb"+
+		"\v\f\x03\r\x03\r\x03\r\x07\rg\n\r\f\r\x0E\rj\v\r\x03\x0E\x03\x0E\x03\x0E"+
+		"\x03\x0E\x03\x0F\x03\x0F\x03\x0F\x03\x0F\x05\x0Ft\n\x0F\x03\x10\x03\x10"+
+		"\x05\x10x\n\x10\x03\x11\x03\x11\x03\x12\x03\x12\x03\x12\x02\x02\x02\x13"+
+		"\x02\x02\x04\x02\x06\x02\b\x02\n\x02\f\x02\x0E\x02\x10\x02\x12\x02\x14"+
+		"\x02\x16\x02\x18\x02\x1A\x02\x1C\x02\x1E\x02 \x02\"\x02\x02\x04\x03\x02"+
+		"\r\x0F\x03\x02\v\f}\x02$\x03\x02\x02\x02\x04*\x03\x02\x02\x02\x06.\x03"+
+		"\x02\x02\x02\b:\x03\x02\x02\x02\n<\x03\x02\x02\x02\f>\x03\x02\x02\x02"+
+		"\x0EA\x03\x02\x02\x02\x10J\x03\x02\x02\x02\x12L\x03\x02\x02\x02\x14U\x03"+
+		"\x02\x02\x02\x16[\x03\x02\x02\x02\x18c\x03\x02\x02\x02\x1Ak\x03\x02\x02"+
+		"\x02\x1Cs\x03\x02\x02\x02\x1Ew\x03\x02\x02\x02 y\x03\x02\x02\x02\"{\x03"+
+		"\x02\x02\x02$%\x05\x04\x03\x02%&\x07\x02\x02\x03&\x03\x03\x02\x02\x02"+
+		"\'+\x05\x06\x04\x02(+\x05\b\x05\x02)+\x05\"\x12\x02*\'\x03\x02\x02\x02"+
+		"*(\x03\x02\x02\x02*)\x03\x02\x02\x02+,\x03\x02\x02\x02,*\x03\x02\x02\x02"+
+		",-\x03\x02\x02\x02-\x05\x03\x02\x02\x02./\x07\x15\x02\x02/5\x07\x14\x02"+
+		"\x0206\x05\f\x07\x0212\x05\n\x06\x0223\x07\x14\x02\x0234\x05\f\x07\x02"+
+		"46\x03\x02\x02\x0250\x03\x02\x02\x0251\x03\x02\x02\x0268\x03\x02\x02\x02"+
+		"79\x07\x13\x02\x0287\x03\x02\x02\x0289\x03\x02\x02\x029\x07\x03\x02\x02"+
+		"\x02:;\x07\x13\x02\x02;\t\x03\x02\x02\x02<=\x07\x18\x02\x02=\v\x03\x02"+
+		"\x02\x02>?\x07\x18\x02\x02?@\x05\x0E\b\x02@\r\x03\x02\x02\x02AC\x07\x03"+
+		"\x02\x02BD\x05\x10\t\x02CB\x03\x02\x02\x02CD\x03\x02\x02\x02DE\x03\x02"+
+		"\x02\x02EF\x07\x04\x02\x02F\x0F\x03\x02\x02\x02GK\x05\x1E\x10\x02HK\x05"+
+		"\x12\n\x02IK\x05\x14\v\x02JG\x03\x02\x02\x02JH\x03\x02\x02\x02JI\x03\x02"+
+		"\x02\x02K\x11\x03\x02\x02\x02LN\x07\x05\x02\x02MO\x05\x18\r\x02NM\x03"+
+		"\x02\x02\x02NO\x03\x02\x02\x02OQ\x03\x02\x02\x02PR\x07\x06\x02\x02QP\x03"+
+		"\x02\x02\x02QR\x03\x02\x02\x02RS\x03\x02\x02\x02ST\x07\x07\x02\x02T\x13"+
+		"\x03\x02\x02\x02UW\x07\b\x02\x02VX\x05\x16\f\x02WV\x03\x02\x02\x02WX\x03"+
+		"\x02\x02\x02XY\x03\x02\x02\x02YZ\x07\t\x02\x02Z\x15\x03\x02\x02\x02[`"+
+		"\x05\x1C\x0F\x02\\]\x07\x06\x02\x02]_\x05\x1C\x0F\x02^\\\x03\x02\x02\x02"+
+		"_b\x03\x02\x02\x02`^\x03\x02\x02\x02`a\x03\x02\x02\x02a\x17\x03\x02\x02"+
+		"\x02b`\x03\x02\x02\x02ch\x05\x1A\x0E\x02de\x07\x06\x02\x02eg\x05\x1A\x0E"+
+		"\x02fd\x03\x02\x02\x02gj\x03\x02\x02\x02hf\x03\x02\x02\x02hi\x03\x02\x02"+
+		"\x02i\x19\x03\x02\x02\x02jh\x03\x02\x02\x02kl\x05 \x11\x02lm\x07\n\x02"+
+		"\x02mn\x05\x1C\x0F\x02n\x1B\x03\x02\x02\x02ot\x05\x1E\x10\x02pt\x05\x12"+
+		"\n\x02qt\x05\x14\v\x02rt\x05\f\x07\x02so\x03\x02\x02\x02sp\x03\x02\x02"+
+		"\x02sq\x03\x02\x02\x02sr\x03\x02\x02\x02t\x1D\x03\x02\x02\x02ux\t\x02"+
+		"\x02\x02vx\x07\x10\x02\x02wu\x03\x02\x02\x02wv\x03\x02\x02\x02x\x1F\x03"+
+		"\x02\x02\x02yz\x07\r\x02\x02z!\x03\x02\x02\x02{|\t\x03\x02\x02|#\x03\x02"+
+		"\x02\x02\x0F*,58CJNQW`hsw";
 	public static __ATN: ATN;
 	public static get _ATN(): ATN {
 		if (!mongoParser.__ATN) {
@@ -1294,8 +1253,8 @@ export class PropertyAssignmentContext extends ParserRuleContext {
 
 
 export class PropertyValueContext extends ParserRuleContext {
-	public functionCall(): FunctionCallContext | undefined {
-		return this.tryGetRuleContext(0, FunctionCallContext);
+	public literal(): LiteralContext | undefined {
+		return this.tryGetRuleContext(0, LiteralContext);
 	}
 	public objectLiteral(): ObjectLiteralContext | undefined {
 		return this.tryGetRuleContext(0, ObjectLiteralContext);
@@ -1303,8 +1262,8 @@ export class PropertyValueContext extends ParserRuleContext {
 	public arrayLiteral(): ArrayLiteralContext | undefined {
 		return this.tryGetRuleContext(0, ArrayLiteralContext);
 	}
-	public literal(): LiteralContext | undefined {
-		return this.tryGetRuleContext(0, LiteralContext);
+	public functionCall(): FunctionCallContext | undefined {
+		return this.tryGetRuleContext(0, FunctionCallContext);
 	}
 	constructor(parent: ParserRuleContext, invokingState: number);
 	constructor(parent: ParserRuleContext, invokingState: number) {
@@ -1331,10 +1290,8 @@ export class PropertyValueContext extends ParserRuleContext {
 export class LiteralContext extends ParserRuleContext {
 	public NullLiteral(): TerminalNode | undefined { return this.tryGetToken(mongoParser.NullLiteral, 0); }
 	public BooleanLiteral(): TerminalNode | undefined { return this.tryGetToken(mongoParser.BooleanLiteral, 0); }
-	public QUOTED_STRING_LITERAL(): TerminalNode | undefined { return this.tryGetToken(mongoParser.QUOTED_STRING_LITERAL, 0); }
-	public numericLiteral(): NumericLiteralContext | undefined {
-		return this.tryGetRuleContext(0, NumericLiteralContext);
-	}
+	public StringLiteral(): TerminalNode | undefined { return this.tryGetToken(mongoParser.StringLiteral, 0); }
+	public NumericLiteral(): TerminalNode | undefined { return this.tryGetToken(mongoParser.NumericLiteral, 0); }
 	constructor(parent: ParserRuleContext, invokingState: number);
 	constructor(parent: ParserRuleContext, invokingState: number) {
 		super(parent, invokingState);
@@ -1358,7 +1315,7 @@ export class LiteralContext extends ParserRuleContext {
 
 
 export class PropertyNameContext extends ParserRuleContext {
-	public QUOTED_STRING_LITERAL(): TerminalNode { return this.getToken(mongoParser.QUOTED_STRING_LITERAL, 0); }
+	public StringLiteral(): TerminalNode { return this.getToken(mongoParser.StringLiteral, 0); }
 	constructor(parent: ParserRuleContext, invokingState: number);
 	constructor(parent: ParserRuleContext, invokingState: number) {
 		super(parent, invokingState);
@@ -1401,30 +1358,6 @@ export class CommentContext extends ParserRuleContext {
 	@Override
 	public accept<Result>(visitor: mongoVisitor<Result>): Result {
 		if (visitor.visitComment) return visitor.visitComment(this);
-		else return visitor.visitChildren(this);
-	}
-}
-
-
-export class NumericLiteralContext extends ParserRuleContext {
-	public DecimalLiteral(): TerminalNode { return this.getToken(mongoParser.DecimalLiteral, 0); }
-	constructor(parent: ParserRuleContext, invokingState: number);
-	constructor(parent: ParserRuleContext, invokingState: number) {
-		super(parent, invokingState);
-
-	}
-	@Override public get ruleIndex(): number { return mongoParser.RULE_numericLiteral; }
-	@Override
-	public enterRule(listener: mongoListener): void {
-		if (listener.enterNumericLiteral) listener.enterNumericLiteral(this);
-	}
-	@Override
-	public exitRule(listener: mongoListener): void {
-		if (listener.exitNumericLiteral) listener.exitNumericLiteral(this);
-	}
-	@Override
-	public accept<Result>(visitor: mongoVisitor<Result>): Result {
-		if (visitor.visitNumericLiteral) return visitor.visitNumericLiteral(this);
 		else return visitor.visitChildren(this);
 	}
 }

@@ -1,9 +1,9 @@
 {
 	"name": "vscode-mongodb",
 	"displayName": "vscode-mongodb",
-	"description": "VS Code extension for Mongo db",
+	"description": "VS Code extension for MongoDb",
 	"version": "0.0.1",
-	"publisher": "sandy081",
+	"publisher": "ms-vscode",
 	"engines": {
 		"vscode": "^1.12.0"
 	},
@@ -11,14 +11,14 @@
 	"categories": [
 		"Other"
 	],
-	"homepage": "https://github.com/sandy081/vscode-mongodb/blob/master/README.md",
+	"homepage": "https://github.com/microsoft/vscode-mongodb/blob/master/README.md",
 	"bugs": {
-		"url": "https://github.com/sandy081/vscode-mongodb/issues"
+		"url": "https://github.com/microsoft/vscode-mongodb/issues"
 	},
 	"license": "SEE LICENSE IN LICENSE.md",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/sandy081/vscode-mongodb"
+		"url": "https://github.com/microsoft/vscode-mongodb"
 	},
 	"activationEvents": [
 		"*"

@@ -115,7 +115,6 @@ LineTerminator
 	: [\r\n\u2028\u2029] -> channel(HIDDEN)
 	;
 
-// COMMAND_DELIMITTER: ';' | ';\n' | LF | CRLF;
 SEMICOLON: ';';
 DOT: '.';
 DB: 'db';

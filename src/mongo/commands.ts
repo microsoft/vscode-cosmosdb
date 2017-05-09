@@ -115,7 +115,13 @@ export class MongoScriptDocumentVisitor extends MongoVisitor<MongoScript[]> {
 	}
 
 	visitArgumentList(ctx: mongoParser.ArgumentListContext): MongoScript[] {
-		this.mongoScripts[this.mongoScripts.length - 1].arguments = ctx.text;
+		let argumentsContext = ctx.parent;
+		if (argumentsContext) {
+			let functionCallContext = argumentsContext.parent;
+			if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
+				this.mongoScripts[this.mongoScripts.length - 1].arguments = ctx.text;
+			}
+		}
 		return super.visitArgumentList(ctx);
 	}
 

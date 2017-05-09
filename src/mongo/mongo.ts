@@ -240,12 +240,12 @@ export class Database implements IMongoResource {
 		return reportProgress(this.getShell().then(() => this.shell.exec(script.script)), 'Executing script');
 	}
 
-	updateDocuments(documents: any[], collectionName: string): Thenable<string> {
+	updateDocuments(documentOrDocuments: any, collectionName: string): Thenable<string> {
 		return this.getDb()
 			.then(db => {
 				const collection = db.collection(collectionName);
 				if (collection) {
-					return new Collection(collection).update(documents);
+					return new Collection(collection).update(documentOrDocuments);
 				}
 			});
 	}
@@ -345,8 +345,8 @@ export class Collection implements IMongoResource {
 		}
 	}
 
-	update(documents: any[]): Thenable<string> {
-		let operations = this.toOperations(documents);
+	update(documentOrDocuments: any): Thenable<string> {
+		let operations = this.toOperations(documentOrDocuments);
 		return reportProgress(this.collection.bulkWrite(operations, { w: 1 })
 			.then(result => {
 				return this.stringify(result);
@@ -412,7 +412,8 @@ export class Collection implements IMongoResource {
 		return JSON.stringify(result, null, '\t')
 	}
 
-	private toOperations(documents: any[]): any[] {
+	private toOperations(documentOrDocuments: any[]): any[] {
+		const documents = Array.isArray(documentOrDocuments) ? documentOrDocuments : [documentOrDocuments];
 		return documents.reduce((result, doc) => {
 			const id = doc._id;
 			delete doc._id;

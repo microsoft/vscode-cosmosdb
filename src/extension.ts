@@ -122,7 +122,7 @@ function dropDatabase(database: Database): void {
 function connectToDatabase(database: Database): void {
 	connectedDb = database;
 	languageClient.connect(database);
-	vscode.window.setStatusBarMessage('Mongo: ' + database.server.host + '/' + connectedDb.id);
+	vscode.window.setStatusBarMessage('Mongo: ' + database.server.label + '/' + connectedDb.id);
 }
 
 async function createStorageFolder(context: vscode.ExtensionContext): Promise<void> {

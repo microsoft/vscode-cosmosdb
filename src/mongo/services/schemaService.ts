@@ -5,9 +5,11 @@ import { JSONSchema } from 'vscode-json-languageservice/lib/jsonSchema';
 export default class SchemaService {
 
 	private _db: Db;
+	private _schemasCache: Map<string, string> = new Map<string, string>();
 
 	registerSchemas(db: Db): Thenable<SchemaConfiguration[]> {
 		this._db = db;
+		this._schemasCache.clear();
 		return this._db.collections()
 			.then(collections => {
 				const schemas: SchemaConfiguration[] = [];
@@ -31,7 +33,15 @@ export default class SchemaService {
 
 	resolveSchema(uri: string): Thenable<string> {
 		if (uri.startsWith('mongo://query/')) {
+			const schema = this._schemasCache.get(uri);
+			if (schema) {
+				return Promise.resolve(schema);
+			}
 			return this._resolveQueryCollectionSchema(uri.substring('mongo://query/'.length), uri)
+				.then(schema => {
+					this._schemasCache.set(uri, schema);
+					return schema;
+				});
 		}
 	}
 

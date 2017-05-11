@@ -25,11 +25,7 @@ export class MongoExplorer implements TreeDataProvider<IMongoResource> {
 	}
 
 	getClickCommand(node: IMongoResource): Command {
-		return {
-			command: 'mongo.resource.onClick',
-			title: '',
-			arguments: [node]
-		};
+		return node.command;
 	}
 
 	getContextKey(node: IMongoResource): string {

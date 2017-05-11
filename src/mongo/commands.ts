@@ -11,38 +11,43 @@ import { mongoLexer } from './../grammar/mongoLexer';
 
 export class MongoCommands {
 
-	public static executeScript(database: Database): MongoScript {
-		if (!database) {
-			vscode.window.showErrorMessage('Please connect to the database first');
-			return;
-		}
-
+	public static executeScriptFromActiveEditor(database: Database): MongoScript {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (activeEditor.document.languageId !== 'mongo') {
 			return;
 		}
-
 		const selection = activeEditor.selection;
-		const script = MongoCommands.provideScriptAt(activeEditor.document, selection.start);
+		const script = MongoCommands.getMongoScript(activeEditor.document.getText(), selection.start);
+		MongoCommands.executeScript(script, database)
+			.then(result => this.showResult(result, activeEditor.viewColumn + 1));
+		return script;
+	}
+
+	public static executeScript(script: MongoScript, database: Database): Thenable<string> {
+		if (!database) {
+			vscode.window.showErrorMessage('Please connect to the database first');
+			return;
+		}
+		return database.executeScript(script)
+			.then(result => result, error => vscode.window.showErrorMessage(error));
+	}
+
+	public static showResult(result: string, column?: vscode.ViewColumn): Thenable<void> {
 		let uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, 'result.json'));
 		if (!fs.existsSync(uri.fsPath)) {
 			uri = uri.with({ scheme: 'untitled' });
 		}
-		vscode.workspace.openTextDocument(uri)
-			.then(textDocument => vscode.window.showTextDocument(textDocument, vscode.ViewColumn.Two, true))
+		return vscode.workspace.openTextDocument(uri)
+			.then(textDocument => vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true))
 			.then(editor => {
-				database.executeScript(script)
-					.then(result => {
-						editor.edit(editorBuilder => {
-							if (editor.document.lineCount > 0) {
-								const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
-								editorBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
-							}
-							editorBuilder.insert(new vscode.Position(0, 0), result);
-						});
-					}, error => vscode.window.showErrorMessage(error));
+				editor.edit(editorBuilder => {
+					if (editor.document.lineCount > 0) {
+						const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
+						editorBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
+					}
+					editorBuilder.insert(new vscode.Position(0, 0), result);
+				});
 			});
-		return script;
 	}
 
 	public static updateDocuments(database: Database, script: MongoScript): void {
@@ -65,8 +70,8 @@ export class MongoCommands {
 			});
 	}
 
-	private static provideScriptAt(textDocument: vscode.TextDocument, position: vscode.Position): MongoScript {
-		const lexer = new mongoLexer(new InputStream(textDocument.getText()));
+	public static getMongoScript(content: string, position?: vscode.Position): MongoScript {
+		const lexer = new mongoLexer(new InputStream(content));
 		lexer.removeErrorListeners();
 		const parser = new mongoParser.mongoParser(new CommonTokenStream(lexer));
 		parser.removeErrorListeners();
@@ -74,18 +79,20 @@ export class MongoCommands {
 		const scripts = new MongoScriptDocumentVisitor().visit(parser.commands());
 		let lastScriptOnSameLine = null;
 		let lastScriptBeforePosition = null;
-		for (const script of scripts) {
-			if (script.range.contains(position)) {
-				return script;
-			}
-			if (script.range.end.line === position.line) {
-				lastScriptOnSameLine = script;
-			}
-			if (script.range.end.isBefore(position)) {
-				lastScriptBeforePosition = script;
+		if (position) {
+			for (const script of scripts) {
+				if (script.range.contains(position)) {
+					return script;
+				}
+				if (script.range.end.line === position.line) {
+					lastScriptOnSameLine = script;
+				}
+				if (script.range.end.isBefore(position)) {
+					lastScriptBeforePosition = script;
+				}
 			}
 		}
-		return lastScriptOnSameLine || lastScriptBeforePosition;
+		return lastScriptOnSameLine || lastScriptBeforePosition || scripts[scripts.length - 1];
 	}
 }
 

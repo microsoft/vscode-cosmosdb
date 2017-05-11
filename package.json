@@ -108,6 +108,11 @@
 				"category": "Mongo",
 				"command": "mongo.updateDocuments",
 				"title": "Update"
+			},
+			{
+				"category": "Mongo",
+				"command": "mongo.openCollection",
+				"title": "Open Collection"
 			}
 		],
 		"menus": {

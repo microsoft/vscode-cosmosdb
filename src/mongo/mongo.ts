@@ -19,6 +19,7 @@ export interface IMongoResource {
 	getChildren?(): Thenable<IMongoResource[]>;
 	onChange?: Event<void>
 	contextKey?: string;
+	command?: Command;
 }
 
 class ServersJson {
@@ -320,7 +321,7 @@ export class Database implements IMongoResource {
 
 export class Collection implements IMongoResource {
 
-	constructor(private collection: MongoCollection, private db: Database) {
+	constructor(private collection: MongoCollection, readonly db: Database) {
 	}
 
 	get label(): string {
@@ -328,6 +329,12 @@ export class Collection implements IMongoResource {
 	}
 
 	readonly canHaveChildren: boolean = false;
+
+	readonly command: Command = {
+		command: 'mongo.openCollection',
+		arguments: [this],
+		title: ''
+	};
 
 	executeCommand(command: string, args?: string): Thenable<string> {
 		try {

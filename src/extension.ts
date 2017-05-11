@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { MongoExplorer } from './mongo/explorer';
 import { MongoCommands } from './mongo/commands';
-import { Model, Database, Server, IMongoResource, MongoScript } from './mongo/mongo';
+import { Model, Database, Server, IMongoResource, MongoScript, Collection } from './mongo/mongo';
 import MongoDBLanguageClient from './mongo/languageClient';
 
 let connectedDb: Database = null;
@@ -49,8 +49,13 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.workspace.openTextDocument(uri)
 					.then(textDocument => vscode.window.showTextDocument(textDocument));
 			}));
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.execute', () => lastScript = MongoCommands.executeScript(connectedDb)));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.execute', () => lastScript = MongoCommands.executeScriptFromActiveEditor(connectedDb)));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.updateDocuments', () => MongoCommands.updateDocuments(connectedDb, lastScript)));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.openCollection', (collection: Collection) => {
+				connectToDatabase(collection.db);
+				lastScript = MongoCommands.getMongoScript(`db.${collection.label}.find()`);
+				MongoCommands.executeScript(lastScript, connectedDb).then(result => MongoCommands.showResult(result));
+			}));
 		});
 	}
 }

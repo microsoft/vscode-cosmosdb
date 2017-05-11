@@ -14,10 +14,13 @@ export default class SchemaService {
 			.then(collections => {
 				const schemas: SchemaConfiguration[] = [];
 				for (const collection of collections) {
-					schemas.push({
+					schemas.push(...[{
 						uri: this.queryCollectionSchema(collection.collectionName),
 						fileMatch: [this.queryDocumentUri()]
-					})
+					}, {
+						uri: this.aggregateCollectionSchema(collection.collectionName),
+						fileMatch: [this.aggregateDocumentUri()]
+					}])
 				}
 				return schemas;
 			});
@@ -27,22 +30,38 @@ export default class SchemaService {
 		return 'mongo://query/' + collectionName;
 	}
 
+	aggregateCollectionSchema(collectionName: string): string {
+		return 'mongo://aggregate/' + collectionName;
+	}
+
 	queryDocumentUri(): string {
 		return 'mongo://query.json'
 	}
 
+	aggregateDocumentUri(): string {
+		return 'mongo://aggregate.json'
+	}
+
 	resolveSchema(uri: string): Thenable<string> {
+		const schema = this._schemasCache.get(uri);
+		if (schema) {
+			return Promise.resolve(schema);
+		}
 		if (uri.startsWith('mongo://query/')) {
-			const schema = this._schemasCache.get(uri);
-			if (schema) {
-				return Promise.resolve(schema);
-			}
 			return this._resolveQueryCollectionSchema(uri.substring('mongo://query/'.length), uri)
 				.then(schema => {
 					this._schemasCache.set(uri, schema);
 					return schema;
 				});
 		}
+		if (uri.startsWith('mongo://aggregate/')) {
+			return this._resolveAggregateCollectionSchema(uri.substring('mongo://aggregate/'.length))
+				.then(schema => {
+					this._schemasCache.set(uri, schema);
+					return schema;
+				});
+		}
+		return Promise.resolve('');
 	}
 
 	private _resolveQueryCollectionSchema(collectionName: string, schemaUri: string): Thenable<string> {
@@ -59,6 +78,20 @@ export default class SchemaService {
 				}
 				this.setGlobalOperatorProperties(schema);
 				this.setLogicalOperatorProperties(schema, schemaUri);
+				c(JSON.stringify(schema));
+			});
+		})
+	}
+
+	private _resolveAggregateCollectionSchema(collectionName: string): Thenable<string> {
+		const collection = this._db.collection(collectionName)
+		const cursor = collection.find();
+		return new Promise((c, e) => {
+			this.readNext([], cursor, 10, (result) => {
+				const schema: JSONSchema = {
+					type: 'array',
+					items: this.getAggregateStagePropertiesSchema(this.queryCollectionSchema(collectionName)),
+				}
 				c(JSON.stringify(schema));
 			});
 		})
@@ -339,6 +372,222 @@ Use the $where operator to pass either a string containing a JavaScript expressi
 		};
 		schema.properties.$elemMatch = {
 			type: 'object',
+		};
+	}
+
+	private getAggregateStagePropertiesSchema(querySchemaUri: string): JSONSchema {
+		const schemas: JSONSchema[] = [];
+		schemas.push({
+			type: 'object',
+			properties: {
+				$collStats: {
+					type: 'object',
+					description: '	Returns statistics regarding a collection or view',
+				}
+			},
+
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$project: {
+					type: 'object',
+					description: 'Reshapes each document in the stream, such as by adding new fields or removing existing fields. For each input document, outputs one document',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$match: {
+					type: 'object',
+					description: 'Filters the document stream to allow only matching documents to pass unmodified into the next pipeline stage. $match uses standard MongoDB queries. For each input document, outputs either one document (a match) or zero documents (no match)',
+					$ref: querySchemaUri
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$redact: {
+					type: 'object',
+					description: 'Reshapes each document in the stream by restricting the content for each document based on information stored in the documents themselves. Incorporates the functionality of $project and $match. Can be used to implement field level redaction. For each input document, outputs either one or zero documents',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$limit: {
+					type: 'object',
+					description: 'Passes the first n documents unmodified to the pipeline where n is the specified limit. For each input document, outputs either one document (for the first n documents) or zero documents (after the first n documents).',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$skip: {
+					type: 'object',
+					description: 'Skips the first n documents where n is the specified skip number and passes the remaining documents unmodified to the pipeline. For each input document, outputs either zero documents (for the first n documents) or one document (if after the first n documents)',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$unwind: {
+					type: 'object',
+					description: 'Deconstructs an array field from the input documents to output a document for each element. Each output document replaces the array with an element value. For each input document, outputs n documents where n is the number of array elements and can be zero for an empty array',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$group: {
+					type: 'object',
+					description: 'Groups input documents by a specified identifier expression and applies the accumulator expression(s), if specified, to each group. Consumes all input documents and outputs one document per each distinct group. The output documents only contain the identifier field and, if specified, accumulated fields.',
+					properties: {
+						_id: {
+							type: ['string', 'object']
+						}
+					},
+					additionalProperties: {
+						type: 'object'
+					}
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$sample: {
+					type: 'object',
+					description: 'Randomly selects the specified number of documents from its input',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$sort: {
+					type: 'object',
+					description: 'Reorders the document stream by a specified sort key. Only the order changes; the documents remain unmodified. For each input document, outputs one document.',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$geoNear: {
+					type: 'object',
+					description: 'Returns an ordered stream of documents based on the proximity to a geospatial point. Incorporates the functionality of $match, $sort, and $limit for geospatial data. The output documents include an additional distance field and can include a location identifier field.',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$lookup: {
+					type: 'object',
+					description: 'Performs a left outer join to another collection in the same database to filter in documents from the “joined” collection for processing',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$out: {
+					type: 'object',
+					description: 'Writes the resulting documents of the aggregation pipeline to a collection. To use the $out stage, it must be the last stage in the pipeline',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$indexStats: {
+					type: 'object',
+					description: 'Returns statistics regarding the use of each index for the collection',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$facet: {
+					type: 'object',
+					description: 'Processes multiple aggregation pipelines within a single stage on the same set of input documents. Enables the creation of multi-faceted aggregations capable of characterizing data across multiple dimensions, or facets, in a single stage',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$bucket: {
+					type: 'object',
+					description: 'Categorizes incoming documents into groups, called buckets, based on a specified expression and bucket boundaries',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$bucketAuto: {
+					type: 'object',
+					description: 'Categorizes incoming documents into a specific number of groups, called buckets, based on a specified expression. Bucket boundaries are automatically determined in an attempt to evenly distribute the documents into the specified number of buckets',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$sortByCount: {
+					type: 'object',
+					description: 'Groups incoming documents based on the value of a specified expression, then computes the count of documents in each distinct group',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$addFields: {
+					type: 'object',
+					description: 'Adds new fields to documents. Outputs documents that contain all existing fields from the input documents and newly added fields',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$replaceRoot: {
+					type: 'object',
+					description: 'Replaces a document with the specified embedded document. The operation replaces all existing fields in the input document, including the _id field. Specify a document embedded in the input document to promote the embedded document to the top level',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$count: {
+					type: 'object',
+					description: 'Returns a count of the number of documents at this stage of the aggregation pipeline',
+				}
+			}
+		});
+		schemas.push({
+			type: 'object',
+			properties: {
+				$graphLookup: {
+					type: 'object',
+					description: 'Performs a recursive search on a collection. To each output document, adds a new array field that contains the traversal results of the recursive search for that document',
+				}
+			}
+		});
+		return {
+			type: 'object',
+			oneOf: schemas
 		};
 	}
 

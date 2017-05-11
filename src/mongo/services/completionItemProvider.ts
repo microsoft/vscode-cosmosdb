@@ -71,16 +71,30 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 	}
 
 	visitObjectLiteral(ctx: mongoParser.ObjectLiteralContext): Thenable<CompletionItem[]> {
+		let functionName = this.getFunctionName(ctx);
 		let collectionName = this.getCollectionName(ctx);
-		if (collectionName) {
-			return this.getQueryCompletionItems(collectionName, ctx);
+		if (collectionName && functionName) {
+			if (['find', 'findOne', 'findOneAndDelete', 'findOneAndUpdate', 'findOneAndReplace'].indexOf(functionName) !== -1) {
+				return this.getArgumentCompletionItems(this.schemaService.queryDocumentUri(), collectionName, ctx);
+			}
 		}
 		return ctx.parent.accept(this);
 	}
 
-	private getQueryCompletionItems(collectionName: string, ctx: mongoParser.ObjectLiteralContext): Thenable<CompletionItem[]> {
+	visitArrayLiteral(ctx: mongoParser.ArrayLiteralContext): Thenable<CompletionItem[]> {
+		let functionName = this.getFunctionName(ctx);
+		let collectionName = this.getCollectionName(ctx);
+		if (collectionName && functionName) {
+			if (['aggregate'].indexOf(functionName) !== -1) {
+				return this.getArgumentCompletionItems(this.schemaService.aggregateDocumentUri(), collectionName, ctx);
+			}
+		}
+		return ctx.parent.accept(this);
+	}
+
+	private getArgumentCompletionItems(documentUri: string, collectionName: string, ctx: ParserRuleContext): Thenable<CompletionItem[]> {
 		const text = this.textDocument.getText();
-		const document = TextDocument.create(this.schemaService.queryDocumentUri(), 'json', 1, text.substring(ctx.start.startIndex, ctx.stop.stopIndex + 1));
+		const document = TextDocument.create(documentUri, 'json', 1, text.substring(ctx.start.startIndex, ctx.stop.stopIndex + 1));
 		const positionOffset = this.textDocument.offsetAt(this.at);
 		const contextOffset = ctx.start.startIndex;
 		const position = document.positionAt(positionOffset - contextOffset);
@@ -95,7 +109,23 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 			});
 	}
 
-	private getCollectionName(ctx: mongoParser.ObjectLiteralContext): string {
+	private getFunctionName(ctx: ParseTree): string {
+		let parent = ctx.parent;
+		if (!(parent && parent instanceof mongoParser.ArgumentListContext)) {
+			return null;
+		}
+		parent = parent.parent;
+		if (!(parent && parent instanceof mongoParser.ArgumentsContext)) {
+			return null;
+		}
+		parent = parent.parent;
+		if (!(parent && parent instanceof mongoParser.FunctionCallContext)) {
+			return null;
+		}
+		return (<mongoParser.FunctionCallContext>parent)._FUNCTION_NAME.text;
+	}
+
+	private getCollectionName(ctx: ParseTree): string {
 		let parent = ctx.parent;
 		if (!(parent && parent instanceof mongoParser.ArgumentListContext)) {
 			return null;
@@ -116,10 +146,6 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 			}
 		}
 		return null;
-	}
-
-	visitArrayLiteral(ctx: mongoParser.ArrayLiteralContext): Promise<CompletionItem[]> {
-		return ctx.parent.accept(this);
 	}
 
 	visitElementList(ctx: mongoParser.ElementListContext): Promise<CompletionItem[]> {

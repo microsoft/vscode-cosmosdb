@@ -85,13 +85,23 @@ export class Shell {
 		};
 
 		return await new Promise<string>((c, e) => {
+			let executed = false;
+			const handler = setTimeout(() => {
+				if (!executed) {
+					e('Timed out executing ' + script);
+				}
+			}, 5000);
 			const disposable = this.onResult.event(result => {
 				disposable.dispose();
 				let lines = (<string>result.result).split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');
 				lines = lines[lines.length - 1] === 'Type "it" for more' ? lines.splice(lines.length - 1, 1) : lines;
 				let value = lines.join(os.EOL);
+				executed = true;
 				c(lines.join(os.EOL));
-			})
+				if (handler) {
+					clearTimeout(handler);
+				}
+			});
 		});
 	}
 

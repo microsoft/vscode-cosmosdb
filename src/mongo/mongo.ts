@@ -195,7 +195,6 @@ export class Server implements IMongoResource {
 export class Database implements IMongoResource {
 
 	readonly contextKey: string = 'mongoDb';
-	private shell: Shell;
 
 	private _onChange: EventEmitter<void> = new EventEmitter<void>();
 	readonly onChange: Event<void> = this._onChange.event;
@@ -237,11 +236,11 @@ export class Database implements IMongoResource {
 							return result;
 						}
 					}
-					return reportProgress(this.getShell().then(() => this.shell.exec(script.script)), 'Executing script');
+					return reportProgress(this.executeScriptInShell(script), 'Executing script');
 				});
 		}
 		const result = this.executeCommand(script.command, script.arguments);
-		return result ? result : reportProgress(this.getShell().then(() => this.shell.exec(script.script)), 'Executing script');
+		return result ? result : reportProgress(this.executeScriptInShell(script), 'Executing script');
 	}
 
 	updateDocuments(documentOrDocuments: any, collectionName: string): Thenable<string> {
@@ -283,10 +282,22 @@ export class Database implements IMongoResource {
 		return this.getDb().then(db => new Collection(db.collection(collection), this));
 	}
 
-	private getShell(): Promise<void> {
-		if (this.shell) {
-			return Promise.resolve();
+	executeScriptInShell(script: MongoScript): Thenable<string> {
+		return this.getShell().then(shell => shell.exec(script.script));
+	}
+
+	executeCommand(command: string, args?: string): Thenable<string> {
+		try {
+			if (command === 'createCollection') {
+				return reportProgress(this.createCollection(stripQuotes(args)).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
+			}
+			return null;
+		} catch (error) {
+			return Promise.resolve(error);
 		}
+	}
+
+	private getShell(): Promise<Shell> {
 		const shellPath = <string>vscode.workspace.getConfiguration().get('mongo.shell.path')
 		if (!shellPath) {
 			return <Promise<null>>vscode.window.showInputBox({
@@ -299,45 +310,11 @@ export class Database implements IMongoResource {
 		}
 	}
 
-	private createShell(shellPath: string): Promise<void> {
+	private createShell(shellPath: string): Promise<Shell> {
 		return <Promise<null>>Shell.create(shellPath, this.server.id)
 			.then(shell => {
-				this.shell = shell;
-				return this.shell.useDatabase(this.id).then(() => null);
+				return shell.useDatabase(this.id).then(() => shell);
 			}, error => vscode.window.showErrorMessage(error));
-	}
-
-	_executeScript(script: string): Promise<string> {
-		return this.getDb().then(db => {
-			return db.eval(new Code(`function() {
-				var result = ${script};
-				if (result.hasNext) {
-					let results = [];
-					for (let counter = 0; counter < 20 && result.hasNext(); counter++) {
-						results.push(result.next());
-					}
-					return results;
-				} else {
-					return result;
-				}
-			}`), [], { readPreference: ReadPreference.PRIMARY }).then(result => {
-					db.close();
-					return JSON.stringify(result, null, '\t')
-				}, error => {
-					console.log(error);
-				});
-		});
-	}
-
-	executeCommand(command: string, args?: string): Thenable<string> {
-		try {
-			if (command === 'createCollection') {
-				return reportProgress(this.createCollection(stripQuotes(args)).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
-			}
-			return null;
-		} catch (error) {
-			return Promise.resolve(error);
-		}
 	}
 }
 

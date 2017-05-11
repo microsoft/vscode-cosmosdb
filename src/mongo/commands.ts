@@ -40,7 +40,7 @@ export class MongoCommands {
 							}
 							editorBuilder.insert(new vscode.Position(0, 0), result);
 						});
-					});
+					}, error => vscode.window.showErrorMessage(error));
 			});
 		return script;
 	}

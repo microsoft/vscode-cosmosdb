@@ -60,7 +60,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 
 	visitArguments(ctx: mongoParser.ArgumentsContext): Promise<CompletionItem[]> {
 		const terminalNode = this.getLastTerminalNode(ctx);
-		if (terminalNode.symbol === ctx._CLOSED_PARENTHESIS) {
+		if (terminalNode && terminalNode.symbol === ctx._CLOSED_PARENTHESIS) {
 			return this.thenable(this.createDbKeywordCompletion(this.createRangeAfter(terminalNode)));
 		}
 		return this.thenable();
@@ -212,7 +212,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 	}
 
 	private getLastTerminalNode(ctx: ParserRuleContext): TerminalNode {
-		return <TerminalNode>ctx.children.slice().reverse().filter(node => node instanceof TerminalNode && node.symbol.stopIndex > -1 && node.symbol.stopIndex < this.offset)[0];
+		return ctx.children ? <TerminalNode>ctx.children.slice().reverse().filter(node => node instanceof TerminalNode && node.symbol.stopIndex > -1 && node.symbol.stopIndex < this.offset)[0] : null;
 	}
 
 	private getPreviousNode(node: ParseTree): ParseTree {

@@ -10,12 +10,17 @@ import * as mongoParser from './../../grammar/mongoParser';
 import { mongoLexer } from './../../grammar/mongoLexer';
 import { MongoVisitor } from './../../grammar/visitors';
 import { TextDocument, CompletionItem, Position, Range, CompletionItemKind } from 'vscode-languageserver';
+import SchemaService from './schemaService';
+import { LanguageService as JsonLanguageService } from 'vscode-json-languageservice';
 
 export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[]>> {
 
 	private at: Position;
 
-	constructor(private textDocument: TextDocument, private db: Db, private offset: number) {
+	constructor(private textDocument: TextDocument, private db: Db, private offset: number,
+		private schemaService: SchemaService,
+		private jsonLanguageService: JsonLanguageService
+	) {
 		super();
 		this.at = this.textDocument.positionAt(this.offset);
 	}
@@ -65,8 +70,52 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		return ctx.parent.accept(this);
 	}
 
-	visitObjectLiteral(ctx: mongoParser.ObjectLiteralContext): Promise<CompletionItem[]> {
+	visitObjectLiteral(ctx: mongoParser.ObjectLiteralContext): Thenable<CompletionItem[]> {
+		let collectionName = this.getCollectionName(ctx);
+		if (collectionName) {
+			return this.getQueryCompletionItems(collectionName, ctx);
+		}
 		return ctx.parent.accept(this);
+	}
+
+	private getQueryCompletionItems(collectionName: string, ctx: mongoParser.ObjectLiteralContext): Thenable<CompletionItem[]> {
+		const text = this.textDocument.getText();
+		const document = TextDocument.create(this.schemaService.queryDocumentUri(), 'json', 1, text.substring(ctx.start.startIndex, ctx.stop.stopIndex + 1));
+		const positionOffset = this.textDocument.offsetAt(this.at);
+		const contextOffset = ctx.start.startIndex;
+		const position = document.positionAt(positionOffset - contextOffset);
+		return this.jsonLanguageService.doComplete(document, position, this.jsonLanguageService.parseJSONDocument(document))
+			.then(list => {
+				return list.items.map(item => {
+					const startPositionOffset = document.offsetAt(item.textEdit.range.start);
+					const endPositionOffset = document.offsetAt(item.textEdit.range.end);
+					item.textEdit.range = Range.create(this.textDocument.positionAt(startPositionOffset + contextOffset), this.textDocument.positionAt(contextOffset + endPositionOffset))
+					return item;
+				});
+			});
+	}
+
+	private getCollectionName(ctx: mongoParser.ObjectLiteralContext): string {
+		let parent = ctx.parent;
+		if (!(parent && parent instanceof mongoParser.ArgumentListContext)) {
+			return null;
+		}
+		parent = parent.parent;
+		if (!(parent && parent instanceof mongoParser.ArgumentsContext)) {
+			return null;
+		}
+		parent = parent.parent;
+		if (!(parent && parent instanceof mongoParser.FunctionCallContext)) {
+			return null;
+		}
+		let previousNode = this.getPreviousNode(parent);
+		if (previousNode && previousNode instanceof TerminalNode && previousNode.symbol.type === mongoLexer.DOT) {
+			previousNode = this.getPreviousNode(previousNode);
+			if (previousNode && previousNode instanceof mongoParser.CollectionContext) {
+				return previousNode.text;
+			}
+		}
+		return null;
 	}
 
 	visitArrayLiteral(ctx: mongoParser.ArrayLiteralContext): Promise<CompletionItem[]> {

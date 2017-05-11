@@ -11,14 +11,20 @@ import * as mongoParser from './../../grammar/mongoParser';
 import { mongoLexer } from './../../grammar/mongoLexer';
 import { MongoVisitor } from './../../grammar/visitors';
 import { CompletionItemsVisitor } from './completionItemProvider';
+import SchemaService from './schemaService';
+import { LanguageService as JsonLanguageService } from 'vscode-json-languageservice';
 import { TextDocument, CompletionItem, Position, Range, CompletionItemKind } from 'vscode-languageserver';
-
-
 
 export class MongoScriptDocumentManager {
 
+	constructor(
+		private schemaService: SchemaService,
+		private jonLanguageService: JsonLanguageService
+	) {
+	}
+
 	getDocument(textDocument: TextDocument, db: Db): MongoScriptDocument {
-		return new MongoScriptDocument(textDocument, db);
+		return new MongoScriptDocument(textDocument, db, this.schemaService, this.jonLanguageService);
 	}
 
 }
@@ -27,7 +33,10 @@ export class MongoScriptDocument {
 
 	private readonly _lexer: mongoLexer;
 
-	constructor(private textDocument: TextDocument, private db: Db) {
+	constructor(private textDocument: TextDocument, private db: Db,
+		private schemaService: SchemaService,
+		private jonLanguageService: JsonLanguageService
+	) {
 		this._lexer = new mongoLexer(new InputStream(textDocument.getText()));
 		this._lexer.removeErrorListeners();
 	}
@@ -39,7 +48,7 @@ export class MongoScriptDocument {
 		const offset = this.textDocument.offsetAt(position);
 		const lastNode = new NodeFinder(offset).visit(parser.commands());
 		if (lastNode) {
-			return new CompletionItemsVisitor(this.textDocument, this.db, offset).visit(lastNode);
+			return new CompletionItemsVisitor(this.textDocument, this.db, offset, this.schemaService, this.jonLanguageService).visit(lastNode);
 		}
 		return Promise.resolve([]);
 	}

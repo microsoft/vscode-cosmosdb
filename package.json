@@ -210,6 +210,7 @@
 		"vscode-languageclient": "^3.1.0-alpha.1",
 		"vscode-languageserver": "^3.1.0-alpha.1",
 		"vscode-nls": "^2.0.2",
-		"vscode-uri": "^1.0.0"
+		"vscode-uri": "^1.0.0",
+		"vscode-json-languageservice": "^2.0.9"
 	}
 }

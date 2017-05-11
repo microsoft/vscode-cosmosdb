@@ -74,7 +74,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		let functionName = this.getFunctionName(ctx);
 		let collectionName = this.getCollectionName(ctx);
 		if (collectionName && functionName) {
-			if (['find', 'findOne', 'findOneAndDelete', 'findOneAndUpdate', 'findOneAndReplace'].indexOf(functionName) !== -1) {
+			if (['find', 'findOne', 'findOneAndDelete', 'findOneAndUpdate', 'findOneAndReplace', 'deleteOne', 'deleteMany', 'remove'].indexOf(functionName) !== -1) {
 				return this.getArgumentCompletionItems(this.schemaService.queryDocumentUri(collectionName), collectionName, ctx);
 			}
 		}

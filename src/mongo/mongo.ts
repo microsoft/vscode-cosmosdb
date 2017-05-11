@@ -197,6 +197,9 @@ export class Database implements IMongoResource {
 	readonly contextKey: string = 'mongoDb';
 	private shell: Shell;
 
+	private _onChange: EventEmitter<void> = new EventEmitter<void>();
+	readonly onChange: Event<void> = this._onChange.event;
+
 	constructor(readonly id: string, readonly server: Server) {
 	}
 
@@ -209,7 +212,7 @@ export class Database implements IMongoResource {
 	getChildren(): Promise<IMongoResource[]> {
 		return <Promise<IMongoResource[]>>this.getDb().then(db => {
 			return db.collections().then(collections => {
-				return collections.map(collection => new Collection(collection));
+				return collections.map(collection => new Collection(collection, this));
 			})
 		});
 	}
@@ -229,7 +232,7 @@ export class Database implements IMongoResource {
 				.then(db => {
 					const collection = db.collection(script.collection);
 					if (collection) {
-						const result = new Collection(collection).executeCommand(script.command, script.arguments);
+						const result = new Collection(collection, this).executeCommand(script.command, script.arguments);
 						if (result) {
 							return result;
 						}
@@ -237,7 +240,8 @@ export class Database implements IMongoResource {
 					return reportProgress(this.getShell().then(() => this.shell.exec(script.script)), 'Executing script');
 				});
 		}
-		return reportProgress(this.getShell().then(() => this.shell.exec(script.script)), 'Executing script');
+		const result = this.executeCommand(script.command, script.arguments);
+		return result ? result : reportProgress(this.getShell().then(() => this.shell.exec(script.script)), 'Executing script');
 	}
 
 	updateDocuments(documentOrDocuments: any, collectionName: string): Thenable<string> {
@@ -245,7 +249,7 @@ export class Database implements IMongoResource {
 			.then(db => {
 				const collection = db.collection(collectionName);
 				if (collection) {
-					return new Collection(collection).update(documentOrDocuments);
+					return new Collection(collection, this).update(documentOrDocuments);
 				}
 			});
 	}
@@ -253,15 +257,30 @@ export class Database implements IMongoResource {
 	createCollection(collectionName: string): Promise<Collection> {
 		return this.getDb()
 			.then(db => db.createCollection(collectionName))
-			.then(collection => new Collection(collection))
+			.then(collection => {
+				this._onChange.fire();
+				return new Collection(collection, this);
+			});
 	}
 
 	drop(): Thenable<any> {
 		return this.getDb().then(db => db.dropDatabase());
 	}
 
+	dropCollection(collectionName: string): Thenable<string> {
+		return this.getDb().then(db => {
+			return db.dropCollection(collectionName)
+				.then(result => {
+					if (result) {
+						this._onChange.fire();
+					}
+					return JSON.stringify({ 'dropped': result });
+				});
+		});
+	}
+
 	private getCollection(collection: string): Promise<Collection> {
-		return this.getDb().then(db => new Collection(db.collection(collection)));
+		return this.getDb().then(db => new Collection(db.collection(collection), this));
 	}
 
 	private getShell(): Promise<void> {
@@ -309,11 +328,22 @@ export class Database implements IMongoResource {
 				});
 		});
 	}
+
+	executeCommand(command: string, args?: string): Thenable<string> {
+		try {
+			if (command === 'createCollection') {
+				return reportProgress(this.createCollection(stripQuotes(args)).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
+			}
+			return null;
+		} catch (error) {
+			return Promise.resolve(error);
+		}
+	}
 }
 
 export class Collection implements IMongoResource {
 
-	constructor(private collection: MongoCollection) {
+	constructor(private collection: MongoCollection, private db: Database) {
 	}
 
 	get label(): string {
@@ -327,6 +357,9 @@ export class Collection implements IMongoResource {
 			if (command === 'find') {
 				return reportProgress(this.find(args ? parseJSContent(args) : undefined), 'Running find query');
 			}
+			if (command === 'drop') {
+				return reportProgress(this.drop(), 'Dropping collection');
+			}
 			if (command === 'findOne') {
 				return reportProgress(this.findOne(args ? parseJSContent(args) : undefined), 'Running find query');
 			}
@@ -338,6 +371,15 @@ export class Collection implements IMongoResource {
 			}
 			if (command === 'insertOne') {
 				return reportProgress(this.insertOne(args ? parseJSContent(args) : undefined), 'Inserting document');
+			}
+			if (command === 'deleteOne') {
+				return reportProgress(this.deleteOne(args ? parseJSContent(args) : undefined), 'Deleting document');
+			}
+			if (command === 'deleteMany') {
+				return reportProgress(this.deleteMany(args ? parseJSContent(args) : undefined), 'Deleting documents');
+			}
+			if (command === 'remove') {
+				return reportProgress(this.remove(args ? parseJSContent(args) : undefined), 'Removing');
 			}
 			return null;
 		} catch (error) {
@@ -353,6 +395,10 @@ export class Collection implements IMongoResource {
 			}, (error) => {
 				console.log(error);
 			}), 'Updating');
+	}
+
+	private drop(): Thenable<string> {
+		return this.db.dropCollection(this.collection.collectionName);
 	}
 
 	private find(args?: any): Promise<string> {
@@ -386,6 +432,27 @@ export class Collection implements IMongoResource {
 		return this.collection.insertMany(documents)
 			.then(({ insertedCount, insertedIds, result }) => {
 				return this.stringify({ insertedCount, insertedIds, result })
+			});
+	}
+
+	private remove(args?: any): Thenable<string> {
+		return this.collection.remove(args)
+			.then(({ ops, result }) => {
+				return this.stringify({ ops, result })
+			});
+	}
+
+	private deleteOne(args?: any): Thenable<string> {
+		return this.collection.deleteOne(args)
+			.then(({ deletedCount, result }) => {
+				return this.stringify({ deletedCount, result })
+			});
+	}
+
+	private deleteMany(args?: any): Thenable<string> {
+		return this.collection.deleteMany(args)
+			.then(({ deletedCount, result }) => {
+				return this.stringify({ deletedCount, result })
 			});
 	}
 
@@ -449,4 +516,12 @@ function parseJSContent(content: string): any {
 	} catch (error) {
 		throw error.message;
 	}
+}
+
+function stripQuotes(term: string): string {
+	if ((term.startsWith('\'') && term.endsWith('\''))
+		|| (term.startsWith('"') && term.endsWith('"'))) {
+		return term.substring(1, term.length - 1);
+	}
+	return term;
 }

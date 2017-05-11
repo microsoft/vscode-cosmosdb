@@ -16,10 +16,10 @@ export default class SchemaService {
 				for (const collection of collections) {
 					schemas.push(...[{
 						uri: this.queryCollectionSchema(collection.collectionName),
-						fileMatch: [this.queryDocumentUri()]
+						fileMatch: [this.queryDocumentUri(collection.collectionName)]
 					}, {
 						uri: this.aggregateCollectionSchema(collection.collectionName),
-						fileMatch: [this.aggregateDocumentUri()]
+						fileMatch: [this.aggregateDocumentUri(collection.collectionName)]
 					}])
 				}
 				return schemas;
@@ -27,19 +27,19 @@ export default class SchemaService {
 	}
 
 	queryCollectionSchema(collectionName: string): string {
-		return 'mongo://query/' + collectionName;
+		return 'mongo://query/' + collectionName + '.schema';
 	}
 
 	aggregateCollectionSchema(collectionName: string): string {
-		return 'mongo://aggregate/' + collectionName;
+		return 'mongo://aggregate/' + collectionName + '.schema';
 	}
 
-	queryDocumentUri(): string {
-		return 'mongo://query.json'
+	queryDocumentUri(collectionName: string): string {
+		return 'mongo://query/' + collectionName + '.json';
 	}
 
-	aggregateDocumentUri(): string {
-		return 'mongo://aggregate.json'
+	aggregateDocumentUri(collectionName: string): string {
+		return 'mongo://aggregate/' + collectionName + '.json';
 	}
 
 	resolveSchema(uri: string): Thenable<string> {
@@ -48,14 +48,14 @@ export default class SchemaService {
 			return Promise.resolve(schema);
 		}
 		if (uri.startsWith('mongo://query/')) {
-			return this._resolveQueryCollectionSchema(uri.substring('mongo://query/'.length), uri)
+			return this._resolveQueryCollectionSchema(uri.substring('mongo://query/'.length, uri.length - '.schema'.length), uri)
 				.then(schema => {
 					this._schemasCache.set(uri, schema);
 					return schema;
 				});
 		}
 		if (uri.startsWith('mongo://aggregate/')) {
-			return this._resolveAggregateCollectionSchema(uri.substring('mongo://aggregate/'.length))
+			return this._resolveAggregateCollectionSchema(uri.substring('mongo://aggregate/'.length, uri.length - '.schema'.length))
 				.then(schema => {
 					this._schemasCache.set(uri, schema);
 					return schema;

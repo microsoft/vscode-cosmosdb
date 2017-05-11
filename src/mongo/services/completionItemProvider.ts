@@ -75,7 +75,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		let collectionName = this.getCollectionName(ctx);
 		if (collectionName && functionName) {
 			if (['find', 'findOne', 'findOneAndDelete', 'findOneAndUpdate', 'findOneAndReplace'].indexOf(functionName) !== -1) {
-				return this.getArgumentCompletionItems(this.schemaService.queryDocumentUri(), collectionName, ctx);
+				return this.getArgumentCompletionItems(this.schemaService.queryDocumentUri(collectionName), collectionName, ctx);
 			}
 		}
 		return ctx.parent.accept(this);
@@ -86,7 +86,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		let collectionName = this.getCollectionName(ctx);
 		if (collectionName && functionName) {
 			if (['aggregate'].indexOf(functionName) !== -1) {
-				return this.getArgumentCompletionItems(this.schemaService.aggregateDocumentUri(), collectionName, ctx);
+				return this.getArgumentCompletionItems(this.schemaService.aggregateDocumentUri(collectionName), collectionName, ctx);
 			}
 		}
 		return ctx.parent.accept(this);

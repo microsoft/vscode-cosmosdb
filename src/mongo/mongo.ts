@@ -14,11 +14,12 @@ export interface MongoScript {
 	arguments?: string;
 }
 
-export interface IMongoResource {
+export interface IMongoResource extends vscode.TreeItem {
+	id: string
 	label: string;
 	getChildren?(): Thenable<IMongoResource[]>;
 	onChange?: Event<void>
-	contextKey?: string;
+	contextValue?: string;
 	command?: Command;
 }
 
@@ -131,7 +132,7 @@ export class Model implements IMongoResource {
 
 export class NoConnectionServer implements IMongoResource {
 
-	readonly contextKey: string = 'mongoServer';
+	readonly contextValue: string = 'mongoServer';
 	readonly label: string;
 
 	constructor(readonly id: string, private readonly error: string) {
@@ -142,7 +143,7 @@ export class NoConnectionServer implements IMongoResource {
 
 export class Server implements IMongoResource {
 
-	readonly contextKey: string = 'mongoServer';
+	readonly contextValue: string = 'mongoServer';
 
 	private _databases: Database[] = [];
 	private _onChange: EventEmitter<void> = new EventEmitter<void>();
@@ -163,7 +164,7 @@ export class Server implements IMongoResource {
 		return `${this.host}:${this.port}`;
 	}
 
-	readonly canHaveChildren: boolean = true;
+	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
 	getChildren(): Promise<IMongoResource[]> {
 		return <Promise<IMongoResource[]>>MongoClient.connect(this.id)
@@ -195,7 +196,7 @@ export class Server implements IMongoResource {
 
 export class Database implements IMongoResource {
 
-	readonly contextKey: string = 'mongoDb';
+	readonly contextValue: string = 'mongoDb';
 
 	private _onChange: EventEmitter<void> = new EventEmitter<void>();
 	readonly onChange: Event<void> = this._onChange.event;
@@ -207,7 +208,7 @@ export class Database implements IMongoResource {
 		return this.id;
 	}
 
-	readonly canHaveChildren: boolean = true;
+	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
 	getChildren(): Promise<IMongoResource[]> {
 		return <Promise<IMongoResource[]>>this.getDb().then(db => {
@@ -324,11 +325,13 @@ export class Collection implements IMongoResource {
 	constructor(private collection: MongoCollection, readonly db: Database) {
 	}
 
-	get label(): string {
+	get id(): string {
 		return this.collection.collectionName;
 	}
 
-	readonly canHaveChildren: boolean = false;
+	get label(): string {
+		return this.collection.collectionName;
+	}
 
 	readonly command: Command = {
 		command: 'mongo.openCollection',

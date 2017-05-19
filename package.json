@@ -20,11 +20,19 @@
 		"type": "git",
 		"url": "https://github.com/microsoft/vscode-mongodb"
 	},
-	"activationEvents": [
-		"*"
-	],
 	"main": "./out/src/extension",
+	"activationEvents": [
+		"onView:mongoExplorer"
+	],
 	"contributes": {
+		"views": {
+			"explorer": [
+				{
+					"id": "mongoExplorer",
+					"name": "Mongo"
+				}
+			]
+		},
 		"languages": [
 			{
 				"id": "mongo",

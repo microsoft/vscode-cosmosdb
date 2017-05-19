@@ -22,15 +22,12 @@ export function activate(context: vscode.ExtensionContext) {
 			model = new Model(context.storagePath);
 
 			// Mongo Tree View
-			const treeDataProvider = new MongoExplorer(model);
-			const view = vscode.window.createExplorerView('mongoExplorer', 'Mongo', treeDataProvider);
-			context.subscriptions.push(view);
-			const disposable = treeDataProvider.onChange((node) => view.refresh(node));
-			context.subscriptions.push(new vscode.Disposable(() => disposable.dispose()))
+			const explorer = new MongoExplorer(model, context);
+			vscode.window.registerTreeDataProvider('mongoExplorer', explorer);
 
 			// Commands
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.addServer', () => addServer()));
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.refreshExplorer', () => view.refresh(model)));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.refreshExplorer', () => explorer.refresh()));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.removeServer', (element: IMongoResource) => model.remove(element)));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.createDatabase', (server: Server) => createDatabase(server)));
 

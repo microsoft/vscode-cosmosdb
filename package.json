@@ -151,32 +151,28 @@
 					"group": "navigation"
 				}
 			],
-			"view/resource": [
+			"view/item/context": [
 				{
 					"command": "mongo.createDatabase",
-					"when": "view == mongoExplorer && resource == mongoServer",
-					"group": "navigation"
+					"when": "view == mongoExplorer && item == mongoServer"
 				},
 				{
 					"command": "mongo.removeServer",
-					"when": "view == mongoExplorer && resource == mongoServer",
-					"group": "navigation"
+					"when": "view == mongoExplorer && item == mongoServer"
 				},
 				{
 					"command": "mongo.connect",
-					"when": "view == mongoExplorer && resource == mongoDb",
-					"group": "navigation"
+					"when": "view == mongoExplorer && item == mongoDb"
 				},
 				{
 					"command": "mongo.dropDb",
-					"when": "view == mongoExplorer && resource == mongoDb",
-					"group": "navigation"
+					"when": "view == mongoExplorer && item == mongoDb"
 				}
 			],
 			"commandPalette": [
 				{
 					"command": "mongo.connect",
-					"when": "view == mongoExplorer && resource == mongoDb"
+					"when": "view == mongoExplorer && item == mongoDb"
 				}
 			]
 		},

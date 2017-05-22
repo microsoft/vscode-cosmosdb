@@ -5,11 +5,11 @@ export class MongoExplorer implements TreeDataProvider<IMongoResource> {
 
 	private _disposables: Map<IMongoResource, Disposable[]> = new Map<IMongoResource, Disposable[]>();
 
-	private _onDidChange: EventEmitter<IMongoResource> = new EventEmitter<IMongoResource>();
-	readonly onDidChange: Event<IMongoResource> = this._onDidChange.event;
+	private _onDidChangeTreeData: EventEmitter<IMongoResource> = new EventEmitter<IMongoResource>();
+	readonly onDidChangeTreeData: Event<IMongoResource> = this._onDidChangeTreeData.event;
 
 	constructor(private model: Model, private extensionContext: ExtensionContext) {
-		this.model.onChange(() => this._onDidChange.fire());
+		this.model.onChange(() => this._onDidChangeTreeData.fire());
 	}
 
 	getTreeItem(node: IMongoResource): TreeItem {
@@ -27,7 +27,7 @@ export class MongoExplorer implements TreeDataProvider<IMongoResource> {
 		return node.getChildren().then(children => {
 			this._disposables.set(node, children.map(child => {
 				if (child.onChange) {
-					return child.onChange(() => this._onDidChange.fire(child));
+					return child.onChange(() => this._onDidChangeTreeData.fire(child));
 				}
 				return new Disposable(() => { });
 			}));
@@ -36,6 +36,6 @@ export class MongoExplorer implements TreeDataProvider<IMongoResource> {
 	}
 
 	refresh(): void {
-		this._onDidChange.fire();
+		this._onDidChangeTreeData.fire();
 	}
 }

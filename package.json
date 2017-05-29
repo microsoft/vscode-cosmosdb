@@ -154,25 +154,25 @@
 			"view/item/context": [
 				{
 					"command": "mongo.createDatabase",
-					"when": "view == mongoExplorer && item == mongoServer"
+					"when": "view == mongoExplorer && viewItem == mongoServer"
 				},
 				{
 					"command": "mongo.removeServer",
-					"when": "view == mongoExplorer && item == mongoServer"
+					"when": "view == mongoExplorer && viewItem == mongoServer"
 				},
 				{
 					"command": "mongo.connect",
-					"when": "view == mongoExplorer && item == mongoDb"
+					"when": "view == mongoExplorer && viewItem == mongoDb"
 				},
 				{
 					"command": "mongo.dropDb",
-					"when": "view == mongoExplorer && item == mongoDb"
+					"when": "view == mongoExplorer && viewItem == mongoDb"
 				}
 			],
 			"commandPalette": [
 				{
 					"command": "mongo.connect",
-					"when": "view == mongoExplorer && item == mongoDb"
+					"when": "view == mongoExplorer && viewItem == mongoDb"
 				}
 			]
 		},

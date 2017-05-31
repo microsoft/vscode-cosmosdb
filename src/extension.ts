@@ -23,7 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// Mongo Tree View
 			const explorer = new MongoExplorer(model, context);
-			vscode.window.registerTreeDataProviderForView('mongoExplorer', explorer);
+			vscode.window.registerTreeDataProvider('mongoExplorer', explorer);
 
 			// Commands
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.addServer', () => addServer()));

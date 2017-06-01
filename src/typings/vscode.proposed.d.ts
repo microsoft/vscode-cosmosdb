@@ -22,11 +22,12 @@ declare module 'vscode' {
 	}
 
 	/**
-	 * A data provider that provides tree data for a view
+	 * A data provider that provides tree data
 	 */
 	export interface TreeDataProvider<T> {
 		/**
 		 * An optional event to signal that an element or root has changed.
+		 * To signal that root has changed, do not pass any argument or pass `undefined` or `null`.
 		 */
 		onDidChangeTreeData?: Event<T | undefined | null>;
 
@@ -39,10 +40,10 @@ declare module 'vscode' {
 		getTreeItem(element: T): TreeItem | Thenable<TreeItem>;
 
 		/**
-		 * Get the children of `element` or root.
+		 * Get the children of `element` or root if no element is passed.
 		 *
-		 * @param element The element from which the provider gets children for.
-		 * @return Children of `element` or root.
+		 * @param element The element from which the provider gets children. Can be `undefined`.
+		 * @return Children of `element` or root if no element is passed.
 		 */
 		getChildren(element?: T): ProviderResult<T[]>;
 	}

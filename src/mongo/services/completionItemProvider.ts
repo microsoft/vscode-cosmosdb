@@ -307,7 +307,8 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 					},
 					label: collection.collectionName,
 					kind: CompletionItemKind.Property,
-					filterText: 'collection'
+					filterText: collection.collectionName,
+					sortText:`1:${collection.collectionName}`
 				}));
 			});
 		}
@@ -375,7 +376,8 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 				range
 			},
 			kind: CompletionItemKind.Function,
-			label
+			label,
+			sortText: `2:${label}`
 		};
 	}
 

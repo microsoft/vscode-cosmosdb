@@ -6,6 +6,8 @@ import * as vscode from 'vscode';
 import * as vm from 'vm';
 import * as cp from 'child_process';
 import * as fs from 'fs';
+import * as path from 'path';
+
 import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collection as MongoCollection, Cursor, ObjectID, MongoError } from 'mongodb';
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
@@ -25,6 +27,7 @@ export interface IMongoResource extends vscode.TreeItem {
 	onChange?: Event<void>
 	contextValue?: string;
 	command?: Command;
+	iconPath?: { light: string, dark: string };
 }
 
 class ServersJson {
@@ -212,6 +215,13 @@ export class Database implements IMongoResource {
 		return this.id;
 	}
 
+	get iconPath(): any {
+		return {
+			light: path.join(__filename, '..', '..', '..', '..', 'media', 'dark', 'database-dark.png'),
+			dark: path.join(__filename, '..', '..', '..', '..', 'media', 'light', 'database-light.png')
+		};
+	}
+
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
 	getChildren(): Promise<IMongoResource[]> {
@@ -335,6 +345,13 @@ export class Collection implements IMongoResource {
 
 	get label(): string {
 		return this.collection.collectionName;
+	}
+
+	get iconPath(): any {
+		return {
+			light: path.join(__filename, '..', '..', '..', '..', 'media', 'dark', 'collection-dark.png'),
+			dark: path.join(__filename, '..', '..', '..', '..', 'media', 'light', 'collection-light.png')
+		};
 	}
 
 	readonly command: Command = {

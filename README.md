@@ -3,11 +3,11 @@
 
 The MongoDB extension makes it easy to work with MongoDB NoSQL databases, collections, and documents. With this extension, you can:
 
-* Connect to local or hosted (e.g. Azure CosmosDB) servers.
-* Create and view MongoDB databases and collections with the MongoDB Explorer.
-* Author MongoDB "Scrapbooks" with rich IntelliSense (completions) for MongoDB scripts, including collections.
-* Execute scripts and see results directly in VS Code.
-* Update documents in place.
+* Connect to local or hosted (e.g. Azure CosmosDB) servers
+* Create and view MongoDB databases and collections with the MongoDB Explorer
+* Author MongoDB "Scrapbooks" with rich IntelliSense (completions) for MongoDB scripts, including collections
+* Execute scripts and see results directly in VS Code
+* Update documents in place
 
 # Prerequisites
 
@@ -15,23 +15,22 @@ The MongoDB extension makes it easy to work with MongoDB NoSQL databases, collec
 
 # Features
 
-## Mongo explorer view
+## Mongo Explorer
 
-- Open Mongo Explorer view `View: Show Mongo`.
 - Add a server by clicking the `+` button in the title.
-  - Typical connection string for a local MongoDB instance: `mongodb://localhost:27017`.
-- Expand the connected server to see the Databases.
-- Click on a collection to see the documents.
-- Remove a server by right clicking on the server name and selecting the `Remove Server` command.
+  - Typical connection string for a local MongoDB instance: `mongodb://localhost:27017`
+- Expand the connected server to see the Databases
+- Click on a collection to see the documents
+- Remove a server by right clicking on the server name and selecting the `Remove Server` command
 
-## Mongo shell playground
+## Mongo "Scrapbooks"
 
-- Configure the user setting `mongo.shell.path` to mongo shell executable path.
-- Click on any DB to open the Mongo shell playground editor.
-- Enter your scripts, eg: `db.<collectionName>.find()`.
-- IntelliSense (completions) will be provided as you write your scripts.
-- Select the script and press `CMD+'` (`CTRL+'` on Windows and Linux) to see the results.
-- Edite your documents, right click, and choose the `Update` command to persist changes to the database.
+- Configure the user setting `mongo.shell.path` to your mongo shell executable path
+- Click on any DB to open the Mongo shell playground editor
+- Enter your scripts, eg: `db.<collectionName>.find()`
+- IntelliSense (completions) will be provided as you write your scripts
+- Select the script and press `CMD+'` (`CTRL+'` on Windows and Linux) to see the results
+- Edite your documents, right click, and choose the `Update` command to persist changes to the database
 
 # Contributing
 There are a couple of ways you can contribute to this repo:

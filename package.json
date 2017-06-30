@@ -43,7 +43,8 @@
 			"explorer": [
 				{
 					"id": "mongoExplorer",
-					"name": "Mongo"
+					"name": "Mongo",
+					"when": "config.mongo.showExplorer == true"
 				}
 			]
 		},
@@ -206,9 +207,14 @@
 						"string",
 						"null"
 					],
-					"description": "Path to the mongo shell executable",
+					"description": "Path to the Mongo shell executable",
 					"default": null,
 					"isExecutable": true
+				},
+				"mongo.showExplorer": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show or hide the Mongo Explorer"
 				}
 			}
 		}

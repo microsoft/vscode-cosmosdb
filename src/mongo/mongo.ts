@@ -8,7 +8,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collection as MongoCollection, Cursor, ObjectID, MongoError } from 'mongodb';
+import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collection as MongoCollection, Cursor, ObjectID, MongoError, ReplSet } from 'mongodb';
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 
@@ -157,18 +157,49 @@ export class Server implements IMongoResource {
 	readonly onChange: Event<void> = this._onChange.event;
 
 	constructor(public readonly id: string, private readonly mongoServer: MongoServer) {
+		//console.log(mongoServer);
 	}
 
 	get host(): string {
-		return this.mongoServer['host'];
-	}
 
+		// Azure CosmosDB comes back as a ReplSet
+		if (this.mongoServer instanceof ReplSet) {
+			// get the first connection string from the seedlist for the ReplSet
+			// this may not be best solution, but the connection (below) gives
+			// the replicaset host name, which is different than what is in the connection string
+			let rs: any = this.mongoServer;
+			return rs.s.replset.s.seedlist[0].host;
+			
+			// returns the replication set host name (different from connction string)
+			// let rs: ReplSet = this.mongoServer;
+			// let conn: any[] = rs2.connections();
+			// return conn[0].host;
+			
+		} else {
+			return this.mongoServer['host'];
+		}
+	}
+	
 	get port(): string {
-		return this.mongoServer['port'];
+
+		// Azure CosmosDB comes back as a ReplSet
+		if (this.mongoServer instanceof ReplSet) {
+			let rs: any = this.mongoServer;
+			return rs.s.replset.s.seedlist[0].port;
+			
+			// returns the replication set port (different from connction string)
+			// let rs: ReplSet = this.mongoServer;
+			// let conn: any[] = rs2.connections();
+			// return conn[0].port;
+			
+		} else {
+			return this.mongoServer['port'];
+		}
 	}
 
 	get label(): string {
 		return `${this.host}:${this.port}`;
+		
 	}
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;

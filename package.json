@@ -1,7 +1,7 @@
 {
 	"name": "vscode-mongodb",
 	"version": "0.0.1",
-	"publisher": "ms-vscode-devlabs",
+	"publisher": "ms-vscode-devlab",
 	"displayName": "MongoDB",
 	"description": "Create, browse, and update MongoDB NoSQL collections and documents.",
 	"engines": {

@@ -72,8 +72,8 @@
 		"commands": [
 			{
 				"category": "Mongo",
-				"command": "mongo.execute",
-				"title": "Execute Script"
+				"command": "mongo.executeCommand",
+				"title": "Execute Command"
 			},
 			{
 				"category": "Mongo",
@@ -141,7 +141,7 @@
 		"menus": {
 			"editor/context": [
 				{
-					"command": "mongo.execute",
+					"command": "mongo.executeCommand",
 					"when": "resourceLangId==mongo"
 				},
 				{
@@ -193,7 +193,7 @@
 		},
 		"keybindings": [
 			{
-				"command": "mongo.execute",
+				"command": "mongo.executeCommand",
 				"key": "ctrl+shift+'",
 				"mac": "cmd+shift+'",
 				"when": "editorLangId == 'mongo' && editorTextFocus"

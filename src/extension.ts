@@ -10,14 +10,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { MongoExplorer } from './mongo/explorer';
 import { MongoCommands } from './mongo/commands';
-import { Model, Database, Server, IMongoResource, MongoScript, Collection } from './mongo/mongo';
+import { Model, Database, Server, IMongoResource, MongoCommand, Collection } from './mongo/mongo';
 import MongoDBLanguageClient from './mongo/languageClient';
 
 let connectedDb: Database = null;
 let languageClient: MongoDBLanguageClient = null;
 let model: Model;
 let mongoDocumentCounter = 0;
-let lastScript: MongoScript;
+let lastCommand: MongoCommand;
 
 export function activate(context: vscode.ExtensionContext) {
 	// Create the storage folder
@@ -51,12 +51,12 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.workspace.openTextDocument(uri)
 					.then(textDocument => vscode.window.showTextDocument(textDocument));
 			}));
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.execute', () => lastScript = MongoCommands.executeScriptFromActiveEditor(connectedDb)));
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.updateDocuments', () => MongoCommands.updateDocuments(connectedDb, lastScript)));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.executeCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb)));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.updateDocuments', () => MongoCommands.updateDocuments(connectedDb, lastCommand)));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.openCollection', (collection: Collection) => {
 				connectToDatabase(collection.db);
-				lastScript = MongoCommands.getMongoScript(`db.${collection.label}.find()`);
-				MongoCommands.executeScript(lastScript, connectedDb).then(result => MongoCommands.showResult(result));
+				lastCommand = MongoCommands.getCommand(`db.${collection.label}.find()`);
+				MongoCommands.executeCommand(lastCommand, connectedDb).then(result => MongoCommands.showResult(result));
 			}));
 		});
 	}

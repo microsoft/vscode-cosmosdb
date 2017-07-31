@@ -12,11 +12,11 @@ import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collectio
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 
-export interface MongoScript {
+export interface MongoCommand {
 	range: vscode.Range;
-	script: string;
+	text: string;
 	collection?: string;
-	command: string;
+	name: string;
 	arguments?: string;
 }
 
@@ -266,22 +266,26 @@ export class Database implements IMongoResource {
 			});
 	}
 
-	executeScript(script: MongoScript): Thenable<string> {
-		if (script.collection) {
+	executeCommand(command: MongoCommand): Thenable<string> {
+		if (command.collection) {
 			return this.getDb()
 				.then(db => {
-					const collection = db.collection(script.collection);
+					const collection = db.collection(command.collection);
 					if (collection) {
-						const result = new Collection(collection, this).executeCommand(script.command, script.arguments);
+						const result = new Collection(collection, this).executeCommand(command.name, command.arguments);
 						if (result) {
 							return result;
 						}
 					}
-					return reportProgress(this.executeScriptInShell(script), 'Executing script');
+					return reportProgress(this.executeCommandInShell(command), 'Executing command');
 				});
 		}
-		const result = this.executeCommand(script.command, script.arguments);
-		return result ? result : reportProgress(this.executeScriptInShell(script), 'Executing script');
+
+		if (command.name === 'createCollection') {
+			return reportProgress(this.createCollection(stripQuotes(command.arguments)).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
+		} else {
+			return reportProgress(this.executeCommandInShell(command), 'Executing command');
+		}
 	}
 
 	updateDocuments(documentOrDocuments: any, collectionName: string): Thenable<string> {
@@ -323,19 +327,8 @@ export class Database implements IMongoResource {
 		return this.getDb().then(db => new Collection(db.collection(collection), this));
 	}
 
-	executeScriptInShell(script: MongoScript): Thenable<string> {
-		return this.getShell().then(shell => shell.exec(script.script));
-	}
-
-	executeCommand(command: string, args?: string): Thenable<string> {
-		try {
-			if (command === 'createCollection') {
-				return reportProgress(this.createCollection(stripQuotes(args)).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
-			}
-			return null;
-		} catch (error) {
-			return Promise.resolve(error);
-		}
+	executeCommandInShell(command: MongoCommand): Thenable<string> {
+		return this.getShell().then(shell => shell.exec(command.text));
 	}
 
 	private getShell(): Promise<Shell> {
@@ -385,33 +378,33 @@ export class Collection implements IMongoResource {
 		title: ''
 	};
 
-	executeCommand(command: string, args?: string): Thenable<string> {
+	executeCommand(name: string, args?: string): Thenable<string> {
 		try {
-			if (command === 'find') {
+			if (name === 'find') {
 				return reportProgress(this.find(args ? parseJSContent(args) : undefined), 'Running find query');
 			}
-			if (command === 'drop') {
+			if (name === 'drop') {
 				return reportProgress(this.drop(), 'Dropping collection');
 			}
-			if (command === 'findOne') {
+			if (name === 'findOne') {
 				return reportProgress(this.findOne(args ? parseJSContent(args) : undefined), 'Running find query');
 			}
-			if (command === 'insertMany') {
+			if (name === 'insertMany') {
 				return reportProgress(this.insertMany(args ? parseJSContent(args) : undefined), 'Inserting documents');
 			}
-			if (command === 'insert') {
+			if (name === 'insert') {
 				return reportProgress(this.insert(args ? parseJSContent(args) : undefined), 'Inserting document');
 			}
-			if (command === 'insertOne') {
+			if (name === 'insertOne') {
 				return reportProgress(this.insertOne(args ? parseJSContent(args) : undefined), 'Inserting document');
 			}
-			if (command === 'deleteOne') {
+			if (name === 'deleteOne') {
 				return reportProgress(this.deleteOne(args ? parseJSContent(args) : undefined), 'Deleting document');
 			}
-			if (command === 'deleteMany') {
+			if (name === 'deleteMany') {
 				return reportProgress(this.deleteMany(args ? parseJSContent(args) : undefined), 'Deleting documents');
 			}
-			if (command === 'remove') {
+			if (name === 'remove') {
 				return reportProgress(this.remove(args ? parseJSContent(args) : undefined), 'Removing');
 			}
 			return null;

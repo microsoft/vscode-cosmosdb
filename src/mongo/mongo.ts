@@ -73,7 +73,7 @@ export class Model implements IMongoResource {
 	readonly canHaveChildren: boolean = true;
 
 	private _serversJson: ServersJson;
-	private _servers: Server[] = [];
+	private _servers: IMongoResource[] = [];
 	private _serverConnections: string[] = [];
 
 	private _onChange: EventEmitter<void> = new EventEmitter<void>();
@@ -92,10 +92,6 @@ export class Model implements IMongoResource {
 					return this._servers;
 				});
 		});
-	}
-
-	get servers(): Server[] {
-		return this._servers;
 	}
 
 	add(connectionString: string) {
@@ -119,7 +115,7 @@ export class Model implements IMongoResource {
 		}
 	}
 
-	private resolveServer(connectionString: string, throwError: boolean): Promise<Server> {
+	private resolveServer(connectionString: string, throwError: boolean): Promise<IMongoResource> {
 		return new Promise((c, e) => {
 			MongoClient.connect(connectionString, (error: MongoError, db: Db) => {
 				if (error) {
@@ -145,7 +141,6 @@ export class NoConnectionServer implements IMongoResource {
 	constructor(readonly id: string, private readonly error: string) {
 		this.label = id;
 	}
-
 }
 
 export class Server implements IMongoResource {
@@ -199,7 +194,6 @@ export class Server implements IMongoResource {
 
 	get label(): string {
 		return `${this.host}:${this.port}`;
-		
 	}
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
@@ -440,12 +434,10 @@ export class Collection implements IMongoResource {
 		return this.db.dropCollection(this.collection.collectionName);
 	}
 
-	private find(args?: any): Promise<string> {
-		const promise = new Promise((c, e) => {
-			let cursor = this.collection.find(args);
-			this.readNext([], cursor, 20, c);
-		});
-		return promise;
+	private find(args?: any): Thenable<string> {
+		const maxDocs = 20;
+		return this.collection.find(args).limit(maxDocs)
+			.toArray().then(docs => this.stringify(docs));
 	}
 
 	private findOne(args?: any): Thenable<string> {
@@ -493,25 +485,6 @@ export class Collection implements IMongoResource {
 			.then(({ deletedCount, result }) => {
 				return this.stringify({ deletedCount, result })
 			});
-	}
-
-	private readNext(result: any[], cursor: Cursor<any>, batchSize: number, callback: (result: string) => void): void {
-		if (result.length === batchSize) {
-			callback(this.stringify(result));
-			return;
-		}
-
-		cursor.hasNext().then(hasNext => {
-			if (!hasNext) {
-				callback(this.stringify(result));
-				return;
-			}
-
-			cursor.next().then(doc => {
-				result.push(doc);
-				this.readNext(result, cursor, batchSize, callback);
-			})
-		})
 	}
 
 	private stringify(result: any): string {

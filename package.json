@@ -227,6 +227,7 @@
 	},
 	"devDependencies": {
 		"@types/mocha": "^2.2.32",
+		"@types/mongodb": "^2.2.9",
 		"@types/node": "^6.0.40",
 		"antlr4ts-cli": "^0.4.0-alpha.4",
 		"mocha": "^2.3.3",

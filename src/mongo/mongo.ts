@@ -420,6 +420,7 @@ export class Collection implements IMongoResource {
 				return this.stringify(result);
 			}, (error) => {
 				console.log(error);
+				return Promise.resolve(null);
 			}), 'Updating');
 	}
 

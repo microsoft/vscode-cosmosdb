@@ -16,7 +16,6 @@ import MongoDBLanguageClient from './mongo/languageClient';
 let connectedDb: Database = null;
 let languageClient: MongoDBLanguageClient = null;
 let model: Model;
-let mongoDocumentCounter = 0;
 let lastCommand: MongoCommand;
 
 export function activate(context: vscode.ExtensionContext) {
@@ -42,15 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.connectDb', () => {
 				vscode.window.showQuickPick(getDatabaseQuickPicks()).then(pick => connectToDatabase(pick.database));
 			}));
-			context.subscriptions.push(vscode.commands.registerCommand('mongo.newScrapbook', (element: IMongoResource) => {
-				if (element instanceof Database) {
-					connectToDatabase(element);
-				}
-				let uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, `Scrapbook-${++mongoDocumentCounter}.mongo`));
-				uri = uri.with({ scheme: 'untitled' });
-				vscode.workspace.openTextDocument(uri)
-					.then(textDocument => vscode.window.showTextDocument(textDocument));
-			}));
+			context.subscriptions.push(vscode.commands.registerCommand('mongo.newScrapbook', () => createScrapbook()));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.executeCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb)));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.updateDocuments', () => MongoCommands.updateDocuments(connectedDb, lastCommand)));
 			context.subscriptions.push(vscode.commands.registerCommand('mongo.openCollection', (collection: Collection) => {
@@ -60,6 +51,29 @@ export function activate(context: vscode.ExtensionContext) {
 			}));
 		});
 	}
+}
+
+function createScrapbook(): Thenable<void> {
+	return new Promise(() => {
+		let uri: vscode.Uri = null;
+		let count = 1;
+		const max = 99999;
+		while (count < max) {
+			uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, `Scrapbook-${count}.mongo`));
+			if (!vscode.workspace.textDocuments.find(doc => doc.uri.fsPath === uri.fsPath) && !fs.existsSync(uri.fsPath)) {
+				break;
+			}
+			count++;
+		}
+
+		if (count === max) {
+			vscode.window.showErrorMessage('Could not create new scrapbook.');
+			return;
+		}
+
+		uri = uri.with({ scheme: 'untitled' });
+		vscode.workspace.openTextDocument(uri).then(textDocument => vscode.window.showTextDocument(textDocument));
+	});
 }
 
 function addServer(): void {

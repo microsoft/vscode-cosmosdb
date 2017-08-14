@@ -30,7 +30,7 @@ The MongoDB extension makes it easy to work with MongoDB NoSQL databases, collec
 - Enter your scripts, eg: `db.<collectionName>.find()`
 - IntelliSense (completions) will be provided as you write your scripts
 - Select the script and press `CMD+'` (`CTRL+'` on Windows and Linux) to see the results
-- Edite your documents, right click, and choose the `Update` command to persist changes to the database
+- Edit your documents, right click, and choose the `Update` command to persist changes to the database
 
 # Contributing
 There are a couple of ways you can contribute to this repo:

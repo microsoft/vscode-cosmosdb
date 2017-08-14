@@ -23,12 +23,12 @@ export class MongoScriptDocumentManager {
 
 	constructor(
 		private schemaService: SchemaService,
-		private jonLanguageService: JsonLanguageService
+		private jsonLanguageService: JsonLanguageService
 	) {
 	}
 
 	getDocument(textDocument: TextDocument, db: Db): MongoScriptDocument {
-		return new MongoScriptDocument(textDocument, db, this.schemaService, this.jonLanguageService);
+		return new MongoScriptDocument(textDocument, db, this.schemaService, this.jsonLanguageService);
 	}
 
 }
@@ -39,7 +39,7 @@ export class MongoScriptDocument {
 
 	constructor(private textDocument: TextDocument, private db: Db,
 		private schemaService: SchemaService,
-		private jonLanguageService: JsonLanguageService
+		private jsonLanguageService: JsonLanguageService
 	) {
 		this._lexer = new mongoLexer(new InputStream(textDocument.getText()));
 		this._lexer.removeErrorListeners();
@@ -52,7 +52,7 @@ export class MongoScriptDocument {
 		const offset = this.textDocument.offsetAt(position);
 		const lastNode = new NodeFinder(offset).visit(parser.commands());
 		if (lastNode) {
-			return new CompletionItemsVisitor(this.textDocument, this.db, offset, this.schemaService, this.jonLanguageService).visit(lastNode);
+			return new CompletionItemsVisitor(this.textDocument, this.db, offset, this.schemaService, this.jsonLanguageService).visit(lastNode);
 		}
 		return Promise.resolve([]);
 	}

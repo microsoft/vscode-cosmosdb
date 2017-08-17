@@ -30,41 +30,6 @@ export interface IMongoResource extends vscode.TreeItem {
 	iconPath?: { light: string, dark: string };
 }
 
-class ServersJson {
-
-	private _filePath: string;
-
-	constructor(storagePath: string) {
-		this._filePath = storagePath + '/servers.json';
-	}
-
-	async load(): Promise<string[]> {
-		return new Promise<string[]>((c, e) => {
-			fs.exists(this._filePath, exists => {
-				if (exists) {
-					fs.readFile(this._filePath, (error, data) => {
-						c(<string[]>JSON.parse(data.toString()));
-					});
-				} else {
-					fs.writeFile(this._filePath, JSON.stringify([]), () => c([]));
-				}
-			})
-		});
-	}
-
-	async write(servers: string[]): Promise<void> {
-		return new Promise<void>((c, e) => {
-			fs.writeFile(this._filePath, JSON.stringify(servers), (err) => {
-				if (err) {
-					e(err);
-				} else {
-					c(null);
-				}
-			});
-		});
-	}
-}
-
 export class Model implements IMongoResource {
 
 	readonly id: string = 'mongoExplorer';
@@ -72,46 +37,69 @@ export class Model implements IMongoResource {
 	readonly type: string = 'mongoRoot';
 	readonly canHaveChildren: boolean = true;
 
-	private _serversJson: ServersJson;
-	private _servers: IMongoResource[] = [];
-	private _serverConnections: string[] = [];
+	private readonly _credentialsService = 'MongoDB';
+	private readonly _credentialsAccount = 'ConnectionStrings';
+	private readonly _connectedServerKey: string = 'MongoConnectedServer';
+	private readonly _connectedDBKey: string = 'MongoConnectedDB';
+
+	private _connectedDB: Database;
+	private _connectionStrings: string[] = [];
 
 	private _onChange: EventEmitter<void> = new EventEmitter<void>();
 	readonly onChange: Event<void> = this._onChange.event;
 
-	constructor(storagePath: string) {
-		this._serversJson = new ServersJson(storagePath);
+	constructor(private _globalState: vscode.Memento) {
 	}
 
-	getChildren(): Promise<IMongoResource[]> {
-		return this._serversJson.load().then(serverConnections => {
-			this._serverConnections = serverConnections;
-			return Promise.all(this._serverConnections.map(server => this.resolveServer(server, false)))
-				.then(servers => {
-					this._servers = servers.filter(server => !!server);
-					return this._servers;
-				});
-		});
+	async getChildren(): Promise<IMongoResource[]> {
+		const secret = await vscode.credentials.readSecret(this._credentialsService, this._credentialsAccount);
+		this._connectionStrings = secret ? JSON.parse(secret) as string[] : [];
+		const connectedServer = this._globalState.get(this._connectedServerKey);
+		const connectedDB = this._globalState.get(this._connectedDBKey);
+
+		const servers = await Promise.all(this._connectionStrings.map(async cs => {
+			const server = await this.resolveServer(cs, false);
+			if (server && server.label === connectedServer) {
+				const dbs = await server.getChildren();
+				this.connectedDB = dbs.find(db => db.id === connectedDB) as Database;
+			}
+			return server;
+		}));
+
+		return servers.filter(server => !!server);
 	}
 
-	add(connectionString: string) {
-		this.resolveServer(connectionString, true)
-			.then(server => {
-				this._serverConnections.push(connectionString);
-				this._serversJson.write(this._serverConnections)
-					.then(() => {
-						this._onChange.fire();
-					});
-			});
+	async add(connectionString: string) {
+		await this.resolveServer(connectionString, true);
+		this._connectionStrings.push(connectionString);
+		await vscode.credentials.writeSecret(this._credentialsService, this._credentialsAccount, JSON.stringify(this._connectionStrings));
+		this._onChange.fire();
 	}
 
-	remove(server: IMongoResource) {
-		const id = server instanceof Server ? server.id : server instanceof NoConnectionServer ? server.id : null;
-		const index = this._servers.findIndex((value) => value.id === id);
+	async remove(server: IMongoResource) {
+		const connectionString = server instanceof Server ? server.id : server instanceof NoConnectionServer ? server.id : null;
+		const index = this._connectionStrings.findIndex((value) => value === connectionString);
 		if (index !== -1) {
-			this._servers.splice(index, 1);
-			this._serversJson.write(this._servers.map(server => server.id));
+			this._connectionStrings.splice(index, 1);
+			await vscode.credentials.writeSecret(this._credentialsService, this._credentialsAccount, JSON.stringify(this._connectionStrings));
 			this._onChange.fire();
+		}
+	}
+
+	get connectedDB(): Database {
+		return this._connectedDB;
+	}
+
+	set connectedDB(db: Database) {
+		this._connectedDB = db;
+		if (this._connectedDB) {
+			vscode.window.setStatusBarMessage('Mongo: ' + db.server.label + '/' + db.id);
+			this._globalState.update(this._connectedServerKey, db.server.label);
+			this._globalState.update(this._connectedDBKey, db.id);
+		} else {
+			vscode.window.setStatusBarMessage('Mongo: Not connected');
+			this._globalState.update(this._connectedServerKey, null);
+			this._globalState.update(this._connectedDBKey, null);
 		}
 	}
 

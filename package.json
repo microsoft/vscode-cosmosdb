@@ -5,7 +5,7 @@
 	"displayName": "MongoDB",
 	"description": "Create, browse, and update MongoDB NoSQL collections and documents.",
 	"engines": {
-		"vscode": "^1.13.0"
+		"vscode": "^1.15.0"
 	},
 	"galleryBanner": {
 		"color": "#3E8E3A",
@@ -25,6 +25,7 @@
 		"url": "https://github.com/microsoft/vscode-mongodb"
 	},
 	"main": "./out/src/extension",
+	"enableProposedApi": true,
 	"activationEvents": [
 		"onView:mongoExplorer",
 		"onCommand:mongo.execute",

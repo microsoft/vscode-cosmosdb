@@ -1,7 +1,7 @@
 
-# MongoDB NoSQL Support for VS Code
+# Cosmos DB NoSQL Support for VS Code
 
-The MongoDB extension makes it easy to work with MongoDB NoSQL databases, collections, and documents. With this extension, you can:
+The Cosmos DB extension makes it easy to work with MongoDB NoSQL databases, collections, and documents. With this extension, you can:
 
 * Connect to local or hosted (e.g. Azure CosmosDB) servers
 * Create and view MongoDB databases and collections with the MongoDB Explorer
@@ -12,6 +12,7 @@ The MongoDB extension makes it easy to work with MongoDB NoSQL databases, collec
 # Prerequisites
 
 - Install [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
+- Install the [insiders build of Visual Studio Code](https://code.visualstudio.com/insiders)
 
 # Features
 

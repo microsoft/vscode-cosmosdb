@@ -12,7 +12,7 @@ export class MongoExplorer implements TreeDataProvider<IMongoResource> {
 	private _onDidChangeTreeData: EventEmitter<IMongoResource> = new EventEmitter<IMongoResource>();
 	readonly onDidChangeTreeData: Event<IMongoResource> = this._onDidChangeTreeData.event;
 
-	constructor(private model: Model, private extensionContext: ExtensionContext) {
+	constructor(private model: Model) {
 		this.model.onChange(() => this._onDidChangeTreeData.fire());
 	}
 

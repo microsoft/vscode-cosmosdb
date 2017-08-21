@@ -11,6 +11,9 @@ import * as path from 'path';
 import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collection as MongoCollection, Cursor, ObjectID, MongoError, ReplSet } from 'mongodb';
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
+import { AzureAccount } from '../azure-account.api';
+import docDBModels = require("azure-arm-documentdb/lib/models");
+import DocumentdbManagementClient = require("azure-arm-documentdb");
 
 export interface MongoCommand {
 	range: vscode.Range;
@@ -30,41 +33,6 @@ export interface IMongoResource extends vscode.TreeItem {
 	iconPath?: { light: string, dark: string };
 }
 
-class ServersJson {
-
-	private _filePath: string;
-
-	constructor(storagePath: string) {
-		this._filePath = storagePath + '/servers.json';
-	}
-
-	async load(): Promise<string[]> {
-		return new Promise<string[]>((c, e) => {
-			fs.exists(this._filePath, exists => {
-				if (exists) {
-					fs.readFile(this._filePath, (error, data) => {
-						c(<string[]>JSON.parse(data.toString()));
-					});
-				} else {
-					fs.writeFile(this._filePath, JSON.stringify([]), () => c([]));
-				}
-			})
-		});
-	}
-
-	async write(servers: string[]): Promise<void> {
-		return new Promise<void>((c, e) => {
-			fs.writeFile(this._filePath, JSON.stringify(servers), (err) => {
-				if (err) {
-					e(err);
-				} else {
-					c(null);
-				}
-			});
-		});
-	}
-}
-
 export class Model implements IMongoResource {
 
 	readonly id: string = 'mongoExplorer';
@@ -72,87 +40,131 @@ export class Model implements IMongoResource {
 	readonly type: string = 'mongoRoot';
 	readonly canHaveChildren: boolean = true;
 
-	private _serversJson: ServersJson;
+	private _azureServers: IMongoResource[] = [];
 	private _servers: IMongoResource[] = [];
-	private _serverConnections: string[] = [];
-
+	private _isLoading: boolean = false;
+	
 	private _onChange: EventEmitter<void> = new EventEmitter<void>();
 	readonly onChange: Event<void> = this._onChange.event;
 
-	constructor(storagePath: string) {
-		this._serversJson = new ServersJson(storagePath);
+	constructor(private azureAccount: AzureAccount) {
 	}
 
-	getChildren(): Promise<IMongoResource[]> {
-		return this._serversJson.load().then(serverConnections => {
-			this._serverConnections = serverConnections;
-			return Promise.all(this._serverConnections.map(server => this.resolveServer(server, false)))
-				.then(servers => {
-					this._servers = servers.filter(server => !!server);
-					return this._servers;
-				});
-		});
+	async getChildren(): Promise<IMongoResource[]> {
+		let azureServers = this._azureServers;
+
+		if (this._isLoading || this.azureAccount.status === "Initializing" || this.azureAccount.status === "LoggingIn") {
+			azureServers = [new LoadingNode()];
+		} else if (this.azureAccount.status === "LoggedOut") {
+			azureServers = [new SignInToAzureNode()];
+		} else if (azureServers.length === 0) {
+			azureServers = [new AddResourceFilterNode()];
+		}
+
+		return azureServers.concat(this._servers);
 	}
 
-	add(connectionString: string) {
-		this.resolveServer(connectionString, true)
-			.then(server => {
-				this._serverConnections.push(connectionString);
-				this._serversJson.write(this._serverConnections)
-					.then(() => {
-						this._onChange.fire();
-					});
-			});
+	async add(connectionString: string) {
+		try {
+			const db = await MongoClient.connect(connectionString);
+			const server = new Server(connectionString, db.serverConfig);
+			if (this._servers.find(s => s.id === server.id)) {
+				vscode.window.showWarningMessage(`Server '${server.id}' is already connected.`)
+			} else {
+				this._servers.push(server);
+				this._onChange.fire();
+			}
+		} catch (error) {
+			vscode.window.showErrorMessage(error.message);
+		}
 	}
 
 	remove(server: IMongoResource) {
-		const id = server instanceof Server ? server.id : server instanceof NoConnectionServer ? server.id : null;
-		const index = this._servers.findIndex((value) => value.id === id);
+		const index = this._servers.findIndex((value) => value.id === server.id);
 		if (index !== -1) {
 			this._servers.splice(index, 1);
-			this._serversJson.write(this._servers.map(server => server.id));
 			this._onChange.fire();
 		}
 	}
 
-	private resolveServer(connectionString: string, throwError: boolean): Promise<IMongoResource> {
-		return new Promise((c, e) => {
-			MongoClient.connect(connectionString, (error: MongoError, db: Db) => {
-				if (error) {
-					vscode.window.showErrorMessage(error.message);
-					if (throwError) {
-						e(error.message);
-					} else {
-						c(new NoConnectionServer(connectionString, error.message));
-					}
-				} else {
-					c(new Server(connectionString, db.serverConfig));
-				}
-			});
-		})
+	async refreshAzureResources(): Promise<void> {
+		if (!this._isLoading) {
+			this._isLoading = true;
+			try {
+				this._onChange.fire();
+				this._azureServers = await this.getAzureMongoResources();
+			} finally {
+				this._isLoading = false;
+				this._onChange.fire();
+			}
+		}
+	}
+
+	private async getAzureMongoResources(): Promise<IMongoResource[]> {
+		let servers: Server[] = [];
+
+		await Promise.all(this.azureAccount.filters.map(async (filter) => {
+			const docDBClient = new DocumentdbManagementClient(filter.session.credentials, filter.subscription.subscriptionId);
+
+			const serverResult = await Promise.all(filter.resourceGroups.map(async group => {
+				const dbs = (await docDBClient.databaseAccounts.listByResourceGroup(group.name)).filter(db => db.kind === "MongoDB");
+				return Promise.all(dbs.map(async db => {
+					const result = await docDBClient.databaseAccounts.listConnectionStrings(group.name, db.name);
+					// Use the default connection string
+					const connectionString = result.connectionStrings[0].connectionString;
+					const mongoDB = await MongoClient.connect(connectionString);
+					return new Server(connectionString, mongoDB.serverConfig, db, group.name);
+				}));
+			}));
+
+			servers = servers.concat(...serverResult);
+		}));
+
+		return servers;
 	}
 }
 
-export class NoConnectionServer implements IMongoResource {
+export class LoadingNode implements IMongoResource {
+	readonly contextValue: string = 'mongoLoading';
+	readonly label: string = "Loading Azure resources...";
+	readonly id: string = "mongoLoading";
+}
 
-	readonly contextValue: string = 'mongoServer';
-	readonly label: string;
+export class AddResourceFilterNode implements IMongoResource {
+	readonly contextValue: string = 'mongoAddResourceFilter';
+	readonly label: string = "No Azure resources found. Add Resource Filter...";
+	readonly id: string = "mongoAddResourceFilter";
+	readonly command: Command = {
+		command: 'azure-account.addFilter',
+		title: ''
+	};
+}
 
-	constructor(readonly id: string, private readonly error: string) {
-		this.label = id;
-	}
+export class SignInToAzureNode implements IMongoResource {
+	readonly contextValue: string = 'mongoSignInToAzure';
+	readonly label: string = "Sign in to Azure...";
+	readonly id: string = "mongoSignInToAzure";
+	readonly command: Command = {
+		command: 'azure-account.login',
+		title: ''
+	};
 }
 
 export class Server implements IMongoResource {
 
-	readonly contextValue: string = 'mongoServer';
+	contextValue: string;
 
 	private _databases: Database[] = [];
 	private _onChange: EventEmitter<void> = new EventEmitter<void>();
 	readonly onChange: Event<void> = this._onChange.event;
+	
 
-	constructor(public readonly id: string, private readonly mongoServer: MongoServer) {
-		//console.log(mongoServer);
+	constructor(
+		public readonly connectionString: string,
+		private readonly mongoServer: MongoServer,
+		private readonly azureServer?: docDBModels.DatabaseAccount,
+		private readonly resourceGroupName?: string) {
+			this.contextValue = azureServer ? 'azureMongoServer' : 'mongoServer';
 	}
 
 	get host(): string {
@@ -192,14 +204,18 @@ export class Server implements IMongoResource {
 		}
 	}
 
-	get label(): string {
+	get id(): string{
 		return `${this.host}:${this.port}`;
+	}
+
+	get label(): string {
+		return this.azureServer ? `${this.azureServer.name} (${this.resourceGroupName})` : this.id;
 	}
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
 	getChildren(): Promise<IMongoResource[]> {
-		return <Promise<IMongoResource[]>>MongoClient.connect(this.id)
+		return <Promise<IMongoResource[]>>MongoClient.connect(this.connectionString)
 			.then(db => db.admin().listDatabases()
 				.then((value: { databases: { name }[] }) => {
 					this._databases = value.databases.map(database => new Database(database.name, this));
@@ -258,7 +274,7 @@ export class Database implements IMongoResource {
 	}
 
 	getDb(): Promise<Db> {
-		const uri = vscode.Uri.parse(this.server.id);
+		const uri = vscode.Uri.parse(this.server.connectionString);
 		const connectionString = `${uri.scheme}://${uri.authority}/${this.id}?${uri.query}`
 		return <Promise<Db>>MongoClient.connect(connectionString)
 			.then(db => {
@@ -345,7 +361,7 @@ export class Database implements IMongoResource {
 	}
 
 	private createShell(shellPath: string): Promise<Shell> {
-		return <Promise<null>>Shell.create(shellPath, this.server.id)
+		return <Promise<null>>Shell.create(shellPath, this.server.connectionString)
 			.then(shell => {
 				return shell.useDatabase(this.id).then(() => shell);
 			}, error => vscode.window.showErrorMessage(error));

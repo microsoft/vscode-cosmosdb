@@ -9,9 +9,9 @@ import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { Model, Server, Database, MongoCommand } from './mongo';
 import * as fs from 'fs';
-import * as mongoParser from './../grammar/mongoParser';
-import { MongoVisitor } from './../grammar/visitors';
-import { mongoLexer } from './../grammar/mongoLexer';
+import * as mongoParser from './grammar/mongoParser';
+import { MongoVisitor } from './grammar/visitors';
+import { mongoLexer } from './grammar/mongoLexer';
 
 export class MongoCommands {
 

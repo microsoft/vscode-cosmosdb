@@ -1,9 +1,9 @@
 {
-	"name": "vscode-mongodb",
+	"name": "vscode-cosmosdb",
 	"version": "0.0.1",
-	"publisher": "ms-vscode-devlab",
-	"displayName": "MongoDB",
-	"description": "Create, browse, and update MongoDB NoSQL collections and documents.",
+	"publisher": "ms-azuretools",
+	"displayName": "Cosmos DB",
+	"description": "Create, browse, and update globally distributed, multi-model databases in Azure.",
 	"engines": {
 		"vscode": "^1.13.0"
 	},
@@ -15,36 +15,36 @@
 	"categories": [
 		"Other"
 	],
-	"homepage": "https://github.com/microsoft/vscode-mongodb/blob/master/README.md",
+	"homepage": "https://github.com/microsoft/vscode-cosmosdb/blob/master/README.md",
 	"bugs": {
-		"url": "https://github.com/microsoft/vscode-mongodb/issues"
+		"url": "https://github.com/microsoft/vscode-cosmosdb/issues"
 	},
 	"license": "SEE LICENSE IN LICENSE.md",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/microsoft/vscode-mongodb"
+		"url": "https://github.com/microsoft/vscode-cosmosdb"
 	},
 	"main": "./out/src/extension",
 	"activationEvents": [
-		"onView:mongoExplorer",
-		"onCommand:mongo.execute",
-		"onCommand:mongo.addServer",
-		"onCommand:mongo.createDatabase",
-		"onCommand:mongo.removeServer",
-		"onCommand:mongo.connect",
-		"onCommand:mongo.connectDb",
-		"onCommand:mongo.dropDb",
-		"onCommand:mongo.newScrapbook",
-		"onCommand:mongo.updateDocuments",
-		"onCommand:mongo.openCollection"
+		"onView:cosmosDBExplorer",
+		"onCommand:cosmosDB.executeMongoCommand",
+		"onCommand:cosmosDB.addMongoServer",
+		"onCommand:cosmosDB.removeMongoServer",
+		"onCommand:cosmosDB.createMongoDatabase",
+		"onCommand:cosmosDB.connectMongoDB",
+		"onCommand:cosmosDB.dropMongoDB",
+		"onCommand:cosmosDB.newMongoScrapbook",
+		"onCommand:cosmosDB.updateMongoDocuments",
+		"onCommand:cosmosDB.openMongoCollection",
+		"onCommand:cosmosDB.refreshExplorer"
 	],
 	"contributes": {
 		"views": {
 			"explorer": [
 				{
-					"id": "mongoExplorer",
-					"name": "Mongo",
-					"when": "config.mongo.showExplorer == true"
+					"id": "cosmosDBExplorer",
+					"name": "Cosmos DB",
+					"when": "config.cosmosDB.showExplorer == true"
 				}
 			]
 		},
@@ -71,13 +71,13 @@
 		],
 		"commands": [
 			{
-				"category": "Mongo",
-				"command": "mongo.executeCommand",
+				"category": "Cosmos DB",
+				"command": "cosmosDB.executeMongoCommand",
 				"title": "Execute Command"
 			},
 			{
-				"category": "Mongo",
-				"command": "mongo.addServer",
+				"category": "Cosmos DB",
+				"command": "cosmosDB.addMongoServer",
 				"title": "Add Server",
 				"icon": {
 					"light": "resources/icons/light/add.svg",
@@ -85,33 +85,28 @@
 				}
 			},
 			{
-				"category": "Mongo",
-				"command": "mongo.createDatabase",
+				"category": "Cosmos DB",
+				"command": "cosmosDB.createMongoDatabase",
 				"title": "Create Database"
 			},
 			{
-				"category": "Mongo",
-				"command": "mongo.removeServer",
+				"category": "Cosmos DB",
+				"command": "cosmosDB.removeMongoServer",
 				"title": "Remove Server"
 			},
 			{
-				"category": "Mongo",
-				"command": "mongo.connect",
+				"category": "Cosmos DB",
+				"command": "cosmosDB.connectMongoDB",
 				"title": "Connect"
 			},
 			{
-				"category": "Mongo",
-				"command": "mongo.connectDb",
-				"title": "Connect Database"
-			},
-			{
-				"category": "Mongo",
-				"command": "mongo.dropDb",
+				"category": "Cosmos DB",
+				"command": "cosmosDB.dropMongoDB",
 				"title": "Drop"
 			},
 			{
-				"category": "Mongo",
-				"command": "mongo.newScrapbook",
+				"category": "Cosmos DB",
+				"command": "cosmosDB.newMongoScrapbook",
 				"title": "New Scrapbook",
 				"icon": {
 					"light": "resources/icons/light/addFile.svg",
@@ -119,8 +114,8 @@
 				}
 			},
 			{
-				"category": "Mongo",
-				"command": "mongo.refreshExplorer",
+				"category": "Cosmos DB",
+				"command": "cosmosDB.refreshExplorer",
 				"title": "Refresh",
 				"icon": {
 					"light": "resources/icons/light/refresh.svg",
@@ -128,83 +123,77 @@
 				}
 			},
 			{
-				"category": "Mongo",
-				"command": "mongo.updateDocuments",
+				"category": "Cosmos DB",
+				"command": "cosmosDB.updateMongoDocuments",
 				"title": "Update"
 			},
 			{
-				"category": "Mongo",
-				"command": "mongo.openCollection",
+				"category": "Cosmos DB",
+				"command": "cosmosDB.openMongoCollection",
 				"title": "Open Collection"
 			}
 		],
 		"menus": {
 			"editor/context": [
 				{
-					"command": "mongo.executeCommand",
+					"command": "cosmosDB.executeMongoCommand",
 					"when": "resourceLangId==mongo"
 				},
 				{
-					"command": "mongo.updateDocuments",
+					"command": "cosmosDB.updateMongoDocuments",
 					"when": "resourceFilename==result.json"
 				}
 			],
 			"view/title": [
 				{
-					"command": "mongo.refreshExplorer",
-					"when": "view == mongoExplorer",
+					"command": "cosmosDB.refreshExplorer",
+					"when": "view == cosmosDBExplorer",
 					"group": "navigation"
 				},
 				{
-					"command": "mongo.addServer",
-					"when": "view == mongoExplorer",
+					"command": "cosmosDB.addMongoServer",
+					"when": "view == cosmosDBExplorer",
 					"group": "navigation"
 				},
 				{
-					"command": "mongo.newScrapbook",
-					"when": "view == mongoExplorer",
+					"command": "cosmosDB.newMongoScrapbook",
+					"when": "view == cosmosDBExplorer",
 					"group": "navigation"
 				}
 			],
 			"view/item/context": [
 				{
-					"command": "mongo.createDatabase",
-					"when": "view == mongoExplorer && viewItem == mongoServer"
+					"command": "cosmosDB.createMongoDatabase",
+					"when": "view == cosmosDBExplorer && viewItem == mongoServer"
 				},
 				{
-					"command": "mongo.createDatabase",
-					"when": "view == mongoExplorer && viewItem == azureMongoServer"
+					"command": "cosmosDB.createMongoDatabase",
+					"when": "view == cosmosDBExplorer && viewItem == azureMongoServer"
 				},
 				{
-					"command": "mongo.removeServer",
-					"when": "view == mongoExplorer && viewItem == mongoServer"
+					"command": "cosmosDB.removeMongoServer",
+					"when": "view == cosmosDBExplorer && viewItem == mongoServer"
 				},
 				{
-					"command": "mongo.connect",
-					"when": "view == mongoExplorer && viewItem == mongoDb"
+					"command": "cosmosDB.connectMongoDB",
+					"when": "view == cosmosDBExplorer && viewItem == mongoDb"
 				},
 				{
-					"command": "mongo.dropDb",
-					"when": "view == mongoExplorer && viewItem == mongoDb"
-				}
-			],
-			"commandPalette": [
-				{
-					"command": "mongo.connect",
-					"when": "view == mongoExplorer && viewItem == mongoDb"
+					"command": "cosmosDB.dropMongoDB",
+					"when": "view == cosmosDBExplorer && viewItem == mongoDb"
 				}
 			]
 		},
 		"keybindings": [
 			{
-				"command": "mongo.executeCommand",
+				"command": "cosmosDB.executeMongoCommand",
 				"key": "ctrl+shift+'",
 				"mac": "cmd+shift+'",
 				"when": "editorLangId == 'mongo' && editorTextFocus"
 			}
 		],
 		"configuration": {
-			"title": "Mongo",
+			"title": "Cosmos DB",
 			"properties": {
 				"mongo.shell.path": {
 					"type": [
@@ -215,10 +204,10 @@
 					"default": null,
 					"isExecutable": true
 				},
-				"mongo.showExplorer": {
+				"cosmosDB.showExplorer": {
 					"type": "boolean",
 					"default": true,
-					"description": "Show or hide the Mongo Explorer"
+					"description": "Show or hide the Cosmos DB Explorer"
 				}
 			}
 		}

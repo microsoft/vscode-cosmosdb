@@ -120,7 +120,10 @@ export class Model implements IMongoResource {
 			servers = servers.concat(...serverResult);
 		}));
 
-		return servers;
+		return servers.sort((a, b) => {
+			const n = a.resourceGroupName.localeCompare(b.resourceGroupName);
+			return n !== 0 ? n : a.name.localeCompare(b.name);
+		});
 	}
 }
 
@@ -157,13 +160,12 @@ export class Server implements IMongoResource {
 	private _databases: Database[] = [];
 	private _onChange: EventEmitter<void> = new EventEmitter<void>();
 	readonly onChange: Event<void> = this._onChange.event;
-	
 
 	constructor(
 		public readonly connectionString: string,
 		private readonly mongoServer: MongoServer,
 		private readonly azureServer?: docDBModels.DatabaseAccount,
-		private readonly resourceGroupName?: string) {
+		public readonly resourceGroupName?: string) {
 			this.contextValue = azureServer ? 'azureMongoServer' : 'mongoServer';
 	}
 
@@ -210,6 +212,10 @@ export class Server implements IMongoResource {
 
 	get label(): string {
 		return this.azureServer ? `${this.azureServer.name} (${this.resourceGroupName})` : this.id;
+	}
+
+	get name(): string {
+		return this.azureServer ? this.azureServer.name : null;
 	}
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;

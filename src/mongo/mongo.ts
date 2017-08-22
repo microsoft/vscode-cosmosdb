@@ -35,9 +35,9 @@ export interface IMongoResource extends vscode.TreeItem {
 
 export class Model implements IMongoResource {
 
-	readonly id: string = 'mongoExplorer';
-	readonly label: string = 'Mongo';
-	readonly type: string = 'mongoRoot';
+	readonly id: string = 'cosmosDBExplorer';
+	readonly label: string = 'Cosmos DB';
+	readonly type: string = 'cosmosDBRoot';
 	readonly canHaveChildren: boolean = true;
 
 	private _azureServers: IMongoResource[] = [];
@@ -395,7 +395,7 @@ export class Collection implements IMongoResource {
 	}
 
 	readonly command: Command = {
-		command: 'mongo.openCollection',
+		command: 'cosmosDB.openMongoCollection',
 		arguments: [this],
 		title: ''
 	};

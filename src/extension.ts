@@ -31,24 +31,21 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Mongo Tree View
 	const explorer = new MongoExplorer(model);
-	vscode.window.registerTreeDataProvider('mongoExplorer', explorer);
+	vscode.window.registerTreeDataProvider('cosmosDBExplorer', explorer);
 
 	// Commands
-	context.subscriptions.push(vscode.commands.registerCommand('mongo.addServer', () => addServer()));
-	context.subscriptions.push(vscode.commands.registerCommand('mongo.refreshExplorer', () => model.refreshAzureResources()));
-	context.subscriptions.push(vscode.commands.registerCommand('mongo.removeServer', (element: IMongoResource) => model.remove(element)));
-	context.subscriptions.push(vscode.commands.registerCommand('mongo.createDatabase', (server: Server) => createDatabase(server)));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.addMongoServer', () => addServer()));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.refreshExplorer', () => model.refreshAzureResources()));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.removeMongoServer', (element: IMongoResource) => model.remove(element)));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.createMongoDatabase', (server: Server) => createDatabase(server)));
 
 	vscode.window.setStatusBarMessage('Mongo: Not connected');
-	context.subscriptions.push(vscode.commands.registerCommand('mongo.connect', (element: Database) => connectToDatabase(element)));
-	context.subscriptions.push(vscode.commands.registerCommand('mongo.dropDb', (element: Database) => dropDatabase(element)));
-	context.subscriptions.push(vscode.commands.registerCommand('mongo.connectDb', () => {
-		vscode.window.showQuickPick(getDatabaseQuickPicks()).then(pick => connectToDatabase(pick.database));
-	}));
-	context.subscriptions.push(vscode.commands.registerCommand('mongo.newScrapbook', () => createScrapbook()));
-	context.subscriptions.push(vscode.commands.registerCommand('mongo.executeCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb)));
-	context.subscriptions.push(vscode.commands.registerCommand('mongo.updateDocuments', () => MongoCommands.updateDocuments(connectedDb, lastCommand)));
-	context.subscriptions.push(vscode.commands.registerCommand('mongo.openCollection', (collection: Collection) => {
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.connectMongoDB', (element: Database) => connectToDatabase(element)));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.dropMongoDB', (element: Database) => dropDatabase(element)));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.newMongoScrapbook', () => createScrapbook()));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.executeMongoCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb)));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.updateMongoDocuments', () => MongoCommands.updateDocuments(connectedDb, lastCommand)));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.openMongoCollection', (collection: Collection) => {
 		connectToDatabase(collection.db);
 		lastCommand = MongoCommands.getCommand(`db.${collection.label}.find()`);
 		MongoCommands.executeCommand(lastCommand, connectedDb).then(result => MongoCommands.showResult(result));
@@ -142,7 +139,12 @@ function dropDatabase(database: Database): void {
 		})
 }
 
-function connectToDatabase(database: Database): void {
+async function connectToDatabase(database: Database) {
+	if (!database) {
+		const pick = await vscode.window.showQuickPick(getDatabaseQuickPicks());
+		database = pick.database;
+	}
+
 	connectedDb = database;
 	languageClient.connect(database);
 	vscode.window.setStatusBarMessage('Mongo: ' + database.server.label + '/' + connectedDb.id);

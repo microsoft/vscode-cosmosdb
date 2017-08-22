@@ -5,7 +5,7 @@
 	"displayName": "Cosmos DB",
 	"description": "Create, browse, and update globally distributed, multi-model databases in Azure.",
 	"engines": {
-		"vscode": "^1.13.0"
+		"vscode": "^1.16.0"
 	},
 	"galleryBanner": {
 		"color": "#3E8E3A",

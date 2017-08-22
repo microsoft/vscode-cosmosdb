@@ -142,6 +142,10 @@ function dropDatabase(database: Database): void {
 async function connectToDatabase(database: Database) {
 	if (!database) {
 		const pick = await vscode.window.showQuickPick(getDatabaseQuickPicks());
+		if (!pick) {
+			return;
+		}
+		
 		database = pick.database;
 	}
 

@@ -29,6 +29,7 @@
 		"onView:cosmosDBExplorer",
 		"onCommand:cosmosDB.executeMongoCommand",
 		"onCommand:cosmosDB.addMongoServer",
+		"onCommand:cosmosDB.createAccount",
 		"onCommand:cosmosDB.removeMongoServer",
 		"onCommand:cosmosDB.createMongoDatabase",
 		"onCommand:cosmosDB.connectMongoDB",
@@ -79,6 +80,15 @@
 				"category": "Cosmos DB",
 				"command": "cosmosDB.addMongoServer",
 				"title": "Add Server",
+				"icon": {
+					"light": "resources/icons/light/add.svg",
+					"dark": "resources/icons/dark/add.svg"
+				}
+			},
+			{
+				"category": "Cosmos DB",
+				"command": "cosmosDB.createAccount",
+				"title": "Create Account",
 				"icon": {
 					"light": "resources/icons/light/add.svg",
 					"dark": "resources/icons/dark/add.svg"
@@ -147,6 +157,11 @@
 			"view/title": [
 				{
 					"command": "cosmosDB.refreshExplorer",
+					"when": "view == cosmosDBExplorer",
+					"group": "navigation"
+				},
+				{
+					"command": "cosmosDB.createAccount",
 					"when": "view == cosmosDBExplorer",
 					"group": "navigation"
 				},

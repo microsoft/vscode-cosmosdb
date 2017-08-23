@@ -10,6 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { AzureAccount, AzureSession } from './azure-account.api';
 import { MongoExplorer } from './mongo/explorer';
+import { CosmosDBCommands } from './commands';
 import { MongoCommands } from './mongo/commands';
 import { Model, Database, Server, IMongoResource, MongoCommand, Collection } from './mongo/mongo';
 import MongoDBLanguageClient from './mongo/languageClient';
@@ -34,6 +35,12 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.window.registerTreeDataProvider('cosmosDBExplorer', explorer);
 
 	// Commands
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.createAccount', async () => {
+		const account = await CosmosDBCommands.createCosmosDBAccount(azureAccount);
+		if (account) {
+			model.refreshAzureResources();
+		}
+	}));
 	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.addMongoServer', () => addServer()));
 	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.refreshExplorer', () => model.refreshAzureResources()));
 	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.removeMongoServer', (element: IMongoResource) => model.remove(element)));
@@ -145,7 +152,7 @@ async function connectToDatabase(database: Database) {
 		if (!pick) {
 			return;
 		}
-		
+
 		database = pick.database;
 	}
 

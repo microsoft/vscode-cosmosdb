@@ -12,6 +12,7 @@ import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collectio
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 import { AzureAccount } from '../azure-account.api';
+import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
 
@@ -105,8 +106,10 @@ export class Model implements IMongoResource {
 
 		await Promise.all(this.azureAccount.filters.map(async (filter) => {
 			const docDBClient = new DocumentdbManagementClient(filter.session.credentials, filter.subscription.subscriptionId);
+			const resourceManagementClient = new ResourceManagementClient(filter.session.credentials, filter.subscription.subscriptionId);
+			const resourceGroups = await resourceManagementClient.resourceGroups.list();
 
-			const serverResult = await Promise.all(filter.resourceGroups.map(async group => {
+			const serverResult = await Promise.all(resourceGroups.map(async group => {
 				const dbs = (await docDBClient.databaseAccounts.listByResourceGroup(group.name)).filter(db => db.kind === "MongoDB");
 				return Promise.all(dbs.map(async db => {
 					const result = await docDBClient.databaseAccounts.listConnectionStrings(group.name, db.name);
@@ -135,7 +138,7 @@ export class LoadingNode implements IMongoResource {
 
 export class AddResourceFilterNode implements IMongoResource {
 	readonly contextValue: string = 'mongoAddResourceFilter';
-	readonly label: string = "No Azure resources found. Add Resource Filter...";
+	readonly label: string = "No Azure resources found. Edit filters...";
 	readonly id: string = "mongoAddResourceFilter";
 	readonly command: Command = {
 		command: 'azure-account.addFilter',

@@ -204,7 +204,7 @@ export class LocationQuickPick implements vscode.QuickPickItem {
     readonly description: string;
     constructor(readonly location: SubscriptionModels.Location) {
         this.label = location.displayName;
-        this.description = location.name;
+        this.description = '';
     }
 }
 

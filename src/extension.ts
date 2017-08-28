@@ -9,15 +9,16 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { AzureAccount, AzureSession } from './azure-account.api';
-import { MongoExplorer } from './mongo/explorer';
 import { CosmosDBCommands } from './commands';
+import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
-import { Model, Database, Server, IMongoResource, MongoCommand, Collection } from './mongo/mongo';
+import { MongoDatabaseNode, MongoServerNode, MongoCommand, MongoCollectionNode } from './mongo/nodes';
+import { CosmosDBRootNode, INode } from './nodes'
 import MongoDBLanguageClient from './mongo/languageClient';
 
-let connectedDb: Database = null;
+let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
-let model: Model;
+let rootNode: CosmosDBRootNode;
 let lastCommand: MongoCommand;
 
 export function activate(context: vscode.ExtensionContext) {
@@ -25,34 +26,34 @@ export function activate(context: vscode.ExtensionContext) {
 
 	languageClient = new MongoDBLanguageClient(context);
 
-	model = new Model(azureAccount);
-	context.subscriptions.push(azureAccount.onFiltersChanged(() => model.refreshAzureResources()));
-	context.subscriptions.push(azureAccount.onStatusChanged(() => model.refreshAzureResources()));
-	context.subscriptions.push(azureAccount.onSessionsChanged(() => model.refreshAzureResources()));
+	rootNode = new CosmosDBRootNode(azureAccount);
+	context.subscriptions.push(azureAccount.onFiltersChanged(() => rootNode.refreshAzureResources()));
+	context.subscriptions.push(azureAccount.onStatusChanged(() => rootNode.refreshAzureResources()));
+	context.subscriptions.push(azureAccount.onSessionsChanged(() => rootNode.refreshAzureResources()));
 
 	// Mongo Tree View
-	const explorer = new MongoExplorer(model);
+	const explorer = new CosmosDBExplorer(rootNode);
 	vscode.window.registerTreeDataProvider('cosmosDBExplorer', explorer);
 
 	// Commands
 	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.createAccount', async () => {
 		const account = await CosmosDBCommands.createCosmosDBAccount(azureAccount);
 		if (account) {
-			model.refreshAzureResources();
+			rootNode.refreshAzureResources();
 		}
 	}));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.addMongoServer', () => addServer()));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.refreshExplorer', () => model.refreshAzureResources()));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.removeMongoServer', (element: IMongoResource) => model.remove(element)));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.createMongoDatabase', (server: Server) => createDatabase(server)));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.attachMongoServer', () => attachMongoServer()));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.refreshExplorer', () => rootNode.refreshAzureResources()));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.removeMongoServer', (element: INode) => rootNode.remove(element)));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.createMongoDatabase', (server: MongoServerNode) => createDatabase(server)));
 
 	vscode.window.setStatusBarMessage('Mongo: Not connected');
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.connectMongoDB', (element: Database) => connectToDatabase(element)));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.dropMongoDB', (element: Database) => dropDatabase(element)));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.connectMongoDB', (element: MongoDatabaseNode) => connectToDatabase(element)));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.dropMongoDB', (element: MongoDatabaseNode) => dropDatabase(element)));
 	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.newMongoScrapbook', () => createScrapbook()));
 	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.executeMongoCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb)));
 	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.updateMongoDocuments', () => MongoCommands.updateDocuments(connectedDb, lastCommand)));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.openMongoCollection', (collection: Collection) => {
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.openMongoCollection', (collection: MongoCollectionNode) => {
 		connectToDatabase(collection.db);
 		lastCommand = MongoCommands.getCommand(`db.${collection.label}.find()`);
 		MongoCommands.executeCommand(lastCommand, connectedDb).then(result => MongoCommands.showResult(result));
@@ -82,17 +83,17 @@ function createScrapbook(): Thenable<void> {
 	});
 }
 
-function addServer(): void {
+function attachMongoServer(): void {
 	vscode.window.showInputBox({
 		placeHolder: 'mongodb://host:port'
 	}).then(value => {
 		if (value) {
-			model.add(value);
+			rootNode.attach(value);
 		}
 	});
 }
 
-function createDatabase(server: Server): void {
+function createDatabase(server: MongoServerNode): void {
 	vscode.window.showInputBox({
 		placeHolder: 'Database Name'
 	}).then(database => {
@@ -113,7 +114,7 @@ function createDatabase(server: Server): void {
 class DatabaseQuickPick implements vscode.QuickPickItem {
 	readonly label: string;
 	readonly description: string;
-	constructor(readonly database: Database) {
+	constructor(readonly database: MongoDatabaseNode) {
 		this.label = database.label;
 		this.description = database.server.label + '/' + database.label;
 	}
@@ -121,18 +122,18 @@ class DatabaseQuickPick implements vscode.QuickPickItem {
 
 function getDatabaseQuickPicks(): Thenable<DatabaseQuickPick[]> {
 	const quickPicks: DatabaseQuickPick[] = [];
-	return model.getChildren().then(servers => {
+	return rootNode.getChildren().then(servers => {
 		return Promise.all(servers.map(server => server.getChildren()))
 			.then(allDatabases => {
 				allDatabases.forEach(databases => {
-					quickPicks.push(...databases.map(database => new DatabaseQuickPick(<Database>database)));
+					quickPicks.push(...databases.map(database => new DatabaseQuickPick(<MongoDatabaseNode>database)));
 				});
 				return quickPicks;
 			})
 	});
 }
 
-function dropDatabase(database: Database): void {
+function dropDatabase(database: MongoDatabaseNode): void {
 	vscode.window.showInformationMessage('Are you sure you want to drop the database \'' + database.id + '\' and its collections?', { modal: true }, 'Drop')
 		.then(result => {
 			if (result === 'Drop') {
@@ -146,7 +147,7 @@ function dropDatabase(database: Database): void {
 		})
 }
 
-async function connectToDatabase(database: Database) {
+async function connectToDatabase(database: MongoDatabaseNode) {
 	if (!database) {
 		const pick = await vscode.window.showQuickPick(getDatabaseQuickPicks());
 		if (!pick) {

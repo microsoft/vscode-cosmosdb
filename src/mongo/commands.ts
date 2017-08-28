@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
-import { Model, Server, Database, MongoCommand } from './mongo';
+import { MongoDatabaseNode, MongoCommand } from './nodes';
 import * as fs from 'fs';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
@@ -15,7 +15,7 @@ import { mongoLexer } from './grammar/mongoLexer';
 
 export class MongoCommands {
 
-	public static executeCommandFromActiveEditor(database: Database): MongoCommand {
+	public static executeCommandFromActiveEditor(database: MongoDatabaseNode): MongoCommand {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (activeEditor.document.languageId !== 'mongo') {
 			return;
@@ -32,7 +32,7 @@ export class MongoCommands {
 		return command;
 	}
 
-	public static executeCommand(command: MongoCommand, database: Database): Thenable<string> {
+	public static executeCommand(command: MongoCommand, database: MongoDatabaseNode): Thenable<string> {
 		if (!database) {
 			vscode.window.showErrorMessage('Please connect to the database first');
 			return;
@@ -59,7 +59,7 @@ export class MongoCommands {
 			});
 	}
 
-	public static updateDocuments(database: Database, command: MongoCommand): void {
+	public static updateDocuments(database: MongoDatabaseNode, command: MongoCommand): void {
 		if (!database) {
 			vscode.window.showErrorMessage('Please connect to the database first');
 			return;

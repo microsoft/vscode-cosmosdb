@@ -3,25 +3,25 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import { TreeDataProvider, Command, Event, EventEmitter, Disposable, TreeItem, ExtensionContext } from 'vscode';
-import { Model, Server, Database, IMongoResource } from './mongo';
+import { CosmosDBRootNode, INode } from './nodes';
 
-export class MongoExplorer implements TreeDataProvider<IMongoResource> {
+export class CosmosDBExplorer implements TreeDataProvider<INode> {
 
-	private _disposables: Map<IMongoResource, Disposable[]> = new Map<IMongoResource, Disposable[]>();
+	private _disposables: Map<INode, Disposable[]> = new Map<INode, Disposable[]>();
 
-	private _onDidChangeTreeData: EventEmitter<IMongoResource> = new EventEmitter<IMongoResource>();
-	readonly onDidChangeTreeData: Event<IMongoResource> = this._onDidChangeTreeData.event;
+	private _onDidChangeTreeData: EventEmitter<INode> = new EventEmitter<INode>();
+	readonly onDidChangeTreeData: Event<INode> = this._onDidChangeTreeData.event;
 
-	constructor(private model: Model) {
-		this.model.onChange(() => this._onDidChangeTreeData.fire());
+	constructor(private rootNode: CosmosDBRootNode) {
+		this.rootNode.onChange(() => this._onDidChangeTreeData.fire());
 	}
 
-	getTreeItem(node: IMongoResource): TreeItem {
+	getTreeItem(node: INode): TreeItem {
 		return node;
 	}
 
-	getChildren(node: IMongoResource): Thenable<IMongoResource[]> {
-		node = node ? node : this.model;
+	getChildren(node: INode): Thenable<INode[]> {
+		node = node ? node : this.rootNode;
 		const disposables = this._disposables.get(node);
 		if (disposables) {
 			for (const disposable of disposables) {

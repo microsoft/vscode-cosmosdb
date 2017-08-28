@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as nls from 'vscode-nls';
 import { workspace, languages, ExtensionContext, extensions, Uri, Range } from 'vscode';
 import { LanguageClient, LanguageClientOptions, RequestType, ServerOptions, TransportKind, NotificationType } from 'vscode-languageclient';
-import { Database } from './mongo';
+import { MongoDatabaseNode } from './nodes';
 
 const localize = nls.loadMessageBundle();
 
@@ -50,7 +50,7 @@ export default class MongoDBLanguageClient {
 		context.subscriptions.push(disposable);
 	}
 
-	connect(database: Database): void {
+	connect(database: MongoDatabaseNode): void {
 		const uri = Uri.parse(database.server.connectionString);
 		const connectionString = `${uri.scheme}://${uri.authority}/${database.id}?${uri.query}`
 		this.client.sendRequest('connect', { connectionString });

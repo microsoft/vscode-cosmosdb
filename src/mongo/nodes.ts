@@ -8,10 +8,11 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collection as MongoCollection, Cursor, ObjectID, MongoError, ReplSet } from 'mongodb';
+import { MongoClient, Db, ReadPreference, Code, Server, Collection, Cursor, ObjectID, MongoError, ReplSet } from 'mongodb';
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 import { AzureAccount } from '../azure-account.api';
+import { INode } from '../nodes';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
@@ -24,17 +25,17 @@ export interface MongoCommand {
 	arguments?: string;
 }
 
-export class Server implements IMongoResource {
+export class MongoServerNode implements INode {
 
 	contextValue: string;
 
-	private _databases: Database[] = [];
+	private _databases: MongoDatabaseNode[] = [];
 	private _onChange: EventEmitter<void> = new EventEmitter<void>();
 	readonly onChange: Event<void> = this._onChange.event;
 
 	constructor(
 		public readonly connectionString: string,
-		private readonly mongoServer: MongoServer,
+		private readonly mongoServer: Server,
 		private readonly azureServer?: docDBModels.DatabaseAccount,
 		public readonly resourceGroupName?: string) {
 			this.contextValue = azureServer ? 'azureMongoServer' : 'mongoServer';
@@ -91,22 +92,22 @@ export class Server implements IMongoResource {
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
-	getChildren(): Promise<IMongoResource[]> {
-		return <Promise<IMongoResource[]>>MongoClient.connect(this.connectionString)
+	getChildren(): Promise<INode[]> {
+		return <Promise<INode[]>>MongoClient.connect(this.connectionString)
 			.then(db => db.admin().listDatabases()
 				.then((value: { databases: { name }[] }) => {
-					this._databases = value.databases.map(database => new Database(database.name, this));
+					this._databases = value.databases.map(database => new MongoDatabaseNode(database.name, this));
 					db.close();
-					return <IMongoResource[]>this._databases;
+					return <INode[]>this._databases;
 				}));
 	}
 
-	get databases(): Database[] {
+	get databases(): MongoDatabaseNode[] {
 		return this._databases;
 	}
 
-	createDatabase(name: string, collection: string): Thenable<Database> {
-		const database = new Database(name, this);
+	createDatabase(name: string, collection: string): Thenable<MongoDatabaseNode> {
+		const database = new MongoDatabaseNode(name, this);
 		return database.createCollection(collection)
 			.then(() => {
 				this._onChange.fire();
@@ -114,19 +115,19 @@ export class Server implements IMongoResource {
 			});
 	}
 
-	dropDb(database: Database): void {
+	dropDb(database: MongoDatabaseNode): void {
 		database.drop().then(() => this._onChange.fire());
 	}
 }
 
-export class Database implements IMongoResource {
+export class MongoDatabaseNode implements INode {
 
 	readonly contextValue: string = 'mongoDb';
 
 	private _onChange: EventEmitter<void> = new EventEmitter<void>();
 	readonly onChange: Event<void> = this._onChange.event;
 
-	constructor(readonly id: string, readonly server: Server) {
+	constructor(readonly id: string, readonly server: MongoServerNode) {
 	}
 
 	get label(): string {
@@ -142,10 +143,10 @@ export class Database implements IMongoResource {
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
-	getChildren(): Promise<IMongoResource[]> {
-		return <Promise<IMongoResource[]>>this.getDb().then(db => {
+	getChildren(): Promise<INode[]> {
+		return <Promise<INode[]>>this.getDb().then(db => {
 			return db.collections().then(collections => {
-				return collections.map(collection => new Collection(collection, this));
+				return collections.map(collection => new MongoCollectionNode(collection, this));
 			})
 		});
 	}
@@ -165,7 +166,7 @@ export class Database implements IMongoResource {
 				.then(db => {
 					const collection = db.collection(command.collection);
 					if (collection) {
-						const result = new Collection(collection, this).executeCommand(command.name, command.arguments);
+						const result = new MongoCollectionNode(collection, this).executeCommand(command.name, command.arguments);
 						if (result) {
 							return result;
 						}
@@ -186,17 +187,17 @@ export class Database implements IMongoResource {
 			.then(db => {
 				const collection = db.collection(collectionName);
 				if (collection) {
-					return new Collection(collection, this).update(documentOrDocuments);
+					return new MongoCollectionNode(collection, this).update(documentOrDocuments);
 				}
 			});
 	}
 
-	createCollection(collectionName: string): Promise<Collection> {
+	createCollection(collectionName: string): Promise<MongoCollectionNode> {
 		return this.getDb()
 			.then(db => db.createCollection(collectionName))
 			.then(collection => {
 				this._onChange.fire();
-				return new Collection(collection, this);
+				return new MongoCollectionNode(collection, this);
 			});
 	}
 
@@ -216,8 +217,8 @@ export class Database implements IMongoResource {
 		});
 	}
 
-	private getCollection(collection: string): Promise<Collection> {
-		return this.getDb().then(db => new Collection(db.collection(collection), this));
+	private getCollection(collection: string): Promise<MongoCollectionNode> {
+		return this.getDb().then(db => new MongoCollectionNode(db.collection(collection), this));
 	}
 
 	executeCommandInShell(command: MongoCommand): Thenable<string> {
@@ -245,9 +246,9 @@ export class Database implements IMongoResource {
 	}
 }
 
-export class Collection implements IMongoResource {
+export class MongoCollectionNode implements INode {
 
-	constructor(private collection: MongoCollection, readonly db: Database) {
+	constructor(private collection: Collection, readonly db: MongoDatabaseNode) {
 	}
 
 	get id(): string {

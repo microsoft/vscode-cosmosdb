@@ -28,7 +28,7 @@
 	"activationEvents": [
 		"onView:cosmosDBExplorer",
 		"onCommand:cosmosDB.executeMongoCommand",
-		"onCommand:cosmosDB.addMongoServer",
+		"onCommand:cosmosDB.attachMongoServer",
 		"onCommand:cosmosDB.createAccount",
 		"onCommand:cosmosDB.removeMongoServer",
 		"onCommand:cosmosDB.createMongoDatabase",
@@ -72,14 +72,14 @@
 		],
 		"commands": [
 			{
-				"category": "Cosmos DB",
+				"category": "MongoDB",
 				"command": "cosmosDB.executeMongoCommand",
 				"title": "Execute Command"
 			},
 			{
 				"category": "Cosmos DB",
-				"command": "cosmosDB.addMongoServer",
-				"title": "Add Server",
+				"command": "cosmosDB.attachMongoServer",
+				"title": "Attach Mongo Server",
 				"icon": {
 					"light": "resources/icons/light/add.svg",
 					"dark": "resources/icons/dark/add.svg"
@@ -95,29 +95,29 @@
 				}
 			},
 			{
-				"category": "Cosmos DB",
+				"category": "MongoDB",
 				"command": "cosmosDB.createMongoDatabase",
 				"title": "Create Database"
 			},
 			{
-				"category": "Cosmos DB",
+				"category": "MongoDB",
 				"command": "cosmosDB.removeMongoServer",
 				"title": "Remove Server"
 			},
 			{
-				"category": "Cosmos DB",
+				"category": "MongoDB",
 				"command": "cosmosDB.connectMongoDB",
 				"title": "Connect"
 			},
 			{
-				"category": "Cosmos DB",
+				"category": "MongoDB",
 				"command": "cosmosDB.dropMongoDB",
 				"title": "Drop"
 			},
 			{
 				"category": "Cosmos DB",
 				"command": "cosmosDB.newMongoScrapbook",
-				"title": "New Scrapbook",
+				"title": "New Mongo Scrapbook",
 				"icon": {
 					"light": "resources/icons/light/addFile.svg",
 					"dark": "resources/icons/dark/addFile.svg"
@@ -133,12 +133,12 @@
 				}
 			},
 			{
-				"category": "Cosmos DB",
+				"category": "MongoDB",
 				"command": "cosmosDB.updateMongoDocuments",
 				"title": "Update"
 			},
 			{
-				"category": "Cosmos DB",
+				"category": "MongoDB",
 				"command": "cosmosDB.openMongoCollection",
 				"title": "Open Collection"
 			}
@@ -166,7 +166,7 @@
 					"group": "navigation"
 				},
 				{
-					"command": "cosmosDB.addMongoServer",
+					"command": "cosmosDB.attachMongoServer",
 					"when": "view == cosmosDBExplorer",
 					"group": "navigation"
 				},

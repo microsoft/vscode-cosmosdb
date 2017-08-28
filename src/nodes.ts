@@ -3,38 +3,33 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as vscode from 'vscode';
-import * as vm from 'vm';
-import * as cp from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
 
-import { MongoClient, Db, ReadPreference, Code, Server as MongoServer, Collection as MongoCollection, Cursor, ObjectID, MongoError, ReplSet } from 'mongodb';
-import { Shell } from './shell';
+import { MongoClient } from 'mongodb';
 import { EventEmitter, Event, Command } from 'vscode';
-import { AzureAccount } from '../azure-account.api';
+import { MongoServerNode } from './mongo/nodes'
+import { AzureAccount } from './azure-account.api';
 import { ResourceManagementClient } from 'azure-arm-resource';
-import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
 
-export interface IMongoResource extends vscode.TreeItem {
+export interface INode extends vscode.TreeItem {
 	id: string
 	label: string;
-	getChildren?(): Thenable<IMongoResource[]>;
+	getChildren?(): Thenable<INode[]>;
 	onChange?: Event<void>
 	contextValue?: string;
 	command?: Command;
 	iconPath?: { light: string, dark: string };
 }
 
-export class Model implements IMongoResource {
+export class CosmosDBRootNode implements INode {
 
-	readonly id: string = 'cosmosDBExplorer';
+	readonly id: string = 'cosmosDBRoot';
 	readonly label: string = 'Cosmos DB';
 	readonly type: string = 'cosmosDBRoot';
 	readonly canHaveChildren: boolean = true;
 
-	private _azureServers: IMongoResource[] = [];
-	private _servers: IMongoResource[] = [];
+	private _azureResources: INode[] = [];
+	private _attachedResources: INode[] = [];
 	private _isLoading: boolean = false;
 	
 	private _onChange: EventEmitter<void> = new EventEmitter<void>();
@@ -43,28 +38,28 @@ export class Model implements IMongoResource {
 	constructor(private azureAccount: AzureAccount) {
 	}
 
-	async getChildren(): Promise<IMongoResource[]> {
-		let azureServers = this._azureServers;
+	async getChildren(): Promise<INode[]> {
+		let azureResources = this._azureResources;
 
 		if (this._isLoading || this.azureAccount.status === "Initializing" || this.azureAccount.status === "LoggingIn") {
-			azureServers = [new LoadingNode()];
+			azureResources = [new LoadingNode()];
 		} else if (this.azureAccount.status === "LoggedOut") {
-			azureServers = [new SignInToAzureNode()];
-		} else if (azureServers.length === 0) {
-			azureServers = [new AddResourceFilterNode()];
+			azureResources = [new SignInToAzureNode()];
+		} else if (azureResources.length === 0) {
+			azureResources = [new NoResourcesNode()];
 		}
 
-		return azureServers.concat(this._servers);
+		return azureResources.concat(this._attachedResources);
 	}
 
-	async add(connectionString: string) {
+	async attach(connectionString: string) {
 		try {
 			const db = await MongoClient.connect(connectionString);
-			const server = new Server(connectionString, db.serverConfig);
-			if (this._servers.find(s => s.id === server.id)) {
-				vscode.window.showWarningMessage(`Server '${server.id}' is already connected.`)
+			const account = new MongoServerNode(connectionString, db.serverConfig);
+			if (this._attachedResources.find(s => s.id === account.id)) {
+				vscode.window.showWarningMessage(`Mongo account '${account.id}' is already attached.`)
 			} else {
-				this._servers.push(server);
+				this._attachedResources.push(account);
 				this._onChange.fire();
 			}
 		} catch (error) {
@@ -72,10 +67,10 @@ export class Model implements IMongoResource {
 		}
 	}
 
-	remove(server: IMongoResource) {
-		const index = this._servers.findIndex((value) => value.id === server.id);
+	remove(server: INode) {
+		const index = this._attachedResources.findIndex((value) => value.id === server.id);
 		if (index !== -1) {
-			this._servers.splice(index, 1);
+			this._attachedResources.splice(index, 1);
 			this._onChange.fire();
 		}
 	}
@@ -85,7 +80,7 @@ export class Model implements IMongoResource {
 			this._isLoading = true;
 			try {
 				this._onChange.fire();
-				this._azureServers = await this.getAzureMongoResources();
+				this._azureResources = await this.getAzureMongoResources();
 			} finally {
 				this._isLoading = false;
 				this._onChange.fire();
@@ -93,55 +88,55 @@ export class Model implements IMongoResource {
 		}
 	}
 
-	private async getAzureMongoResources(): Promise<IMongoResource[]> {
-		let servers: Server[] = [];
+	private async getAzureMongoResources(): Promise<INode[]> {
+		let resources: MongoServerNode[] = [];
 
 		await Promise.all(this.azureAccount.filters.map(async (filter) => {
 			const docDBClient = new DocumentdbManagementClient(filter.session.credentials, filter.subscription.subscriptionId);
 			const resourceManagementClient = new ResourceManagementClient(filter.session.credentials, filter.subscription.subscriptionId);
 			const resourceGroups = await resourceManagementClient.resourceGroups.list();
 
-			const serverResult = await Promise.all(resourceGroups.map(async group => {
+			const result = await Promise.all(resourceGroups.map(async group => {
 				const dbs = (await docDBClient.databaseAccounts.listByResourceGroup(group.name)).filter(db => db.kind === "MongoDB");
 				return Promise.all(dbs.map(async db => {
 					const result = await docDBClient.databaseAccounts.listConnectionStrings(group.name, db.name);
 					// Use the default connection string
 					const connectionString = result.connectionStrings[0].connectionString;
 					const mongoDB = await MongoClient.connect(connectionString);
-					return new Server(connectionString, mongoDB.serverConfig, db, group.name);
+					return new MongoServerNode(connectionString, mongoDB.serverConfig, db, group.name);
 				}));
 			}));
 
-			servers = servers.concat(...serverResult);
+			resources = resources.concat(...result);
 		}));
 
-		return servers.sort((a, b) => {
+		return resources.sort((a, b) => {
 			const n = a.resourceGroupName.localeCompare(b.resourceGroupName);
 			return n !== 0 ? n : a.name.localeCompare(b.name);
 		});
 	}
 }
 
-export class LoadingNode implements IMongoResource {
-	readonly contextValue: string = 'mongoLoading';
+export class LoadingNode implements INode {
+	readonly contextValue: string = 'cosmosDBLoading';
 	readonly label: string = "Loading Azure resources...";
-	readonly id: string = "mongoLoading";
+	readonly id: string = "cosmosDBLoading";
 }
 
-export class AddResourceFilterNode implements IMongoResource {
-	readonly contextValue: string = 'mongoAddResourceFilter';
+export class NoResourcesNode implements INode {
+	readonly contextValue: string = 'cosmosDBNoResourcesNode';
 	readonly label: string = "No Azure resources found. Edit filters...";
-	readonly id: string = "mongoAddResourceFilter";
+	readonly id: string = "cosmosDBNoResourcesNode";
 	readonly command: Command = {
 		command: 'azure-account.addFilter',
 		title: ''
 	};
 }
 
-export class SignInToAzureNode implements IMongoResource {
-	readonly contextValue: string = 'mongoSignInToAzure';
+export class SignInToAzureNode implements INode {
+	readonly contextValue: string = 'cosmosDBSignInToAzure';
 	readonly label: string = "Sign in to Azure...";
-	readonly id: string = "mongoSignInToAzure";
+	readonly id: string = "cosmosDBSignInToAzure";
 	readonly command: Command = {
 		command: 'azure-account.login',
 		title: ''

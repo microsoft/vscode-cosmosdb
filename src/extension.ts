@@ -60,6 +60,7 @@ export function activate(context: vscode.ExtensionContext) {
 		lastCommand = MongoCommands.getCommand(`db.${collection.label}.find()`);
 		MongoCommands.executeCommand(lastCommand, connectedDb).then(result => MongoCommands.showResult(result));
 	}));
+	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.launchMongoShell', () => launchMongoShell()));
 }
 
 function createScrapbook(): Thenable<void> {
@@ -153,6 +154,13 @@ async function connectToDatabase(database: MongoDatabaseNode) {
 		languageClient.connect(database);
 		vscode.window.setStatusBarMessage('Mongo: ' + database.server.label + '/' + connectedDb.id);
 	}
+}
+
+async function launchMongoShell() {
+	const terminal: vscode.Terminal = vscode.window.createTerminal('Mongo Shell');
+	terminal.sendText(`mongo`);
+	terminal.show();
+	return;
 }
 
 // this method is called when your extension is deactivated

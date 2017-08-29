@@ -29,7 +29,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	languageClient = new MongoDBLanguageClient(context);
 
-	explorer = new CosmosDBExplorer(azureAccount);
+	explorer = new CosmosDBExplorer(azureAccount, context.globalState);
 	context.subscriptions.push(azureAccount.onFiltersChanged(() => explorer.refresh()));
 	context.subscriptions.push(azureAccount.onStatusChanged(() => explorer.refresh()));
 	context.subscriptions.push(azureAccount.onSessionsChanged(() => explorer.refresh()));
@@ -125,8 +125,8 @@ async function copyConnectionString(node: IMongoServer) {
 	}
 }
 
-function removeMongoServer(node: INode) {
-	const deletedNodes = explorer.attachedServersNode.remove(node);
+async function removeMongoServer(node: INode) {
+	const deletedNodes = await explorer.attachedServersNode.remove(node);
 	if (deletedNodes) {
 		explorer.refresh(explorer.attachedServersNode);
 	}

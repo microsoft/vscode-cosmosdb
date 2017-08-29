@@ -114,9 +114,14 @@ export class AttachedServersNode implements INode {
 	readonly id: string = 'cosmosDBAttachedServers';
 	readonly label: string = 'Attached Mongo Servers';
 
+	private readonly _serviceName = "ms-azuretools.vscode-cosmosdb.connectionStrings";
 	private _attachedServers: INode[] = [];
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+
+	constructor(private readonly _azureAccount: AzureAccount, private readonly _globalState: vscode.Memento) {
+		this.loadPersistedServers();
+	}
 
 	get iconPath(): any {
 		return {
@@ -129,7 +134,7 @@ export class AttachedServersNode implements INode {
 		return this._attachedServers.length > 0 ? this._attachedServers : [new AttachMongoServerNode()];
 	}
 
-	async attach(connectionString: string): Promise<INode> {
+	async attach(connectionString: string, isInitializing: boolean = false): Promise<INode> {
 		try {
 			const db = await MongoClient.connect(connectionString);
 			const node = new MongoServerNode(connectionString, db.serverConfig);
@@ -137,6 +142,10 @@ export class AttachedServersNode implements INode {
 				vscode.window.showWarningMessage(`Mongo server '${node.id}' is already attached.`)
 			} else {
 				this._attachedServers.push(node);
+				if (!isInitializing) {
+					await this._azureAccount.credentials.writeSecret(this._serviceName, node.id, connectionString);
+					await this.persistIds();
+				}
 				return node;
 			}
 		} catch (error) {
@@ -144,11 +153,35 @@ export class AttachedServersNode implements INode {
 		}
 	}
 
-	remove(server: INode): INode[] {
+	async remove(server: INode): Promise<INode[]> {
 		const index = this._attachedServers.findIndex((value) => value.id === server.id);
 		if (index !== -1) {
-			return this._attachedServers.splice(index, 1);
+			const deletedNodes = this._attachedServers.splice(index, 1);
+			await this._azureAccount.credentials.deleteSecret(this._serviceName, server.id);
+			await this.persistIds();
+			return deletedNodes;
 		}
+	}
+
+	private async loadPersistedServers() {
+		const value: any = this._globalState.get(this._serviceName);
+		if (value) {
+			try {
+				const ids: string[] = JSON.parse(value);
+
+				await Promise.all(ids.map(async id => {
+					const connectionString = await this._azureAccount.credentials.readSecret(this._serviceName, id);
+					await this.attach(connectionString);
+				}));
+			} catch (error) {
+				vscode.window.showErrorMessage(`Failed to load persisted Mongo servers: ${error.message}`);
+			}
+		}
+	}
+
+	private async persistIds() {
+		const value = this._attachedServers.map(node => node.id);
+		await this._globalState.update(this._serviceName, JSON.stringify(value));
 	}
 }
 

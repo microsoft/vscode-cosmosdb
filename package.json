@@ -37,7 +37,9 @@
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.updateMongoDocuments",
 		"onCommand:cosmosDB.openMongoCollection",
-		"onCommand:cosmosDB.refreshExplorer"
+		"onCommand:cosmosDB.refresh",
+		"onCommand:cosmosDB.openInPortal",
+		"onCommand:cosmosDB.copyConnectionString"
 	],
 	"contributes": {
 		"views": {
@@ -81,8 +83,8 @@
 				"command": "cosmosDB.attachMongoServer",
 				"title": "Attach Mongo Server",
 				"icon": {
-					"light": "resources/icons/light/add.svg",
-					"dark": "resources/icons/dark/add.svg"
+					"light": "resources/icons/light/Connect.svg",
+					"dark": "resources/icons/dark/Connect.svg"
 				}
 			},
 			{
@@ -125,12 +127,22 @@
 			},
 			{
 				"category": "Cosmos DB",
-				"command": "cosmosDB.refreshExplorer",
+				"command": "cosmosDB.refresh",
 				"title": "Refresh",
 				"icon": {
 					"light": "resources/icons/light/refresh.svg",
 					"dark": "resources/icons/dark/refresh.svg"
 				}
+			},
+			{
+				"category": "CosmosDB",
+				"command": "cosmosDB.openInPortal",
+				"title": "Open In Portal"
+			},
+			{
+				"category": "CosmosDB",
+				"command": "cosmosDB.copyConnectionString",
+				"title": "Copy Connection String"
 			},
 			{
 				"category": "MongoDB",
@@ -156,7 +168,7 @@
 			],
 			"view/title": [
 				{
-					"command": "cosmosDB.refreshExplorer",
+					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer",
 					"group": "navigation"
 				},
@@ -183,7 +195,7 @@
 				},
 				{
 					"command": "cosmosDB.createMongoDatabase",
-					"when": "view == cosmosDBExplorer && viewItem == azureMongoServer"
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
 				},
 				{
 					"command": "cosmosDB.removeMongoServer",
@@ -195,6 +207,38 @@
 				},
 				{
 					"command": "cosmosDB.dropMongoDB",
+					"when": "view == cosmosDBExplorer && viewItem == mongoDb"
+				},
+				{
+					"command": "cosmosDB.attachMongoServer",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedServers"
+				},
+				{
+					"command": "cosmosDB.openInPortal",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+				},
+				{
+					"command": "cosmosDB.openInPortal",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGenericResource"
+				},
+				{
+					"command": "cosmosDB.copyConnectionString",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+				},
+				{
+					"command": "cosmosDB.refresh",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBSubscription"
+				},
+				{
+					"command": "cosmosDB.refresh",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+				},
+				{
+					"command": "cosmosDB.refresh",
+					"when": "view == cosmosDBExplorer && viewItem == mongoServer"
+				},
+				{
+					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem == mongoDb"
 				}
 			]
@@ -234,6 +278,7 @@
 		"antlr4ts": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src"
 	},
 	"devDependencies": {
+		"@types/copy-paste": "^1.1.30",
 		"@types/mocha": "^2.2.32",
 		"@types/mongodb": "^2.2.9",
 		"@types/node": "^6.0.40",
@@ -246,8 +291,10 @@
 		"antlr4ts": "^0.4.0-alpha.4",
 		"azure-arm-documentdb": "^1.0.0-preview",
 		"azure-arm-resource": "^2.0.0-preview",
+		"copy-paste": "^1.3.0",
 		"mongodb": "^2.2.25",
 		"ms-rest": "^2.2.1",
+		"opn": "^5.1.0",
 		"request-light": "^0.2.0",
 		"vscode-languageclient": "^3.1.0-alpha.1",
 		"vscode-languageserver": "^3.1.0-alpha.1",

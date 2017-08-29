@@ -50,8 +50,9 @@ export default class MongoDBLanguageClient {
 		context.subscriptions.push(disposable);
 	}
 
-	connect(database: MongoDatabaseNode): void {
-		const uri = Uri.parse(database.server.connectionString);
+	async connect(database: MongoDatabaseNode) {
+		const serverConnectionString = await database.server.getConnectionString();
+		const uri = Uri.parse(serverConnectionString);
 		const connectionString = `${uri.scheme}://${uri.authority}/${database.id}?${uri.query}`
 		this.client.sendRequest('connect', { connectionString });
 	}

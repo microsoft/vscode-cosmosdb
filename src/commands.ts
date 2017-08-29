@@ -10,7 +10,6 @@ import DocumentdbManagementClient = require("azure-arm-documentdb");
 import docDBModels = require("azure-arm-documentdb/lib/models");
 
 export class CosmosDBCommands {
-
     public static async createCosmosDBAccount(azureAccount: AzureAccount): Promise<docDBModels.DatabaseAccount> {
         const subscriptionPick = await this.getSubscription(azureAccount);
 
@@ -21,21 +20,26 @@ export class CosmosDBCommands {
                 const accountName = await this.getCosmosDBAccountName(subscriptionPick);
 
                 if (accountName) {
-                    const locationPick = await this.getLocation(subscriptionPick, "Select a location to create your Comsmos DB account in...");
+                    const apiPick = await this.getCosmosDBApi();
 
-                    if (locationPick) {
-                        return vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
-                            progress.report({ message: `Cosmos DB: Creating account '${accountName}'` });
-                            const docDBClient = new DocumentdbManagementClient(
-                                subscriptionPick.session.credentials, subscriptionPick.subscription.subscriptionId);
-                            return docDBClient.databaseAccounts.createOrUpdate(resourceGroupPick.resourceGroup.name,
-                                accountName,
-                                {
-                                    location: locationPick.location.name,
-                                    locations: [{ locationName: locationPick.location.name }],
-                                    kind: "MongoDB"
-                                });
-                        });
+                    if (apiPick) {
+                        const locationPick = await this.getLocation(subscriptionPick, "Select a location to create your Comsmos DB account in...");
+
+                        if (locationPick) {
+                            return vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
+                                progress.report({ message: `Cosmos DB: Creating account '${accountName}'` });
+                                const docDBClient = new DocumentdbManagementClient(
+                                    subscriptionPick.session.credentials, subscriptionPick.subscription.subscriptionId);
+                                return docDBClient.databaseAccounts.createOrUpdate(resourceGroupPick.resourceGroup.name,
+                                    accountName,
+                                    {
+                                        location: locationPick.location.name,
+                                        locations: [{ locationName: locationPick.location.name }],
+                                        kind: apiPick.kind,
+                                        tags: { defaultExperience: apiPick.defaultExperience }
+                                    });
+                            });
+                        }
                     }
                 }
             }
@@ -89,6 +93,23 @@ export class CosmosDBCommands {
                 }
             }
         }
+    }
+
+    private static getCosmosDBApi(): Thenable<ApiQuickPick> {
+        const mongoDB = "MongoDB";
+        const globalDocumentDB = "GlobalDocumentDB";
+        const graph = "Graph";
+        const table = "Table";
+        const documentDB = "DocumentDB";
+
+        const quickPicks: ApiQuickPick[] = [
+            new ApiQuickPick(mongoDB, mongoDB),
+            new ApiQuickPick(globalDocumentDB, graph),
+            new ApiQuickPick(globalDocumentDB, table),
+            new ApiQuickPick(globalDocumentDB, documentDB)
+        ];
+
+        return vscode.window.showQuickPick(quickPicks, { placeHolder: "Select an API for your Cosmos DB account..." });
     }
 
     private static async getLocation(subscriptionPick: SubscriptionQuickPick, placeholder: string): Promise<LocationQuickPick> {
@@ -205,6 +226,14 @@ export class LocationQuickPick implements vscode.QuickPickItem {
     constructor(readonly location: SubscriptionModels.Location) {
         this.label = location.displayName;
         this.description = '';
+    }
+}
+
+export class ApiQuickPick implements vscode.QuickPickItem {
+    readonly label: string;
+    readonly description: string;
+    constructor(readonly kind: string, readonly defaultExperience: string) {
+        this.label = defaultExperience;
     }
 }
 

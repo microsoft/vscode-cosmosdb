@@ -2,44 +2,47 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { TreeDataProvider, Command, Event, EventEmitter, Disposable, TreeItem, ExtensionContext } from 'vscode';
-import { CosmosDBRootNode, INode } from './nodes';
+
+import { TreeDataProvider, Event, EventEmitter, TreeItem } from 'vscode';
+import { AttachedServersNode, LoadingNode, NoSubscriptionsNode, SignInToAzureNode, SubscriptionNode, INode } from './nodes';
+import { AzureAccount } from './azure-account.api';
 
 export class CosmosDBExplorer implements TreeDataProvider<INode> {
-
-	private _disposables: Map<INode, Disposable[]> = new Map<INode, Disposable[]>();
-
 	private _onDidChangeTreeData: EventEmitter<INode> = new EventEmitter<INode>();
 	readonly onDidChangeTreeData: Event<INode> = this._onDidChangeTreeData.event;
 
-	constructor(private rootNode: CosmosDBRootNode) {
-		this.rootNode.onChange(() => this._onDidChangeTreeData.fire());
+	readonly attachedServersNode: AttachedServersNode = new AttachedServersNode();
+
+	constructor(private azureAccount: AzureAccount) {
 	}
 
 	getTreeItem(node: INode): TreeItem {
 		return node;
 	}
 
-	getChildren(node: INode): Thenable<INode[]> {
-		node = node ? node : this.rootNode;
-		const disposables = this._disposables.get(node);
-		if (disposables) {
-			for (const disposable of disposables) {
-				disposable.dispose();
+	async getChildren(node?: INode): Promise<INode[]> {
+		let nodes: INode[] = [];
+
+		if (node) {
+			nodes = await node.getChildren();
+		} else { // Root of the explorer
+			if (this.azureAccount.status === "Initializing" || this.azureAccount.status === "LoggingIn") {
+				nodes.push(new LoadingNode());
+			} else if (this.azureAccount.status === "LoggedOut") {
+				nodes.push(new SignInToAzureNode());
+			} else if (this.azureAccount.filters.length === 0) {
+				nodes.push(new NoSubscriptionsNode());
+			} else {
+				nodes = this.azureAccount.filters.map(filter => new SubscriptionNode(filter))
 			}
+
+			nodes.push(this.attachedServersNode);
 		}
-		return node.getChildren().then(children => {
-			this._disposables.set(node, children.map(child => {
-				if (child.onChange) {
-					return child.onChange(() => this._onDidChangeTreeData.fire(child));
-				}
-				return new Disposable(() => { });
-			}));
-			return children;
-		});
+
+		return nodes;
 	}
 
-	refresh(): void {
-		this._onDidChangeTreeData.fire();
+	refresh(node?: INode): void {
+		this._onDidChangeTreeData.fire(node);
 	}
 }

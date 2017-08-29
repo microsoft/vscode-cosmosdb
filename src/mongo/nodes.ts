@@ -25,109 +25,70 @@ export interface MongoCommand {
 	arguments?: string;
 }
 
-export class MongoServerNode implements INode {
+export interface IMongoServer extends INode {
+	getConnectionString(): Promise<string>;
+}
 
-	contextValue: string;
-
-	private _databases: MongoDatabaseNode[] = [];
-	private _onChange: EventEmitter<void> = new EventEmitter<void>();
-	readonly onChange: Event<void> = this._onChange.event;
-
-	constructor(
-		public readonly connectionString: string,
-		private readonly mongoServer: Server,
-		private readonly azureServer?: docDBModels.DatabaseAccount,
-		public readonly resourceGroupName?: string) {
-			this.contextValue = azureServer ? 'azureMongoServer' : 'mongoServer';
-	}
-
-	get host(): string {
-
-		// Azure CosmosDB comes back as a ReplSet
-		if (this.mongoServer instanceof ReplSet) {
-			// get the first connection string from the seedlist for the ReplSet
-			// this may not be best solution, but the connection (below) gives
-			// the replicaset host name, which is different than what is in the connection string
-			let rs: any = this.mongoServer;
-			return rs.s.replset.s.seedlist[0].host;
-			
-			// returns the replication set host name (different from connction string)
-			// let rs: ReplSet = this.mongoServer;
-			// let conn: any[] = rs2.connections();
-			// return conn[0].host;
-			
-		} else {
-			return this.mongoServer['host'];
-		}
-	}
-	
-	get port(): string {
-
-		// Azure CosmosDB comes back as a ReplSet
-		if (this.mongoServer instanceof ReplSet) {
-			let rs: any = this.mongoServer;
-			return rs.s.replset.s.seedlist[0].port;
-			
-			// returns the replication set port (different from connction string)
-			// let rs: ReplSet = this.mongoServer;
-			// let conn: any[] = rs2.connections();
-			// return conn[0].port;
-			
-		} else {
-			return this.mongoServer['port'];
-		}
-	}
-
-	get id(): string{
-		return `${this.host}:${this.port}`;
-	}
-
-	get label(): string {
-		return this.azureServer ? `${this.azureServer.name} (${this.resourceGroupName})` : this.id;
-	}
-
-	get name(): string {
-		return this.azureServer ? this.azureServer.name : null;
-	}
+export class MongoServerNode implements IMongoServer {
+	readonly contextValue: string = "mongoServer";
+	readonly id: string;
+	readonly label: string;
+	private readonly _connectionString: string;
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
+	constructor(connectionString: string, db: Server) {
+		let host: string;
+		let port: string;
+
+		// Azure CosmosDB comes back as a ReplSet
+		if (db instanceof ReplSet) {
+			// get the first connection string from the seedlist for the ReplSet
+			// this may not be best solution, but the connection (below) gives
+			// the replicaset host name, which is different than what is in the connection string
+			let rs: any = db;
+			host = rs.s.replset.s.seedlist[0].host;
+			port = rs.s.replset.s.seedlist[0].port;
+		} else {
+			host = db['host'];
+			port = db['port'];
+		}
+
+		this.id = `${host}:${port}`;
+		this.label = this.id;
+		this._connectionString = connectionString;
+	}
+
+	get iconPath(): any {
+		return {
+			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'light', 'DataServer.svg'),
+			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
+		};
+	}
+
+	getConnectionString(): Promise<string> {
+		return Promise.resolve(this._connectionString);
+	}
+
 	getChildren(): Promise<INode[]> {
-		return <Promise<INode[]>>MongoClient.connect(this.connectionString)
-			.then(db => db.admin().listDatabases()
-				.then((value: { databases: { name }[] }) => {
-					this._databases = value.databases.map(database => new MongoDatabaseNode(database.name, this));
-					db.close();
-					return <INode[]>this._databases;
-				}));
+		return MongoServerNode.getMongoDatabaseNodes(this._connectionString, this);
 	}
 
-	get databases(): MongoDatabaseNode[] {
-		return this._databases;
-	}
-
-	createDatabase(name: string, collection: string): Thenable<MongoDatabaseNode> {
-		const database = new MongoDatabaseNode(name, this);
-		return database.createCollection(collection)
-			.then(() => {
-				this._onChange.fire();
-				return database;
-			});
-	}
-
-	dropDb(database: MongoDatabaseNode): void {
-		database.drop().then(() => this._onChange.fire());
+	static async getMongoDatabaseNodes(connectionString: string, parentNode: IMongoServer): Promise<MongoDatabaseNode[]> {
+		const db = await MongoClient.connect(connectionString);
+		try {
+			const value: { databases: { name }[] } = await db.admin().listDatabases();
+			return value.databases.map(database => new MongoDatabaseNode(database.name, parentNode));
+		} finally {
+			db.close();
+		}
 	}
 }
 
 export class MongoDatabaseNode implements INode {
-
 	readonly contextValue: string = 'mongoDb';
 
-	private _onChange: EventEmitter<void> = new EventEmitter<void>();
-	readonly onChange: Event<void> = this._onChange.event;
-
-	constructor(readonly id: string, readonly server: MongoServerNode) {
+	constructor(readonly id: string, readonly server: IMongoServer) {
 	}
 
 	get label(): string {
@@ -136,8 +97,8 @@ export class MongoDatabaseNode implements INode {
 
 	get iconPath(): any {
 		return {
-			light: path.join(__filename, '..', '..', '..', '..', 'media', 'dark', 'database-dark.png'),
-			dark: path.join(__filename, '..', '..', '..', '..', 'media', 'light', 'database-light.png')
+			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'light', 'Database.svg'),
+			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'dark', 'Database.svg')
 		};
 	}
 
@@ -151,8 +112,9 @@ export class MongoDatabaseNode implements INode {
 		});
 	}
 
-	getDb(): Promise<Db> {
-		const uri = vscode.Uri.parse(this.server.connectionString);
+	async getDb(): Promise<Db> {
+		const serverConnectionString = await this.server.getConnectionString();
+		const uri = vscode.Uri.parse(serverConnectionString);
 		const connectionString = `${uri.scheme}://${uri.authority}/${this.id}?${uri.query}`
 		return <Promise<Db>>MongoClient.connect(connectionString)
 			.then(db => {
@@ -196,22 +158,19 @@ export class MongoDatabaseNode implements INode {
 		return this.getDb()
 			.then(db => db.createCollection(collectionName))
 			.then(collection => {
-				this._onChange.fire();
 				return new MongoCollectionNode(collection, this);
 			});
 	}
 
-	drop(): Thenable<any> {
-		return this.getDb().then(db => db.dropDatabase());
+	async drop() {
+		const db = await this.getDb();
+		await db.dropDatabase();
 	}
 
 	dropCollection(collectionName: string): Thenable<string> {
 		return this.getDb().then(db => {
 			return db.dropCollection(collectionName)
 				.then(result => {
-					if (result) {
-						this._onChange.fire();
-					}
 					return JSON.stringify({ 'dropped': result });
 				});
 		});
@@ -238,8 +197,9 @@ export class MongoDatabaseNode implements INode {
 		}
 	}
 
-	private createShell(shellPath: string): Promise<Shell> {
-		return <Promise<null>>Shell.create(shellPath, this.server.connectionString)
+	private async createShell(shellPath: string): Promise<Shell> {
+		const connectionString = await this.server.getConnectionString();
+		return <Promise<null>>Shell.create(shellPath, connectionString)
 			.then(shell => {
 				return shell.useDatabase(this.id).then(() => shell);
 			}, error => vscode.window.showErrorMessage(error));
@@ -261,8 +221,8 @@ export class MongoCollectionNode implements INode {
 
 	get iconPath(): any {
 		return {
-			light: path.join(__filename, '..', '..', '..', '..', 'media', 'dark', 'collection-dark.png'),
-			dark: path.join(__filename, '..', '..', '..', '..', 'media', 'light', 'collection-light.png')
+			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'light', 'Collection.svg'),
+			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'dark', 'Collection.svg'),
 		};
 	}
 

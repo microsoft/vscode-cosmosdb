@@ -3,134 +3,185 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as vscode from 'vscode';
+import * as path from 'path';
 
 import { MongoClient } from 'mongodb';
 import { EventEmitter, Event, Command } from 'vscode';
-import { MongoServerNode } from './mongo/nodes'
-import { AzureAccount } from './azure-account.api';
+import { MongoServerNode, IMongoServer } from './mongo/nodes'
+import { AzureAccount, AzureResourceFilter } from './azure-account.api';
 import { ResourceManagementClient } from 'azure-arm-resource';
+import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
 
 export interface INode extends vscode.TreeItem {
 	id: string
-	label: string;
-	getChildren?(): Thenable<INode[]>;
-	onChange?: Event<void>
-	contextValue?: string;
-	command?: Command;
-	iconPath?: { light: string, dark: string };
+	getChildren?(): Promise<INode[]>;
 }
 
-export class CosmosDBRootNode implements INode {
+export class SubscriptionNode implements INode {
+	readonly contextValue: string = 'cosmosDBSubscription';
+	readonly id: string;
+	readonly label: string;
 
-	readonly id: string = 'cosmosDBRoot';
-	readonly label: string = 'Cosmos DB';
-	readonly type: string = 'cosmosDBRoot';
-	readonly canHaveChildren: boolean = true;
+	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
-	private _azureResources: INode[] = [];
-	private _attachedResources: INode[] = [];
-	private _isLoading: boolean = false;
-	
-	private _onChange: EventEmitter<void> = new EventEmitter<void>();
-	readonly onChange: Event<void> = this._onChange.event;
+	constructor(private readonly subscriptionFilter?: AzureResourceFilter) {
+		this.id = subscriptionFilter.subscription.id;
+		this.label = subscriptionFilter.subscription.displayName;
+	}
 
-	constructor(private azureAccount: AzureAccount) {
+	get iconPath(): any {
+		return {
+			light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'AzureSubscription.svg'),
+			dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'AzureSubscription.svg')
+		};
 	}
 
 	async getChildren(): Promise<INode[]> {
-		let azureResources = this._azureResources;
+		let nodes: INode[] = [];
 
-		if (this._isLoading || this.azureAccount.status === "Initializing" || this.azureAccount.status === "LoggingIn") {
-			azureResources = [new LoadingNode()];
-		} else if (this.azureAccount.status === "LoggedOut") {
-			azureResources = [new SignInToAzureNode()];
-		} else if (azureResources.length === 0) {
-			azureResources = [new NoResourcesNode()];
+		try {
+			const docDBClient = new DocumentdbManagementClient(this.subscriptionFilter.session.credentials, this.subscriptionFilter.subscription.subscriptionId);
+			const resourceManagementClient = new ResourceManagementClient(this.subscriptionFilter.session.credentials, this.subscriptionFilter.subscription.subscriptionId);
+			let resourceGroups = await resourceManagementClient.resourceGroups.list();
+			resourceGroups = resourceGroups.sort((a, b) => a.name.localeCompare(b.name));
+
+			const result = await Promise.all(resourceGroups.map(async group => {
+				let dbs = await docDBClient.databaseAccounts.listByResourceGroup(group.name);
+				dbs = dbs.sort((a, b) => a.name.localeCompare(b.name));
+				return Promise.all(dbs.map(async db => new CosmosDBResourceNode(this.subscriptionFilter, db, group.name)));
+			}));
+
+			nodes = [].concat(...result);
+		} catch (error) {
+			vscode.window.showErrorMessage(error.message);
 		}
 
-		return azureResources.concat(this._attachedResources);
+		return nodes.length > 0 ? nodes : [new NoResourcesNode()];
+	}
+}
+
+export class CosmosDBResourceNode implements IMongoServer {
+	readonly id: string;
+	readonly label: string;
+	readonly contextValue: string;
+	readonly tenantId: string;
+	readonly collapsibleState;
+
+	private _isMongo: boolean;
+	private _connectionString: string;
+
+	constructor(private readonly _subscriptionFilter: AzureResourceFilter,
+		private readonly _databaseAccount: docDBModels.DatabaseAccount,
+		private readonly _resourceGroupName: string) {
+		this.id = _databaseAccount.id;
+		this.tenantId = _subscriptionFilter.session.tenantId;
+		this.label = `${_databaseAccount.name} (${_resourceGroupName})`;
+		this._isMongo = _databaseAccount.kind === "MongoDB";
+		this.contextValue = this._isMongo ? "cosmosDBMongoServer" : "cosmosDBGenericResource";
+
+		this.collapsibleState = this._isMongo ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
 	}
 
-	async attach(connectionString: string) {
+	get iconPath(): any {
+		return {
+			light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'DataServer.svg'),
+			dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
+		};
+	}
+
+	async getConnectionString(): Promise<string> {
+		if (!this._connectionString) {
+			const docDBClient = new DocumentdbManagementClient(this._subscriptionFilter.session.credentials, this._subscriptionFilter.subscription.subscriptionId);
+			const result = await docDBClient.databaseAccounts.listConnectionStrings(this._resourceGroupName, this._databaseAccount.name);
+			// Use the default connection string
+			this._connectionString = result.connectionStrings[0].connectionString;
+		}
+
+		return this._connectionString;
+	}
+
+	async getChildren(): Promise<INode[]> {
+		if (this._isMongo) {
+			const connectionString = await this.getConnectionString();
+			return MongoServerNode.getMongoDatabaseNodes(connectionString, this);
+		}
+	}
+}
+
+export class AttachedServersNode implements INode {
+	readonly contextValue: string = 'cosmosDBAttachedServers';
+	readonly id: string = 'cosmosDBAttachedServers';
+	readonly label: string = 'Attached Mongo Servers';
+
+	private _attachedServers: INode[] = [];
+
+	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+
+	get iconPath(): any {
+		return {
+			light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'ConnectPlugged.svg'),
+			dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'ConnectPlugged.svg')
+		};
+	}
+
+	async getChildren(): Promise<INode[]> {
+		return this._attachedServers.length > 0 ? this._attachedServers : [new AttachMongoServerNode()];
+	}
+
+	async attach(connectionString: string): Promise<INode> {
 		try {
 			const db = await MongoClient.connect(connectionString);
-			const account = new MongoServerNode(connectionString, db.serverConfig);
-			if (this._attachedResources.find(s => s.id === account.id)) {
-				vscode.window.showWarningMessage(`Mongo account '${account.id}' is already attached.`)
+			const node = new MongoServerNode(connectionString, db.serverConfig);
+			if (this._attachedServers.find(s => s.id === node.id)) {
+				vscode.window.showWarningMessage(`Mongo server '${node.id}' is already attached.`)
 			} else {
-				this._attachedResources.push(account);
-				this._onChange.fire();
+				this._attachedServers.push(node);
+				return node;
 			}
 		} catch (error) {
 			vscode.window.showErrorMessage(error.message);
 		}
 	}
 
-	remove(server: INode) {
-		const index = this._attachedResources.findIndex((value) => value.id === server.id);
+	remove(server: INode): INode[] {
+		const index = this._attachedServers.findIndex((value) => value.id === server.id);
 		if (index !== -1) {
-			this._attachedResources.splice(index, 1);
-			this._onChange.fire();
+			return this._attachedServers.splice(index, 1);
 		}
-	}
-
-	async refreshAzureResources(): Promise<void> {
-		if (!this._isLoading) {
-			this._isLoading = true;
-			try {
-				this._onChange.fire();
-				this._azureResources = await this.getAzureMongoResources();
-			} finally {
-				this._isLoading = false;
-				this._onChange.fire();
-			}
-		}
-	}
-
-	private async getAzureMongoResources(): Promise<INode[]> {
-		let resources: MongoServerNode[] = [];
-
-		await Promise.all(this.azureAccount.filters.map(async (filter) => {
-			const docDBClient = new DocumentdbManagementClient(filter.session.credentials, filter.subscription.subscriptionId);
-			const resourceManagementClient = new ResourceManagementClient(filter.session.credentials, filter.subscription.subscriptionId);
-			const resourceGroups = await resourceManagementClient.resourceGroups.list();
-
-			const result = await Promise.all(resourceGroups.map(async group => {
-				const dbs = (await docDBClient.databaseAccounts.listByResourceGroup(group.name)).filter(db => db.kind === "MongoDB");
-				return Promise.all(dbs.map(async db => {
-					const result = await docDBClient.databaseAccounts.listConnectionStrings(group.name, db.name);
-					// Use the default connection string
-					const connectionString = result.connectionStrings[0].connectionString;
-					const mongoDB = await MongoClient.connect(connectionString);
-					return new MongoServerNode(connectionString, mongoDB.serverConfig, db, group.name);
-				}));
-			}));
-
-			resources = resources.concat(...result);
-		}));
-
-		return resources.sort((a, b) => {
-			const n = a.resourceGroupName.localeCompare(b.resourceGroupName);
-			return n !== 0 ? n : a.name.localeCompare(b.name);
-		});
 	}
 }
 
 export class LoadingNode implements INode {
 	readonly contextValue: string = 'cosmosDBLoading';
-	readonly label: string = "Loading Azure resources...";
+	readonly label: string = "Loading...";
 	readonly id: string = "cosmosDBLoading";
 }
 
-export class NoResourcesNode implements INode {
-	readonly contextValue: string = 'cosmosDBNoResourcesNode';
-	readonly label: string = "No Azure resources found. Edit filters...";
-	readonly id: string = "cosmosDBNoResourcesNode";
+export class AttachMongoServerNode implements INode {
+	readonly contextValue: string = 'cosmosDBAttachMongoServerNode';
+	readonly label: string = "Attach Mongo Server...";
+	readonly id: string = "cosmosDBAttachMongoServerNode";
+	readonly command: Command = {
+		command: 'cosmosDB.attachMongoServer',
+		title: ''
+	};
+}
+
+export class NoSubscriptionsNode implements INode {
+	readonly contextValue: string = 'cosmosDBNoSubscriptionsNode';
+	readonly label: string = "No Azure subscriptions found. Edit filters...";
+	readonly id: string = "cosmosDBNoSubscriptionsNode";
 	readonly command: Command = {
 		command: 'azure-account.addFilter',
 		title: ''
 	};
+}
+
+export class NoResourcesNode implements INode {
+	readonly contextValue: string = 'cosmosDBNoResourcesNode';
+	readonly label: string = "No resources found.";
+	readonly id: string = "cosmosDBNoResourcesNode";
 }
 
 export class SignInToAzureNode implements INode {

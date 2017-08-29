@@ -82,7 +82,7 @@
 			{
 				"category": "MongoDB",
 				"command": "cosmosDB.launchMongoShell",
-				"title": "Mongo Shell"
+				"title": "Launch Shell"
 			},
 			{
 				"category": "Cosmos DB",

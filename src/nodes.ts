@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as keytarType from 'keytar';
 
 import { MongoClient } from 'mongodb';
 import { EventEmitter, Event, Command } from 'vscode';
@@ -116,11 +117,19 @@ export class AttachedServersNode implements INode {
 
 	private readonly _serviceName = "ms-azuretools.vscode-cosmosdb.connectionStrings";
 	private _attachedServers: INode[] = [];
+	private _keytar: typeof keytarType;
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
 	constructor(private readonly _azureAccount: AzureAccount, private readonly _globalState: vscode.Memento) {
+		try {
+			this._keytar = require(`${vscode.env.appRoot}/node_modules/keytar`);
+		} catch (e) {
+			// unable to find keytar
+		}	
+
 		this.loadPersistedServers();
+
 	}
 
 	get iconPath(): any {
@@ -143,8 +152,10 @@ export class AttachedServersNode implements INode {
 			} else {
 				this._attachedServers.push(node);
 				if (!isInitializing) {
-					await this._azureAccount.credentials.writeSecret(this._serviceName, node.id, connectionString);
-					await this.persistIds();
+					if (this._keytar) {
+						await this._keytar.setPassword(this._serviceName, node.id, connectionString);
+						await this.persistIds();
+					}
 				}
 				return node;
 			}
@@ -157,9 +168,11 @@ export class AttachedServersNode implements INode {
 		const index = this._attachedServers.findIndex((value) => value.id === server.id);
 		if (index !== -1) {
 			const deletedNodes = this._attachedServers.splice(index, 1);
-			await this._azureAccount.credentials.deleteSecret(this._serviceName, server.id);
-			await this.persistIds();
-			return deletedNodes;
+			if (this._keytar) {
+				await this._keytar.deletePassword(this._serviceName, server.id);
+				await this.persistIds();
+				return deletedNodes;
+			}
 		}
 	}
 
@@ -168,9 +181,8 @@ export class AttachedServersNode implements INode {
 		if (value) {
 			try {
 				const ids: string[] = JSON.parse(value);
-
 				await Promise.all(ids.map(async id => {
-					const connectionString = await this._azureAccount.credentials.readSecret(this._serviceName, id);
+					const connectionString: string = await this._keytar.getPassword(this._serviceName, id);
 					await this.attach(connectionString);
 				}));
 			} catch (error) {
@@ -226,3 +238,6 @@ export class SignInToAzureNode implements INode {
 		title: ''
 	};
 }
+
+
+

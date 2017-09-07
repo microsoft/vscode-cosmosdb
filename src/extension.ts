@@ -25,7 +25,7 @@ let explorer: CosmosDBExplorer;
 let lastCommand: MongoCommand;
 
 export function activate(context: vscode.ExtensionContext) {
-	const azureAccount = vscode.extensions.getExtension<AzureAccount>('vscode.azure-account')!.exports;
+	const azureAccount = vscode.extensions.getExtension<AzureAccount>('ms-vscode.azure-account')!.exports;
 
 	languageClient = new MongoDBLanguageClient(context);
 

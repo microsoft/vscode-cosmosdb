@@ -218,7 +218,7 @@ export class NoSubscriptionsNode implements INode {
 	readonly label: string = "No Azure subscriptions found. Edit filters...";
 	readonly id: string = "cosmosDBNoSubscriptionsNode";
 	readonly command: Command = {
-		command: 'azure-account.addFilter',
+		command: 'azure-account.selectSubscriptions',
 		title: ''
 	};
 }

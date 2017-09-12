@@ -18,6 +18,7 @@ import { MongoCommands } from './mongo/commands';
 import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode } from './mongo/nodes';
 import { CosmosDBResourceNode, INode } from './nodes'
 import MongoDBLanguageClient from './mongo/languageClient';
+import { reporter, Reporter } from './telemetry';
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
@@ -25,6 +26,8 @@ let explorer: CosmosDBExplorer;
 let lastCommand: MongoCommand;
 
 export function activate(context: vscode.ExtensionContext) {
+	context.subscriptions.push(new Reporter(context));
+
 	const azureAccount = vscode.extensions.getExtension<AzureAccount>('ms-vscode.azure-account')!.exports;
 
 	languageClient = new MongoDBLanguageClient(context);
@@ -36,31 +39,55 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.window.registerTreeDataProvider('cosmosDBExplorer', explorer);
 
 	// Commands
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.createAccount', async () => {
+	initAsyncCommand(context, 'cosmosDB.createAccount', async () => {
 		const account = await CosmosDBCommands.createCosmosDBAccount(azureAccount);
 		if (account) {
 			explorer.refresh();
 		}
-	}));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.attachMongoServer', () => attachMongoServer()));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.refresh', (node: INode) => explorer.refresh(node)));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.removeMongoServer', (node: INode) => removeMongoServer(node)));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.createMongoDatabase', (node: IMongoServer) => createMongoDatabase(node)));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.openInPortal', (node: CosmosDBResourceNode) => openInPortal(node)));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.copyConnectionString', (node: CosmosDBResourceNode) => copyConnectionString(node)));
+	});
+	initAsyncCommand(context, 'cosmosDB.attachMongoServer', () => attachMongoServer());
+	initCommand(context, 'cosmosDB.refresh', (node: INode) => explorer.refresh(node));
+	initAsyncCommand(context, 'cosmosDB.removeMongoServer', (node: INode) => removeMongoServer(node));
+	initAsyncCommand(context, 'cosmosDB.createMongoDatabase', (node: IMongoServer) => createMongoDatabase(node));
+	initCommand(context, 'cosmosDB.openInPortal', (node: CosmosDBResourceNode) => openInPortal(node));
+	initAsyncCommand(context, 'cosmosDB.copyConnectionString', (node: CosmosDBResourceNode) => copyConnectionString(node));
 
 	vscode.window.setStatusBarMessage('Mongo: Not connected');
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.connectMongoDB', (element: MongoDatabaseNode) => connectToDatabase(element)));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.dropMongoDB', (element: MongoDatabaseNode) => dropDatabase(element)));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.newMongoScrapbook', () => createScrapbook()));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.executeMongoCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb)));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.updateMongoDocuments', () => MongoCommands.updateDocuments(connectedDb, lastCommand)));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.openMongoCollection', (collection: MongoCollectionNode) => {
+	initAsyncCommand(context, 'cosmosDB.connectMongoDB', (element: MongoDatabaseNode) => connectToDatabase(element));
+	initCommand(context, 'cosmosDB.dropMongoDB', (element: MongoDatabaseNode) => dropDatabase(element));
+	initCommand(context, 'cosmosDB.newMongoScrapbook', () => createScrapbook());
+	initCommand(context, 'cosmosDB.executeMongoCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb));
+	initCommand(context, 'cosmosDB.updateMongoDocuments', () => MongoCommands.updateDocuments(connectedDb, lastCommand));
+	initCommand(context, 'cosmosDB.openMongoCollection', (collection: MongoCollectionNode) => {
 		connectToDatabase(collection.db);
 		lastCommand = MongoCommands.getCommand(`db.${collection.label}.find()`);
 		MongoCommands.executeCommand(lastCommand, connectedDb).then(result => MongoCommands.showResult(result));
+	});
+	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
+}
+
+function initCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => any) {
+	initAsyncCommand(context, commandId, (...args: any[]) => Promise.resolve(callback(args)));
+}
+
+function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => Promise<any>) {
+	context.subscriptions.push(vscode.commands.registerCommand(commandId, async (...args: any[]) => {
+		let result = "Succeeded";
+		let error = "";
+		const startTime = Date.now();
+		try {
+			await callback(args);
+		} catch (error) {
+			result = "Failed";
+			error = error.message;
+			throw error;
+		} finally {
+			const endTime = Date.now();
+			if (reporter) {
+				reporter.sendTelemetryEvent(commandId, { result: result, error: error }, { startTime: startTime, endTime: endTime });
+			}
+		}
 	}));
-	context.subscriptions.push(vscode.commands.registerCommand('cosmosDB.launchMongoShell', () => launchMongoShell()));
 }
 
 function createScrapbook(): Thenable<void> {

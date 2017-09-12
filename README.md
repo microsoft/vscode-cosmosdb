@@ -1,13 +1,14 @@
 
-# MongoDB NoSQL Support for VS Code
+# Cosmos DB Support for VS Code
 
-The MongoDB extension makes it easy to work with MongoDB NoSQL databases, collections, and documents. With this extension, you can:
+With this extension, you can:
 
-* Connect to local or hosted (e.g. Azure CosmosDB) servers
-* Create and view MongoDB databases and collections with the MongoDB Explorer
+* Create and view Azure Cosmos DB accounts
+* Attach to MongoDB servers with a connection string
+* Create and view MongoDB databases and collections
 * Author MongoDB "Scrapbooks" with rich IntelliSense (completions) for MongoDB scripts, including collections
-* Execute scripts and see results directly in VS Code
-* Update documents in place
+* Execute MongoDB Commands and see results directly in VS Code
+* Update MongoDB documents in place
 
 # Prerequisites
 
@@ -15,13 +16,14 @@ The MongoDB extension makes it easy to work with MongoDB NoSQL databases, collec
 
 # Features
 
-## Mongo Explorer
+## Cosmos DB Explorer
 
-- Add a server by clicking the `+` button in the title.
+- Create a Cosmos DB account by clicking the `+` button in the title
+- Open a Cosmos DB account in the Azure portal
+- Attach a Mongo server by clicking the plug icon in the title
   - Typical connection string for a local MongoDB instance: `mongodb://localhost:27017`
-- Expand the connected server to see the Databases
-- Click on a collection to see the documents
-- Remove a server by right clicking on the server name and selecting the `Remove Server` command
+- Expand a Mongo server to see the Databases
+- Click on a Mongo collection to see the documents
 
 ## Mongo "Scrapbooks"
 
@@ -49,5 +51,8 @@ Before we can accept your pull request you will need to sign a **Contribution Li
 ## Code of Conduct
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
-## License 
+# Telemetry
+This extension collects telemetry data to help us build a better experience with Cosmos DB and VS Code. The extension respects the `telemetry.enableTelemetry` setting which you can learn more about in our [FAQ](https://code.visualstudio.com/docs/supporting/faq#_how-to-disable-telemetry-reporting).
+
+# License 
 [MIT](LICENSE.md)

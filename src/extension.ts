@@ -68,7 +68,7 @@ function createScrapbook(): Thenable<void> {
 		let uri: vscode.Uri = null;
 		let count = 1;
 		const max = 99999;
-		if (vscode.workspace.workspaceFolders === undefined){
+		if (!vscode.workspace.workspaceFolders){
 			vscode.window.showWarningMessage("No open workspace!");
 		}
 		while (count < max) {

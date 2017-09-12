@@ -11,10 +11,13 @@ import docDBModels = require("azure-arm-documentdb/lib/models");
 
 export class CosmosDBCommands {
     public static async createCosmosDBAccount(azureAccount: AzureAccount): Promise<docDBModels.DatabaseAccount> {
-        const subscriptionPick = await this.getSubscription(azureAccount);
+        const subscriptionPick = await vscode.window.showQuickPick(
+            this.getSubscriptionQuickPicks(azureAccount),
+            { placeHolder: "Select a subscription to create your Cosmos DB account in..." }
+        );
 
         if (subscriptionPick) {
-            const resourceGroupPick = await this.getResourceGroup(subscriptionPick);
+            const resourceGroupPick = await this.getOrCreateResourceGroup(subscriptionPick);
 
             if (resourceGroupPick) {
                 const accountName = await this.getCosmosDBAccountName(subscriptionPick);
@@ -23,7 +26,10 @@ export class CosmosDBCommands {
                     const apiPick = await this.getCosmosDBApi();
 
                     if (apiPick) {
-                        const locationPick = await this.getLocation(subscriptionPick, "Select a location to create your Comsmos DB account in...");
+                        const locationPick = await vscode.window.showQuickPick(
+                            this.getLocationQuickPicks(subscriptionPick),
+                            { placeHolder: "Select a location to create your Comsmos DB account in..." }
+                        );
 
                         if (locationPick) {
                             return vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
@@ -54,7 +60,10 @@ export class CosmosDBCommands {
         });
 
         if (resourceGroupName) {
-            const locationPick = await this.getLocation(subscriptionPick, "Select a location to create your Resource Group in...");
+            const locationPick = await vscode.window.showQuickPick(
+                this.getLocationQuickPicks(subscriptionPick),
+                { placeHolder: "Select a location to create your Resource Group in..." }
+            );
 
             if (locationPick) {
                 return vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
@@ -112,89 +121,63 @@ export class CosmosDBCommands {
         return vscode.window.showQuickPick(quickPicks, { placeHolder: "Select an API for your Cosmos DB account..." });
     }
 
-    private static async getLocation(subscriptionPick: SubscriptionQuickPick, placeholder: string): Promise<LocationQuickPick> {
+    private static async getLocationQuickPicks(subscriptionPick: SubscriptionQuickPick): Promise<LocationQuickPick[]> {
         const subscriptionClient = new SubscriptionClient(subscriptionPick.session.credentials);
-        const locations = await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
-            progress.report({ message: "Cosmos DB: Loading locations" });
-            return subscriptionClient.subscriptions.listLocations(subscriptionPick.subscription.subscriptionId);
-        });
-
-        const quickPicks = locations.map(l => new LocationQuickPick(l));
-        if (quickPicks.length === 0) {
-            await vscode.window.showErrorMessage("No Azure locations found.");
-        } else if (quickPicks.length === 1) {
-            return quickPicks[0];
-        } else {
-            return vscode.window.showQuickPick(quickPicks, { placeHolder: placeholder });
-        }
+        const locations = await subscriptionClient.subscriptions.listLocations(subscriptionPick.subscription.subscriptionId);
+        return locations.map(l => new LocationQuickPick(l));
     }
 
-    private static async getResourceGroup(subscriptionPick: SubscriptionQuickPick): Promise<ResourceGroupQuickPick> {
-        const resourceManagementClient = new ResourceManagementClient(subscriptionPick.session.credentials, subscriptionPick.subscription.subscriptionId);
+    private static async getOrCreateResourceGroup(subscriptionPick: SubscriptionQuickPick): Promise<ResourceGroupQuickPick> {
+        const pick = await vscode.window.showQuickPick(
+            this.getResourceGroupQuickPicks(subscriptionPick),
+            { placeHolder: "Select a resource group to create your Cosmos DB account in..." }
+        );
 
-        const existingGroups = await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
-            progress.report({ message: "Cosmos DB: Loading resource groups" });
-            return resourceManagementClient.resourceGroups.list();
-        });
-
-        let createNewGroup = existingGroups.length === 0;
-        if (!createNewGroup) {
-            let quickPicks: vscode.QuickPickItem[] = [{
-                label: "$(plus) Create Resource Group",
-                description: null
-            }];
-            quickPicks = quickPicks.concat(existingGroups.map(rg => new ResourceGroupQuickPick(rg)));
-
-            const pick = await vscode.window.showQuickPick(quickPicks, { placeHolder: "Select a resource group to create your Cosmos DB account in..." });
-            if (pick) {
-                if (pick instanceof (ResourceGroupQuickPick)) {
-                    return pick;
-                } else {
-                    createNewGroup = true;
+        if (pick) {
+            if (pick instanceof (ResourceGroupQuickPick)) {
+                return pick;
+            } else {
+                const newGroup = await this.createResourceGroup(subscriptionPick);
+                if (newGroup) {
+                    return new ResourceGroupQuickPick(newGroup);
                 }
             }
         }
-
-        if (createNewGroup) {
-            const newGroup = await this.createResourceGroup(subscriptionPick);
-            if (newGroup) {
-                return new ResourceGroupQuickPick(newGroup);
-            }
-        }
     }
 
-    private static async getSubscription(azureAccount: AzureAccount): Promise<SubscriptionQuickPick> {
+    private static async getResourceGroupQuickPicks(subscriptionPick: SubscriptionQuickPick): Promise<vscode.QuickPickItem[]> {
+        const resourceManagementClient = new ResourceManagementClient(subscriptionPick.session.credentials, subscriptionPick.subscription.subscriptionId);
+        const existingGroups = await resourceManagementClient.resourceGroups.list();
+        let quickPicks: vscode.QuickPickItem[] = [{
+            label: "$(plus) Create Resource Group",
+            description: null
+        }];
+        return quickPicks.concat(existingGroups.map(rg => new ResourceGroupQuickPick(rg)));
+    }
+
+    private static async getSubscriptionQuickPicks(azureAccount: AzureAccount): Promise<SubscriptionQuickPick[]> {
         const quickPicks: SubscriptionQuickPick[] = [];
 
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
-            progress.report({ message: "Cosmos DB: Loading subscriptions" });
-            await Promise.all(azureAccount.sessions.map(async session => {
-                const subscriptionClient = new SubscriptionClient(session.credentials);
-                const subscriptions = await subscriptionClient.subscriptions.list();
-                subscriptions.forEach(sub => {
-                    const isDefault = azureAccount.filters.findIndex(filter => filter.subscription.id === sub.id) !== -1;
-                    quickPicks.push(new SubscriptionQuickPick(sub, session, isDefault));
-                });
-            }));
+        await Promise.all(azureAccount.sessions.map(async session => {
+            const subscriptionClient = new SubscriptionClient(session.credentials);
+            const subscriptions = await subscriptionClient.subscriptions.list();
+            subscriptions.forEach(sub => {
+                const isDefault = azureAccount.filters.findIndex(filter => filter.subscription.id === sub.id) !== -1;
+                quickPicks.push(new SubscriptionQuickPick(sub, session, isDefault));
+            });
+        }));
+
+        quickPicks.sort((a, b) => {
+            if (a.isDefault && !b.isDefault) {
+                return -1;
+            } else if (!a.isDefault && !b.isDefault) {
+                return 1;
+            } else {
+                return a.label.localeCompare(b.label);
+            }
         });
 
-        if (quickPicks.length === 0) {
-            await vscode.window.showErrorMessage("No Azure subscriptions found.");
-        } else if (quickPicks.length === 1) {
-            return quickPicks[0];
-        } else {
-            quickPicks.sort((a, b) => {
-                if (a.isDefault && !b.isDefault) {
-                    return -1;
-                } else if (!a.isDefault && !b.isDefault) {
-                    return 1;
-                } else {
-                    return a.label.localeCompare(b.label);
-                }
-            });
-
-            return await vscode.window.showQuickPick(quickPicks, { placeHolder: "Select a subscription to create your Cosmos DB account in..." });
-        }
+        return quickPicks;
     }
 
     private static validateCosmosDBAccountName(name: string): string {

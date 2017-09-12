@@ -68,6 +68,9 @@ function createScrapbook(): Thenable<void> {
 		let uri: vscode.Uri = null;
 		let count = 1;
 		const max = 99999;
+		if (vscode.workspace.workspaceFolders === undefined){
+			vscode.window.showWarningMessage("No open workspace!");
+		}
 		while (count < max) {
 			uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, `Scrapbook-${count}.mongo`));
 			if (!vscode.workspace.textDocuments.find(doc => doc.uri.fsPath === uri.fsPath) && !fs.existsSync(uri.fsPath)) {

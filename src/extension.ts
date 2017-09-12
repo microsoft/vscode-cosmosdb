@@ -71,7 +71,7 @@ function initCommand(context: vscode.ExtensionContext, commandId: string, callba
 }
 
 function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => Promise<any>) {
-	context.subscriptions.push(vscode.commands.registerCommand(commandId, async (...args: any[]) => {
+	context.subscriptions.push(vscode.commands.registerCommand(commandId, async (args: any) => {
 		let result = "Succeeded";
 		let error = "";
 		const startTime = Date.now();

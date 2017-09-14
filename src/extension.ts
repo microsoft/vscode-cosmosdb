@@ -67,16 +67,16 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 function initCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => any) {
-	initAsyncCommand(context, commandId, (...args: any[]) => Promise.resolve(callback(args)));
+	initAsyncCommand(context, commandId, (...args: any[]) => Promise.resolve(callback(...args)));
 }
 
 function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => Promise<any>) {
-	context.subscriptions.push(vscode.commands.registerCommand(commandId, async (args: any) => {
+	context.subscriptions.push(vscode.commands.registerCommand(commandId, async (...args: any[]) => {
 		let result = "Succeeded";
 		let error = "";
 		const startTime = Date.now();
 		try {
-			await callback(args);
+			await callback(...args);
 		} catch (error) {
 			result = "Failed";
 			error = error.message;

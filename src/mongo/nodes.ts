@@ -8,11 +8,11 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { MongoClient, Db, ReadPreference, Code, Server, Collection, Cursor, ObjectID, MongoError, ReplSet } from 'mongodb';
+import { MongoClient, Db, ReadPreference, Code, Server, Collection, Cursor, ObjectID, MongoError } from 'mongodb';
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 import { AzureAccount } from '../azure-account.api';
-import { INode } from '../nodes';
+import { INode, ErrorNode } from '../nodes';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
@@ -31,32 +31,12 @@ export interface IMongoServer extends INode {
 
 export class MongoServerNode implements IMongoServer {
 	readonly contextValue: string = "mongoServer";
-	readonly id: string;
 	readonly label: string;
-	private readonly _connectionString: string;
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
-	constructor(connectionString: string, db: Server) {
-		let host: string;
-		let port: string;
-
-		// Azure CosmosDB comes back as a ReplSet
-		if (db instanceof ReplSet) {
-			// get the first connection string from the seedlist for the ReplSet
-			// this may not be best solution, but the connection (below) gives
-			// the replicaset host name, which is different than what is in the connection string
-			let rs: any = db;
-			host = rs.s.replset.s.seedlist[0].host;
-			port = rs.s.replset.s.seedlist[0].port;
-		} else {
-			host = db['host'];
-			port = db['port'];
-		}
-
-		this.id = `${host}:${port}`;
-		this.label = this.id;
-		this._connectionString = connectionString;
+	constructor(private readonly _connectionString: string, readonly id: string) {
+		this.label = id;
 	}
 
 	get iconPath(): any {
@@ -74,13 +54,18 @@ export class MongoServerNode implements IMongoServer {
 		return MongoServerNode.getMongoDatabaseNodes(this._connectionString, this);
 	}
 
-	static async getMongoDatabaseNodes(connectionString: string, parentNode: IMongoServer): Promise<MongoDatabaseNode[]> {
-		const db = await MongoClient.connect(connectionString);
+	static async getMongoDatabaseNodes(connectionString: string, parentNode: IMongoServer): Promise<INode[]> {
+		let db: Db;
 		try {
+			db = await MongoClient.connect(connectionString);
 			const value: { databases: { name }[] } = await db.admin().listDatabases();
 			return value.databases.map(database => new MongoDatabaseNode(database.name, parentNode));
+		} catch (error) {
+			return [new ErrorNode(error.message)];
 		} finally {
-			db.close();
+			if (db) {
+				db.close();
+			}
 		}
 	}
 }

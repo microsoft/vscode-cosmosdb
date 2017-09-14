@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as keytarType from 'keytar';
 
-import { MongoClient } from 'mongodb';
+import { MongoClient, ReplSet } from 'mongodb';
 import { EventEmitter, Event, Command } from 'vscode';
 import { MongoServerNode, IMongoServer } from './mongo/nodes'
 import { AzureAccount, AzureResourceFilter } from './azure-account.api';
@@ -126,10 +126,9 @@ export class AttachedServersNode implements INode {
 			this._keytar = require(`${vscode.env.appRoot}/node_modules/keytar`);
 		} catch (e) {
 			// unable to find keytar
-		}	
+		}
 
 		this.loadPersistedServers();
-
 	}
 
 	get iconPath(): any {
@@ -143,19 +142,17 @@ export class AttachedServersNode implements INode {
 		return this._attachedServers.length > 0 ? this._attachedServers : [new AttachMongoServerNode()];
 	}
 
-	async attach(connectionString: string, isInitializing: boolean = false): Promise<INode> {
+	async attach(connectionString: string): Promise<INode> {
 		try {
-			const db = await MongoClient.connect(connectionString);
-			const node = new MongoServerNode(connectionString, db.serverConfig);
+			const id = await this.getServerIdFromConnectionString(connectionString);
+			const node = new MongoServerNode(connectionString, id);
 			if (this._attachedServers.find(s => s.id === node.id)) {
 				vscode.window.showWarningMessage(`Mongo server '${node.id}' is already attached.`)
 			} else {
 				this._attachedServers.push(node);
-				if (!isInitializing) {
-					if (this._keytar) {
-						await this._keytar.setPassword(this._serviceName, node.id, connectionString);
-						await this.persistIds();
-					}
+				if (this._keytar) {
+					await this._keytar.setPassword(this._serviceName, node.id, connectionString);
+					await this.persistIds();
 				}
 				return node;
 			}
@@ -176,18 +173,36 @@ export class AttachedServersNode implements INode {
 		}
 	}
 
+	private async getServerIdFromConnectionString(connectionString: string): Promise<string> {
+		let host: string;
+		let port: string;
+
+		const db = await MongoClient.connect(connectionString);
+		const serverConfig = db.serverConfig;
+		// Azure CosmosDB comes back as a ReplSet
+		if (serverConfig instanceof ReplSet) {
+			// get the first connection string from the seedlist for the ReplSet
+			// this may not be best solution, but the connection (below) gives
+			// the replicaset host name, which is different than what is in the connection string
+			let rs: any = serverConfig;
+			host = rs.s.replset.s.seedlist[0].host;
+			port = rs.s.replset.s.seedlist[0].port;
+		} else {
+			host = serverConfig['host'];
+			port = serverConfig['port'];
+		}
+
+		return `${host}:${port}`;
+	}
+
 	private async loadPersistedServers() {
 		const value: any = this._globalState.get(this._serviceName);
-		if (value) {
-			try {
-				const ids: string[] = JSON.parse(value);
-				await Promise.all(ids.map(async id => {
-					const connectionString: string = await this._keytar.getPassword(this._serviceName, id);
-					await this.attach(connectionString);
-				}));
-			} catch (error) {
-				vscode.window.showErrorMessage(`Failed to load persisted Mongo servers: ${error.message}`);
-			}
+		if (value && this._keytar) {
+			const ids: string[] = JSON.parse(value);
+			await Promise.all(ids.map(async id => {
+				const connectionString: string = await this._keytar.getPassword(this._serviceName, id);
+				this._attachedServers.push(new MongoServerNode(connectionString, id));
+			}));
 		}
 	}
 
@@ -239,5 +254,11 @@ export class SignInToAzureNode implements INode {
 	};
 }
 
-
-
+export class ErrorNode implements INode {
+	readonly contextValue: string = 'cosmosDBErrorNode';
+	readonly id: string = 'cosmosDBErrorNode';
+	readonly label: string;
+	constructor(errorMessage: string) {
+		this.label = `Error: ${errorMessage}`;
+	}
+}

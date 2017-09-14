@@ -13,7 +13,7 @@ export class CosmosDBCommands {
     public static async createCosmosDBAccount(azureAccount: AzureAccount): Promise<docDBModels.DatabaseAccount> {
         const subscriptionPick = await vscode.window.showQuickPick(
             this.getSubscriptionQuickPicks(azureAccount),
-            { placeHolder: "Select a subscription to create your Cosmos DB account in..." }
+            { placeHolder: "Select a subscription to create your Cosmos DB account in...", ignoreFocusOut: true }
         );
 
         if (subscriptionPick) {
@@ -28,7 +28,7 @@ export class CosmosDBCommands {
                     if (apiPick) {
                         const locationPick = await vscode.window.showQuickPick(
                             this.getLocationQuickPicks(subscriptionPick),
-                            { placeHolder: "Select a location to create your Comsmos DB account in..." }
+                            { placeHolder: "Select a location to create your Comsmos DB account in...", ignoreFocusOut: true }
                         );
 
                         if (locationPick) {
@@ -62,7 +62,7 @@ export class CosmosDBCommands {
         if (resourceGroupName) {
             const locationPick = await vscode.window.showQuickPick(
                 this.getLocationQuickPicks(subscriptionPick),
-                { placeHolder: "Select a location to create your Resource Group in..." }
+                { placeHolder: "Select a location to create your Resource Group in...", ignoreFocusOut: true }
             );
 
             if (locationPick) {
@@ -118,7 +118,7 @@ export class CosmosDBCommands {
             new ApiQuickPick(globalDocumentDB, documentDB)
         ];
 
-        return vscode.window.showQuickPick(quickPicks, { placeHolder: "Select an API for your Cosmos DB account..." });
+        return vscode.window.showQuickPick(quickPicks, { placeHolder: "Select an API for your Cosmos DB account...", ignoreFocusOut: true });
     }
 
     private static async getLocationQuickPicks(subscriptionPick: SubscriptionQuickPick): Promise<LocationQuickPick[]> {
@@ -130,7 +130,7 @@ export class CosmosDBCommands {
     private static async getOrCreateResourceGroup(subscriptionPick: SubscriptionQuickPick): Promise<ResourceGroupQuickPick> {
         const pick = await vscode.window.showQuickPick(
             this.getResourceGroupQuickPicks(subscriptionPick),
-            { placeHolder: "Select a resource group to create your Cosmos DB account in..." }
+            { placeHolder: "Select a resource group to create your Cosmos DB account in...", ignoreFocusOut: true }
         );
 
         if (pick) {

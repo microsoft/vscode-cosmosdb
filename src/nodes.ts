@@ -143,21 +143,17 @@ export class AttachedServersNode implements INode {
 	}
 
 	async attach(connectionString: string): Promise<INode> {
-		try {
-			const id = await this.getServerIdFromConnectionString(connectionString);
-			const node = new MongoServerNode(connectionString, id);
-			if (this._attachedServers.find(s => s.id === node.id)) {
-				vscode.window.showWarningMessage(`Mongo server '${node.id}' is already attached.`)
-			} else {
-				this._attachedServers.push(node);
-				if (this._keytar) {
-					await this._keytar.setPassword(this._serviceName, node.id, connectionString);
-					await this.persistIds();
-				}
-				return node;
+		const id = await this.getServerIdFromConnectionString(connectionString);
+		const node = new MongoServerNode(connectionString, id);
+		if (this._attachedServers.find(s => s.id === node.id)) {
+			vscode.window.showWarningMessage(`Mongo server '${node.id}' is already attached.`)
+		} else {
+			this._attachedServers.push(node);
+			if (this._keytar) {
+				await this._keytar.setPassword(this._serviceName, node.id, connectionString);
+				await this.persistIds();
 			}
-		} catch (error) {
-			vscode.window.showErrorMessage(error.message);
+			return node;
 		}
 	}
 

@@ -42,11 +42,18 @@ export class MongoCommands {
 	}
 
 	public static showResult(result: string, column?: vscode.ViewColumn): Thenable<void> {
-		let uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, 'result.json'));
-		if (!fs.existsSync(uri.fsPath)) {
-			uri = uri.with({ scheme: 'untitled' });
+		let uri : vscode.Uri= null;
+		let openTextDocumentOptions : Object = {language : 'json'};
+		if(vscode.workspace.rootPath){
+			uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, 'result.json'));
+			if (!fs.existsSync(uri.fsPath)) {
+				uri = uri.with({ scheme: 'untitled' });
+			}
 		}
-		return vscode.workspace.openTextDocument(uri)
+		else {
+			vscode.window.showWarningMessage(`No workspace present. Please create a workspace.`);
+		}
+		return vscode.workspace.openTextDocument(uri || openTextDocumentOptions)
 			.then(textDocument => vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true))
 			.then(editor => {
 				editor.edit(editorBuilder => {

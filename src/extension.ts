@@ -95,11 +95,7 @@ function createScrapbook(): Thenable<void> {
 		let uri: vscode.Uri = null;
 		let count = 1;
 		const max = 99999;
-		if (!vscode.workspace.workspaceFolders){
-			vscode.window.showWarningMessage("No open workspace. We shall create a temporary scrapbook at this moment. Be sure to save this later.");
-			uri = vscode.Uri.file(`Scrapbook-temp.mongo`);
-		}
-		else{ 
+		if (vscode.workspace.workspaceFolders){
 			while (count < max) {
 				uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, `Scrapbook-${count}.mongo`));
 				if (!vscode.workspace.textDocuments.find(doc => doc.uri.fsPath === uri.fsPath) && !fs.existsSync(uri.fsPath)) {
@@ -111,10 +107,13 @@ function createScrapbook(): Thenable<void> {
 				vscode.window.showErrorMessage('Could not create new scrapbook.');
 				return;
 			}
+			uri = uri.with({ scheme: 'untitled' });
+			vscode.workspace.openTextDocument(uri).then(textDocument => vscode.window.showTextDocument(textDocument));
 		}
-
-		uri = uri.with({ scheme: 'untitled' });
-		vscode.workspace.openTextDocument(uri).then(textDocument => vscode.window.showTextDocument(textDocument));
+		else{
+			vscode.workspace.openTextDocument({language:'mongo'}).then(textDocument => vscode.window.showTextDocument(textDocument));
+		}			
+		
 	});
 }
 

@@ -10,6 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as copypaste from 'copy-paste';
 import * as opn from 'opn';
+import * as util from "./util";
 
 import { AzureAccount, AzureSession } from './azure-account.api';
 import { CosmosDBCommands } from './commands';
@@ -18,7 +19,7 @@ import { MongoCommands } from './mongo/commands';
 import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode } from './mongo/nodes';
 import { CosmosDBResourceNode, INode } from './nodes'
 import MongoDBLanguageClient from './mongo/languageClient';
-import { reporter, Reporter } from './telemetry';
+import { Reporter } from './telemetry';
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
@@ -72,20 +73,19 @@ function initCommand(context: vscode.ExtensionContext, commandId: string, callba
 
 function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => Promise<any>) {
 	context.subscriptions.push(vscode.commands.registerCommand(commandId, async (...args: any[]) => {
-		let result = "Succeeded";
-		let error = "";
-		const startTime = Date.now();
+		const start = Date.now();
+		let result = 'Succeeded';
+		let errorData: string = '';
+
 		try {
 			await callback(...args);
-		} catch (error) {
-			result = "Failed";
-			error = error.message;
-			throw error;
+		} catch (err) {
+			result = 'Failed';
+			errorData = util.errToString(err);
+			throw err;
 		} finally {
-			const endTime = Date.now();
-			if (reporter) {
-				reporter.sendTelemetryEvent(commandId, { result: result, error: error }, { startTime: startTime, endTime: endTime });
-			}
+			const end = Date.now();
+			util.sendTelemetry(commandId, { result: result, error: errorData }, { duration: (end - start) / 1000 });
 		}
 	}));
 }

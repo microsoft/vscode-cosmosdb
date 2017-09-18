@@ -44,7 +44,11 @@ There are a couple of ways you can contribute to this repo:
   - Open the terminal (press `CTRL+`\`) and run `npm install`.
   - To build, press `F1` and type in `Tasks: Run Build Task`.
   - Debug: press `F5` to start debugging the extension.
-
+  - To test your code :
+    1. `npm install -g vsce`  Installs the VSCode Extensions npm package
+    2. `vsce pacakge`  Done inside the repo, this packages the extension, ala npm build
+    3. Run command "Install from VSIX" from within VSCode. 
+    
 ## Legal
 Before we can accept your pull request you will need to sign a **Contribution License Agreement**. All you need to do is to submit a pull request, then the PR will get appropriately labelled (e.g. `cla-required`, `cla-norequired`, `cla-signed`, `cla-already-signed`). If you already signed the agreement we will continue with reviewing the PR, otherwise system will tell you how you can sign the CLA. Once you sign the CLA all future PR's will be labeled as `cla-signed`.
 

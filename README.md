@@ -31,7 +31,7 @@ With this extension, you can:
 - Click on any DB to open the Mongo shell playground editor
 - Enter your scripts, eg: `db.<collectionName>.find()`
 - IntelliSense (completions) will be provided as you write your scripts
-- Select the script and press `CMD+'` (`CTRL+'` on Windows and Linux) to see the results
+- Select the script and press `CMD+"` (`CTRL+"` on Windows and Linux) to see the results
 - Edit your documents, right click, and choose the `Update` command to persist changes to the database
 
 # Contributing

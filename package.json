@@ -275,7 +275,7 @@
 					"default": true,
 					"description": "Show or hide the Cosmos DB Explorer"
 				},
-				"maxDocs":{
+				"cosmosDB.mongo.maxDocs":{
 					"type":"integer",
 					"default":20,
 					"description": "Set the page limit in number of documents displayed"

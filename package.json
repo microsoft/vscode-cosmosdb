@@ -16,6 +16,7 @@
 	"categories": [
 		"Azure"
 	],
+	"preview": true,
 	"homepage": "https://github.com/microsoft/vscode-cosmosdb/blob/master/README.md",
 	"bugs": {
 		"url": "https://github.com/microsoft/vscode-cosmosdb/issues"

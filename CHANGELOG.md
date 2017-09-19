@@ -5,6 +5,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## 0.1.1 - 2017-09-19
+### Changed
+- Correctly set version to preview
+
 ## 0.1.0 - 2017-09-19
 ### Added
 - Cosmos DB UI component (sash)

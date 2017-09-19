@@ -1,6 +1,6 @@
 {
 	"name": "vscode-cosmosdb",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
 	"publisher": "ms-azuretools",
 	"displayName": "Cosmos DB",
@@ -8,10 +8,10 @@
 	"engines": {
 		"vscode": "^1.16.0"
 	},
-    "galleryBanner": {
-        "color": "#0072c6",
-        "theme": "dark"
-    },
+	"galleryBanner": {
+		"color": "#0072c6",
+		"theme": "dark"
+	},
 	"icon": "media/cosmos.png",
 	"categories": [
 		"Azure"
@@ -289,7 +289,7 @@
 		"@types/mocha": "^2.2.32",
 		"@types/mongodb": "^2.2.9",
 		"@types/node": "^6.0.40",
-		"@types/keytar": "4.0.1",		
+		"@types/keytar": "4.0.1",
 		"antlr4ts-cli": "^0.4.0-alpha.4",
 		"mocha": "^2.3.3",
 		"typescript": "^2.0.3",

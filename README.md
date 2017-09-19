@@ -34,6 +34,22 @@ With this extension, you can:
 - Select the script and press `CMD+"` (`CTRL+"` on Windows and Linux) to see the results
 - Edit your documents, right click, and choose the `Update` command to persist changes to the database
 
+## Sign in to Azure to view your Cosmos DB Accounts
+
+![Azure Sign In](resources/signin.gif)
+
+## Create a Cosmos DB Account
+
+![Create Cosmos DB Account](resources/create.gif)
+
+## Create and Run Mongo Commands in a Scrapbook with Rich Intellisense
+
+![Mongo Intellisense](resources/intellisense.gif)
+
+## Update Mongo Documents
+
+![Update Mongo Documents](resources/update.gif)
+
 # Contributing
 There are a couple of ways you can contribute to this repo:
 

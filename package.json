@@ -12,7 +12,7 @@
 		"color": "#0072c6",
 		"theme": "dark"
 	},
-	"icon": "media/cosmos.png",
+	"icon": "resources/cosmos.png",
 	"categories": [
 		"Azure"
 	],

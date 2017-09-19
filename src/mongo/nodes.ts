@@ -268,7 +268,10 @@ export class MongoCollectionNode implements INode {
 	}
 
 	private find(args?: any): Thenable<string> {
-		const maxDocs = <number>vscode.workspace.getConfiguration().get('cosmosDB.mongo.maxDocs');
+		let maxDocs = <number>vscode.workspace.getConfiguration().get('cosmosDB.mongo.maxDocs');
+		if(maxDocs <= 0){
+			maxDocs = 20; 
+		}
 		return this.collection.find(args).limit(maxDocs)
 			.toArray().then(docs => this.stringify(docs));
 	}

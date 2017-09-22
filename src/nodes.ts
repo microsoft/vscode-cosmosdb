@@ -70,6 +70,7 @@ export class CosmosDBResourceNode implements IMongoServer {
 	readonly collapsibleState;
 
 	private _isMongo: boolean;
+	private _isDocDB: boolean;
 	private _connectionString: string;
 
 	constructor(private readonly _subscriptionFilter: AzureResourceFilter,
@@ -79,9 +80,10 @@ export class CosmosDBResourceNode implements IMongoServer {
 		this.tenantId = _subscriptionFilter.session.tenantId;
 		this.label = `${_databaseAccount.name} (${_resourceGroupName})`;
 		this._isMongo = _databaseAccount.kind === "MongoDB";
-		this.contextValue = this._isMongo ? "cosmosDBMongoServer" : "cosmosDBGenericResource";
+		this._isDocDB = _databaseAccount.kind === "GlobalDocumentDB";
+		this.contextValue = this._isMongo ? "cosmosDBMongoServer" : (this._isDocDB? "cosmosDBDocumentServer" : "cosmosDBGenericResource");
 
-		this.collapsibleState = this._isMongo ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
+		this.collapsibleState = this._isMongo || this._isDocDB ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
 	}
 
 	get iconPath(): any {
@@ -106,6 +108,15 @@ export class CosmosDBResourceNode implements IMongoServer {
 		if (this._isMongo) {
 			const connectionString = await this.getConnectionString();
 			return MongoServerNode.getMongoDatabaseNodes(connectionString, this);
+		}
+		let acc = null;
+		if(this._isDocDB){
+			const docDBClient = new DocumentdbManagementClient(this._subscriptionFilter.session.credentials, this._subscriptionFilter.subscription.subscriptionId);
+			const result = await docDBClient.databaseAccounts.listKeys(this._resourceGroupName, this._databaseAccount.name);
+			console.log(acc);
+			console.log(this._databaseAccount.name + ":" +  JSON.stringify(result));
+			
+						
 		}
 	}
 }

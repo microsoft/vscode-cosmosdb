@@ -230,6 +230,10 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGenericResource"
 				},
 				{
+					"command": "cosmosDB.openInPortal",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+				},
+				{
 					"command": "cosmosDB.copyConnectionString",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
 				},

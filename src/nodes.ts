@@ -13,6 +13,7 @@ import { AzureAccount, AzureResourceFilter } from './azure-account.api';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
+var DocumentDBConnectionClient = require("documentdb").DocumentClient; 
 
 export interface INode extends vscode.TreeItem {
 	id: string
@@ -104,19 +105,25 @@ export class CosmosDBResourceNode implements IMongoServer {
 		return this._connectionString;
 	}
 
+	async getMasterKey(): Promise<models.DatabaseAccountListKeysResult>{
+		const docDBClient = new DocumentdbManagementClient(this._subscriptionFilter.session.credentials, this._subscriptionFilter.subscription.subscriptionId);
+		const result = await docDBClient.databaseAccounts.listKeys(this._resourceGroupName, this._databaseAccount.name);
+		console.log(this._databaseAccount.name + ":" +  JSON.stringify(result));
+		return result.primaryMasterKey || result.secondaryMasterKey;
+	}
+
 	async getChildren(): Promise<INode[]> {
 		if (this._isMongo) {
 			const connectionString = await this.getConnectionString();
 			return MongoServerNode.getMongoDatabaseNodes(connectionString, this);
 		}
-		let acc = null;
 		if(this._isDocDB){
-			const docDBClient = new DocumentdbManagementClient(this._subscriptionFilter.session.credentials, this._subscriptionFilter.subscription.subscriptionId);
-			const result = await docDBClient.databaseAccounts.listKeys(this._resourceGroupName, this._databaseAccount.name);
-			console.log(acc);
-			console.log(this._databaseAccount.name + ":" +  JSON.stringify(result));
-			
-						
+			const masterKey = await this.getMasterKey();	
+			let client2 = new DocumentDBConnectionClient(this._databaseAccount.documentEndpoint, masterKey);
+			let dblink = "dbs/" + this._databaseAccount.name;
+			let collections : QueryIterator = client2.readCollections(dblink, {});
+			let a = 5;
+			let b = 6; 
 		}
 	}
 }

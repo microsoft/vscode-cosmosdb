@@ -105,11 +105,40 @@ export class CosmosDBResourceNode implements IMongoServer {
 		return this._connectionString;
 	}
 
-	async getMasterKey(): Promise<models.DatabaseAccountListKeysResult>{
+	async getMasterKey(): Promise<String>{
 		const docDBClient = new DocumentdbManagementClient(this._subscriptionFilter.session.credentials, this._subscriptionFilter.subscription.subscriptionId);
 		const result = await docDBClient.databaseAccounts.listKeys(this._resourceGroupName, this._databaseAccount.name);
 		console.log(this._databaseAccount.name + ":" +  JSON.stringify(result));
 		return result.primaryMasterKey || result.secondaryMasterKey;
+	}
+
+	async listCollections(databaseLink, client, callback) {
+		let queryIterator = await client.readCollections(databaseLink).toArray(function (err, cols) {
+			if (err) {
+				vscode.window.showErrorMessage(err.code + ": " + JSON.parse(err.body).message);
+			} 
+			else {            
+				callback(cols);
+			}
+		});
+	}
+
+	async listDatabases(client): Promise<any[]>{
+		let something = await client.readDatabases();
+
+		var toArrayPromise = new Promise<any[]>((resolve,reject) => {
+			
+			something.toArray(function (err , dbs: Array<Object>) {
+				if (err) {
+					reject(err);
+				} 
+				else {            
+					resolve(dbs);
+				}
+			});
+		});
+
+		return await toArrayPromise;
 	}
 
 	async getChildren(): Promise<INode[]> {
@@ -120,10 +149,17 @@ export class CosmosDBResourceNode implements IMongoServer {
 		if(this._isDocDB){
 			const masterKey = await this.getMasterKey();	
 			let client2 = new DocumentDBConnectionClient(this._databaseAccount.documentEndpoint, masterKey);
-			let dblink = "dbs/" + this._databaseAccount.name;
-			let collections : QueryIterator = client2.readCollections(dblink, {});
-			let a = 5;
-			let b = 6; 
+			client2.masterKey = client2.masterKey || masterKey;
+			let databases;
+			try{
+				databases = await this.listDatabases(client2);
+			}catch(err) {
+				databases = [];
+				vscode.window.showErrorMessage(err.code + ": " + JSON.parse(err.body).message);
+			}
+			
+
+			return databases.map(database => new MongoServerNode(database.id, <string>this._databaseAccount.name));
 		}
 	}
 }

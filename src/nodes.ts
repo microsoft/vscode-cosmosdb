@@ -113,7 +113,7 @@ export class CosmosDBResourceNode implements IMongoServer {
 		return result.primaryMasterKey || result.secondaryMasterKey;
 	}
 
-	async listCollections(databaseLink, client) {
+	async listCollections(databaseLink, client): Promise<any> {
 		let collections = await client.readCollections(databaseLink)
 		let toArrayPromise = new Promise<any[]>((resolve, reject) => {
 			collections.toArray(function (err, cols: Array<Object>) {
@@ -153,8 +153,8 @@ export class CosmosDBResourceNode implements IMongoServer {
 			const masterKey = await this.getMasterKey();	
 			let client2 = new DocumentDBConnectionClient(this._databaseAccount.documentEndpoint, masterKey);
 			client2.masterKey = client2.masterKey || masterKey;
-			let DocDBServer = new DocDBServerNode(<string>masterKey, client2.id); 
-			return DocDBServer.getDocDBDatabaseNodes(client2, this);
+			let DocDBServer = new DocDBServerNode(<string>masterKey, client2.id, this._databaseAccount.documentEndpoint); 
+			return DocDBServer.getDocDBDatabaseNodes(client2, DocDBServer);
 			/*
 			let databases;
 			try{

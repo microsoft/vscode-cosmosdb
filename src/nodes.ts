@@ -13,6 +13,7 @@ import { AzureAccount, AzureResourceFilter } from './azure-account.api';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
+import {DocDBServerNode} from './docdb/nodes';
 var DocumentDBConnectionClient = require("documentdb").DocumentClient; 
 
 export interface INode extends vscode.TreeItem {
@@ -127,7 +128,7 @@ export class CosmosDBResourceNode implements IMongoServer {
 		}) 
 	}
 
-	async listDatabases(client): Promise<any[]>{
+	async listDatabases(client: DocumentClient): Promise<any[]>{
 		let databases = await client.readDatabases();
 		let toArrayPromise = new Promise<any[]>((resolve,reject) => {
 			databases.toArray(function (err , dbs: Array<Object>) {
@@ -152,6 +153,9 @@ export class CosmosDBResourceNode implements IMongoServer {
 			const masterKey = await this.getMasterKey();	
 			let client2 = new DocumentDBConnectionClient(this._databaseAccount.documentEndpoint, masterKey);
 			client2.masterKey = client2.masterKey || masterKey;
+			let DocDBServer = new DocDBServerNode(<string>masterKey, client2.id); 
+			return DocDBServer.getDocDBDatabaseNodes(client2, this);
+			/*
 			let databases;
 			try{
 				databases = await this.listDatabases(client2);
@@ -162,6 +166,7 @@ export class CosmosDBResourceNode implements IMongoServer {
 			
 
 			return databases.map(database => new MongoServerNode(database.id, <string>this._databaseAccount.name));
+			*/
 		}
 	}
 }

@@ -112,23 +112,25 @@ export class CosmosDBResourceNode implements IMongoServer {
 		return result.primaryMasterKey || result.secondaryMasterKey;
 	}
 
-	async listCollections(databaseLink, client, callback) {
-		let queryIterator = await client.readCollections(databaseLink).toArray(function (err, cols) {
-			if (err) {
-				vscode.window.showErrorMessage(err.code + ": " + JSON.parse(err.body).message);
-			} 
-			else {            
-				callback(cols);
-			}
-		});
+	async listCollections(databaseLink, client) {
+		let collections = await client.readCollections(databaseLink)
+		let toArrayPromise = new Promise<any[]>((resolve, reject) => {
+			collections.toArray(function (err, cols: Array<Object>) {
+				if (err) {
+					reject(err);
+				} 
+				else {            
+					reject(cols);
+				}
+			});
+	
+		}) 
 	}
 
 	async listDatabases(client): Promise<any[]>{
-		let something = await client.readDatabases();
-
-		var toArrayPromise = new Promise<any[]>((resolve,reject) => {
-			
-			something.toArray(function (err , dbs: Array<Object>) {
+		let databases = await client.readDatabases();
+		let toArrayPromise = new Promise<any[]>((resolve,reject) => {
+			databases.toArray(function (err , dbs: Array<Object>) {
 				if (err) {
 					reject(err);
 				} 

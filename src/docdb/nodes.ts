@@ -73,7 +73,53 @@ export class DocDBServerNode implements IDocDBServer {
         }
         return databases.map(database => new MongoDatabaseNode(database.id, <string>thisArg._databaseAccount.name));
         //return new Promise<DocDBServerNode[]>;
-    }
+	}
+	
+}
+
+export class DocDBDatabaseNode implements INode {
+	readonly contextValue: string = 'DocDb';
+
+	constructor(readonly id: string, readonly server: IDocDBServer) {
+	}
+
+	get label(): string {
+		return this.id;
+	}
+
+	get iconPath(): any {
+		return {
+			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'light', 'Database.svg'),
+			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'dark', 'Database.svg')
+		};
+	}
+
+	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+
+
+
 
 
 }
+
+
+export class DocDBCollectionNode implements INode {
+	
+		constructor(private collection, readonly db: DocDBDatabaseNode) {
+		}
+	
+		get id(): string {
+			return this.collection.collectionName;
+		}
+	
+		get label(): string {
+			return this.collection.collectionName;
+		}
+	
+		get iconPath(): any {
+			return {
+				light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'light', 'Collection.svg'),
+				dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'dark', 'Collection.svg'),
+			};
+		}
+	}	

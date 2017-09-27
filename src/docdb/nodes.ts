@@ -7,8 +7,9 @@ import { INode, ErrorNode } from '../nodes';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
-import {MongoDatabaseNode} from '../mongo/nodes';
-var DocumentDBConnectionClient = require("documentdb").DocumentClient; 
+import { MongoDatabaseNode } from '../mongo/nodes';
+var DocumentDBConnectionClient = require("documentdb").DocumentClient;
+
 
 export interface DocDBCommand {
 	range: vscode.Range;
@@ -19,8 +20,8 @@ export interface DocDBCommand {
 }
 
 export interface IDocDBServer extends INode {
-	getPrimaryMasterKey(): Promise<string>;
-	getEndpoint(): Promise<string>;
+	getPrimaryMasterKey(): string;
+	getEndpoint(): string;
 }
 
 export class DocDBServerNode implements IDocDBServer {
@@ -29,7 +30,7 @@ export class DocDBServerNode implements IDocDBServer {
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
-	constructor(private readonly _primaryMasterKey: string, readonly id: string, private readonly _endpoint: string) {
+	constructor(readonly _primaryMasterKey: string, readonly id: string, private readonly _endpoint: string) {
 		this.label = id;
 	}
 
@@ -38,30 +39,29 @@ export class DocDBServerNode implements IDocDBServer {
 			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'light', 'DataServer.svg'),
 			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
 		};
-    }
-
-    getPrimaryMasterKey(): Promise<string> {
-		return Promise.resolve(this._primaryMasterKey);
 	}
 
-	getEndpoint(): Promise<string>{
-		return Promise.resolve(this._endpoint);
+	getPrimaryMasterKey(): string {
+		return this._primaryMasterKey;
 	}
 
-    getChildren(): Promise<INode[]> {
+	getEndpoint(): string {
+		return this._endpoint;
+	}
+
+	getChildren(): Promise<INode[]> {
 		//return new Promise<DocDBServerNode[]>;
 		let client = new DocumentDBConnectionClient(this.getEndpoint(), this.getPrimaryMasterKey());
 		return this.getDocDBDatabaseNodes(client, this);
 	}
 
-	async listDatabases(client): Promise<any[]>{
+	async listDatabases(client): Promise<any[]> {
 		let databases = await client.readDatabases();
-		let toArrayPromise = new Promise<any[]>((resolve,reject) => {
-			databases.toArray(function (err , dbs: Array<Object>) {
+		let toArrayPromise = new Promise<any[]>((resolve, reject) => {
+			databases.toArray(function (err, dbs: Array<Object>) {
 				if (err) {
 					reject(err);
-				} 
-				else {            
+				} else {
 					resolve(dbs);
 				}
 			});
@@ -69,19 +69,18 @@ export class DocDBServerNode implements IDocDBServer {
 
 		return await toArrayPromise;
 	}
-        
-    async getDocDBDatabaseNodes(client, DocDBServerNodeInstance): Promise<INode[]> {
-        let databases;
-        try{
-            databases = await this.listDatabases(client);
-        }catch(err) {
-            databases = [];
-            vscode.window.showErrorMessage(err.code + ": " + JSON.parse(err.body).message);
-        }
-        return databases.map(database => new DocDBDatabaseNode(database.id, DocDBServerNodeInstance));
-        //return new Promise<DocDBServerNode[]>;
+
+	async getDocDBDatabaseNodes(client, DocDBServerNodeInstance): Promise<INode[]> {
+		let databases;
+		try {
+			databases = await this.listDatabases(client);
+		} catch (err) {
+			databases = [];
+			vscode.window.showErrorMessage(err.code + ": " + JSON.parse(err.body).message);
+		}
+		return databases.map(database => new DocDBDatabaseNode(database.id, DocDBServerNodeInstance));
 	}
-	
+
 }
 
 export class DocDBDatabaseNode implements INode {
@@ -108,21 +107,22 @@ export class DocDBDatabaseNode implements INode {
 	}
 
 	getChildren(): Promise<INode[]> {
-		return this.getCollections(); 
+		return this.getCollections();
 	}
 
 	async getCollections(): Promise<INode[]> {
 		let dbLink: string = this.getDbLink();
 		let collections;
-		let parentNode = this; 
-		let client = new DocumentDBConnectionClient(this.server.getEndpoint(), this.server.getPrimaryMasterKey());
-        try{
-            collections = await this.listCollections(dbLink, client);
-        }catch(err) {
-            collections = [];
-            vscode.window.showErrorMessage(err.code + ": " + JSON.parse(err.body).message);
-        }
-        return collections.map(collection => new DocDBCollectionNode(collection.id, parentNode));
+		let parentNode = this;
+		let client = new DocumentDBConnectionClient(this.server.getEndpoint(), { masterKey: this.server.getPrimaryMasterKey() });
+		client.masterKey = client.masterKey || this.server.getPrimaryMasterKey();
+		try {
+			collections = await this.listCollections(dbLink, client);
+		} catch (err) {
+			collections = [];
+			vscode.window.showErrorMessage(err.code + ": " + JSON.parse(err.body).message);
+		}
+		return collections.map(collection => new DocDBCollectionNode(collection.id, parentNode));
 	}
 
 	async listCollections(databaseLink, client): Promise<any> {
@@ -130,18 +130,14 @@ export class DocDBDatabaseNode implements INode {
 		let toArrayPromise = new Promise<any[]>((resolve, reject) => {
 			collections.toArray(function (err, cols: Array<Object>) {
 				if (err) {
-					console.log("Error!" + JSON.stringify(err));
 					reject(err);
-				} 
-				else {
-					console.log("Cols: "+cols.length);
-					console.log(JSON.stringify(cols));            
+				} else {
 					resolve(cols);
 				}
 			});
-	
+
 		});
-		return await toArrayPromise; 
+		return await toArrayPromise;
 	}
 
 
@@ -149,22 +145,22 @@ export class DocDBDatabaseNode implements INode {
 
 
 export class DocDBCollectionNode implements INode {
-	
-		constructor(private readonly identifier:string, readonly db: DocDBDatabaseNode) { 
-		}
-	
-		get id(): string {
-			return this.id;
-		}
-	
-		get label(): string {
-			return this.id;
-		}
-	
-		get iconPath(): any {
-			return {
-				light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'light', 'Collection.svg'),
-				dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'dark', 'Collection.svg'),
-			};
-		}
-	}	
+
+	constructor(readonly id: string, readonly db: DocDBDatabaseNode) {
+	}
+
+	readonly contextValue: string = 'DocDbCollection';
+
+	get label(): string {
+		return this.id;
+	}
+
+	get iconPath(): any {
+		return {
+			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'light', 'Collection.svg'),
+			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'dark', 'Collection.svg'),
+		};
+	}
+	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
+
+}

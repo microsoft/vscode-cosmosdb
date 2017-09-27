@@ -42,14 +42,13 @@ export class MongoCommands {
 	}
 
 	public static showResult(result: string, column?: vscode.ViewColumn): Thenable<void> {
-		let uri : vscode.Uri= null;
-		if(vscode.workspace.rootPath){
+		let uri: vscode.Uri = null;
+		if (vscode.workspace.rootPath) {
 			uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, 'result.json'));
 			if (!fs.existsSync(uri.fsPath)) {
 				uri = uri.with({ scheme: 'untitled' });
 			}
-		}
-		else {
+		} else {
 			vscode.window.showErrorMessage(`No workspace present. Please create a workspace.`);
 			return;
 		}

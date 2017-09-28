@@ -109,7 +109,6 @@ export class CosmosDBResourceNode implements IMongoServer {
 	async getMasterKey(): Promise<String> {
 		const docDBClient = new DocumentdbManagementClient(this._subscriptionFilter.session.credentials, this._subscriptionFilter.subscription.subscriptionId);
 		const result = await docDBClient.databaseAccounts.listKeys(this._resourceGroupName, this._databaseAccount.name);
-		console.log(this._databaseAccount.name + ":" + JSON.stringify(result));
 		return result.primaryMasterKey || result.secondaryMasterKey;
 	}
 

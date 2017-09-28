@@ -39,6 +39,7 @@
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.updateMongoDocuments",
 		"onCommand:cosmosDB.openMongoCollection",
+		"onCommand:cosmosDB.openDocDBCollection",
 		"onCommand:cosmosDB.refresh",
 		"onCommand:cosmosDB.openInPortal",
 		"onCommand:cosmosDB.copyConnectionString",
@@ -160,6 +161,11 @@
 			{
 				"category": "MongoDB",
 				"command": "cosmosDB.openMongoCollection",
+				"title": "Open Collection"
+			},
+			{
+				"category": "DocDB",
+				"command": "cosmosDB.openDocDBCollection",
 				"title": "Open Collection"
 			}
 		],

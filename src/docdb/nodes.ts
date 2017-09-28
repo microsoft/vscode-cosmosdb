@@ -8,6 +8,7 @@ import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
 import { MongoDatabaseNode } from '../mongo/nodes';
+import {MongoCommands} from '../mongo/commands'
 var DocumentDBConnectionClient = require("documentdb").DocumentClient;
 
 
@@ -84,7 +85,7 @@ export class DocDBServerNode implements IDocDBServer {
 }
 
 export class DocDBDatabaseNode implements INode {
-	readonly contextValue: string = 'DocDb';
+	readonly contextValue: string = 'DocDbDatabase';
 
 	constructor(readonly id: string, readonly server: IDocDBServer) {
 	}
@@ -114,19 +115,19 @@ export class DocDBDatabaseNode implements INode {
 		let dbLink: string = this.getDbLink();
 		let collections;
 		let parentNode = this;
-		let client = new DocumentDBConnectionClient(this.server.getEndpoint(), { masterKey: this.server.getPrimaryMasterKey() });
-		client.masterKey = client.masterKey || this.server.getPrimaryMasterKey();
+		let client = new DocumentDBConnectionClient(this.server.getEndpoint(), {masterKey: this.server.getPrimaryMasterKey() });
 		try {
 			collections = await this.listCollections(dbLink, client);
 		} catch (err) {
 			collections = [];
 			vscode.window.showErrorMessage(err.code + ": " + JSON.parse(err.body).message);
 		}
+
 		return collections.map(collection => new DocDBCollectionNode(collection.id, parentNode));
 	}
 
 	async listCollections(databaseLink, client): Promise<any> {
-		let collections = await client.readCollections(databaseLink)
+		let collections = await client.readCollections(databaseLink);
 		let toArrayPromise = new Promise<any[]>((resolve, reject) => {
 			collections.toArray(function (err, cols: Array<Object>) {
 				if (err) {
@@ -140,7 +141,6 @@ export class DocDBDatabaseNode implements INode {
 		return await toArrayPromise;
 	}
 
-
 }
 
 
@@ -150,6 +150,13 @@ export class DocDBCollectionNode implements INode {
 	}
 
 	readonly contextValue: string = 'DocDbCollection';
+	readonly DocGenerationJSONReplacer = function replacer(key, value) {
+		let redundantProperties: Array<string> = ["_rid", "_ts", "_self", "_etag", "_attachments"]; 
+		if(redundantProperties.indexOf(key) > -1){
+			return undefined;
+		}
+		return value;
+	}
 
 	get label(): string {
 		return this.id;
@@ -162,5 +169,42 @@ export class DocDBCollectionNode implements INode {
 		};
 	}
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
+
+	readonly command: Command = {
+		command: 'cosmosDB.openDocDBCollection',
+		arguments: [this],
+		title: ''
+	};
+
+
+	async getDocuments(): Promise<any> {
+		let dbLink: string = this.db.getDbLink();
+		let client = new DocumentDBConnectionClient(this.db.server.getEndpoint(), {masterKey: this.db.server.getPrimaryMasterKey() });
+		let docs;
+		try{
+			let collSelfLink = dbLink + "/colls/" + this.id;
+			let docs = await this.readOneCollection(collSelfLink, client);
+			console.log(docs);
+			return await docs; 
+		} catch (error){
+			console.log(error.message);
+			return;
+		}
+	}
+
+	async readOneCollection(selfLink, client): Promise<any>{
+		let documents = await client.readDocuments(selfLink);
+		let toArrayPromise = new Promise<any[]>((resolve, reject) => {
+			documents.toArray(function (err, docs: Array<Object>) {
+				if (err) {
+					reject(err);
+				} else {
+					resolve(docs);
+				}
+			});
+
+		});
+		return await toArrayPromise;
+	}
 
 }

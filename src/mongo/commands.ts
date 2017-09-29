@@ -12,6 +12,7 @@ import * as fs from 'fs';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
 import { mongoLexer } from './grammar/mongoLexer';
+import * as util from './../util'
 
 export class MongoCommands {
 
@@ -24,7 +25,7 @@ export class MongoCommands {
 		const command = MongoCommands.getCommand(activeEditor.document.getText(), selection.start);
 		if (command) {
 			MongoCommands.executeCommand(command, database)
-				.then(result => this.showResult(result, activeEditor.viewColumn + 1));
+				.then(result => util.showResult(result, activeEditor.viewColumn + 1));
 		} else {
 			vscode.window.showErrorMessage('No executable command found.');
 		}
@@ -39,30 +40,6 @@ export class MongoCommands {
 		}
 		return database.executeCommand(command)
 			.then(result => result, error => vscode.window.showErrorMessage(error));
-	}
-
-	public static showResult(result: string, column?: vscode.ViewColumn): Thenable<void> {
-		let uri: vscode.Uri = null;
-		if (vscode.workspace.rootPath) {
-			uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, 'result.json'));
-			if (!fs.existsSync(uri.fsPath)) {
-				uri = uri.with({ scheme: 'untitled' });
-			}
-		} else {
-			vscode.window.showErrorMessage(`No workspace present. Please create a workspace.`);
-			return;
-		}
-		return vscode.workspace.openTextDocument(uri)
-			.then(textDocument => vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true))
-			.then(editor => {
-				editor.edit(editorBuilder => {
-					if (editor.document.lineCount > 0) {
-						const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
-						editorBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
-					}
-					editorBuilder.insert(new vscode.Position(0, 0), result);
-				});
-			});
 	}
 
 	public static updateDocuments(database: MongoDatabaseNode, command: MongoCommand): void {

@@ -58,17 +58,9 @@ export class DocDBServerNode implements IDocDBServer {
 
 	async listDatabases(client): Promise<any[]> {
 		let databases = await client.readDatabases();
-		let toArrayPromise = new Promise<any[]>((resolve, reject) => {
-			databases.toArray(function (err, dbs: Array<Object>) {
-				if (err) {
-					reject(err);
-				} else {
-					resolve(dbs);
-				}
-			});
+		return await new Promise<any[]>((resolve, reject) => {
+			databases.toArray( (err, dbs: Array<Object>) => err ? reject(err) : resolve(dbs) );
 		});
-
-		return await toArrayPromise;
 	}
 
 	async getDocDBDatabaseNodes(client, DocDBServerNodeInstance): Promise<INode[]> {
@@ -128,17 +120,9 @@ export class DocDBDatabaseNode implements INode {
 
 	async listCollections(databaseLink, client): Promise<any> {
 		let collections = await client.readCollections(databaseLink);
-		let toArrayPromise = new Promise<any[]>((resolve, reject) => {
-			collections.toArray(function (err, cols: Array<Object>) {
-				if (err) {
-					reject(err);
-				} else {
-					resolve(cols);
-				}
-			});
-
+		return await new Promise<any[]>((resolve, reject) => {
+			collections.toArray( (err, cols: Array<Object>) => err ? reject(err) : resolve(cols) );
 		});
-		return await toArrayPromise;
 	}
 
 }
@@ -194,17 +178,9 @@ export class DocDBCollectionNode implements INode {
 
 	async readOneCollection(selfLink, client): Promise<any>{
 		let documents = await client.readDocuments(selfLink);
-		let toArrayPromise = new Promise<any[]>((resolve, reject) => {
-			documents.toArray(function (err, docs: Array<Object>) {
-				if (err) {
-					reject(err);
-				} else {
-					resolve(docs);
-				}
-			});
-
+		return await new Promise<any[]>((resolve, reject) => {
+			documents.toArray((err, docs: Array<Object>) => err ? reject(err) : resolve(docs));
 		});
-		return await toArrayPromise;
 	}
 
 }

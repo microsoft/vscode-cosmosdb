@@ -109,36 +109,7 @@ export class CosmosDBResourceNode implements IMongoServer {
 	async getMasterKey(): Promise<String> {
 		const docDBClient = new DocumentdbManagementClient(this._subscriptionFilter.session.credentials, this._subscriptionFilter.subscription.subscriptionId);
 		const result = await docDBClient.databaseAccounts.listKeys(this._resourceGroupName, this._databaseAccount.name);
-		return result.primaryMasterKey || result.secondaryMasterKey;
-	}
-
-	async listCollections(databaseLink, client): Promise<any> {
-		let collections = await client.readCollections(databaseLink)
-		let toArrayPromise = new Promise<any[]>((resolve, reject) => {
-			collections.toArray(function (err, cols: Array<Object>) {
-				if (err) {
-					reject(err);
-				} else {
-					reject(cols);
-				}
-			});
-
-		})
-	}
-
-	async listDatabases(client): Promise<any[]> {
-		let databases = await client.readDatabases();
-		let toArrayPromise = new Promise<any[]>((resolve, reject) => {
-			databases.toArray(function (err, dbs: Array<Object>) {
-				if (err) {
-					reject(err);
-				} else {
-					resolve(dbs);
-				}
-			});
-		});
-
-		return await toArrayPromise;
+		return result.primaryMasterKey;
 	}
 
 	async getChildren(): Promise<INode[]> {
@@ -152,18 +123,6 @@ export class CosmosDBResourceNode implements IMongoServer {
 			client2.masterKey = client2.masterKey || masterKey;
 			let DocDBServer = new DocDBServerNode(<string>masterKey, client2.id, this._databaseAccount.documentEndpoint);
 			return DocDBServer.getDocDBDatabaseNodes(client2, DocDBServer);
-			/*
-			let databases;
-			try{
-				databases = await this.listDatabases(client2);
-			}catch(err) {
-				databases = [];
-				vscode.window.showErrorMessage(err.code + ": " + JSON.parse(err.body).message);
-			}
-
-
-			return databases.map(database => new MongoServerNode(database.id, <string>this._databaseAccount.name));
-			*/
 		}
 	}
 }

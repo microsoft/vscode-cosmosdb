@@ -4,6 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { reporter } from './telemetry';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as vscode from 'vscode';
 
 export interface IDisposable {
 	dispose(): void;
@@ -44,4 +47,28 @@ export function errToString(error: any): string {
 	}
 
 	return error.toString();
+}
+
+export function showResult(result: string, column?: vscode.ViewColumn): Thenable<void> {
+	let uri: vscode.Uri = null;
+	if (vscode.workspace.rootPath) {
+		uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, 'result.json'));
+		if (!fs.existsSync(uri.fsPath)) {
+			uri = uri.with({ scheme: 'untitled' });
+		}
+	} else {
+		vscode.window.showErrorMessage(`No workspace present. Please create a workspace.`);
+		return;
+	}
+	return vscode.workspace.openTextDocument(uri)
+		.then(textDocument => vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true))
+		.then(editor => {
+			editor.edit(editorBuilder => {
+				if (editor.document.lineCount > 0) {
+					const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
+					editorBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
+				}
+				editorBuilder.insert(new vscode.Position(0, 0), result);
+			});
+		});
 }

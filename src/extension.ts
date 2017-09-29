@@ -63,12 +63,12 @@ export function activate(context: vscode.ExtensionContext) {
 	initCommand(context, 'cosmosDB.openMongoCollection', (collection: MongoCollectionNode) => {
 		connectToDatabase(collection.db);
 		lastCommand = MongoCommands.getCommand(`db.${collection.label}.find()`);
-		MongoCommands.executeCommand(lastCommand, connectedDb).then(result => MongoCommands.showResult(result));
+		MongoCommands.executeCommand(lastCommand, connectedDb).then(result => util.showResult(result));
 	});
 	
 	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
 	initCommand(context, 'cosmosDB.openDocDBCollection', (collection : DocDBCollectionNode) => {
-		collection.getDocuments().then(result =>MongoCommands.showResult(JSON.stringify(result, null, 2)));
+		collection.getDocuments().then(result =>util.showResult(JSON.stringify(result, null, 2)));
 		});
 	
 }

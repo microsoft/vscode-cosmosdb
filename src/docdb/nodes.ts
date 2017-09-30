@@ -1,3 +1,7 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
 import * as vscode from 'vscode';
 import * as vm from 'vm';
 import * as path from 'path';
@@ -9,23 +13,10 @@ import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
 import { MongoDatabaseNode } from '../mongo/nodes';
 import {MongoCommands} from '../mongo/commands'
-var DocumentDBConnectionClient = require("documentdb").DocumentClient;
+import {DocumentClient} from 'documentdb'; 
 
 
-export interface DocDBCommand {
-	range: vscode.Range;
-	text: string;
-	collection?: string;
-	name: string;
-	arguments?: string;
-}
-
-export interface IDocDBServer extends INode {
-	getPrimaryMasterKey(): string;
-	getEndpoint(): string;
-}
-
-export class DocDBServerNode implements IDocDBServer {
+export class DocDBServerNode implements INode{
 	readonly contextValue: string = "DocDBServer";
 	readonly label: string;
 
@@ -51,26 +42,20 @@ export class DocDBServerNode implements IDocDBServer {
 	}
 
 	getChildren(): Promise<INode[]> {
-		//return new Promise<DocDBServerNode[]>;
-		let client = new DocumentDBConnectionClient(this.getEndpoint(), this.getPrimaryMasterKey());
+		let client = new DocumentClient(this.getEndpoint(), {masterKey: this.getPrimaryMasterKey()});
 		return this.getDocDBDatabaseNodes(client, this);
 	}
 
 	async listDatabases(client): Promise<any[]> {
 		let databases = await client.readDatabases();
 		return await new Promise<any[]>((resolve, reject) => {
-			databases.toArray( (err, dbs: Array<Object>) => err ? reject(err) : resolve(dbs) );
+		databases.toArray( (err, dbs: Array<Object>) => err ? reject(err) : resolve(dbs) );
 		});
 	}
 
 	async getDocDBDatabaseNodes(client, DocDBServerNodeInstance): Promise<INode[]> {
-		let databases;
-		try {
-			databases = await this.listDatabases(client);
-		} catch (err) {
-			databases = [];
-			vscode.window.showErrorMessage(err.code + ": " + JSON.parse(err.body).message);
-		}
+		let databases = [];
+		databases = await this.listDatabases(client);
 		return databases.map(database => new DocDBDatabaseNode(database.id, DocDBServerNodeInstance));
 	}
 
@@ -79,7 +64,7 @@ export class DocDBServerNode implements IDocDBServer {
 export class DocDBDatabaseNode implements INode {
 	readonly contextValue: string = 'DocDbDatabase';
 
-	constructor(readonly id: string, readonly server: IDocDBServer) {
+	constructor(readonly id: string, readonly server: DocDBServerNode) {
 	}
 
 	get label(): string {
@@ -107,14 +92,8 @@ export class DocDBDatabaseNode implements INode {
 		let dbLink: string = this.getDbLink();
 		let collections;
 		let parentNode = this;
-		let client = new DocumentDBConnectionClient(this.server.getEndpoint(), {masterKey: this.server.getPrimaryMasterKey() });
-		try {
-			collections = await this.listCollections(dbLink, client);
-		} catch (err) {
-			collections = [];
-			vscode.window.showErrorMessage(err.code + ": " + JSON.parse(err.body).message);
-		}
-
+		let client = new DocumentClient(this.server.getEndpoint(), {masterKey: this.server.getPrimaryMasterKey() });
+		collections = await this.listCollections(dbLink, client);
 		return collections.map(collection => new DocDBCollectionNode(collection.id, parentNode));
 	}
 
@@ -134,13 +113,6 @@ export class DocDBCollectionNode implements INode {
 	}
 
 	readonly contextValue: string = 'DocDbCollection';
-	readonly DocGenerationJSONReplacer = function replacer(key, value) {
-		let redundantProperties: Array<string> = ["_rid", "_ts", "_self", "_etag", "_attachments"]; 
-		if(redundantProperties.indexOf(key) > -1){
-			return undefined;
-		}
-		return value;
-	}
 
 	get label(): string {
 		return this.id;
@@ -163,21 +135,14 @@ export class DocDBCollectionNode implements INode {
 
 	async getDocuments(): Promise<any> {
 		let dbLink: string = this.db.getDbLink();
-		let client = new DocumentDBConnectionClient(this.db.server.getEndpoint(), {masterKey: this.db.server.getPrimaryMasterKey() });
-		let docs;
-		try{
-			let collSelfLink = dbLink + "/colls/" + this.id;
-			let docs = await this.readOneCollection(collSelfLink, client);
-			console.log(docs);
-			return await docs; 
-		} catch (error){
-			console.log(error.message);
-			return;
-		}
+		let client = new DocumentClient(this.db.server.getEndpoint(), {masterKey: this.db.server.getPrimaryMasterKey() });
+		let collSelfLink = dbLink + "/colls/" + this.id;
+		let docs = await this.readOneCollection(collSelfLink, client);
+		return await docs; 
 	}
 
 	async readOneCollection(selfLink, client): Promise<any>{
-		let documents = await client.readDocuments(selfLink);
+		let documents = await client.readDocuments(selfLink, {maxItemCount : 20});
 		return await new Promise<any[]>((resolve, reject) => {
 			documents.toArray((err, docs: Array<Object>) => err ? reject(err) : resolve(docs));
 		});

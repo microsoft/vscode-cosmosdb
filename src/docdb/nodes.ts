@@ -41,9 +41,11 @@ export class DocDBServerNode implements INode{
 		return this._endpoint;
 	}
 
-	getChildren(): Promise<INode[]> {
+	async getChildren(): Promise<INode[]> {
 		let client = new DocumentClient(this.getEndpoint(), {masterKey: this.getPrimaryMasterKey()});
-		return this.getDocDBDatabaseNodes(client, this);
+		let databases = await this.listDatabases(client);
+		let DocDBServerNodeInstance = this;
+		return databases.map(database => new DocDBDatabaseNode(database.id, DocDBServerNodeInstance));
 	}
 
 	async listDatabases(client): Promise<any[]> {
@@ -51,12 +53,6 @@ export class DocDBServerNode implements INode{
 		return await new Promise<any[]>((resolve, reject) => {
 		databases.toArray( (err, dbs: Array<Object>) => err ? reject(err) : resolve(dbs) );
 		});
-	}
-
-	async getDocDBDatabaseNodes(client, DocDBServerNodeInstance): Promise<INode[]> {
-		let databases = [];
-		databases = await this.listDatabases(client);
-		return databases.map(database => new DocDBDatabaseNode(database.id, DocDBServerNodeInstance));
 	}
 
 }
@@ -84,11 +80,7 @@ export class DocDBDatabaseNode implements INode {
 		return 'dbs/' + this.id;
 	}
 
-	getChildren(): Promise<INode[]> {
-		return this.getCollections();
-	}
-
-	async getCollections(): Promise<INode[]> {
+	async getChildren(): Promise<INode[]> {
 		let dbLink: string = this.getDbLink();
 		let collections;
 		let parentNode = this;

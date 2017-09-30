@@ -297,10 +297,11 @@
 	},
 	"devDependencies": {
 		"@types/copy-paste": "^1.1.30",
+		"@types/documentdb": "^1.10.2",
+		"@types/keytar": "4.0.1",
 		"@types/mocha": "^2.2.32",
 		"@types/mongodb": "^2.2.9",
 		"@types/node": "^6.0.40",
-		"@types/keytar": "4.0.1",
 		"antlr4ts-cli": "^0.4.0-alpha.4",
 		"mocha": "^2.3.3",
 		"typescript": "^2.0.3",

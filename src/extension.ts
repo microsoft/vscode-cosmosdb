@@ -17,7 +17,7 @@ import { CosmosDBCommands } from './commands';
 import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
 import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode } from './mongo/nodes';
-import { IDocDBServer, DocDBDatabaseNode, DocDBCommand, DocDBCollectionNode } from './docdb/nodes';
+import { DocDBDatabaseNode, DocDBCollectionNode } from './docdb/nodes';
 import { CosmosDBResourceNode, INode } from './nodes'
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
@@ -67,8 +67,8 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	
 	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
-	initCommand(context, 'cosmosDB.openDocDBCollection', (collection : DocDBCollectionNode) => {
-		collection.getDocuments().then(result =>util.showResult(JSON.stringify(result, null, 2)));
+	initAsyncCommand(context, 'cosmosDB.openDocDBCollection', async (collection : DocDBCollectionNode) => {
+		util.showResult(JSON.stringify(await collection.getDocuments(), null, 2));
 		});
 	
 }

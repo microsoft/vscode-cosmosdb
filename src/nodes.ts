@@ -89,10 +89,17 @@ export class CosmosDBResourceNode implements IMongoServer {
 	}
 
 	get iconPath(): any {
-		return {
-			light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'DataServer.svg'),
-			dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
-		};
+		if (this._isMongo) {
+			return {
+				light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'DataServer.svg'),
+				dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
+			};
+		} else {
+			return {
+				light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB account LARGE.svg'),
+				dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB account LARGE.svg')
+			};
+		}
 	}
 
 	async getConnectionString(): Promise<string> {

@@ -48,7 +48,6 @@ export class DocDBServerNode implements INode {
 
 	async getChildren(): Promise<INode[]> {
 		let client = new DocumentClient(this.getEndpoint(), { masterKey: this.getPrimaryMasterKey() });
-		let DocDBServerNodeInstance = this;
 		return await DocDBServerNode.getDocDBDatabaseNodes(client, this.getPrimaryMasterKey(), this.getEndpoint());
 	}
 

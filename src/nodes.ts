@@ -13,6 +13,8 @@ import { AzureAccount, AzureResourceFilter } from './azure-account.api';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
+import { DocDBServerNode } from './docdb/nodes';
+import { DocumentClient } from 'documentdb';
 
 export interface INode extends vscode.TreeItem {
 	id: string
@@ -70,6 +72,7 @@ export class CosmosDBResourceNode implements IMongoServer {
 	readonly collapsibleState;
 
 	private _isMongo: boolean;
+	private _isDocDB: boolean;
 	private _connectionString: string;
 
 	constructor(private readonly _subscriptionFilter: AzureResourceFilter,
@@ -79,9 +82,10 @@ export class CosmosDBResourceNode implements IMongoServer {
 		this.tenantId = _subscriptionFilter.session.tenantId;
 		this.label = `${_databaseAccount.name} (${_resourceGroupName})`;
 		this._isMongo = _databaseAccount.kind === "MongoDB";
-		this.contextValue = this._isMongo ? "cosmosDBMongoServer" : "cosmosDBGenericResource";
+		this._isDocDB = _databaseAccount.kind === "GlobalDocumentDB";
+		this.contextValue = this._isMongo ? "cosmosDBMongoServer" : (this._isDocDB ? "cosmosDBDocumentServer" : "cosmosDBGenericResource");
 
-		this.collapsibleState = this._isMongo ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
+		this.collapsibleState = this._isMongo || this._isDocDB ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
 	}
 
 	get iconPath(): any {
@@ -102,10 +106,21 @@ export class CosmosDBResourceNode implements IMongoServer {
 		return this._connectionString;
 	}
 
+	async getMasterKey(): Promise<string> {
+		const docDBClient = new DocumentdbManagementClient(this._subscriptionFilter.session.credentials, this._subscriptionFilter.subscription.subscriptionId);
+		const result = await docDBClient.databaseAccounts.listKeys(this._resourceGroupName, this._databaseAccount.name);
+		return result.primaryMasterKey;
+	}
+
 	async getChildren(): Promise<INode[]> {
 		if (this._isMongo) {
 			const connectionString = await this.getConnectionString();
 			return MongoServerNode.getMongoDatabaseNodes(connectionString, this);
+		}
+		if (this._isDocDB) {
+			const masterKey = await this.getMasterKey();
+			let client = new DocumentClient(this._databaseAccount.documentEndpoint, { masterKey: masterKey });
+			return await DocDBServerNode.getDocDBDatabaseNodes(client, masterKey, this._databaseAccount.documentEndpoint);
 		}
 	}
 }

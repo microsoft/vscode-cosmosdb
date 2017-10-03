@@ -12,17 +12,22 @@ import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
 import { MongoDatabaseNode } from '../mongo/nodes';
-import {MongoCommands} from '../mongo/commands'
-import {DocumentClient} from 'documentdb'; 
+import { MongoCommands } from '../mongo/commands'
+import { DocumentClient } from 'documentdb';
 
 
-export class DocDBServerNode implements INode{
+export interface IDocDBServer extends INode {
+	getPrimaryMasterKey(): string;
+	getConnectionEndpoint(): string;
+}
+
+export class DocDBServerNode implements INode {
 	readonly contextValue: string = "DocDBServer";
 	readonly label: string;
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
-	constructor(readonly _primaryMasterKey: string, readonly id: string, private readonly _endpoint: string) {
+	constructor(private readonly _primaryMasterKey: string, readonly id: string, private readonly _endpoint: string) {
 		this.label = id;
 	}
 
@@ -42,16 +47,20 @@ export class DocDBServerNode implements INode{
 	}
 
 	async getChildren(): Promise<INode[]> {
-		let client = new DocumentClient(this.getEndpoint(), {masterKey: this.getPrimaryMasterKey()});
-		let databases = await this.listDatabases(client);
+		let client = new DocumentClient(this.getEndpoint(), { masterKey: this.getPrimaryMasterKey() });
 		let DocDBServerNodeInstance = this;
-		return databases.map(database => new DocDBDatabaseNode(database.id, DocDBServerNodeInstance));
+		return await DocDBServerNode.getDocDBDatabaseNodes(client);
 	}
 
-	async listDatabases(client): Promise<any[]> {
+	static async getDocDBDatabaseNodes(client: DocumentClient): Promise<INode[]> {
+		let databases = await DocDBServerNode.listDatabases(client);
+		return databases.map(database => new DocDBDatabaseNode(database.id, client.masterKey, client._globalEndpointManager.defaultEndpoint));
+	}
+
+	static async listDatabases(client): Promise<any[]> {
 		let databases = await client.readDatabases();
 		return await new Promise<any[]>((resolve, reject) => {
-		databases.toArray( (err, dbs: Array<Object>) => err ? reject(err) : resolve(dbs) );
+			databases.toArray((err, dbs: Array<Object>) => err ? reject(err) : resolve(dbs));
 		});
 	}
 
@@ -60,8 +69,16 @@ export class DocDBServerNode implements INode{
 export class DocDBDatabaseNode implements INode {
 	readonly contextValue: string = 'DocDbDatabase';
 
-	constructor(readonly id: string, readonly server: DocDBServerNode) {
+	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string) {
 	}
+
+	getPrimaryMasterKey(): string {
+		return this._primaryMasterKey;
+	}
+	getConnectionEndpoint(): string {
+		return this._endPoint;
+	}
+
 
 	get label(): string {
 		return this.id;
@@ -84,7 +101,7 @@ export class DocDBDatabaseNode implements INode {
 		let dbLink: string = this.getDbLink();
 		let collections;
 		let parentNode = this;
-		let client = new DocumentClient(this.server.getEndpoint(), {masterKey: this.server.getPrimaryMasterKey() });
+		let client = new DocumentClient(this.getConnectionEndpoint(), { masterKey: this.getPrimaryMasterKey() });
 		collections = await this.listCollections(dbLink, client);
 		return collections.map(collection => new DocDBCollectionNode(collection.id, parentNode));
 	}
@@ -92,7 +109,7 @@ export class DocDBDatabaseNode implements INode {
 	async listCollections(databaseLink, client): Promise<any> {
 		let collections = await client.readCollections(databaseLink);
 		return await new Promise<any[]>((resolve, reject) => {
-			collections.toArray( (err, cols: Array<Object>) => err ? reject(err) : resolve(cols) );
+			collections.toArray((err, cols: Array<Object>) => err ? reject(err) : resolve(cols));
 		});
 	}
 
@@ -127,14 +144,14 @@ export class DocDBCollectionNode implements INode {
 
 	async getDocuments(): Promise<any> {
 		let dbLink: string = this.db.getDbLink();
-		let client = new DocumentClient(this.db.server.getEndpoint(), {masterKey: this.db.server.getPrimaryMasterKey() });
+		let client = new DocumentClient(this.db.getConnectionEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
 		let collSelfLink = dbLink + "/colls/" + this.id;
 		let docs = await this.readOneCollection(collSelfLink, client);
-		return await docs; 
+		return await docs;
 	}
 
-	async readOneCollection(selfLink, client): Promise<any>{
-		let documents = await client.readDocuments(selfLink, {maxItemCount : 20});
+	async readOneCollection(selfLink, client): Promise<any> {
+		let documents = await client.readDocuments(selfLink, { maxItemCount: 20 });
 		return await new Promise<any[]>((resolve, reject) => {
 			documents.toArray((err, docs: Array<Object>) => err ? reject(err) : resolve(docs));
 		});

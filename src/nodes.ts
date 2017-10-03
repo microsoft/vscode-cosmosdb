@@ -14,7 +14,7 @@ import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
 import { DocDBServerNode } from './docdb/nodes';
-var DocumentDBConnectionClient = require("documentdb").DocumentClient;
+import { DocumentClient } from 'documentdb';
 
 export interface INode extends vscode.TreeItem {
 	id: string
@@ -119,9 +119,8 @@ export class CosmosDBResourceNode implements IMongoServer {
 		}
 		if (this._isDocDB) {
 			const masterKey = await this.getMasterKey();
-			let client = new DocumentDBConnectionClient(this._databaseAccount.documentEndpoint, {masterKey: masterKey});
-			let DocDBServer = new DocDBServerNode(<string>masterKey, client.id, this._databaseAccount.documentEndpoint);
-			return DocDBServer.getChildren();
+			let client = new DocumentClient(this._databaseAccount.documentEndpoint, { masterKey: masterKey });
+			return await DocDBServerNode.getDocDBDatabaseNodes(client);
 		}
 	}
 }

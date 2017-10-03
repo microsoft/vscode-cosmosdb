@@ -49,12 +49,12 @@ export class DocDBServerNode implements INode {
 	async getChildren(): Promise<INode[]> {
 		let client = new DocumentClient(this.getEndpoint(), { masterKey: this.getPrimaryMasterKey() });
 		let DocDBServerNodeInstance = this;
-		return await DocDBServerNode.getDocDBDatabaseNodes(client);
+		return await DocDBServerNode.getDocDBDatabaseNodes(client, this.getPrimaryMasterKey(), this.getEndpoint());
 	}
 
-	static async getDocDBDatabaseNodes(client: DocumentClient): Promise<INode[]> {
+	static async getDocDBDatabaseNodes(client: DocumentClient, masterKey: string, endpoint: string): Promise<INode[]> {
 		let databases = await DocDBServerNode.listDatabases(client);
-		return databases.map(database => new DocDBDatabaseNode(database.id, client.masterKey, client._globalEndpointManager.defaultEndpoint));
+		return databases.map(database => new DocDBDatabaseNode(database.id, masterKey, endpoint));
 	}
 
 	static async listDatabases(client): Promise<any[]> {

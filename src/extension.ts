@@ -65,12 +65,12 @@ export function activate(context: vscode.ExtensionContext) {
 		lastCommand = MongoCommands.getCommand(`db.${collection.label}.find()`);
 		MongoCommands.executeCommand(lastCommand, connectedDb).then(result => util.showResult(result));
 	});
-	
+
 	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
-	initAsyncCommand(context, 'cosmosDB.openDocDBCollection', async (collection : DocDBCollectionNode) => {
+	initAsyncCommand(context, 'cosmosDB.openDocDBCollection', async (collection: DocDBCollectionNode) => {
 		util.showResult(JSON.stringify(await collection.getDocuments(), null, 2));
-		});
-	
+	});
+
 }
 
 function initCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => any) {
@@ -101,7 +101,7 @@ function createScrapbook(): Thenable<void> {
 		let uri: vscode.Uri = null;
 		let count = 1;
 		const max = 99999;
-		if (vscode.workspace.workspaceFolders){
+		if (vscode.workspace.workspaceFolders) {
 			while (count < max) {
 				uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, `Scrapbook-${count}.mongo`));
 				if (!vscode.workspace.textDocuments.find(doc => doc.uri.fsPath === uri.fsPath) && !fs.existsSync(uri.fsPath)) {
@@ -116,10 +116,10 @@ function createScrapbook(): Thenable<void> {
 			uri = uri.with({ scheme: 'untitled' });
 			vscode.workspace.openTextDocument(uri).then(textDocument => vscode.window.showTextDocument(textDocument));
 		}
-		else{
-			vscode.workspace.openTextDocument({language:'mongo'}).then(textDocument => vscode.window.showTextDocument(textDocument));
-		}			
-		
+		else {
+			vscode.workspace.openTextDocument({ language: 'mongo' }).then(textDocument => vscode.window.showTextDocument(textDocument));
+		}
+
 	});
 }
 

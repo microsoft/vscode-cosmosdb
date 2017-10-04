@@ -21,11 +21,13 @@ import { DocDBDatabaseNode, DocDBCollectionNode } from './docdb/nodes';
 import { CosmosDBResourceNode, INode } from './nodes'
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
+import { DocumentClient } from 'documentdb';
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
 let explorer: CosmosDBExplorer;
 let lastCommand: MongoCommand;
+let documentDBClient: DocumentClient = null;
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(new Reporter(context));
@@ -51,6 +53,8 @@ export function activate(context: vscode.ExtensionContext) {
 	initCommand(context, 'cosmosDB.refresh', (node: INode) => explorer.refresh(node));
 	initAsyncCommand(context, 'cosmosDB.removeMongoServer', (node: INode) => removeMongoServer(node));
 	initAsyncCommand(context, 'cosmosDB.createMongoDatabase', (node: IMongoServer) => createMongoDatabase(node));
+	initAsyncCommand(context, 'cosmosDB.createDocDBDatabase', (node: CosmosDBResourceNode) => createDocDBDatabase(node));
+	initAsyncCommand(context, 'cosmosDB.createDocDBCollection', (node: DocDBDatabaseNode) => createDocDBCollection(node));
 	initCommand(context, 'cosmosDB.openInPortal', (node: CosmosDBResourceNode) => openInPortal(node));
 	initAsyncCommand(context, 'cosmosDB.copyConnectionString', (node: CosmosDBResourceNode) => copyConnectionString(node));
 
@@ -146,6 +150,44 @@ async function createMongoDatabase(server: IMongoServer) {
 			explorer.refresh(server);
 			connectToDatabase(databaseNode);
 		}
+	}
+}
+
+async function createDocDBDatabase(server: CosmosDBResourceNode) {
+	const databaseName = await vscode.window.showInputBox({ placeHolder: 'Database Name' });
+	if (databaseName) {
+		const masterKey = await server.getPrimaryMasterKey();
+		const endpoint = await server.getEndpoint();
+		let client = new DocumentClient(endpoint, { masterKey: masterKey });
+		client.createDatabase({ id: databaseName }, function (err, created) {
+			if (!err) {
+				vscode.window.showInformationMessage("Created a db with name " + databaseName);
+			} else {
+				vscode.window.showErrorMessage(err);
+				console.log(err.body);
+			}
+		}
+		);
+		explorer.refresh(server);
+	}
+}
+
+async function createDocDBCollection(db: DocDBDatabaseNode) {
+	const collectionName = await vscode.window.showInputBox({ placeHolder: 'Collection Name' });
+	if (collectionName) {
+		const masterKey = await db.getPrimaryMasterKey();
+		const endpoint = await db.getEndpoint();
+		let client = new DocumentClient(endpoint, { masterKey: masterKey });
+		client.createCollection(db.getDbLink(), collectionName, function (err, created) {
+			if (!err) {
+				vscode.window.showInformationMessage("Created a collection with name " + collectionName);
+			} else {
+				vscode.window.showErrorMessage(err);
+				console.log(err.body);
+			}
+		}
+		);
+		explorer.refresh(db);
 	}
 }
 

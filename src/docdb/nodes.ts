@@ -18,7 +18,7 @@ import { DocumentClient } from 'documentdb';
 
 export interface IDocDBServer extends INode {
 	getPrimaryMasterKey(): string;
-	getConnectionEndpoint(): string;
+	getEndpoint(): string;
 }
 
 export class DocDBServerNode implements INode {
@@ -74,7 +74,7 @@ export class DocDBDatabaseNode implements INode {
 	getPrimaryMasterKey(): string {
 		return this._primaryMasterKey;
 	}
-	getConnectionEndpoint(): string {
+	getEndpoint(): string {
 		return this._endPoint;
 	}
 
@@ -100,7 +100,7 @@ export class DocDBDatabaseNode implements INode {
 		let dbLink: string = this.getDbLink();
 		let collections;
 		let parentNode = this;
-		let client = new DocumentClient(this.getConnectionEndpoint(), { masterKey: this.getPrimaryMasterKey() });
+		let client = new DocumentClient(this.getEndpoint(), { masterKey: this.getPrimaryMasterKey() });
 		collections = await this.listCollections(dbLink, client);
 		return collections.map(collection => new DocDBCollectionNode(collection.id, parentNode));
 	}
@@ -143,7 +143,7 @@ export class DocDBCollectionNode implements INode {
 
 	async getDocuments(): Promise<any> {
 		let dbLink: string = this.db.getDbLink();
-		let client = new DocumentClient(this.db.getConnectionEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
+		let client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
 		let collSelfLink = dbLink + "/colls/" + this.id;
 		let docs = await this.readOneCollection(collSelfLink, client);
 		return await docs;

@@ -113,10 +113,14 @@ export class CosmosDBResourceNode implements IMongoServer {
 		return this._connectionString;
 	}
 
-	async getMasterKey(): Promise<string> {
+	async getPrimaryMasterKey(): Promise<string> {
 		const docDBClient = new DocumentdbManagementClient(this._subscriptionFilter.session.credentials, this._subscriptionFilter.subscription.subscriptionId);
 		const result = await docDBClient.databaseAccounts.listKeys(this._resourceGroupName, this._databaseAccount.name);
 		return result.primaryMasterKey;
+	}
+
+	async getEndpoint(): Promise<string> {
+		return await this._databaseAccount.documentEndpoint;
 	}
 
 	async getChildren(): Promise<INode[]> {
@@ -125,9 +129,9 @@ export class CosmosDBResourceNode implements IMongoServer {
 			return MongoServerNode.getMongoDatabaseNodes(connectionString, this);
 		}
 		if (this._isDocDB) {
-			const masterKey = await this.getMasterKey();
+			const masterKey = await this.getPrimaryMasterKey();
 			let client = new DocumentClient(this._databaseAccount.documentEndpoint, { masterKey: masterKey });
-			return await DocDBServerNode.getDocDBDatabaseNodes(client, masterKey, this._databaseAccount.documentEndpoint);
+			return await DocDBServerNode.getDocDBDatabaseNodes(client, masterKey, await this.getEndpoint());
 		}
 	}
 }

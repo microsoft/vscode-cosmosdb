@@ -175,14 +175,14 @@ async function createDocDBDatabase(server: CosmosDBResourceNode) {
 async function createDocDBCollection(db: DocDBDatabaseNode) {
 	const collectionName = await vscode.window.showInputBox({ placeHolder: 'Collection Name' });
 	if (collectionName) {
-		const masterKey = await db.getPrimaryMasterKey();
-		const endpoint = await db.getEndpoint();
-		let client = new DocumentClient(endpoint, { masterKey: masterKey });
-		client.createCollection(db.getDbLink(), collectionName, function (err, created) {
+		let masterKey = db.getPrimaryMasterKey();
+		let endpoint = db.getEndpoint();
+		let client = new DocumentClient(await endpoint, { masterKey: await masterKey });
+		client.createCollection(db.getDbLink(), { id: collectionName }, async function (err, created) {
 			if (!err) {
-				vscode.window.showInformationMessage("Created a collection with name " + collectionName);
+				await vscode.window.showInformationMessage("Created a collection with name " + collectionName);
 			} else {
-				vscode.window.showErrorMessage(err);
+				await vscode.window.showErrorMessage(err);
 				console.log(err.body);
 			}
 		}

@@ -166,9 +166,9 @@ async function createDocDBDatabase(server: CosmosDBResourceNode) {
 				vscode.window.showErrorMessage(err);
 				console.log(err.body);
 			}
+			explorer.refresh(server);
 		}
 		);
-		explorer.refresh(server);
 	}
 }
 
@@ -201,11 +201,11 @@ async function createDocDBCollection(db: DocDBDatabaseNode) {
 						vscode.window.showErrorMessage(err);
 						console.log(err.body);
 					}
+					explorer.refresh(db);
 				}
 				);
 			}
 		}
-		explorer.refresh(db);
 	}
 }
 

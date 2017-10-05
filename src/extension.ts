@@ -186,7 +186,7 @@ async function createDocDBCollection(db: DocDBDatabaseNode) {
 		}));
 		if (throughput) {
 			let client = new DocumentClient(await endpoint, { masterKey: await masterKey });
-			options = { partitionKey: partitionKey, offerThroughput: throughput };
+			options = { offerThroughput: throughput };
 			client.createCollection(db.getDbLink(), { id: collectionName }, options, async function (err, created) {
 				if (!err) {
 					await vscode.window.showInformationMessage("Created a collection with name " + collectionName);

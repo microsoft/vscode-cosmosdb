@@ -178,24 +178,32 @@ async function createDocDBCollection(db: DocDBDatabaseNode) {
 		let masterKey = db.getPrimaryMasterKey();
 		let endpoint = db.getEndpoint();
 		let options = {};
-		let throughput: number = Number(await vscode.window.showInputBox({
-			value: '10000',
+		let partitionKey: string = await vscode.window.showInputBox({
+			prompt: 'Partition Key: Choose a JSON property name that will possibly have a wide range of values.',
 			ignoreFocusOut: true,
-			prompt: 'Initial throughput capacity, between 2500 and 100,000',
-			validateInput: validateThroughput
-		}));
-		if (throughput) {
-			let client = new DocumentClient(await endpoint, { masterKey: await masterKey });
-			options = { offerThroughput: throughput };
-			client.createCollection(db.getDbLink(), { id: collectionName }, options, async function (err, created) {
-				if (!err) {
-					await vscode.window.showInformationMessage("Created a collection with name " + collectionName);
-				} else {
-					vscode.window.showErrorMessage(err);
-					console.log(err.body);
+			validateInput: validatePartitionKey
+		});
+		if (partitionKey) {
+			let throughput: number = Number(await vscode.window.showInputBox({
+				value: '10000',
+				ignoreFocusOut: true,
+				prompt: 'Initial throughput capacity, between 2500 and 100,000',
+				validateInput: validateThroughput
+			}));
+			if (throughput) {
+				let client = new DocumentClient(await endpoint, { masterKey: await masterKey });
+				let options = { offerThroughput: throughput };
+				let collectionDef = { id: collectionName, partitionKey: { paths: [partitionKey] } };
+				client.createCollection(db.getDbLink(), collectionDef, options, async function (err, created) {
+					if (!err) {
+						await vscode.window.showInformationMessage("Created a collection with name " + collectionName);
+					} else {
+						vscode.window.showErrorMessage(err);
+						console.log(err.body);
+					}
 				}
+				);
 			}
-			);
 		}
 		explorer.refresh(db);
 	}

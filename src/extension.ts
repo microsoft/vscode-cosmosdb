@@ -177,18 +177,49 @@ async function createDocDBCollection(db: DocDBDatabaseNode) {
 	if (collectionName) {
 		let masterKey = db.getPrimaryMasterKey();
 		let endpoint = db.getEndpoint();
-		let client = new DocumentClient(await endpoint, { masterKey: await masterKey });
-		client.createCollection(db.getDbLink(), { id: collectionName }, async function (err, created) {
-			if (!err) {
-				await vscode.window.showInformationMessage("Created a collection with name " + collectionName);
-			} else {
-				await vscode.window.showErrorMessage(err);
-				console.log(err.body);
+		let options = {};
+		let throughput: number = Number(await vscode.window.showInputBox({
+			value: '10000',
+			ignoreFocusOut: true,
+			prompt: 'Initial throughput capacity, between 2500 and 100,000',
+			validateInput: validateThroughput
+		}));
+		if (throughput) {
+			let client = new DocumentClient(await endpoint, { masterKey: await masterKey });
+			options = { partitionKey: partitionKey, offerThroughput: throughput };
+			client.createCollection(db.getDbLink(), { id: collectionName }, options, async function (err, created) {
+				if (!err) {
+					await vscode.window.showInformationMessage("Created a collection with name " + collectionName);
+				} else {
+					vscode.window.showErrorMessage(err);
+					console.log(err.body);
+				}
 			}
+			);
 		}
-		);
 		explorer.refresh(db);
 	}
+}
+
+function validatePartitionKey(key: string): string | undefined | null {
+	if (key[0] != '/') {
+		return "Need a leading / in the partitionKey";
+	} else if (/^[#?\\]*$/.test(key)) {
+		return "Cannot contain these characters - ?,#,\\, etc."
+	}
+	return null;
+}
+
+function validateThroughput(input: string): string | undefined | null {
+	try {
+		let value = Number(input);
+		if (value < 2500 || value > 100000) {
+			return "Value needs to lie between 2500 and 100,000"
+		}
+	} catch (err) {
+		return "Input must be a number"
+	}
+	return null;
 }
 
 function openInPortal(node: CosmosDBResourceNode) {

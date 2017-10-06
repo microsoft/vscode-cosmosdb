@@ -22,6 +22,7 @@ import { CosmosDBResourceNode, INode } from './nodes'
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
 import { DocumentClient } from 'documentdb';
+import { DocumentBase } from 'documentdb/lib';
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
@@ -163,7 +164,7 @@ async function createDocDBDatabase(server: CosmosDBResourceNode) {
 			if (!err) {
 				vscode.window.showInformationMessage("Created a db with name " + databaseName);
 			} else {
-				vscode.window.showErrorMessage(err);
+				vscode.window.showErrorMessage(err.body);
 				console.log(err.body);
 			}
 			explorer.refresh(server);
@@ -193,12 +194,18 @@ async function createDocDBCollection(db: DocDBDatabaseNode) {
 			if (throughput) {
 				let client = new DocumentClient(await endpoint, { masterKey: await masterKey });
 				let options = { offerThroughput: throughput };
-				let collectionDef = { id: collectionName, partitionKey: { paths: [partitionKey] } };
+				let collectionDef = {
+					id: collectionName,
+					partitionKey: {
+						paths: [partitionKey],
+						kind: DocumentBase.PartitionKind.Hash
+					}
+				};
 				client.createCollection(db.getDbLink(), collectionDef, options, async function (err, created) {
 					if (!err) {
 						await vscode.window.showInformationMessage("Created a collection with name " + collectionName);
 					} else {
-						vscode.window.showErrorMessage(err);
+						vscode.window.showErrorMessage(err.body);
 						console.log(err.body);
 					}
 					explorer.refresh(db);

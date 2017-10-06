@@ -124,7 +124,10 @@ function createScrapbook(): Thenable<void> {
 }
 
 async function attachMongoServer() {
-	const result = await vscode.window.showInputBox({ placeHolder: 'mongodb://host:port' });
+	const result = await vscode.window.showInputBox({
+		placeHolder: 'mongodb://host:port',
+		ignoreFocusOut: true
+	});
 	if (result) {
 		const insertedNode = await explorer.attachedServersNode.attach(result);
 		if (insertedNode) {
@@ -138,7 +141,8 @@ async function createMongoDatabase(server: IMongoServer) {
 	if (databaseName) {
 		const collectionName = await vscode.window.showInputBox({
 			placeHolder: 'Collection Name',
-			prompt: 'A collection is required to create a database'
+			prompt: 'A collection is required to create a database',
+			ignoreFocusOut: true
 		});
 		if (collectionName) {
 			const databaseNode = new MongoDatabaseNode(databaseName, server);

@@ -8,7 +8,6 @@
 		],
 		"sourceMap": true,
 		"rootDir": ".",
-		"noUnusedLocals": true,
 		"experimentalDecorators": true
 	},
 	"exclude": [

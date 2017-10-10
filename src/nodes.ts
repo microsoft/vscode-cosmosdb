@@ -73,8 +73,6 @@ export class CosmosDBResourceNode implements IMongoServer {
 	readonly collapsibleState;
 	readonly defaultExperience: string;
 
-	private _isMongo: boolean;
-	private _isDocDB: boolean;
 	private _connectionString: string;
 
 	constructor(private readonly _subscriptionFilter: AzureResourceFilter,
@@ -92,12 +90,6 @@ export class CosmosDBResourceNode implements IMongoServer {
 			case "DocumentDB":
 				this.contextValue = "cosmosDBDocumentServer"
 				break;
-			case "Graph":
-				this.contextValue = "cosmosDBGraphServer";
-				break;
-			case "Table":
-				this.contextValue = "cosmosDBTableServer";
-				break;
 			default:
 				this.contextValue = "cosmosDBGenericResource";
 		}
@@ -105,7 +97,7 @@ export class CosmosDBResourceNode implements IMongoServer {
 	}
 
 	get iconPath(): any {
-		if (this._isMongo) {
+		if (this.defaultExperience === "MongoDB") {
 			return {
 				light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'DataServer.svg'),
 				dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
@@ -140,11 +132,11 @@ export class CosmosDBResourceNode implements IMongoServer {
 	}
 
 	async getChildren(): Promise<INode[]> {
-		if (this._isMongo) {
+		if (this.contextValue === "cosmosDBMongoServer") {
 			const connectionString = await this.getConnectionString();
 			return MongoServerNode.getMongoDatabaseNodes(connectionString, this);
 		}
-		if (this._isDocDB) {
+		if (this.contextValue === "cosmosDBDocumentServer") {
 			const masterKey = await this.getPrimaryMasterKey();
 			let client = new DocumentClient(this._databaseAccount.documentEndpoint, { masterKey: masterKey });
 			return await CosmosDBResourceNode.getDocDBDatabaseNodes(client, masterKey, await this.getEndpoint(), this.defaultExperience);

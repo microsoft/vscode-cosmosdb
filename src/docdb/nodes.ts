@@ -16,9 +16,19 @@ export interface IDocDBServer extends INode {
 
 
 export class DocDBDatabaseNode implements INode {
-	readonly contextValue: string = 'DocDBDatabase';
-
-	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string) {
+	readonly contextValue: string;
+	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string, readonly defaultExperience: string) {
+		switch (defaultExperience) {
+			case "DocumentDB":
+				this.contextValue = "DocDBDatabase"
+				break;
+			case "Graph":
+				this.contextValue = "GraphDatabase"
+				break;
+			case "Table":
+				this.contextValue = "TableDatabase"
+				break;
+		}
 	}
 
 	getPrimaryMasterKey(): string {
@@ -70,7 +80,7 @@ export class DocDBCollectionNode implements INode {
 	constructor(readonly id: string, readonly db: DocDBDatabaseNode) {
 	}
 
-	readonly contextValue: string = 'DocDbCollection';
+	readonly contextValue: string = 'DocDBCollection';
 
 	get label(): string {
 		return this.id;

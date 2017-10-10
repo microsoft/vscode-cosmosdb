@@ -222,7 +222,7 @@ export class CosmosDBCommands {
                     vscode.window.showErrorMessage(err.body);
                 }
                 else {
-                    const databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), await server.getEndpoint());
+                    const databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), await server.getEndpoint(), server.defaultExperience);
                     explorer.refresh(server);
                     vscode.window.showInformationMessage("Creating a collection...")
                     CosmosDBCommands.createDocDBCollection(databaseNode, explorer);

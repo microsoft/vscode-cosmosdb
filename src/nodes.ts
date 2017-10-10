@@ -71,6 +71,7 @@ export class CosmosDBResourceNode implements IMongoServer {
 	readonly contextValue: string;
 	readonly tenantId: string;
 	readonly collapsibleState;
+	readonly defaultExperience: string;
 
 	private _isMongo: boolean;
 	private _isDocDB: boolean;
@@ -82,11 +83,25 @@ export class CosmosDBResourceNode implements IMongoServer {
 		this.id = _databaseAccount.id;
 		this.tenantId = _subscriptionFilter.session.tenantId;
 		this.label = `${_databaseAccount.name} (${_resourceGroupName})`;
-		this._isMongo = _databaseAccount.kind === "MongoDB";
-		this._isDocDB = _databaseAccount.kind === "GlobalDocumentDB";
-		this.contextValue = this._isMongo ? "cosmosDBMongoServer" : (this._isDocDB ? "cosmosDBDocumentServer" : "cosmosDBGenericResource");
+		this.defaultExperience = _databaseAccount.tags.defaultExperience;
 
-		this.collapsibleState = this._isMongo || this._isDocDB ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
+		switch (this.defaultExperience) {
+			case "MongoDB":
+				this.contextValue = "cosmosDBMongoServer";
+				break;
+			case "DocumentDB":
+				this.contextValue = "cosmosDBDocumentServer"
+				break;
+			case "Graph":
+				this.contextValue = "cosmosDBGraphServer";
+				break;
+			case "Table":
+				this.contextValue = "cosmosDBTableServer";
+				break;
+			default:
+				this.contextValue = "cosmosDBGenericResource";
+		}
+		this.collapsibleState = this.contextValue === "cosmosDBGenericResource" ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed;
 	}
 
 	get iconPath(): any {
@@ -132,13 +147,13 @@ export class CosmosDBResourceNode implements IMongoServer {
 		if (this._isDocDB) {
 			const masterKey = await this.getPrimaryMasterKey();
 			let client = new DocumentClient(this._databaseAccount.documentEndpoint, { masterKey: masterKey });
-			return await CosmosDBResourceNode.getDocDBDatabaseNodes(client, masterKey, await this.getEndpoint());
+			return await CosmosDBResourceNode.getDocDBDatabaseNodes(client, masterKey, await this.getEndpoint(), this.defaultExperience);
 		}
 	}
 
-	static async getDocDBDatabaseNodes(client: DocumentClient, masterKey: string, endpoint: string): Promise<INode[]> {
+	static async getDocDBDatabaseNodes(client: DocumentClient, masterKey: string, endpoint: string, contextValue: string): Promise<INode[]> {
 		let databases = await CosmosDBResourceNode.listDatabases(client);
-		return databases.map(database => new DocDBDatabaseNode(database.id, masterKey, endpoint));
+		return databases.map(database => new DocDBDatabaseNode(database.id, masterKey, endpoint, contextValue));
 	}
 
 	static async listDatabases(client): Promise<any[]> {

@@ -260,6 +260,14 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
 				},
 				{
+					"command": "cosmosDB.openInPortal",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphServer"
+				},
+				{
+					"command": "cosmosDB.openInPortal",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableServer"
+				},
+				{
 					"command": "cosmosDB.copyConnectionString",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
 				},

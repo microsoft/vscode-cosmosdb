@@ -13,7 +13,7 @@ import { AzureAccount, AzureResourceFilter } from './azure-account.api';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
-import { DocDBServerNode } from './docdb/nodes';
+import { DocDBDatabaseNode } from './docdb/nodes';
 import { DocumentClient } from 'documentdb';
 
 export interface INode extends vscode.TreeItem {
@@ -48,6 +48,7 @@ export class SubscriptionNode implements INode {
 			const resourceManagementClient = new ResourceManagementClient(this.subscriptionFilter.session.credentials, this.subscriptionFilter.subscription.subscriptionId);
 			let resourceGroups = await resourceManagementClient.resourceGroups.list();
 			resourceGroups = resourceGroups.sort((a, b) => a.name.localeCompare(b.name));
+			let l = await docDBClient.databaseAccounts.list();
 
 			const result = await Promise.all(resourceGroups.map(async group => {
 				let dbs = await docDBClient.databaseAccounts.listByResourceGroup(group.name);
@@ -131,9 +132,22 @@ export class CosmosDBResourceNode implements IMongoServer {
 		if (this._isDocDB) {
 			const masterKey = await this.getPrimaryMasterKey();
 			let client = new DocumentClient(this._databaseAccount.documentEndpoint, { masterKey: masterKey });
-			return await DocDBServerNode.getDocDBDatabaseNodes(client, masterKey, await this.getEndpoint());
+			return await CosmosDBResourceNode.getDocDBDatabaseNodes(client, masterKey, await this.getEndpoint());
 		}
 	}
+
+	static async getDocDBDatabaseNodes(client: DocumentClient, masterKey: string, endpoint: string): Promise<INode[]> {
+		let databases = await CosmosDBResourceNode.listDatabases(client);
+		return databases.map(database => new DocDBDatabaseNode(database.id, masterKey, endpoint));
+	}
+
+	static async listDatabases(client): Promise<any[]> {
+		let databases = await client.readDatabases();
+		return await new Promise<any[]>((resolve, reject) => {
+			databases.toArray((err, dbs: Array<Object>) => err ? reject(err) : resolve(dbs));
+		});
+	}
+
 }
 
 export class AttachedServersNode implements INode {

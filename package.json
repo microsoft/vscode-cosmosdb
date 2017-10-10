@@ -225,7 +225,7 @@
 				},
 				{
 					"command": "cosmosDB.createDocDBCollection",
-					"when": "view == cosmosDBExplorer && viewItem == DocDbDatabase"
+					"when": "view == cosmosDBExplorer && viewItem == DocDBDatabase"
 				},
 				{
 					"command": "cosmosDB.createDocDBDatabase",

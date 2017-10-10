@@ -12,7 +12,7 @@ import * as copypaste from 'copy-paste';
 import * as opn from 'opn';
 import * as util from "./util";
 
-import { AzureAccount, AzureSession } from './azure-account.api';
+import { AzureAccount } from './azure-account.api';
 import { CosmosDBCommands } from './commands';
 import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
@@ -21,14 +21,11 @@ import { DocDBDatabaseNode, DocDBCollectionNode } from './docdb/nodes';
 import { CosmosDBResourceNode, INode } from './nodes'
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
-import { DocumentClient } from 'documentdb';
-import { DocumentBase } from 'documentdb/lib';
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
 let explorer: CosmosDBExplorer;
 let lastCommand: MongoCommand;
-let documentDBClient: DocumentClient = null;
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(new Reporter(context));
@@ -54,8 +51,8 @@ export function activate(context: vscode.ExtensionContext) {
 	initCommand(context, 'cosmosDB.refresh', (node: INode) => explorer.refresh(node));
 	initAsyncCommand(context, 'cosmosDB.removeMongoServer', (node: INode) => removeMongoServer(node));
 	initAsyncCommand(context, 'cosmosDB.createMongoDatabase', (node: IMongoServer) => createMongoDatabase(node));
-	initAsyncCommand(context, 'cosmosDB.createDocDBDatabase', (node: CosmosDBResourceNode) => createDocDBDatabase(node));
-	initAsyncCommand(context, 'cosmosDB.createDocDBCollection', (node: DocDBDatabaseNode) => createDocDBCollection(node));
+	initAsyncCommand(context, 'cosmosDB.createDocDBDatabase', (node: CosmosDBResourceNode) => CosmosDBCommands.createDocDBDatabase(node, explorer));
+	initAsyncCommand(context, 'cosmosDB.createDocDBCollection', (node: DocDBDatabaseNode) => CosmosDBCommands.createDocDBCollection(node, explorer));
 	initCommand(context, 'cosmosDB.openInPortal', (node: CosmosDBResourceNode) => openInPortal(node));
 	initAsyncCommand(context, 'cosmosDB.copyConnectionString', (node: CosmosDBResourceNode) => copyConnectionString(node));
 
@@ -154,88 +151,6 @@ async function createMongoDatabase(server: IMongoServer) {
 	}
 }
 
-async function createDocDBDatabase(server: CosmosDBResourceNode) {
-	const databaseName = await vscode.window.showInputBox({ placeHolder: 'Database Name' });
-	if (databaseName) {
-		const masterKey = await server.getPrimaryMasterKey();
-		const endpoint = await server.getEndpoint();
-		let client = new DocumentClient(endpoint, { masterKey: masterKey });
-		client.createDatabase({ id: databaseName }, function (err, created) {
-			if (!err) {
-				vscode.window.showInformationMessage("Created a db with name " + databaseName);
-			} else {
-				vscode.window.showErrorMessage(err.body);
-				console.log(err.body);
-			}
-			explorer.refresh(server);
-		}
-		);
-	}
-}
-
-async function createDocDBCollection(db: DocDBDatabaseNode) {
-	const collectionName = await vscode.window.showInputBox({ placeHolder: 'Collection Name' });
-	if (collectionName) {
-		let masterKey = db.getPrimaryMasterKey();
-		let endpoint = db.getEndpoint();
-		let options = {};
-		let partitionKey: string = await vscode.window.showInputBox({
-			prompt: 'Partition Key: Choose a JSON property name that will possibly have a wide range of values.',
-			ignoreFocusOut: true,
-			validateInput: validatePartitionKey
-		});
-		if (partitionKey) {
-			let throughput: number = Number(await vscode.window.showInputBox({
-				value: '10000',
-				ignoreFocusOut: true,
-				prompt: 'Initial throughput capacity, between 2500 and 100,000',
-				validateInput: validateThroughput
-			}));
-			if (throughput) {
-				let client = new DocumentClient(await endpoint, { masterKey: await masterKey });
-				let options = { offerThroughput: throughput };
-				let collectionDef = {
-					id: collectionName,
-					partitionKey: {
-						paths: [partitionKey],
-						kind: DocumentBase.PartitionKind.Hash
-					}
-				};
-				client.createCollection(db.getDbLink(), collectionDef, options, async function (err, created) {
-					if (!err) {
-						await vscode.window.showInformationMessage("Created a collection with name " + collectionName);
-					} else {
-						vscode.window.showErrorMessage(err.body);
-						console.log(err.body);
-					}
-					explorer.refresh(db);
-				}
-				);
-			}
-		}
-	}
-}
-
-function validatePartitionKey(key: string): string | undefined | null {
-	if (key[0] != '/') {
-		return "Need a leading / in the partitionKey";
-	} else if (/^[#?\\]*$/.test(key)) {
-		return "Cannot contain these characters - ?,#,\\, etc."
-	}
-	return null;
-}
-
-function validateThroughput(input: string): string | undefined | null {
-	try {
-		let value = Number(input);
-		if (value < 2500 || value > 100000) {
-			return "Value needs to lie between 2500 and 100,000"
-		}
-	} catch (err) {
-		return "Input must be a number"
-	}
-	return null;
-}
 
 function openInPortal(node: CosmosDBResourceNode) {
 	if (node) {

@@ -3,16 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as vscode from 'vscode';
-import * as vm from 'vm';
 import * as path from 'path';
-import { EventEmitter, Event, Command } from 'vscode';
-import { AzureAccount } from '../azure-account.api';
-import { INode, ErrorNode } from '../nodes';
-import { ResourceManagementClient } from 'azure-arm-resource';
-import docDBModels = require("azure-arm-documentdb/lib/models");
-import DocumentdbManagementClient = require("azure-arm-documentdb");
-import { MongoDatabaseNode } from '../mongo/nodes';
-import { MongoCommands } from '../mongo/commands'
+import { Command } from 'vscode';
+import { INode } from '../nodes';
 import { DocumentClient } from 'documentdb';
 
 
@@ -21,52 +14,9 @@ export interface IDocDBServer extends INode {
 	getEndpoint(): string;
 }
 
-export class DocDBServerNode implements INode {
-	readonly contextValue: string = "DocDBServer";
-	readonly label: string;
-
-	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-
-	constructor(private readonly _primaryMasterKey: string, readonly id: string, private readonly _endpoint: string) {
-		this.label = id;
-	}
-
-	get iconPath(): any {
-		return {
-			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'light', 'DataServer.svg'),
-			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
-		};
-	}
-
-	getPrimaryMasterKey(): string {
-		return this._primaryMasterKey;
-	}
-
-	getEndpoint(): string {
-		return this._endpoint;
-	}
-
-	async getChildren(): Promise<INode[]> {
-		let client = new DocumentClient(this.getEndpoint(), { masterKey: this.getPrimaryMasterKey() });
-		return await DocDBServerNode.getDocDBDatabaseNodes(client, this.getPrimaryMasterKey(), this.getEndpoint());
-	}
-
-	static async getDocDBDatabaseNodes(client: DocumentClient, masterKey: string, endpoint: string): Promise<INode[]> {
-		let databases = await DocDBServerNode.listDatabases(client);
-		return databases.map(database => new DocDBDatabaseNode(database.id, masterKey, endpoint));
-	}
-
-	static async listDatabases(client): Promise<any[]> {
-		let databases = await client.readDatabases();
-		return await new Promise<any[]>((resolve, reject) => {
-			databases.toArray((err, dbs: Array<Object>) => err ? reject(err) : resolve(dbs));
-		});
-	}
-
-}
 
 export class DocDBDatabaseNode implements INode {
-	readonly contextValue: string = 'DocDbDatabase';
+	readonly contextValue: string = 'DocDBDatabase';
 
 	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string) {
 	}

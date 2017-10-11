@@ -61,7 +61,8 @@ export class CosmosDBCommands {
         const resourceGroupName = await vscode.window.showInputBox({
             placeHolder: "Resource Group Name",
             prompt: "Provide a resource group name",
-            validateInput: this.validateResourceGroupName
+            validateInput: this.validateResourceGroupName,
+            ignoreFocusOut: true
         });
 
         if (resourceGroupName) {
@@ -88,7 +89,8 @@ export class CosmosDBCommands {
             const accountName = await vscode.window.showInputBox({
                 placeHolder: "Account name",
                 prompt: "Provide a Cosmos DB account name",
-                validateInput: this.validateCosmosDBAccountName
+                validateInput: this.validateCosmosDBAccountName,
+                ignoreFocusOut: true
             });
 
             if (!accountName) {

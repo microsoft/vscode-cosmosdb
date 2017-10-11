@@ -34,6 +34,8 @@
 		"onCommand:cosmosDB.createAccount",
 		"onCommand:cosmosDB.removeMongoServer",
 		"onCommand:cosmosDB.createMongoDatabase",
+		"onCommand:cosmosDB.createDocDBDatabase",
+		"onCommand:cosmosDB.createDocDBCollection",
 		"onCommand:cosmosDB.connectMongoDB",
 		"onCommand:cosmosDB.dropMongoDB",
 		"onCommand:cosmosDB.newMongoScrapbook",
@@ -109,6 +111,16 @@
 				"category": "MongoDB",
 				"command": "cosmosDB.createMongoDatabase",
 				"title": "Create Database"
+			},
+			{
+				"category": "DocumentDB",
+				"command": "cosmosDB.createDocDBDatabase",
+				"title": "Create Database"
+			},
+			{
+				"category": "DocumentDB",
+				"command": "cosmosDB.createDocDBCollection",
+				"title": "Create Collection"
 			},
 			{
 				"category": "MongoDB",
@@ -210,6 +222,14 @@
 				{
 					"command": "cosmosDB.createMongoDatabase",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+				},
+				{
+					"command": "cosmosDB.createDocDBCollection",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
+				},
+				{
+					"command": "cosmosDB.createDocDBDatabase",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
 				},
 				{
 					"command": "cosmosDB.removeMongoServer",

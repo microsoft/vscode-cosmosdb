@@ -8,6 +8,11 @@ import { AzureAccount, AzureSession } from './azure-account.api';
 import { ResourceModels, ResourceManagementClient, SubscriptionClient, SubscriptionModels } from 'azure-arm-resource';
 import DocumentdbManagementClient = require("azure-arm-documentdb");
 import docDBModels = require("azure-arm-documentdb/lib/models");
+import { DocumentClient } from 'documentdb';
+import { DocumentBase } from 'documentdb/lib';
+import { CosmosDBResourceNode } from './nodes';
+import { DocDBDatabaseNode } from './docdb/nodes';
+import { CosmosDBExplorer } from './explorer';
 
 export class CosmosDBCommands {
     public static async createCosmosDBAccount(azureAccount: AzureAccount): Promise<docDBModels.DatabaseAccount> {
@@ -203,6 +208,116 @@ export class CosmosDBCommands {
             return "The name cannot end in a period."
         }
     }
+
+    public static async createDocDBDatabase(server: CosmosDBResourceNode, explorer: CosmosDBExplorer) {
+        const databaseName = await vscode.window.showInputBox({
+            placeHolder: 'Database Name',
+            validateInput: CosmosDBCommands.validateDatabaseName,
+            ignoreFocusOut: true
+        });
+        if (databaseName) {
+            const masterKey = await server.getPrimaryMasterKey();
+            const endpoint = await server.getEndpoint();
+            const client = new DocumentClient(endpoint, { masterKey: masterKey });
+            await new Promise((resolve, reject) => {
+                client.createDatabase({ id: databaseName }, (err, result) => {
+                    if (err) {
+                        reject(err.body);
+                    }
+                    else {
+                        resolve(result);
+                    }
+                });
+            });
+            const databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), await server.getEndpoint(), server.defaultExperience);
+            explorer.refresh(server);
+            CosmosDBCommands.createDocDBCollection(databaseNode, explorer);
+        }
+    }
+
+    public static async createDocDBCollection(db: DocDBDatabaseNode, explorer: CosmosDBExplorer) {
+        const collectionName = await vscode.window.showInputBox({
+            placeHolder: 'Collection Name',
+            ignoreFocusOut: true
+        });
+        if (collectionName) {
+            const masterKey = await db.getPrimaryMasterKey();
+            const endpoint = await db.getEndpoint();
+            let partitionKey: string = await vscode.window.showInputBox({
+                prompt: 'Partition Key',
+                ignoreFocusOut: true,
+                validateInput: CosmosDBCommands.validatePartitionKey
+            });
+            if (partitionKey) {
+                if (partitionKey[0] != '/') {
+                    partitionKey = '/' + partitionKey;
+                }
+                const throughput: number = Number(await vscode.window.showInputBox({
+                    value: '10000',
+                    ignoreFocusOut: true,
+                    prompt: 'Initial throughput capacity, between 2500 and 100,000',
+                    validateInput: this.validateThroughput
+                }));
+                if (throughput) {
+                    const client = new DocumentClient(endpoint, { masterKey: masterKey });
+                    const options = { offerThroughput: throughput };
+                    const collectionDef = {
+                        id: collectionName,
+                        partitionKey: {
+                            paths: [partitionKey],
+                            kind: DocumentBase.PartitionKind.Hash
+                        }
+                    };
+                    await new Promise((resolve, reject) => {
+                        client.createCollection(db.getDbLink(), collectionDef, options, (err, result) => {
+                            if (err) {
+                                reject(err.body);
+                            }
+                            else {
+                                resolve(result);
+                            }
+                        });
+                    });
+                    /*
+                    client.createCollection(db.getDbLink(), collectionDef, options, async function (err, created) {
+                        if (err) {
+                            throw new Error(err.body);
+                        }
+                        explorer.refresh(db);
+                    }
+                    );
+                    */
+                }
+            }
+        }
+    }
+
+    private static validateDatabaseName(name: string): string | undefined | null {
+        if (name.length < 1 || name.length > 255) {
+            return "Name has to be between 1 and 255 chars long";
+        }
+        return undefined;
+    }
+
+    private static validatePartitionKey(key: string): string | undefined | null {
+        if (/^[#?\\]*$/.test(key)) {
+            return "Cannot contain these characters - ?,#,\\, etc."
+        }
+        return null;
+    }
+
+    private static validateThroughput(input: string): string | undefined | null {
+        try {
+            const value = Number(input);
+            if (value < 2500 || value > 100000) {
+                return "Value needs to lie between 2500 and 100,000"
+            }
+        } catch (err) {
+            return "Input must be a number"
+        }
+        return null;
+    }
+
 }
 
 export class LocationQuickPick implements vscode.QuickPickItem {

@@ -12,7 +12,7 @@ import * as copypaste from 'copy-paste';
 import * as opn from 'opn';
 import * as util from "./util";
 
-import { AzureAccount, AzureSession } from './azure-account.api';
+import { AzureAccount } from './azure-account.api';
 import { CosmosDBCommands } from './commands';
 import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
@@ -51,6 +51,8 @@ export function activate(context: vscode.ExtensionContext) {
 	initCommand(context, 'cosmosDB.refresh', (node: INode) => explorer.refresh(node));
 	initAsyncCommand(context, 'cosmosDB.removeMongoServer', (node: INode) => removeMongoServer(node));
 	initAsyncCommand(context, 'cosmosDB.createMongoDatabase', (node: IMongoServer) => createMongoDatabase(node));
+	initAsyncCommand(context, 'cosmosDB.createDocDBDatabase', (node: CosmosDBResourceNode) => CosmosDBCommands.createDocDBDatabase(node, explorer));
+	initAsyncCommand(context, 'cosmosDB.createDocDBCollection', (node: DocDBDatabaseNode) => CosmosDBCommands.createDocDBCollection(node, explorer));
 	initCommand(context, 'cosmosDB.openInPortal', (node: CosmosDBResourceNode) => openInPortal(node));
 	initAsyncCommand(context, 'cosmosDB.copyConnectionString', (node: CosmosDBResourceNode) => copyConnectionString(node));
 
@@ -88,7 +90,7 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 		} catch (err) {
 			result = 'Failed';
 			errorData = util.errToString(err);
-			throw err;
+			vscode.window.showErrorMessage(err);
 		} finally {
 			const end = Date.now();
 			util.sendTelemetry(commandId, { result: result, error: errorData }, { duration: (end - start) / 1000 });
@@ -152,6 +154,7 @@ async function createMongoDatabase(server: IMongoServer) {
 		}
 	}
 }
+
 
 function openInPortal(node: CosmosDBResourceNode) {
 	if (node) {

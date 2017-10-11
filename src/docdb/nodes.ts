@@ -3,78 +3,28 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as vscode from 'vscode';
-import * as vm from 'vm';
 import * as path from 'path';
-import { EventEmitter, Event, Command } from 'vscode';
-import { AzureAccount } from '../azure-account.api';
-import { INode, ErrorNode } from '../nodes';
-import { ResourceManagementClient } from 'azure-arm-resource';
-import docDBModels = require("azure-arm-documentdb/lib/models");
-import DocumentdbManagementClient = require("azure-arm-documentdb");
-import { MongoDatabaseNode } from '../mongo/nodes';
-import { MongoCommands } from '../mongo/commands'
+import { Command } from 'vscode';
+import { INode } from '../nodes';
 import { DocumentClient } from 'documentdb';
 
 
 export interface IDocDBServer extends INode {
 	getPrimaryMasterKey(): string;
-	getConnectionEndpoint(): string;
+	getEndpoint(): string;
 }
 
-export class DocDBServerNode implements INode {
-	readonly contextValue: string = "DocDBServer";
-	readonly label: string;
-
-	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-
-	constructor(private readonly _primaryMasterKey: string, readonly id: string, private readonly _endpoint: string) {
-		this.label = id;
-	}
-
-	get iconPath(): any {
-		return {
-			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'light', 'DataServer.svg'),
-			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
-		};
-	}
-
-	getPrimaryMasterKey(): string {
-		return this._primaryMasterKey;
-	}
-
-	getEndpoint(): string {
-		return this._endpoint;
-	}
-
-	async getChildren(): Promise<INode[]> {
-		let client = new DocumentClient(this.getEndpoint(), { masterKey: this.getPrimaryMasterKey() });
-		return await DocDBServerNode.getDocDBDatabaseNodes(client, this.getPrimaryMasterKey(), this.getEndpoint());
-	}
-
-	static async getDocDBDatabaseNodes(client: DocumentClient, masterKey: string, endpoint: string): Promise<INode[]> {
-		let databases = await DocDBServerNode.listDatabases(client);
-		return databases.map(database => new DocDBDatabaseNode(database.id, masterKey, endpoint));
-	}
-
-	static async listDatabases(client): Promise<any[]> {
-		let databases = await client.readDatabases();
-		return await new Promise<any[]>((resolve, reject) => {
-			databases.toArray((err, dbs: Array<Object>) => err ? reject(err) : resolve(dbs));
-		});
-	}
-
-}
 
 export class DocDBDatabaseNode implements INode {
-	readonly contextValue: string = 'DocDbDatabase';
-
-	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string) {
+	readonly contextValue: string;
+	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string, readonly defaultExperience: string) {
+		this.contextValue = "cosmosDBDocumentDatabase"
 	}
 
 	getPrimaryMasterKey(): string {
 		return this._primaryMasterKey;
 	}
-	getConnectionEndpoint(): string {
+	getEndpoint(): string {
 		return this._endPoint;
 	}
 
@@ -85,8 +35,8 @@ export class DocDBDatabaseNode implements INode {
 
 	get iconPath(): any {
 		return {
-			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'light', 'Database.svg'),
-			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'dark', 'Database.svg')
+			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - database LARGE.svg'),
+			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - database LARGE.svg')
 		};
 	}
 
@@ -97,11 +47,10 @@ export class DocDBDatabaseNode implements INode {
 	}
 
 	async getChildren(): Promise<INode[]> {
-		let dbLink: string = this.getDbLink();
-		let collections;
-		let parentNode = this;
-		let client = new DocumentClient(this.getConnectionEndpoint(), { masterKey: this.getPrimaryMasterKey() });
-		collections = await this.listCollections(dbLink, client);
+		const dbLink: string = this.getDbLink();
+		const parentNode = this;
+		const client = new DocumentClient(this.getEndpoint(), { masterKey: this.getPrimaryMasterKey() });
+		let collections = await this.listCollections(dbLink, client);
 		return collections.map(collection => new DocDBCollectionNode(collection.id, parentNode));
 	}
 
@@ -120,7 +69,7 @@ export class DocDBCollectionNode implements INode {
 	constructor(readonly id: string, readonly db: DocDBDatabaseNode) {
 	}
 
-	readonly contextValue: string = 'DocDbCollection';
+	readonly contextValue: string = 'DocDBCollection';
 
 	get label(): string {
 		return this.id;
@@ -128,8 +77,8 @@ export class DocDBCollectionNode implements INode {
 
 	get iconPath(): any {
 		return {
-			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'light', 'Collection.svg'),
-			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'dark', 'Collection.svg'),
+			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB collections LARGE.svg'),
+			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB collections LARGE.svg'),
 		};
 	}
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
@@ -142,10 +91,10 @@ export class DocDBCollectionNode implements INode {
 
 
 	async getDocuments(): Promise<any> {
-		let dbLink: string = this.db.getDbLink();
-		let client = new DocumentClient(this.db.getConnectionEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
-		let collSelfLink = dbLink + "/colls/" + this.id;
-		let docs = await this.readOneCollection(collSelfLink, client);
+		const dbLink: string = this.db.getDbLink();
+		const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
+		const collSelfLink = dbLink + "/colls/" + this.id;
+		const docs = await this.readOneCollection(collSelfLink, client);
 		return await docs;
 	}
 

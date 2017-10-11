@@ -90,7 +90,7 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 		} catch (err) {
 			result = 'Failed';
 			errorData = util.errToString(err);
-			throw err;
+			vscode.window.showErrorMessage(err);
 		} finally {
 			const end = Date.now();
 			util.sendTelemetry(commandId, { result: result, error: errorData }, { duration: (end - start) / 1000 });

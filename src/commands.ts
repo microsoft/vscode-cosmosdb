@@ -216,20 +216,20 @@ export class CosmosDBCommands {
         if (databaseName) {
             const masterKey = await server.getPrimaryMasterKey();
             const endpoint = await server.getEndpoint();
-            let client = new DocumentClient(endpoint, { masterKey: masterKey });
-            client.createDatabase({ id: databaseName }, async function (err, created) {
-                if (err) {
-                    vscode.window.showErrorMessage(err.body);
-                }
-                else {
-                    const databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), await server.getEndpoint(), server.defaultExperience);
-                    explorer.refresh(server);
-                    vscode.window.showInformationMessage("Creating a collection...")
-                    CosmosDBCommands.createDocDBCollection(databaseNode, explorer);
-                }
-            }
-
-            );
+            const client = new DocumentClient(endpoint, { masterKey: masterKey });
+            await new Promise((resolve, reject) => {
+                client.createDatabase({ id: databaseName }, (err, result) => {
+                    if (err) {
+                        reject(err.body);
+                    }
+                    else {
+                        resolve(result);
+                    }
+                });
+            });
+            const databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), await server.getEndpoint(), server.defaultExperience);
+            explorer.refresh(server);
+            CosmosDBCommands.createDocDBCollection(databaseNode, explorer);
         }
     }
 
@@ -239,8 +239,8 @@ export class CosmosDBCommands {
             ignoreFocusOut: true
         });
         if (collectionName) {
-            let masterKey = db.getPrimaryMasterKey();
-            let endpoint = db.getEndpoint();
+            const masterKey = await db.getPrimaryMasterKey();
+            const endpoint = await db.getEndpoint();
             let partitionKey: string = await vscode.window.showInputBox({
                 prompt: 'Partition Key',
                 ignoreFocusOut: true,
@@ -250,29 +250,41 @@ export class CosmosDBCommands {
                 if (partitionKey[0] != '/') {
                     partitionKey = '/' + partitionKey;
                 }
-                let throughput: number = Number(await vscode.window.showInputBox({
+                const throughput: number = Number(await vscode.window.showInputBox({
                     value: '10000',
                     ignoreFocusOut: true,
                     prompt: 'Initial throughput capacity, between 2500 and 100,000',
                     validateInput: this.validateThroughput
                 }));
                 if (throughput) {
-                    let client = new DocumentClient(await endpoint, { masterKey: await masterKey });
-                    let options = { offerThroughput: throughput };
-                    let collectionDef = {
+                    const client = new DocumentClient(endpoint, { masterKey: masterKey });
+                    const options = { offerThroughput: throughput };
+                    const collectionDef = {
                         id: collectionName,
                         partitionKey: {
                             paths: [partitionKey],
                             kind: DocumentBase.PartitionKind.Hash
                         }
                     };
+                    await new Promise((resolve, reject) => {
+                        client.createCollection(db.getDbLink(), collectionDef, options, (err, result) => {
+                            if (err) {
+                                reject(err.body);
+                            }
+                            else {
+                                resolve(result);
+                            }
+                        });
+                    });
+                    /*
                     client.createCollection(db.getDbLink(), collectionDef, options, async function (err, created) {
                         if (err) {
-                            vscode.window.showErrorMessage(err.body);
+                            throw new Error(err.body);
                         }
                         explorer.refresh(db);
                     }
                     );
+                    */
                 }
             }
         }
@@ -282,7 +294,7 @@ export class CosmosDBCommands {
         if (name.length < 1 || name.length > 255) {
             return "Name has to be between 1 and 255 chars long";
         }
-        return null;
+        return undefined;
     }
 
     private static validatePartitionKey(key: string): string | undefined | null {
@@ -294,7 +306,7 @@ export class CosmosDBCommands {
 
     private static validateThroughput(input: string): string | undefined | null {
         try {
-            let value = Number(input);
+            const value = Number(input);
             if (value < 2500 || value > 100000) {
                 return "Value needs to lie between 2500 and 100,000"
             }

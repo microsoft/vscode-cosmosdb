@@ -18,17 +18,7 @@ export interface IDocDBServer extends INode {
 export class DocDBDatabaseNode implements INode {
 	readonly contextValue: string;
 	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string, readonly defaultExperience: string) {
-		switch (defaultExperience) {
-			case "DocumentDB":
-				this.contextValue = "DocDBDatabase"
-				break;
-			case "Graph":
-				this.contextValue = "GraphDatabase"
-				break;
-			case "Table":
-				this.contextValue = "TableDatabase"
-				break;
-		}
+		this.contextValue = "cosmosDBDocumentDatabase"
 	}
 
 	getPrimaryMasterKey(): string {
@@ -57,11 +47,10 @@ export class DocDBDatabaseNode implements INode {
 	}
 
 	async getChildren(): Promise<INode[]> {
-		let dbLink: string = this.getDbLink();
-		let collections;
-		let parentNode = this;
-		let client = new DocumentClient(this.getEndpoint(), { masterKey: this.getPrimaryMasterKey() });
-		collections = await this.listCollections(dbLink, client);
+		const dbLink: string = this.getDbLink();
+		const parentNode = this;
+		const client = new DocumentClient(this.getEndpoint(), { masterKey: this.getPrimaryMasterKey() });
+		let collections = await this.listCollections(dbLink, client);
 		return collections.map(collection => new DocDBCollectionNode(collection.id, parentNode));
 	}
 
@@ -102,10 +91,10 @@ export class DocDBCollectionNode implements INode {
 
 
 	async getDocuments(): Promise<any> {
-		let dbLink: string = this.db.getDbLink();
-		let client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
-		let collSelfLink = dbLink + "/colls/" + this.id;
-		let docs = await this.readOneCollection(collSelfLink, client);
+		const dbLink: string = this.db.getDbLink();
+		const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
+		const collSelfLink = dbLink + "/colls/" + this.id;
+		const docs = await this.readOneCollection(collSelfLink, client);
 		return await docs;
 	}
 

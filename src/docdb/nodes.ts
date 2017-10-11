@@ -89,11 +89,14 @@ export class DocDBCollectionNode implements INode {
 		title: ''
 	};
 
+	getCollLink(): string {
+		return this.db.getDbLink() + '/colls/' + this.id;
+	}
 
 	async getDocuments(): Promise<any> {
 		const dbLink: string = this.db.getDbLink();
 		const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
-		const collSelfLink = dbLink + "/colls/" + this.id;
+		const collSelfLink = this.getCollLink();
 		const docs = await this.readOneCollection(collSelfLink, client);
 		return await docs;
 	}

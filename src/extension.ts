@@ -58,9 +58,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 	vscode.window.setStatusBarMessage('Mongo: Not connected');
 	initAsyncCommand(context, 'cosmosDB.connectMongoDB', (element: MongoDatabaseNode) => connectToDatabase(element));
-	initCommand(context, 'cosmosDB.dropMongoDB', (element: MongoDatabaseNode) => dropDatabase(element));
-	initAsyncCommand(context, 'cosmosDB.dropDocDBDatabase', (element: DocDBDatabaseNode) => CosmosDBCommands.dropDocDBDatabase(element, explorer));
-	initAsyncCommand(context, 'cosmosDB.dropDocDBCollection', (element: DocDBCollectionNode) => CosmosDBCommands.dropDocDBCollection(element, explorer));
+	initCommand(context, 'cosmosDB.deleteMongoDB', (element: MongoDatabaseNode) => deleteDatabase(element));
+	initAsyncCommand(context, 'cosmosDB.deleteDocDBDatabase', (element: DocDBDatabaseNode) => CosmosDBCommands.deleteDocDBDatabase(element, explorer));
+	initAsyncCommand(context, 'cosmosDB.deleteDocDBCollection', (element: DocDBCollectionNode) => CosmosDBCommands.deleteDocDBCollection(element, explorer));
 	initCommand(context, 'cosmosDB.newMongoScrapbook', () => createScrapbook());
 	initCommand(context, 'cosmosDB.executeMongoCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb));
 	initCommand(context, 'cosmosDB.updateMongoDocuments', () => MongoCommands.updateDocuments(connectedDb, lastCommand));
@@ -94,6 +94,9 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 			errorData = util.errToString(err);
 			if (err instanceof Error) {
 				vscode.window.showErrorMessage(err.message);
+			}
+			else if (typeof err === "string") {
+				vscode.window.showErrorMessage(err);
 			}
 		} finally {
 			const end = Date.now();
@@ -181,8 +184,8 @@ async function removeMongoServer(node: INode) {
 	}
 }
 
-function dropDatabase(database: MongoDatabaseNode): void {
-	vscode.window.showInformationMessage('Are you sure you want to drop the database \'' + database.id + '\' and its collections?', { modal: true }, 'Drop')
+function deleteDatabase(database: MongoDatabaseNode): void {
+	vscode.window.showInformationMessage('Are you sure you want to delete database \'' + database.id + '\' and its collections?', { modal: true }, 'Drop')
 		.then(result => {
 			if (result === 'Drop') {
 				if (connectedDb && connectedDb.server.id === database.server.id && connectedDb.id === database.id) {

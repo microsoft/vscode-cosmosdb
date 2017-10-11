@@ -69,7 +69,7 @@ export class DocDBCollectionNode implements INode {
 	constructor(readonly id: string, readonly db: DocDBDatabaseNode) {
 	}
 
-	readonly contextValue: string = 'DocDBCollection';
+	readonly contextValue: string = "cosmosDBDocumentCollection";
 
 	get label(): string {
 		return this.id;

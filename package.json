@@ -257,11 +257,11 @@
 				},
 				{
 					"command": "cosmosDB.dropDocDBCollection",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
 				},
 				{
 					"command": "cosmosDB.dropDocDBDatabase",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
 				},
 				{
 					"command": "cosmosDB.attachMongoServer",

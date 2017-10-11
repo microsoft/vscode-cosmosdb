@@ -310,33 +310,37 @@ export class CosmosDBCommands {
         return null;
     }
     public static async deleteDocDBDatabase(db: DocDBDatabaseNode, explorer: CosmosDBExplorer): Promise<void> {
-        const confirmed = await vscode.window.showWarningMessage("Are you sure you want to delete database '" + db.label + "' and its collections?",
-            "Yes", "No");
-        if (confirmed === "Yes") {
-            const masterKey = await db.getPrimaryMasterKey();
-            const endpoint = await db.getEndpoint();
-            const client = new DocumentClient(endpoint, { masterKey: masterKey });
-            await new Promise((resolve, reject) => {
-                client.deleteDatabase(db.getDbLink(), function (err) {
-                    err ? reject(new Error(err.body)) : resolve();
+        if (db) {
+            const confirmed = await vscode.window.showWarningMessage("Are you sure you want to delete database '" + db.label + "' and its collections?",
+                "Yes", "No");
+            if (confirmed === "Yes") {
+                const masterKey = await db.getPrimaryMasterKey();
+                const endpoint = await db.getEndpoint();
+                const client = new DocumentClient(endpoint, { masterKey: masterKey });
+                await new Promise((resolve, reject) => {
+                    client.deleteDatabase(db.getDbLink(), function (err) {
+                        err ? reject(new Error(err.body)) : resolve();
+                    });
                 });
-            });
-            explorer.refresh(db.server);
+                explorer.refresh(db.server);
+            }
         }
     }
     public static async deleteDocDBCollection(coll: DocDBCollectionNode, explorer: CosmosDBExplorer): Promise<void> {
-        const confirmed = await vscode.window.showWarningMessage("Are you sure you want to delete collection '" + coll.label + "'?", "Yes", "No");
-        if (confirmed === "Yes") {
-            const masterKey = await coll.db.getPrimaryMasterKey();
-            const endpoint = await coll.db.getEndpoint();
-            const client = new DocumentClient(endpoint, { masterKey: masterKey });
-            const collLink = coll.getCollLink();
-            await new Promise((resolve, reject) => {
-                client.deleteCollection(collLink, (err) => {
-                    err ? reject(new Error(err.body)) : resolve();
+        if (coll) {
+            const confirmed = await vscode.window.showWarningMessage("Are you sure you want to delete collection '" + coll.label + "'?", "Yes", "No");
+            if (confirmed === "Yes") {
+                const masterKey = await coll.db.getPrimaryMasterKey();
+                const endpoint = await coll.db.getEndpoint();
+                const client = new DocumentClient(endpoint, { masterKey: masterKey });
+                const collLink = coll.getCollLink();
+                await new Promise((resolve, reject) => {
+                    client.deleteCollection(collLink, (err) => {
+                        err ? reject(new Error(err.body)) : resolve();
+                    });
                 });
-            });
-            explorer.refresh(coll.db);
+                explorer.refresh(coll.db);
+            }
         }
     }
 }

@@ -59,8 +59,8 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.window.setStatusBarMessage('Mongo: Not connected');
 	initAsyncCommand(context, 'cosmosDB.connectMongoDB', (element: MongoDatabaseNode) => connectToDatabase(element));
 	initCommand(context, 'cosmosDB.dropMongoDB', (element: MongoDatabaseNode) => dropDatabase(element));
-	initAsyncCommand(context, 'cosmosDB.dropDocDBDatabase', (element: DocDBDatabaseNode) => CosmosDBCommands.dropDocDBDatabase(element));
-	initAsyncCommand(context, 'cosmosDB.dropDocDBCollection', (element: DocDBCollectionNode) => CosmosDBCommands.dropDocDBCollection(element));
+	initAsyncCommand(context, 'cosmosDB.dropDocDBDatabase', (element: DocDBDatabaseNode) => CosmosDBCommands.dropDocDBDatabase(element, explorer));
+	initAsyncCommand(context, 'cosmosDB.dropDocDBCollection', (element: DocDBCollectionNode) => CosmosDBCommands.dropDocDBCollection(element, explorer));
 	initCommand(context, 'cosmosDB.newMongoScrapbook', () => createScrapbook());
 	initCommand(context, 'cosmosDB.executeMongoCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb));
 	initCommand(context, 'cosmosDB.updateMongoDocuments', () => MongoCommands.updateDocuments(connectedDb, lastCommand));
@@ -92,7 +92,9 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 		} catch (err) {
 			result = 'Failed';
 			errorData = util.errToString(err);
-			vscode.window.showErrorMessage(err);
+			if (err instanceof Error) {
+				vscode.window.showErrorMessage(err.message);
+			}
 		} finally {
 			const end = Date.now();
 			util.sendTelemetry(commandId, { result: result, error: errorData }, { duration: (end - start) / 1000 });

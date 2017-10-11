@@ -17,7 +17,7 @@ export interface IDocDBServer extends INode {
 
 export class DocDBDatabaseNode implements INode {
 	readonly contextValue: string;
-	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string, readonly defaultExperience: string) {
+	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string, readonly defaultExperience: string, readonly server: INode) {
 		this.contextValue = "cosmosDBDocumentDatabase"
 	}
 

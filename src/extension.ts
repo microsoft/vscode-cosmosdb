@@ -59,6 +59,8 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.window.setStatusBarMessage('Mongo: Not connected');
 	initAsyncCommand(context, 'cosmosDB.connectMongoDB', (element: MongoDatabaseNode) => connectToDatabase(element));
 	initCommand(context, 'cosmosDB.dropMongoDB', (element: MongoDatabaseNode) => dropDatabase(element));
+	initAsyncCommand(context, 'cosmosDB.dropDocDBDatabase', (element: DocDBDatabaseNode) => CosmosDBCommands.dropDocDBDatabase(element));
+	initAsyncCommand(context, 'cosmosDB.dropDocDBCollection', (element: DocDBCollectionNode) => CosmosDBCommands.dropDocDBCollection(element));
 	initCommand(context, 'cosmosDB.newMongoScrapbook', () => createScrapbook());
 	initCommand(context, 'cosmosDB.executeMongoCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb));
 	initCommand(context, 'cosmosDB.updateMongoDocuments', () => MongoCommands.updateDocuments(connectedDb, lastCommand));

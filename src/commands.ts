@@ -11,7 +11,7 @@ import docDBModels = require("azure-arm-documentdb/lib/models");
 import { DocumentClient } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
 import { CosmosDBResourceNode } from './nodes';
-import { DocDBDatabaseNode } from './docdb/nodes';
+import { DocDBDatabaseNode, DocDBCollectionNode } from './docdb/nodes';
 import { CosmosDBExplorer } from './explorer';
 
 export class CosmosDBCommands {
@@ -278,15 +278,6 @@ export class CosmosDBCommands {
                             }
                         });
                     });
-                    /*
-                    client.createCollection(db.getDbLink(), collectionDef, options, async function (err, created) {
-                        if (err) {
-                            throw new Error(err.body);
-                        }
-                        explorer.refresh(db);
-                    }
-                    );
-                    */
                 }
             }
         }
@@ -316,6 +307,11 @@ export class CosmosDBCommands {
             return "Input must be a number"
         }
         return null;
+    }
+    public static async dropDocDBDatabase(db: DocDBDatabaseNode): Promise<void> {
+
+    }
+    public static async dropDocDBCollection(coll: DocDBCollectionNode): Promise<void> {
     }
 
 }

@@ -139,13 +139,13 @@ export class CosmosDBResourceNode implements IMongoServer {
 		if (this.contextValue === "cosmosDBDocumentServer") {
 			const masterKey = await this.getPrimaryMasterKey();
 			let client = new DocumentClient(this._databaseAccount.documentEndpoint, { masterKey: masterKey });
-			return await CosmosDBResourceNode.getDocDBDatabaseNodes(client, masterKey, await this.getEndpoint(), this.defaultExperience);
+			return await CosmosDBResourceNode.getDocDBDatabaseNodes(client, masterKey, await this.getEndpoint(), this.defaultExperience, this);
 		}
 	}
 
-	static async getDocDBDatabaseNodes(client: DocumentClient, masterKey: string, endpoint: string, contextValue: string): Promise<INode[]> {
+	static async getDocDBDatabaseNodes(client: DocumentClient, masterKey: string, endpoint: string, contextValue: string, server: INode): Promise<INode[]> {
 		let databases = await CosmosDBResourceNode.listDatabases(client);
-		return databases.map(database => new DocDBDatabaseNode(database.id, masterKey, endpoint, contextValue));
+		return databases.map(database => new DocDBDatabaseNode(database.id, masterKey, endpoint, contextValue, server));
 	}
 
 	static async listDatabases(client): Promise<any[]> {

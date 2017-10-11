@@ -17,7 +17,7 @@ export interface IDocDBServer extends INode {
 
 export class DocDBDatabaseNode implements INode {
 	readonly contextValue: string;
-	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string, readonly defaultExperience: string) {
+	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string, readonly defaultExperience: string, readonly server: INode) {
 		this.contextValue = "cosmosDBDocumentDatabase"
 	}
 
@@ -69,7 +69,7 @@ export class DocDBCollectionNode implements INode {
 	constructor(readonly id: string, readonly db: DocDBDatabaseNode) {
 	}
 
-	readonly contextValue: string = 'DocDBCollection';
+	readonly contextValue: string = "cosmosDBDocumentCollection";
 
 	get label(): string {
 		return this.id;
@@ -89,11 +89,14 @@ export class DocDBCollectionNode implements INode {
 		title: ''
 	};
 
+	getCollLink(): string {
+		return this.db.getDbLink() + '/colls/' + this.id;
+	}
 
 	async getDocuments(): Promise<any> {
 		const dbLink: string = this.db.getDbLink();
 		const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
-		const collSelfLink = dbLink + "/colls/" + this.id;
+		const collSelfLink = this.getCollLink();
 		const docs = await this.readOneCollection(collSelfLink, client);
 		return await docs;
 	}

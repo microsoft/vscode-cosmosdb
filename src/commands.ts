@@ -11,7 +11,7 @@ import docDBModels = require("azure-arm-documentdb/lib/models");
 import { DocumentClient } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
 import { CosmosDBResourceNode } from './nodes';
-import { DocDBDatabaseNode } from './docdb/nodes';
+import { DocDBDatabaseNode, DocDBCollectionNode } from './docdb/nodes';
 import { CosmosDBExplorer } from './explorer';
 
 export class CosmosDBCommands {
@@ -229,7 +229,7 @@ export class CosmosDBCommands {
                     }
                 });
             });
-            const databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), await server.getEndpoint(), server.defaultExperience);
+            const databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), await server.getEndpoint(), server.defaultExperience, server);
             explorer.refresh(server);
             CosmosDBCommands.createDocDBCollection(databaseNode, explorer);
         }
@@ -278,15 +278,7 @@ export class CosmosDBCommands {
                             }
                         });
                     });
-                    /*
-                    client.createCollection(db.getDbLink(), collectionDef, options, async function (err, created) {
-                        if (err) {
-                            throw new Error(err.body);
-                        }
-                        explorer.refresh(db);
-                    }
-                    );
-                    */
+                    explorer.refresh(db);
                 }
             }
         }
@@ -317,7 +309,40 @@ export class CosmosDBCommands {
         }
         return null;
     }
-
+    public static async deleteDocDBDatabase(db: DocDBDatabaseNode, explorer: CosmosDBExplorer): Promise<void> {
+        if (db) {
+            const confirmed = await vscode.window.showWarningMessage("Are you sure you want to delete database '" + db.label + "' and its collections?",
+                "Yes", "No");
+            if (confirmed === "Yes") {
+                const masterKey = await db.getPrimaryMasterKey();
+                const endpoint = await db.getEndpoint();
+                const client = new DocumentClient(endpoint, { masterKey: masterKey });
+                await new Promise((resolve, reject) => {
+                    client.deleteDatabase(db.getDbLink(), function (err) {
+                        err ? reject(new Error(err.body)) : resolve();
+                    });
+                });
+                explorer.refresh(db.server);
+            }
+        }
+    }
+    public static async deleteDocDBCollection(coll: DocDBCollectionNode, explorer: CosmosDBExplorer): Promise<void> {
+        if (coll) {
+            const confirmed = await vscode.window.showWarningMessage("Are you sure you want to delete collection '" + coll.label + "'?", "Yes", "No");
+            if (confirmed === "Yes") {
+                const masterKey = await coll.db.getPrimaryMasterKey();
+                const endpoint = await coll.db.getEndpoint();
+                const client = new DocumentClient(endpoint, { masterKey: masterKey });
+                const collLink = coll.getCollLink();
+                await new Promise((resolve, reject) => {
+                    client.deleteCollection(collLink, (err) => {
+                        err ? reject(new Error(err.body)) : resolve();
+                    });
+                });
+                explorer.refresh(coll.db);
+            }
+        }
+    }
 }
 
 export class LocationQuickPick implements vscode.QuickPickItem {

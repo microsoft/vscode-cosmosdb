@@ -14,6 +14,10 @@ export interface IDocDBServer extends INode {
 	getEndpoint(): string;
 }
 
+export interface IDocDBDocumentSpec {
+	_self: string;
+	_rid?: string;
+}
 
 export class DocDBDatabaseNode implements INode {
 	readonly contextValue: string;
@@ -120,8 +124,8 @@ export class DocDBCollectionNode implements INode {
 }
 
 export class DocDBDocumentNode implements INode {
-	data: Object;
-	constructor(readonly id: string, readonly coll: DocDBCollectionNode, payload: Object) {
+	data: IDocDBDocumentSpec;
+	constructor(readonly id: string, readonly coll: DocDBCollectionNode, payload: IDocDBDocumentSpec) {
 		this.data = payload;
 	}
 
@@ -129,6 +133,10 @@ export class DocDBDocumentNode implements INode {
 
 	get label(): string {
 		return this.id;
+	}
+
+	getDocLink(): string {
+		return this.coll.getCollLink() + '/docs/' + this.id;
 	}
 
 	get iconPath(): any {

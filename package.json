@@ -42,6 +42,7 @@
 		"onCommand:cosmosDB.deleteDocDBCollection",
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.updateMongoDocuments",
+		"onCommand:cosmosDB.updateDocDBDocument",
 		"onCommand:cosmosDB.openMongoCollection",
 		"onCommand:cosmosDB.openDocDBCollection",
 		"onCommand:cosmosDB.openDocDBDocument",
@@ -197,6 +198,11 @@
 				"category": "DocumentDB",
 				"command": "cosmosDB.openDocDBDocument",
 				"title": "Open Document"
+			},
+			{
+				"category": "DocumentDB",
+				"command": "cosmosDB.updateDocDBDocument",
+				"title": "Update Document"
 			}
 		],
 		"menus": {
@@ -207,6 +213,10 @@
 				},
 				{
 					"command": "cosmosDB.updateMongoDocuments",
+					"when": "resourceFilename==result.json"
+				},
+				{
+					"command": "cosmosDB.updateDocDBDocument",
 					"when": "resourceFilename==result.json"
 				}
 			],

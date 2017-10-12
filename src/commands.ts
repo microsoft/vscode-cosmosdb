@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
+import * as util from "./util";
 import { AzureAccount, AzureSession } from './azure-account.api';
 import { ResourceModels, ResourceManagementClient, SubscriptionClient, SubscriptionModels } from 'azure-arm-resource';
 import DocumentdbManagementClient = require("azure-arm-documentdb");
@@ -11,7 +12,7 @@ import docDBModels = require("azure-arm-documentdb/lib/models");
 import { DocumentClient } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
 import { CosmosDBResourceNode } from './nodes';
-import { DocDBDatabaseNode, DocDBCollectionNode } from './docdb/nodes';
+import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode } from './docdb/nodes';
 import { CosmosDBExplorer } from './explorer';
 
 export class CosmosDBCommands {
@@ -342,6 +343,29 @@ export class CosmosDBCommands {
                 explorer.refresh(coll.db);
             }
         }
+    }
+
+
+    public static async updateDocDBDocument(client: DocumentClient, document: DocDBDocumentNode): Promise<void> {
+        //get the data from the editor
+        const editor = vscode.window.activeTextEditor;
+        const newdocument = JSON.parse(editor.document.getText());
+        const docLink = newdocument._self;
+        await new Promise((resolve, reject) => {
+            client.replaceDocument(docLink, newdocument,
+                { accessCondition: { type: 'IfMatch', condition: newdocument._etag } },
+                (err, updated) => {
+                    if (err) {
+                        reject(new Error(err.body));
+                    }
+                    else {
+                        document.data = updated;
+                        util.showResult(JSON.stringify(updated, null, 2));
+                        resolve(updated);
+                    }
+                });
+        });
+        //Update doc.data
     }
 }
 

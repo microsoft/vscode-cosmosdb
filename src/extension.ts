@@ -28,7 +28,11 @@ let languageClient: MongoDBLanguageClient = null;
 let explorer: CosmosDBExplorer;
 let lastCommand: MongoCommand;
 let lastOpenedDocument: DocDBDocumentNode;
-let lastOpenedDocumentType: string;
+let lastOpenedDocumentType: DocumentType;
+enum DocumentType {
+	Mongo,
+	DocDB
+};
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(new Reporter(context));
@@ -68,11 +72,11 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (element: DocDBDocumentNode) => CosmosDBCommands.deleteDocDBDocument(element, explorer));
 	initCommand(context, 'cosmosDB.newMongoScrapbook', () => createScrapbook());
 	initCommand(context, 'cosmosDB.executeMongoCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb));
-	initCommand(context, 'cosmosDB.updateDocuments', () => {
-		if (lastOpenedDocumentType === "Mongo") {
+	initCommand(context, 'cosmosDB.update', () => {
+		if (lastOpenedDocumentType === DocumentType.Mongo) {
 			MongoCommands.updateDocuments(connectedDb, lastCommand);
 		}
-		else if (lastOpenedDocumentType === "DocDB") {
+		else if (lastOpenedDocumentType === DocumentType.DocDB) {
 			CosmosDBCommands.updateDocDBDocument(lastOpenedDocument);
 		}
 	}
@@ -81,7 +85,7 @@ export function activate(context: vscode.ExtensionContext) {
 		connectToDatabase(collection.db);
 		lastCommand = MongoCommands.getCommand(`db.${collection.label}.find()`);
 		MongoCommands.executeCommand(lastCommand, connectedDb).then(result => util.showResult(result));
-		lastOpenedDocumentType = "Mongo";
+		lastOpenedDocumentType = DocumentType.Mongo;
 	});
 
 	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
@@ -90,7 +94,7 @@ export function activate(context: vscode.ExtensionContext) {
 		const endpoint = await document.coll.db.getEndpoint();
 		lastOpenedDocument = document;
 		util.showResult(JSON.stringify(document.data, null, 2));
-		lastOpenedDocumentType = "DocDB";
+		lastOpenedDocumentType = DocumentType.DocDB;
 	});
 
 }

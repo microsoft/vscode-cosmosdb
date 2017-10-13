@@ -43,7 +43,7 @@
 		"onCommand:cosmosDB.deleteDocDBCollection",
 		"onCommand:cosmosDB.deleteDocDBDocument",
 		"onCommand:cosmosDB.newMongoScrapbook",
-		"onCommand:cosmosDB.updateDocuments",
+		"onCommand:cosmosDB.update",
 		"onCommand:cosmosDB.openMongoCollection",
 		"onCommand:cosmosDB.openDocDBDocument",
 		"onCommand:cosmosDB.refresh",
@@ -191,7 +191,7 @@
 			},
 			{
 				"category": "CosmosDB",
-				"command": "cosmosDB.updateDocuments",
+				"command": "cosmosDB.update",
 				"title": "Update"
 			},
 			{
@@ -212,7 +212,7 @@
 					"when": "resourceLangId==mongo"
 				},
 				{
-					"command": "cosmosDB.updateDocuments",
+					"command": "cosmosDB.update",
 					"when": "resourceFilename==result.json"
 				}
 			],

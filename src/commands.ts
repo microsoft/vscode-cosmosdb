@@ -240,8 +240,12 @@ export class CosmosDBCommands {
         const masterKey = coll.db.getPrimaryMasterKey();
         const endpoint = coll.db.getEndpoint();
         const client = new DocumentClient(endpoint, { masterKey: masterKey });
+        const docid = await vscode.window.showInputBox({
+            placeHolder: "Enter an unique id",
+            ignoreFocusOut: true
+        });
         await new Promise((resolve, reject) => {
-            client.createDocument(coll.getCollLink(), { 'id': 'temporary' }, (err, result) => {
+            client.createDocument(coll.getCollLink(), { 'id': docid }, (err, result) => {
                 if (err) {
                     reject(err.body);
                 }

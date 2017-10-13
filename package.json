@@ -36,10 +36,12 @@
 		"onCommand:cosmosDB.createMongoDatabase",
 		"onCommand:cosmosDB.createDocDBDatabase",
 		"onCommand:cosmosDB.createDocDBCollection",
+		"onCommand:cosmosDB.createDocDBDocument",
 		"onCommand:cosmosDB.connectMongoDB",
 		"onCommand:cosmosDB.deleteMongoDB",
 		"onCommand:cosmosDB.deleteDocDBDatabase",
 		"onCommand:cosmosDB.deleteDocDBCollection",
+		"onCommand:cosmosDB.deleteDocDBDocument",
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.updateDocuments",
 		"onCommand:cosmosDB.openMongoCollection",
@@ -125,6 +127,11 @@
 				"title": "Create Collection"
 			},
 			{
+				"category": "DocumentDB",
+				"command": "cosmosDB.createDocDBDocument",
+				"title": "Create Document"
+			},
+			{
 				"category": "MongoDB",
 				"command": "cosmosDB.removeMongoServer",
 				"title": "Remove Server"
@@ -148,6 +155,11 @@
 				"category": "DocumentDB",
 				"command": "cosmosDB.deleteDocDBCollection",
 				"title": "Delete Collection"
+			},
+			{
+				"category": "DocumentDB",
+				"command": "cosmosDB.deleteDocDBDocument",
+				"title": "Delete Document"
 			},
 			{
 				"category": "Cosmos DB",
@@ -236,6 +248,10 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
 				},
 				{
+					"command": "cosmosDB.createDocDBDocument",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
+				},
+				{
 					"command": "cosmosDB.createDocDBCollection",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
 				},
@@ -258,6 +274,10 @@
 				{
 					"command": "cosmosDB.deleteDocDBCollection",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
+				},
+				{
+					"command": "cosmosDB.deleteDocDBDocument",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocument"
 				},
 				{
 					"command": "cosmosDB.deleteDocDBDatabase",
@@ -290,6 +310,10 @@
 				{
 					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+				},
+				{
+					"command": "cosmosDB.refresh",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
 				},
 				{
 					"command": "cosmosDB.refresh",

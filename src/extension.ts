@@ -83,10 +83,6 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
-	initAsyncCommand(context, 'cosmosDB.openDocDBCollection', async (collection: DocDBCollectionNode) => {
-		util.showResult(JSON.stringify(await collection.getDocuments(), null, 2));
-		lastOpenedDocumentType = "DocDB";
-	});
 	initAsyncCommand(context, 'cosmosDB.openDocDBDocument', async (document: DocDBDocumentNode) => {
 		const masterKey = await document.coll.db.getPrimaryMasterKey();
 		const endpoint = await document.coll.db.getEndpoint();

@@ -43,7 +43,6 @@
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.updateDocuments",
 		"onCommand:cosmosDB.openMongoCollection",
-		"onCommand:cosmosDB.openDocDBCollection",
 		"onCommand:cosmosDB.openDocDBDocument",
 		"onCommand:cosmosDB.refresh",
 		"onCommand:cosmosDB.openInPortal",
@@ -190,11 +189,6 @@
 			},
 			{
 				"category": "DocumentDB",
-				"command": "cosmosDB.openDocDBCollection",
-				"title": "Open Collection"
-			},
-			{
-				"category": "DocumentDB",
 				"command": "cosmosDB.openDocDBDocument",
 				"title": "Open Document"
 			}
@@ -263,10 +257,6 @@
 				},
 				{
 					"command": "cosmosDB.deleteDocDBCollection",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
-				},
-				{
-					"command": "cosmosDB.openDocDBCollection",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
 				},
 				{

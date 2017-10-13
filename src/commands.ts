@@ -346,8 +346,11 @@ export class CosmosDBCommands {
     }
 
 
-    public static async updateDocDBDocument(client: DocumentClient, document: DocDBDocumentNode): Promise<void> {
+    public static async updateDocDBDocument(document: DocDBDocumentNode): Promise<void> {
         //get the data from the editor
+        const masterKey = await document.coll.db.getPrimaryMasterKey();
+        const endpoint = await document.coll.db.getEndpoint();
+        const client = new DocumentClient(endpoint, { masterKey: masterKey });
         const editor = vscode.window.activeTextEditor;
         const newdocument = JSON.parse(editor.document.getText());
         const docLink = newdocument._self;
@@ -365,7 +368,6 @@ export class CosmosDBCommands {
                     }
                 });
         });
-        //Update doc.data
     }
 }
 

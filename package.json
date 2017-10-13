@@ -180,7 +180,7 @@
 				"title": "Copy Connection String"
 			},
 			{
-				"category": "MongoDB",
+				"category": "CosmosDB",
 				"command": "cosmosDB.updateMongoDocuments",
 				"title": "Update"
 			},
@@ -198,11 +198,6 @@
 				"category": "DocumentDB",
 				"command": "cosmosDB.openDocDBDocument",
 				"title": "Open Document"
-			},
-			{
-				"category": "DocumentDB",
-				"command": "cosmosDB.updateDocDBDocument",
-				"title": "Update Document"
 			}
 		],
 		"menus": {
@@ -213,10 +208,6 @@
 				},
 				{
 					"command": "cosmosDB.updateMongoDocuments",
-					"when": "resourceFilename==result.json"
-				},
-				{
-					"command": "cosmosDB.updateDocDBDocument",
 					"when": "resourceFilename==result.json"
 				}
 			],

@@ -241,7 +241,7 @@ export class CosmosDBCommands {
         const endpoint = coll.db.getEndpoint();
         const client = new DocumentClient(endpoint, { masterKey: masterKey });
         const docid = await vscode.window.showInputBox({
-            placeHolder: "Enter an unique id",
+            placeHolder: "Enter a unique id",
             ignoreFocusOut: true
         });
         await new Promise((resolve, reject) => {

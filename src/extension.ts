@@ -72,12 +72,12 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (element: DocDBDocumentNode) => CosmosDBCommands.deleteDocDBDocument(element, explorer));
 	initCommand(context, 'cosmosDB.newMongoScrapbook', () => createScrapbook());
 	initCommand(context, 'cosmosDB.executeMongoCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb));
-	initCommand(context, 'cosmosDB.update', () => {
+	initAsyncCommand(context, 'cosmosDB.update', async () => {
 		if (lastOpenedDocumentType === DocumentType.Mongo) {
-			MongoCommands.updateDocuments(connectedDb, lastCommand);
+			await MongoCommands.updateDocuments(connectedDb, lastCommand);
 		}
 		else if (lastOpenedDocumentType === DocumentType.DocDB) {
-			CosmosDBCommands.updateDocDBDocument(lastOpenedDocument);
+			await CosmosDBCommands.updateDocDBDocument(lastOpenedDocument);
 		}
 	}
 	);

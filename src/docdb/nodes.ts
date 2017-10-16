@@ -14,6 +14,10 @@ export interface IDocDBServer extends INode {
 	getEndpoint(): string;
 }
 
+export interface IDocDBDocumentSpec {
+	_self: string;
+	_rid?: string;
+}
 
 export class DocDBDatabaseNode implements INode {
 	readonly contextValue: string;
@@ -81,13 +85,7 @@ export class DocDBCollectionNode implements INode {
 			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB collections LARGE.svg'),
 		};
 	}
-	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
-
-	readonly command: Command = {
-		command: 'cosmosDB.openDocDBCollection',
-		arguments: [this],
-		title: ''
-	};
+	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
 	getCollLink(): string {
 		return this.db.getDbLink() + '/colls/' + this.id;
@@ -101,6 +99,21 @@ export class DocDBCollectionNode implements INode {
 		return await docs;
 	}
 
+	async getChildren(): Promise<INode[]> {
+		const collLink: string = this.getCollLink();
+		const parentNode = this;
+		const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
+		let documents = await this.listDocuments(collLink, client);
+		return documents.map(document => new DocDBDocumentNode(document.id, parentNode, document));
+	}
+
+	async listDocuments(collSelfLink, client): Promise<any> {
+		let documents = await client.readDocuments(collSelfLink);
+		return await new Promise<any[]>((resolve, reject) => {
+			documents.toArray((err, cols: Array<Object>) => err ? reject(err) : resolve(cols));
+		});
+	}
+
 	async readOneCollection(selfLink, client): Promise<any> {
 		let documents = await client.readDocuments(selfLink, { maxItemCount: 20 });
 		return await new Promise<any[]>((resolve, reject) => {
@@ -108,4 +121,35 @@ export class DocDBCollectionNode implements INode {
 		});
 	}
 
+}
+
+export class DocDBDocumentNode implements INode {
+	data: IDocDBDocumentSpec;
+	constructor(readonly id: string, readonly coll: DocDBCollectionNode, payload: IDocDBDocumentSpec) {
+		this.data = payload;
+	}
+
+	readonly contextValue: string = "cosmosDBDocument";
+
+	get label(): string {
+		return this.id;
+	}
+
+	getDocLink(): string {
+		return this.coll.getCollLink() + '/docs/' + this.id;
+	}
+
+	get iconPath(): any {
+		return {
+			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - document 2 LARGE.svg'),
+			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - document 2 LARGE.svg'),
+		};
+	}
+	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
+
+	readonly command: Command = {
+		command: 'cosmosDB.openDocDBDocument',
+		arguments: [this],
+		title: ''
+	};
 }

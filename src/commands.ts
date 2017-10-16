@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
+import * as util from "./util";
 import { AzureAccount, AzureSession } from './azure-account.api';
 import { ResourceModels, ResourceManagementClient, SubscriptionClient, SubscriptionModels } from 'azure-arm-resource';
 import DocumentdbManagementClient = require("azure-arm-documentdb");
@@ -11,7 +12,7 @@ import docDBModels = require("azure-arm-documentdb/lib/models");
 import { DocumentClient } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
 import { CosmosDBResourceNode } from './nodes';
-import { DocDBDatabaseNode, DocDBCollectionNode } from './docdb/nodes';
+import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode } from './docdb/nodes';
 import { CosmosDBExplorer } from './explorer';
 
 export class CosmosDBCommands {
@@ -235,6 +236,28 @@ export class CosmosDBCommands {
         }
     }
 
+    public static async createDocDBDocument(coll: DocDBCollectionNode, explorer: CosmosDBExplorer) {
+        const masterKey = coll.db.getPrimaryMasterKey();
+        const endpoint = coll.db.getEndpoint();
+        const client = new DocumentClient(endpoint, { masterKey: masterKey });
+        const docid = await vscode.window.showInputBox({
+            placeHolder: "Enter a unique id",
+            ignoreFocusOut: true
+        });
+        await new Promise((resolve, reject) => {
+            client.createDocument(coll.getCollLink(), { 'id': docid }, (err, result) => {
+                if (err) {
+                    reject(err.body);
+                }
+                else {
+                    resolve(result);
+                }
+            });
+        });
+        explorer.refresh(coll);
+    }
+
+
     public static async createDocDBCollection(db: DocDBDatabaseNode, explorer: CosmosDBExplorer) {
         const collectionName = await vscode.window.showInputBox({
             placeHolder: 'Collection Name',
@@ -342,6 +365,48 @@ export class CosmosDBCommands {
                 explorer.refresh(coll.db);
             }
         }
+    }
+
+    public static async deleteDocDBDocument(doc: DocDBDocumentNode, explorer: CosmosDBExplorer): Promise<void> {
+        if (doc) {
+            const confirmed = await vscode.window.showWarningMessage("Are you sure you want to delete document '" + doc.label + "'?", "Yes", "No");
+            if (confirmed === "Yes") {
+                const masterKey = await doc.coll.db.getPrimaryMasterKey();
+                const endpoint = await doc.coll.db.getEndpoint();
+                const client = new DocumentClient(endpoint, { masterKey: masterKey });
+                const docLink = doc.getDocLink();
+                await new Promise((resolve, reject) => {
+                    client.deleteDocument(docLink, (err) => {
+                        err ? reject(new Error(err.body)) : resolve();
+                    });
+                });
+                explorer.refresh(doc.coll);
+            }
+        }
+    }
+
+    public static async updateDocDBDocument(document: DocDBDocumentNode): Promise<void> {
+        //get the data from the editor
+        const masterKey = await document.coll.db.getPrimaryMasterKey();
+        const endpoint = await document.coll.db.getEndpoint();
+        const client = new DocumentClient(endpoint, { masterKey: masterKey });
+        const editor = vscode.window.activeTextEditor;
+        const newdocument = JSON.parse(editor.document.getText());
+        const docLink = newdocument._self;
+        await new Promise((resolve, reject) => {
+            client.replaceDocument(docLink, newdocument,
+                { accessCondition: { type: 'IfMatch', condition: newdocument._etag } },
+                (err, updated) => {
+                    if (err) {
+                        reject(new Error(err.body));
+                    }
+                    else {
+                        document.data = updated;
+                        util.showResult(JSON.stringify(updated, null, 2));
+                        resolve(updated);
+                    }
+                });
+        });
     }
 }
 

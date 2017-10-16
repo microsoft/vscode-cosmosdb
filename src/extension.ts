@@ -17,8 +17,9 @@ import { CosmosDBCommands } from './commands';
 import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
 import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode } from './mongo/nodes';
-import { DocDBDatabaseNode, DocDBCollectionNode } from './docdb/nodes';
-import { CosmosDBResourceNode, INode } from './nodes'
+import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode } from './docdb/nodes';
+import { CosmosDBResourceNode, INode } from './nodes';
+import { DocumentClient } from 'documentdb';
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
 
@@ -26,6 +27,12 @@ let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
 let explorer: CosmosDBExplorer;
 let lastCommand: MongoCommand;
+let lastOpenedDocument: DocDBDocumentNode;
+let lastOpenedDocumentType: DocumentType;
+enum DocumentType {
+	Mongo,
+	DocDB
+};
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(new Reporter(context));
@@ -53,6 +60,7 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.createMongoDatabase', (node: IMongoServer) => createMongoDatabase(node));
 	initAsyncCommand(context, 'cosmosDB.createDocDBDatabase', (node: CosmosDBResourceNode) => CosmosDBCommands.createDocDBDatabase(node, explorer));
 	initAsyncCommand(context, 'cosmosDB.createDocDBCollection', (node: DocDBDatabaseNode) => CosmosDBCommands.createDocDBCollection(node, explorer));
+	initAsyncCommand(context, 'cosmosDB.createDocDBDocument', (node: DocDBCollectionNode) => CosmosDBCommands.createDocDBDocument(node, explorer));
 	initCommand(context, 'cosmosDB.openInPortal', (node: CosmosDBResourceNode) => openInPortal(node));
 	initAsyncCommand(context, 'cosmosDB.copyConnectionString', (node: CosmosDBResourceNode) => copyConnectionString(node));
 
@@ -61,18 +69,32 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.deleteMongoDB', (element: MongoDatabaseNode) => deleteDatabase(element));
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDatabase', (element: DocDBDatabaseNode) => CosmosDBCommands.deleteDocDBDatabase(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBCollection', (element: DocDBCollectionNode) => CosmosDBCommands.deleteDocDBCollection(element, explorer));
+	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (element: DocDBDocumentNode) => CosmosDBCommands.deleteDocDBDocument(element, explorer));
 	initCommand(context, 'cosmosDB.newMongoScrapbook', () => createScrapbook());
 	initCommand(context, 'cosmosDB.executeMongoCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb));
-	initCommand(context, 'cosmosDB.updateMongoDocuments', () => MongoCommands.updateDocuments(connectedDb, lastCommand));
+	initAsyncCommand(context, 'cosmosDB.update', async () => {
+		if (lastOpenedDocumentType === DocumentType.Mongo) {
+			await MongoCommands.updateDocuments(connectedDb, lastCommand);
+		}
+		else if (lastOpenedDocumentType === DocumentType.DocDB) {
+			await CosmosDBCommands.updateDocDBDocument(lastOpenedDocument);
+		}
+	}
+	);
 	initCommand(context, 'cosmosDB.openMongoCollection', (collection: MongoCollectionNode) => {
 		connectToDatabase(collection.db);
 		lastCommand = MongoCommands.getCommand(`db.${collection.label}.find()`);
 		MongoCommands.executeCommand(lastCommand, connectedDb).then(result => util.showResult(result));
+		lastOpenedDocumentType = DocumentType.Mongo;
 	});
 
 	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
-	initAsyncCommand(context, 'cosmosDB.openDocDBCollection', async (collection: DocDBCollectionNode) => {
-		util.showResult(JSON.stringify(await collection.getDocuments(), null, 2));
+	initAsyncCommand(context, 'cosmosDB.openDocDBDocument', async (document: DocDBDocumentNode) => {
+		const masterKey = await document.coll.db.getPrimaryMasterKey();
+		const endpoint = await document.coll.db.getEndpoint();
+		lastOpenedDocument = document;
+		util.showResult(JSON.stringify(document.data, null, 2));
+		lastOpenedDocumentType = DocumentType.DocDB;
 	});
 
 }

@@ -84,7 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
 	initCommand(context, 'cosmosDB.openMongoCollection', (collection: MongoCollectionNode) => {
 		connectToDatabase(collection.db);
 		lastCommand = MongoCommands.getCommand(`db.${collection.label}.find()`);
-		MongoCommands.executeCommand(lastCommand, connectedDb).then(result => util.showResult(result));
+		MongoCommands.executeCommand(lastCommand, connectedDb).then(result => util.showResult(result, 'document'));
 		lastOpenedDocumentType = DocumentType.Mongo;
 	});
 
@@ -93,7 +93,10 @@ export function activate(context: vscode.ExtensionContext) {
 		const masterKey = await document.coll.db.getPrimaryMasterKey();
 		const endpoint = await document.coll.db.getEndpoint();
 		lastOpenedDocument = document;
-		util.showResult(JSON.stringify(document.data, null, 2));
+		const filetext: string = "//This is a view of a document. This editor’s context menu has more functionality.\n" +
+			"//For instance, you can Update this document to Azure too!\n" +
+			JSON.stringify(document.data, null, 2);
+		util.showResult(filetext, 'document');
 		lastOpenedDocumentType = DocumentType.DocDB;
 	});
 

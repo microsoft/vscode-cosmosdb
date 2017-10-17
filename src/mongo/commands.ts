@@ -25,7 +25,7 @@ export class MongoCommands {
 		const command = MongoCommands.getCommand(activeEditor.document.getText(), selection.start);
 		if (command) {
 			MongoCommands.executeCommand(command, database)
-				.then(result => util.showResult(result, 'result', activeEditor.viewColumn + 1));
+				.then(result => util.showResult(result, 'result.json', activeEditor.viewColumn + 1));
 		} else {
 			vscode.window.showErrorMessage('No executable command found.');
 		}

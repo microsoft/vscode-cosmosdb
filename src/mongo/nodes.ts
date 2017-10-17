@@ -13,6 +13,7 @@ import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 import { AzureAccount } from '../azure-account.api';
 import { INode, ErrorNode } from '../nodes';
+import { MongoCommands } from './commands';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
@@ -211,11 +212,23 @@ export class MongoCollectionNode implements INode {
 		};
 	}
 
-	readonly command: Command = {
+	/*readonly command: Command = {
 		command: 'cosmosDB.openMongoCollection',
 		arguments: [this],
 		title: ''
-	};
+	};*/
+
+	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+
+	async getChildren(): Promise<INode[]> {
+		const command = MongoCommands.getCommand(`db.${this.label}.find()`);
+		const parentNode = this;
+		let result = await MongoCommands.executeCommand(command, this.db).then(documents => JSON.parse(documents));
+		if (!Array.isArray(result)) {
+			result = [result];
+		}
+		return result.map(document => new MongoDocumentNode(document._id, parentNode, document));
+	}
 
 	executeCommand(name: string, args?: string): Thenable<string> {
 		try {
@@ -348,6 +361,33 @@ export class MongoCollectionNode implements INode {
 			return result;
 		}, []);
 	}
+}
+
+export class MongoDocumentNode implements INode {
+	data: Object;
+	constructor(readonly id: string, readonly coll: MongoCollectionNode, payload: Object) {
+		this.data = payload;
+	}
+
+	readonly contextValue: string = "MongoDocument";
+
+	get label(): string {
+		return this.id;
+	}
+
+	get iconPath(): any {
+		return {
+			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - document 2 LARGE.svg'),
+			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - document 2 LARGE.svg'),
+		};
+	}
+	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
+
+	readonly command: Command = {
+		command: 'cosmosDB.openMongoCollection',
+		arguments: [this],
+		title: ''
+	};
 }
 
 function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {

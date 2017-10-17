@@ -16,7 +16,7 @@ import { AzureAccount } from './azure-account.api';
 import { CosmosDBCommands } from './commands';
 import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
-import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode } from './mongo/nodes';
+import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode, MongoDocumentNode } from './mongo/nodes';
 import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode } from './docdb/nodes';
 import { CosmosDBResourceNode, INode } from './nodes';
 import { DocumentClient } from 'documentdb';
@@ -27,7 +27,7 @@ let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
 let explorer: CosmosDBExplorer;
 let lastCommand: MongoCommand;
-let lastOpenedDocument: DocDBDocumentNode;
+let lastOpenedDocument: DocDBDocumentNode | MongoDocumentNode;
 let lastOpenedDocumentType: DocumentType;
 enum DocumentType {
 	Mongo,
@@ -81,10 +81,10 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 	);
-	initCommand(context, 'cosmosDB.openMongoCollection', (collection: MongoCollectionNode) => {
-		connectToDatabase(collection.db);
-		lastCommand = MongoCommands.getCommand(`db.${collection.label}.find()`);
-		MongoCommands.executeCommand(lastCommand, connectedDb).then(result => util.showResult(result, 'document'));
+	initCommand(context, 'cosmosDB.openMongoCollection', (document: MongoDocumentNode) => {
+		connectToDatabase(document.coll.db);
+		util.showResult(JSON.stringify(document.data, null, 2), 'document');
+		lastOpenedDocument = document;
 		lastOpenedDocumentType = DocumentType.Mongo;
 	});
 

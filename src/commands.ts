@@ -393,7 +393,7 @@ export class CosmosDBCommands {
         const client = new DocumentClient(endpoint, { masterKey: masterKey });
         const editor = vscode.window.activeTextEditor;
         const newdocument = parse(editor.document.getText());
-        const docLink = newdocument._self;
+        const docLink = document.data._self;
         await new Promise((resolve, reject) => {
             client.replaceDocument(docLink, newdocument,
                 { accessCondition: { type: 'IfMatch', condition: newdocument._etag } },

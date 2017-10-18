@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
-import { MongoDatabaseNode, MongoCommand } from './nodes';
+import { MongoDatabaseNode, MongoCommand, MongoDocumentNode } from './nodes';
 import * as fs from 'fs';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
@@ -42,7 +42,7 @@ export class MongoCommands {
 			.then(result => result, error => vscode.window.showErrorMessage(error));
 	}
 
-	public static updateDocuments(database: MongoDatabaseNode, command: MongoCommand): void {
+	public static updateDocuments(database: MongoDatabaseNode, command: MongoCommand, currentDocumentNode: MongoDocumentNode): void {
 		if (!database) {
 			vscode.window.showErrorMessage('Please connect to the database first');
 			return;
@@ -50,16 +50,17 @@ export class MongoCommands {
 
 		const editor = vscode.window.activeTextEditor;
 		const documents = JSON.parse(editor.document.getText());
-		database.updateDocuments(documents, command.collection)
-			.then(result => {
-				editor.edit(editorBuilder => {
-					if (editor.document.lineCount > 0) {
-						const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
-						editorBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
-					}
-					editorBuilder.insert(new vscode.Position(0, 0), result);
-				});
+		currentDocumentNode.data = documents;
+		database.updateDocuments(documents, command.collection);
+		/*.then(result => {
+			editor.edit(editorBuilder => {
+				if (editor.document.lineCount > 0) {
+					const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
+					editorBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
+				}
+				editorBuilder.insert(new vscode.Position(0, 0), result);
 			});
+		});*/
 	}
 
 	public static getCommand(content: string, position?: vscode.Position): MongoCommand {

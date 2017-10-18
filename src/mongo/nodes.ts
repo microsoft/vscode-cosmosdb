@@ -212,12 +212,6 @@ export class MongoCollectionNode implements INode {
 		};
 	}
 
-	/*readonly command: Command = {
-		command: 'cosmosDB.openMongoCollection',
-		arguments: [this],
-		title: ''
-	};*/
-
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
 	async getChildren(): Promise<INode[]> {
@@ -384,7 +378,7 @@ export class MongoDocumentNode implements INode {
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
 
 	readonly command: Command = {
-		command: 'cosmosDB.openMongoCollection',
+		command: 'cosmosDB.openMongoDocument',
 		arguments: [this],
 		title: ''
 	};

@@ -44,7 +44,7 @@
 		"onCommand:cosmosDB.deleteDocDBDocument",
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.update",
-		"onCommand:cosmosDB.openMongoCollection",
+		"onCommand:cosmosDB.openMongoDocument",
 		"onCommand:cosmosDB.openDocDBDocument",
 		"onCommand:cosmosDB.refresh",
 		"onCommand:cosmosDB.openInPortal",
@@ -196,8 +196,8 @@
 			},
 			{
 				"category": "MongoDB",
-				"command": "cosmosDB.openMongoCollection",
-				"title": "Open Collection"
+				"command": "cosmosDB.openMongoDocument",
+				"title": "Open Document"
 			},
 			{
 				"category": "DocumentDB",
@@ -395,6 +395,7 @@
 		"ms-rest": "^2.2.1",
 		"opn": "^5.1.0",
 		"request-light": "^0.2.0",
+		"underscore": "^1.8.3",
 		"vscode-extension-telemetry": "^0.0.8",
 		"vscode-json-languageservice": "^2.0.9",
 		"vscode-languageclient": "^3.1.0-alpha.1",

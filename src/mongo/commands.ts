@@ -16,7 +16,7 @@ import * as util from './../util'
 
 export class MongoCommands {
 
-	public static executeCommandFromActiveEditor(database: MongoDatabaseNode): MongoCommand {
+	public static async executeCommandFromActiveEditor(database: MongoDatabaseNode): Promise<MongoCommand> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (activeEditor.document.languageId !== 'mongo') {
 			return;
@@ -24,8 +24,8 @@ export class MongoCommands {
 		const selection = activeEditor.selection;
 		const command = MongoCommands.getCommand(activeEditor.document.getText(), selection.start);
 		if (command) {
-			MongoCommands.executeCommand(command, database)
-				.then(result => util.showResult(result, 'result.json', activeEditor.viewColumn + 1));
+			const result = await MongoCommands.executeCommand(command, database);
+			await util.showResult(result, 'result.json', activeEditor.viewColumn + 1);
 		} else {
 			vscode.window.showErrorMessage('No executable command found.');
 		}

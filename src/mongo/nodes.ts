@@ -197,6 +197,8 @@ export class MongoCollectionNode implements INode {
 	constructor(private collection: Collection, readonly db: MongoDatabaseNode) {
 	}
 
+	readonly contextValue: string = "MongoCollection";
+
 	get id(): string {
 		return this.collection.collectionName;
 	}
@@ -343,13 +345,14 @@ export class MongoCollectionNode implements INode {
 		const documents = Array.isArray(documentOrDocuments) ? documentOrDocuments : [documentOrDocuments];
 		return documents.reduce((result, doc) => {
 			const id = doc._id;
-			delete doc._id;
+			const data = JSON.parse(JSON.stringify(doc)); //deep copy, assuming no circular documents since mongo doesn't allow them
+			delete data._id;
 			result.push({
 				updateOne: {
 					filter: {
 						_id: new ObjectID(id)
 					},
-					update: doc
+					update: data
 				}
 			});
 			return result;
@@ -359,7 +362,7 @@ export class MongoCollectionNode implements INode {
 
 export class MongoDocumentNode implements INode {
 	data: Object;
-	constructor(readonly id: string, readonly coll: MongoCollectionNode, payload: Object) {
+	constructor(readonly id: string, readonly collection: MongoCollectionNode, payload: Object) {
 		this.data = payload;
 	}
 

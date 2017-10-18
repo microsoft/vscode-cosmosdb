@@ -29,7 +29,8 @@ let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
 let explorer: CosmosDBExplorer;
 let lastCommand: MongoCommand;
-let lastOpenedDocument: DocDBDocumentNode | MongoDocumentNode;
+let lastOpenedDocDBDocument: DocDBDocumentNode;
+let lastOpenedMongoDocument: MongoDocumentNode;
 let lastOpenedDocumentType: DocumentType;
 enum DocumentType {
 	Mongo,
@@ -73,14 +74,15 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBCollection', (element: DocDBCollectionNode) => CosmosDBCommands.deleteDocDBCollection(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (element: DocDBDocumentNode) => CosmosDBCommands.deleteDocDBDocument(element, explorer));
 	initCommand(context, 'cosmosDB.newMongoScrapbook', () => createScrapbook());
-	initCommand(context, 'cosmosDB.executeMongoCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb));
+	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => lastCommand = await MongoCommands.executeCommandFromActiveEditor(connectedDb));
 	initAsyncCommand(context, 'cosmosDB.update', () => updateConditionally());
 	initAsyncCommand(context, 'cosmosDB.openMongoDocument', async (document: MongoDocumentNode) => {
-		if (await proceedAfterDocumentChange()) {
-			connectToDatabase(document.coll.db);
-			lastCommand = MongoCommands.getCommand(`db.${document.coll.label}.find()`);
-			util.showResult(JSON.stringify(document.data, null, 2), 'document');
-			lastOpenedDocument = document;
+		const canProceed: boolean = await proceedAfterDocumentChange();
+		if (canProceed) {
+			connectToDatabase(document.collection.db);
+			lastCommand = MongoCommands.getCommand(`db.${document.collection.label}.find()`);
+			await util.showResult(JSON.stringify(document.data, null, 2), 'document');
+			lastOpenedMongoDocument = document;
 			lastOpenedDocumentType = DocumentType.Mongo;
 		}
 	});
@@ -89,8 +91,8 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.openDocDBDocument', async (document: DocDBDocumentNode) => {
 		const canProceed: boolean = await proceedAfterDocumentChange();
 		if (canProceed) {
-			lastOpenedDocument = document;
-			util.showResult(JSON.stringify(document.data, null, 2), 'document');
+			lastOpenedDocDBDocument = document;
+			await util.showResult(JSON.stringify(document.data, null, 2), 'document.json');
 			lastOpenedDocumentType = DocumentType.DocDB;
 		}
 	});
@@ -126,17 +128,21 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 
 async function updateConditionally(): Promise<void> {
 	if (lastOpenedDocumentType === DocumentType.Mongo) {
-		await MongoCommands.updateDocuments(connectedDb, lastCommand, lastOpenedDocument);
+		await MongoCommands.updateDocuments(connectedDb, lastCommand, lastOpenedMongoDocument);
 	}
 	else if (lastOpenedDocumentType === DocumentType.DocDB) {
-		await CosmosDBCommands.updateDocDBDocument(lastOpenedDocument);
+		await CosmosDBCommands.updateDocDBDocument(lastOpenedDocDBDocument);
 	}
 }
 
 async function proceedAfterDocumentChange(): Promise<boolean> {
 	let oldDocument, newDocument;
+	if (lastOpenedDocumentType === undefined) {
+		return true;
+	}
 	try {
-		oldDocument = lastOpenedDocument.data;
+		const recentDoc = (lastOpenedDocumentType === DocumentType.DocDB) ? lastOpenedDocDBDocument : lastOpenedMongoDocument;
+		oldDocument = recentDoc.data;
 		const editor = vscode.window.activeTextEditor;
 		newDocument = parse(editor.document.getText());
 	}

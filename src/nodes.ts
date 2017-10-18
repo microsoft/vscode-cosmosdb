@@ -17,7 +17,8 @@ import { DocDBDatabaseNode } from './docdb/nodes';
 import { DocumentClient } from 'documentdb';
 
 export interface INode extends vscode.TreeItem {
-	id: string
+	id: string;
+	contextValue: string;
 	getChildren?(): Promise<INode[]>;
 }
 

@@ -345,7 +345,7 @@ export class MongoCollectionNode implements INode {
 		const documents = Array.isArray(documentOrDocuments) ? documentOrDocuments : [documentOrDocuments];
 		return documents.reduce((result, doc) => {
 			const id = doc._id;
-			const data = JSON.parse(JSON.stringify(doc)); //deep copy, assuming no circular documents since mongo doesn't allow them
+			const data = JSON.parse(JSON.stringify(doc));
 			delete data._id;
 			result.push({
 				updateOne: {

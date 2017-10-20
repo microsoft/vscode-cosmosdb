@@ -52,15 +52,6 @@ export class MongoCommands {
 		const documents = JSON.parse(editor.document.getText());
 		currentDocumentNode.data = documents;
 		database.updateDocuments(documents, command.collection);
-		/*.then(result => {
-			editor.edit(editorBuilder => {
-				if (editor.document.lineCount > 0) {
-					const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
-					editorBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
-				}
-				editorBuilder.insert(new vscode.Position(0, 0), result);
-			});
-		});*/
 	}
 
 	public static getCommand(content: string, position?: vscode.Position): MongoCommand {

@@ -13,7 +13,7 @@ import { DocumentClient } from 'documentdb';
 import { parse } from 'jsonc-parser';
 import { DocumentBase } from 'documentdb/lib';
 import { CosmosDBResourceNode } from './nodes';
-import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode } from './docdb/nodes';
+import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode, IDocDBDocumentSpec } from './docdb/nodes';
 import { CosmosDBExplorer } from './explorer';
 
 export class CosmosDBCommands {

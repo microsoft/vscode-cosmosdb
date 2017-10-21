@@ -192,7 +192,11 @@
 			{
 				"category": "CosmosDB",
 				"command": "cosmosDB.update",
-				"title": "Update to Azure"
+				"title": "Update to Azure",
+				"icon": {
+					"light": "/resources/icons/theme-agnostic/UpdateOutline.svg",
+					"dark": "/resources/icons/theme-agnostic/UpdateOutline.svg"
+				}
 			},
 			{
 				"category": "MongoDB",
@@ -214,6 +218,13 @@
 				{
 					"command": "cosmosDB.update",
 					"when": "resourceFilename==document.json"
+				}
+			],
+			"editor/title": [
+				{
+					"command": "cosmosDB.update",
+					"when": "resourceFilename==document.json",
+					"group": "navigation"
 				}
 			],
 			"view/title": [

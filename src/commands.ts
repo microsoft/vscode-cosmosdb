@@ -10,7 +10,6 @@ import { ResourceModels, ResourceManagementClient, SubscriptionClient, Subscript
 import DocumentdbManagementClient = require("azure-arm-documentdb");
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import { DocumentClient } from 'documentdb';
-import { parse } from 'jsonc-parser';
 import { DocumentBase } from 'documentdb/lib';
 import { CosmosDBResourceNode } from './nodes';
 import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode, IDocDBDocumentSpec } from './docdb/nodes';
@@ -392,7 +391,7 @@ export class CosmosDBCommands {
         const endpoint = await document.collection.db.getEndpoint();
         const client = new DocumentClient(endpoint, { masterKey: masterKey });
         const editor = vscode.window.activeTextEditor;
-        const newDocument = parse(editor.document.getText());
+        const newDocument = JSON.parse(editor.document.getText());
         const docLink = document.data._self;
         const updated = await new Promise<IDocDBDocumentSpec>((resolve, reject) => {
             client.replaceDocument(docLink, newDocument,

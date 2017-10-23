@@ -217,13 +217,11 @@ export class MongoCollectionNode implements INode {
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
 	async getChildren(): Promise<INode[]> {
-		const command = MongoCommands.getCommand(`db.${this.label}.find()`);
-		const parentNode = this;
-		let result = await MongoCommands.executeCommand(command, this.db).then(documents => JSON.parse(documents));
+		let result = JSON.parse(await this.find());
 		if (!Array.isArray(result)) {
 			result = [result];
 		}
-		return result.map(document => new MongoDocumentNode(document._id, parentNode, document));
+		return result.map(document => new MongoDocumentNode(document._id, this, document));
 	}
 
 	executeCommand(name: string, args?: string): Thenable<string> {

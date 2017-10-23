@@ -51,9 +51,6 @@ export function errToString(error: any): string {
 
 export function showResult(result: string, filename: string, column?: vscode.ViewColumn): Thenable<void> {
 	let uri: vscode.Uri = null;
-	if (!filename.endsWith('.json')) {
-		filename = filename + '.json';
-	}
 	if (vscode.workspace.rootPath) {
 		uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, filename));
 		if (!fs.existsSync(uri.fsPath)) {

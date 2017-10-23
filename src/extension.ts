@@ -23,7 +23,7 @@ import { CosmosDBResourceNode, INode } from './nodes';
 import { DocumentClient } from 'documentdb';
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
-import { parse } from 'jsonc-parser';
+import { UserCancelledError } from './errors';
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
@@ -75,26 +75,22 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (element: DocDBDocumentNode) => CosmosDBCommands.deleteDocDBDocument(element, explorer));
 	initCommand(context, 'cosmosDB.newMongoScrapbook', () => createScrapbook());
 	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => lastCommand = await MongoCommands.executeCommandFromActiveEditor(connectedDb));
-	initAsyncCommand(context, 'cosmosDB.update', () => updateConditionally());
+	initAsyncCommand(context, 'cosmosDB.update', () => update());
 	initAsyncCommand(context, 'cosmosDB.openMongoDocument', async (document: MongoDocumentNode) => {
-		const canProceed: boolean = await proceedAfterDocumentChange();
-		if (canProceed) {
-			connectToDatabase(document.collection.db);
-			lastCommand = MongoCommands.getCommand(`db.${document.collection.label}.find()`);
-			await util.showResult(JSON.stringify(document.data, null, 2), 'document');
-			lastOpenedMongoDocument = document;
-			lastOpenedDocumentType = DocumentType.Mongo;
-		}
+		await updateOpenDocumentIfChanged();
+		connectToDatabase(document.collection.db);
+		lastCommand = MongoCommands.getCommand(`db.${document.collection.label}.find()`);
+		await util.showResult(JSON.stringify(document.data, null, 2), 'document.json');
+		lastOpenedMongoDocument = document;
+		lastOpenedDocumentType = DocumentType.Mongo;
 	});
 
 	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
 	initAsyncCommand(context, 'cosmosDB.openDocDBDocument', async (document: DocDBDocumentNode) => {
-		const canProceed: boolean = await proceedAfterDocumentChange();
-		if (canProceed) {
-			lastOpenedDocDBDocument = document;
-			await util.showResult(JSON.stringify(document.data, null, 2), 'document.json');
-			lastOpenedDocumentType = DocumentType.DocDB;
-		}
+		await updateOpenDocumentIfChanged();
+		lastOpenedDocDBDocument = document;
+		await util.showResult(JSON.stringify(document.data, null, 2), 'document.json');
+		lastOpenedDocumentType = DocumentType.DocDB;
 	});
 }
 
@@ -113,7 +109,10 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 		} catch (err) {
 			result = 'Failed';
 			errorData = util.errToString(err);
-			if (err instanceof Error) {
+			if (err instanceof UserCancelledError) {
+				result = 'Canceled';
+			}
+			else if (err instanceof Error) {
 				vscode.window.showErrorMessage(err.message);
 			}
 			else if (typeof err === "string") {
@@ -126,7 +125,7 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 	}));
 }
 
-async function updateConditionally(): Promise<void> {
+async function update(): Promise<void> {
 	if (lastOpenedDocumentType === DocumentType.Mongo) {
 		await MongoCommands.updateDocuments(connectedDb, lastCommand, lastOpenedMongoDocument);
 	}
@@ -135,34 +134,34 @@ async function updateConditionally(): Promise<void> {
 	}
 }
 
-async function proceedAfterDocumentChange(): Promise<boolean> {
-	let oldDocument, newDocument;
+async function updateOpenDocumentIfChanged(): Promise<void> {
+	let oldDocument, newDocument, recentDoc;
 	if (lastOpenedDocumentType === undefined) {
-		return true;
+		return;
 	}
 	try {
-		const recentDoc = (lastOpenedDocumentType === DocumentType.DocDB) ? lastOpenedDocDBDocument : lastOpenedMongoDocument;
+		recentDoc = (lastOpenedDocumentType === DocumentType.DocDB) ? lastOpenedDocDBDocument : lastOpenedMongoDocument;
 		oldDocument = recentDoc.data;
 		const editor = vscode.window.activeTextEditor;
-		newDocument = parse(editor.document.getText());
+		newDocument = JSON.parse(editor.document.getText());
 	}
 	catch {
-		return true;
+		return;
 	}
 	if (!_.isMatch(oldDocument, newDocument)) {
-		const confirmed = await vscode.window.showWarningMessage("You may have made changes to the document since the last update. Update again?", "Yes", "No");
+		const confirmed = await vscode.window.showWarningMessage(`Your changes to  ${recentDoc.label}  will be lost. Update to Azure?`, "Yes", "No");
 		if (!confirmed) {
-			return false;
+			throw UserCancelledError;
 		}
-		if (confirmed === "Yes") {
-			await updateConditionally();
-			return true;
+		else if (confirmed === "Yes") {
+			await update();
+			return;
 		}
-		if (confirmed === "No") {
-			return true;
+		else if (confirmed === "No") {
+			return;
 		}
 	}
-	return true;
+	return;
 }
 function createScrapbook(): Thenable<void> {
 	return new Promise(() => {

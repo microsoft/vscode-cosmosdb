@@ -135,33 +135,22 @@ async function update(): Promise<void> {
 }
 
 async function updateOpenDocumentIfChanged(): Promise<void> {
-	let oldDocument, newDocument, recentDoc;
 	if (lastOpenedDocumentType === undefined) {
 		return;
 	}
-	try {
-		recentDoc = (lastOpenedDocumentType === DocumentType.DocDB) ? lastOpenedDocDBDocument : lastOpenedMongoDocument;
-		oldDocument = recentDoc.data;
-		const editor = vscode.window.activeTextEditor;
-		newDocument = JSON.parse(editor.document.getText());
-	}
-	catch {
-		return;
-	}
+	const oldDocumentNode = (lastOpenedDocumentType === DocumentType.DocDB) ? lastOpenedDocDBDocument : lastOpenedMongoDocument;
+	const oldDocument = oldDocumentNode.data;
+	const editor = vscode.window.activeTextEditor;
+	const newDocument = JSON.parse(editor.document.getText());
 	if (!_.isMatch(oldDocument, newDocument)) {
-		const confirmed = await vscode.window.showWarningMessage(`Your changes to  ${recentDoc.label}  will be lost. Update to Azure?`, "Yes", "No");
+		const confirmed = await vscode.window.showWarningMessage(`Your changes to  ${oldDocumentNode.label}  will be lost. Update to Azure?`, "Yes", "No");
 		if (!confirmed) {
 			throw UserCancelledError;
 		}
 		else if (confirmed === "Yes") {
 			await update();
-			return;
-		}
-		else if (confirmed === "No") {
-			return;
 		}
 	}
-	return;
 }
 function createScrapbook(): Thenable<void> {
 	return new Promise(() => {

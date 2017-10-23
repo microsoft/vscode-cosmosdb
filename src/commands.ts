@@ -406,7 +406,7 @@ export class CosmosDBCommands {
                 });
         });
         document.data = updated;
-        await util.showResult(JSON.stringify(updated, null, 2), 'document.json');
+        await util.showResult(JSON.stringify(updated, null, 2), 'cosmos-document.json');
     }
 }
 

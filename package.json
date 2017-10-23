@@ -217,13 +217,13 @@
 				},
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename==document.json"
+					"when": "resourceFilename==cosmos-document.json"
 				}
 			],
 			"editor/title": [
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename==document.json",
+					"when": "resourceFilename==cosmos-document.json",
 					"group": "navigation"
 				}
 			],

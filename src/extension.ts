@@ -80,7 +80,7 @@ export function activate(context: vscode.ExtensionContext) {
 		await updateOpenDocumentIfChanged();
 		connectToDatabase(document.collection.db);
 		lastCommand = MongoCommands.getCommand(`db.${document.collection.label}.find()`);
-		await util.showResult(JSON.stringify(document.data, null, 2), 'document.json');
+		await util.showResult(JSON.stringify(document.data, null, 2), 'cosmos-document.json');
 		lastOpenedMongoDocument = document;
 		lastOpenedDocumentType = DocumentType.Mongo;
 	});
@@ -89,7 +89,7 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.openDocDBDocument', async (document: DocDBDocumentNode) => {
 		await updateOpenDocumentIfChanged();
 		lastOpenedDocDBDocument = document;
-		await util.showResult(JSON.stringify(document.data, null, 2), 'document.json');
+		await util.showResult(JSON.stringify(document.data, null, 2), 'cosmos-document.json');
 		lastOpenedDocumentType = DocumentType.DocDB;
 	});
 }

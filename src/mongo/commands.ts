@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
-import { MongoDatabaseNode, MongoCommand } from './nodes';
+import { MongoDatabaseNode, MongoCommand, MongoDocumentNode } from './nodes';
 import * as fs from 'fs';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
@@ -16,7 +16,7 @@ import * as util from './../util'
 
 export class MongoCommands {
 
-	public static executeCommandFromActiveEditor(database: MongoDatabaseNode): MongoCommand {
+	public static async executeCommandFromActiveEditor(database: MongoDatabaseNode): Promise<MongoCommand> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (activeEditor.document.languageId !== 'mongo') {
 			return;
@@ -24,8 +24,8 @@ export class MongoCommands {
 		const selection = activeEditor.selection;
 		const command = MongoCommands.getCommand(activeEditor.document.getText(), selection.start);
 		if (command) {
-			MongoCommands.executeCommand(command, database)
-				.then(result => util.showResult(result, activeEditor.viewColumn + 1));
+			const result = await MongoCommands.executeCommand(command, database);
+			await util.showResult(result, 'result.json', activeEditor.viewColumn + 1);
 		} else {
 			vscode.window.showErrorMessage('No executable command found.');
 		}
@@ -42,7 +42,7 @@ export class MongoCommands {
 			.then(result => result, error => vscode.window.showErrorMessage(error));
 	}
 
-	public static updateDocuments(database: MongoDatabaseNode, command: MongoCommand): void {
+	public static updateDocuments(database: MongoDatabaseNode, command: MongoCommand, currentDocumentNode: MongoDocumentNode): void {
 		if (!database) {
 			vscode.window.showErrorMessage('Please connect to the database first');
 			return;
@@ -50,16 +50,8 @@ export class MongoCommands {
 
 		const editor = vscode.window.activeTextEditor;
 		const documents = JSON.parse(editor.document.getText());
-		database.updateDocuments(documents, command.collection)
-			.then(result => {
-				editor.edit(editorBuilder => {
-					if (editor.document.lineCount > 0) {
-						const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
-						editorBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
-					}
-					editorBuilder.insert(new vscode.Position(0, 0), result);
-				});
-			});
+		currentDocumentNode.data = documents;
+		database.updateDocuments(documents, command.collection);
 	}
 
 	public static getCommand(content: string, position?: vscode.Position): MongoCommand {

@@ -49,10 +49,10 @@ export function errToString(error: any): string {
 	return error.toString();
 }
 
-export function showResult(result: string, column?: vscode.ViewColumn): Thenable<void> {
+export function showResult(result: string, filename: string, column?: vscode.ViewColumn): Thenable<void> {
 	let uri: vscode.Uri = null;
 	if (vscode.workspace.rootPath) {
-		uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, 'result.json'));
+		uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, filename));
 		if (!fs.existsSync(uri.fsPath)) {
 			uri = uri.with({ scheme: 'untitled' });
 		}

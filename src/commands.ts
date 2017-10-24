@@ -12,7 +12,7 @@ import docDBModels = require("azure-arm-documentdb/lib/models");
 import { DocumentClient } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
 import { CosmosDBResourceNode } from './nodes';
-import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode } from './docdb/nodes';
+import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode, IDocDBDocumentSpec } from './docdb/nodes';
 import { CosmosDBExplorer } from './explorer';
 
 export class CosmosDBCommands {
@@ -371,8 +371,8 @@ export class CosmosDBCommands {
         if (doc) {
             const confirmed = await vscode.window.showWarningMessage("Are you sure you want to delete document '" + doc.label + "'?", "Yes", "No");
             if (confirmed === "Yes") {
-                const masterKey = await doc.coll.db.getPrimaryMasterKey();
-                const endpoint = await doc.coll.db.getEndpoint();
+                const masterKey = await doc.collection.db.getPrimaryMasterKey();
+                const endpoint = await doc.collection.db.getEndpoint();
                 const client = new DocumentClient(endpoint, { masterKey: masterKey });
                 const docLink = doc.getDocLink();
                 await new Promise((resolve, reject) => {
@@ -380,33 +380,33 @@ export class CosmosDBCommands {
                         err ? reject(new Error(err.body)) : resolve();
                     });
                 });
-                explorer.refresh(doc.coll);
+                explorer.refresh(doc.collection);
             }
         }
     }
 
     public static async updateDocDBDocument(document: DocDBDocumentNode): Promise<void> {
         //get the data from the editor
-        const masterKey = await document.coll.db.getPrimaryMasterKey();
-        const endpoint = await document.coll.db.getEndpoint();
+        const masterKey = await document.collection.db.getPrimaryMasterKey();
+        const endpoint = await document.collection.db.getEndpoint();
         const client = new DocumentClient(endpoint, { masterKey: masterKey });
         const editor = vscode.window.activeTextEditor;
-        const newdocument = JSON.parse(editor.document.getText());
-        const docLink = newdocument._self;
-        await new Promise((resolve, reject) => {
-            client.replaceDocument(docLink, newdocument,
-                { accessCondition: { type: 'IfMatch', condition: newdocument._etag } },
+        const newDocument = JSON.parse(editor.document.getText());
+        const docLink = document.data._self;
+        const updated = await new Promise<IDocDBDocumentSpec>((resolve, reject) => {
+            client.replaceDocument(docLink, newDocument,
+                { accessCondition: { type: 'IfMatch', condition: newDocument._etag } },
                 (err, updated) => {
                     if (err) {
                         reject(new Error(err.body));
                     }
                     else {
-                        document.data = updated;
-                        util.showResult(JSON.stringify(updated, null, 2));
                         resolve(updated);
                     }
                 });
         });
+        document.data = updated;
+        await util.showResult(JSON.stringify(updated, null, 2), 'cosmos-document.json');
     }
 }
 

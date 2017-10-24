@@ -6,6 +6,7 @@
 'use strict';
 
 import * as vscode from 'vscode';
+import * as _ from 'underscore';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as copypaste from 'copy-paste';
@@ -16,18 +17,20 @@ import { AzureAccount } from './azure-account.api';
 import { CosmosDBCommands } from './commands';
 import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
-import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode } from './mongo/nodes';
+import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode, MongoDocumentNode } from './mongo/nodes';
 import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode } from './docdb/nodes';
 import { CosmosDBResourceNode, INode } from './nodes';
 import { DocumentClient } from 'documentdb';
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
+import { UserCancelledError } from './errors';
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
 let explorer: CosmosDBExplorer;
 let lastCommand: MongoCommand;
-let lastOpenedDocument: DocDBDocumentNode;
+let lastOpenedDocDBDocument: DocDBDocumentNode;
+let lastOpenedMongoDocument: MongoDocumentNode;
 let lastOpenedDocumentType: DocumentType;
 enum DocumentType {
 	Mongo,
@@ -71,32 +74,24 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBCollection', (element: DocDBCollectionNode) => CosmosDBCommands.deleteDocDBCollection(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (element: DocDBDocumentNode) => CosmosDBCommands.deleteDocDBDocument(element, explorer));
 	initCommand(context, 'cosmosDB.newMongoScrapbook', () => createScrapbook());
-	initCommand(context, 'cosmosDB.executeMongoCommand', () => lastCommand = MongoCommands.executeCommandFromActiveEditor(connectedDb));
-	initAsyncCommand(context, 'cosmosDB.update', async () => {
-		if (lastOpenedDocumentType === DocumentType.Mongo) {
-			await MongoCommands.updateDocuments(connectedDb, lastCommand);
-		}
-		else if (lastOpenedDocumentType === DocumentType.DocDB) {
-			await CosmosDBCommands.updateDocDBDocument(lastOpenedDocument);
-		}
-	}
-	);
-	initCommand(context, 'cosmosDB.openMongoCollection', (collection: MongoCollectionNode) => {
-		connectToDatabase(collection.db);
-		lastCommand = MongoCommands.getCommand(`db.${collection.label}.find()`);
-		MongoCommands.executeCommand(lastCommand, connectedDb).then(result => util.showResult(result));
+	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => lastCommand = await MongoCommands.executeCommandFromActiveEditor(connectedDb));
+	initAsyncCommand(context, 'cosmosDB.update', () => update());
+	initAsyncCommand(context, 'cosmosDB.openMongoDocument', async (document: MongoDocumentNode) => {
+		await updateOpenDocumentIfChanged();
+		connectToDatabase(document.collection.db);
+		lastCommand = MongoCommands.getCommand(`db.${document.collection.label}.find()`);
+		await util.showResult(JSON.stringify(document.data, null, 2), 'cosmos-document.json');
+		lastOpenedMongoDocument = document;
 		lastOpenedDocumentType = DocumentType.Mongo;
 	});
 
 	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
 	initAsyncCommand(context, 'cosmosDB.openDocDBDocument', async (document: DocDBDocumentNode) => {
-		const masterKey = await document.coll.db.getPrimaryMasterKey();
-		const endpoint = await document.coll.db.getEndpoint();
-		lastOpenedDocument = document;
-		util.showResult(JSON.stringify(document.data, null, 2));
+		await updateOpenDocumentIfChanged();
+		lastOpenedDocDBDocument = document;
+		await util.showResult(JSON.stringify(document.data, null, 2), 'cosmos-document.json');
 		lastOpenedDocumentType = DocumentType.DocDB;
 	});
-
 }
 
 function initCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => any) {
@@ -114,7 +109,10 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 		} catch (err) {
 			result = 'Failed';
 			errorData = util.errToString(err);
-			if (err instanceof Error) {
+			if (err instanceof UserCancelledError) {
+				result = 'Canceled';
+			}
+			else if (err instanceof Error) {
 				vscode.window.showErrorMessage(err.message);
 			}
 			else if (typeof err === "string") {
@@ -127,6 +125,33 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 	}));
 }
 
+async function update(): Promise<void> {
+	if (lastOpenedDocumentType === DocumentType.Mongo) {
+		await MongoCommands.updateDocuments(connectedDb, lastCommand, lastOpenedMongoDocument);
+	}
+	else if (lastOpenedDocumentType === DocumentType.DocDB) {
+		await CosmosDBCommands.updateDocDBDocument(lastOpenedDocDBDocument);
+	}
+}
+
+async function updateOpenDocumentIfChanged(): Promise<void> {
+	if (lastOpenedDocumentType === undefined) {
+		return;
+	}
+	const oldDocumentNode = (lastOpenedDocumentType === DocumentType.DocDB) ? lastOpenedDocDBDocument : lastOpenedMongoDocument;
+	const oldDocument = oldDocumentNode.data;
+	const editor = vscode.window.activeTextEditor;
+	const newDocument = JSON.parse(editor.document.getText());
+	if (!_.isMatch(oldDocument, newDocument)) {
+		const confirmed = await vscode.window.showWarningMessage(`Your changes to  ${oldDocumentNode.label}  will be lost. Update to Azure?`, "Yes", "No");
+		if (!confirmed) {
+			throw UserCancelledError;
+		}
+		else if (confirmed === "Yes") {
+			await update();
+		}
+	}
+}
 function createScrapbook(): Thenable<void> {
 	return new Promise(() => {
 		let uri: vscode.Uri = null;

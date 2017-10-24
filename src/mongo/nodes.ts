@@ -13,6 +13,7 @@ import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 import { AzureAccount } from '../azure-account.api';
 import { INode, ErrorNode } from '../nodes';
+import { MongoCommands } from './commands';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
@@ -196,6 +197,8 @@ export class MongoCollectionNode implements INode {
 	constructor(private collection: Collection, readonly db: MongoDatabaseNode) {
 	}
 
+	readonly contextValue: string = "MongoCollection";
+
 	get id(): string {
 		return this.collection.collectionName;
 	}
@@ -211,11 +214,15 @@ export class MongoCollectionNode implements INode {
 		};
 	}
 
-	readonly command: Command = {
-		command: 'cosmosDB.openMongoCollection',
-		arguments: [this],
-		title: ''
-	};
+	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+
+	async getChildren(): Promise<INode[]> {
+		let result = JSON.parse(await this.find());
+		if (!Array.isArray(result)) {
+			result = [result];
+		}
+		return result.map(document => new MongoDocumentNode(document._id, this, document));
+	}
 
 	executeCommand(name: string, args?: string): Thenable<string> {
 		try {
@@ -336,18 +343,46 @@ export class MongoCollectionNode implements INode {
 		const documents = Array.isArray(documentOrDocuments) ? documentOrDocuments : [documentOrDocuments];
 		return documents.reduce((result, doc) => {
 			const id = doc._id;
-			delete doc._id;
+			const data = JSON.parse(JSON.stringify(doc));
+			delete data._id;
 			result.push({
 				updateOne: {
 					filter: {
 						_id: new ObjectID(id)
 					},
-					update: doc
+					update: data
 				}
 			});
 			return result;
 		}, []);
 	}
+}
+
+export class MongoDocumentNode implements INode {
+	data: Object;
+	constructor(readonly id: string, readonly collection: MongoCollectionNode, payload: Object) {
+		this.data = payload;
+	}
+
+	readonly contextValue: string = "MongoDocument";
+
+	get label(): string {
+		return this.id;
+	}
+
+	get iconPath(): any {
+		return {
+			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - document 2 LARGE.svg'),
+			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - document 2 LARGE.svg'),
+		};
+	}
+	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
+
+	readonly command: Command = {
+		command: 'cosmosDB.openMongoDocument',
+		arguments: [this],
+		title: ''
+	};
 }
 
 function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {

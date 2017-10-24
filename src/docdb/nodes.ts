@@ -125,7 +125,7 @@ export class DocDBCollectionNode implements INode {
 
 export class DocDBDocumentNode implements INode {
 	data: IDocDBDocumentSpec;
-	constructor(readonly id: string, readonly coll: DocDBCollectionNode, payload: IDocDBDocumentSpec) {
+	constructor(readonly id: string, readonly collection: DocDBCollectionNode, payload: IDocDBDocumentSpec) {
 		this.data = payload;
 	}
 
@@ -136,7 +136,7 @@ export class DocDBDocumentNode implements INode {
 	}
 
 	getDocLink(): string {
-		return this.coll.getCollLink() + '/docs/' + this.id;
+		return this.collection.getCollLink() + '/docs/' + this.id;
 	}
 
 	get iconPath(): any {

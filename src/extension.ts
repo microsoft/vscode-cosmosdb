@@ -24,6 +24,7 @@ import { DocumentClient } from 'documentdb';
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
 import { UserCancelledError } from './errors';
+import { DocDBCommands } from './docdb/commands';
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
@@ -61,18 +62,18 @@ export function activate(context: vscode.ExtensionContext) {
 	initCommand(context, 'cosmosDB.refresh', (node: INode) => explorer.refresh(node));
 	initAsyncCommand(context, 'cosmosDB.removeMongoServer', (node: INode) => removeMongoServer(node));
 	initAsyncCommand(context, 'cosmosDB.createMongoDatabase', (node: IMongoServer) => createMongoDatabase(node));
-	initAsyncCommand(context, 'cosmosDB.createDocDBDatabase', (node: CosmosDBResourceNode) => CosmosDBCommands.createDocDBDatabase(node, explorer));
-	initAsyncCommand(context, 'cosmosDB.createDocDBCollection', (node: DocDBDatabaseNode) => CosmosDBCommands.createDocDBCollection(node, explorer));
-	initAsyncCommand(context, 'cosmosDB.createDocDBDocument', (node: DocDBCollectionNode) => CosmosDBCommands.createDocDBDocument(node, explorer));
+	initAsyncCommand(context, 'cosmosDB.createDocDBDatabase', (node: CosmosDBResourceNode) => DocDBCommands.createDocDBDatabase(node, explorer));
+	initAsyncCommand(context, 'cosmosDB.createDocDBCollection', (node: DocDBDatabaseNode) => DocDBCommands.createDocDBCollection(node, explorer));
+	initAsyncCommand(context, 'cosmosDB.createDocDBDocument', (node: DocDBCollectionNode) => DocDBCommands.createDocDBDocument(node, explorer));
 	initCommand(context, 'cosmosDB.openInPortal', (node: CosmosDBResourceNode) => openInPortal(node));
 	initAsyncCommand(context, 'cosmosDB.copyConnectionString', (node: CosmosDBResourceNode) => copyConnectionString(node));
 
 	vscode.window.setStatusBarMessage('Mongo: Not connected');
 	initAsyncCommand(context, 'cosmosDB.connectMongoDB', (element: MongoDatabaseNode) => connectToDatabase(element));
 	initAsyncCommand(context, 'cosmosDB.deleteMongoDB', (element: MongoDatabaseNode) => deleteDatabase(element));
-	initAsyncCommand(context, 'cosmosDB.deleteDocDBDatabase', (element: DocDBDatabaseNode) => CosmosDBCommands.deleteDocDBDatabase(element, explorer));
-	initAsyncCommand(context, 'cosmosDB.deleteDocDBCollection', (element: DocDBCollectionNode) => CosmosDBCommands.deleteDocDBCollection(element, explorer));
-	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (element: DocDBDocumentNode) => CosmosDBCommands.deleteDocDBDocument(element, explorer));
+	initAsyncCommand(context, 'cosmosDB.deleteDocDBDatabase', (element: DocDBDatabaseNode) => DocDBCommands.deleteDocDBDatabase(element, explorer));
+	initAsyncCommand(context, 'cosmosDB.deleteDocDBCollection', (element: DocDBCollectionNode) => DocDBCommands.deleteDocDBCollection(element, explorer));
+	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (element: DocDBDocumentNode) => DocDBCommands.deleteDocDBDocument(element, explorer));
 	initCommand(context, 'cosmosDB.newMongoScrapbook', () => createScrapbook());
 	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => lastCommand = await MongoCommands.executeCommandFromActiveEditor(connectedDb));
 	initAsyncCommand(context, 'cosmosDB.update', () => update());
@@ -130,7 +131,7 @@ async function update(): Promise<void> {
 		await MongoCommands.updateDocuments(connectedDb, lastCommand, lastOpenedMongoDocument);
 	}
 	else if (lastOpenedDocumentType === DocumentType.DocDB) {
-		await CosmosDBCommands.updateDocDBDocument(lastOpenedDocDBDocument);
+		await DocDBCommands.updateDocDBDocument(lastOpenedDocDBDocument);
 	}
 }
 

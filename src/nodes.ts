@@ -14,7 +14,11 @@ import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
 import { DocDBDatabaseNode } from './docdb/nodes';
+import { GraphDatabaseNode } from './graph/graphNodes';
 import { DocumentClient } from 'documentdb';
+import GraphRbacManagementClient = require('azure-graph'); // asdf
+
+type Experience = "MongoDB" | "DocumentDB" | "Graph" | "Table";
 
 export interface INode extends vscode.TreeItem {
 	id: string;
@@ -72,7 +76,7 @@ export class CosmosDBAccountNode implements IMongoServer {
 	readonly contextValue: string;
 	readonly tenantId: string;
 	readonly collapsibleState;
-	readonly defaultExperience: string;
+	readonly defaultExperience: Experience;
 
 	private _connectionString: string;
 
@@ -81,8 +85,8 @@ export class CosmosDBAccountNode implements IMongoServer {
 		private readonly _resourceGroupName: string) {
 		this.id = _databaseAccount.id;
 		this.tenantId = _subscriptionFilter.session.tenantId;
-		this.label = `${_databaseAccount.name} (${_resourceGroupName})`;
-		this.defaultExperience = _databaseAccount.tags.defaultExperience;
+		this.label = "CosmosDBAccountNode" + `${_databaseAccount.name} (${_resourceGroupName})`; //asdf
+		this.defaultExperience = <Experience>_databaseAccount.tags.defaultExperience;
 
 		switch (this.defaultExperience) {
 			case "MongoDB":
@@ -91,23 +95,41 @@ export class CosmosDBAccountNode implements IMongoServer {
 			case "DocumentDB":
 				this.contextValue = "cosmosDBDocumentServer"
 				break;
+			case "Graph":
+				this.contextValue = "cosmosGraphDatabaseServer"
+				break;
 			default:
 				this.contextValue = "cosmosDBGenericResource";
 		}
+		this.label += "/" + this.contextValue; //asdf
 		this.collapsibleState = this.contextValue === "cosmosDBGenericResource" ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed;
 	}
 
 	get iconPath(): any {
-		if (this.defaultExperience === "MongoDB") {
-			return {
-				light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'DataServer.svg'),
-				dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
-			};
-		} else {
-			return {
-				light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB account LARGE.svg'),
-				dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB account LARGE.svg')
-			};
+		switch (this.defaultExperience) {
+			case "MongoDB":
+				return {
+					light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'DataServer.svg'),
+					dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
+				};
+			case "Graph":
+				const graphPathAgnostic = path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB account LARGE.svg');
+				return {
+					light: graphPathAgnostic,
+					dark: graphPathAgnostic
+				};
+			case "DocumentDB":
+				const docDBPathAgnostic = path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB account LARGE.svg');
+				return {
+					light: docDBPathAgnostic,
+					dark: docDBPathAgnostic
+				};
+			default:
+				const genericPathAgnostic = path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - Generic account LARGE.svg'); // asdf
+				return {
+					light: genericPathAgnostic,
+					dark: genericPathAgnostic
+				};
 		}
 	}
 
@@ -133,29 +155,40 @@ export class CosmosDBAccountNode implements IMongoServer {
 	}
 
 	async getChildren(): Promise<INode[]> {
-		if (this.contextValue === "cosmosDBMongoServer") {
-			const connectionString = await this.getConnectionString();
-			return MongoServerNode.getMongoDatabaseNodes(connectionString, this);
-		}
-		if (this.contextValue === "cosmosDBDocumentServer") {
-			const masterKey = await this.getPrimaryMasterKey();
-			let client = new DocumentClient(this._databaseAccount.documentEndpoint, { masterKey: masterKey });
-			return await CosmosDBAccountNode.getDocDBDatabaseNodes(client, masterKey, await this.getEndpoint(), this.defaultExperience, this);
+		switch (this.contextValue) {
+			case "cosmosDBMongoServer":
+				const connectionString = await this.getConnectionString();
+				return MongoServerNode.getMongoDatabaseNodes(connectionString, this);
+
+			case "cosmosDBDocumentServer":
+			case "cosmosGraphDatabaseServer":
+				return await this.getDocumentDatabaseNodesByExperience(await this.getEndpoint(), this.defaultExperience, this);
 		}
 	}
 
-	static async getDocDBDatabaseNodes(client: DocumentClient, masterKey: string, endpoint: string, contextValue: string, server: INode): Promise<INode[]> {
-		let databases = await CosmosDBAccountNode.listDatabases(client);
-		return databases.map(database => new DocDBDatabaseNode(database.id, masterKey, endpoint, contextValue, server));
+	// Can handle DocumentDB or graph nodes
+	private async  getDocumentDatabaseNodesByExperience(endpoint: string, experience: Experience, server: INode): Promise<INode[]> {
+		const masterKey = await this.getPrimaryMasterKey();
+		let databases = await this.listDatabases(masterKey);
+		return databases.map(database => {
+			switch (experience) {
+				case "DocumentDB":
+					return new DocDBDatabaseNode(database.id, masterKey, endpoint, server);
+				case "Graph":
+					return new GraphDatabaseNode(database.id, masterKey, endpoint, server);
+				default:
+					throw new Error("Unexpected experience");
+			}
+		});
 	}
 
-	static async listDatabases(client): Promise<any[]> {
-		let databases = await client.readDatabases();
+	private async listDatabases(masterKey: string): Promise<INode[]> {
+		const client = new DocumentClient(this._databaseAccount.documentEndpoint, { masterKey: masterKey });
+		const databases = await client.readDatabases();
 		return await new Promise<any[]>((resolve, reject) => {
 			databases.toArray((err, dbs: Array<Object>) => err ? reject(err) : resolve(dbs));
 		});
 	}
-
 }
 
 export class AttachedServersNode implements INode {

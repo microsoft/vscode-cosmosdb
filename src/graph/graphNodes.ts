@@ -5,22 +5,18 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { Command } from 'vscode';
-import { INode } from '../nodes';
 import { DocumentClient } from 'documentdb';
+import { gremlin } from 'gremlin';
+import { INode } from '../nodes';
 
+//asdf
+// export interface IGraphServer extends INode {
+// 	getPrimaryMasterKey(): string;
+// 	getEndpoint(): string;
+// }
 
-export interface IDocDBServer extends INode {
-	getPrimaryMasterKey(): string;
-	getEndpoint(): string;
-}
-
-export interface IDocDBDocumentSpec {
-	_self: string;
-	_rid?: string;
-}
-
-export class DocDBDatabaseNode implements INode {
-	readonly contextValue: string = "cosmosDBDocumentDatabase";
+export class GraphDatabaseNode implements INode {
+	public readonly contextValue: string = "cosmosGraphDatabase";
 
 	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string, readonly server: INode) {
 	}
@@ -32,21 +28,21 @@ export class DocDBDatabaseNode implements INode {
 		return this._endPoint;
 	}
 
-
 	get label(): string {
-		return this.id;
+		return this.id + " (cosmosGraphDatabase)"; // asdf
 	}
 
 	get iconPath(): any {
 		return {
-			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - database LARGE.svg'),
-			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - database LARGE.svg')
+			// asdf
+			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure Graph - database LARGE.svg'), //asdf
+			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure Graph - database LARGE.svg')
 		};
 	}
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
-	getDbLink(): string {
+	public getDbLink(): string {
 		return 'dbs/' + this.id;
 	}
 
@@ -55,10 +51,10 @@ export class DocDBDatabaseNode implements INode {
 		const parentNode = this;
 		const client = new DocumentClient(this.getEndpoint(), { masterKey: this.getPrimaryMasterKey() });
 		let collections = await this.listCollections(dbLink, client);
-		return collections.map(collection => new DocDBCollectionNode(collection.id, parentNode));
+		return collections.map(collection => new GraphNode(collection.id, parentNode));
 	}
 
-	async listCollections(databaseLink, client): Promise<any> {
+	private async listCollections(databaseLink, client): Promise<any> {
 		let collections = await client.readCollections(databaseLink);
 		return await new Promise<any[]>((resolve, reject) => {
 			collections.toArray((err, cols: Array<Object>) => err ? reject(err) : resolve(cols));
@@ -67,16 +63,17 @@ export class DocDBDatabaseNode implements INode {
 
 }
 
+export class GraphNode implements INode {
 
-export class DocDBCollectionNode implements INode {
+	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
 
-	constructor(readonly id: string, readonly db: DocDBDatabaseNode) {
+	constructor(readonly id: string, readonly db: GraphDatabaseNode) {
 	}
 
-	readonly contextValue: string = "cosmosDBDocumentCollection";
+	readonly contextValue: string = "cosmosGraph";
 
 	get label(): string {
-		return "DocDBCollectionNode" + this.id;
+		return this.id + " cosmosGraph"; //asdf
 	}
 
 	get iconPath(): any {
@@ -85,7 +82,6 @@ export class DocDBCollectionNode implements INode {
 			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB collections LARGE.svg'),
 		};
 	}
-	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
 	getCollLink(): string {
 		return this.db.getDbLink() + '/colls/' + this.id;
@@ -100,11 +96,7 @@ export class DocDBCollectionNode implements INode {
 	}
 
 	async getChildren(): Promise<INode[]> {
-		const collLink: string = this.getCollLink();
-		const parentNode = this;
-		const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
-		let documents = await this.listDocuments(collLink, client);
-		return documents.map(document => new DocDBDocumentNode(document.id, parentNode, document));
+		return null;
 	}
 
 	async listDocuments(collSelfLink, client): Promise<any> {
@@ -123,33 +115,34 @@ export class DocDBCollectionNode implements INode {
 
 }
 
-export class DocDBDocumentNode implements INode {
-	data: IDocDBDocumentSpec;
-	constructor(readonly id: string, readonly collection: DocDBCollectionNode, payload: IDocDBDocumentSpec) {
-		this.data = payload;
-	}
+//asdf
+// export class DocDBDocumentNode implements INode {
+// 	data: IDocDBDocumentSpec;
+// 	constructor(readonly id: string, readonly collection: DocDBCollectionNode, payload: IDocDBDocumentSpec) {
+// 		this.data = payload;
+// 	}
 
-	readonly contextValue: string = "cosmosDBDocument";
+// 	readonly contextValue: string = "cosmosDBDocument";
 
-	get label(): string {
-		return "DocDBDocumentNode" + this.id;
-	}
+// 	get label(): string {
+// 		return this.id;
+// 	}
 
-	getDocLink(): string {
-		return this.collection.getCollLink() + '/docs/' + this.id;
-	}
+// 	getDocLink(): string {
+// 		return this.collection.getCollLink() + '/docs/' + this.id;
+// 	}
 
-	get iconPath(): any {
-		return {
-			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - document 2 LARGE.svg'),
-			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - document 2 LARGE.svg'),
-		};
-	}
-	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
+// 	get iconPath(): any {
+// 		return {
+// 			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - document 2 LARGE.svg'),
+// 			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - document 2 LARGE.svg'),
+// 		};
+// 	}
+// 	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
 
-	readonly command: Command = {
-		command: 'cosmosDB.openDocDBDocument',
-		arguments: [this],
-		title: ''
-	};
-}
+// 	readonly command: Command = {
+// 		command: 'cosmosDB.openDocDBDocument',
+// 		arguments: [this],
+// 		title: ''
+// 	};
+// }

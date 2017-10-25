@@ -33,7 +33,7 @@ export class DocDBCommands {
                     }
                 });
             });
-            const databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), await server.getEndpoint(), server.defaultExperience, server);
+            const databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), await server.getEndpoint(), server);
             explorer.refresh(server);
             DocDBCommands.createDocDBCollection(databaseNode, explorer);
         }

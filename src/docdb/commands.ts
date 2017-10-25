@@ -21,7 +21,7 @@ export class DocDBCommands {
         });
         if (databaseName) {
             const masterKey = await server.getPrimaryMasterKey();
-            const endpoint = await server.getEndpoint();
+            const endpoint = server.documentEndpoint;
             const client = new DocumentClient(endpoint, { masterKey: masterKey });
             await new Promise((resolve, reject) => {
                 client.createDatabase({ id: databaseName }, (err, result) => {
@@ -33,7 +33,7 @@ export class DocDBCommands {
                     }
                 });
             });
-            const databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), await server.getEndpoint(), server);
+            const databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), server.documentEndpoint, server);
             explorer.refresh(server);
             DocDBCommands.createDocDBCollection(databaseNode, explorer);
         }

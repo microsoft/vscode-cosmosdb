@@ -1,0 +1,104 @@
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #1e1e1e;
+    color: white;
+}
+
+* {
+    box-sizing: content-box;
+}
+
+h5 {
+    margin-bottom: 0;
+    color: white;
+
+}
+
+h1 {
+    color: white;
+    font-weight: 100;
+}
+
+.vertex {
+     /* Colors are handled dynamically */
+     fill: #0072c6;
+    stroke: #888;
+    stroke-width: 1px;
+}
+
+.edge {
+    stroke: #777;
+    stroke-width: 1px;
+}
+
+.label {
+    fill: #eee;
+    /* stroke: #777;
+    stroke-width: 2px; */
+}
+
+iframe {
+    border: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#background {
+    background: #222;
+    width:1200px;
+    height:500px;
+}
+#graph svg {
+
+}
+
+.error {
+    font-family: arial;
+    background: black;
+    color: #ff4040;
+    width: 100%;
+    height: 100px;
+    font-size: 12pt;
+    border: #ff4040 1px solid;
+}
+
+#queryStatus {
+    visibility: hidden;
+    margin-top: 10px;
+}
+
+#queryStatus.working {
+    visibility: visible;
+}
+
+.hidden {
+  display: none;
+}
+
+#debug h5 {
+    color: red;
+}
+
+#gremlinQuery {
+    font-size: 12pt;
+    width: 50%;
+    height: 25px;
+    border: 0;
+    padding: 10px 15px;
+    background: #333;
+    color: white;
+}
+#execute {
+    background: #0e639c;
+    color: white;
+    padding: 10px 25px;
+    border: 0;
+    height: 25px;
+    margin-left: 5px
+}
+
+#watermark {
+
+/*  margin-top: 20%;*/
+    text-align: center;
+}

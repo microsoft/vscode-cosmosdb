@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+
+<!--
+*  Copyright (c) Microsoft Corporation. All rights reserved.
+*  Licensed under the MIT License. See License.txt in the project root for license information.
+*-->
+
+<head>
+    <link rel="stylesheet" type="text/css" href="graphClient.css"></link>
+
+    <script src='../../node_modules/d3/d3.js' charset="UTF-8"></script>
+
+    <script>window.exports = {};</script>
+    <script src="../../node_modules/socket.io-client/dist/socket.io.js"></script>
+    <script>
+        io = exports.io;
+    </script>
+
+    <!-- Pick some test data asdf -->
+    <script src="test/testdata10.js"></script>
+</head>
+
+<body>
+    <h1 id="title">graphStephwe</h1>
+
+    <div>
+        <div>
+            <input id="gremlinQuery" type="text"></input>
+            <button id="execute" onclick="onExecuteClick()">Execute</button>
+        </div>
+        <div id="queryStatus">Working...</div>
+        <textarea id="queryError" class="error hidden" readonly="readonly"></textarea>
+    </div>
+
+    <div id="background" width="100%">
+        <div id="graph" class="hidden">
+            <!-- SVG will be inserted here -->
+        </div>
+        <div id="watermark">
+            Please enter a query and click Execute.
+        </div>
+    </div>
+
+    <div id="json" class="hidden">
+        <h5>JSON</h5>
+        <textarea id="jsonResults" style="height:400px; width: 100%; "></textarea>
+    </div>
+
+    <div id="debug" class="hidden">
+        <h5>Debug log</h5>
+        <textarea id="debugLog" style="height:400px; width: 100%; "></textarea>
+    </div>
+
+    <!-- Load the real code -->
+    <script src="../../out/src/graph/client/browserClient.js"></script>
+
+    <script>
+        gremlinQuery.value = "g.V()";
+        var browserClient = new BrowserClient(57567 /*asdf*/);
+
+        function onExecuteClick() {
+            browserClient.query(gremlinQuery.value);
+        }
+    </script>
+</body>
+
+</html>

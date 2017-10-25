@@ -28,10 +28,10 @@ export class DocDBDatabaseNode implements INode {
 	getPrimaryMasterKey(): string {
 		return this._primaryMasterKey;
 	}
+
 	getEndpoint(): string {
 		return this._endPoint;
 	}
-
 
 	get label(): string {
 		return this.id;

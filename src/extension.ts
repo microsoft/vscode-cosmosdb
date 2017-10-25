@@ -19,6 +19,7 @@ import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
 import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode, MongoDocumentNode } from './mongo/nodes';
 import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode } from './docdb/nodes';
+import { GraphNode } from './graph/graphNodes';
 import { CosmosDBAccountNode, INode } from './nodes';
 import { DocumentClient } from 'documentdb';
 import MongoDBLanguageClient from './mongo/languageClient';
@@ -26,6 +27,7 @@ import { Reporter } from './telemetry';
 import { UserCancelledError } from './errors';
 import { DocDBCommands } from './docdb/commands';
 import { DialogBoxResponses } from './constants'
+import { GraphViewsManager } from "./graph/GraphViewsManager";
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
@@ -34,6 +36,7 @@ let lastCommand: MongoCommand;
 let lastOpenedDocDBDocument: DocDBDocumentNode;
 let lastOpenedMongoDocument: MongoDocumentNode;
 let lastOpenedDocumentType: DocumentType;
+let graphViewsManager: GraphViewsManager = null;
 enum DocumentType {
 	Mongo,
 	DocDB
@@ -46,11 +49,15 @@ export function activate(context: vscode.ExtensionContext) {
 
 	languageClient = new MongoDBLanguageClient(context);
 
-	explorer = new CosmosDBExplorer(azureAccount, context.globalState);
+	graphViewsManager = new GraphViewsManager(context);
+	context.subscriptions.push(this.graphView);
+
+	explorer = new CosmosDBExplorer(azureAccount, graphViewsManager, context.globalState);
 	context.subscriptions.push(azureAccount.onFiltersChanged(() => explorer.refresh()));
 	context.subscriptions.push(azureAccount.onStatusChanged(() => explorer.refresh()));
 	context.subscriptions.push(azureAccount.onSessionsChanged(() => explorer.refresh()));
 	vscode.window.registerTreeDataProvider('cosmosDBExplorer', explorer);
+
 
 	// Commands
 	initAsyncCommand(context, 'cosmosDB.createAccount', async () => {
@@ -100,6 +107,13 @@ export function activate(context: vscode.ExtensionContext) {
 		lastOpenedDocDBDocument = document;
 		await util.showResult(JSON.stringify(document.data, null, 2), 'cosmos-document.json');
 		lastOpenedDocumentType = DocumentType.DocDB;
+	});
+
+	initAsyncCommand(context, 'graph.openExplorer', async (graph: GraphNode) => {
+		if (!graph) {
+			return; // asdf
+		}
+		await graph.showExplorer();
 	});
 }
 

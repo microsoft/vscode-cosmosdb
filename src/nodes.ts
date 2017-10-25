@@ -16,7 +16,9 @@ import DocumentdbManagementClient = require("azure-arm-documentdb");
 import { DocDBDatabaseNode } from './docdb/nodes';
 import { GraphDatabaseNode } from './graph/graphNodes';
 import { DocumentClient } from 'documentdb';
-import GraphRbacManagementClient = require('azure-graph'); // asdf
+//import GraphRbacManagementClient = require('azure-graph'); // asdf remove
+import { GraphViewsManager } from "./graph/GraphViewsManager";
+
 
 type Experience = "MongoDB" | "DocumentDB" | "Graph" | "Table";
 
@@ -33,9 +35,11 @@ export class SubscriptionNode implements INode {
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
-	constructor(private readonly subscriptionFilter?: AzureResourceFilter) {
+	constructor(private readonly _graphViewsManager: GraphViewsManager, private readonly subscriptionFilter?: AzureResourceFilter) {
 		this.id = subscriptionFilter.subscription.id;
 		this.label = subscriptionFilter.subscription.displayName;
+
+		//this._graphView.showResults("testid", "Test Results", "hi there");//asdf
 	}
 
 	get iconPath(): any {
@@ -58,7 +62,7 @@ export class SubscriptionNode implements INode {
 			const result = await Promise.all(resourceGroups.map(async group => {
 				let dbs = await docDBClient.databaseAccounts.listByResourceGroup(group.name);
 				dbs = dbs.sort((a, b) => a.name.localeCompare(b.name));
-				return Promise.all(dbs.map(async db => new CosmosDBAccountNode(this.subscriptionFilter, db, group.name)));
+				return Promise.all(dbs.map(async db => new CosmosDBAccountNode(this._graphViewsManager, this.subscriptionFilter, db, group.name)));
 			}));
 
 			nodes = [].concat(...result);
@@ -80,12 +84,14 @@ export class CosmosDBAccountNode implements IMongoServer {
 
 	private _connectionString: string;
 
-	constructor(private readonly _subscriptionFilter: AzureResourceFilter,
+	constructor(
+		private readonly _graphViewsManager: GraphViewsManager,
+		private readonly _subscriptionFilter: AzureResourceFilter,
 		private readonly _databaseAccount: docDBModels.DatabaseAccount,
 		private readonly _resourceGroupName: string) {
 		this.id = _databaseAccount.id;
 		this.tenantId = _subscriptionFilter.session.tenantId;
-		this.label = "CosmosDBAccountNode" + `${_databaseAccount.name} (${_resourceGroupName})`; //asdf
+		this.label = `${_databaseAccount.name} (${_resourceGroupName})`;
 		this.defaultExperience = <Experience>_databaseAccount.tags.defaultExperience;
 
 		switch (this.defaultExperience) {
@@ -101,7 +107,7 @@ export class CosmosDBAccountNode implements IMongoServer {
 			default:
 				this.contextValue = "cosmosDBGenericResource";
 		}
-		this.label += "/" + this.contextValue; //asdf
+
 		this.collapsibleState = this.contextValue === "cosmosDBGenericResource" ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed;
 	}
 
@@ -150,8 +156,8 @@ export class CosmosDBAccountNode implements IMongoServer {
 		return result.primaryMasterKey;
 	}
 
-	async getEndpoint(): Promise<string> {
-		return await this._databaseAccount.documentEndpoint;
+	get documentEndpoint(): string {
+		return this._databaseAccount.documentEndpoint;
 	}
 
 	async getChildren(): Promise<INode[]> {
@@ -162,20 +168,22 @@ export class CosmosDBAccountNode implements IMongoServer {
 
 			case "cosmosDBDocumentServer":
 			case "cosmosGraphDatabaseServer":
-				return await this.getDocumentDatabaseNodesByExperience(await this.getEndpoint(), this.defaultExperience, this);
+				return await this.getDocumentDatabaseNodesByExperience();
 		}
 	}
 
 	// Can handle DocumentDB or graph nodes
-	private async  getDocumentDatabaseNodesByExperience(endpoint: string, experience: Experience, server: INode): Promise<INode[]> {
+	private async getDocumentDatabaseNodesByExperience(): Promise<INode[]> {
 		const masterKey = await this.getPrimaryMasterKey();
-		let databases = await this.listDatabases(masterKey);
+		const databases = await this.listDatabases(masterKey);
+		const documentEndpoint = this.documentEndpoint;
+		const experience = this.defaultExperience;
 		return databases.map(database => {
 			switch (experience) {
 				case "DocumentDB":
-					return new DocDBDatabaseNode(database.id, masterKey, endpoint, server);
+					return new DocDBDatabaseNode(database.id, masterKey, documentEndpoint, this);
 				case "Graph":
-					return new GraphDatabaseNode(database.id, masterKey, endpoint, server);
+					return new GraphDatabaseNode(database.id, masterKey, documentEndpoint, this._graphViewsManager, this);
 				default:
 					throw new Error("Unexpected experience");
 			}
@@ -183,7 +191,7 @@ export class CosmosDBAccountNode implements IMongoServer {
 	}
 
 	private async listDatabases(masterKey: string): Promise<INode[]> {
-		const client = new DocumentClient(this._databaseAccount.documentEndpoint, { masterKey: masterKey });
+		const client = new DocumentClient(this.documentEndpoint, { masterKey: masterKey });
 		const databases = await client.readDatabases();
 		return await new Promise<any[]>((resolve, reject) => {
 			databases.toArray((err, dbs: Array<Object>) => err ? reject(err) : resolve(dbs));

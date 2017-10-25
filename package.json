@@ -34,11 +34,15 @@
 		"onCommand:cosmosDB.createAccount",
 		"onCommand:cosmosDB.removeMongoServer",
 		"onCommand:cosmosDB.createMongoDatabase",
+		"onCommand:cosmosDB.createMongoCollection",
+		"onCommand:cosmosDB.createMongoDocument",
 		"onCommand:cosmosDB.createDocDBDatabase",
 		"onCommand:cosmosDB.createDocDBCollection",
 		"onCommand:cosmosDB.createDocDBDocument",
 		"onCommand:cosmosDB.connectMongoDB",
 		"onCommand:cosmosDB.deleteMongoDB",
+		"onCommand:cosmosDB.deleteMongoCollection",
+		"onCommand:cosmosDB.deleteMongoDocument",
 		"onCommand:cosmosDB.deleteDocDBDatabase",
 		"onCommand:cosmosDB.deleteDocDBCollection",
 		"onCommand:cosmosDB.deleteDocDBDocument",
@@ -117,6 +121,16 @@
 				"title": "Create Database"
 			},
 			{
+				"category": "MongoDB",
+				"command": "cosmosDB.createMongoCollection",
+				"title": "Create Collection"
+			},
+			{
+				"category": "MongoDB",
+				"command": "cosmosDB.createMongoDocument",
+				"title": "Create Document"
+			},
+			{
 				"category": "DocumentDB",
 				"command": "cosmosDB.createDocDBDatabase",
 				"title": "Create Database"
@@ -144,7 +158,17 @@
 			{
 				"category": "MongoDB",
 				"command": "cosmosDB.deleteMongoDB",
-				"title": "Delete"
+				"title": "Delete Database"
+			},
+			{
+				"category": "MongoDB",
+				"command": "cosmosDB.deleteMongoCollection",
+				"title": "Delete Collection"
+			},
+			{
+				"category": "MongoDB",
+				"command": "cosmosDB.deleteMongoDocument",
+				"title": "Delete Document"
 			},
 			{
 				"category": "DocumentDB",
@@ -259,6 +283,14 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
 				},
 				{
+					"command": "cosmosDB.createMongoDocument",
+					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+				},
+				{
+					"command": "cosmosDB.createMongoCollection",
+					"when": "view == cosmosDBExplorer && viewItem == mongoDb"
+				},
+				{
 					"command": "cosmosDB.createDocDBDocument",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
 				},
@@ -281,6 +313,14 @@
 				{
 					"command": "cosmosDB.deleteMongoDB",
 					"when": "view == cosmosDBExplorer && viewItem == mongoDb"
+				},
+				{
+					"command": "cosmosDB.deleteMongoCollection",
+					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+				},
+				{
+					"command": "cosmosDB.deleteMongoDocument",
+					"when": "view == cosmosDBExplorer && viewItem == MongoDocument"
 				},
 				{
 					"command": "cosmosDB.deleteDocDBCollection",

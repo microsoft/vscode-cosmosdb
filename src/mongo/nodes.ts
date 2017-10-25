@@ -194,7 +194,7 @@ export class MongoDatabaseNode implements INode {
 
 export class MongoCollectionNode implements INode {
 
-	constructor(private collection: Collection, readonly db: MongoDatabaseNode) {
+	constructor(readonly collection: Collection, readonly db: MongoDatabaseNode) {
 	}
 
 	readonly contextValue: string = "MongoCollection";

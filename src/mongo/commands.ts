@@ -93,8 +93,8 @@ export class MongoCommands {
 	}
 
 	public static async deleteMongoCollection(collectionNode: MongoCollectionNode, explorer: CosmosDBExplorer) {
-		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection '${collectionNode.label}'?`, DialogBoxResponses.inputYes);
-		if (confirmed === DialogBoxResponses.inputYes) {
+		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection '${collectionNode.label}'?`, DialogBoxResponses.Yes);
+		if (confirmed === DialogBoxResponses.Yes) {
 			const db = collectionNode.db;
 			db.dropCollection(collectionNode.id);
 			explorer.refresh(collectionNode.db);
@@ -110,8 +110,8 @@ export class MongoCommands {
 		explorer.refresh(collectionNode);
 	}
 	public static async deleteMongoDocument(documentNode: MongoDocumentNode, explorer: CosmosDBExplorer) {
-		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection '${documentNode.label}'?`, DialogBoxResponses.inputYes);
-		if (confirmed === DialogBoxResponses.inputYes) {
+		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection '${documentNode.label}'?`, DialogBoxResponses.Yes);
+		if (confirmed === DialogBoxResponses.Yes) {
 			const coll = documentNode.collection;
 			await coll.collection.deleteOne({ "_id": documentNode.id });
 			explorer.refresh(documentNode.collection);

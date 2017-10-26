@@ -152,11 +152,11 @@ async function updateOpenDocumentIfChanged(): Promise<void> {
 	const editor = vscode.window.activeTextEditor;
 	const newDocument = JSON.parse(editor.document.getText());
 	if (!_.isMatch(oldDocument, newDocument)) {
-		const confirmed = await vscode.window.showWarningMessage(`Your changes to  '${oldDocumentNode.label}'  will be lost. Update to Azure?`, DialogBoxResponses.inputYes, DialogBoxResponses.inputNo);
+		const confirmed = await vscode.window.showWarningMessage(`Your changes to  '${oldDocumentNode.label}'  will be lost. Update to Azure?`, DialogBoxResponses.Yes, DialogBoxResponses.No);
 		if (!confirmed) {
 			throw UserCancelledError;
 		}
-		else if (confirmed === DialogBoxResponses.inputYes) {
+		else if (confirmed === DialogBoxResponses.Yes) {
 			await update();
 		}
 	}
@@ -242,8 +242,8 @@ async function removeMongoServer(node: INode) {
 
 async function deleteDatabase(database: MongoDatabaseNode): Promise<void> {
 	if (database) {
-		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete database ${database.id} and its collections?`, DialogBoxResponses.inputYes, DialogBoxResponses.inputNo);
-		if (confirmed === DialogBoxResponses.inputYes) {
+		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete database ${database.id} and its collections?`, DialogBoxResponses.Yes, DialogBoxResponses.No);
+		if (confirmed === DialogBoxResponses.Yes) {
 			if (connectedDb && connectedDb.server.id === database.server.id && connectedDb.id === database.id) {
 				connectedDb = null;
 				languageClient.disconnect();

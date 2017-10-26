@@ -14,7 +14,7 @@ import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as util from './../util';
-import { connectToDatabase } from '../extension';
+import { DialogBoxResponses } from '../constants'
 
 export class MongoCommands {
 
@@ -89,13 +89,12 @@ export class MongoCommands {
 		if (collectionName) {
 			await db.createCollection(collectionName);
 			explorer.refresh(db);
-			connectToDatabase(db);
 		}
 	}
 
 	public static async deleteMongoCollection(collectionNode: MongoCollectionNode, explorer: CosmosDBExplorer) {
-		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection ${collectionNode.label}?`, "Yes");
-		if (confirmed === "Yes") {
+		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection '${collectionNode.label}'?`, DialogBoxResponses.inputYes);
+		if (confirmed === DialogBoxResponses.inputYes) {
 			const db = collectionNode.db;
 			db.dropCollection(collectionNode.id);
 			explorer.refresh(collectionNode.db);
@@ -111,8 +110,8 @@ export class MongoCommands {
 		explorer.refresh(collectionNode);
 	}
 	public static async deleteMongoDocument(documentNode: MongoDocumentNode, explorer: CosmosDBExplorer) {
-		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection ${documentNode.label}?`, "Yes");
-		if (confirmed === "Yes") {
+		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection '${documentNode.label}'?`, DialogBoxResponses.inputYes);
+		if (confirmed === DialogBoxResponses.inputYes) {
 			const coll = documentNode.collection;
 			await coll.collection.deleteOne({ "_id": documentNode.id });
 			explorer.refresh(documentNode.collection);

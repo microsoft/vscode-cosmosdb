@@ -10,6 +10,7 @@ import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode, IDocDBDocume
 import { DocumentClient } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
 import { CosmosDBExplorer } from './../explorer';
+import { DialogBoxResponses } from '../constants'
 
 export class DocDBCommands {
     public static async createDocDBDatabase(server: CosmosDBResourceNode, explorer: CosmosDBExplorer) {
@@ -62,7 +63,7 @@ export class DocDBCommands {
 
     public static async createDocDBCollection(db: DocDBDatabaseNode, explorer: CosmosDBExplorer) {
         const collectionName = await vscode.window.showInputBox({
-            placeHolder: 'Collection Name',
+            placeHolder: 'Enter name of collection',
             ignoreFocusOut: true
         });
         if (collectionName) {
@@ -136,9 +137,9 @@ export class DocDBCommands {
     }
     public static async deleteDocDBDatabase(db: DocDBDatabaseNode, explorer: CosmosDBExplorer): Promise<void> {
         if (db) {
-            const confirmed = await vscode.window.showWarningMessage("Are you sure you want to delete database '" + db.label + "' and its collections?",
-                "Yes", "No");
-            if (confirmed === "Yes") {
+            const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete database '${db.label}' and its collections?`,
+                DialogBoxResponses.Yes, DialogBoxResponses.No);
+            if (confirmed === DialogBoxResponses.Yes) {
                 const masterKey = await db.getPrimaryMasterKey();
                 const endpoint = await db.getEndpoint();
                 const client = new DocumentClient(endpoint, { masterKey: masterKey });
@@ -153,8 +154,8 @@ export class DocDBCommands {
     }
     public static async deleteDocDBCollection(coll: DocDBCollectionNode, explorer: CosmosDBExplorer): Promise<void> {
         if (coll) {
-            const confirmed = await vscode.window.showWarningMessage("Are you sure you want to delete collection '" + coll.label + "'?", "Yes", "No");
-            if (confirmed === "Yes") {
+            const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection '${coll.label}'?`, DialogBoxResponses.Yes, DialogBoxResponses.No);
+            if (confirmed === DialogBoxResponses.Yes) {
                 const masterKey = await coll.db.getPrimaryMasterKey();
                 const endpoint = await coll.db.getEndpoint();
                 const client = new DocumentClient(endpoint, { masterKey: masterKey });
@@ -171,8 +172,8 @@ export class DocDBCommands {
 
     public static async deleteDocDBDocument(doc: DocDBDocumentNode, explorer: CosmosDBExplorer): Promise<void> {
         if (doc) {
-            const confirmed = await vscode.window.showWarningMessage("Are you sure you want to delete document '" + doc.label + "'?", "Yes", "No");
-            if (confirmed === "Yes") {
+            const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete document '${doc.label}'?`, DialogBoxResponses.Yes, DialogBoxResponses.No);
+            if (confirmed === DialogBoxResponses.Yes) {
                 const masterKey = await doc.collection.db.getPrimaryMasterKey();
                 const endpoint = await doc.collection.db.getEndpoint();
                 const client = new DocumentClient(endpoint, { masterKey: masterKey });

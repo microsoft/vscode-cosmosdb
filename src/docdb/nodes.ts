@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { Command } from 'vscode';
 import { INode } from '../nodes';
-import { DocumentClient } from 'documentdb';
+import { DocumentClient, QueryIterator } from 'documentdb';
 
 
 export interface IDocDBServer extends INode {
@@ -74,6 +74,8 @@ export class DocDBCollectionNode implements INode {
 	}
 
 	readonly contextValue: string = "cosmosDBDocumentCollection";
+	private children = null;
+	private _batchSize: number = 20;
 
 	get label(): string {
 		return this.id;
@@ -91,6 +93,10 @@ export class DocDBCollectionNode implements INode {
 		return this.db.getDbLink() + '/colls/' + this.id;
 	}
 
+	clearCache(): void {
+		this.children = null;
+	}
+
 	async getDocuments(): Promise<any> {
 		const dbLink: string = this.db.getDbLink();
 		const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
@@ -100,18 +106,43 @@ export class DocDBCollectionNode implements INode {
 	}
 
 	async getChildren(): Promise<INode[]> {
-		const collLink: string = this.getCollLink();
-		const parentNode = this;
-		const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
-		let documents = await this.listDocuments(collLink, client);
-		return documents.map(document => new DocDBDocumentNode(document.id, parentNode, document));
+		if (!this.children) {
+			const collLink: string = this.getCollLink();
+			const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
+			let documents = await this.listDocuments(collLink, client);
+			this.addChildrenFromDocuments(documents);
+		}
+		return this.children ? this.children : [];
+
+	}
+
+	addChildrenFromDocuments(documents): void {
+		let loadMoreHandle = null;
+		if (!documents.slice(-1)[0].hasOwnProperty("_rid")) {
+			loadMoreHandle = documents.pop();
+		}
+		const newDocuments = documents.map(document => new DocDBDocumentNode(document.id, this, document));
+		if (this.children) {
+			this.children = this.children.concat(newDocuments);
+		}
+		else {
+			this.children = newDocuments;
+		}
+		if (loadMoreHandle) {
+			this.children.push(new LoadMoreNode(loadMoreHandle, this));
+		}
+	}
+
+	async addMoreChildren(): Promise<void> {
+		const loadMoreNode: LoadMoreNode = this.children.pop();
+		let loadMoreDocuments = await LoadMoreNode.loadNextKElements(loadMoreNode.iterator, this._batchSize);
+		this.addChildrenFromDocuments(loadMoreDocuments);
 	}
 
 	async listDocuments(collSelfLink, client): Promise<any> {
-		let documents = await client.readDocuments(collSelfLink);
-		return await new Promise<any[]>((resolve, reject) => {
-			documents.toArray((err, cols: Array<Object>) => err ? reject(err) : resolve(cols));
-		});
+		let docIterator = await client.readDocuments(collSelfLink);
+		let documents = await LoadMoreNode.loadNextKElements(docIterator, this._batchSize);
+		return documents;
 	}
 
 	async readOneCollection(selfLink, client): Promise<any> {
@@ -152,4 +183,36 @@ export class DocDBDocumentNode implements INode {
 		arguments: [this],
 		title: ''
 	};
+}
+
+export class LoadMoreNode implements INode {
+	constructor(readonly iterator: QueryIterator<any>, readonly parentNode: DocDBCollectionNode) {
+	}
+
+	readonly id = `${this.parentNode.id}.LoadMore`;
+
+	readonly label = `Load More...`;
+
+	readonly contextValue = 'LoadMoreButton'
+
+	readonly command: Command = {
+		command: 'cosmosDB.loadMore',
+		arguments: [this],
+		title: ''
+	};
+
+	static async loadNextKElements(iterator: QueryIterator<any>, k: number): Promise<any> {
+		let elements = [], i: number = 0, hasMoreItems: boolean = false;
+		let current = await new Promise<any>((resolve, reject) => iterator.nextItem((err, result) => err ? reject(err) : resolve(result)));
+		while (current !== undefined && i < k) {
+			elements.push(current);
+			i++;
+			current = await new Promise<any>((resolve, reject) => iterator.nextItem((err, result) => err ? reject(err) : resolve(result)));
+		}
+		if (current !== undefined) {
+			hasMoreItems = true;
+			elements.push(iterator);
+		}
+		return elements;
+	}
 }

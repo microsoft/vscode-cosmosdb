@@ -11,7 +11,7 @@ import DocumentdbManagementClient = require("azure-arm-documentdb");
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import { DocumentClient } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
-import { CosmosDBResourceNode } from './nodes';
+import { CosmosDBAccountNode } from './nodes';
 import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode, IDocDBDocumentSpec } from './docdb/nodes';
 import { CosmosDBExplorer } from './explorer';
 

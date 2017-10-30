@@ -5,14 +5,14 @@
 
 import * as vscode from 'vscode';
 import * as util from "./../util";
-import { CosmosDBResourceNode } from './../nodes';
+import { CosmosDBAccountNode } from './../nodes';
 import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode, IDocDBDocumentSpec } from './nodes';
 import { DocumentClient } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
 import { CosmosDBExplorer } from './../explorer';
 
 export class DocDBCommands {
-    public static async createDocDBDatabase(server: CosmosDBResourceNode, explorer: CosmosDBExplorer) {
+    public static async createDocDBDatabase(server: CosmosDBAccountNode, explorer: CosmosDBExplorer) {
         const databaseName = await vscode.window.showInputBox({
             placeHolder: 'Database Name',
             validateInput: DocDBCommands.validateDatabaseName,

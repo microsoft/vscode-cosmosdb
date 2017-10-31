@@ -26,7 +26,7 @@ export class DocDBCommands {
             await new Promise((resolve, reject) => {
                 client.createDatabase({ id: databaseName }, (err, result) => {
                     if (err) {
-                        reject(err.body);
+                        reject(new Error(err.body));
                     }
                     else {
                         resolve(result);
@@ -50,7 +50,7 @@ export class DocDBCommands {
         await new Promise((resolve, reject) => {
             client.createDocument(coll.getCollLink(), { 'id': docid }, (err, result) => {
                 if (err) {
-                    reject(err.body);
+                    reject(new Error(err.body));
                 }
                 else {
                     resolve(result);
@@ -97,7 +97,7 @@ export class DocDBCommands {
                     await new Promise((resolve, reject) => {
                         client.createCollection(db.getDbLink(), collectionDef, options, (err, result) => {
                             if (err) {
-                                reject(err.body);
+                                reject(new Error(err.body));
                             }
                             else {
                                 resolve(result);

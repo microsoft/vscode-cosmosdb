@@ -112,6 +112,7 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 		const start = Date.now();
 		let result = 'Succeeded';
 		let errorData: string = '';
+		const output = util.getOutputChannel();
 
 		try {
 			await callback(...args);
@@ -122,9 +123,17 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 				result = 'Canceled';
 			}
 			else if (err instanceof Error) {
-				vscode.window.showErrorMessage(err.message);
+				output.appendLine(err.message);
+				if (JSON.parse(err.message).message.includes("\n") || JSON.parse(err.message).message.includes("\r")) {
+					output.show();
+					vscode.window.showErrorMessage('An error has occured. See output window for more details.');
+				}
+				else {
+					vscode.window.showErrorMessage(err.message);
+				}
 			}
 			else if (typeof err === "string") {
+				output.appendLine(err);
 				vscode.window.showErrorMessage(err);
 			}
 		} finally {

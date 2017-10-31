@@ -49,6 +49,12 @@ export function errToString(error: any): string {
 	return error.toString();
 }
 
+const outputChannel = vscode.window.createOutputChannel("Azure CosmosDB");
+
+export function getOutputChannel(): vscode.OutputChannel {
+	return outputChannel;
+}
+
 export function showResult(result: string, filename: string, column?: vscode.ViewColumn): Thenable<void> {
 	let uri: vscode.Uri = null;
 	if (vscode.workspace.rootPath) {

@@ -25,6 +25,7 @@ import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
 import { UserCancelledError } from './errors';
 import { DocDBCommands } from './docdb/commands';
+import { DialogBoxResponses } from './constants'
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
@@ -62,7 +63,12 @@ export function activate(context: vscode.ExtensionContext) {
 	initCommand(context, 'cosmosDB.refresh', (node: INode) => explorer.refresh(node));
 	initAsyncCommand(context, 'cosmosDB.removeMongoServer', (node: INode) => removeMongoServer(node));
 	initAsyncCommand(context, 'cosmosDB.createMongoDatabase', (node: IMongoServer) => createMongoDatabase(node));
+	initAsyncCommand(context, 'cosmosDB.createMongoCollection', async (node: MongoDatabaseNode) => {
+		MongoCommands.createMongoCollection(node, explorer);
+		connectToDatabase(node);
+	});
 	initAsyncCommand(context, 'cosmosDB.createDocDBDatabase', (node: CosmosDBAccountNode) => DocDBCommands.createDocDBDatabase(node, explorer));
+	initAsyncCommand(context, 'cosmosDB.createMongoDocument', (node: MongoCollectionNode) => MongoCommands.createMongoDocument(node, explorer));
 	initAsyncCommand(context, 'cosmosDB.createDocDBCollection', (node: DocDBDatabaseNode) => DocDBCommands.createDocDBCollection(node, explorer));
 	initAsyncCommand(context, 'cosmosDB.createDocDBDocument', (node: DocDBCollectionNode) => DocDBCommands.createDocDBDocument(node, explorer));
 	initCommand(context, 'cosmosDB.openInPortal', (node: CosmosDBAccountNode) => openInPortal(node));
@@ -71,6 +77,8 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.window.setStatusBarMessage('Mongo: Not connected');
 	initAsyncCommand(context, 'cosmosDB.connectMongoDB', (element: MongoDatabaseNode) => connectToDatabase(element));
 	initAsyncCommand(context, 'cosmosDB.deleteMongoDB', (element: MongoDatabaseNode) => deleteDatabase(element));
+	initAsyncCommand(context, 'cosmosDB.deleteMongoCollection', (element: MongoCollectionNode) => MongoCommands.deleteMongoCollection(element, explorer));
+	initAsyncCommand(context, 'cosmosDB.deleteMongoDocument', (element: MongoDocumentNode) => MongoCommands.deleteMongoDocument(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDatabase', (element: DocDBDatabaseNode) => DocDBCommands.deleteDocDBDatabase(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBCollection', (element: DocDBCollectionNode) => DocDBCommands.deleteDocDBCollection(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (element: DocDBDocumentNode) => DocDBCommands.deleteDocDBDocument(element, explorer));
@@ -144,11 +152,11 @@ async function updateOpenDocumentIfChanged(): Promise<void> {
 	const editor = vscode.window.activeTextEditor;
 	const newDocument = JSON.parse(editor.document.getText());
 	if (!_.isMatch(oldDocument, newDocument)) {
-		const confirmed = await vscode.window.showWarningMessage(`Your changes to  ${oldDocumentNode.label}  will be lost. Update to Azure?`, "Yes", "No");
+		const confirmed = await vscode.window.showWarningMessage(`Your changes to  '${oldDocumentNode.label}'  will be lost. Update to Azure?`, DialogBoxResponses.Yes, DialogBoxResponses.No);
 		if (!confirmed) {
 			throw UserCancelledError;
 		}
-		else if (confirmed === "Yes") {
+		else if (confirmed === DialogBoxResponses.Yes) {
 			await update();
 		}
 	}
@@ -234,8 +242,8 @@ async function removeMongoServer(node: INode) {
 
 async function deleteDatabase(database: MongoDatabaseNode): Promise<void> {
 	if (database) {
-		const confirmed = await vscode.window.showWarningMessage('Are you sure you want to delete database \'' + database.id + '\' and its collections?', "Yes", "No");
-		if (confirmed === "Yes") {
+		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete database ${database.id} and its collections?`, DialogBoxResponses.Yes, DialogBoxResponses.No);
+		if (confirmed === DialogBoxResponses.Yes) {
 			if (connectedDb && connectedDb.server.id === database.server.id && connectedDb.id === database.id) {
 				connectedDb = null;
 				languageClient.disconnect();

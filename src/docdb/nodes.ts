@@ -67,7 +67,6 @@ export class DocDBDatabaseNode implements INode {
 
 }
 
-
 export class DocDBCollectionNode implements INode {
 
 	constructor(readonly id: string, readonly db: DocDBDatabaseNode) {
@@ -109,7 +108,8 @@ export class DocDBCollectionNode implements INode {
 		if (!this.children) {
 			const collLink: string = this.getCollLink();
 			const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
-			let documents = await this.listDocuments(collLink, client);
+			let docIterator = await client.readDocuments(collLink);
+			let documents = await LoadMoreNode.loadNextKElements(docIterator, this._batchSize);
 			this.addChildrenFromDocuments(documents);
 		}
 		return this.children ? this.children : [];
@@ -137,19 +137,6 @@ export class DocDBCollectionNode implements INode {
 		const loadMoreNode: LoadMoreNode = this.children.pop();
 		let loadMoreDocuments = await LoadMoreNode.loadNextKElements(loadMoreNode.iterator, this._batchSize);
 		this.addChildrenFromDocuments(loadMoreDocuments);
-	}
-
-	async listDocuments(collSelfLink, client): Promise<any> {
-		let docIterator = await client.readDocuments(collSelfLink);
-		let documents = await LoadMoreNode.loadNextKElements(docIterator, this._batchSize);
-		return documents;
-	}
-
-	async readOneCollection(selfLink, client): Promise<any> {
-		let documents = await client.readDocuments(selfLink, { maxItemCount: 20 });
-		return await new Promise<any[]>((resolve, reject) => {
-			documents.toArray((err, docs: Array<Object>) => err ? reject(err) : resolve(docs));
-		});
 	}
 
 }

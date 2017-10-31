@@ -19,7 +19,7 @@ import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
 import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode, MongoDocumentNode } from './mongo/nodes';
 import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode } from './docdb/nodes';
-import { CosmosDBResourceNode, INode } from './nodes';
+import { CosmosDBAccountNode, INode } from './nodes';
 import { DocumentClient } from 'documentdb';
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
@@ -67,12 +67,12 @@ export function activate(context: vscode.ExtensionContext) {
 		MongoCommands.createMongoCollection(node, explorer);
 		connectToDatabase(node);
 	});
-	initAsyncCommand(context, 'cosmosDB.createDocDBDatabase', (node: CosmosDBResourceNode) => DocDBCommands.createDocDBDatabase(node, explorer));
+	initAsyncCommand(context, 'cosmosDB.createDocDBDatabase', (node: CosmosDBAccountNode) => DocDBCommands.createDocDBDatabase(node, explorer));
 	initAsyncCommand(context, 'cosmosDB.createMongoDocument', (node: MongoCollectionNode) => MongoCommands.createMongoDocument(node, explorer));
 	initAsyncCommand(context, 'cosmosDB.createDocDBCollection', (node: DocDBDatabaseNode) => DocDBCommands.createDocDBCollection(node, explorer));
 	initAsyncCommand(context, 'cosmosDB.createDocDBDocument', (node: DocDBCollectionNode) => DocDBCommands.createDocDBDocument(node, explorer));
-	initCommand(context, 'cosmosDB.openInPortal', (node: CosmosDBResourceNode) => openInPortal(node));
-	initAsyncCommand(context, 'cosmosDB.copyConnectionString', (node: CosmosDBResourceNode) => copyConnectionString(node));
+	initCommand(context, 'cosmosDB.openInPortal', (node: CosmosDBAccountNode) => openInPortal(node));
+	initAsyncCommand(context, 'cosmosDB.copyConnectionString', (node: CosmosDBAccountNode) => copyConnectionString(node));
 
 	vscode.window.setStatusBarMessage('Mongo: Not connected');
 	initAsyncCommand(context, 'cosmosDB.connectMongoDB', (element: MongoDatabaseNode) => connectToDatabase(element));
@@ -219,7 +219,7 @@ async function createMongoDatabase(server: IMongoServer) {
 }
 
 
-function openInPortal(node: CosmosDBResourceNode) {
+function openInPortal(node: CosmosDBAccountNode) {
 	if (node) {
 		const portalLink = `https://portal.azure.com/${node.tenantId}/#resource${node.id}`;
 		opn(portalLink);

@@ -19,6 +19,11 @@ export interface IDocDBDocumentSpec {
 	_rid?: string;
 }
 
+interface IResults {
+	results: Array<any>,
+	hasMore: boolean
+}
+
 export class DocDBDatabaseNode implements INode {
 	readonly contextValue: string;
 	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string, readonly defaultExperience: string, readonly server: INode) {
@@ -31,7 +36,6 @@ export class DocDBDatabaseNode implements INode {
 	getEndpoint(): string {
 		return this._endPoint;
 	}
-
 
 	get label(): string {
 		return this.id;
@@ -73,7 +77,9 @@ export class DocDBCollectionNode implements INode {
 	}
 
 	readonly contextValue: string = "cosmosDBDocumentCollection";
-	private children = null;
+	private _children = [];
+	private _hasFetched: boolean = false;
+	private _loadMoreNode: LoadMoreNode = null;
 	private _batchSize: number = 20;
 
 	get label(): string {
@@ -93,50 +99,38 @@ export class DocDBCollectionNode implements INode {
 	}
 
 	clearCache(): void {
-		this.children = null;
-	}
-
-	async getDocuments(): Promise<any> {
-		const dbLink: string = this.db.getDbLink();
-		const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
-		const collSelfLink = this.getCollLink();
-		const docs = await this.readOneCollection(collSelfLink, client);
-		return await docs;
+		this._children = null;
+		this._hasFetched = false;
+		this._loadMoreNode = null;
 	}
 
 	async getChildren(): Promise<INode[]> {
-		if (!this.children) {
+		if (!this._hasFetched) {
 			const collLink: string = this.getCollLink();
 			const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
 			let docIterator = await client.readDocuments(collLink);
-			let documents = await LoadMoreNode.loadNextKElements(docIterator, this._batchSize);
-			this.addChildrenFromDocuments(documents);
+			const elements = await LoadMoreNode.loadMore(docIterator, this._batchSize);
+			const documents = elements.results;
+			if (elements.hasMore) {
+				this._loadMoreNode = new LoadMoreNode(docIterator, this);
+			}
+			else {
+				this._loadMoreNode = null;
+			}
+			this._children = this._children.concat(documents.map(document => new DocDBDocumentNode(document.id, this, document)));
+			this._hasFetched = true;
 		}
-		return this.children ? this.children : [];
+		return this._children.concat([this._loadMoreNode]);
 
-	}
-
-	addChildrenFromDocuments(documents): void {
-		let loadMoreHandle = null;
-		if (!documents.slice(-1)[0].hasOwnProperty("_rid")) {
-			loadMoreHandle = documents.pop();
-		}
-		const newDocuments = documents.map(document => new DocDBDocumentNode(document.id, this, document));
-		if (this.children) {
-			this.children = this.children.concat(newDocuments);
-		}
-		else {
-			this.children = newDocuments;
-		}
-		if (loadMoreHandle) {
-			this.children.push(new LoadMoreNode(loadMoreHandle, this));
-		}
 	}
 
 	async addMoreChildren(): Promise<void> {
-		const loadMoreNode: LoadMoreNode = this.children.pop();
-		let loadMoreDocuments = await LoadMoreNode.loadNextKElements(loadMoreNode.iterator, this._batchSize);
-		this.addChildrenFromDocuments(loadMoreDocuments);
+		const elements = await LoadMoreNode.loadMore(this._loadMoreNode.iterator, this._batchSize);
+		const loadMoreDocuments = elements.results;
+		if (!elements.hasMore) {
+			this._loadMoreNode = null;
+		}
+		this._children = this._children.concat(loadMoreDocuments.map(document => new DocDBDocumentNode(document.id, this, document)));
 	}
 
 }
@@ -188,18 +182,19 @@ export class LoadMoreNode implements INode {
 		title: ''
 	};
 
-	static async loadNextKElements(iterator: QueryIterator<any>, k: number): Promise<any> {
-		let elements = [], i: number = 0, hasMoreItems: boolean = false;
+	static async loadMore(iterator: QueryIterator<any>, batchSize: number = 20): Promise<IResults> {
+		let elements = [];
+		let i: number = 0
+		let hasMoreItems: boolean = false;
 		let current = await new Promise<any>((resolve, reject) => iterator.nextItem((err, result) => err ? reject(err) : resolve(result)));
-		while (current !== undefined && i < k) {
+		while (current !== undefined && i < batchSize) {
 			elements.push(current);
 			i++;
 			current = await new Promise<any>((resolve, reject) => iterator.nextItem((err, result) => err ? reject(err) : resolve(result)));
 		}
 		if (current !== undefined) {
 			hasMoreItems = true;
-			elements.push(iterator);
 		}
-		return elements;
+		return { results: elements, hasMore: hasMoreItems };
 	}
 }

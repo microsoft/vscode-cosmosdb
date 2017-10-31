@@ -80,7 +80,8 @@ export class DocDBCollectionNode implements INode {
 	private _children = [];
 	private _hasFetched: boolean = false;
 	private _loadMoreNode: LoadMoreNode = null;
-	private _batchSize: number = 20;
+	private _hasMore: boolean;
+	private iterator = null;
 
 	get label(): string {
 		return this.id;
@@ -99,7 +100,7 @@ export class DocDBCollectionNode implements INode {
 	}
 
 	clearCache(): void {
-		this._children = null;
+		this._children = [];
 		this._hasFetched = false;
 		this._loadMoreNode = null;
 	}
@@ -108,26 +109,25 @@ export class DocDBCollectionNode implements INode {
 		if (!this._hasFetched) {
 			const collLink: string = this.getCollLink();
 			const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
-			let docIterator = await client.readDocuments(collLink);
-			const elements = await LoadMoreNode.loadMore(docIterator, this._batchSize);
-			const documents = elements.results;
-			if (elements.hasMore) {
-				this._loadMoreNode = new LoadMoreNode(docIterator, this);
-			}
-			else {
-				this._loadMoreNode = null;
-			}
-			this._children = this._children.concat(documents.map(document => new DocDBDocumentNode(document.id, this, document)));
+			this.iterator = await client.readDocuments(collLink);
+			this._loadMoreNode = new LoadMoreNode(this);
+			await this.addMoreChildren(this.iterator);
 			this._hasFetched = true;
 		}
-		return this._children.concat([this._loadMoreNode]);
+		if (!this._hasMore) {
+			return this._children;
+		}
+		else {
+			return this._children.concat([this._loadMoreNode]);
+		}
 
 	}
 
-	async addMoreChildren(): Promise<void> {
-		const elements = await LoadMoreNode.loadMore(this._loadMoreNode.iterator, this._batchSize);
+	async addMoreChildren(iterator: any = this.iterator): Promise<void> {
+		const elements = await LoadMoreNode.loadMore(iterator);
 		const loadMoreDocuments = elements.results;
-		if (!elements.hasMore) {
+		this._hasMore = elements.hasMore;
+		if (!this._hasMore) {
 			this._loadMoreNode = null;
 		}
 		this._children = this._children.concat(loadMoreDocuments.map(document => new DocDBDocumentNode(document.id, this, document)));
@@ -167,7 +167,7 @@ export class DocDBDocumentNode implements INode {
 }
 
 export class LoadMoreNode implements INode {
-	constructor(readonly iterator: QueryIterator<any>, readonly parentNode: DocDBCollectionNode) {
+	constructor(readonly parentNode: DocDBCollectionNode) {
 	}
 
 	readonly id = `${this.parentNode.id}.LoadMore`;

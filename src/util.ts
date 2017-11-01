@@ -34,18 +34,13 @@ export function getOutputChannel(): vscode.OutputChannel {
 	return outputChannel;
 }
 
-export async function showResult(result: string, filename: string, column?: vscode.ViewColumn): Promise<void> {
+export async function showResult(result: string, filename: string, extensionPath: string, column?: vscode.ViewColumn): Promise<void> {
 	let uri: vscode.Uri = null;
-	if (vscode.workspace.rootPath) {
-		uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, filename));
-		if (!fs.existsSync(uri.fsPath)) {
-			uri = uri.with({ scheme: 'untitled' });
-		}
-	} else {
-		vscode.window.showErrorMessage(`No workspace present. Please create a workspace.`);
-		return;
+	const filepath: string = vscode.workspace.rootPath || extensionPath;
+	uri = vscode.Uri.file(path.join(filepath, filename));
+	if (!fs.existsSync(uri.fsPath)) {
+		uri = uri.with({ scheme: 'untitled' });
 	}
-
 	const textDocument = await vscode.workspace.openTextDocument(uri);
 	const editor = await vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true)
 	await writeToEditor(editor, result);

@@ -18,7 +18,7 @@ import { DialogBoxResponses } from '../constants'
 
 export class MongoCommands {
 
-	public static async executeCommandFromActiveEditor(database: MongoDatabaseNode): Promise<MongoCommand> {
+	public static async executeCommandFromActiveEditor(database: MongoDatabaseNode, extensionPath): Promise<MongoCommand> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (activeEditor.document.languageId !== 'mongo') {
 			return;
@@ -27,7 +27,7 @@ export class MongoCommands {
 		const command = MongoCommands.getCommand(activeEditor.document.getText(), selection.start);
 		if (command) {
 			const result = await MongoCommands.executeCommand(command, database);
-			await util.showResult(result, 'result.json', activeEditor.viewColumn + 1);
+			await util.showResult(result, 'result.json', extensionPath, activeEditor.viewColumn + 1);
 		} else {
 			vscode.window.showErrorMessage('No executable command found.');
 		}

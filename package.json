@@ -50,6 +50,7 @@
 		"onCommand:cosmosDB.update",
 		"onCommand:cosmosDB.openMongoDocument",
 		"onCommand:cosmosDB.openDocDBDocument",
+		"onCommand:cosmosDB.loadMore",
 		"onCommand:cosmosDB.refresh",
 		"onCommand:cosmosDB.openInPortal",
 		"onCommand:cosmosDB.copyConnectionString",
@@ -226,6 +227,11 @@
 				"category": "MongoDB",
 				"command": "cosmosDB.openMongoDocument",
 				"title": "Open Document"
+			},
+			{
+				"category": "DocumentDB",
+				"command": "cosmosDB.loadMore",
+				"title": "Load More"
 			},
 			{
 				"category": "DocumentDB",

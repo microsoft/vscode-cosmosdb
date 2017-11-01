@@ -1,4 +1,4 @@
-/*---------------------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
@@ -19,7 +19,7 @@ import { CosmosDBCommands } from './commands';
 import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
 import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode, MongoDocumentNode } from './mongo/nodes';
-import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode } from './docdb/nodes';
+import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode, LoadMoreNode } from './docdb/nodes';
 import { CosmosDBAccountNode, INode } from './nodes';
 import { DocumentClient } from 'documentdb';
 import MongoDBLanguageClient from './mongo/languageClient';
@@ -61,7 +61,12 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	initAsyncCommand(context, 'cosmosDB.attachMongoServer', () => attachMongoServer());
-	initCommand(context, 'cosmosDB.refresh', (node: INode) => explorer.refresh(node));
+	initCommand(context, 'cosmosDB.refresh', (node: INode) => {
+		if (node instanceof DocDBCollectionNode) {
+			node.clearCache();
+		}
+		explorer.refresh(node)
+	});
 	initAsyncCommand(context, 'cosmosDB.removeMongoServer', (node: INode) => removeMongoServer(node));
 	initAsyncCommand(context, 'cosmosDB.createMongoDatabase', (node: IMongoServer) => createMongoDatabase(node));
 	initAsyncCommand(context, 'cosmosDB.createMongoCollection', async (node: MongoDatabaseNode) => {
@@ -101,6 +106,10 @@ export function activate(context: vscode.ExtensionContext) {
 		lastOpenedDocDBDocument = document;
 		await util.showResult(JSON.stringify(document.data, null, 2), 'cosmos-document.json');
 		lastOpenedDocumentType = DocumentType.DocDB;
+	});
+	initAsyncCommand(context, 'cosmosDB.loadMore', async (node: LoadMoreNode) => {
+		await node.parentNode.addMoreChildren();
+		explorer.refresh(node.parentNode);
 	});
 }
 

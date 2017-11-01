@@ -27,7 +27,6 @@ import { Reporter } from './telemetry';
 import { UserCancelledError } from './errors';
 import { DocDBCommands } from './docdb/commands';
 import { DialogBoxResponses } from './constants';
-import { error } from 'util';
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
@@ -125,9 +124,8 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 			if (err instanceof UserCancelledError) {
 				properties.result = 'Canceled';
 			}
-			else if (err instanceof Error) {
+			else {
 				errorData = new ErrorData(err);
-				output.appendLine(errorData.errorType);
 				output.appendLine(errorData.message);
 				if (errorData.message.includes("\n")) {
 					output.show();

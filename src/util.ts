@@ -28,27 +28,6 @@ export function sendTelemetry(eventName: string, properties?: { [key: string]: s
 	}
 }
 
-export function errToString(error: any): string {
-	if (error === null || error === undefined) {
-		return '';
-	}
-
-	if (error instanceof Error) {
-		return JSON.stringify({
-			'Error': error.constructor.name,
-			'Message': error.message
-		});
-	}
-
-	if (typeof (error) === 'object') {
-		return JSON.stringify({
-			'object': error.constructor.name
-		});
-	}
-
-	return error.toString();
-}
-
 const outputChannel = vscode.window.createOutputChannel("Azure CosmosDB");
 
 export function getOutputChannel(): vscode.OutputChannel {

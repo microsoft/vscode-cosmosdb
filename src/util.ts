@@ -51,14 +51,13 @@ export function errToString(error: any): string {
 
 export function showResult(result: string, filename: string, column?: vscode.ViewColumn): Thenable<void> {
 	let uri: vscode.Uri = null;
-	if (vscode.workspace.rootPath) {
-		uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, filename));
+	const currExtensionPath = vscode.extensions.getExtension("ms-azuretools.vscode-cosmosdb").extensionPath;
+	const filepath = vscode.workspace.rootPath || currExtensionPath;
+	if (filepath) {
+		uri = vscode.Uri.file(path.join(filepath, filename));
 		if (!fs.existsSync(uri.fsPath)) {
 			uri = uri.with({ scheme: 'untitled' });
 		}
-	} else {
-		vscode.window.showErrorMessage(`No workspace present. Please create a workspace.`);
-		return;
 	}
 	return vscode.workspace.openTextDocument(uri)
 		.then(textDocument => vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true))

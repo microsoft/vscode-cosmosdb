@@ -50,6 +50,8 @@ export function activate(context: vscode.ExtensionContext) {
 	const documentEditor: DocumentEditor = new DocumentEditor(context);
 	context.subscriptions.push(documentEditor);
 
+	context.subscriptions.push(util.getOutputChannel());
+
 	// Commands
 	initAsyncCommand(context, 'cosmosDB.createAccount', async () => {
 		const account = await CosmosDBCommands.createCosmosDBAccount(azureAccount);
@@ -94,20 +96,30 @@ export function activate(context: vscode.ExtensionContext) {
 		await node.parentNode.addMoreChildren();
 		explorer.refresh(node.parentNode);
 	});
+
+	initEvent(context, 'cosmosDB.documentEditor.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument, (doc: vscode.TextDocument) => documentEditor.onDidSaveTextDocument(context.globalState, doc));
+	initEvent(context, 'cosmosDB.documentEditor.onDidCloseTextDocument', vscode.workspace.onDidCloseTextDocument, (doc: vscode.TextDocument) => documentEditor.onDidCloseTextDocument(doc));
 }
 
 function initCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => any) {
 	initAsyncCommand(context, commandId, (...args: any[]) => Promise.resolve(callback(...args)));
 }
 
+function initEvent<T>(context: vscode.ExtensionContext, eventId: string, event: vscode.Event<T>, callback: (...args: any[]) => any) {
+	context.subscriptions.push(event(wrapAsyncCallback(eventId, (...args: any[]) => Promise.resolve(callback(...args)))));
+}
+
 function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => Promise<any>) {
-	context.subscriptions.push(vscode.commands.registerCommand(commandId, async (...args: any[]) => {
+	context.subscriptions.push(vscode.commands.registerCommand(commandId, wrapAsyncCallback(commandId, callback)));
+}
+
+function wrapAsyncCallback(callbackId, callback: (...args: any[]) => Promise<any>): (...args: any[]) => Promise<any> {
+	return async (...args: any[]) => {
 		const start = Date.now();
 		let properties: { [key: string]: string; } = {};
 		properties.result = 'Succeeded';
 		let errorData: ErrorData | undefined = null;
 		const output = util.getOutputChannel();
-		context.subscriptions.push(output);
 
 		try {
 			await callback(...args);
@@ -133,9 +145,9 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 				properties.errorMessage = errorData.message;
 			}
 			const end = Date.now();
-			util.sendTelemetry(commandId, properties, { duration: (end - start) / 1000 });
+			util.sendTelemetry(callbackId, properties, { duration: (end - start) / 1000 });
 		}
-	}));
+	};
 }
 
 function createScrapbook(): Thenable<void> {

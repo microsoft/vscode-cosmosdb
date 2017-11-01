@@ -1,4 +1,4 @@
-/*---------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
@@ -19,7 +19,7 @@ import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
 import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode, MongoDocumentNode } from './mongo/nodes';
 import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode, LoadMoreNode } from './docdb/nodes';
-import { CosmosDBResourceNode, INode } from './nodes';
+import { CosmosDBAccountNode, INode } from './nodes';
 import { DocumentClient } from 'documentdb';
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';

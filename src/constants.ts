@@ -5,5 +5,7 @@
 
 export class DialogBoxResponses {
     static readonly Yes: string = "Yes";
+    static readonly OK: string = "OK";
+    static readonly DontShowAgain: string = "Don't Show Again";
     static readonly No: string = "No";
 }

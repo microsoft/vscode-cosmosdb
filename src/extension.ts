@@ -87,7 +87,7 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDatabase', (element: DocDBDatabaseNode) => DocDBCommands.deleteDocDBDatabase(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBCollection', (element: DocDBCollectionNode) => DocDBCommands.deleteDocDBCollection(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (element: DocDBDocumentNode) => DocDBCommands.deleteDocDBDocument(element, explorer));
-	initCommand(context, 'cosmosDB.newMongoScrapbook', () => createScrapbook());
+	initAsyncCommand(context, 'cosmosDB.newMongoScrapbook', async () => await util.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
 	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => await MongoCommands.executeCommandFromActiveEditor(connectedDb, context.extensionPath));
 	initAsyncCommand(context, 'cosmosDB.update', () => documentEditor.updateLastDocument());
 	initAsyncCommand(context, 'cosmosDB.openDocument', async (docNode: IDocumentNode) => await documentEditor.showDocument(docNode));
@@ -148,33 +148,6 @@ function wrapAsyncCallback(callbackId, callback: (...args: any[]) => Promise<any
 			util.sendTelemetry(callbackId, properties, { duration: (end - start) / 1000 });
 		}
 	};
-}
-
-function createScrapbook(): Thenable<void> {
-	return new Promise(() => {
-		let uri: vscode.Uri = null;
-		let count = 1;
-		const max = 99999;
-		if (vscode.workspace.workspaceFolders) {
-			while (count < max) {
-				uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, `Scrapbook-${count}.mongo`));
-				if (!vscode.workspace.textDocuments.find(doc => doc.uri.fsPath === uri.fsPath) && !fs.existsSync(uri.fsPath)) {
-					break;
-				}
-				count++;
-			}
-			if (count === max) {
-				vscode.window.showErrorMessage('Could not create new scrapbook.');
-				return;
-			}
-			uri = uri.with({ scheme: 'untitled' });
-			vscode.workspace.openTextDocument(uri).then(textDocument => vscode.window.showTextDocument(textDocument));
-		}
-		else {
-			vscode.workspace.openTextDocument({ language: 'mongo' }).then(textDocument => vscode.window.showTextDocument(textDocument));
-		}
-
-	});
 }
 
 async function attachMongoServer() {

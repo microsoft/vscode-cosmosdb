@@ -5,7 +5,7 @@
 
 import { reporter } from './telemetry';
 import * as path from 'path';
-import * as fs from 'fs';
+import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
 
 export interface IDisposable {
@@ -34,16 +34,14 @@ export function getOutputChannel(): vscode.OutputChannel {
 	return outputChannel;
 }
 
-export async function showResult(result: string, filename: string, extensionPath: string, column?: vscode.ViewColumn): Promise<void> {
+export async function showNewFile(data: string, extensionPath: string, fileName: string, fileExtension: string, column?: vscode.ViewColumn): Promise<void> {
 	let uri: vscode.Uri = null;
-	const filepath: string = vscode.workspace.rootPath || extensionPath;
-	uri = vscode.Uri.file(path.join(filepath, filename));
-	if (!fs.existsSync(uri.fsPath)) {
-		uri = uri.with({ scheme: 'untitled' });
-	}
+	const folderPath: string = vscode.workspace.rootPath || extensionPath;
+	const fullFileName: string | undefined = await getUniqueFileName(folderPath, fileName, fileExtension);
+	uri = vscode.Uri.file(path.join(folderPath, fullFileName)).with({ scheme: 'untitled' });
 	const textDocument = await vscode.workspace.openTextDocument(uri);
 	const editor = await vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true)
-	await writeToEditor(editor, result);
+	await writeToEditor(editor, data);
 }
 
 export async function writeToEditor(editor: vscode.TextEditor, data: string): Promise<void> {
@@ -55,4 +53,24 @@ export async function writeToEditor(editor: vscode.TextEditor, data: string): Pr
 
 		editBuilder.insert(new vscode.Position(0, 0), data);
 	});
+}
+
+export async function getUniqueFileName(folderPath: string, fileName: string, fileExtension: string): Promise<string> {
+	let count: number = 1;
+	const maxCount: number = 1024;
+
+	while (count < maxCount) {
+		const fileSuffix = count === 0 ? '' : '-' + count.toString();
+		const fullFileName: string = fileName + fileSuffix + fileExtension;
+
+		const fullPath: string = path.join(folderPath, fullFileName);
+		const pathExists: boolean = await fse.pathExists(fullPath);
+		const editorExists: boolean = vscode.workspace.textDocuments.find(doc => doc.uri.fsPath === fullPath) !== undefined;
+		if (!pathExists && !editorExists) {
+			return fullFileName;
+		}
+		count += 1;
+	}
+
+	throw new Error('Could not find unique name for new file.');
 }

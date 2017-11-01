@@ -120,11 +120,11 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 		try {
 			await callback(...args);
 		} catch (err) {
-			properties.result = 'Failed';
 			if (err instanceof UserCancelledError) {
 				properties.result = 'Canceled';
 			}
 			else {
+				properties.result = 'Failed';
 				errorData = new ErrorData(err);
 				output.appendLine(errorData.message);
 				if (errorData.message.includes("\n")) {

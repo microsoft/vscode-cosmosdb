@@ -29,9 +29,6 @@ export class DocumentEditor implements vscode.Disposable {
         this.localDocPath = path.resolve(path.join(context.storagePath || context.extensionPath, 'cosmos-document.json'));
         this.recoveredDocsFolder = path.join(context.extensionPath, 'recoveredDocs');
 
-        context.subscriptions.push(vscode.workspace.onDidSaveTextDocument((doc: vscode.TextDocument) => this.onDidSaveTextDocument(context.globalState, doc)));
-        context.subscriptions.push(vscode.workspace.onDidCloseTextDocument((doc: vscode.TextDocument) => this.onDidCloseTextDocument(doc)));
-
         this.promptForRecoveredDocs();
     }
 
@@ -79,23 +76,25 @@ export class DocumentEditor implements vscode.Disposable {
     }
 
     private async promptForRecoveredDocs(): Promise<void> {
-        const docs: string[] = await fse.readdir(this.recoveredDocsFolder);
-        for (const fileName of docs) {
-            const recoveredFilePath: string = path.join(this.recoveredDocsFolder, fileName);
-            const textDocument: vscode.TextDocument = await vscode.workspace.openTextDocument(recoveredFilePath);
-            await vscode.window.showTextDocument(textDocument);
+        if (await fse.pathExists(this.recoveredDocsFolder)) {
+            const docs: string[] = await fse.readdir(this.recoveredDocsFolder);
+            for (const fileName of docs) {
+                const recoveredFilePath: string = path.join(this.recoveredDocsFolder, fileName);
+                const textDocument: vscode.TextDocument = await vscode.workspace.openTextDocument(recoveredFilePath);
+                await vscode.window.showTextDocument(textDocument);
 
-            const message: string = `The data in "${fileName}" may not have been updated to your CosmosDB account.`;
-            const saveFile: string = 'Save File';
-            const deleteFile: string = 'Delete File';
-            const result: string | undefined = await vscode.window.showWarningMessage(message, saveFile, deleteFile);
-            if (result === saveFile) {
-                const savedPath: vscode.Uri | undefined = await vscode.window.showSaveDialog({ filters: { JSON: ['json'] } });
-                if (savedPath) {
-                    await fse.move(recoveredFilePath, savedPath.fsPath);
+                const message: string = `The data in "${fileName}" may not have been updated to your CosmosDB account.`;
+                const saveFile: string = 'Save File';
+                const deleteFile: string = 'Delete File';
+                const result: string | undefined = await vscode.window.showWarningMessage(message, saveFile, deleteFile);
+                if (result === saveFile) {
+                    const savedPath: vscode.Uri | undefined = await vscode.window.showSaveDialog({ filters: { JSON: ['json'] } });
+                    if (savedPath) {
+                        await fse.move(recoveredFilePath, savedPath.fsPath);
+                    }
+                } else if (result === deleteFile) {
+                    await fse.unlink(recoveredFilePath);
                 }
-            } else if (result === deleteFile) {
-                await fse.unlink(recoveredFilePath);
             }
         }
     }
@@ -118,7 +117,7 @@ export class DocumentEditor implements vscode.Disposable {
         }
     }
 
-    private async onDidSaveTextDocument(globalState: vscode.Memento, doc: vscode.TextDocument): Promise<void> {
+    public async onDidSaveTextDocument(globalState: vscode.Memento, doc: vscode.TextDocument): Promise<void> {
         if (!this.ignoreSave && this.isLocalDocPath(doc) && this.lastOpenedDocNode) {
             // soft-copy the node to avoid race conditions
             const node: IDocumentNode = this.lastOpenedDocNode;
@@ -146,7 +145,7 @@ export class DocumentEditor implements vscode.Disposable {
         }
     }
 
-    private async onDidCloseTextDocument(doc: vscode.TextDocument): Promise<void> {
+    public async onDidCloseTextDocument(doc: vscode.TextDocument): Promise<void> {
         if (this.isLocalDocPath(doc)) {
             this.isLocalDocOpen = false;
         }

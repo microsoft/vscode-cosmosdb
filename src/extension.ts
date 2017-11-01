@@ -14,6 +14,7 @@ import * as opn from 'opn';
 import * as util from "./util";
 
 import { AzureAccount } from './azure-account.api';
+import { ErrorData } from './ErrorData';
 import { CosmosDBCommands } from './commands';
 import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
@@ -25,7 +26,7 @@ import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
 import { UserCancelledError } from './errors';
 import { DocDBCommands } from './docdb/commands';
-import { DialogBoxResponses } from './constants'
+import { DialogBoxResponses } from './constants';
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
@@ -110,26 +111,37 @@ function initCommand(context: vscode.ExtensionContext, commandId: string, callba
 function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => Promise<any>) {
 	context.subscriptions.push(vscode.commands.registerCommand(commandId, async (...args: any[]) => {
 		const start = Date.now();
-		let result = 'Succeeded';
-		let errorData: string = '';
+		let properties: { [key: string]: string; } = {};
+		properties.result = 'Succeeded';
+		let errorData: ErrorData | undefined = null;
+		const output = util.getOutputChannel();
+		context.subscriptions.push(output);
 
 		try {
 			await callback(...args);
 		} catch (err) {
-			result = 'Failed';
-			errorData = util.errToString(err);
 			if (err instanceof UserCancelledError) {
-				result = 'Canceled';
+				properties.result = 'Canceled';
 			}
-			else if (err instanceof Error) {
-				vscode.window.showErrorMessage(err.message);
-			}
-			else if (typeof err === "string") {
-				vscode.window.showErrorMessage(err);
+			else {
+				properties.result = 'Failed';
+				errorData = new ErrorData(err);
+				output.appendLine(errorData.message);
+				if (errorData.message.includes("\n")) {
+					output.show();
+					vscode.window.showErrorMessage('An error has occured. See output window for more details.');
+				}
+				else {
+					vscode.window.showErrorMessage(errorData.message);
+				}
 			}
 		} finally {
+			if (errorData) {
+				properties.error = errorData.errorType;
+				properties.errorMessage = errorData.message;
+			}
 			const end = Date.now();
-			util.sendTelemetry(commandId, { result: result, error: errorData }, { duration: (end - start) / 1000 });
+			util.sendTelemetry(commandId, properties, { duration: (end - start) / 1000 });
 		}
 	}));
 }

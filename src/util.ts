@@ -36,14 +36,13 @@ export function getOutputChannel(): vscode.OutputChannel {
 
 export async function showResult(result: string, filename: string, column?: vscode.ViewColumn): Promise<void> {
 	let uri: vscode.Uri = null;
-	if (vscode.workspace.rootPath) {
-		uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, filename));
+	const currExtensionPath = vscode.extensions.getExtension("ms-azuretools.vscode-cosmosdb").extensionPath;
+	const filepath = vscode.workspace.rootPath || currExtensionPath;
+	if (filepath) {
+		uri = vscode.Uri.file(path.join(filepath, filename));
 		if (!fs.existsSync(uri.fsPath)) {
 			uri = uri.with({ scheme: 'untitled' });
 		}
-	} else {
-		vscode.window.showErrorMessage(`No workspace present. Please create a workspace.`);
-		return;
 	}
 
 	const textDocument = await vscode.workspace.openTextDocument(uri);

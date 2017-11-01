@@ -12,6 +12,7 @@ import * as path from 'path';
 import * as copypaste from 'copy-paste';
 import * as opn from 'opn';
 import * as util from "./util";
+import * as cpUtil from './utils/cp';
 
 import { AzureAccount } from './azure-account.api';
 import { CosmosDBCommands } from './commands';
@@ -228,8 +229,12 @@ function openInPortal(node: CosmosDBAccountNode) {
 
 async function copyConnectionString(node: IMongoServer) {
 	if (node) {
-		const connectionString = await node.getConnectionString();
-		copypaste.copy(connectionString);
+		if (process.platform !== 'linux' || (await cpUtil.commandSucceeds('xclip', '-version'))) {
+			const connectionString = await node.getConnectionString();
+			copypaste.copy(connectionString);
+		} else {
+			vscode.window.showErrorMessage('You must have xclip installed to copy the connection string.');
+		}
 	}
 }
 

@@ -34,7 +34,7 @@ export function getOutputChannel(): vscode.OutputChannel {
 	return outputChannel;
 }
 
-export function showResult(result: string, filename: string, column?: vscode.ViewColumn): Thenable<void> {
+export async function showResult(result: string, filename: string, column?: vscode.ViewColumn): Promise<void> {
 	let uri: vscode.Uri = null;
 	if (vscode.workspace.rootPath) {
 		uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, filename));
@@ -45,15 +45,19 @@ export function showResult(result: string, filename: string, column?: vscode.Vie
 		vscode.window.showErrorMessage(`No workspace present. Please create a workspace.`);
 		return;
 	}
-	return vscode.workspace.openTextDocument(uri)
-		.then(textDocument => vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true))
-		.then(editor => {
-			editor.edit(editorBuilder => {
-				if (editor.document.lineCount > 0) {
-					const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
-					editorBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
-				}
-				editorBuilder.insert(new vscode.Position(0, 0), result);
-			});
-		});
+
+	const textDocument = await vscode.workspace.openTextDocument(uri);
+	const editor = await vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true)
+	await writeToEditor(editor, result);
+}
+
+export async function writeToEditor(editor: vscode.TextEditor, data: string): Promise<void> {
+	await editor.edit((editBuilder: vscode.TextEditorEdit) => {
+		if (editor.document.lineCount > 0) {
+			const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
+			editBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
+		}
+
+		editBuilder.insert(new vscode.Position(0, 0), data);
+	});
 }

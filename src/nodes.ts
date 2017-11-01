@@ -16,6 +16,11 @@ import DocumentdbManagementClient = require("azure-arm-documentdb");
 import { DocDBDatabaseNode } from './docdb/nodes';
 import { DocumentClient } from 'documentdb';
 
+export interface IDocumentNode extends INode {
+	data: object;
+	update(data: any): Promise<any>;
+}
+
 export interface INode extends vscode.TreeItem {
 	id: string;
 	contextValue: string;

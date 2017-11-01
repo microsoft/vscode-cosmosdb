@@ -187,28 +187,4 @@ export class DocDBCommands {
             }
         }
     }
-
-    public static async updateDocDBDocument(document: DocDBDocumentNode): Promise<void> {
-        //get the data from the editor
-        const masterKey = await document.collection.db.getPrimaryMasterKey();
-        const endpoint = await document.collection.db.getEndpoint();
-        const client = new DocumentClient(endpoint, { masterKey: masterKey });
-        const editor = vscode.window.activeTextEditor;
-        const newDocument = JSON.parse(editor.document.getText());
-        const docLink = document.data._self;
-        const updated = await new Promise<IDocDBDocumentSpec>((resolve, reject) => {
-            client.replaceDocument(docLink, newDocument,
-                { accessCondition: { type: 'IfMatch', condition: newDocument._etag } },
-                (err, updated) => {
-                    if (err) {
-                        reject(new Error(err.body));
-                    }
-                    else {
-                        resolve(updated);
-                    }
-                });
-        });
-        document.data = updated;
-        await util.showResult(JSON.stringify(updated, null, 2), 'cosmos-document.json');
-    }
 }

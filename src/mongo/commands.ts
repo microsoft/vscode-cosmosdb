@@ -44,18 +44,6 @@ export class MongoCommands {
 			.then(result => result, error => vscode.window.showErrorMessage(error));
 	}
 
-	public static updateDocuments(database: MongoDatabaseNode, command: MongoCommand, currentDocumentNode: MongoDocumentNode): void {
-		if (!database) {
-			vscode.window.showErrorMessage('Please connect to the database first');
-			return;
-		}
-
-		const editor = vscode.window.activeTextEditor;
-		const documents = JSON.parse(editor.document.getText());
-		currentDocumentNode.data = documents;
-		database.updateDocuments(documents, command.collection);
-	}
-
 	public static getCommand(content: string, position?: vscode.Position): MongoCommand {
 		const lexer = new mongoLexer(new InputStream(content));
 		lexer.removeErrorListeners();

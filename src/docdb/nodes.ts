@@ -5,7 +5,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { Command } from 'vscode';
-import { INode } from '../nodes';
+import { INode, IDocumentNode } from '../nodes';
 import { DocumentClient, QueryIterator } from 'documentdb';
 
 
@@ -68,7 +68,6 @@ export class DocDBDatabaseNode implements INode {
 			collections.toArray((err, cols: Array<Object>) => err ? reject(err) : resolve(cols));
 		});
 	}
-
 }
 
 export class DocDBCollectionNode implements INode {
@@ -124,13 +123,17 @@ export class DocDBCollectionNode implements INode {
 
 }
 
-export class DocDBDocumentNode implements INode {
-	data: IDocDBDocumentSpec;
+export class DocDBDocumentNode implements IDocumentNode {
+	private _data: IDocDBDocumentSpec;
 	constructor(readonly id: string, readonly collection: DocDBCollectionNode, payload: IDocDBDocumentSpec) {
-		this.data = payload;
+		this._data = payload;
 	}
 
 	readonly contextValue: string = "cosmosDBDocument";
+
+	get data(): IDocDBDocumentSpec {
+		return this._data;
+	}
 
 	get label(): string {
 		return this.id;
@@ -149,10 +152,30 @@ export class DocDBDocumentNode implements INode {
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
 
 	readonly command: Command = {
-		command: 'cosmosDB.openDocDBDocument',
+		command: 'cosmosDB.openDocument',
 		arguments: [this],
 		title: ''
 	};
+
+	public async update(newData: any): Promise<any> {
+		const masterKey = await this.collection.db.getPrimaryMasterKey();
+		const endpoint = await this.collection.db.getEndpoint();
+		const client = new DocumentClient(endpoint, { masterKey: masterKey });
+		const _self: string = this.data._self;
+		this._data = await new Promise<IDocDBDocumentSpec>((resolve, reject) => {
+			client.replaceDocument(_self, newData,
+				{ accessCondition: { type: 'IfMatch', condition: newData._etag } },
+				(err, updated) => {
+					if (err) {
+						reject(new Error(err.body));
+					} else {
+						resolve(updated);
+					}
+				});
+		});
+
+		return this._data;
+	}
 }
 
 export class LoadMoreNode implements INode {

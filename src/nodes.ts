@@ -54,7 +54,7 @@ export class SubscriptionNode implements INode {
 			const result = await Promise.all(resourceGroups.map(async group => {
 				let dbs = await docDBClient.databaseAccounts.listByResourceGroup(group.name);
 				dbs = dbs.sort((a, b) => a.name.localeCompare(b.name));
-				return Promise.all(dbs.map(async db => new CosmosDBResourceNode(this.subscriptionFilter, db, group.name)));
+				return Promise.all(dbs.map(async db => new CosmosDBAccountNode(this.subscriptionFilter, db, group.name)));
 			}));
 
 			nodes = [].concat(...result);
@@ -66,7 +66,7 @@ export class SubscriptionNode implements INode {
 	}
 }
 
-export class CosmosDBResourceNode implements IMongoServer {
+export class CosmosDBAccountNode implements IMongoServer {
 	readonly id: string;
 	readonly label: string;
 	readonly contextValue: string;
@@ -140,12 +140,12 @@ export class CosmosDBResourceNode implements IMongoServer {
 		if (this.contextValue === "cosmosDBDocumentServer") {
 			const masterKey = await this.getPrimaryMasterKey();
 			let client = new DocumentClient(this._databaseAccount.documentEndpoint, { masterKey: masterKey });
-			return await CosmosDBResourceNode.getDocDBDatabaseNodes(client, masterKey, await this.getEndpoint(), this.defaultExperience, this);
+			return await CosmosDBAccountNode.getDocDBDatabaseNodes(client, masterKey, await this.getEndpoint(), this.defaultExperience, this);
 		}
 	}
 
 	static async getDocDBDatabaseNodes(client: DocumentClient, masterKey: string, endpoint: string, contextValue: string, server: INode): Promise<INode[]> {
-		let databases = await CosmosDBResourceNode.listDatabases(client);
+		let databases = await CosmosDBAccountNode.listDatabases(client);
 		return databases.map(database => new DocDBDatabaseNode(database.id, masterKey, endpoint, contextValue, server));
 	}
 

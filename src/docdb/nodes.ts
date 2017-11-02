@@ -119,6 +119,9 @@ export class DocDBCollectionNode implements INode {
 		this._children = this._children.concat(loadMoreDocuments.map(document => new DocDBDocumentNode(document.id, this, document)));
 	}
 
+	addNewDocToCache(document: any): void {
+		this._children.unshift(new DocDBDocumentNode(document.id, this, document))
+	}
 }
 
 export class DocDBDocumentNode implements IDocumentNode {

@@ -20,8 +20,8 @@ import { CosmosDBCommands } from './commands';
 import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
 import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode, MongoDocumentNode } from './mongo/nodes';
-import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode, LoadMoreNode } from './docdb/nodes';
-import { CosmosDBAccountNode, INode, IDocumentNode } from './nodes';
+import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode } from './docdb/nodes';
+import { CosmosDBAccountNode, INode, IDocumentNode, LoadMoreNode } from './nodes';
 import { DocumentClient } from 'documentdb';
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
@@ -61,7 +61,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	initAsyncCommand(context, 'cosmosDB.attachMongoServer', () => attachMongoServer());
 	initCommand(context, 'cosmosDB.refresh', (node: INode) => {
-		if (node instanceof DocDBCollectionNode) {
+		if (node instanceof DocDBCollectionNode || node instanceof MongoCollectionNode) {
 			node.clearCache();
 		}
 		explorer.refresh(node)

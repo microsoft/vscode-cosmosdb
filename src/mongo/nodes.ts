@@ -13,7 +13,7 @@ import { MongoClient, Db, ReadPreference, Code, Server, Collection, Cursor, Obje
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 import { AzureAccount } from '../azure-account.api';
-import { INode, ErrorNode, IDocumentNode } from '../nodes';
+import { INode, ErrorNode, IDocumentNode, LoadMoreNode } from '../nodes';
 import { MongoCommands } from './commands';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
@@ -189,6 +189,11 @@ export class MongoCollectionNode implements INode {
 	}
 
 	readonly contextValue: string = "MongoCollection";
+	private _children = [];
+	private _hasFetched: boolean = false;
+	private _loadMoreNode: LoadMoreNode = new LoadMoreNode(this);
+	private _hasMore: boolean;
+	private _iterator: Cursor;
 
 	get id(): string {
 		return this.collection.collectionName;
@@ -207,12 +212,28 @@ export class MongoCollectionNode implements INode {
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
+	clearCache(): void {
+		this._children = [];
+		this._hasFetched = false;
+	}
+
 	async getChildren(): Promise<INode[]> {
-		let result = JSON.parse(await this.find());
-		if (!Array.isArray(result)) {
-			result = [result];
+		if (!this._hasFetched) {
+			this._iterator = this.collection.find();
+			await this.addMoreChildren();
+			this._hasFetched = true
 		}
-		return result.map(document => new MongoDocumentNode(document._id, this, document));
+		return this._hasMore ? this._children.concat([this._loadMoreNode]) : this._children;
+	}
+
+	async addMoreChildren(): Promise<void> {
+		const getNext = async (iterator: Cursor) => {
+			return await iterator.next();
+		};
+		const elements = await LoadMoreNode.loadMore(this._iterator, getNext);
+		const loadMoreDocuments = elements.results;
+		this._hasMore = elements.hasMore;
+		this._children = this._children.concat(loadMoreDocuments.map(document => new MongoDocumentNode(document._id, this, document)));
 	}
 
 	executeCommand(name: string, args?: string): Thenable<string> {

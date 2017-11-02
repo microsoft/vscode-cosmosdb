@@ -94,8 +94,11 @@ export class MongoCommands {
 			placeHolder: "Enter a unique id for the document.",
 			ignoreFocusOut: true
 		});
-		await collectionNode.collection.insertOne({ "_id": docId });
-		explorer.refresh(collectionNode);
+
+		if (docId !== undefined) {
+			await collectionNode.collection.insertOne(docId === '' ? {} : { "id": docId });
+			explorer.refresh(collectionNode);
+		}
 	}
 	public static async deleteMongoDocument(documentNode: MongoDocumentNode, explorer: CosmosDBExplorer) {
 		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection '${documentNode.label}'?`, DialogBoxResponses.Yes);

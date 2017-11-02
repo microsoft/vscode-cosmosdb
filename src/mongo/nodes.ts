@@ -131,12 +131,14 @@ export class MongoDatabaseNode implements INode {
 		}
 	}
 
-	createCollection(collectionName: string): Promise<MongoCollectionNode> {
-		return this.getDb()
-			.then(db => db.createCollection(collectionName))
-			.then(collection => {
-				return new MongoCollectionNode(collection, this);
-			});
+	async createCollection(collectionName: string): Promise<MongoCollectionNode> {
+		const db: Db = await this.getDb();
+		const newCollection: Collection = db.collection(collectionName);
+		// db.createCollection() doesn't create empty collections for some reason
+		// However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
+		const result = await newCollection.insertOne({});
+		await newCollection.deleteOne({ _id: result.insertedId });
+		return new MongoCollectionNode(newCollection, this);
 	}
 
 	async drop() {

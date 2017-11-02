@@ -336,15 +336,16 @@ export class LoadMoreNode implements INode {
 	static async loadMore(iterator, getNext, batchSize: number = 20): Promise<IResults> {
 		let elements = [];
 		let i: number = 0
-		let hasMoreItems: boolean = false;
-		let current = await getNext(iterator);
-		while (current && i < batchSize) {
-			elements.push(current);
-			i++;
-			current = await getNext(iterator);
-		}
-		if (current) {
-			hasMoreItems = true;
+		let hasMoreItems: boolean = true;
+		while (i < batchSize) {
+			const current = await getNext(iterator);
+			if (!current) {
+				hasMoreItems = false;
+				break;
+			} else {
+				elements.push(current);
+				i++;
+			}
 		}
 		return { results: elements, hasMore: hasMoreItems };
 	}

@@ -119,7 +119,7 @@ export class DocDBCommands {
     }
 
     private static validatePartitionKey(key: string): string | undefined | null {
-        if (/^[#?\\]*$/.test(key)) {
+        if (/[#?\\]+/.test(key)) {
             return "Cannot contain these characters - ?,#,\\, etc."
         }
         return null;

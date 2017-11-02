@@ -26,22 +26,16 @@ export class MongoCommands {
 		const selection = activeEditor.selection;
 		const command = MongoCommands.getCommand(activeEditor.document.getText(), selection.start);
 		if (command) {
-			const result = await MongoCommands.executeCommand(command, database);
+			if (!database) {
+				throw new Error('Please connect to the database first');
+			}
+			const result = await database.executeCommand(command);
 			await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
 		} else {
-			vscode.window.showErrorMessage('No executable command found.');
+			throw new Error('No executable command found.');
 		}
 
 		return command;
-	}
-
-	public static executeCommand(command: MongoCommand, database: MongoDatabaseNode): Thenable<string> {
-		if (!database) {
-			vscode.window.showErrorMessage('Please connect to the database first');
-			return;
-		}
-		return database.executeCommand(command)
-			.then(result => result, error => vscode.window.showErrorMessage(error));
 	}
 
 	public static getCommand(content: string, position?: vscode.Position): MongoCommand {

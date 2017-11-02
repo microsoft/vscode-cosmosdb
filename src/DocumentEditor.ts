@@ -152,8 +152,6 @@ export class DocumentEditor implements vscode.Disposable {
     }
 
     private isLocalDocPath(doc: vscode.TextDocument): boolean {
-        // VSCode can return a uri with various schemes, resulting in an fsPath like 'cosmos-document.json.git'
-        // Since the local doc is saved in our extension's directory, we can just use 'startsWith' to check if this is the right file
-        return path.resolve(doc.uri.fsPath).startsWith(this.localDocPath);
+        return path.relative(doc.uri.fsPath, this.localDocPath) == '';
     }
 }

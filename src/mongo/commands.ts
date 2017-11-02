@@ -90,10 +90,13 @@ export class MongoCommands {
 		});
 
 		if (docId !== undefined) {
-			await collectionNode.collection.insertOne(docId === '' ? {} : { "id": docId });
+			const result = await collectionNode.collection.insertOne(docId === '' ? {} : { "id": docId });
+			const newDoc = await collectionNode.collection.findOne({ _id: result.insertedId });
+			collectionNode.addNewDocToCache(newDoc);
 			explorer.refresh(collectionNode);
 		}
 	}
+
 	public static async deleteMongoDocument(documentNode: MongoDocumentNode, explorer: CosmosDBExplorer) {
 		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection '${documentNode.label}'?`, DialogBoxResponses.Yes);
 		if (confirmed === DialogBoxResponses.Yes) {

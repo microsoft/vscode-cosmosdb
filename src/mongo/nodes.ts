@@ -236,6 +236,10 @@ export class MongoCollectionNode implements INode {
 		this._children = this._children.concat(loadMoreDocuments.map(document => new MongoDocumentNode(document._id, this, document)));
 	}
 
+	addNewDocToCache(document: any): void {
+		this._children.unshift(new MongoDocumentNode(document._id, this, document))
+	}
+
 	executeCommand(name: string, args?: string): Thenable<string> {
 		try {
 			if (name === 'find') {

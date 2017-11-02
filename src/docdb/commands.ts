@@ -47,7 +47,7 @@ export class DocDBCommands {
             placeHolder: "Enter a unique id",
             ignoreFocusOut: true
         });
-        await new Promise((resolve, reject) => {
+        const newDoc = await new Promise((resolve, reject) => {
             client.createDocument(coll.getCollLink(), { 'id': docid }, (err, result) => {
                 if (err) {
                     reject(new Error(err.body));
@@ -57,6 +57,7 @@ export class DocDBCommands {
                 }
             });
         });
+        coll.addNewDocToCache(newDoc);
         explorer.refresh(coll);
     }
 

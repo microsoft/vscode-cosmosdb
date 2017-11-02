@@ -5,7 +5,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { Command } from 'vscode';
-import { INode, IDocumentNode } from '../nodes';
+import { INode, IDocumentNode, LoadMoreNode } from '../nodes';
 import { DocumentClient, QueryIterator } from 'documentdb';
 
 
@@ -17,11 +17,6 @@ export interface IDocDBServer extends INode {
 export interface IDocDBDocumentSpec {
 	_self: string;
 	_rid?: string;
-}
-
-interface IResults {
-	results: Array<any>,
-	hasMore: boolean
 }
 
 export class DocDBDatabaseNode implements INode {
@@ -115,7 +110,10 @@ export class DocDBCollectionNode implements INode {
 	}
 
 	async addMoreChildren(): Promise<void> {
-		const elements = await LoadMoreNode.loadMore(this._iterator);
+		const getNext = async (iterator: QueryIterator<any>) => {
+			return await new Promise<any>((resolve, reject) => iterator.nextItem((err, result) => err ? reject(err) : resolve(result)));
+		};
+		const elements = await LoadMoreNode.loadMore(this._iterator, getNext);
 		const loadMoreDocuments = elements.results;
 		this._hasMore = elements.hasMore;
 		this._children = this._children.concat(loadMoreDocuments.map(document => new DocDBDocumentNode(document.id, this, document)));
@@ -175,38 +173,5 @@ export class DocDBDocumentNode implements IDocumentNode {
 		});
 
 		return this._data;
-	}
-}
-
-export class LoadMoreNode implements INode {
-	constructor(readonly parentNode: DocDBCollectionNode) {
-	}
-
-	readonly id = `${this.parentNode.id}.LoadMore`;
-
-	readonly label = `Load More...`;
-
-	readonly contextValue = 'LoadMoreButton'
-
-	readonly command: Command = {
-		command: 'cosmosDB.loadMore',
-		arguments: [this],
-		title: ''
-	};
-
-	static async loadMore(iterator: QueryIterator<any>, batchSize: number = 20): Promise<IResults> {
-		let elements = [];
-		let i: number = 0
-		let hasMoreItems: boolean = false;
-		let current = await new Promise<any>((resolve, reject) => iterator.nextItem((err, result) => err ? reject(err) : resolve(result)));
-		while (current !== undefined && i < batchSize) {
-			elements.push(current);
-			i++;
-			current = await new Promise<any>((resolve, reject) => iterator.nextItem((err, result) => err ? reject(err) : resolve(result)));
-		}
-		if (current !== undefined) {
-			hasMoreItems = true;
-		}
-		return { results: elements, hasMore: hasMoreItems };
 	}
 }

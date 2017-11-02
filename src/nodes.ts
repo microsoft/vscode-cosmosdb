@@ -8,12 +8,12 @@ import * as keytarType from 'keytar';
 
 import { MongoClient, ReplSet } from 'mongodb';
 import { EventEmitter, Event, Command } from 'vscode';
-import { MongoServerNode, IMongoServer } from './mongo/nodes'
+import { MongoServerNode, IMongoServer, MongoCollectionNode } from './mongo/nodes'
 import { AzureAccount, AzureResourceFilter } from './azure-account.api';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
-import { DocDBDatabaseNode } from './docdb/nodes';
+import { DocDBDatabaseNode, DocDBCollectionNode } from './docdb/nodes';
 import { DocumentClient } from 'documentdb';
 
 export interface IDocumentNode extends INode {
@@ -309,5 +309,43 @@ export class ErrorNode implements INode {
 	readonly label: string;
 	constructor(errorMessage: string) {
 		this.label = `Error: ${errorMessage}`;
+	}
+}
+
+interface IResults {
+	results: Array<any>,
+	hasMore: boolean
+}
+
+export class LoadMoreNode implements INode {
+	constructor(readonly parentNode: MongoCollectionNode | DocDBCollectionNode) {
+	}
+
+	readonly id = `${this.parentNode.id}.LoadMore`;
+
+	readonly label = `Load More...`;
+
+	readonly contextValue = 'LoadMoreButton'
+
+	readonly command: Command = {
+		command: 'cosmosDB.loadMore',
+		arguments: [this],
+		title: ''
+	};
+
+	static async loadMore(iterator, getNext, batchSize: number = 20): Promise<IResults> {
+		let elements = [];
+		let i: number = 0
+		let hasMoreItems: boolean = false;
+		let current = await getNext(iterator);
+		while (current && i < batchSize) {
+			elements.push(current);
+			i++;
+			current = await getNext(iterator);
+		}
+		if (current) {
+			hasMoreItems = true;
+		}
+		return { results: elements, hasMore: hasMoreItems };
 	}
 }

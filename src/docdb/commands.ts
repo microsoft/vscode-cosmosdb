@@ -43,21 +43,23 @@ export class DocDBCommands {
         const masterKey = coll.db.getPrimaryMasterKey();
         const endpoint = coll.db.getEndpoint();
         const client = new DocumentClient(endpoint, { masterKey: masterKey });
-        const docid = await vscode.window.showInputBox({
+        const docID = await vscode.window.showInputBox({
             placeHolder: "Enter a unique id",
             ignoreFocusOut: true
         });
-        const newDoc = await new Promise((resolve, reject) => {
-            client.createDocument(coll.getCollLink(), { 'id': docid }, (err, result) => {
-                if (err) {
-                    reject(new Error(err.body));
-                }
-                else {
-                    resolve(result);
-                }
+        if (docID) {
+            const newDoc = await new Promise((resolve, reject) => {
+                client.createDocument(coll.getCollLink(), { 'id': docID }, (err, result) => {
+                    if (err) {
+                        reject(new Error(err.body));
+                    }
+                    else {
+                        resolve(result);
+                    }
+                });
             });
-        });
-        coll.addNewDocToCache(newDoc);
+            coll.addNewDocToCache(newDoc);
+        }
         explorer.refresh(coll);
     }
 

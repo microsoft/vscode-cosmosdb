@@ -45,6 +45,7 @@ export class DocDBCommands {
         const client = new DocumentClient(endpoint, { masterKey: masterKey });
         const docID = await vscode.window.showInputBox({
             placeHolder: "Enter a unique id",
+            validateInput: DocDBCommands.validateDocumentName,
             ignoreFocusOut: true
         });
         if (docID) {
@@ -138,6 +139,14 @@ export class DocDBCommands {
         }
         return null;
     }
+
+    private static validateDocumentName(name: string): string | null | undefined {
+        if (name.trim().length === 0) {
+            return "Name cannot be empty or contain just spaces";
+        }
+        return;
+    }
+
     public static async deleteDocDBDatabase(db: DocDBDatabaseNode, explorer: CosmosDBExplorer): Promise<void> {
         if (db) {
             const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete database '${db.label}' and its collections?`,

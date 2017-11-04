@@ -23,11 +23,15 @@ h5 {
 
 }
 
-/* the graph itself (in SVG) */
 .vertex {
     fill: #0072c6;
-    stroke: #888;
-    stroke-width: 1px;
+    r: 8px; /* vertex radius */
+}
+
+.vertex:hover, .vertex.dragging {
+    transition: .1s;
+    fill: #00a2e6; /* asdf */
+    r: 10px;
 }
 
 .edge {
@@ -37,8 +41,6 @@ h5 {
 
 .label {
     fill: #eee;
-    /* stroke: #777;
-    stroke-width: 2px; */
 }
 
 #resultsBackground {

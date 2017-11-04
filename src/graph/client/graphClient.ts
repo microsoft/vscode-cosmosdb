@@ -5,7 +5,7 @@
 
 declare let d3: any; // asdf
 
-const animationStepMs = 300; //asdf
+const animationStepMs = 50; //asdf
 const graphWidth = 1200, graphHeight = 500; //asdf
 const defaultQuery = "g.V()";
 
@@ -245,26 +245,31 @@ export class GraphClient { // asdf multiple getting created?
         .attr("class", "edge")
         ;
 
-      let vertex = svg.selectAll(".vertex")
-        .data(vertices)
-        .enter().append("circle")
-        .attr("class", "vertex")
-        .attr("r", "5px")
-        .attr("cx", function (d) { return d.x; })
-        .attr("cy", function (d) { return d.y; })
-        ;
+      // Allow user to drag vertices. Set "dragging" class while dragging.
+      let vertexDrag = force.drag().on("dragstart", function () { d3.select(this).classed("dragging", true) })
+        .on("dragend", function () { d3.select(this).classed("dragging", false); });
 
       let label = svg.selectAll(".label")
         .data(vertices)
         .enter().append("text")
         .attr("class", "label")
-        .attr("x", "7px")
+        .attr("x", "10px")
         .attr("y", "2px")
-        .attr('font-size', 16)
+        .attr('font-size', 13)
         .text(function (d) {
           let displayText = d.id; // TODO: allow user to change what property we display
           return displayText;
         })
+        ;
+
+      // Vertices last so that they're always and top to be able to be dragged
+      let vertex = svg.selectAll(".vertex")
+        .data(vertices)
+        .enter().append("circle")
+        .attr("class", "vertex")
+        .attr("cx", function (d) { return d.x; })
+        .attr("cy", function (d) { return d.y; })
+        .call(vertexDrag)
         ;
 
       force.on("tick", () => {

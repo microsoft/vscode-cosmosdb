@@ -58,21 +58,8 @@ h5 {
 }
 
 #queryStatus {
-    visibility: hidden;
     margin-top: 10px;
     margin-bottom: 4px;
-}
-
-#queryStatus.working {
-    visibility: visible;
-}
-
-.hidden {
-    visibility: hidden;
-}
-
-.collapsed {
-  display: none;
 }
 
 #debug h5 {
@@ -142,14 +129,47 @@ button:active {
     border-bottom-color:  #0072c6;
 }
 
-#graphSection:not(.graph-available) svg {
+#jsonResults {
+    height: -webkit-fill-available;
+    background: transparent;
+    color: white;
+    border: 0;
+}
+
+/* Handle visibility of sections depending on current state */
+
+#states:not(.state-empty) #queryWatermark {
+    display:none;
+}
+
+#states:not(.state-error) #queryError {
     display: none;
 }
 
-#graphSection.graph-available + .query-watermark {
+#states:not(.state-querying) #queryStatus {
+    visibility: hidden;
+}
+
+#states:not(.state-results) #radioButtons {
+    visibility: hidden;
+}
+
+#states:not(.state-results) #resultsSection {
     display: none;
 }
 
-#resultsSection:not(.collapsed) #query-watermark {
+#states:not(.state-graph-results) #graphSection svg {
     display: none;
+}
+
+#states.state-graph-results #graph-watermark {
+    display: none;
+}
+
+#graphSection:not(.active) {
+    display:none;
+}
+
+#jsonSection:not(.active) {
+    display:none;
 }

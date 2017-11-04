@@ -83,10 +83,16 @@ export class GraphViewServer extends EventEmitter {
 
     try {
       var vertices = await this.executeQuery(queryId, gremlinQuery);
-      var edges = await this.executeQuery(queryId, gremlinQuery + ".bothE()");
-      results = vertices.concat(edges);
+      results = vertices;
+      try {
+        var edges = await this.executeQuery(queryId, gremlinQuery + ".bothE()");
+        results = results.concat(edges);
+      } catch (edgesError) {
+        // asdf
+      }
     } catch (error) {
       this._socket.emit("showQueryError", queryId, error.message || error);
+      return;
     }
 
     this._socket.emit("showResults", queryId, results);

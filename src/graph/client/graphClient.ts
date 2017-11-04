@@ -19,6 +19,8 @@ let queryStatus: HTMLLabelElement;
 let queryInput: HTMLInputElement;
 let radioButtons: HTMLDivElement;
 
+type State = "empty" | "querying" | "error" | "json-results" | "graph-results";
+
 window.onerror = (message) => {
   logToUI("ERROR: " + message);
 };
@@ -48,6 +50,7 @@ export class GraphClient { // asdf multiple getting created?
   private _socket: SocketIOClient.Socket;
   private _force: any;
   private _currentQueryId = 0;
+  private _graphView: boolean;
 
   private selectById<T extends HTMLElement>(id: string): T {
     let elem = <T>d3.select(`#${id}`)[0][0];
@@ -68,7 +71,7 @@ export class GraphClient { // asdf multiple getting created?
 
     queryInput.value = defaultQuery;
 
-    this.showResultsSection(false);
+    this.setStateEmpty();
 
     this.log(`Connecting on port ${port}`);
     this._socket = io.connect(`http://localhost:${port}`);
@@ -91,13 +94,7 @@ export class GraphClient { // asdf multiple getting created?
       if (queryId !== this._currentQueryId) {
         this.log("  Ignoring results, out of date");
       } else {
-        this.showProgressIndicator(false);
-        this.showError(null);
-        this.clearGraph();
-        this.showResultsSection(true);
-
-        this.showJson(JSON.stringify(results, null, 2));
-        this.displayGraphIfAvailable(results);
+        this.showResults(results);
       }
     });
 
@@ -107,10 +104,7 @@ export class GraphClient { // asdf multiple getting created?
       if (queryId !== this._currentQueryId) {
         this.log("  Ignoring error, out of date");
       } else {
-        this.showError(error);
-        this.showProgressIndicator(false);
-        this.clearGraph();
-        this.showResultsSection(false);
+        this.setStateError(error);
       }
     });
   }
@@ -119,10 +113,19 @@ export class GraphClient { // asdf multiple getting created?
     this._currentQueryId += 1;
     this.emitToHost("query", this._currentQueryId, gremlin);
 
-    this.clearGraph();
-    this.showResultsSection(false);
-    this.showProgressIndicator(true);
-    this.showError(null);
+    this.setStateQuerying();
+  }
+
+  public selectGraphView() {
+    this._graphView = true;
+    d3.select(graphSection).classed("active", true);
+    d3.select(jsonSection).classed("active", false);
+  }
+
+  public selectJsonView() {
+    this._graphView = false;
+    d3.select(graphSection).classed("active", false);
+    d3.select(jsonSection).classed("active", true);
   }
 
   private emitToHost(message: string, ...args: any[]) {
@@ -138,29 +141,51 @@ export class GraphClient { // asdf multiple getting created?
     logToUI(s);
   }
 
-  private showProgressIndicator(f: boolean) {
-    d3.select(queryStatus).classed("working", f);
+  private setStateEmpty() {
+    this._setState("empty");
   }
 
-  private showError(error: any) {
-    let message: string = error ? (error.message || error.toString()) : error;
-    d3.select(queryError).classed("collapsed", !error);
+  private setStateQuerying() {
+    this._setState("querying");
+    this.clearGraph();
+  }
+
+  private setStateResults(hasGraph: boolean) {
+    this._setState(hasGraph ? "graph-results" : "json-results");
+  }
+
+  private setStateError(error: any) {
+    let message: string = error.message || error.toString();
     queryError.value = message;
+    this._setState("error");
+    this.clearGraph();
   }
 
-  private showResultsSection(f: boolean) {
-    d3.select(resultsSection).classed("collapsed", !f);
-    // d3.select(radioButtons).selectAll("*").attr("disabled", !f ? "disabled" : null);
-    d3.select(radioButtons).classed("hidden", !f);
+  private _setState(state: State) { // asdf remove?
+    let fullState = `state-${state}`;
+    switch (state) {
+      case "graph-results":
+      case "json-results":
+        fullState += " state-results";
+    }
+
+    d3.select("#states").attr("class", fullState); // asdf
   }
 
-  private showJson(json: string) {
-    d3.select(jsonSection).classed("collapsed", !json);
-    jsonResults.value = json;
-  }
+  private showResults(nodes: any[]) {
+    // Always show JSON results
+    jsonResults.value = JSON.stringify(nodes, null, 2);
 
-  private enableGraphSection(f: boolean) {
-    d3.select(resultsSection).classed("graph-available", f);
+    let [vertices, edges] = this.splitVerticesAndEdges(nodes);
+    if (!vertices.length) {
+      // No vertices to show, just show JSON
+      this.setStateResults(false);
+      return false;
+    }
+
+    this.setStateResults(true);
+    this.displayGraph(vertices, edges);
+    return true;
   }
 
   private splitVerticesAndEdges(nodes: any[]): [ResultVertex[], ResultEdge[]] {
@@ -173,21 +198,8 @@ export class GraphClient { // asdf multiple getting created?
     d3.select(graphSection).select("svg").remove();
   }
 
-  private displayGraphIfAvailable(nodes: any[]): boolean {
-    let [vertices, edges] = this.splitVerticesAndEdges(nodes);
-    if (!vertices.length) {
-      // No vertices to show, just show JSON
-      this.enableGraphSection(false);
-      return false;
-    }
-
-    this.enableGraphSection(true);
-    this.displayGraph(vertices, edges);
-    return true;
-  }
-
+  // asdf only if graph is selected by user
   private displayGraph(vertices: ResultVertex[], edges: ResultEdge[]) {
-    this.showProgressIndicator(true);
     try {
       this.clearGraph();
 
@@ -209,8 +221,6 @@ export class GraphClient { // asdf multiple getting created?
       let svg = d3.select(graphSection).append("svg")
         .attr("width", graphWidth).attr("height", graphHeight);
 
-      this.enableGraphSection(true);
-
       if (this._force) {
         this._force.stop();
       }
@@ -228,9 +238,6 @@ export class GraphClient { // asdf multiple getting created?
       force.linkStrength(0.01); // Reduce rigidity of the edges (if < 1, the full linkDistance is relaxed)
       force.charge(-3000);
 
-      // Randomized colors
-      //let getColor = d3.scale.category20();
-
       // Edges before vertices so that edges don't get drawn on top of vertices, obscuring them
       let edge = svg.selectAll(".edge")
         .data(edges)
@@ -245,7 +252,6 @@ export class GraphClient { // asdf multiple getting created?
         .attr("r", "5px")
         .attr("cx", function (d) { return d.x; })
         .attr("cy", function (d) { return d.y; })
-        //.attr("fill", function (d, i) { return getColor(i); })
         ;
 
       let label = svg.selectAll(".label")
@@ -256,7 +262,7 @@ export class GraphClient { // asdf multiple getting created?
         .attr("y", "2px")
         .attr('font-size', 16)
         .text(function (d) {
-          let displayText = d.id; // TODO: allow user to change
+          let displayText = d.id; // TODO: allow user to change what property we display
           return displayText;
         })
         ;
@@ -291,9 +297,6 @@ export class GraphClient { // asdf multiple getting created?
       force.start();
     } catch (err) {
       this.log(err);
-    }
-    finally {
-      this.showProgressIndicator(false);
     }
   }
 }

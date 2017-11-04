@@ -20,55 +20,73 @@
     <script src="../../out/src/graph/client/graphClient.js"></script>
 </head>
 
+<!-- States:
+    state-empty
+    state-querying
+    state-error
+    state-results + state-graph-results
+    state-results + state-json-results
+-->
+
 <body>
-    <h1 id="title">graphStephwe asdf</h1>
+    <div id="states" class="state-empty">
+        <h1 id="title">graphAsdf</h1>
 
-    <div>
         <div>
-            <input id="queryInput" type="text" placeholder='Enter gremlin query ("g.V()" for all vertices)'></input>
-            <button id="executeButton" onclick="onExecuteClick()">Execute</button>
+            <div>
+                <input id="queryInput" type="text" placeholder='Enter gremlin query ("g.V()" for all vertices)'></input>
+                <button id="executeButton" onclick="onExecuteClick()">Execute</button>
+            </div>
+            <div id="queryStatus">Working...</div>
+            <textarea id="queryError" class="error" readonly="readonly"></textarea>
         </div>
-        <div id="queryStatus">Working...</div>
-        <textarea id="queryError" class="error collapsed" readonly="readonly"></textarea>
-    </div>
 
-    <div id="radioButtons" class="toggle-radio-buttons">
-        <input type="radio" id="graphRadio" name="resultsToggle" value="graph" checked>
-        <label for="graphRadio">Graph</label>
-        <input type="radio" id="jsonRadio" name="resultsToggle" value="json">
-        <label for="jsonRadio">JSON</label>
+        <div id="radioButtons" class="toggle-radio-buttons">
+            <input type="radio" id="graphRadio" name="resultsToggle" value="graph" checked onclick="selectGraphView()">
+            <label for="graphRadio">Graph</label>
+            <input type="radio" id="jsonRadio" name="resultsToggle" value="json" onclick="selectJsonView()">
+            <label for="jsonRadio">JSON</label>
 
-    </div>
+        </div>
 
-    <div id="resultsBackground" width="100%">
-        <div id="resultsSection">
-            <div id="graphSection" class="graph-available">
-                <!-- SVG will be inserted here -->
-                <div id="graph-watermark" class="watermark">
-                    The results do not contain any vertices. Please see the JSON section for details.
+        <div id="resultsBackground" width="100%">
+            <div id="resultsSection">
+                <div id="graphSection" class="active">
+                    <!-- SVG will be inserted here -->
+                    <div id="graph-watermark" class="watermark">
+                        The results do not contain any vertices. Please see the JSON tab for detailed results.
+                    </div>
+                </div>
+                <div id="jsonSection">
+                    <textarea id="jsonResults"></textarea>
                 </div>
             </div>
-            <div id="jsonSection">
-                <textarea id="jsonResults"></textarea>
+            <div id="queryWatermark" class="watermark">
+                Please enter a query and click Execute.
             </div>
         </div>
-        <div id="query-watermark" class="watermark">
-            Please enter a query and click Execute.
+
+        <div id="debug" style="display:none">
+            <h5>Debug log</h5>
+            <textarea id="debugLog" style="height:400px; width: 100%;"></textarea>
         </div>
+
+        <script>
+            var graphClient = new GraphClient(57567 /*asdf*/);
+
+            function onExecuteClick() {
+                graphClient.query(queryInput.value);
+            }
+
+            function selectGraphView() {
+                graphClient.selectGraphView();
+            }
+
+            function selectJsonView() {
+                graphClient.selectJsonView();
+            }
+        </script>
     </div>
-
-    <div id="debug" class="collapsed">
-        <h5>Debug log</h5>
-        <textarea id="debugLog" style="height:400px; width: 100%;"></textarea>
-    </div>
-
-    <script>
-        var graphClient = new GraphClient(57567 /*asdf*/);
-
-        function onExecuteClick() {
-            graphClient.query(queryInput.value);
-        }
-    </script>
 </body>
 
 </html>

@@ -218,9 +218,8 @@ export class GraphClient { // asdf multiple getting created?
       //   e.source = i;
       //   e.target = i + 1;
       // });
-      let svg = d3.select(graphSection).append("svg")
-        .attr("width", graphWidth).attr("height", graphHeight);
 
+      // Set up force simulation
       if (this._force) {
         this._force.stop();
       }
@@ -238,6 +237,16 @@ export class GraphClient { // asdf multiple getting created?
       force.linkStrength(0.01); // Reduce rigidity of the edges (if < 1, the full linkDistance is relaxed)
       force.charge(-3000);
 
+      let svg = d3.select(graphSection).append("svg")
+        .attr("width", graphWidth).attr("height", graphHeight);
+
+      // Allow user to drag/zoom the entire SVG
+      svg = svg
+        .call(d3.behavior.zoom().on("zoom", function () {
+          svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")")
+        }))
+        .append("g");
+
       // Edges before vertices so that edges don't get drawn on top of vertices, obscuring them
       let edge = svg.selectAll(".edge")
         .data(edges)
@@ -246,7 +255,12 @@ export class GraphClient { // asdf multiple getting created?
         ;
 
       // Allow user to drag vertices. Set "dragging" class while dragging.
-      let vertexDrag = force.drag().on("dragstart", function () { d3.select(this).classed("dragging", true) })
+      let vertexDrag = force.drag().on("dragstart", function () {
+        d3.select(this).classed("dragging", true);
+
+        // Keep a drag from also starting a zoom action
+        d3.event.sourceEvent.stopPropagation();
+      })
         .on("dragend", function () { d3.select(this).classed("dragging", false); });
 
       let label = svg.selectAll(".label")

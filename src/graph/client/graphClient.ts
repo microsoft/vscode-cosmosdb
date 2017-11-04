@@ -5,15 +5,19 @@
 
 declare let d3: any; // asdf
 
-let animationStepMs = 300; //asdf
-let graphWidth = 1200, graphHeight = 500; //asdf
+const animationStepMs = 300; //asdf
+const graphWidth = 1200, graphHeight = 500; //asdf
+const defaultQuery = "g.V()";
 
 let debugLog: HTMLTextAreaElement;
 let jsonResults: HTMLTextAreaElement;
-let jsonDiv: HTMLDivElement;
-let graphDiv: HTMLDivElement;
+let resultsSection: HTMLDivElement;
+let jsonSection: HTMLDivElement;
+let graphSection: HTMLDivElement;
 let queryError: HTMLTextAreaElement;
 let queryStatus: HTMLLabelElement;
+let queryInput: HTMLInputElement;
+let radioButtons: HTMLDivElement;
 
 window.onerror = (message) => {
   logToUI("ERROR: " + message);
@@ -21,26 +25,26 @@ window.onerror = (message) => {
 
 function logToUI(s: string) {
   console.log(s);
-  let v = debugLog.value;
-  v += "\r\n" + s;
-  debugLog.value = v;
+  // let v = debugLog.value;
+  // v += "\r\n" + s;
+  // debugLog.value = v;
 }
 
-// asdf results may not be nodes
-interface GraphNode {
+// results may not be nodes
+interface ResultNode {
   [key: string]: any;
   type: "vertex" | "edge";
 };
 
-interface GraphEdge extends GraphNode {
+interface ResultEdge extends ResultNode {
   source: number;
   target: number;
 };
 
-interface GraphVertex extends GraphNode {
+interface ResultVertex extends ResultNode {
 };
 
-class BrowserClient { // asdf multiple getting created?
+export class GraphClient { // asdf multiple getting created?
   private _socket: SocketIOClient.Socket;
   private _force: any;
   private _currentQueryId = 0;
@@ -53,18 +57,25 @@ class BrowserClient { // asdf multiple getting created?
 
   constructor(port: number) {
     debugLog = this.selectById("debugLog")
-    jsonDiv = this.selectById("json");
-    graphDiv = this.selectById("graph");
+    jsonSection = this.selectById("jsonSection");
+    graphSection = this.selectById("graphSection");
+    resultsSection = this.selectById("resultsSection");
     jsonResults = this.selectById("jsonResults");
     queryError = this.selectById("queryError");
     queryStatus = this.selectById("queryStatus")
+    queryInput = this.selectById("queryInput");
+    radioButtons = this.selectById("radioButtons");
+
+    queryInput.value = defaultQuery;
+
+    this.showResultsSection(false);
 
     this.log(`Connecting on port ${port}`);
     this._socket = io.connect(`http://localhost:${port}`);
 
     setInterval(() => {
       this.log(`Client heartbeat on port ${port}: ${Date()}`);
-    }, 5000);
+    }, 10000);
 
     this._socket.on('connect', () => {
       this.log(`Client connected on port ${port}`);
@@ -82,9 +93,11 @@ class BrowserClient { // asdf multiple getting created?
       } else {
         this.showProgressIndicator(false);
         this.showError(null);
+        this.clearGraph();
+        this.showResultsSection(true);
 
         this.showJson(JSON.stringify(results, null, 2));
-        this.displayGraph(results);
+        this.displayGraphIfAvailable(results);
       }
     });
 
@@ -96,6 +109,8 @@ class BrowserClient { // asdf multiple getting created?
       } else {
         this.showError(error);
         this.showProgressIndicator(false);
+        this.clearGraph();
+        this.showResultsSection(false);
       }
     });
   }
@@ -104,6 +119,8 @@ class BrowserClient { // asdf multiple getting created?
     this._currentQueryId += 1;
     this.emitToHost("query", this._currentQueryId, gremlin);
 
+    this.clearGraph();
+    this.showResultsSection(false);
     this.showProgressIndicator(true);
     this.showError(null);
   }
@@ -127,37 +144,52 @@ class BrowserClient { // asdf multiple getting created?
 
   private showError(error: any) {
     let message: string = error ? (error.message || error.toString()) : error;
-    d3.select(queryError).classed("hidden", !error);
+    d3.select(queryError).classed("collapsed", !error);
     queryError.value = message;
   }
 
+  private showResultsSection(f: boolean) {
+    d3.select(resultsSection).classed("collapsed", !f);
+    // d3.select(radioButtons).selectAll("*").attr("disabled", !f ? "disabled" : null);
+    d3.select(radioButtons).classed("hidden", !f);
+  }
+
   private showJson(json: string) {
-    d3.select(jsonDiv).classed("hidden", !json);
+    d3.select(jsonSection).classed("collapsed", !json);
     jsonResults.value = json;
   }
 
-  private showGraph(f: boolean) {
-    d3.select(graphDiv).classed("hidden", !f);
+  private enableGraphSection(f: boolean) {
+    d3.select(resultsSection).classed("graph-available", f);
   }
 
-  private splitVerticesAndEdges(nodes: any[]): [GraphVertex[], GraphEdge[]] {
+  private splitVerticesAndEdges(nodes: any[]): [ResultVertex[], ResultEdge[]] {
     let vertices = nodes.filter(n => n.type === "vertex");
     let edges = nodes.filter(n => n.type === "edge");
     return [vertices, edges];
   }
 
-  private displayGraph(nodes: any[]) {
+  private clearGraph(): void {
+    d3.select(graphSection).select("svg").remove();
+  }
+
+  private displayGraphIfAvailable(nodes: any[]): boolean {
+    let [vertices, edges] = this.splitVerticesAndEdges(nodes);
+    if (!vertices.length) {
+      // No vertices to show, just show JSON
+      this.enableGraphSection(false);
+      return false;
+    }
+
+    this.enableGraphSection(true);
+    this.displayGraph(vertices, edges);
+    return true;
+  }
+
+  private displayGraph(vertices: ResultVertex[], edges: ResultEdge[]) {
     this.showProgressIndicator(true);
     try {
-      // Clear current results
-      d3.select(graphDiv).select("svg").remove();
-
-      let [vertices, edges] = this.splitVerticesAndEdges(nodes);
-      if (!vertices.length) {
-        // No vertices to show, just show JSON
-        this.showGraph(false);
-        return;
-      }
+      this.clearGraph();
 
       edges = [];
       if (!edges.length) { //asdf
@@ -174,10 +206,10 @@ class BrowserClient { // asdf multiple getting created?
       //   e.source = i;
       //   e.target = i + 1;
       // });
-      let svg = d3.select(graphDiv).append("svg")
+      let svg = d3.select(graphSection).append("svg")
         .attr("width", graphWidth).attr("height", graphHeight);
 
-      this.showGraph(true);
+      this.enableGraphSection(true);
 
       if (this._force) {
         this._force.stop();

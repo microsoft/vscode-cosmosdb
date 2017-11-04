@@ -8,10 +8,8 @@ body {
     box-sizing: content-box;
 }
 
-h5 {
-    margin-bottom: 0;
-    color: white;
-
+[disabled] {
+    opacity: 0.7;
 }
 
 h1 {
@@ -19,9 +17,15 @@ h1 {
     font-weight: 100;
 }
 
+h5 {
+    margin-bottom: 0;
+    color: white;
+
+}
+
+/* the graph itself (in SVG) */
 .vertex {
-     /* Colors are handled dynamically */
-     fill: #0072c6;
+    fill: #0072c6;
     stroke: #888;
     stroke-width: 1px;
 }
@@ -37,34 +41,26 @@ h1 {
     stroke-width: 2px; */
 }
 
-iframe {
-    border: 0;
-    width: 100%;
-    height: 100%;
-}
-
-#background {
+#resultsBackground {
     background: #222;
     width:1200px;
     height:500px;
-}
-#graph svg {
-
 }
 
 .error {
     font-family: arial;
     background: black;
     color: #ff4040;
+    border: #ff4040 1px solid;
     width: 100%;
     height: 100px;
     font-size: 12pt;
-    border: #ff4040 1px solid;
 }
 
 #queryStatus {
     visibility: hidden;
     margin-top: 10px;
+    margin-bottom: 4px;
 }
 
 #queryStatus.working {
@@ -72,6 +68,10 @@ iframe {
 }
 
 .hidden {
+    visibility: hidden;
+}
+
+.collapsed {
   display: none;
 }
 
@@ -79,7 +79,7 @@ iframe {
     color: red;
 }
 
-#gremlinQuery {
+#queryInput {
     font-size: 12pt;
     width: 50%;
     height: 25px;
@@ -88,17 +88,68 @@ iframe {
     background: #333;
     color: white;
 }
-#execute {
+
+button {
     background: #0e639c;
     color: white;
     padding: 10px 25px;
     border: 0;
     height: 25px;
+    cursor: pointer;
+}
+
+button:active {
+    background: #0b4f7d;
+}
+
+#executeButton {
     margin-left: 5px
 }
 
-#watermark {
-
-/*  margin-top: 20%;*/
+.watermark {
     text-align: center;
+}
+
+#jsonResults {
+    width: 100%;
+    height: 100%;
+}
+
+/* Style radio buttons to look like underlined toggles */
+.toggle-radio-buttons input[type="radio"] {
+    /* Don't set display:none because that will mess up accessibility */
+    width: 0;
+}
+
+.toggle-radio-buttons {
+    margin-bottom: 5px;
+}
+
+.toggle-radio-buttons label {
+    color:#aaa;
+    padding-bottom: 3px;
+    border-bottom: 3px transparent solid;
+}
+
+.toggle-radio-buttons input[type="radio"] + label {
+    width: 3em;
+    cursor: pointer;
+}
+
+.toggle-radio-buttons input[type="radio"]:checked:not([disabled]) + label {
+    color:white;
+    padding-bottom: 3px;
+    border-bottom-color:  #0072c6;
+}
+
+#graphSection:not(.graph-available) svg {
+    display: none;
+}
+
+#graphSection.graph-available + .query-watermark {
+    display: none;
+}
+
+#resultsSection:not(.collapsed) #query-watermark {
+    display: none;
 }

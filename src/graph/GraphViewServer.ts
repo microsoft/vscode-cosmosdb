@@ -79,7 +79,7 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private async queryAndShowResults(queryId: number, gremlinQuery: string): Promise<void> {
-    var results: GraphNode[];
+    var results: any[];
 
     try {
       var vertices = await this.executeQuery(queryId, gremlinQuery);

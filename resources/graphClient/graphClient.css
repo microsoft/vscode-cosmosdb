@@ -2,6 +2,7 @@ body {
     font-family: Arial, Helvetica, sans-serif;
     background: #1e1e1e;
     color: white;
+    margin-left: 10px;
 }
 
 * {
@@ -17,10 +18,29 @@ h1 {
     font-weight: 100;
 }
 
-h5 {
+#title {
+    float: left;
+    margin-top: 15px;
+    margin-left: 5px;
+}
+
+#cosmos {
+    float: left;
+    width: 80px;
+    margin-top:12px
+}
+
+header + div {
+    clear: left;
+}
+
+h1 span {
+    margin-top: -12px;
+}
+
+#debug {
     margin-bottom: 0;
     color: white;
-
 }
 
 .vertex {

@@ -15,7 +15,7 @@ import * as gremlin from "gremlin";
 export class GraphViewServer extends EventEmitter {
   private _server: SocketIO.Server;
   private _httpServer: http.Server;
-  private _port: number;
+  private _port: number | undefined;
   private _socket: SocketIO.Socket;
 
   constructor(private _configuration: GraphConfiguration) {
@@ -42,9 +42,10 @@ export class GraphViewServer extends EventEmitter {
   }
 
   public get port(): number {
-    if (!this._socket) {
+    if (!this._port) {
       throw new Error("Server has not started");
     }
+
     return this._port;
   }
 
@@ -57,10 +58,10 @@ export class GraphViewServer extends EventEmitter {
     return new Promise((resolve, reject) => {
       this._httpServer = http.createServer()
       this._httpServer.listen(
-        57567,//asdf // use any unused port
+        0, // dynamnically pick an unused port
         () => {
           this._port = this._httpServer.address().port;
-          console.log(`Using port ${this._port}`);
+          console.log(`** Server using port ${this._port} for ${this._configuration.endpoint}`);
           resolve();
         });
       this._server = io(this._httpServer);
@@ -84,13 +85,20 @@ export class GraphViewServer extends EventEmitter {
     try {
       var vertices = await this.executeQuery(queryId, gremlinQuery);
       results = vertices;
-      try {
-        var edges = await this.executeQuery(queryId, gremlinQuery + ".bothE()");
-        results = results.concat(edges);
-      } catch (edgesError) {
-        // asdf
+
+      // If it returned any vertices, we need to also query for edges
+      if (vertices.find(v => v.type === "vertex")) {
+        try {
+          var edges = await this.executeQuery(queryId, gremlinQuery + ".bothE()");
+          results = results.concat(edges);
+        } catch (edgesError) {
+          // Swallow and just return vertices
+          console.log("Error querying for edges: ", (edgesError.message || edgesError));
+          // asdf telemetry?
+        }
       }
     } catch (error) {
+      // If there's an error, send it to the client to display
       this._socket.emit("showQueryError", queryId, error.message || error);
       return;
     }
@@ -99,6 +107,8 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private async executeQuery(queryId: number, gremlinQuery: string): Promise<any[]> {
+    console.log(`Executing query #${queryId}: ${gremlinQuery}`);
+
     const client = gremlin.createClient(
       this._configuration.endpointPort,
       this._configuration.endpoint,
@@ -115,11 +125,27 @@ export class GraphViewServer extends EventEmitter {
           console.error(err);
           reject(new Error(err));
         }
-        console.log("results from gremlin", results); // asdf
+        console.log("Results from gremlin", results); // asdf
         console.log();
         resolve(results);
       });
     });
+  }
+
+  private handleQueryMessage(queryId: number, gremlin: string) {
+    console.log(`Query requested: queryId=${queryId}, gremlin="${gremlin}"`);
+
+    this.queryAndShowResults(queryId, gremlin).then(() => {
+      console.error("Query results sent to client"); // asdf
+    }, reason => {
+      console.error(reason); // asdf
+      vscode.window.showErrorMessage(reason.message || reason);
+    });
+  }
+
+  private handleGetTitleMessage() {
+    console.log(`getTitle`);
+    this._socket.emit('setTitle', `${this._configuration.databaseName} / ${this._configuration.graphName}`);
   }
 
   private setUpSocket() {
@@ -128,15 +154,10 @@ export class GraphViewServer extends EventEmitter {
       console.log('from client: ', ...args);
     });
 
-    this._socket.on('query', (queryId: number, gremlin: string) => {
-      console.log(`Query requested: queryId=${queryId}, gremlin="${gremlin}"`);
+    //  QUERYTITLE EVENT FROM CLIENT
+    this._socket.on('getTitle', () => this.handleGetTitleMessage());
 
-      this.queryAndShowResults(queryId, gremlin).then(() => {
-        console.error("query results sent to client"); // asdf
-      }, reason => {
-        console.error(reason); // asdf
-        vscode.window.showErrorMessage(reason.message || reason);
-      });
-    });
+    // RECEIVE QUERY EVENT FROM CLIENT
+    this._socket.on('query', (queryId: number, gremlin: string) => this.handleQueryMessage(queryId, gremlin));
   }
 }

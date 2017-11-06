@@ -9,15 +9,15 @@ const animationStepMs = 50; //asdf
 const graphWidth = 1200, graphHeight = 500; //asdf
 const defaultQuery = "g.V()";
 
-let debugLog: HTMLTextAreaElement;
-let jsonResults: HTMLTextAreaElement;
-let resultsSection: HTMLDivElement;
-let jsonSection: HTMLDivElement;
-let graphSection: HTMLDivElement;
-let queryError: HTMLTextAreaElement;
-let queryStatus: HTMLLabelElement;
-let queryInput: HTMLInputElement;
-let radioButtons: HTMLDivElement;
+let htmlElements: {
+  debugLog: HTMLTextAreaElement,
+  jsonResults: HTMLTextAreaElement,
+  jsonSection: HTMLDivElement,
+  graphSection: HTMLDivElement,
+  queryError: HTMLTextAreaElement,
+  queryInput: HTMLInputElement,
+  title: HTMLElement,
+};
 
 type State = "empty" | "querying" | "error" | "json-results" | "graph-results";
 
@@ -27,9 +27,9 @@ window.onerror = (message) => {
 
 function logToUI(s: string) {
   console.log(s);
-  // let v = debugLog.value;
+  // let v = htmlElements.debugLog.value;
   // v += "\r\n" + s;
-  // debugLog.value = v;
+  // htmlElements.debugLog.value = v;
 }
 
 // results may not be nodes
@@ -59,17 +59,17 @@ export class GraphClient { // asdf multiple getting created?
   }
 
   constructor(port: number) {
-    debugLog = this.selectById("debugLog")
-    jsonSection = this.selectById("jsonSection");
-    graphSection = this.selectById("graphSection");
-    resultsSection = this.selectById("resultsSection");
-    jsonResults = this.selectById("jsonResults");
-    queryError = this.selectById("queryError");
-    queryStatus = this.selectById("queryStatus")
-    queryInput = this.selectById("queryInput");
-    radioButtons = this.selectById("radioButtons");
+    htmlElements = {
+      debugLog: this.selectById("debugLog"),
+      jsonSection: this.selectById("jsonSection"),
+      graphSection: this.selectById("graphSection"),
+      jsonResults: this.selectById("jsonResults"),
+      queryError: this.selectById("queryError"),
+      queryInput: this.selectById("queryInput"),
+      title: this.selectById("title")
+    };
 
-    queryInput.value = defaultQuery;
+    htmlElements.queryInput.value = defaultQuery;
 
     this.setStateEmpty();
 
@@ -82,10 +82,16 @@ export class GraphClient { // asdf multiple getting created?
 
     this._socket.on('connect', () => {
       this.log(`Client connected on port ${port}`);
+      this._socket.emit('getTitle');
     });
 
     this._socket.on('disconnect', () => {
       this.log("disconnect");
+    });
+
+    this._socket.on('setTitle', (title: string) => {
+      this.log(`Received title: ${title}`);
+      d3.select(htmlElements.title).text(title);
     });
 
     this._socket.on('showResults', (queryId: number, results: any[]) => {
@@ -118,14 +124,14 @@ export class GraphClient { // asdf multiple getting created?
 
   public selectGraphView() {
     this._graphView = true;
-    d3.select(graphSection).classed("active", true);
-    d3.select(jsonSection).classed("active", false);
+    d3.select(htmlElements.graphSection).classed("active", true);
+    d3.select(htmlElements.jsonSection).classed("active", false);
   }
 
   public selectJsonView() {
     this._graphView = false;
-    d3.select(graphSection).classed("active", false);
-    d3.select(jsonSection).classed("active", true);
+    d3.select(htmlElements.graphSection).classed("active", false);
+    d3.select(htmlElements.jsonSection).classed("active", true);
   }
 
   private emitToHost(message: string, ...args: any[]) {
@@ -156,7 +162,7 @@ export class GraphClient { // asdf multiple getting created?
 
   private setStateError(error: any) {
     let message: string = error.message || error.toString();
-    queryError.value = message;
+    htmlElements.queryError.value = message;
     this._setState("error");
     this.clearGraph();
   }
@@ -174,7 +180,7 @@ export class GraphClient { // asdf multiple getting created?
 
   private showResults(nodes: any[]) {
     // Always show JSON results
-    jsonResults.value = JSON.stringify(nodes, null, 2);
+    htmlElements.jsonResults.value = JSON.stringify(nodes, null, 2);
 
     let [vertices, edges] = this.splitVerticesAndEdges(nodes);
     if (!vertices.length) {
@@ -195,7 +201,7 @@ export class GraphClient { // asdf multiple getting created?
   }
 
   private clearGraph(): void {
-    d3.select(graphSection).select("svg").remove();
+    d3.select(htmlElements.graphSection).select("svg").remove();
   }
 
   // asdf only if graph is selected by user
@@ -237,7 +243,7 @@ export class GraphClient { // asdf multiple getting created?
       force.linkStrength(0.01); // Reduce rigidity of the edges (if < 1, the full linkDistance is relaxed)
       force.charge(-3000);
 
-      let svg = d3.select(graphSection).append("svg")
+      let svg = d3.select(htmlElements.graphSection).append("svg")
         .attr("width", graphWidth).attr("height", graphHeight);
 
       // Allow user to drag/zoom the entire SVG

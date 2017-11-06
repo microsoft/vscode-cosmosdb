@@ -13,14 +13,18 @@ import { GraphConfiguration, areConfigsEquals } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
 
 const scheme = "vscode-cosmosdb-graphresults";
-const previewUri = scheme + '://';
+const previewBaseUri = scheme + '://results/';
 
-export class GraphViewsManager {
+interface IServerProvider {
+  findServerById(id: number): GraphViewServer;
+}
+
+export class GraphViewsManager implements IServerProvider {
   private _lastServerId = 0;
-  private _serversMap = new Map<number, GraphViewServer>(); // id -> map
+  private _servers = new Map<number, GraphViewServer>(); // map of id -> map
 
   public constructor(private _context: vscode.ExtensionContext) {
-    let documentProvider = new GraphViewDocumentContentProvider();
+    let documentProvider = new GraphViewDocumentContentProvider(this);
     let registration = vscode.workspace.registerTextDocumentContentProvider(scheme, documentProvider);
     this._context.subscriptions.push(registration);
   }
@@ -31,37 +35,52 @@ export class GraphViewsManager {
     config: GraphConfiguration
   ): Promise<void> {
     try {
-      var server = await this.getServer(config);
-      await vscode.commands.executeCommand('vscode.previewHtml', vscode.Uri.parse(previewUri /*asdf + id*/), vscode.ViewColumn.One, tab);
+      var [id, server] = await this.getOrCreateServer(config);
+
+      // Add server ID to the URL so that GraphViewDocumentContentProvider knows which port to use in the HTML
+      var serverUri = previewBaseUri + id.toString();
+      await vscode.commands.executeCommand('vscode.previewHtml', vscode.Uri.parse(serverUri), vscode.ViewColumn.One, tab);
     } catch (error) {
       vscode.window.showErrorMessage(error.message || error); // asdf
     }
   }
 
-  private async getServer(config: GraphConfiguration): Promise<GraphViewServer> {
+  public findServerById(id: number): GraphViewServer {
+    return this._servers.get(id);
+  }
+
+  private async getOrCreateServer(config: GraphConfiguration): Promise<[number, GraphViewServer]> {
     var existingServer: GraphViewServer = null;
-    this._serversMap.forEach(server => {
+    var existingId: number;
+    this._servers.forEach((server, key) => {
       if (areConfigsEquals(server.configuration, config)) {
         existingServer = server;
+        existingId = key;
       }
     })
     if (existingServer) {
-      return Promise.resolve(existingServer);
+      return [existingId, existingServer];
     }
 
     var server = new GraphViewServer(config);
     await server.start();
 
     this._lastServerId += 1;
-    this._serversMap.set(this._lastServerId, server);
-    return server;
+    var id = this._lastServerId;
+    this._servers.set(id, server);
+    return [id, server];
   }
 }
 
 class GraphViewDocumentContentProvider implements vscode.TextDocumentContentProvider {
   public onDidChange?: vscode.Event<vscode.Uri>;
 
-  public provideTextDocumentContent(uri: vscode.Uri, token: vscode.CancellationToken): vscode.ProviderResult<string> {
+  public constructor(private _serverProvider: IServerProvider) { }
+
+  public provideTextDocumentContent(uri: vscode.Uri, _token: vscode.CancellationToken): vscode.ProviderResult<string> {
+    var serverId = parseInt(uri.path.slice(1) /* remove '/' from beginning */);
+    console.assert(serverId > 0);
+    var server = this._serverProvider.findServerById(serverId);
     var outPath = path.join(path.dirname(module.filename), "../..");
     var clientHtmlPath = path.join(outPath, "../resources/graphClient/graphClient.html");
     console.assert(fs.existsSync(clientHtmlPath), `Couldn't find ${clientHtmlPath}`);
@@ -70,12 +89,11 @@ class GraphViewDocumentContentProvider implements vscode.TextDocumentContentProv
     <!DOCTYPE html>
     <html>
       <body>
-        <iframe src="$$FRAMESRC$$" width="100%" height="1000px" style="border:0"></iframe>
+        <iframe src="${clientHtmlPath}?port=${server.port}" width="100%" height="1000px" style="border:0"></iframe>
       </body>
     </html>
     `;
 
-    var modifiedHtml = html.replace("$$FRAMESRC$$", clientHtmlPath);
-    return modifiedHtml;
+    return html;
   }
 }

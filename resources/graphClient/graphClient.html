@@ -30,7 +30,14 @@
 
 <body>
     <div id="states" class="state-empty">
-        <h1 id="title">graphAsdf</h1>
+        </script>
+        <header>
+            <img id="cosmos" src="../../resources/cosmos.png">
+            <h1 id="title">
+                &nbsp;
+                <!-- placeholder -->
+            </h1>
+        </header>
 
         <div>
             <div>
@@ -67,12 +74,14 @@
         </div>
 
         <div id="debug" style="display:none">
-            <h5>Debug log</h5>
+            <h2>Debug log</h2>
             <textarea id="debugLog" style="height:400px; width: 100%;"></textarea>
         </div>
 
         <script>
-            var graphClient = new GraphClient(57567 /*asdf*/);
+            // Retrieve port from query string
+            var [, port] = window.location.search.match(/port=(.*)/);
+            var graphClient = new GraphClient(parseInt(port));
 
             function onExecuteClick() {
                 graphClient.query(queryInput.value);

@@ -100,7 +100,12 @@ export class DocumentEditor implements vscode.Disposable {
     }
 
     private async udpateDocumentToNode(node: IDocumentNode, doc: vscode.TextDocument): Promise<void> {
-        const updatedDoc: {} = await node.update(JSON.parse(doc.getText()));
+        const docFromEditor = JSON.parse(doc.getText());
+        const updatedDoc: {} = await node.update(docFromEditor);
+        const output = util.getOutputChannel();
+        output.appendLine(JSON.stringify(docFromEditor));
+        output.appendLine("Document update performed successfully. Document now persisted");
+        output.show();
         await this.updateEditor(updatedDoc);
     }
 

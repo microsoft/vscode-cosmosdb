@@ -43,16 +43,16 @@ export class DocDBCommands {
         const masterKey = coll.db.getPrimaryMasterKey();
         const endpoint = coll.db.getEndpoint();
         const client = new DocumentClient(endpoint, { masterKey: masterKey });
-        const docID = await vscode.window.showInputBox({
+        let docID = await vscode.window.showInputBox({
             placeHolder: "Enter a unique id",
-            validateInput: DocDBCommands.validateDocumentName,
             ignoreFocusOut: true
         });
-        if (docID) {
+        if (docID || docID === "") {
+            docID = docID.trim();
             const newDoc = await new Promise((resolve, reject) => {
                 client.createDocument(coll.getCollLink(), { 'id': docID }, (err, result) => {
                     if (err) {
-                        reject(new Error(err.body));
+                        reject(err);
                     }
                     else {
                         resolve(result);
@@ -138,13 +138,6 @@ export class DocDBCommands {
             return "Input must be a number"
         }
         return null;
-    }
-
-    private static validateDocumentName(name: string): string | null | undefined {
-        if (name.trim().length === 0) {
-            return "Name cannot be empty or contain just spaces";
-        }
-        return;
     }
 
     public static async deleteDocDBDatabase(db: DocDBDatabaseNode, explorer: CosmosDBExplorer): Promise<void> {

@@ -45,6 +45,7 @@ export class DocDBCommands {
         const client = new DocumentClient(endpoint, { masterKey: masterKey });
         let docID = await vscode.window.showInputBox({
             placeHolder: "Enter a unique id",
+            validateInput: DocDBCommands.validateDocumentName,
             ignoreFocusOut: true
         });
         if (docID || docID === "") {

@@ -19,6 +19,8 @@ import { DocumentClient } from 'documentdb';
 export interface IDocumentNode extends INode {
 	data: object;
 	update(data: any): Promise<any>;
+	collection: MongoCollectionNode | DocDBCollectionNode;
+	getDocLink(): string;
 }
 
 export interface INode extends vscode.TreeItem {

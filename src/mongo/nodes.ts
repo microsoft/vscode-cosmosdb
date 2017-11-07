@@ -377,6 +377,10 @@ export class MongoDocumentNode implements IDocumentNode {
 		return this._data;
 	}
 
+	getDocLink() {
+		return `${this.collection.db.server.id}.${this.collection.db.id}.${this.collection.id}.${this.id}`
+	}
+
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
 
 	readonly command: Command = {

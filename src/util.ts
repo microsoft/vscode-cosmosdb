@@ -5,7 +5,7 @@
 
 import { reporter } from './telemetry';
 import * as path from 'path';
-import * as fs from 'fs';
+import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
 
 export interface IDisposable {
@@ -28,47 +28,49 @@ export function sendTelemetry(eventName: string, properties?: { [key: string]: s
 	}
 }
 
-export function errToString(error: any): string {
-	if (error === null || error === undefined) {
-		return '';
-	}
+const outputChannel = vscode.window.createOutputChannel("Azure CosmosDB");
 
-	if (error instanceof Error) {
-		return JSON.stringify({
-			'Error': error.constructor.name,
-			'Message': error.message
-		});
-	}
-
-	if (typeof (error) === 'object') {
-		return JSON.stringify({
-			'object': error.constructor.name
-		});
-	}
-
-	return error.toString();
+export function getOutputChannel(): vscode.OutputChannel {
+	return outputChannel;
 }
 
-export function showResult(result: string, filename: string, column?: vscode.ViewColumn): Thenable<void> {
+export async function showNewFile(data: string, extensionPath: string, fileName: string, fileExtension: string, column?: vscode.ViewColumn): Promise<void> {
 	let uri: vscode.Uri = null;
-	if (vscode.workspace.rootPath) {
-		uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, filename));
-		if (!fs.existsSync(uri.fsPath)) {
-			uri = uri.with({ scheme: 'untitled' });
+	const folderPath: string = vscode.workspace.rootPath || extensionPath;
+	const fullFileName: string | undefined = await getUniqueFileName(folderPath, fileName, fileExtension);
+	uri = vscode.Uri.file(path.join(folderPath, fullFileName)).with({ scheme: 'untitled' });
+	const textDocument = await vscode.workspace.openTextDocument(uri);
+	const editor = await vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true)
+	await writeToEditor(editor, data);
+}
+
+export async function writeToEditor(editor: vscode.TextEditor, data: string): Promise<void> {
+	await editor.edit((editBuilder: vscode.TextEditorEdit) => {
+		if (editor.document.lineCount > 0) {
+			const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
+			editBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
 		}
-	} else {
-		vscode.window.showErrorMessage(`No workspace present. Please create a workspace.`);
-		return;
+
+		editBuilder.insert(new vscode.Position(0, 0), data);
+	});
+}
+
+export async function getUniqueFileName(folderPath: string, fileName: string, fileExtension: string): Promise<string> {
+	let count: number = 1;
+	const maxCount: number = 1024;
+
+	while (count < maxCount) {
+		const fileSuffix = count === 0 ? '' : '-' + count.toString();
+		const fullFileName: string = fileName + fileSuffix + fileExtension;
+
+		const fullPath: string = path.join(folderPath, fullFileName);
+		const pathExists: boolean = await fse.pathExists(fullPath);
+		const editorExists: boolean = vscode.workspace.textDocuments.find(doc => doc.uri.fsPath === fullPath) !== undefined;
+		if (!pathExists && !editorExists) {
+			return fullFileName;
+		}
+		count += 1;
 	}
-	return vscode.workspace.openTextDocument(uri)
-		.then(textDocument => vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true))
-		.then(editor => {
-			editor.edit(editorBuilder => {
-				if (editor.document.lineCount > 0) {
-					const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
-					editorBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
-				}
-				editorBuilder.insert(new vscode.Position(0, 0), result);
-			});
-		});
+
+	throw new Error('Could not find unique name for new file.');
 }

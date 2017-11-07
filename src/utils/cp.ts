@@ -3,9 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export class DialogBoxResponses {
-    static readonly Yes: string = "Yes";
-    static readonly OK: string = "OK";
-    static readonly DontShowAgain: string = "Don't Show Again";
-    static readonly No: string = "No";
+import * as cp from 'child_process';
+
+export async function commandSucceeds(command: string, ...args: string[]): Promise<boolean> {
+    return await new Promise<boolean>(resolve => {
+        cp.spawn(command, args)
+            .on('error', err => resolve(false))
+            .on('exit', code => resolve(code === 0));
+    });
 }

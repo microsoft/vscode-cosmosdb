@@ -7,12 +7,13 @@ import * as vm from 'vm';
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as _ from 'underscore';
 
 import { MongoClient, Db, ReadPreference, Code, Server, Collection, Cursor, ObjectID, MongoError } from 'mongodb';
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 import { AzureAccount } from '../azure-account.api';
-import { INode, ErrorNode } from '../nodes';
+import { INode, ErrorNode, IDocumentNode, LoadMoreNode } from '../nodes';
 import { MongoCommands } from './commands';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
@@ -130,22 +131,14 @@ export class MongoDatabaseNode implements INode {
 		}
 	}
 
-	updateDocuments(documentOrDocuments: any, collectionName: string): Thenable<string> {
-		return this.getDb()
-			.then(db => {
-				const collection = db.collection(collectionName);
-				if (collection) {
-					return new MongoCollectionNode(collection, this).update(documentOrDocuments);
-				}
-			});
-	}
-
-	createCollection(collectionName: string): Promise<MongoCollectionNode> {
-		return this.getDb()
-			.then(db => db.createCollection(collectionName))
-			.then(collection => {
-				return new MongoCollectionNode(collection, this);
-			});
+	async createCollection(collectionName: string): Promise<MongoCollectionNode> {
+		const db: Db = await this.getDb();
+		const newCollection: Collection = db.collection(collectionName);
+		// db.createCollection() doesn't create empty collections for some reason
+		// However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
+		const result = await newCollection.insertOne({});
+		await newCollection.deleteOne({ _id: result.insertedId });
+		return new MongoCollectionNode(newCollection, this);
 	}
 
 	async drop() {
@@ -198,6 +191,11 @@ export class MongoCollectionNode implements INode {
 	}
 
 	readonly contextValue: string = "MongoCollection";
+	private _children = [];
+	private _hasFetched: boolean = false;
+	private _loadMoreNode: LoadMoreNode = new LoadMoreNode(this);
+	private _hasMore: boolean;
+	private _iterator: Cursor;
 
 	get id(): string {
 		return this.collection.collectionName;
@@ -216,12 +214,32 @@ export class MongoCollectionNode implements INode {
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
+	clearCache(): void {
+		this._children = [];
+		this._hasFetched = false;
+	}
+
 	async getChildren(): Promise<INode[]> {
-		let result = JSON.parse(await this.find());
-		if (!Array.isArray(result)) {
-			result = [result];
+		if (!this._hasFetched) {
+			this._iterator = this.collection.find();
+			await this.addMoreChildren();
+			this._hasFetched = true
 		}
-		return result.map(document => new MongoDocumentNode(document._id, this, document));
+		return this._hasMore ? this._children.concat([this._loadMoreNode]) : this._children;
+	}
+
+	async addMoreChildren(): Promise<void> {
+		const getNext = async (iterator: Cursor) => {
+			return await iterator.next();
+		};
+		const elements = await LoadMoreNode.loadMore(this._iterator, getNext);
+		const loadMoreDocuments = elements.results;
+		this._hasMore = elements.hasMore;
+		this._children = this._children.concat(loadMoreDocuments.map(document => new MongoDocumentNode(document._id, this, document)));
+	}
+
+	addNewDocToCache(document: any): void {
+		this._children.unshift(new MongoDocumentNode(document._id, this, document))
 	}
 
 	executeCommand(name: string, args?: string): Thenable<string> {
@@ -257,17 +275,6 @@ export class MongoCollectionNode implements INode {
 		} catch (error) {
 			return Promise.resolve(error);
 		}
-	}
-
-	update(documentOrDocuments: any): Thenable<string> {
-		let operations = this.toOperations(documentOrDocuments);
-		return reportProgress(this.collection.bulkWrite(operations, { w: 1 })
-			.then(result => {
-				return this.stringify(result);
-			}, (error) => {
-				console.log(error);
-				return Promise.resolve(null);
-			}), 'Updating');
 	}
 
 	private drop(): Thenable<string> {
@@ -338,33 +345,19 @@ export class MongoCollectionNode implements INode {
 	private stringify(result: any): string {
 		return JSON.stringify(result, null, '\t')
 	}
-
-	private toOperations(documentOrDocuments: any[]): any[] {
-		const documents = Array.isArray(documentOrDocuments) ? documentOrDocuments : [documentOrDocuments];
-		return documents.reduce((result, doc) => {
-			const id = doc._id;
-			const data = JSON.parse(JSON.stringify(doc));
-			delete data._id;
-			result.push({
-				updateOne: {
-					filter: {
-						_id: new ObjectID(id)
-					},
-					update: data
-				}
-			});
-			return result;
-		}, []);
-	}
 }
 
-export class MongoDocumentNode implements INode {
-	data: Object;
+export class MongoDocumentNode implements IDocumentNode {
+	private _data: object;
 	constructor(readonly id: string, readonly collection: MongoCollectionNode, payload: Object) {
-		this.data = payload;
+		this._data = payload;
 	}
 
 	readonly contextValue: string = "MongoDocument";
+
+	get data(): object {
+		return this._data;
+	}
 
 	get label(): string {
 		return this.id;
@@ -376,10 +369,18 @@ export class MongoDocumentNode implements INode {
 			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - document 2 LARGE.svg'),
 		};
 	}
+
+	public async update(data: any): Promise<any> {
+		const filter: object = { _id: new ObjectID(data._id) };
+		await this.collection.collection.updateOne(filter, _.omit(data, '_id'));
+		this._data = data;
+		return this._data;
+	}
+
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
 
 	readonly command: Command = {
-		command: 'cosmosDB.openMongoDocument',
+		command: 'cosmosDB.openDocument',
 		arguments: [this],
 		title: ''
 	};

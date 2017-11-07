@@ -1,4 +1,4 @@
-/*---------------------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
@@ -12,30 +12,29 @@ import * as path from 'path';
 import * as copypaste from 'copy-paste';
 import * as opn from 'opn';
 import * as util from "./util";
+import * as cpUtil from './utils/cp';
 
 import { AzureAccount } from './azure-account.api';
+import { ErrorData } from './ErrorData';
 import { CosmosDBCommands } from './commands';
 import { CosmosDBExplorer } from './explorer';
 import { MongoCommands } from './mongo/commands';
 import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode, MongoDocumentNode } from './mongo/nodes';
 import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode } from './docdb/nodes';
-import { GraphNode } from './graph/graphNodes';
-import { CosmosDBAccountNode, INode } from './nodes';
+import { CosmosDBAccountNode, INode, IDocumentNode, LoadMoreNode } from './nodes';
 import { DocumentClient } from 'documentdb';
+import { GraphNode } from './graph/graphNodes';
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
 import { UserCancelledError } from './errors';
 import { DocDBCommands } from './docdb/commands';
 import { DialogBoxResponses } from './constants'
+import { DocumentEditor } from './DocumentEditor';
 import { GraphViewsManager } from "./graph/GraphViewsManager";
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
 let explorer: CosmosDBExplorer;
-let lastCommand: MongoCommand;
-let lastOpenedDocDBDocument: DocDBDocumentNode;
-let lastOpenedMongoDocument: MongoDocumentNode;
-let lastOpenedDocumentType: DocumentType;
 let graphViewsManager: GraphViewsManager = null;
 enum DocumentType {
 	Mongo,
@@ -56,7 +55,12 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(azureAccount.onFiltersChanged(() => explorer.refresh()));
 	context.subscriptions.push(azureAccount.onStatusChanged(() => explorer.refresh()));
 	context.subscriptions.push(azureAccount.onSessionsChanged(() => explorer.refresh()));
-	vscode.window.registerTreeDataProvider('cosmosDBExplorer', explorer);
+	context.subscriptions.push(vscode.window.registerTreeDataProvider('cosmosDBExplorer', explorer));
+
+	const documentEditor: DocumentEditor = new DocumentEditor(context);
+	context.subscriptions.push(documentEditor);
+
+	context.subscriptions.push(util.getOutputChannel());
 
 
 	// Commands
@@ -67,7 +71,12 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	initAsyncCommand(context, 'cosmosDB.attachMongoServer', () => attachMongoServer());
-	initCommand(context, 'cosmosDB.refresh', (node: INode) => explorer.refresh(node));
+	initCommand(context, 'cosmosDB.refresh', (node: INode) => {
+		if (node instanceof DocDBCollectionNode || node instanceof MongoCollectionNode) {
+			node.clearCache();
+		}
+		explorer.refresh(node)
+	});
 	initAsyncCommand(context, 'cosmosDB.removeMongoServer', (node: INode) => removeMongoServer(node));
 	initAsyncCommand(context, 'cosmosDB.createMongoDatabase', (node: IMongoServer) => createMongoDatabase(node));
 	initAsyncCommand(context, 'cosmosDB.createMongoCollection', async (node: MongoDatabaseNode) => {
@@ -89,117 +98,73 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDatabase', (element: DocDBDatabaseNode) => DocDBCommands.deleteDocDBDatabase(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBCollection', (element: DocDBCollectionNode) => DocDBCommands.deleteDocDBCollection(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (element: DocDBDocumentNode) => DocDBCommands.deleteDocDBDocument(element, explorer));
-	initCommand(context, 'cosmosDB.newMongoScrapbook', () => createScrapbook());
-	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => lastCommand = await MongoCommands.executeCommandFromActiveEditor(connectedDb));
-	initAsyncCommand(context, 'cosmosDB.update', () => update());
-	initAsyncCommand(context, 'cosmosDB.openMongoDocument', async (document: MongoDocumentNode) => {
-		await updateOpenDocumentIfChanged();
-		connectToDatabase(document.collection.db);
-		lastCommand = MongoCommands.getCommand(`db.${document.collection.label}.find()`);
-		await util.showResult(JSON.stringify(document.data, null, 2), 'cosmos-document.json');
-		lastOpenedMongoDocument = document;
-		lastOpenedDocumentType = DocumentType.Mongo;
-	});
-
+	initAsyncCommand(context, 'cosmosDB.newMongoScrapbook', async () => await util.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
+	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => await MongoCommands.executeCommandFromActiveEditor(connectedDb, context.extensionPath));
+	initAsyncCommand(context, 'cosmosDB.update', () => documentEditor.updateLastDocument());
+	initAsyncCommand(context, 'cosmosDB.openDocument', async (docNode: IDocumentNode) => await documentEditor.showDocument(docNode));
 	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
-	initAsyncCommand(context, 'cosmosDB.openDocDBDocument', async (document: DocDBDocumentNode) => {
-		await updateOpenDocumentIfChanged();
-		lastOpenedDocDBDocument = document;
-		await util.showResult(JSON.stringify(document.data, null, 2), 'cosmos-document.json');
-		lastOpenedDocumentType = DocumentType.DocDB;
+	initAsyncCommand(context, 'cosmosDB.loadMore', async (node: LoadMoreNode) => {
+		await node.parentNode.addMoreChildren();
+		explorer.refresh(node.parentNode);
 	});
-
 	initAsyncCommand(context, 'graph.openExplorer', async (graph: GraphNode) => {
 		if (!graph) {
 			return; // TODO: Ask for context?
 		}
 		await graph.showExplorer();
 	});
+
+	initEvent(context, 'cosmosDB.documentEditor.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument, (doc: vscode.TextDocument) => documentEditor.onDidSaveTextDocument(context.globalState, doc));
+	initEvent(context, 'cosmosDB.documentEditor.onDidCloseTextDocument', vscode.workspace.onDidCloseTextDocument, (doc: vscode.TextDocument) => documentEditor.onDidCloseTextDocument(doc));
 }
 
 function initCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => any) {
 	initAsyncCommand(context, commandId, (...args: any[]) => Promise.resolve(callback(...args)));
 }
 
+function initEvent<T>(context: vscode.ExtensionContext, eventId: string, event: vscode.Event<T>, callback: (...args: any[]) => any) {
+	context.subscriptions.push(event(wrapAsyncCallback(eventId, (...args: any[]) => Promise.resolve(callback(...args)))));
+}
+
 function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => Promise<any>) {
-	context.subscriptions.push(vscode.commands.registerCommand(commandId, async (...args: any[]) => {
+	context.subscriptions.push(vscode.commands.registerCommand(commandId, wrapAsyncCallback(commandId, callback)));
+}
+
+function wrapAsyncCallback(callbackId, callback: (...args: any[]) => Promise<any>): (...args: any[]) => Promise<any> {
+	return async (...args: any[]) => {
 		const start = Date.now();
-		let result = 'Succeeded';
-		let errorData: string = '';
+		let properties: { [key: string]: string; } = {};
+		properties.result = 'Succeeded';
+		let errorData: ErrorData | undefined = null;
+		const output = util.getOutputChannel();
 
 		try {
 			await callback(...args);
 		} catch (err) {
-			result = 'Failed';
-			errorData = util.errToString(err);
 			if (err instanceof UserCancelledError) {
-				result = 'Canceled';
+				properties.result = 'Canceled';
 			}
-			else if (err instanceof Error) {
-				vscode.window.showErrorMessage(err.message);
-			}
-			else if (typeof err === "string") {
-				vscode.window.showErrorMessage(err);
+			else {
+				properties.result = 'Failed';
+				errorData = new ErrorData(err);
+				output.appendLine(errorData.message);
+				if (errorData.message.includes("\n")) {
+					output.show();
+					vscode.window.showErrorMessage('An error has occured. See output window for more details.');
+				}
+				else {
+					vscode.window.showErrorMessage(errorData.message);
+				}
 			}
 		} finally {
+			if (errorData) {
+				properties.error = errorData.errorType;
+				properties.errorMessage = errorData.message;
+			}
 			const end = Date.now();
-			util.sendTelemetry(commandId, { result: result, error: errorData }, { duration: (end - start) / 1000 });
+			util.sendTelemetry(callbackId, properties, { duration: (end - start) / 1000 });
 		}
-	}));
-}
-
-async function update(): Promise<void> {
-	if (lastOpenedDocumentType === DocumentType.Mongo) {
-		await MongoCommands.updateDocuments(connectedDb, lastCommand, lastOpenedMongoDocument);
-	}
-	else if (lastOpenedDocumentType === DocumentType.DocDB) {
-		await DocDBCommands.updateDocDBDocument(lastOpenedDocDBDocument);
-	}
-}
-
-async function updateOpenDocumentIfChanged(): Promise<void> {
-	if (lastOpenedDocumentType === undefined) {
-		return;
-	}
-	const oldDocumentNode = (lastOpenedDocumentType === DocumentType.DocDB) ? lastOpenedDocDBDocument : lastOpenedMongoDocument;
-	const oldDocument = oldDocumentNode.data;
-	const editor = vscode.window.activeTextEditor;
-	const newDocument = JSON.parse(editor.document.getText());
-	if (!_.isMatch(oldDocument, newDocument)) {
-		const confirmed = await vscode.window.showWarningMessage(`Your changes to  '${oldDocumentNode.label}'  will be lost. Update to Azure?`, DialogBoxResponses.Yes, DialogBoxResponses.No);
-		if (!confirmed) {
-			throw UserCancelledError;
-		}
-		else if (confirmed === DialogBoxResponses.Yes) {
-			await update();
-		}
-	}
-}
-function createScrapbook(): Thenable<void> {
-	return new Promise(() => {
-		let uri: vscode.Uri = null;
-		let count = 1;
-		const max = 99999;
-		if (vscode.workspace.workspaceFolders) {
-			while (count < max) {
-				uri = vscode.Uri.file(path.join(vscode.workspace.rootPath, `Scrapbook-${count}.mongo`));
-				if (!vscode.workspace.textDocuments.find(doc => doc.uri.fsPath === uri.fsPath) && !fs.existsSync(uri.fsPath)) {
-					break;
-				}
-				count++;
-			}
-			if (count === max) {
-				vscode.window.showErrorMessage('Could not create new scrapbook.');
-				return;
-			}
-			uri = uri.with({ scheme: 'untitled' });
-			vscode.workspace.openTextDocument(uri).then(textDocument => vscode.window.showTextDocument(textDocument));
-		}
-		else {
-			vscode.workspace.openTextDocument({ language: 'mongo' }).then(textDocument => vscode.window.showTextDocument(textDocument));
-		}
-
-	});
+	};
 }
 
 async function attachMongoServer() {
@@ -242,8 +207,12 @@ function openInPortal(node: CosmosDBAccountNode) {
 
 async function copyConnectionString(node: IMongoServer) {
 	if (node) {
-		const connectionString = await node.getConnectionString();
-		copypaste.copy(connectionString);
+		if (process.platform !== 'linux' || (await cpUtil.commandSucceeds('xclip', '-version'))) {
+			const connectionString = await node.getConnectionString();
+			copypaste.copy(connectionString);
+		} else {
+			vscode.window.showErrorMessage('You must have xclip installed to copy the connection string.');
+		}
 	}
 }
 

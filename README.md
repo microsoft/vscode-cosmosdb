@@ -1,29 +1,26 @@
 
-# Cosmos DB Support for VS Code
-
-With this extension, you can:
-
-* Create and view Azure Cosmos DB accounts
-* Attach to MongoDB servers with a connection string
-* Create and view MongoDB databases and collections
-* Author MongoDB "Scrapbooks" with rich IntelliSense (completions) for MongoDB scripts, including collections
-* Execute MongoDB Commands and see results directly in VS Code
-* Update MongoDB documents in place
+# Cosmos DB Support for VS Code (Preview)
 
 # Prerequisites
 
-- Install [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
+- For Mongo DB support, install [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
 
 # Features
 
 ## Cosmos DB Explorer
 
 - Create a Cosmos DB account by clicking the `+` button in the title
-- Open a Cosmos DB account in the Azure portal
+- View Azure Cosmos DB accounts and open directly in the portal
 - Attach a Mongo server by clicking the plug icon in the title
   - Typical connection string for a local MongoDB instance: `mongodb://localhost:27017`
-- Expand a Mongo server to see the Databases
-- Click on a Mongo collection to see the documents
+
+MongoDB and DocumentDB accounts* support the following:
+- View/Create/Delete databses, collections, and documents
+- Click on a document to open in the editor
+- Edit a document and persist changes to the cloud
+- 'Load more' documents in the explorer
+
+*Support for other CosmosDB apis (i.e. Graph and Table) is coming soon!
 
 ## Mongo "Scrapbooks"
 
@@ -32,7 +29,6 @@ With this extension, you can:
 - Enter your scripts, eg: `db.<collectionName>.find()`
 - IntelliSense (completions) will be provided as you write your scripts
 - Select the script and press `CMD+"` (`CTRL+"` on Windows and Linux) to see the results
-- Edit your documents, right click, and choose the `Update` command to persist changes to the database
 
 ## Sign in to Azure to view your Cosmos DB Accounts
 
@@ -45,10 +41,6 @@ With this extension, you can:
 ## Create and Run Mongo Commands in a Scrapbook with Rich Intellisense
 
 ![Mongo Intellisense](resources/intellisense.gif)
-
-## Update Mongo Documents
-
-![Update Mongo Documents](resources/update.gif)
 
 # Contributing
 There are a couple of ways you can contribute to this repo:
@@ -70,5 +62,5 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 # Telemetry
 This extension collects telemetry data to help us build a better experience with Cosmos DB and VS Code. The extension respects the `telemetry.enableTelemetry` setting which you can learn more about in our [FAQ](https://code.visualstudio.com/docs/supporting/faq#_how-to-disable-telemetry-reporting).
 
-# License 
+# License
 [MIT](LICENSE.md)

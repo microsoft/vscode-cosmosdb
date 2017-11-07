@@ -26,7 +26,7 @@ export class DocDBCommands {
             await new Promise((resolve, reject) => {
                 client.createDatabase({ id: databaseName }, (err, result) => {
                     if (err) {
-                        reject(err.body);
+                        reject(new Error(err.body));
                     }
                     else {
                         resolve(result);
@@ -43,20 +43,24 @@ export class DocDBCommands {
         const masterKey = coll.db.getPrimaryMasterKey();
         const endpoint = coll.db.getEndpoint();
         const client = new DocumentClient(endpoint, { masterKey: masterKey });
-        const docid = await vscode.window.showInputBox({
+        let docID = await vscode.window.showInputBox({
             placeHolder: "Enter a unique id",
             ignoreFocusOut: true
         });
-        await new Promise((resolve, reject) => {
-            client.createDocument(coll.getCollLink(), { 'id': docid }, (err, result) => {
-                if (err) {
-                    reject(err.body);
-                }
-                else {
-                    resolve(result);
-                }
+        if (docID || docID === "") {
+            docID = docID.trim();
+            const newDoc = await new Promise((resolve, reject) => {
+                client.createDocument(coll.getCollLink(), { 'id': docID }, (err, result) => {
+                    if (err) {
+                        reject(err);
+                    }
+                    else {
+                        resolve(result);
+                    }
+                });
             });
-        });
+            coll.addNewDocToCache(newDoc);
+        }
         explorer.refresh(coll);
     }
 
@@ -97,7 +101,7 @@ export class DocDBCommands {
                     await new Promise((resolve, reject) => {
                         client.createCollection(db.getDbLink(), collectionDef, options, (err, result) => {
                             if (err) {
-                                reject(err.body);
+                                reject(new Error(err.body));
                             }
                             else {
                                 resolve(result);
@@ -135,6 +139,7 @@ export class DocDBCommands {
         }
         return null;
     }
+
     public static async deleteDocDBDatabase(db: DocDBDatabaseNode, explorer: CosmosDBExplorer): Promise<void> {
         if (db) {
             const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete database '${db.label}' and its collections?`,
@@ -186,29 +191,5 @@ export class DocDBCommands {
                 explorer.refresh(doc.collection);
             }
         }
-    }
-
-    public static async updateDocDBDocument(document: DocDBDocumentNode): Promise<void> {
-        //get the data from the editor
-        const masterKey = await document.collection.db.getPrimaryMasterKey();
-        const endpoint = await document.collection.db.getEndpoint();
-        const client = new DocumentClient(endpoint, { masterKey: masterKey });
-        const editor = vscode.window.activeTextEditor;
-        const newDocument = JSON.parse(editor.document.getText());
-        const docLink = document.data._self;
-        const updated = await new Promise<IDocDBDocumentSpec>((resolve, reject) => {
-            client.replaceDocument(docLink, newDocument,
-                { accessCondition: { type: 'IfMatch', condition: newDocument._etag } },
-                (err, updated) => {
-                    if (err) {
-                        reject(new Error(err.body));
-                    }
-                    else {
-                        resolve(updated);
-                    }
-                });
-        });
-        document.data = updated;
-        await util.showResult(JSON.stringify(updated, null, 2), 'cosmos-document.json');
     }
 }

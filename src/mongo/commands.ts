@@ -18,7 +18,7 @@ import { DialogBoxResponses } from '../constants'
 
 export class MongoCommands {
 
-	public static async executeCommandFromActiveEditor(database: MongoDatabaseNode): Promise<MongoCommand> {
+	public static async executeCommandFromActiveEditor(database: MongoDatabaseNode, extensionPath): Promise<MongoCommand> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (activeEditor.document.languageId !== 'mongo') {
 			return;
@@ -26,34 +26,16 @@ export class MongoCommands {
 		const selection = activeEditor.selection;
 		const command = MongoCommands.getCommand(activeEditor.document.getText(), selection.start);
 		if (command) {
-			const result = await MongoCommands.executeCommand(command, database);
-			await util.showResult(result, 'result.json', activeEditor.viewColumn + 1);
+			if (!database) {
+				throw new Error('Please connect to the database first');
+			}
+			const result = await database.executeCommand(command);
+			await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
 		} else {
-			vscode.window.showErrorMessage('No executable command found.');
+			throw new Error('No executable command found.');
 		}
 
 		return command;
-	}
-
-	public static executeCommand(command: MongoCommand, database: MongoDatabaseNode): Thenable<string> {
-		if (!database) {
-			vscode.window.showErrorMessage('Please connect to the database first');
-			return;
-		}
-		return database.executeCommand(command)
-			.then(result => result, error => vscode.window.showErrorMessage(error));
-	}
-
-	public static updateDocuments(database: MongoDatabaseNode, command: MongoCommand, currentDocumentNode: MongoDocumentNode): void {
-		if (!database) {
-			vscode.window.showErrorMessage('Please connect to the database first');
-			return;
-		}
-
-		const editor = vscode.window.activeTextEditor;
-		const documents = JSON.parse(editor.document.getText());
-		currentDocumentNode.data = documents;
-		database.updateDocuments(documents, command.collection);
 	}
 
 	public static getCommand(content: string, position?: vscode.Position): MongoCommand {
@@ -104,11 +86,18 @@ export class MongoCommands {
 	public static async createMongoDocument(collectionNode: MongoCollectionNode, explorer: CosmosDBExplorer) {
 		const docId = await vscode.window.showInputBox({
 			placeHolder: "Enter a unique id for the document.",
+			validateInput: MongoCommands.validateDocumentName,
 			ignoreFocusOut: true
 		});
-		await collectionNode.collection.insertOne({ "_id": docId });
-		explorer.refresh(collectionNode);
+
+		if (docId !== undefined) {
+			const result = await collectionNode.collection.insertOne(docId === '' ? {} : { "id": docId });
+			const newDoc = await collectionNode.collection.findOne({ _id: result.insertedId });
+			collectionNode.addNewDocToCache(newDoc);
+			explorer.refresh(collectionNode);
+		}
 	}
+
 	public static async deleteMongoDocument(documentNode: MongoDocumentNode, explorer: CosmosDBExplorer) {
 		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection '${documentNode.label}'?`, DialogBoxResponses.Yes);
 		if (confirmed === DialogBoxResponses.Yes) {
@@ -116,6 +105,13 @@ export class MongoCommands {
 			await coll.collection.deleteOne({ "_id": documentNode.id });
 			explorer.refresh(documentNode.collection);
 		}
+	}
+
+	private static validateDocumentName(name: string): string | null | undefined {
+		if (name.trim().length === 0) {
+			return "Name cannot be empty or contain just spaces";
+		}
+		return;
 	}
 }
 

@@ -5,8 +5,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { Command } from 'vscode';
-import { INode } from '../nodes';
-import { DocumentClient } from 'documentdb';
+import { INode, IDocumentNode, LoadMoreNode } from '../nodes';
+import { DocumentClient, QueryIterator } from 'documentdb';
 
 
 export interface IDocDBServer extends INode {
@@ -64,9 +64,7 @@ export class DocDBDatabaseNode implements INode {
 			collections.toArray((err, cols: Array<Object>) => err ? reject(err) : resolve(cols));
 		});
 	}
-
 }
-
 
 export class DocDBCollectionNode implements INode {
 
@@ -74,6 +72,11 @@ export class DocDBCollectionNode implements INode {
 	}
 
 	readonly contextValue: string = "cosmosDBDocumentCollection";
+	private _children = [];
+	private _hasFetched: boolean = false;
+	private _loadMoreNode: LoadMoreNode = new LoadMoreNode(this);
+	private _hasMore: boolean;
+	private _iterator: QueryIterator<any>;
 
 	get label(): string {
 		return "DocDBCollectionNode" + this.id;
@@ -91,45 +94,48 @@ export class DocDBCollectionNode implements INode {
 		return this.db.getDbLink() + '/colls/' + this.id;
 	}
 
-	async getDocuments(): Promise<any> {
-		const dbLink: string = this.db.getDbLink();
-		const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
-		const collSelfLink = this.getCollLink();
-		const docs = await this.readOneCollection(collSelfLink, client);
-		return await docs;
+	clearCache(): void {
+		this._children = [];
+		this._hasFetched = false;
 	}
 
 	async getChildren(): Promise<INode[]> {
-		const collLink: string = this.getCollLink();
-		const parentNode = this;
-		const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
-		let documents = await this.listDocuments(collLink, client);
-		return documents.map(document => new DocDBDocumentNode(document.id, parentNode, document));
+		if (!this._hasFetched) {
+			const collLink: string = this.getCollLink();
+			const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
+			this._iterator = await client.readDocuments(collLink);
+			await this.addMoreChildren();
+			this._hasFetched = true;
+		}
+		return this._hasMore ? this._children.concat([this._loadMoreNode]) : this._children;
 	}
 
-	async listDocuments(collSelfLink, client): Promise<any> {
-		let documents = await client.readDocuments(collSelfLink);
-		return await new Promise<any[]>((resolve, reject) => {
-			documents.toArray((err, cols: Array<Object>) => err ? reject(err) : resolve(cols));
-		});
+	async addMoreChildren(): Promise<void> {
+		const getNext = async (iterator: QueryIterator<any>) => {
+			return await new Promise<any>((resolve, reject) => iterator.nextItem((err, result) => err ? reject(err) : resolve(result)));
+		};
+		const elements = await LoadMoreNode.loadMore(this._iterator, getNext);
+		const loadMoreDocuments = elements.results;
+		this._hasMore = elements.hasMore;
+		this._children = this._children.concat(loadMoreDocuments.map(document => new DocDBDocumentNode(document.id, this, document)));
 	}
 
-	async readOneCollection(selfLink, client): Promise<any> {
-		let documents = await client.readDocuments(selfLink, { maxItemCount: 20 });
-		return await new Promise<any[]>((resolve, reject) => {
-			documents.toArray((err, docs: Array<Object>) => err ? reject(err) : resolve(docs));
-		});
+	addNewDocToCache(document: any): void {
+		this._children.unshift(new DocDBDocumentNode(document.id, this, document))
 	}
-
 }
 
-export class DocDBDocumentNode implements INode {
-	data: IDocDBDocumentSpec;
+export class DocDBDocumentNode implements IDocumentNode {
+	private _data: IDocDBDocumentSpec;
 	constructor(readonly id: string, readonly collection: DocDBCollectionNode, payload: IDocDBDocumentSpec) {
-		this.data = payload;
+		this._data = payload;
 	}
 
 	readonly contextValue: string = "cosmosDBDocument";
+
+	get data(): IDocDBDocumentSpec {
+		return this._data;
+	}
 
 	get label(): string {
 		return "DocDBDocumentNode" + this.id;
@@ -148,8 +154,28 @@ export class DocDBDocumentNode implements INode {
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
 
 	readonly command: Command = {
-		command: 'cosmosDB.openDocDBDocument',
+		command: 'cosmosDB.openDocument',
 		arguments: [this],
 		title: ''
 	};
+
+	public async update(newData: any): Promise<any> {
+		const masterKey = await this.collection.db.getPrimaryMasterKey();
+		const endpoint = await this.collection.db.getEndpoint();
+		const client = new DocumentClient(endpoint, { masterKey: masterKey });
+		const _self: string = this.data._self;
+		this._data = await new Promise<IDocDBDocumentSpec>((resolve, reject) => {
+			client.replaceDocument(_self, newData,
+				{ accessCondition: { type: 'IfMatch', condition: newData._etag } },
+				(err, updated) => {
+					if (err) {
+						reject(new Error(err.body));
+					} else {
+						resolve(updated);
+					}
+				});
+		});
+
+		return this._data;
+	}
 }

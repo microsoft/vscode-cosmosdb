@@ -241,7 +241,7 @@ FakesAssemblies/
 **/*.Server/ModelManifest.xml
 _Pvt_Extensions
 
-#VSIX files 
+#VSIX files
 *.vsix
 
 # Paket dependency manager
@@ -250,6 +250,9 @@ paket-files/
 
 # FAKE - F# Make
 .fake/
+
+# package-lock file
+package-lock.json
 
 # JetBrains Rider
 .idea/

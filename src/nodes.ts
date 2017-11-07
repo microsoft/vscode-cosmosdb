@@ -8,18 +8,23 @@ import * as keytarType from 'keytar';
 
 import { MongoClient, ReplSet } from 'mongodb';
 import { EventEmitter, Event, Command } from 'vscode';
-import { MongoServerNode, IMongoServer } from './mongo/nodes'
+import { MongoServerNode, IMongoServer, MongoCollectionNode } from './mongo/nodes'
 import { AzureAccount, AzureResourceFilter } from './azure-account.api';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
-import { DocDBDatabaseNode } from './docdb/nodes';
-import { GraphDatabaseNode } from './graph/graphNodes';
+import { DocDBDatabaseNode, DocDBCollectionNode } from './docdb/nodes';
 import { DocumentClient } from 'documentdb';
+import { GraphDatabaseNode } from './graph/graphNodes';
 import { GraphViewsManager } from "./graph/GraphViewsManager";
 
 
 type Experience = "MongoDB" | "DocumentDB" | "Graph" | "Table";
+
+export interface IDocumentNode extends INode {
+	data: object;
+	update(data: any): Promise<any>;
+}
 
 export interface INode extends vscode.TreeItem {
 	id: string;
@@ -342,5 +347,44 @@ export class ErrorNode implements INode {
 	readonly label: string;
 	constructor(errorMessage: string) {
 		this.label = `Error: ${errorMessage}`;
+	}
+}
+
+interface IResults {
+	results: Array<any>,
+	hasMore: boolean
+}
+
+export class LoadMoreNode implements INode {
+	constructor(readonly parentNode: MongoCollectionNode | DocDBCollectionNode) {
+	}
+
+	readonly id = `${this.parentNode.id}.LoadMore`;
+
+	readonly label = `Load More...`;
+
+	readonly contextValue = 'LoadMoreButton'
+
+	readonly command: Command = {
+		command: 'cosmosDB.loadMore',
+		arguments: [this],
+		title: ''
+	};
+
+	static async loadMore(iterator, getNext, batchSize: number = 20): Promise<IResults> {
+		let elements = [];
+		let i: number = 0
+		let hasMoreItems: boolean = true;
+		while (i < batchSize) {
+			const current = await getNext(iterator);
+			if (!current) {
+				hasMoreItems = false;
+				break;
+			} else {
+				elements.push(current);
+				i++;
+			}
+		}
+		return { results: elements, hasMore: hasMoreItems };
 	}
 }

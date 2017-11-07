@@ -18,7 +18,7 @@ export class GraphDatabaseNode implements INode {
 	private _graphEndpoint: string;
 	private _graphPort: number;
 
-	constructor(readonly id: string, private readonly _masterKey: string, private readonly _documentEndpoint: string, private readonly _graphViewsManager: GraphViewsManager, readonly server: INode) {
+	constructor(readonly id: string, private readonly _masterKey: string, private readonly _documentEndpoint: string, readonly server: INode) {
 		this._parseEndpoint(_documentEndpoint);
 	}
 
@@ -52,14 +52,10 @@ export class GraphDatabaseNode implements INode {
 		return this.id;
 	}
 
-	get graphViewsManager(): GraphViewsManager {
-		return this._graphViewsManager;
-	}
-
 	get iconPath(): any {
 		return {
-			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure Graph - database LARGE.svg'),
-			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure Graph - database LARGE.svg')
+			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - database LARGE.svg'),
+			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - database LARGE.svg')
 		};
 	}
 
@@ -110,8 +106,8 @@ export class GraphNode implements INode {
 		return this.graphDBNode.getGraphLink() + '/colls/' + this.id;
 	}
 
-	public async showExplorer(): Promise<void> {
-		await this.graphDBNode.graphViewsManager.showGraphViewer(this.id, <GraphConfiguration>{
+	public async showExplorer(graphViewsManager: GraphViewsManager): Promise<void> {
+		await graphViewsManager.showGraphViewer(this.id, <GraphConfiguration>{
 			endpoint: this.graphDBNode.graphEndpoint,
 			endpointPort: this.graphDBNode.graphPort,
 			databaseName: this.graphDBNode.id,

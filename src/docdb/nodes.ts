@@ -79,7 +79,7 @@ export class DocDBCollectionNode implements INode {
 	private _iterator: QueryIterator<any>;
 
 	get label(): string {
-		return "DocDBCollectionNode" + this.id;
+		return this.id;
 	}
 
 	get iconPath(): any {

@@ -6,7 +6,6 @@
 import { TreeDataProvider, Event, EventEmitter, Memento, TreeItem } from 'vscode';
 import { AttachedServersNode, LoadingNode, NoSubscriptionsNode, SignInToAzureNode, SubscriptionNode, INode } from './nodes';
 import { AzureAccount } from './azure-account.api';
-import { GraphViewsManager } from "./graph/GraphViewsManager";
 
 export class CosmosDBExplorer implements TreeDataProvider<INode> {
 	private _onDidChangeTreeData: EventEmitter<INode> = new EventEmitter<INode>();
@@ -14,7 +13,7 @@ export class CosmosDBExplorer implements TreeDataProvider<INode> {
 
 	readonly attachedServersNode: AttachedServersNode;
 
-	constructor(private azureAccount: AzureAccount, private _graphViewsManager: GraphViewsManager, globalState: Memento) {
+	constructor(private azureAccount: AzureAccount, globalState: Memento) {
 		this.attachedServersNode = new AttachedServersNode(azureAccount, globalState);
 	}
 
@@ -35,7 +34,7 @@ export class CosmosDBExplorer implements TreeDataProvider<INode> {
 			} else if (this.azureAccount.filters.length === 0) {
 				nodes.push(new NoSubscriptionsNode());
 			} else {
-				nodes = this.azureAccount.filters.map(filter => new SubscriptionNode(this._graphViewsManager, filter))
+				nodes = this.azureAccount.filters.map(filter => new SubscriptionNode(filter))
 			}
 
 			nodes.push(this.attachedServersNode);

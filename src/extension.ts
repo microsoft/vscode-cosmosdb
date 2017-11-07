@@ -35,7 +35,7 @@ import { GraphViewsManager } from "./graph/GraphViewsManager";
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
 let explorer: CosmosDBExplorer;
-let graphViewsManager: GraphViewsManager = null;
+let graphViewsManager: GraphViewsManager;
 enum DocumentType {
 	Mongo,
 	DocDB
@@ -48,10 +48,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 	languageClient = new MongoDBLanguageClient(context);
 
-	graphViewsManager = new GraphViewsManager(context);
+	let graphViewsManager = new GraphViewsManager(context);
 	context.subscriptions.push(this.graphView);
 
-	explorer = new CosmosDBExplorer(azureAccount, graphViewsManager, context.globalState);
+	explorer = new CosmosDBExplorer(azureAccount, context.globalState);
 	context.subscriptions.push(azureAccount.onFiltersChanged(() => explorer.refresh()));
 	context.subscriptions.push(azureAccount.onStatusChanged(() => explorer.refresh()));
 	context.subscriptions.push(azureAccount.onSessionsChanged(() => explorer.refresh()));
@@ -109,9 +109,9 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	initAsyncCommand(context, 'graph.openExplorer', async (graph: GraphNode) => {
 		if (!graph) {
-			return; // TODO: Ask for context?
+			return; // TODO: Ask for context (see Issue#35)
 		}
-		await graph.showExplorer();
+		await graph.showExplorer(graphViewsManager);
 	});
 
 	initEvent(context, 'cosmosDB.documentEditor.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument, (doc: vscode.TextDocument) => documentEditor.onDidSaveTextDocument(context.globalState, doc));

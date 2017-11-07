@@ -1,4 +1,9 @@
-body {
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+ body {
     font-family: Arial, Helvetica, sans-serif;
     background: #1e1e1e;
     color: white;

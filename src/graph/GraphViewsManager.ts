@@ -63,6 +63,7 @@ export class GraphViewsManager implements IServerProvider {
       return [existingId, existingServer];
     }
 
+    // TODO: call dispose?
     var server = new GraphViewServer(config);
     await server.start();
 

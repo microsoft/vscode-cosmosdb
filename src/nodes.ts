@@ -16,7 +16,6 @@ import DocumentdbManagementClient = require("azure-arm-documentdb");
 import { DocDBDatabaseNode, DocDBCollectionNode } from './docdb/nodes';
 import { DocumentClient } from 'documentdb';
 import { GraphDatabaseNode } from './graph/graphNodes';
-import { GraphViewsManager } from "./graph/GraphViewsManager";
 
 
 type Experience = "MongoDB" | "DocumentDB" | "Graph" | "Table";
@@ -39,7 +38,7 @@ export class SubscriptionNode implements INode {
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
-	constructor(private readonly _graphViewsManager: GraphViewsManager, private readonly subscriptionFilter?: AzureResourceFilter) {
+	constructor(private readonly subscriptionFilter?: AzureResourceFilter) {
 		this.id = subscriptionFilter.subscription.id;
 		this.label = subscriptionFilter.subscription.displayName;
 	}
@@ -64,7 +63,7 @@ export class SubscriptionNode implements INode {
 			const result = await Promise.all(resourceGroups.map(async group => {
 				let dbs = await docDBClient.databaseAccounts.listByResourceGroup(group.name);
 				dbs = dbs.sort((a, b) => a.name.localeCompare(b.name));
-				return Promise.all(dbs.map(async db => new CosmosDBAccountNode(this._graphViewsManager, this.subscriptionFilter, db, group.name)));
+				return Promise.all(dbs.map(async db => new CosmosDBAccountNode(this.subscriptionFilter, db, group.name)));
 			}));
 
 			nodes = [].concat(...result);
@@ -87,7 +86,6 @@ export class CosmosDBAccountNode implements IMongoServer {
 	private _connectionString: string;
 
 	constructor(
-		private readonly _graphViewsManager: GraphViewsManager,
 		private readonly _subscriptionFilter: AzureResourceFilter,
 		private readonly _databaseAccount: docDBModels.DatabaseAccount,
 		private readonly _resourceGroupName: string) {
@@ -121,22 +119,13 @@ export class CosmosDBAccountNode implements IMongoServer {
 					dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
 				};
 			case "Graph":
-				const graphPathAgnostic = path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB account LARGE.svg');
-				return {
-					light: graphPathAgnostic,
-					dark: graphPathAgnostic
-				};
 			case "DocumentDB":
+			case "Table":
+			default:
 				const docDBPathAgnostic = path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB account LARGE.svg');
 				return {
 					light: docDBPathAgnostic,
 					dark: docDBPathAgnostic
-				};
-			default:
-				const genericPathAgnostic = path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - Generic account LARGE.svg');
-				return {
-					light: genericPathAgnostic,
-					dark: genericPathAgnostic
 				};
 		}
 	}
@@ -185,7 +174,7 @@ export class CosmosDBAccountNode implements IMongoServer {
 				case "DocumentDB":
 					return new DocDBDatabaseNode(database.id, masterKey, documentEndpoint, this);
 				case "Graph":
-					return new GraphDatabaseNode(database.id, masterKey, documentEndpoint, this._graphViewsManager, this);
+					return new GraphDatabaseNode(database.id, masterKey, documentEndpoint, this);
 				default:
 					throw new Error("Unexpected experience");
 			}

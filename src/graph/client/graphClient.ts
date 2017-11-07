@@ -3,6 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+/**
+ * Do not add any imports do this file, they will not work since they're not hosted in a Node.js process.
+ * Dependencies must be added to graphClient.html as script includes.
+ *
+ * Client code should be kept small.
+ */
+
 declare let d3: any;
 
 const animationStepMs = 50; // TODO: optimize.  Slow down ticks?

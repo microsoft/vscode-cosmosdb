@@ -24,7 +24,7 @@ export class GraphDatabaseNode implements INode {
 
 	private _parseEndpoint(documentEndpoint: string): void {
 		// Document endpoint: https://<graphname>.documents.azure.com:443/
-		// Gremlin endpoint: stephwegraph1.graphs.azure.com
+		// Gremlin endpoint: <graphname>.graphs.azure.com
 		let [, address, , port] = this._documentEndpoint.match(/^[^:]+:\/\/([^:]+)(:([0-9]+))?\/?$/);
 		this._graphEndpoint = address.replace(".documents.azure.com", ".graphs.azure.com");
 		console.assert(this._graphEndpoint.match(/\.graphs\.azure\.com$/), "Unexpected endpoint format");

@@ -12,6 +12,11 @@ import { setInterval } from 'timers';
 import { GraphConfiguration } from './GraphConfiguration';
 import * as gremlin from "gremlin";
 
+/**
+ * @class GraphViewServer This is the server side of the graph explorer. It handles all communications
+ * with Azure including gremlin queries. It communicates with the client code via an HTTP server and
+ * sockets.
+ */
 export class GraphViewServer extends EventEmitter {
   private _server: SocketIO.Server;
   private _httpServer: http.Server;

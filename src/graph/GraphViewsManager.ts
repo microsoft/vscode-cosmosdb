@@ -21,6 +21,8 @@ interface IServerProvider {
 
 export class GraphViewsManager implements IServerProvider {
   private _lastServerId = 0;
+
+  // One server (and one HTML view) per graph, as represented by unique configurations
   private _servers = new Map<number, GraphViewServer>(); // map of id -> map
 
   public constructor(private _context: vscode.ExtensionContext) {
@@ -30,7 +32,7 @@ export class GraphViewsManager implements IServerProvider {
   }
 
   public async showGraphViewer(
-    tab: string,
+    tabTitle: string,
     config: GraphConfiguration
   ): Promise<void> {
     try {
@@ -38,7 +40,7 @@ export class GraphViewsManager implements IServerProvider {
 
       // Add server ID to the URL so that GraphViewDocumentContentProvider knows which port to use in the HTML
       var serverUri = previewBaseUri + id.toString();
-      await vscode.commands.executeCommand('vscode.previewHtml', vscode.Uri.parse(serverUri), vscode.ViewColumn.One, tab);
+      await vscode.commands.executeCommand('vscode.previewHtml', vscode.Uri.parse(serverUri), vscode.ViewColumn.One, tabTitle);
     } catch (error) {
       vscode.window.showErrorMessage(error.message || error); // TODO
     }
@@ -77,6 +79,7 @@ class GraphViewDocumentContentProvider implements vscode.TextDocumentContentProv
   public constructor(private _serverProvider: IServerProvider) { }
 
   public provideTextDocumentContent(uri: vscode.Uri, _token: vscode.CancellationToken): vscode.ProviderResult<string> {
+    // Figure out which client to attach this to
     var serverId = parseInt(uri.path.slice(1) /* remove '/' from beginning */);
     console.assert(serverId > 0);
     var server = this._serverProvider.findServerById(serverId);

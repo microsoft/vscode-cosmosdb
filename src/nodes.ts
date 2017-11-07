@@ -16,7 +16,6 @@ import DocumentdbManagementClient = require("azure-arm-documentdb");
 import { DocDBDatabaseNode } from './docdb/nodes';
 import { GraphDatabaseNode } from './graph/graphNodes';
 import { DocumentClient } from 'documentdb';
-//import GraphRbacManagementClient = require('azure-graph'); // asdf remove
 import { GraphViewsManager } from "./graph/GraphViewsManager";
 
 
@@ -38,8 +37,6 @@ export class SubscriptionNode implements INode {
 	constructor(private readonly _graphViewsManager: GraphViewsManager, private readonly subscriptionFilter?: AzureResourceFilter) {
 		this.id = subscriptionFilter.subscription.id;
 		this.label = subscriptionFilter.subscription.displayName;
-
-		//this._graphView.showResults("testid", "Test Results", "hi there");//asdf
 	}
 
 	get iconPath(): any {
@@ -131,7 +128,7 @@ export class CosmosDBAccountNode implements IMongoServer {
 					dark: docDBPathAgnostic
 				};
 			default:
-				const genericPathAgnostic = path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - Generic account LARGE.svg'); // asdf
+				const genericPathAgnostic = path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - Generic account LARGE.svg');
 				return {
 					light: genericPathAgnostic,
 					dark: genericPathAgnostic

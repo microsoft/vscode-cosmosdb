@@ -31,7 +31,6 @@ export class GraphViewsManager implements IServerProvider {
 
   public async showGraphViewer(
     tab: string,
-    title: string,
     config: GraphConfiguration
   ): Promise<void> {
     try {
@@ -41,7 +40,7 @@ export class GraphViewsManager implements IServerProvider {
       var serverUri = previewBaseUri + id.toString();
       await vscode.commands.executeCommand('vscode.previewHtml', vscode.Uri.parse(serverUri), vscode.ViewColumn.One, tab);
     } catch (error) {
-      vscode.window.showErrorMessage(error.message || error); // asdf
+      vscode.window.showErrorMessage(error.message || error); // TODO
     }
   }
 
@@ -81,11 +80,12 @@ class GraphViewDocumentContentProvider implements vscode.TextDocumentContentProv
     var serverId = parseInt(uri.path.slice(1) /* remove '/' from beginning */);
     console.assert(serverId > 0);
     var server = this._serverProvider.findServerById(serverId);
-    var outPath = path.join(path.dirname(module.filename), "../..");
-    var clientHtmlPath = path.join(outPath, "../resources/graphClient/graphClient.html");
-    console.assert(fs.existsSync(clientHtmlPath), `Couldn't find ${clientHtmlPath}`);
+    if (server) {
+      var outPath = path.join(path.dirname(module.filename), "../..");
+      var clientHtmlPath = path.join(outPath, "../resources/graphClient/graphClient.html");
+      console.assert(fs.existsSync(clientHtmlPath), `Couldn't find ${clientHtmlPath}`);
 
-    var html = `
+      var html = `
     <!DOCTYPE html>
     <html>
       <body>
@@ -94,6 +94,9 @@ class GraphViewDocumentContentProvider implements vscode.TextDocumentContentProv
     </html>
     `;
 
-    return html;
+      return html;
+    }
+
+    return "This resource is no longer available."
   }
 }

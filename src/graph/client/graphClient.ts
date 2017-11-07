@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-declare let d3: any; // asdf
+declare let d3: any;
 
-const animationStepMs = 50; //asdf
-const graphWidth = 1200, graphHeight = 500; //asdf
+const animationStepMs = 50; // TODO: optimize.  Slow down ticks?
+const graphWidth = 1200, graphHeight = 500; //TODO: be resizable or adapt to editor size
 const defaultQuery = "g.V()";
 
 let htmlElements: {
@@ -46,7 +46,7 @@ interface ResultEdge extends ResultNode {
 interface ResultVertex extends ResultNode {
 };
 
-export class GraphClient { // asdf multiple getting created?
+export class GraphClient {
   private _socket: SocketIOClient.Socket;
   private _force: any;
   private _currentQueryId = 0;
@@ -167,7 +167,7 @@ export class GraphClient { // asdf multiple getting created?
     this.clearGraph();
   }
 
-  private _setState(state: State) { // asdf remove?
+  private _setState(state: State) { // TODO: remove?
     let fullState = `state-${state}`;
     switch (state) {
       case "graph-results":
@@ -175,7 +175,7 @@ export class GraphClient { // asdf multiple getting created?
         fullState += " state-results";
     }
 
-    d3.select("#states").attr("class", fullState); // asdf
+    d3.select("#states").attr("class", fullState);
   }
 
   private showResults(nodes: any[]) {
@@ -204,13 +204,13 @@ export class GraphClient { // asdf multiple getting created?
     d3.select(htmlElements.graphSection).select("svg").remove();
   }
 
-  // asdf only if graph is selected by user
+  // TODO: Move graphics into another file
   private displayGraph(vertices: ResultVertex[], edges: ResultEdge[]) {
     try {
       this.clearGraph();
 
       edges = [];
-      if (!edges.length) { //asdf
+      if (!edges.length) { // TODO: Temporary hack
         for (var i = 0; i < vertices.length; ++i) {
           edges.push({
             type: "edge",
@@ -295,9 +295,6 @@ export class GraphClient { // asdf multiple getting created?
       force.on("tick", () => {
         // The force engine has recalculated x and y for each vertex and edge, so
         // move them in the SVG to those new positions.
-
-        // asdf slow down ticks?
-        // this.log("tick");
 
         vertex
           .transition().ease("linear").duration(animationStepMs)

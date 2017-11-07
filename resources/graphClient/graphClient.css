@@ -50,7 +50,7 @@ h1 span {
 
 .vertex:hover, .vertex.dragging {
     transition: .1s;
-    fill: #00a2e6; /* asdf */
+    fill: #00a2e6; /* TODO need highlight color */
     r: 10px;
 }
 

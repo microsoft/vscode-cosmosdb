@@ -111,7 +111,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	initAsyncCommand(context, 'graph.openExplorer', async (graph: GraphNode) => {
 		if (!graph) {
-			return; // asdf
+			return; // TODO: Ask for context?
 		}
 		await graph.showExplorer();
 	});

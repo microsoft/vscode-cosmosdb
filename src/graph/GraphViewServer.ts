@@ -66,15 +66,15 @@ export class GraphViewServer extends EventEmitter {
         });
       this._server = io(this._httpServer);
 
-      this._server.on('connection', socket => { // asdf called multiple times?  what if already a socket?    dispose?
+      this._server.on('connection', socket => { // TODO called multiple times?  what if already a socket?    dispose?
         console.log(`Connected to client ${socket.id}`);
         this._socket = socket;
         this.setUpSocket();
       });
 
       this._server.on('error', socket => {
-        console.log("error"); // asdf
-        reject("asdf");
+        console.log("error"); // TODO
+        reject("TODO");
       });
     });
   }
@@ -94,7 +94,7 @@ export class GraphViewServer extends EventEmitter {
         } catch (edgesError) {
           // Swallow and just return vertices
           console.log("Error querying for edges: ", (edgesError.message || edgesError));
-          // asdf telemetry?
+          // TODO telemetry?
         }
       }
     } catch (error) {
@@ -125,8 +125,7 @@ export class GraphViewServer extends EventEmitter {
           console.error(err);
           reject(new Error(err));
         }
-        console.log("Results from gremlin", results); // asdf
-        console.log();
+        console.log("Results from gremlin", results);
         resolve(results);
       });
     });
@@ -136,9 +135,10 @@ export class GraphViewServer extends EventEmitter {
     console.log(`Query requested: queryId=${queryId}, gremlin="${gremlin}"`);
 
     this.queryAndShowResults(queryId, gremlin).then(() => {
-      console.error("Query results sent to client"); // asdf
+      console.log("Query results sent to client");
     }, reason => {
-      console.error(reason); // asdf
+      // TODO
+      console.error(reason);
       vscode.window.showErrorMessage(reason.message || reason);
     });
   }
@@ -149,15 +149,15 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private setUpSocket() {
-    // asdf clean up?
+    // TODO clean up?
     this._socket.on('log', (...args: any[]) => {
       console.log('from client: ', ...args);
     });
 
-    //  QUERYTITLE EVENT FROM CLIENT
+    // HANDLE QUERYTITLE EVENT FROM CLIENT
     this._socket.on('getTitle', () => this.handleGetTitleMessage());
 
-    // RECEIVE QUERY EVENT FROM CLIENT
+    // HANDLE QUERY EVENT FROM CLIENT
     this._socket.on('query', (queryId: number, gremlin: string) => this.handleQueryMessage(queryId, gremlin));
   }
 }

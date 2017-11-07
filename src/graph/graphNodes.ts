@@ -18,7 +18,6 @@ export class GraphDatabaseNode implements INode {
 	private _graphEndpoint: string;
 	private _graphPort: number;
 
-	// asdf pass in channel instead of context
 	constructor(readonly id: string, private readonly _masterKey: string, private readonly _documentEndpoint: string, private readonly _graphViewsManager: GraphViewsManager, readonly server: INode) {
 		this._parseEndpoint(_documentEndpoint);
 	}
@@ -53,19 +52,13 @@ export class GraphDatabaseNode implements INode {
 		return this.id;
 	}
 
-	//asdf
-	// get resultsChannel(): IResultsChannel {
-	// 	return this._resultsChannel;
-	// }
-
 	get graphViewsManager(): GraphViewsManager {
 		return this._graphViewsManager;
 	}
 
 	get iconPath(): any {
 		return {
-			// asdf
-			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure Graph - database LARGE.svg'), //asdf
+			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure Graph - database LARGE.svg'),
 			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure Graph - database LARGE.svg')
 		};
 	}
@@ -118,7 +111,7 @@ export class GraphNode implements INode {
 	}
 
 	public async showExplorer(): Promise<void> {
-		await this.graphDBNode.graphViewsManager.showGraphViewer("asdf tab", "asdf title", <GraphConfiguration>{
+		await this.graphDBNode.graphViewsManager.showGraphViewer(this.id, <GraphConfiguration>{
 			endpoint: this.graphDBNode.graphEndpoint,
 			endpointPort: this.graphDBNode.graphPort,
 			databaseName: this.graphDBNode.id,

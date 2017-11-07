@@ -15,6 +15,10 @@ import docDBModels = require("azure-arm-documentdb/lib/models");
 import DocumentdbManagementClient = require("azure-arm-documentdb");
 import { DocDBDatabaseNode, DocDBCollectionNode } from './docdb/nodes';
 import { DocumentClient } from 'documentdb';
+import { GraphDatabaseNode } from './graph/graphNodes';
+
+
+type Experience = "MongoDB" | "DocumentDB" | "Graph" | "Table";
 
 export interface IDocumentNode extends INode {
 	data: object;
@@ -77,17 +81,18 @@ export class CosmosDBAccountNode implements IMongoServer {
 	readonly contextValue: string;
 	readonly tenantId: string;
 	readonly collapsibleState;
-	readonly defaultExperience: string;
+	readonly defaultExperience: Experience;
 
 	private _connectionString: string;
 
-	constructor(private readonly _subscriptionFilter: AzureResourceFilter,
+	constructor(
+		private readonly _subscriptionFilter: AzureResourceFilter,
 		private readonly _databaseAccount: docDBModels.DatabaseAccount,
 		private readonly _resourceGroupName: string) {
 		this.id = _databaseAccount.id;
 		this.tenantId = _subscriptionFilter.session.tenantId;
 		this.label = `${_databaseAccount.name} (${_resourceGroupName})`;
-		this.defaultExperience = _databaseAccount.tags.defaultExperience;
+		this.defaultExperience = <Experience>_databaseAccount.tags.defaultExperience;
 
 		switch (this.defaultExperience) {
 			case "MongoDB":
@@ -96,23 +101,32 @@ export class CosmosDBAccountNode implements IMongoServer {
 			case "DocumentDB":
 				this.contextValue = "cosmosDBDocumentServer"
 				break;
+			case "Graph":
+				this.contextValue = "cosmosGraphDatabaseServer"
+				break;
 			default:
 				this.contextValue = "cosmosDBGenericResource";
 		}
+
 		this.collapsibleState = this.contextValue === "cosmosDBGenericResource" ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed;
 	}
 
 	get iconPath(): any {
-		if (this.defaultExperience === "MongoDB") {
-			return {
-				light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'DataServer.svg'),
-				dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
-			};
-		} else {
-			return {
-				light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB account LARGE.svg'),
-				dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB account LARGE.svg')
-			};
+		switch (this.defaultExperience) {
+			case "MongoDB":
+				return {
+					light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'DataServer.svg'),
+					dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
+				};
+			case "Graph":
+			case "DocumentDB":
+			case "Table":
+			default:
+				const docDBPathAgnostic = path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB account LARGE.svg');
+				return {
+					light: docDBPathAgnostic,
+					dark: docDBPathAgnostic
+				};
 		}
 	}
 
@@ -133,34 +147,47 @@ export class CosmosDBAccountNode implements IMongoServer {
 		return result.primaryMasterKey;
 	}
 
-	async getEndpoint(): Promise<string> {
-		return await this._databaseAccount.documentEndpoint;
+	get documentEndpoint(): string {
+		return this._databaseAccount.documentEndpoint;
 	}
 
 	async getChildren(): Promise<INode[]> {
-		if (this.contextValue === "cosmosDBMongoServer") {
-			const connectionString = await this.getConnectionString();
-			return MongoServerNode.getMongoDatabaseNodes(connectionString, this);
-		}
-		if (this.contextValue === "cosmosDBDocumentServer") {
-			const masterKey = await this.getPrimaryMasterKey();
-			let client = new DocumentClient(this._databaseAccount.documentEndpoint, { masterKey: masterKey });
-			return await CosmosDBAccountNode.getDocDBDatabaseNodes(client, masterKey, await this.getEndpoint(), this.defaultExperience, this);
+		switch (this.contextValue) {
+			case "cosmosDBMongoServer":
+				const connectionString = await this.getConnectionString();
+				return MongoServerNode.getMongoDatabaseNodes(connectionString, this);
+
+			case "cosmosDBDocumentServer":
+			case "cosmosGraphDatabaseServer":
+				return await this.getDocumentDatabaseNodesByExperience();
 		}
 	}
 
-	static async getDocDBDatabaseNodes(client: DocumentClient, masterKey: string, endpoint: string, contextValue: string, server: INode): Promise<INode[]> {
-		let databases = await CosmosDBAccountNode.listDatabases(client);
-		return databases.map(database => new DocDBDatabaseNode(database.id, masterKey, endpoint, contextValue, server));
+	// Can handle DocumentDB or graph nodes
+	private async getDocumentDatabaseNodesByExperience(): Promise<INode[]> {
+		const masterKey = await this.getPrimaryMasterKey();
+		const databases = await this.listDatabases(masterKey);
+		const documentEndpoint = this.documentEndpoint;
+		const experience = this.defaultExperience;
+		return databases.map(database => {
+			switch (experience) {
+				case "DocumentDB":
+					return new DocDBDatabaseNode(database.id, masterKey, documentEndpoint, this);
+				case "Graph":
+					return new GraphDatabaseNode(database.id, masterKey, documentEndpoint, this);
+				default:
+					throw new Error("Unexpected experience");
+			}
+		});
 	}
 
-	static async listDatabases(client): Promise<any[]> {
-		let databases = await client.readDatabases();
+	private async listDatabases(masterKey: string): Promise<INode[]> {
+		const client = new DocumentClient(this.documentEndpoint, { masterKey: masterKey });
+		const databases = await client.readDatabases();
 		return await new Promise<any[]>((resolve, reject) => {
 			databases.toArray((err, dbs: Array<Object>) => err ? reject(err) : resolve(dbs));
 		});
 	}
-
 }
 
 export class AttachedServersNode implements INode {

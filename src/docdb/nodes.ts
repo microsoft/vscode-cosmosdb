@@ -20,14 +20,15 @@ export interface IDocDBDocumentSpec {
 }
 
 export class DocDBDatabaseNode implements INode {
-	readonly contextValue: string;
-	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string, readonly defaultExperience: string, readonly server: INode) {
-		this.contextValue = "cosmosDBDocumentDatabase"
+	readonly contextValue: string = "cosmosDBDocumentDatabase";
+
+	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string, readonly server: INode) {
 	}
 
 	getPrimaryMasterKey(): string {
 		return this._primaryMasterKey;
 	}
+
 	getEndpoint(): string {
 		return this._endPoint;
 	}
@@ -137,7 +138,7 @@ export class DocDBDocumentNode implements IDocumentNode {
 	}
 
 	get label(): string {
-		return this.id;
+		return "DocDBDocumentNode" + this.id;
 	}
 
 	getDocLink(): string {

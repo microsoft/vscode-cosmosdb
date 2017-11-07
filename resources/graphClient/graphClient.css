@@ -158,6 +158,10 @@ button:active {
     border: 0;
 }
 
+#queryWatermark, #graphWatermark {
+    padding-top: 18%;
+}
+
 /* Handle visibility of sections depending on current state */
 
 #states:not(.state-empty) #queryWatermark {
@@ -184,7 +188,7 @@ button:active {
     display: none;
 }
 
-#states.state-graph-results #graph-watermark {
+#states.state-graph-results #graphWatermark {
     display: none;
 }
 

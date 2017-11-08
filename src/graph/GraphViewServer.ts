@@ -105,11 +105,27 @@ export class GraphViewServer extends EventEmitter {
       }
     } catch (error) {
       // If there's an error, send it to the client to display
-      this._socket.emit("showQueryError", queryId, error.message || error);
+      var message = this.removeErrorCallStack(error.message || error.toString());
+      this._socket.emit("showQueryError", queryId, message);
       return;
     }
 
     this._socket.emit("showResults", queryId, results);
+  }
+
+  private removeErrorCallStack(message: string): string {
+    // Remove everything after the lines start looking like this:
+    //      at Microsoft.Azure.Graphs.GremlinGroovy.GremlinGroovyTraversalScript.TranslateGroovyToCsharpInner()
+    try {
+      var match = message.match(/^\r?\n?\s*at \S+\(\)\s*$/m);
+      if (match) {
+        return message.slice(0, match.index);
+      }
+    } catch (error) {
+      // Shouldn't happen, just being defensive
+    }
+
+    return message;
   }
 
   private async executeQuery(queryId: number, gremlinQuery: string): Promise<any[]> {
@@ -140,13 +156,7 @@ export class GraphViewServer extends EventEmitter {
   private handleQueryMessage(queryId: number, gremlin: string) {
     console.log(`Query requested: queryId=${queryId}, gremlin="${gremlin}"`);
 
-    this.queryAndShowResults(queryId, gremlin).then(() => {
-      console.log("Query results sent to client");
-    }, reason => {
-      // TODO
-      console.error(reason);
-      vscode.window.showErrorMessage(reason.message || reason);
-    });
+    this.queryAndShowResults(queryId, gremlin);
   }
 
   private handleGetTitleMessage() {

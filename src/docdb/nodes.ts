@@ -138,7 +138,7 @@ export class DocDBDocumentNode implements IDocumentNode {
 	}
 
 	get label(): string {
-		return "DocDBDocumentNode" + this.id;
+		return this.id;
 	}
 
 	getDocLink(): string {

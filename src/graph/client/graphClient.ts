@@ -113,6 +113,11 @@ export class GraphClient {
       this.log("disconnect");
     });
 
+    this._socket.on('setPageState', (query: string, results: any[]) => {
+      htmlElements.queryInput.value = query;
+      this.showResults(results);
+    });
+
     this._socket.on('setTitle', (title: string) => {
       this.log(`Received title: ${title}`);
       d3.select(htmlElements.title).text(title);
@@ -137,6 +142,10 @@ export class GraphClient {
         this.setStateError(error);
       }
     });
+  }
+
+  public getPageState() {
+    this.emitToHost('state');
   }
 
   public query(gremlin: string) {

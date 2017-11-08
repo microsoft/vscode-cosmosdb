@@ -87,6 +87,10 @@
             var [, port] = window.location.search.match(/port=(.*)/);
             var graphClient = new GraphClient(parseInt(port));
 
+            window.onload = () => {
+                graphClient.getPageState();
+            }
+
             function onExecuteClick() {
                 graphClient.query(queryInput.value);
             }

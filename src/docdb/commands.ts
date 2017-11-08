@@ -181,10 +181,11 @@ export class DocDBCommands {
             if (confirmed === DialogBoxResponses.Yes) {
                 const masterKey = await doc.collection.db.getPrimaryMasterKey();
                 const endpoint = await doc.collection.db.getEndpoint();
-                const client = new DocumentClient(endpoint, { masterKey: masterKey });
+                const client: DocumentClient = new DocumentClient(endpoint, { masterKey: masterKey });
                 const docLink = doc.getDocLink();
+                const options = { partitionKey: doc.partitionKeyValue || Object() }
                 await new Promise((resolve, reject) => {
-                    client.deleteDocument(docLink, (err) => {
+                    client.deleteDocument(docLink, options, (err) => {
                         err ? reject(new Error(err.body)) : resolve();
                     });
                 });

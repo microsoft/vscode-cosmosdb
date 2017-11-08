@@ -1,3 +1,5 @@
+import { error } from "util";
+
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -24,6 +26,8 @@ let htmlElements: {
   queryError: HTMLTextAreaElement,
   queryInput: HTMLInputElement,
   title: HTMLElement,
+  graphRadio: HTMLInputElement,
+  jsonRadio: HTMLInputElement
 };
 
 type State = "empty" | "querying" | "error" | "json-results" | "graph-results";
@@ -73,7 +77,9 @@ export class GraphClient {
       jsonResults: this.selectById("jsonResults"),
       queryError: this.selectById("queryError"),
       queryInput: this.selectById("queryInput"),
-      title: this.selectById("title")
+      title: this.selectById("title"),
+      graphRadio: this.selectById("graphRadio"),
+      jsonRadio: this.selectById("jsonRadio")
     };
 
     htmlElements.queryInput.value = defaultQuery;
@@ -96,9 +102,19 @@ export class GraphClient {
       this.log("disconnect");
     });
 
-    this._socket.on('setPageState', (query: string, results: any[]) => {
+    this._socket.on('setPageState', (query: string, errorMsg: string, results: any[], view: string) => {
       htmlElements.queryInput.value = query;
-      this.showResults(results);
+      if (!errorMsg) {
+        this.showResults(results);
+
+        if (view === 'json') {
+          this.selectJsonView();
+        } else {
+          this.selectGraphView();
+        }
+      } else {
+        this.setStateError(errorMsg);
+      }
     });
 
     this._socket.on('setTitle', (title: string) => {
@@ -140,14 +156,24 @@ export class GraphClient {
 
   public selectGraphView() {
     this._graphView = true;
-    d3.select(htmlElements.graphSection).classed("active", true);
-    d3.select(htmlElements.jsonSection).classed("active", false);
+    this.setView();
   }
 
   public selectJsonView() {
     this._graphView = false;
-    d3.select(htmlElements.graphSection).classed("active", false);
-    d3.select(htmlElements.jsonSection).classed("active", true);
+    this.setView();
+  }
+
+  public setQuery(query: string) {
+    this.emitToHost('setQuery', query);
+  }
+
+  private setView() {
+    htmlElements.graphRadio.checked = this._graphView;
+    htmlElements.jsonRadio.checked = !this._graphView;
+    d3.select(htmlElements.graphSection).classed("active", this._graphView);
+    d3.select(htmlElements.jsonSection).classed("active", !this._graphView);
+    this.emitToHost('setView', this._graphView ? 'graph' : 'json');
   }
 
   private emitToHost(message: string, ...args: any[]) {

@@ -90,6 +90,10 @@
                 graphClient.getPageState();
             }
 
+            queryInput.onchange = () => {
+                graphClient.setQuery(queryInput.value);
+            };
+
             function onExecuteClick() {
                 graphClient.query(queryInput.value);
             }

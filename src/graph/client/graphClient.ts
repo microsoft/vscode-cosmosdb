@@ -42,16 +42,29 @@ function logToUI(s: string) {
 // results may not be nodes
 interface ResultNode {
   [key: string]: any;
+  id: string;
   type: "vertex" | "edge";
 };
 
 interface ResultEdge extends ResultNode {
-  source: number;
-  target: number;
+  inV: string;  // Edge source ID
+  outV: string; // Edge target ID
 };
 
 interface ResultVertex extends ResultNode {
 };
+
+interface ForceNode {
+  vertex: ResultVertex;
+  x: number;
+  y: number;
+}
+
+interface ForceLink {
+  edge: ResultEdge;
+  source: ForceNode;
+  target: ForceNode;
+}
 
 export class GraphClient {
   private _socket: SocketIOClient.Socket;
@@ -83,9 +96,9 @@ export class GraphClient {
     this.log(`Connecting on port ${port}`);
     this._socket = io.connect(`http://localhost:${port}`);
 
-    setInterval(() => {
-      this.log(`Client heartbeat on port ${port}: ${Date()}`);
-    }, 10000);
+    // setInterval(() => {
+    //   this.log(`Client heartbeat on port ${port}: ${Date()}`);
+    // }, 10000);
 
     this._socket.on('connect', () => {
       this.log(`Client connected on port ${port}`);
@@ -174,7 +187,7 @@ export class GraphClient {
     this.clearGraph();
   }
 
-  private _setState(state: State) { // TODO: remove?
+  private _setState(state: State) {
     let fullState = `state-${state}`;
     switch (state) {
       case "graph-results":
@@ -211,26 +224,31 @@ export class GraphClient {
     d3.select(htmlElements.graphSection).select("svg").remove();
   }
 
-  // TODO: Move graphics into another file
   private displayGraph(vertices: ResultVertex[], edges: ResultEdge[]) {
     try {
       this.clearGraph();
 
-      edges = [];
-      if (!edges.length) { // TODO: Temporary hack
-        for (var i = 0; i < vertices.length; ++i) {
-          edges.push({
-            type: "edge",
-            source: Math.floor(Math.random() * vertices.length),
-            target: Math.floor(Math.random() * vertices.length)
-          })
-        }
-      }
+      // Set up nodes and links for the force simulation
+      var nodes: ForceNode[] = vertices.map(v => <ForceNode>{ vertex: v });
+      var links: ForceLink[] = [];
 
-      // edges.forEach((e, i) => {
-      //   e.source = i;
-      //   e.target = i + 1;
-      // });
+      var nodesById = new Map<string, ForceNode>();
+      nodes.forEach(n => nodesById.set(n.vertex.id, n));
+      edges.forEach(e => {
+        var source = nodesById.get(e.inV);
+        if (!source) {
+          this.log(`Could not find source ID ${e.inV}`);
+        } else {
+          var target = nodesById.get(e.outV);
+          if (!target) {
+            this.log(`Could not find target ID ${e.outV}`);
+          } else {
+            var node
+            links.push({ edge: e, source, target });
+          }
+        }
+      });
+      nodesById = null;
 
       // Set up force simulation
       if (this._force) {
@@ -239,15 +257,15 @@ export class GraphClient {
 
       this._force = d3.layout.force()
         .size([graphWidth, graphHeight])
-        .nodes(vertices)
-        .links(edges);
+        .nodes(nodes)
+        .links(links);
       let force = this._force;
 
-      force.gravity(1); // Draws the vertices toward the center of the graph
+      force.gravity(1); // Makes the nodes gravitate toward the center
       force.friction(.5);
 
       force.linkDistance(graphWidth / 3); // edge length
-      force.linkStrength(0.01); // Reduce rigidity of the edges (if < 1, the full linkDistance is relaxed)
+      force.linkStrength(0.01); // Reduce rigidity of the links (if < 1, the full linkDistance is relaxed)
       force.charge(-3000);
 
       let svg = d3.select(htmlElements.graphSection).append("svg")
@@ -260,14 +278,14 @@ export class GraphClient {
         }))
         .append("g");
 
-      // Edges before vertices so that edges don't get drawn on top of vertices, obscuring them
+      // Links before nodes so that links don't get drawn on top of node labels, obscuring them
       let edge = svg.selectAll(".edge")
-        .data(edges)
+        .data(links)
         .enter().append("line")
         .attr("class", "edge")
         ;
 
-      // Allow user to drag vertices. Set "dragging" class while dragging.
+      // Allow user to drag nodes. Set "dragging" class while dragging.
       let vertexDrag = force.drag().on("dragstart", function () {
         d3.select(this).classed("dragging", true);
 
@@ -277,25 +295,25 @@ export class GraphClient {
         .on("dragend", function () { d3.select(this).classed("dragging", false); });
 
       let label = svg.selectAll(".label")
-        .data(vertices)
+        .data(nodes)
         .enter().append("text")
         .attr("class", "label")
         .attr("x", "10px")
         .attr("y", "2px")
         .attr('font-size', 13)
-        .text(function (d) {
-          let displayText = d.id; // TODO: allow user to change what property we display
+        .text((d: ForceNode) => {
+          let displayText = d.vertex.id;
           return displayText;
         })
         ;
 
-      // Vertices last so that they're always and top to be able to be dragged
+      // Nodes last so that they're always and top to be able to be dragged
       let vertex = svg.selectAll(".vertex")
-        .data(vertices)
+        .data(nodes)
         .enter().append("circle")
         .attr("class", "vertex")
-        .attr("cx", function (d) { return d.x; })
-        .attr("cy", function (d) { return d.y; })
+        .attr("cx", (d: ForceNode) => d.x)
+        .attr("cy", (d: ForceNode) => d.y)
         .call(vertexDrag)
         ;
 
@@ -305,22 +323,24 @@ export class GraphClient {
 
         vertex
           .transition().ease("linear").duration(animationStepMs)
-          .attr("cx", function (d) { return d.x; })
-          .attr("cy", function (d) { return d.y; })
+          .attr("cx", (d: ForceNode) => d.x)
+          .attr("cy", (d: ForceNode) => d.y)
+          ;
 
-        // Note that the indices in the edges have now been replaced by references to vertices
         edge
           .transition().ease("linear").duration(animationStepMs)
-          .attr("x1", function (d) { return d.source.x; })
-          .attr("y1", function (d) { return d.source.y; })
-          .attr("x2", function (d) { return d.target.x; })
-          .attr("y2", function (d) { return d.target.y; });
+          .attr("x1", (d: ForceLink) => d.source.x)
+          .attr("y1", (d: ForceLink) => d.source.y)
+          .attr("x2", (d: ForceLink) => d.target.x)
+          .attr("y2", (d: ForceLink) => d.target.y)
+          ;
 
         label
           .transition().ease("linear").duration(animationStepMs)
           .attr("class", "label")
-          .attr("dx", function (d) { return d.x; })
-          .attr("dy", function (d) { return d.y; })
+          .attr("dx", (d: ForceNode) => d.x)
+          .attr("dy", (d: ForceNode) => d.y)
+          ;
       });
 
       force.start();

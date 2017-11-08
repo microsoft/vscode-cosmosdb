@@ -24,6 +24,8 @@ export class GraphViewServer extends EventEmitter {
   private _socket: SocketIO.Socket;
   private _lastQuery: string | undefined;
   private _lastResults: any[] | undefined;
+  private _lastErrorMsg: string | undefined;
+  private _lastView: 'graph' | 'json';
 
   constructor(private _configuration: GraphConfiguration) {
     super();
@@ -93,6 +95,7 @@ export class GraphViewServer extends EventEmitter {
     try {
       this._lastQuery = gremlinQuery;
       this._lastResults = undefined;
+      this._lastErrorMsg = undefined;
       var vertices = await this.executeQuery(queryId, gremlinQuery);
       results = vertices;
 
@@ -111,6 +114,7 @@ export class GraphViewServer extends EventEmitter {
     } catch (error) {
       // If there's an error, send it to the client to display
       var message = this.removeErrorCallStack(error.message || error.toString());
+      this._lastErrorMsg = message;
       this._socket.emit("showQueryError", queryId, message);
       return;
     }
@@ -162,8 +166,18 @@ export class GraphViewServer extends EventEmitter {
     console.log('getPageState');
 
     if (this._lastQuery) {
-      this._socket.emit('setPageState', this._lastQuery, this._lastResults);
+      this._socket.emit('setPageState', this._lastQuery, this._lastErrorMsg, this._lastResults, this._lastView);
     }
+  }
+
+  private handleSetQuery(query: string) {
+    console.log('setQuery');
+    this._lastQuery = query;
+  }
+
+  private handleSetView(view: 'graph' | 'json') {
+    console.log('setView');
+    this._lastView = view;
   }
 
   private handleQueryMessage(queryId: number, gremlin: string) {
@@ -183,13 +197,19 @@ export class GraphViewServer extends EventEmitter {
       console.log('from client: ', ...args);
     });
 
-    // HANDLE QUERYTITLE EVENT FROM CLIENT
+    // Handle QueryTitle event from client
     this._socket.on('getTitle', () => this.handleGetTitleMessage());
 
-    // HANDLE QUERY EVENT FROM CLIENT
+    // Handle query event from client
     this._socket.on('query', (queryId: number, gremlin: string) => this.handleQueryMessage(queryId, gremlin));
 
-    // HANDLE STATE EVENT FROM CLIENT
+    // Handle state event from client
     this._socket.on('state', () => this.handleGetPageState());
+
+    // Handle setQuery event from client
+    this._socket.on('setQuery', (query: string) => this.handleSetQuery(query));
+
+    // Handle setView event from client
+    this._socket.on('setView', (view: 'graph' | 'json') => this.handleSetView(view));
   }
 }

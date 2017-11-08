@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+
+<!--
+*  Copyright (c) Microsoft Corporation. All rights reserved.
+*  Licensed under the MIT License. See License.txt in the project root for license information.
+*-->
+
+<!--
+    This is the HTML for exploring graphs, and is hosted inside a WebView in a VS HTML preview window
+-->
+
+<head>
+    <link rel="stylesheet" type="text/css" href="graphClient.css"></link>
+
+    <script src='../../node_modules/d3/d3.js' charset="UTF-8"></script>
+
+    <script>window.exports = {};</script>
+    <script src="../../node_modules/socket.io-client/dist/socket.io.js"></script>
+    <script>
+        io = exports.io;
+    </script>
+
+    <script src="../../out/src/graph/client/graphClient.js"></script>
+</head>
+
+<!-- Possible states (set on #states)
+    state-empty
+    state-querying
+    state-error
+    state-results + state-graph-results
+    state-results + state-json-results
+-->
+
+<body>
+    <div id="states" class="state-empty">
+        </script>
+        <header>
+            <img id="cosmos" src="../../resources/cosmos.png">
+            <h1 id="title">
+                &nbsp;
+                <!-- placeholder -->
+            </h1>
+        </header>
+
+        <div>
+            <div>
+                <input id="queryInput" type="text" placeholder='Enter gremlin query ("g.V()" for all vertices)'></input>
+                <button id="executeButton" onclick="onExecuteClick()">Execute</button>
+            </div>
+            <div id="queryStatus">Querying...</div>
+        </div>
+
+        <div id="radioButtons" class="toggle-radio-buttons">
+            <input type="radio" id="graphRadio" name="resultsToggle" value="graph" checked onclick="selectGraphView()">
+            <label for="graphRadio">Graph</label>
+            <input type="radio" id="jsonRadio" name="resultsToggle" value="json" onclick="selectJsonView()">
+            <label for="jsonRadio">JSON</label>
+        </div>
+
+        <div id="resultsBackground" width="100%">
+            <textarea id="queryError" class="error" readonly="readonly" width="100%"></textarea>
+            <div id="resultsSection">
+                <div id="graphSection" class="active">
+                    <!-- SVG will be inserted here -->
+                    <div id="graphWatermark" class="watermark">
+                        The results cannot be displayed visually. Please see the JSON tab for detailed results.
+                    </div>
+                </div>
+                <div id="jsonSection">
+                    <textarea id="jsonResults"></textarea>
+                </div>
+            </div>
+            <div id="queryWatermark" class="watermark">
+                Please enter a query and click Execute.
+            </div>
+        </div>
+
+        <div id="debug" style="display:none">
+            <h2>Debug log</h2>
+            <textarea id="debugLog" style="height:400px; width: 100%;"></textarea>
+        </div>
+
+        <script>
+            // Retrieve port from query string
+            var [, port] = window.location.search.match(/port=(.*)/);
+            var graphClient = new GraphClient(parseInt(port));
+
+            function onExecuteClick() {
+                graphClient.query(queryInput.value);
+            }
+
+            function selectGraphView() {
+                graphClient.selectGraphView();
+            }
+
+            function selectJsonView() {
+                graphClient.selectJsonView();
+            }
+        </script>
+    </div>
+</body>
+
+</html>

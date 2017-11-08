@@ -23,16 +23,23 @@ import { IMongoServer, MongoDatabaseNode, MongoCommand, MongoCollectionNode, Mon
 import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode } from './docdb/nodes';
 import { CosmosDBAccountNode, INode, IDocumentNode, LoadMoreNode } from './nodes';
 import { DocumentClient } from 'documentdb';
+import { GraphNode } from './graph/graphNodes';
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
 import { UserCancelledError } from './errors';
 import { DocDBCommands } from './docdb/commands';
 import { DialogBoxResponses } from './constants'
 import { DocumentEditor } from './DocumentEditor';
+import { GraphViewsManager } from "./graph/GraphViewsManager";
 
 let connectedDb: MongoDatabaseNode = null;
 let languageClient: MongoDBLanguageClient = null;
 let explorer: CosmosDBExplorer;
+let graphViewsManager: GraphViewsManager;
+enum DocumentType {
+	Mongo,
+	DocDB
+};
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(new Reporter(context));
@@ -40,6 +47,9 @@ export function activate(context: vscode.ExtensionContext) {
 	const azureAccount = vscode.extensions.getExtension<AzureAccount>('ms-vscode.azure-account')!.exports;
 
 	languageClient = new MongoDBLanguageClient(context);
+
+	let graphViewsManager = new GraphViewsManager(context);
+	context.subscriptions.push(this.graphView);
 
 	explorer = new CosmosDBExplorer(azureAccount, context.globalState);
 	context.subscriptions.push(azureAccount.onFiltersChanged(() => explorer.refresh()));
@@ -51,6 +61,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(documentEditor);
 
 	context.subscriptions.push(util.getOutputChannel());
+
 
 	// Commands
 	initAsyncCommand(context, 'cosmosDB.createAccount', async () => {
@@ -95,6 +106,12 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.loadMore', async (node: LoadMoreNode) => {
 		await node.parentNode.addMoreChildren();
 		explorer.refresh(node.parentNode);
+	});
+	initAsyncCommand(context, 'graph.openExplorer', async (graph: GraphNode) => {
+		if (!graph) {
+			return; // TODO: Ask for context (see Issue#35)
+		}
+		await graph.showExplorer(graphViewsManager);
 	});
 
 	initEvent(context, 'cosmosDB.documentEditor.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument, (doc: vscode.TextDocument) => documentEditor.onDidSaveTextDocument(context.globalState, doc));

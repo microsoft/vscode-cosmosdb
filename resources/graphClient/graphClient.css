@@ -173,8 +173,12 @@ textarea {
 }
 
 #stats {
-    padding: 5px;
-    position: absolute;
+    box-sizing: border-box;
+    padding: 12px 15px;
+    color: #cccccc;
+    background: #222;
+    border-top: #454545 1px solid;
+    font-size: 10pt;
 }
 
 /* Handle visibility of sections depending on current state */

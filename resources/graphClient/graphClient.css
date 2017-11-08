@@ -172,6 +172,11 @@ textarea {
     padding-top: 18%;
 }
 
+#stats {
+    padding: 5px;
+    position: absolute;
+}
+
 /* Handle visibility of sections depending on current state */
 
 #states:not(.state-empty) #queryWatermark {

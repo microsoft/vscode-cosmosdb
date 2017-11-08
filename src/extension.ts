@@ -109,7 +109,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	initAsyncCommand(context, 'graph.openExplorer', async (graph: GraphNode) => {
 		if (!graph) {
-			return; // TODO: Ask for context (see Issue#35)
+			return; // TODO: Ask for context instead of ignoring (issue#35)
 		}
 		await graph.showExplorer(graphViewsManager);
 	});

@@ -13,7 +13,6 @@ export interface GraphConfiguration {
 }
 
 export function areConfigsEquals(config1: GraphConfiguration, config2: GraphConfiguration): boolean {
-  // TODO: case sensitivity?
   return config1.endpoint === config2.endpoint &&
     config1.endpointPort === config2.endpointPort &&
     config1.databaseName === config2.databaseName &&

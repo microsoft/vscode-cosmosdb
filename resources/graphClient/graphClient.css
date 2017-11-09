@@ -6,8 +6,9 @@
  body {
     font-family: Arial, Helvetica, sans-serif;
     background: #1e1e1e;
-    color: white;
+    color: #cccccc;
     margin-left: 10px;
+    font-size: 16px;
 }
 
 * {
@@ -127,6 +128,7 @@ button:active {
 
 textarea {
     resize: none;
+    font-size: 14px;
 }
 
 #jsonResults {
@@ -138,16 +140,22 @@ textarea {
 .toggle-radio-buttons input[type="radio"] {
     /* Don't set display:none because that will mess up accessibility */
     width: 0;
+    border: 5px;
+    margin: 0;
 }
 
 .toggle-radio-buttons {
-    margin-bottom: 5px;
+    margin-bottom: 17px;
+    margin-top: 17px;
+    margin-left: -4px;
 }
 
 .toggle-radio-buttons label {
     color:#aaa;
     padding-bottom: 3px;
     border-bottom: 3px transparent solid;
+    margin-right: 18px;
+    font-size: 16px;
 }
 
 .toggle-radio-buttons input[type="radio"] + label {
@@ -164,7 +172,7 @@ textarea {
 #jsonResults {
     height: -webkit-fill-available;
     background: transparent;
-    color: white;
+    color: #cccccc;
     border: 0;
 }
 
@@ -192,10 +200,6 @@ textarea {
 }
 
 #states:not(.state-querying) #queryStatus {
-    visibility: hidden;
-}
-
-#states:not(.state-results) #radioButtons {
     visibility: hidden;
 }
 

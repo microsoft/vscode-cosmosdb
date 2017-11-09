@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { Command } from 'vscode';
 import { INode, IDocumentNode, LoadMoreNode } from '../nodes';
-import { DocumentClient, QueryIterator } from 'documentdb';
+import { DocumentClient, QueryIterator, CollectionMeta, CollectionPartitionKey } from 'documentdb';
 
 
 export interface IDocDBServer extends INode {
@@ -55,11 +55,11 @@ export class DocDBDatabaseNode implements INode {
 		const parentNode = this;
 		const client = new DocumentClient(this.getEndpoint(), { masterKey: this.getPrimaryMasterKey() });
 		let collections = await this.listCollections(dbLink, client);
-		return collections.map(collection => new DocDBCollectionNode(collection.id, parentNode));
+		return collections.map(collection => new DocDBCollectionNode(collection.id, parentNode, collection.partitionKey));
 	}
 
-	async listCollections(databaseLink, client): Promise<any> {
-		let collections = await client.readCollections(databaseLink);
+	async listCollections(databaseLink, client: DocumentClient): Promise<any> {
+		let collections: QueryIterator<CollectionMeta> = await client.readCollections(databaseLink);
 		return await new Promise<any[]>((resolve, reject) => {
 			collections.toArray((err, cols: Array<Object>) => err ? reject(err) : resolve(cols));
 		});
@@ -68,7 +68,7 @@ export class DocDBDatabaseNode implements INode {
 
 export class DocDBCollectionNode implements INode {
 
-	constructor(readonly id: string, readonly db: DocDBDatabaseNode) {
+	constructor(readonly id: string, readonly db: DocDBDatabaseNode, readonly partitionKey: CollectionPartitionKey) {
 	}
 
 	readonly contextValue: string = "cosmosDBDocumentCollection";
@@ -133,6 +133,8 @@ export class DocDBDocumentNode implements IDocumentNode {
 
 	readonly contextValue: string = "cosmosDBDocument";
 
+	readonly partitionKeyValue = this.getPartitionKeyValue();
+
 	get data(): IDocDBDocumentSpec {
 		return this._data;
 	}
@@ -166,7 +168,7 @@ export class DocDBDocumentNode implements IDocumentNode {
 		const _self: string = this.data._self;
 		this._data = await new Promise<IDocDBDocumentSpec>((resolve, reject) => {
 			client.replaceDocument(_self, newData,
-				{ accessCondition: { type: 'IfMatch', condition: newData._etag } },
+				{ accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this.partitionKeyValue || Object() },
 				(err, updated) => {
 					if (err) {
 						reject(new Error(err.body));
@@ -178,4 +180,24 @@ export class DocDBDocumentNode implements IDocumentNode {
 
 		return this._data;
 	}
+
+  getPartitionKeyValue(): string {
+		const partitionKey = this.collection.partitionKey;
+		if (!partitionKey) {
+			return null;
+		}
+		const fields = partitionKey.paths[0].split('/');
+		if (fields[0] === '') {
+			fields.shift();
+		}
+		let value;
+		for (let field of fields) {
+			value = value ? value[field] : this.data[field];
+			if (!value) {
+				break;
+			}
+		}
+		return value;
+	}
+
 }

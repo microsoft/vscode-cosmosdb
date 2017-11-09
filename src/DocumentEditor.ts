@@ -102,9 +102,9 @@ export class DocumentEditor implements vscode.Disposable {
     private async udpateDocumentToNode(node: IDocumentNode, doc: vscode.TextDocument): Promise<void> {
         const updatedDoc: {} = await node.update(JSON.parse(doc.getText()));
         const output = util.getOutputChannel();
-        const timestamp = Math.floor(Date.now());
+        const timestamp = (new Date()).toLocaleTimeString();
         const docLink = node.getDocLink();
-        output.appendLine(`${timestamp}: Updated document "${node.id}" to collection "${docLink}"`);
+        output.appendLine(`${timestamp}: Updated document "${docLink}"`);
         output.show();
         await this.updateEditor(updatedDoc);
     }

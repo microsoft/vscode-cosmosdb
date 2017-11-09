@@ -46,8 +46,8 @@ export class SubscriptionNode implements INode {
 
 	get iconPath(): any {
 		return {
-			light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'AzureSubscription.svg'),
-			dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'AzureSubscription.svg')
+			light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'AzureSubscription.svg'),
+			dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'AzureSubscription.svg')
 		};
 	}
 

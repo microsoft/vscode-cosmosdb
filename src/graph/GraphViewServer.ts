@@ -141,6 +141,18 @@ export class GraphViewServer extends EventEmitter {
         "password": this._configuration.key
       });
 
+    // Patch up handleProtocolMessage as a temporary work-around for https://github.com/jbmusso/gremlin-javascript/issues/93
+    var originalHandleProtocolMessage = client.handleProtocolMessage;
+    client.handleProtocolMessage = function handleProtocolMessage(message) {
+      if (!message.binary) {
+        // originalHandleProtocolMessage isn't handling non-binary messages, so convert this one back to binary
+        message.data = new Buffer(message.data);
+        message.binary = true;
+      }
+
+      originalHandleProtocolMessage.call(this, message);
+    };
+
     return new Promise<[{}[]]>((resolve, reject) => {
       client.execute(gremlinQuery, {}, (err, results) => {
         if (err) {

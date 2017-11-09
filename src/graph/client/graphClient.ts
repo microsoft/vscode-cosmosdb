@@ -120,20 +120,20 @@ export class GraphClient {
     });
 
     this._socket.on('setPageState', (previousState) => {
-      htmlElements.queryInput.value = previousState.lastQuery;
+      htmlElements.queryInput.value = previousState.query;
 
       if (previousState.isQueryRunning) {
         this.setStateQuerying();
         return;
       }
 
-      if (!previousState.lastErrorMsg) {
-        this.showResults(previousState.lastResults);
+      if (!previousState.errorMessage) {
+        this.showResults(previousState.results);
       } else {
-        this.setStateError(previousState.lastErrorMsg);
+        this.setStateError(previousState.errorMessage);
       }
 
-      if (previousState.lastView === 'json') {
+      if (previousState.view === 'json') {
         this.selectJsonView();
       } else {
         this.selectGraphView();

@@ -11,16 +11,13 @@
 
 - Create a Cosmos DB account by clicking the `+` button in the title
 - View Azure Cosmos DB accounts and open directly in the portal
-- Attach a Mongo server by clicking the plug icon in the title
-  - Typical connection string for a local MongoDB instance: `mongodb://localhost:27017`
-
-MongoDB and DocumentDB accounts* support the following:
-- View/Create/Delete databses, collections, and documents
+- View/Create/Delete databses, collections, graphs, and documents
 - Click on a document to open in the editor
+- Click on a graph to open graph viewer
 - Edit a document and persist changes to the cloud
-- 'Load more' documents in the explorer
+- Attach a Mongo server by clicking the plug icon in the title
 
-*Support for other CosmosDB apis (i.e. Graph and Table) is coming soon!
+*Support for Table accounts in CosmosDB is coming soon!
 
 ## Mongo "Scrapbooks"
 
@@ -60,7 +57,7 @@ Before we can accept your pull request you will need to sign a **Contribution Li
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
 # Telemetry
-This extension collects telemetry data to help us build a better experience with Cosmos DB and VS Code. The extension respects the `telemetry.enableTelemetry` setting which you can learn more about in our [FAQ](https://code.visualstudio.com/docs/supporting/faq#_how-to-disable-telemetry-reporting).
+VS Code collects usage data and sends it to Microsoft to help improve our products and services. Read our [privacy statement](https://go.microsoft.com/fwlink/?LinkID=528096&clcid=0x409) to learn more. If you don’t wish to send usage data to Microsoft, you can set the `telemetry.enableTelemetry` setting to `false`. Learn more in our [FAQ](https://code.visualstudio.com/docs/supporting/faq#_how-to-disable-telemetry-reporting).
 
 # License
 [MIT](LICENSE.md)

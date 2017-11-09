@@ -1,13 +1,20 @@
 # Change Log
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
-## 0.2.0 - 2017-11-02
+## 0.2.0 - 2017-11-10
 ### Added
-DocumentDB and MongoDB accounts now support:
-- View/Create/Delete databses, collections, and documents
-- Click on a document to open in the editor
-- Edit a document and persist changes to the cloud
-- 'Load more' documents in the explorer
+- Graph:
+  - View/Create/Delete databases and graphs
+  - Click on a graph to visualize data
+  - Query graph using [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support)
+- DocumentDB:
+  - View/Create/Delete databases, collections, and documents
+- Mongo
+  - View documents in the explorer
+- DocumentDB and Mongo:
+  - Click on a document to open in the editor
+  - Edit a document and persist changes to the cloud
+
 
 ### Removed
 - View Mongo documents in 'result.json' by clicking on a collection in the explorer

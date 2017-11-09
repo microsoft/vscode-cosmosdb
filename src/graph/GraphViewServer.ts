@@ -22,13 +22,22 @@ export class GraphViewServer extends EventEmitter {
   private _httpServer: http.Server;
   private _port: number | undefined;
   private _socket: SocketIO.Socket;
-  private _lastQuery: string | undefined;
-  private _lastResults: any[] | undefined;
-  private _lastErrorMsg: string | undefined;
-  private _lastView: 'graph' | 'json';
+  private _previousPageState: {
+    lastQuery: string | undefined,
+    lastResults: any[] | undefined,
+    lastErrorMsg: string | undefined,
+    lastView: 'graph' | 'json'
+  };
+
 
   constructor(private _configuration: GraphConfiguration) {
     super();
+    this._previousPageState = {
+      lastQuery: undefined,
+      lastResults: undefined,
+      lastErrorMsg: undefined,
+      lastView: 'graph'
+    };
   }
 
   public get configuration(): GraphConfiguration {
@@ -93,9 +102,9 @@ export class GraphViewServer extends EventEmitter {
     var results: any[];
 
     try {
-      this._lastQuery = gremlinQuery;
-      this._lastResults = undefined;
-      this._lastErrorMsg = undefined;
+      this._previousPageState.lastQuery = gremlinQuery;
+      this._previousPageState.lastResults = undefined;
+      this._previousPageState.lastErrorMsg = undefined;
       var vertices = await this.executeQuery(queryId, gremlinQuery);
       results = vertices;
 
@@ -104,7 +113,7 @@ export class GraphViewServer extends EventEmitter {
         try {
           var edges = await this.executeQuery(queryId, gremlinQuery + ".bothE()");
           results = results.concat(edges);
-          this._lastResults = results;
+          this._previousPageState.lastResults = results;
         } catch (edgesError) {
           // Swallow and just return vertices
           console.log("Error querying for edges: ", (edgesError.message || edgesError));
@@ -114,7 +123,7 @@ export class GraphViewServer extends EventEmitter {
     } catch (error) {
       // If there's an error, send it to the client to display
       var message = this.removeErrorCallStack(error.message || error.toString());
-      this._lastErrorMsg = message;
+      this._previousPageState.lastErrorMsg = message;
       this._socket.emit("showQueryError", queryId, message);
       return;
     }
@@ -165,19 +174,19 @@ export class GraphViewServer extends EventEmitter {
   private handleGetPageState() {
     console.log('getPageState');
 
-    if (this._lastQuery) {
-      this._socket.emit('setPageState', this._lastQuery, this._lastErrorMsg, this._lastResults, this._lastView);
+    if (this._previousPageState.lastQuery) {
+      this._socket.emit('setPageState', this._previousPageState);
     }
   }
 
   private handleSetQuery(query: string) {
     console.log('setQuery');
-    this._lastQuery = query;
+    this._previousPageState.lastQuery = query;
   }
 
   private handleSetView(view: 'graph' | 'json') {
     console.log('setView');
-    this._lastView = view;
+    this._previousPageState.lastView = view;
   }
 
   private handleQueryMessage(queryId: number, gremlin: string) {
@@ -204,7 +213,7 @@ export class GraphViewServer extends EventEmitter {
     this._socket.on('query', (queryId: number, gremlin: string) => this.handleQueryMessage(queryId, gremlin));
 
     // Handle state event from client
-    this._socket.on('state', () => this.handleGetPageState());
+    this._socket.on('getPageState', () => this.handleGetPageState());
 
     // Handle setQuery event from client
     this._socket.on('setQuery', (query: string) => this.handleSetQuery(query));

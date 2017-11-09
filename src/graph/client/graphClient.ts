@@ -119,18 +119,19 @@ export class GraphClient {
       this.log("disconnect");
     });
 
-    this._socket.on('setPageState', (query: string, errorMsg: string, results: any[], view: string) => {
-      htmlElements.queryInput.value = query;
-      if (!errorMsg) {
-        this.showResults(results);
+    this._socket.on('setPageState', (previousState) => {
+      htmlElements.queryInput.value = previousState.lastQuery;
 
-        if (view === 'json') {
-          this.selectJsonView();
-        } else {
-          this.selectGraphView();
-        }
+      if (!previousState.lastErrorMsg) {
+        this.showResults(previousState.lastResults);
       } else {
-        this.setStateError(errorMsg);
+        this.setStateError(previousState.lastErrorMsg);
+      }
+
+      if (previousState.lastView === 'json') {
+        this.selectJsonView();
+      } else {
+        this.selectGraphView();
       }
     });
 
@@ -161,7 +162,7 @@ export class GraphClient {
   }
 
   public getPageState() {
-    this.emitToHost('state');
+    this.emitToHost('getPageState');
   }
 
   public query(gremlin: string) {
@@ -188,7 +189,7 @@ export class GraphClient {
   private setView() {
     htmlElements.graphRadio.checked = this._graphView;
     htmlElements.jsonRadio.checked = !this._graphView;
-    d3.select(htmlElements.graphSection).classed("active", this._graphView);
+    d3.select(htmlElements.graphSection).classed("active", !!this._graphView);
     d3.select(htmlElements.jsonSection).classed("active", !this._graphView);
     this.emitToHost('setView', this._graphView ? 'graph' : 'json');
   }

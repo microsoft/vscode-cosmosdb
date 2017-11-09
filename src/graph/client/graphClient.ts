@@ -15,8 +15,8 @@ declare let d3: any;
 const animationStepMs = 50; // TODO: optimize.  Slow down ticks?
 const graphWidth = 1200, graphHeight = 500; //TODO: be resizable or adapt to editor size
 const defaultQuery = "g.V()";
-const maxNodes = 1000;
-const maxEdges = 3000;
+const maxNodes = 300;
+const maxEdges = 1000;
 
 let htmlElements: {
   debugLog: HTMLTextAreaElement,
@@ -92,6 +92,7 @@ export class GraphClient {
       stats: this.selectById("stats"),
       title: this.selectById("title")
     };
+    d3.select(htmlElements.stats).attr("style", `width:${graphWidth}px`);
 
     htmlElements.queryInput.value = defaultQuery;
 
@@ -104,21 +105,21 @@ export class GraphClient {
     //   this.log(`Client heartbeat on port ${port}: ${Date()}`);
     // }, 10000);
 
-    this._socket.on('connect', () => {
+    this._socket.on('connect', (): void => {
       this.log(`Client connected on port ${port}`);
       this._socket.emit('getTitle');
     });
 
-    this._socket.on('disconnect', () => {
+    this._socket.on('disconnect', (): void => {
       this.log("disconnect");
     });
 
-    this._socket.on('setTitle', (title: string) => {
+    this._socket.on('setTitle', (title: string): void => {
       this.log(`Received title: ${title}`);
       d3.select(htmlElements.title).text(title);
     });
 
-    this._socket.on('showResults', (queryId: number, results: any[]) => {
+    this._socket.on('showResults', (queryId: number, results: any[]): void => {
       this.log(`Received results for query ${queryId} - ${results.length} data points`);
 
       if (queryId !== this._currentQueryId) {
@@ -128,7 +129,7 @@ export class GraphClient {
       }
     });
 
-    this._socket.on('showQueryError', (queryId: number, error: string) => {
+    this._socket.on('showQueryError', (queryId: number, error: string): void => {
       this.log(`Received error for query ${queryId} - ${error}`);
 
       if (queryId !== this._currentQueryId) {
@@ -205,6 +206,7 @@ export class GraphClient {
   private showResults(nodes: any[]) {
     // Always show JSON results
     htmlElements.jsonResults.value = JSON.stringify(nodes, null, 2);
+    console.log(JSON.stringify(nodes, null, 2));
 
     let [vertices, edges] = this.splitVerticesAndEdges(nodes);
     if (!vertices.length) {

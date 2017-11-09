@@ -103,7 +103,7 @@ export class CosmosDBAccountNode implements IMongoServer {
 				this.contextValue = "cosmosDBDocumentServer"
 				break;
 			case "Graph":
-				this.contextValue = "cosmosGraphDatabaseServer"
+				this.contextValue = "cosmosDBGraphAccount"
 				break;
 			default:
 				this.contextValue = "cosmosDBGenericResource";
@@ -159,7 +159,7 @@ export class CosmosDBAccountNode implements IMongoServer {
 				return MongoServerNode.getMongoDatabaseNodes(connectionString, this);
 
 			case "cosmosDBDocumentServer":
-			case "cosmosGraphDatabaseServer":
+			case "cosmosDBGraphAccount":
 				return await this.getDocumentDatabaseNodesByExperience();
 		}
 	}

@@ -23,6 +23,7 @@ type Experience = "MongoDB" | "DocumentDB" | "Graph" | "Table";
 export interface IDocumentNode extends INode {
 	data: object;
 	update(data: any): Promise<any>;
+	getDocLink(): string;
 }
 
 export interface INode extends vscode.TreeItem {

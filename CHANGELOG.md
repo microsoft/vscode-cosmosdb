@@ -5,9 +5,10 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 ### Added
 - Graph:
   - View/Create/Delete databases and graphs
-  - Click on a graph to open graph viewer
+  - Click on a graph to visualize data
+  - Query graph using [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support)
 - DocumentDB:
-  - View/Create/Delete databses, collections, and documents
+  - View/Create/Delete databases, collections, and documents
 - Mongo
   - View documents in the explorer
 - DocumentDB and Mongo:

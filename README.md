@@ -11,9 +11,10 @@
 
 - Create a Cosmos DB account by clicking the `+` button in the title
 - View Azure Cosmos DB accounts and open directly in the portal
-- View/Create/Delete databses, collections, graphs, and documents
+- View/Create/Delete databases, collections, graphs, and documents
 - Click on a document to open in the editor
-- Click on a graph to open graph viewer
+- Click on a graph to visualize data
+- Query graph using [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support)
 - Edit a document and persist changes to the cloud
 - Attach a Mongo server by clicking the plug icon in the title
 

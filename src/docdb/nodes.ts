@@ -25,11 +25,11 @@ export class DocDBDatabaseNode implements INode {
 	constructor(readonly id: string, readonly _primaryMasterKey: string, readonly _endPoint: string, readonly server: INode) {
 	}
 
-	getPrimaryMasterKey(): string {
+	get masterKey(): string {
 		return this._primaryMasterKey;
 	}
 
-	getEndpoint(): string {
+	get documentEndpoint(): string {
 		return this._endPoint;
 	}
 
@@ -46,14 +46,14 @@ export class DocDBDatabaseNode implements INode {
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
-	getDbLink(): string {
+	getDBLink(): string {
 		return 'dbs/' + this.id;
 	}
 
 	async getChildren(): Promise<INode[]> {
-		const dbLink: string = this.getDbLink();
+		const dbLink: string = this.getDBLink();
 		const parentNode = this;
-		const client = new DocumentClient(this.getEndpoint(), { masterKey: this.getPrimaryMasterKey() });
+		const client = new DocumentClient(this.documentEndpoint, { masterKey: this.masterKey });
 		let collections = await this.listCollections(dbLink, client);
 		return collections.map(collection => new DocDBCollectionNode(collection.id, parentNode, collection.partitionKey));
 	}
@@ -68,7 +68,7 @@ export class DocDBDatabaseNode implements INode {
 
 export class DocDBCollectionNode implements INode {
 
-	constructor(readonly id: string, readonly db: DocDBDatabaseNode, readonly partitionKey: CollectionPartitionKey) {
+	constructor(readonly id: string, readonly dbNode: DocDBDatabaseNode, readonly partitionKey: CollectionPartitionKey) {
 	}
 
 	readonly contextValue: string = "cosmosDBDocumentCollection";
@@ -91,7 +91,7 @@ export class DocDBCollectionNode implements INode {
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
 	getCollLink(): string {
-		return this.db.getDbLink() + '/colls/' + this.id;
+		return this.dbNode.getDBLink() + '/colls/' + this.id;
 	}
 
 	clearCache(): void {
@@ -102,7 +102,7 @@ export class DocDBCollectionNode implements INode {
 	async getChildren(): Promise<INode[]> {
 		if (!this._hasFetched) {
 			const collLink: string = this.getCollLink();
-			const client = new DocumentClient(this.db.getEndpoint(), { masterKey: this.db.getPrimaryMasterKey() });
+			const client = new DocumentClient(this.dbNode.documentEndpoint, { masterKey: this.dbNode.masterKey });
 			this._iterator = await client.readDocuments(collLink);
 			await this.addMoreChildren();
 			this._hasFetched = true;
@@ -166,8 +166,8 @@ export class DocDBDocumentNode implements IDocumentNode {
 	};
 
 	public async update(newData: any): Promise<any> {
-		const masterKey = await this.collection.db.getPrimaryMasterKey();
-		const endpoint = await this.collection.db.getEndpoint();
+		const masterKey = await this.collection.dbNode.masterKey;
+		const endpoint = await this.collection.dbNode.documentEndpoint;
 		const client = new DocumentClient(endpoint, { masterKey: masterKey });
 		const _self: string = this.data._self;
 		this._data = await new Promise<IDocDBDocumentSpec>((resolve, reject) => {
@@ -185,7 +185,7 @@ export class DocDBDocumentNode implements IDocumentNode {
 		return this._data;
 	}
 
-  getPartitionKeyValue(): string {
+	getPartitionKeyValue(): string {
 		const partitionKey = this.collection.partitionKey;
 		if (!partitionKey) {
 			return null;

@@ -39,6 +39,8 @@
 		"onCommand:cosmosDB.createDocDBDatabase",
 		"onCommand:cosmosDB.createDocDBCollection",
 		"onCommand:cosmosDB.createDocDBDocument",
+		"onCommand:cosmosDB.createGraphDatabase",
+		"onCommand:cosmosDB.createGraph",
 		"onCommand:cosmosDB.connectMongoDB",
 		"onCommand:cosmosDB.deleteMongoDB",
 		"onCommand:cosmosDB.deleteMongoCollection",
@@ -46,6 +48,8 @@
 		"onCommand:cosmosDB.deleteDocDBDatabase",
 		"onCommand:cosmosDB.deleteDocDBCollection",
 		"onCommand:cosmosDB.deleteDocDBDocument",
+		"onCommand:cosmosDB.deleteGraphDatabase",
+		"onCommand:cosmosDB.deleteGraph",
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.update",
 		"onCommand:cosmosDB.openDocument",
@@ -146,6 +150,16 @@
 				"title": "Create Document"
 			},
 			{
+				"category": "Graph",
+				"command": "cosmosDB.createGraphDatabase",
+				"title": "Create Database"
+			},
+			{
+				"category": "Graph",
+				"command": "cosmosDB.createGraph",
+				"title": "Create Graph"
+			},
+			{
 				"category": "MongoDB",
 				"command": "cosmosDB.removeMongoServer",
 				"title": "Remove Server"
@@ -179,6 +193,16 @@
 				"category": "DocumentDB",
 				"command": "cosmosDB.deleteDocDBCollection",
 				"title": "Delete Collection"
+			},
+			{
+				"category": "Graph",
+				"command": "cosmosDB.deleteGraphDatabase",
+				"title": "Delete Database"
+			},
+			{
+				"category": "Graph",
+				"command": "cosmosDB.deleteGraph",
+				"title": "Delete Graph"
 			},
 			{
 				"category": "DocumentDB",
@@ -303,6 +327,14 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
 				},
 				{
+					"command": "cosmosDB.createGraphDatabase",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+				},
+				{
+					"command": "cosmosDB.createGraph",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
+				},
+				{
 					"command": "cosmosDB.removeMongoServer",
 					"when": "view == cosmosDBExplorer && viewItem == mongoServer"
 				},
@@ -335,6 +367,14 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
 				},
 				{
+					"command": "cosmosDB.deleteGraphDatabase",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
+				},
+				{
+					"command": "cosmosDB.deleteGraph",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraph"
+				},
+				{
 					"command": "cosmosDB.attachMongoServer",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedServers"
 				},
@@ -349,6 +389,10 @@
 				{
 					"command": "cosmosDB.openInPortal",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+				},
+				{
+					"command": "cosmosDB.openInPortal",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
 				},
 				{
 					"command": "cosmosDB.copyConnectionString",
@@ -373,6 +417,14 @@
 				{
 					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+				},
+				{
+					"command": "cosmosDB.refresh",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+				},
+				{
+					"command": "cosmosDB.refresh",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
 				},
 				{
 					"command": "cosmosDB.refresh",

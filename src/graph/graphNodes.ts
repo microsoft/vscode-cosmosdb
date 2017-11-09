@@ -13,7 +13,7 @@ import { GraphConfiguration } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
 
 export class GraphDatabaseNode implements INode {
-	public readonly contextValue: string = "cosmosGraphDatabase";
+	public readonly contextValue: string = "cosmosDBGraphDatabase";
 
 	private _graphEndpoint: string;
 	private _graphPort: number;
@@ -61,12 +61,12 @@ export class GraphDatabaseNode implements INode {
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
 
-	public getGraphLink(): string {
+	public getDBLink(): string {
 		return 'dbs/' + this.id;
 	}
 
 	async getChildren(): Promise<INode[]> {
-		const dbLink: string = this.getGraphLink();
+		const dbLink: string = this.getDBLink();
 		const parentNode = this;
 		const client = new DocumentClient(this.documentEndpoint, { masterKey: this.masterKey });
 		let collections = await this.listCollections(dbLink, client);
@@ -86,10 +86,10 @@ export class GraphNode implements INode {
 
 	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
 
-	constructor(readonly id: string, readonly graphDBNode: GraphDatabaseNode) {
+	constructor(readonly id: string, readonly dbNode: GraphDatabaseNode) {
 	}
 
-	readonly contextValue: string = "cosmosGraph";
+	readonly contextValue: string = "cosmosDBGraph";
 
 	get label(): string {
 		return this.id;
@@ -103,16 +103,16 @@ export class GraphNode implements INode {
 	}
 
 	getCollLink(): string {
-		return this.graphDBNode.getGraphLink() + '/colls/' + this.id;
+		return this.dbNode.getDBLink() + '/colls/' + this.id;
 	}
 
 	public async showExplorer(graphViewsManager: GraphViewsManager): Promise<void> {
 		await graphViewsManager.showGraphViewer(this.id, <GraphConfiguration>{
-			endpoint: this.graphDBNode.graphEndpoint,
-			endpointPort: this.graphDBNode.graphPort,
-			databaseName: this.graphDBNode.id,
+			endpoint: this.dbNode.graphEndpoint,
+			endpointPort: this.dbNode.graphPort,
+			databaseName: this.dbNode.id,
 			graphName: this.id,
-			key: this.graphDBNode.masterKey
+			key: this.dbNode.masterKey
 		});
 	}
 

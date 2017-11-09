@@ -48,7 +48,6 @@
                 <input id="queryInput" type="text" placeholder='Enter gremlin query ("g.V()" for all vertices)'></input>
                 <button id="executeButton" onclick="onExecuteClick()">Execute</button>
             </div>
-            <div id="queryStatus">Querying...</div>
         </div>
 
         <div id="radioButtons" class="toggle-radio-buttons">
@@ -63,7 +62,6 @@
             <div id="resultsSection">
                 <div id="graphSection" class="active">
                     <!-- SVG will be inserted here -->
-                    <span id="stats"></span>
                     <div id="graphWatermark" class="watermark">
                         The results cannot be displayed visually. Please see the JSON tab for detailed results.
                     </div>
@@ -73,9 +71,14 @@
                 </div>
             </div>
             <div id="queryWatermark" class="watermark">
-                Please enter a query and click Execute.
+                No data has been loaded. Please enter a query and click Execute.
             </div>
+            <div id="queryStatus">Querying...</div>
         </div>
+        <div id="stats">
+            <span></span>
+        </div>
+
 
         <div id="debug" style="display:none">
             <h2>Debug log</h2>

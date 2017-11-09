@@ -11,9 +11,10 @@ import { DocumentClient } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
 import { CosmosDBExplorer } from './../explorer';
 import { DialogBoxResponses } from '../constants'
+import { GraphDatabaseNode, GraphNode } from '../graph/graphNodes';
 
 export class DocDBCommands {
-    public static async createDocDBDatabase(server: CosmosDBAccountNode, explorer: CosmosDBExplorer) {
+    public static async createDatabase(server: CosmosDBAccountNode, explorer: CosmosDBExplorer) {
         const databaseName = await vscode.window.showInputBox({
             placeHolder: 'Database Name',
             validateInput: DocDBCommands.validateDatabaseName,
@@ -35,13 +36,13 @@ export class DocDBCommands {
             });
             const databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), server.documentEndpoint, server);
             explorer.refresh(server);
-            DocDBCommands.createDocDBCollection(databaseNode, explorer);
+            DocDBCommands.createCollection(databaseNode, explorer);
         }
     }
 
     public static async createDocDBDocument(coll: DocDBCollectionNode, explorer: CosmosDBExplorer) {
-        const masterKey = coll.db.getPrimaryMasterKey();
-        const endpoint = coll.db.getEndpoint();
+        const masterKey = coll.dbNode.masterKey;
+        const endpoint = coll.dbNode.documentEndpoint;
         const client = new DocumentClient(endpoint, { masterKey: masterKey });
         let docID = await vscode.window.showInputBox({
             placeHolder: "Enter a unique id",
@@ -65,14 +66,20 @@ export class DocDBCommands {
     }
 
 
-    public static async createDocDBCollection(db: DocDBDatabaseNode, explorer: CosmosDBExplorer) {
+    public static async createCollection(db: DocDBDatabaseNode | GraphDatabaseNode, explorer: CosmosDBExplorer) {
+        let placeHolder: string;
+        if (db instanceof GraphDatabaseNode) {
+            placeHolder = 'Enter name of collection';
+        } else {
+            placeHolder = 'Enter name of graph';
+        }
         const collectionName = await vscode.window.showInputBox({
-            placeHolder: 'Enter name of collection',
+            placeHolder: placeHolder,
             ignoreFocusOut: true
         });
         if (collectionName) {
-            const masterKey = await db.getPrimaryMasterKey();
-            const endpoint = await db.getEndpoint();
+            const masterKey = await db.masterKey;
+            const endpoint = await db.documentEndpoint;
             let partitionKey: string = await vscode.window.showInputBox({
                 prompt: 'Partition Key',
                 ignoreFocusOut: true,
@@ -99,7 +106,7 @@ export class DocDBCommands {
                         }
                     };
                     await new Promise((resolve, reject) => {
-                        client.createCollection(db.getDbLink(), collectionDef, options, (err, result) => {
+                        client.createCollection(db.getDBLink(), collectionDef, options, (err, result) => {
                             if (err) {
                                 reject(new Error(err.body));
                             }
@@ -140,16 +147,16 @@ export class DocDBCommands {
         return null;
     }
 
-    public static async deleteDocDBDatabase(db: DocDBDatabaseNode, explorer: CosmosDBExplorer): Promise<void> {
+    public static async deleteDatabase(db: DocDBDatabaseNode | GraphDatabaseNode, explorer: CosmosDBExplorer): Promise<void> {
         if (db) {
-            const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete database '${db.label}' and its collections?`,
+            const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete database '${db.label}' and its contents?`,
                 DialogBoxResponses.Yes, DialogBoxResponses.No);
             if (confirmed === DialogBoxResponses.Yes) {
-                const masterKey = await db.getPrimaryMasterKey();
-                const endpoint = await db.getEndpoint();
+                const masterKey = await db.masterKey;
+                const endpoint = await db.documentEndpoint;
                 const client = new DocumentClient(endpoint, { masterKey: masterKey });
                 await new Promise((resolve, reject) => {
-                    client.deleteDatabase(db.getDbLink(), function (err) {
+                    client.deleteDatabase(db.getDBLink(), function (err) {
                         err ? reject(new Error(err.body)) : resolve();
                     });
                 });
@@ -157,12 +164,18 @@ export class DocDBCommands {
             }
         }
     }
-    public static async deleteDocDBCollection(coll: DocDBCollectionNode, explorer: CosmosDBExplorer): Promise<void> {
+    public static async deleteCollection(coll: DocDBCollectionNode | GraphNode, explorer: CosmosDBExplorer): Promise<void> {
         if (coll) {
-            const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection '${coll.label}'?`, DialogBoxResponses.Yes, DialogBoxResponses.No);
+            let message: string;
+            if (coll instanceof GraphNode) {
+                message = `Are you sure you want to delete graph '${coll.label}'?`;
+            } else {
+                message = `Are you sure you want to delete collection '${coll.label}'?`;
+            }
+            const confirmed = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.No);
             if (confirmed === DialogBoxResponses.Yes) {
-                const masterKey = await coll.db.getPrimaryMasterKey();
-                const endpoint = await coll.db.getEndpoint();
+                const masterKey = await coll.dbNode.masterKey;
+                const endpoint = await coll.dbNode.documentEndpoint;
                 const client = new DocumentClient(endpoint, { masterKey: masterKey });
                 const collLink = coll.getCollLink();
                 await new Promise((resolve, reject) => {
@@ -170,7 +183,7 @@ export class DocDBCommands {
                         err ? reject(new Error(err.body)) : resolve();
                     });
                 });
-                explorer.refresh(coll.db);
+                explorer.refresh(coll.dbNode);
             }
         }
     }
@@ -179,15 +192,17 @@ export class DocDBCommands {
         if (doc) {
             const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete document '${doc.label}'?`, DialogBoxResponses.Yes, DialogBoxResponses.No);
             if (confirmed === DialogBoxResponses.Yes) {
-                const masterKey = await doc.collection.db.getPrimaryMasterKey();
-                const endpoint = await doc.collection.db.getEndpoint();
-                const client = new DocumentClient(endpoint, { masterKey: masterKey });
+                const masterKey = await doc.collection.dbNode.masterKey;
+                const endpoint = await doc.collection.dbNode.documentEndpoint;
+                const client: DocumentClient = new DocumentClient(endpoint, { masterKey: masterKey });
                 const docLink = doc.getDocLink();
+                const options = { partitionKey: doc.partitionKeyValue || Object() }
                 await new Promise((resolve, reject) => {
-                    client.deleteDocument(docLink, (err) => {
+                    client.deleteDocument(docLink, options, (err) => {
                         err ? reject(new Error(err.body)) : resolve();
                     });
                 });
+                doc.collection.removeNodeFromCache(doc);
                 explorer.refresh(doc.collection);
             }
         }

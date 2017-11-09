@@ -23,6 +23,7 @@ type Experience = "MongoDB" | "DocumentDB" | "Graph" | "Table";
 export interface IDocumentNode extends INode {
 	data: object;
 	update(data: any): Promise<any>;
+	getDocLink(): string;
 }
 
 export interface INode extends vscode.TreeItem {
@@ -45,8 +46,8 @@ export class SubscriptionNode implements INode {
 
 	get iconPath(): any {
 		return {
-			light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'AzureSubscription.svg'),
-			dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'AzureSubscription.svg')
+			light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'AzureSubscription.svg'),
+			dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'AzureSubscription.svg')
 		};
 	}
 
@@ -102,7 +103,7 @@ export class CosmosDBAccountNode implements IMongoServer {
 				this.contextValue = "cosmosDBDocumentServer"
 				break;
 			case "Graph":
-				this.contextValue = "cosmosGraphDatabaseServer"
+				this.contextValue = "cosmosDBGraphAccount"
 				break;
 			default:
 				this.contextValue = "cosmosDBGenericResource";
@@ -158,7 +159,7 @@ export class CosmosDBAccountNode implements IMongoServer {
 				return MongoServerNode.getMongoDatabaseNodes(connectionString, this);
 
 			case "cosmosDBDocumentServer":
-			case "cosmosGraphDatabaseServer":
+			case "cosmosDBGraphAccount":
 				return await this.getDocumentDatabaseNodesByExperience();
 		}
 	}

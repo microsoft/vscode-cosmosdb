@@ -122,6 +122,11 @@ export class GraphClient {
     this._socket.on('setPageState', (previousState) => {
       htmlElements.queryInput.value = previousState.lastQuery;
 
+      if (previousState.isQueryRunning) {
+        this.setStateQuerying();
+        return;
+      }
+
       if (!previousState.lastErrorMsg) {
         this.showResults(previousState.lastResults);
       } else {

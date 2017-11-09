@@ -26,7 +26,8 @@ export class GraphViewServer extends EventEmitter {
     lastQuery: string | undefined,
     lastResults: any[] | undefined,
     lastErrorMsg: string | undefined,
-    lastView: 'graph' | 'json'
+    lastView: 'graph' | 'json',
+    isQueryRunning: boolean
   };
 
 
@@ -36,7 +37,8 @@ export class GraphViewServer extends EventEmitter {
       lastQuery: undefined,
       lastResults: undefined,
       lastErrorMsg: undefined,
-      lastView: 'graph'
+      lastView: 'graph',
+      isQueryRunning: false
     };
   }
 
@@ -105,6 +107,7 @@ export class GraphViewServer extends EventEmitter {
       this._previousPageState.lastQuery = gremlinQuery;
       this._previousPageState.lastResults = undefined;
       this._previousPageState.lastErrorMsg = undefined;
+      this._previousPageState.isQueryRunning = true;
       var vertices = await this.executeQuery(queryId, gremlinQuery);
       results = vertices;
 
@@ -126,6 +129,8 @@ export class GraphViewServer extends EventEmitter {
       this._previousPageState.lastErrorMsg = message;
       this._socket.emit("showQueryError", queryId, message);
       return;
+    } finally {
+      this._previousPageState.isQueryRunning = false;
     }
 
     this._socket.emit("showResults", queryId, results);

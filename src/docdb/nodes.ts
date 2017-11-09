@@ -123,6 +123,10 @@ export class DocDBCollectionNode implements INode {
 	addNewDocToCache(document: any): void {
 		this._children.unshift(new DocDBDocumentNode(document.id, this, document))
 	}
+
+	removeNodeFromCache(documentNode: DocDBDocumentNode): void {
+		this._children = this._children.filter(doc => doc.id !== documentNode.id);
+	}
 }
 
 export class DocDBDocumentNode implements IDocumentNode {

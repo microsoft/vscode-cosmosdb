@@ -103,6 +103,7 @@ export class MongoCommands {
 		if (confirmed === DialogBoxResponses.Yes) {
 			const coll = documentNode.collection;
 			await coll.collection.deleteOne({ "_id": documentNode.id });
+			documentNode.collection.removeNodeFromCache(documentNode);
 			explorer.refresh(documentNode.collection);
 		}
 	}

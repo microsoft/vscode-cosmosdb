@@ -189,6 +189,7 @@ export class DocDBCommands {
                         err ? reject(new Error(err.body)) : resolve();
                     });
                 });
+                doc.collection.removeNodeFromCache(doc);
                 explorer.refresh(doc.collection);
             }
         }

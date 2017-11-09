@@ -242,6 +242,10 @@ export class MongoCollectionNode implements INode {
 		this._children.unshift(new MongoDocumentNode(document._id, this, document))
 	}
 
+	removeNodeFromCache(documentNode: MongoDocumentNode): void {
+		this._children = this._children.filter(doc => doc.id !== documentNode.id);
+	}
+
 	executeCommand(name: string, args?: string): Thenable<string> {
 		try {
 			if (name === 'find') {

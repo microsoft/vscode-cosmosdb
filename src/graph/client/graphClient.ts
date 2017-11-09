@@ -15,6 +15,8 @@ declare let d3: any;
 const animationStepMs = 50; // TODO: optimize.  Slow down ticks?
 const graphWidth = 1200, graphHeight = 500; //TODO: be resizable or adapt to editor size
 const defaultQuery = "g.V()";
+const maxNodes = 1000;
+const maxEdges = 3000;
 
 let htmlElements: {
   debugLog: HTMLTextAreaElement,
@@ -23,6 +25,7 @@ let htmlElements: {
   graphSection: HTMLDivElement,
   queryError: HTMLTextAreaElement,
   queryInput: HTMLInputElement,
+  stats: HTMLSpanElement;
   title: HTMLElement,
 };
 
@@ -86,6 +89,7 @@ export class GraphClient {
       jsonResults: this.selectById("jsonResults"),
       queryError: this.selectById("queryError"),
       queryInput: this.selectById("queryInput"),
+      stats: this.selectById("stats"),
       title: this.selectById("title")
     };
 
@@ -229,26 +233,27 @@ export class GraphClient {
       this.clearGraph();
 
       // Set up nodes and links for the force simulation
-      var nodes: ForceNode[] = vertices.map(v => <ForceNode>{ vertex: v });
+      var nodes: ForceNode[] = vertices
+        .slice(0, maxNodes) // Limit # of nodes
+        .map(v => <ForceNode>{ vertex: v });
       var links: ForceLink[] = [];
 
       var nodesById = new Map<string, ForceNode>();
       nodes.forEach(n => nodesById.set(n.vertex.id, n));
       edges.forEach(e => {
         var source = nodesById.get(e.inV);
-        if (!source) {
-          this.log(`Could not find source ID ${e.inV}`);
-        } else {
-          var target = nodesById.get(e.outV);
-          if (!target) {
-            this.log(`Could not find target ID ${e.outV}`);
-          } else {
-            var node
-            links.push({ edge: e, source, target });
-          }
+        var target = nodesById.get(e.outV);
+        // Source/target might have been eliminated via maxVertices
+        if (source && target) {
+          links.push({ edge: e, source, target });
         }
       });
       nodesById = null;
+
+      // Limit number of edges (done after determining which edges are still valid based on reduced vertex set)
+      links = links.slice(0, maxEdges);
+
+      d3.select(htmlElements.stats).text(`Displaying ${nodes.length} of ${vertices.length} vertices and ${links.length} of ${edges.length} edges`);
 
       // Set up force simulation
       if (this._force) {

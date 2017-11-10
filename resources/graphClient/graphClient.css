@@ -66,6 +66,11 @@ h1 span {
     stroke-width: 1px;
 }
 
+#triangle {
+    fill: #aaa;
+    stroke: #aaa;
+}
+
 .label {
     fill: #eee;
 }

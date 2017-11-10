@@ -50,7 +50,8 @@ type PageState = {
   isQueryRunning: boolean,
   errorMessage?: string,
   query: string,
-  view: 'json' | 'graph'
+  view: 'json' | 'graph',
+  runningQueryId: number
 };
 
 window.onerror = (message) => {

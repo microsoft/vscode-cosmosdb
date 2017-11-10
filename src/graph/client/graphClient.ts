@@ -14,8 +14,8 @@ import { error } from "util";
 
 declare let d3: any;
 
-const animationStepMs = 50; // TODO: optimize.  Slow down ticks?
-const graphWidth = 1200, graphHeight = 500; //TODO: be resizable or adapt to editor size
+const animationStepMs = 50;
+const graphWidth = 1200, graphHeight = 500;
 const defaultQuery = "g.V()";
 const maxNodes = 300;
 const maxEdges = 1000;
@@ -109,7 +109,6 @@ export class GraphClient {
       graphRadio: this.selectById("graphRadio"),
       jsonRadio: this.selectById("jsonRadio")
     };
-    d3.select(htmlElements.stats).attr("style", `width:${graphWidth}px`);
 
     htmlElements.queryInput.value = defaultQuery;
 
@@ -335,7 +334,7 @@ export class GraphClient {
       force.charge(-3000);
 
       let svg = d3.select(htmlElements.graphSection).append("svg")
-        .attr("width", graphWidth).attr("height", graphHeight);
+        .attr("height", graphHeight);
 
       // Allow user to drag/zoom the entire SVG
       svg = svg

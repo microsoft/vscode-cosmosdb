@@ -70,9 +70,10 @@ h1 span {
 }
 
 #resultsBackground {
+    width: 100%;
+    height: 500px;
+    padding: 10px;
     background: #222;
-    width:1200px;
-    height:500px;
 }
 
 .error {
@@ -227,3 +228,16 @@ textarea {
 #jsonSection:not(.active) {
     display:none;
 }
+
+#graphSection svg {
+    width: 100%;
+}
+
+#jsonResults {
+    width: 100%;
+}
+
+#stats {
+    width: 100%;
+}
+

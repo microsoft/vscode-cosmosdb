@@ -130,14 +130,14 @@ export class DocDBCollectionNode implements INode {
 }
 
 export class DocDBDocumentNode implements IDocumentNode {
+	public readonly partitionKeyValue: string;
 	private _data: IDocDBDocumentSpec;
 	constructor(readonly id: string, readonly collection: DocDBCollectionNode, payload: IDocDBDocumentSpec) {
 		this._data = payload;
+		this.partitionKeyValue = this.getPartitionKeyValue();
 	}
 
 	readonly contextValue: string = "cosmosDBDocument";
-
-	readonly partitionKeyValue = this.getPartitionKeyValue();
 
 	get data(): IDocDBDocumentSpec {
 		return this._data;

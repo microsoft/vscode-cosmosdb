@@ -312,7 +312,7 @@ export class GraphClient {
       links = links.slice(0, maxEdges);
 
       var statsText: string = (nodes.length === vertices.length && links.length === edges.length) ?
-        `Displaying ${nodes.length} vertices and ${links.length} edges` :
+        `Displaying all ${nodes.length} vertices and ${links.length} edges` :
         `Displaying ${nodes.length} of ${vertices.length} vertices and ${links.length} of ${edges.length} edges`;
       d3.select(htmlElements.stats).text(statsText);
 

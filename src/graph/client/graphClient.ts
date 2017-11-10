@@ -99,7 +99,6 @@ export class GraphClient {
       jsonRadio: this.selectById("jsonRadio")
     };
 
-    d3.select(htmlElements.graphSection).attr("style", `height:${graphHeight}px`);
     htmlElements.queryInput.value = defaultQuery;
 
     this.setStateEmpty();

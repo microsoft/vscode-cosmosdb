@@ -15,7 +15,7 @@ import { error } from "util";
 declare let d3: any;
 
 const animationStepMs = 50;
-const graphWidth = 1200, graphHeight = 500;
+const graphWidth = 1200, graphHeight = 700;
 const defaultQuery = "g.V()";
 const maxNodes = 300;
 const maxEdges = 1000;

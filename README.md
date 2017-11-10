@@ -32,6 +32,10 @@
 
 ![Azure Sign In](resources/signin.gif)
 
+## Use [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support) to query graphs
+
+![Query Graphs](resources/Graph.gif)
+
 ## Create a Cosmos DB Account
 
 ![Create Cosmos DB Account](resources/create.gif)

@@ -84,20 +84,19 @@ export class GraphViewServer extends EventEmitter {
         0, // dynamnically pick an unused port
         () => {
           this._port = this._httpServer.address().port;
-          console.log(`** Server using port ${this._port} for ${this._configuration.endpoint}`);
+          console.log(`** GraphViewServer listening to port ${this._port} for ${this._configuration.endpoint}`);
           resolve();
         });
       this._server = io(this._httpServer);
 
-      this._server.on('connection', socket => { // TODO called multiple times?  what if already a socket?    dispose?
-        console.log(`Connected to client ${socket.id}`);
+      this._server.on('connection', socket => {
+        this.log(`Connected to client ${socket.id}`);
         this._socket = socket;
         this.setUpSocket();
       });
 
       this._server.on('error', socket => {
-        console.log("error"); // TODO
-        reject("TODO");
+        this.log("Error from server");
       });
     });
   }
@@ -122,8 +121,7 @@ export class GraphViewServer extends EventEmitter {
           this._previousPageState.results = results;
         } catch (edgesError) {
           // Swallow and just return vertices
-          console.log("Error querying for edges: ", (edgesError.message || edgesError));
-          // TODO telemetry?
+          this.log("Error querying for edges: ", (edgesError.message || edgesError));
         }
       }
     } catch (error) {
@@ -155,7 +153,7 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private async executeQuery(queryId: number, gremlinQuery: string): Promise<any[]> {
-    console.log(`Executing query #${queryId}: ${gremlinQuery}`);
+    this.log(`Executing query #${queryId}: ${gremlinQuery}`);
 
     const client = gremlin.createClient(
       this._configuration.endpointPort,
@@ -182,10 +180,10 @@ export class GraphViewServer extends EventEmitter {
     return new Promise<[{}[]]>((resolve, reject) => {
       client.execute(gremlinQuery, {}, (err, results) => {
         if (err) {
-          console.error(err);
+          this.log("Error from gremlin: ", err.message || err.toString());
           reject(new Error(err));
         }
-        console.log("Results from gremlin", results);
+        this.log("Results from gremlin", results);
         resolve(results);
       });
     });
@@ -210,20 +208,20 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private handleQueryMessage(queryId: number, gremlin: string) {
-    console.log(`Query requested: queryId=${queryId}, gremlin="${gremlin}"`);
+    this.log(`Query requested: queryId=${queryId}, gremlin="${gremlin}"`);
 
     this.queryAndShowResults(queryId, gremlin);
   }
 
   private handleGetTitleMessage() {
-    console.log(`getTitle`);
+    this.log(`getTitle`);
     this._socket.emit('setTitle', `${this._configuration.databaseName} / ${this._configuration.graphName}`);
   }
 
   private setUpSocket() {
     // TODO clean up?
     this._socket.on('log', (...args: any[]) => {
-      console.log('from client: ', ...args);
+      this.log('from client: ', ...args);
     });
 
     // Handle QueryTitle event from client
@@ -240,5 +238,8 @@ export class GraphViewServer extends EventEmitter {
 
     // Handle setView event from client
     this._socket.on('setView', (view: 'graph' | 'json') => this.handleSetView(view));
+  }
+
+  private log(message, ...args: any[]) {
   }
 }

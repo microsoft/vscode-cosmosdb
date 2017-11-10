@@ -34,7 +34,14 @@ export class DocDBCommands {
                     }
                 });
             });
-            const databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), server.documentEndpoint, server);
+
+            let databaseNode: DocDBDatabaseNode | GraphDatabaseNode;
+            if (server.defaultExperience === 'Graph') {
+                databaseNode = new GraphDatabaseNode(databaseName, await server.getPrimaryMasterKey(), server.documentEndpoint, server);
+            } else {
+                databaseNode = new DocDBDatabaseNode(databaseName, await server.getPrimaryMasterKey(), server.documentEndpoint, server);
+            }
+
             explorer.refresh(server);
             DocDBCommands.createCollection(databaseNode, explorer);
         }
@@ -69,9 +76,9 @@ export class DocDBCommands {
     public static async createCollection(db: DocDBDatabaseNode | GraphDatabaseNode, explorer: CosmosDBExplorer) {
         let placeHolder: string;
         if (db instanceof GraphDatabaseNode) {
-            placeHolder = 'Enter name of collection';
-        } else {
             placeHolder = 'Enter name of graph';
+        } else {
+            placeHolder = 'Enter name of collection';
         }
         const collectionName = await vscode.window.showInputBox({
             placeHolder: placeHolder,

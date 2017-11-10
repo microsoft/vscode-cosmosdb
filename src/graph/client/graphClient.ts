@@ -283,7 +283,7 @@ export class GraphClient {
   }
 
   private clearGraph(): void {
-    d3.select(htmlElements.graphSection).select("svg").remove();
+    d3.select(htmlElements.graphSection).select("svg").selectAll(".vertex, .edge, .label").remove();
   }
 
   private displayGraph(vertices: ResultVertex[], edges: ResultEdge[]) {
@@ -334,7 +334,7 @@ export class GraphClient {
       force.linkStrength(0.01); // Reduce rigidity of the links (if < 1, the full linkDistance is relaxed)
       force.charge(-3000);
 
-      let svg = d3.select(htmlElements.graphSection).append("svg")
+      let svg = d3.select(htmlElements.graphSection).select("svg")
         .attr("height", graphHeight);
 
       // Allow user to drag/zoom the entire SVG
@@ -351,11 +351,28 @@ export class GraphClient {
         .attr("class", "edge")
         ;
 
+      // Arrow
+      // svg.select('defs').selectAll('marker')
+      //   .data(['end'])
+      //   .enter()
+      //   .append('marker')
+      //   .attr('id', 'triangle')
+      //   .attr('viewBox', '0 -5 10 10')
+      //   .attr('refX', D3ForceGraph.MARKER_REFX) // Shift arrow so that we can see it.
+      //   .attr('refY', 0)
+      //   .attr('markerWidth', 6)
+      //   .attr('markerHeight', 6)
+      //   .attr('orient', 'auto')
+      //   .attr('markerUnits', 'userSpaceOnUse') // No auto-scaling with stroke width
+      //   .attr('fill', this.graphConfig.linkColor()).attr('stroke', this.graphConfig.linkColor())
+      //   .append('path')
+      //   .attr('d', 'M0,-5L10,0L0,5');
+
       // Allow user to drag nodes. Set "dragging" class while dragging.
       let vertexDrag = force.drag().on("dragstart", function () {
         d3.select(this).classed("dragging", true);
 
-        // Keep a drag from also starting a zoom action
+        // Make sure a drag gesture doesn't also start a zoom action
         d3.event.sourceEvent.stopPropagation();
       })
         .on("dragend", function () { d3.select(this).classed("dragging", false); });

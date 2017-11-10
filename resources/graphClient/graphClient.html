@@ -111,6 +111,12 @@
             function selectJsonView() {
                 graphClient.selectJsonView();
             }
+
+            document.getElementById("queryInput").addEventListener("keydown", function (e) {
+                if (e.keyCode === 13 /* enter */) {
+                    onExecuteClick();
+                }
+            })
         </script>
     </div>
 </body>

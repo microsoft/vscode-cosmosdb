@@ -50,12 +50,13 @@ h1 span {
 }
 
 .vertex {
+    transition: fill .2s;
     fill: #0072c6;
     r: 8px; /* vertex radius */
 }
 
 .vertex:hover, .vertex.dragging {
-    transition: .1s;
+    transition: .2s;
     fill: #00a2e6;
     r: 10px;
 }

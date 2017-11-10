@@ -20,6 +20,13 @@ const defaultQuery = "g.V()";
 const maxNodes = 300;
 const maxEdges = 1000;
 
+const linkDistance = graphWidth / 3;
+const linkStrength = 0.01; // Reduce rigidity of the links (if < 1, the full linkDistance is relaxed)
+const charge = -3000;
+const markerRef = 8;
+const vertexRadius = 8; // from css
+const paddingBetweenVertexAndEdge = 3;
+
 let htmlElements: {
   debugLog: HTMLTextAreaElement,
   graphRadio: HTMLInputElement,
@@ -82,6 +89,11 @@ interface ForceLink {
   edge: ResultEdge;
   source: ForceNode;
   target: ForceNode;
+}
+
+interface Point2D {
+  x: number;
+  y: number;
 }
 
 export class GraphClient {
@@ -286,6 +298,58 @@ export class GraphClient {
     d3.select(htmlElements.graphSection).select("svg").selectAll(".vertex, .edge, .label").remove();
   }
 
+  private static calculateClosestPIOver2(angle: number): number {
+    const CURVATURE_FACTOR = 40;
+    const result = (Math.atan(CURVATURE_FACTOR * (angle - (Math.PI / 4))) / 2) + (Math.PI / 4);
+    return result;
+  }
+
+  private static calculateClosestPIOver4(angle: number): number {
+    const CURVATURE_FACTOR = 100;
+    const result = (Math.atan(CURVATURE_FACTOR * (angle - (Math.PI / 8))) / 4) + (Math.PI / 8);
+    return result;
+  }
+
+  private static calculateControlPoint(start: Point2D, end: Point2D): Point2D {
+    const alpha = Math.atan2(end.y - start.y, end.x - start.x);
+    const n = Math.floor(alpha / (Math.PI / 2));
+    const reducedAlpha = alpha - (n * Math.PI / 2);
+    const reducedBeta = GraphClient.calculateClosestPIOver2(reducedAlpha);
+    const beta = reducedBeta + (n * Math.PI / 2);
+
+    const length = Math.sqrt((end.y - start.y) * (end.y - start.y) + (end.x - start.x) * (end.x - start.x)) / 2;
+    const result = {
+      x: start.x + Math.cos(beta) * length,
+      y: start.y + Math.sin(beta) * length
+    };
+
+    return result;
+  }
+
+  private positionLink(l: any) {
+    const d1 = GraphClient.calculateControlPoint(l.source, l.target);
+
+    var radius = vertexRadius + paddingBetweenVertexAndEdge;
+
+    // Start
+    var dx = d1.x - l.source.x;
+    var dy = d1.y - l.source.y;
+    var angle = Math.atan2(dy, dx);
+    var tx = l.source.x + (Math.cos(angle) * radius);
+    var ty = l.source.y + (Math.sin(angle) * radius);
+
+    // End
+    dx = l.target.x - d1.x;
+    dy = l.target.y - d1.y;
+    angle = Math.atan2(dy, dx);
+    var ux = l.target.x - (Math.cos(angle) * radius);
+    var uy = l.target.y - (Math.sin(angle) * radius);
+
+    return "M" + tx + "," + ty
+      + "S" + d1.x + "," + d1.y
+      + " " + ux + "," + uy;
+  }
+
   private displayGraph(vertices: ResultVertex[], edges: ResultEdge[]) {
     try {
       this.clearGraph();
@@ -330,9 +394,9 @@ export class GraphClient {
       force.gravity(1); // Makes the nodes gravitate toward the center
       force.friction(.5);
 
-      force.linkDistance(graphWidth / 3); // edge length
-      force.linkStrength(0.01); // Reduce rigidity of the links (if < 1, the full linkDistance is relaxed)
-      force.charge(-3000);
+      force.linkDistance(linkDistance); // edge length
+      force.linkStrength(linkStrength);
+      force.charge(charge);
 
       let svg = d3.select(htmlElements.graphSection).select("svg")
         .attr("height", graphHeight);
@@ -344,29 +408,31 @@ export class GraphClient {
         }))
         .append("g");
 
+      // Arrow
+      svg.select('defs').selectAll('marker')
+        .data(['end'])
+        .enter()
+        .append('marker')
+        .attr('id', 'triangle')
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', markerRef) // Shift arrow so that we can see it.
+        .attr('refY', 0)
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .attr('markerUnits', 'userSpaceOnUse') // No auto-scaling with stroke width
+        .attr('fill', "yellow").attr('stroke', "purple")
+        .append('path')
+        .attr('d', 'M0,-5L10,0L0,5');
+
       // Links before nodes so that links don't get drawn on top of node labels, obscuring them
       let edge = svg.selectAll(".edge")
         .data(links)
-        .enter().append("line")
-        .attr("class", "edge")
-        ;
-
-      // Arrow
-      // svg.select('defs').selectAll('marker')
-      //   .data(['end'])
-      //   .enter()
-      //   .append('marker')
-      //   .attr('id', 'triangle')
-      //   .attr('viewBox', '0 -5 10 10')
-      //   .attr('refX', D3ForceGraph.MARKER_REFX) // Shift arrow so that we can see it.
-      //   .attr('refY', 0)
-      //   .attr('markerWidth', 6)
-      //   .attr('markerHeight', 6)
-      //   .attr('orient', 'auto')
-      //   .attr('markerUnits', 'userSpaceOnUse') // No auto-scaling with stroke width
-      //   .attr('fill', this.graphConfig.linkColor()).attr('stroke', this.graphConfig.linkColor())
-      //   .append('path')
-      //   .attr('d', 'M0,-5L10,0L0,5');
+        .enter()
+        .append("path")
+        .attr('class', 'edge')
+        .attr('fill', 'none')
+        .attr('marker-end', 'url(#triangle)');
 
       // Allow user to drag nodes. Set "dragging" class while dragging.
       let vertexDrag = force.drag().on("dragstart", function () {
@@ -377,6 +443,7 @@ export class GraphClient {
       })
         .on("dragend", function () { d3.select(this).classed("dragging", false); });
 
+      // Labels
       let label = svg.selectAll(".label")
         .data(nodes)
         .enter().append("text")
@@ -417,6 +484,8 @@ export class GraphClient {
           .attr("x2", (d: ForceLink) => d.target.x)
           .attr("y2", (d: ForceLink) => d.target.y)
           ;
+
+        edge.attr("d", (d: ForceLink) => { return this.positionLink(d); });
 
         label
           .transition().ease("linear").duration(animationStepMs)

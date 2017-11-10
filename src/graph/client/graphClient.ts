@@ -124,6 +124,7 @@ export class GraphClient {
       htmlElements.queryInput.value = previousState.query;
 
       if (previousState.isQueryRunning) {
+        this._currentQueryId = previousState.runningQueryId;
         this.setStateQuerying();
         return;
       }

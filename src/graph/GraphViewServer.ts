@@ -27,7 +27,8 @@ export class GraphViewServer extends EventEmitter {
     results: any[] | undefined,
     errorMessage: string | undefined,
     view: 'graph' | 'json',
-    isQueryRunning: boolean
+    isQueryRunning: boolean,
+    runningQueryId: number
   };
 
 
@@ -38,7 +39,8 @@ export class GraphViewServer extends EventEmitter {
       results: undefined,
       errorMessage: undefined,
       view: 'graph',
-      isQueryRunning: false
+      isQueryRunning: false,
+      runningQueryId: 0
     };
   }
 
@@ -108,6 +110,7 @@ export class GraphViewServer extends EventEmitter {
       this._previousPageState.results = undefined;
       this._previousPageState.errorMessage = undefined;
       this._previousPageState.isQueryRunning = true;
+      this._previousPageState.runningQueryId = queryId;
       var vertices = await this.executeQuery(queryId, gremlinQuery);
       results = vertices;
 

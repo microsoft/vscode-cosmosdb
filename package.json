@@ -16,6 +16,14 @@
 	"categories": [
 		"Azure"
 	],
+	"keywords": [
+		"Azure",
+		"Cosmos DB",
+		"DocumentDB",
+		"Graph",
+		"Gremlin",
+		"MongoDB"
+	],
 	"preview": true,
 	"homepage": "https://github.com/microsoft/vscode-cosmosdb/blob/master/README.md",
 	"bugs": {

@@ -140,6 +140,7 @@ textarea {
 .toggle-radio-buttons input[type="radio"] {
     /* Don't set display:none because that will mess up accessibility */
     width: 0;
+    opacity: 0;
     border: 5px;
     margin: 0;
 }

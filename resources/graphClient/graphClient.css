@@ -216,6 +216,10 @@ textarea {
     display: none;
 }
 
+#states:not(.state-graph-results) #stats span {
+    display: none;
+}
+
 #graphSection:not(.active) {
     display:none;
 }

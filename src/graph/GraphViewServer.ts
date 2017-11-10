@@ -46,7 +46,6 @@ export class GraphViewServer extends EventEmitter {
     return this._configuration;
   }
 
-  // TODO: vscode.Disposable
   public dispose() {
     if (this._socket) {
       this._socket.disconnect();
@@ -216,7 +215,6 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private setUpSocket() {
-    // TODO clean up?
     this._socket.on('log', (...args: any[]) => {
       this.log('from client: ', ...args);
     });

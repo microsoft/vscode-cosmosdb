@@ -42,7 +42,7 @@ export class GraphViewsManager implements IServerProvider {
       var serverUri = previewBaseUri + id.toString();
       await vscode.commands.executeCommand('vscode.previewHtml', vscode.Uri.parse(serverUri), vscode.ViewColumn.One, tabTitle);
     } catch (error) {
-      vscode.window.showErrorMessage(error.message || error); // TODO
+      vscode.window.showErrorMessage(error.message || error);
     }
   }
 
@@ -63,7 +63,6 @@ export class GraphViewsManager implements IServerProvider {
       return [existingId, existingServer];
     }
 
-    // TODO: call dispose?
     var server = new GraphViewServer(config);
     await server.start();
 

@@ -98,8 +98,8 @@ export class GraphClient {
       graphRadio: this.selectById("graphRadio"),
       jsonRadio: this.selectById("jsonRadio")
     };
-    d3.select(htmlElements.stats).attr("style", `width:${graphWidth}px`);
 
+    d3.select(htmlElements.graphSection).attr("style", `height:${graphHeight}px`);
     htmlElements.queryInput.value = defaultQuery;
 
     this.setStateEmpty();
@@ -317,7 +317,7 @@ export class GraphClient {
       force.charge(-3000);
 
       let svg = d3.select(htmlElements.graphSection).append("svg")
-        .attr("width", graphWidth).attr("height", graphHeight);
+        .attr("height", graphHeight);
 
       // Allow user to drag/zoom the entire SVG
       svg = svg

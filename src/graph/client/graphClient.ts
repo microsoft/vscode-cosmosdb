@@ -23,7 +23,7 @@ const maxEdges = 1000;
 const linkDistance = graphWidth / 3;
 const linkStrength = 0.01; // Reduce rigidity of the links (if < 1, the full linkDistance is relaxed)
 const charge = -3000;
-const markerRef = 8;
+const markerDistanceFromVertex = 10;
 const vertexRadius = 8; // from css
 const paddingBetweenVertexAndEdge = 3;
 
@@ -273,7 +273,6 @@ export class GraphClient {
 
     // Always show results JSON (but not edgeResults)
     htmlElements.jsonResults.value = JSON.stringify(queryResults, null, 2);
-    console.log(JSON.stringify(queryResults, null, 2));
 
     let [vertices, edges] = this.splitVerticesAndEdges(queryResults);
     if (!vertices.length) {
@@ -402,29 +401,29 @@ export class GraphClient {
       let svg = d3.select(htmlElements.graphSection).select("svg")
         .attr("height", graphHeight);
 
+      // Add a re-usable arrow
+      svg.select('defs')
+        .selectAll('marker')
+        .data(['end'])
+        .enter()
+        .append('marker')
+        .attr('id', 'triangle')
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', markerDistanceFromVertex) // Shift arrow so that we can see it.
+        .attr('refY', 0)
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .attr('markerUnits', 'userSpaceOnUse') // No auto-scaling with stroke width
+        .append('path')
+        .attr('d', 'M0,-5L10,0L0,5');
+
       // Allow user to drag/zoom the entire SVG
       svg = svg
         .call(d3.behavior.zoom().on("zoom", function () {
           svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")")
         }))
         .append("g");
-
-      // Arrow
-      svg.select('defs').selectAll('marker')
-        .data(['end'])
-        .enter()
-        .append('marker')
-        .attr('id', 'triangle')
-        .attr('viewBox', '0 -5 10 10')
-        .attr('refX', markerRef) // Shift arrow so that we can see it.
-        .attr('refY', 0)
-        .attr('markerWidth', 6)
-        .attr('markerHeight', 6)
-        .attr('orient', 'auto')
-        .attr('markerUnits', 'userSpaceOnUse') // No auto-scaling with stroke width
-        .attr('fill', "yellow").attr('stroke', "purple")
-        .append('path')
-        .attr('d', 'M0,-5L10,0L0,5');
 
       // Links before nodes so that links don't get drawn on top of node labels, obscuring them
       let edge = svg.selectAll(".edge")

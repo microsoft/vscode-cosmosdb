@@ -12,6 +12,11 @@ import { setInterval } from 'timers';
 import { GraphConfiguration } from './GraphConfiguration';
 import * as gremlin from "gremlin";
 
+type Results = {
+  queryResults: any[];
+  edgeResults: any[];
+};
+
 /**
  * @class GraphViewServer This is the server side of the graph explorer. It handles all communications
  * with Azure including gremlin queries. It communicates with the client code via an HTTP server and
@@ -24,7 +29,7 @@ export class GraphViewServer extends EventEmitter {
   private _socket: SocketIO.Socket;
   private _previousPageState: {
     query: string | undefined,
-    results: any[] | undefined,
+    results: Results | undefined,
     errorMessage: string | undefined,
     view: 'graph' | 'json',
     isQueryRunning: boolean,
@@ -48,7 +53,6 @@ export class GraphViewServer extends EventEmitter {
     return this._configuration;
   }
 
-  // TODO: vscode.Disposable
   public dispose() {
     if (this._socket) {
       this._socket.disconnect();
@@ -102,7 +106,7 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private async queryAndShowResults(queryId: number, gremlinQuery: string): Promise<void> {
-    var results: any[];
+    var results: Results | undefined;
 
     try {
       this._previousPageState.query = gremlinQuery;
@@ -110,18 +114,17 @@ export class GraphViewServer extends EventEmitter {
       this._previousPageState.errorMessage = undefined;
       this._previousPageState.isQueryRunning = true;
       this._previousPageState.runningQueryId = queryId;
-      var vertices = await this.executeQuery(queryId, gremlinQuery);
-      results = vertices;
+      var queryResults = await this.executeQuery(queryId, gremlinQuery);
+      results = { queryResults, edgeResults: [] };
 
       // If it returned any vertices, we need to also query for edges
-      if (vertices.find(v => v.type === "vertex")) {
+      if (queryResults.find(v => v.type === "vertex")) {
         try {
-          var edges = await this.executeQuery(queryId, gremlinQuery + ".bothE()");
-          results = results.concat(edges);
+          results.edgeResults = await this.executeQuery(queryId, gremlinQuery + ".bothE()");
           this._previousPageState.results = results;
         } catch (edgesError) {
           // Swallow and just return vertices
-          this.log("Error querying for edges: ", (edgesError.message || edgesError));
+          console.warn("Error querying for edges: ", (edgesError.message || edgesError));
         }
       }
     } catch (error) {
@@ -134,7 +137,7 @@ export class GraphViewServer extends EventEmitter {
       this._previousPageState.isQueryRunning = false;
     }
 
-    this._socket.emit("showResults", queryId, results);
+    this._socket.emit("showResults", queryId, results.queryResults, results.edgeResults);
   }
 
   private removeErrorCallStack(message: string): string {
@@ -219,7 +222,6 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private setUpSocket() {
-    // TODO clean up?
     this._socket.on('log', (...args: any[]) => {
       this.log('from client: ', ...args);
     });

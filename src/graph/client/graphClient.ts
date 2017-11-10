@@ -14,26 +14,37 @@ import { error } from "util";
 
 declare let d3: any;
 
-const animationStepMs = 50; // TODO: optimize.  Slow down ticks?
-const graphWidth = 1200, graphHeight = 500; //TODO: be resizable or adapt to editor size
+const animationStepMs = 50;
+const graphWidth = 1200, graphHeight = 500;
 const defaultQuery = "g.V()";
 const maxNodes = 300;
 const maxEdges = 1000;
 
 let htmlElements: {
   debugLog: HTMLTextAreaElement,
+  graphRadio: HTMLInputElement,
+  graphSection: HTMLDivElement,
+  jsonRadio: HTMLInputElement,
   jsonResults: HTMLTextAreaElement,
   jsonSection: HTMLDivElement,
-  graphSection: HTMLDivElement,
   queryError: HTMLTextAreaElement,
   queryInput: HTMLInputElement,
   stats: HTMLSpanElement,
-  title: HTMLElement,
-  graphRadio: HTMLInputElement,
-  jsonRadio: HTMLInputElement
+  title: HTMLElement
 };
 
 type State = "empty" | "querying" | "error" | "json-results" | "graph-results";
+
+type PageState = {
+  results: {
+    queryResults: any[],
+    edgeResults: any[]
+  },
+  isQueryRunning: boolean,
+  errorMessage?: string,
+  query: string,
+  view: 'json' | 'graph'
+};
 
 window.onerror = (message) => {
   logToUI("ERROR: " + message);
@@ -98,7 +109,6 @@ export class GraphClient {
       graphRadio: this.selectById("graphRadio"),
       jsonRadio: this.selectById("jsonRadio")
     };
-    d3.select(htmlElements.stats).attr("style", `width:${graphWidth}px`);
 
     htmlElements.queryInput.value = defaultQuery;
 
@@ -120,22 +130,22 @@ export class GraphClient {
       this.log("disconnect");
     });
 
-    this._socket.on('setPageState', (previousState) => {
-      htmlElements.queryInput.value = previousState.query;
+    this._socket.on('setPageState', (pageState: PageState) => {
+      htmlElements.queryInput.value = pageState.query;
 
-      if (previousState.isQueryRunning) {
-        this._currentQueryId = previousState.runningQueryId;
+      if (pageState.isQueryRunning) {
+        this._currentQueryId = pageState.runningQueryId;
         this.setStateQuerying();
         return;
       }
 
-      if (!previousState.errorMessage) {
-        this.showResults(previousState.results);
+      if (!pageState.errorMessage) {
+        this.showResults(pageState.results.queryResults, pageState.results.edgeResults);
       } else {
-        this.setStateError(previousState.errorMessage);
+        this.setStateError(pageState.errorMessage);
       }
 
-      if (previousState.view === 'json') {
+      if (pageState.view === 'json') {
         this.selectJsonView();
       } else {
         this.selectGraphView();
@@ -147,13 +157,13 @@ export class GraphClient {
       d3.select(htmlElements.title).text(title);
     });
 
-    this._socket.on('showResults', (queryId: number, results: any[]): void => {
-      this.log(`Received results for query ${queryId} - ${results.length} data points`);
+    this._socket.on('showResults', (queryId: number, queryResults: any[], edgeResults: any[]): void => {
+      this.log(`Received results for query ${queryId} - ${queryResults.length} data points, plus ${edgeResults.length} edges`);
 
       if (queryId !== this._currentQueryId) {
         this.log("  Ignoring results, out of date");
       } else {
-        this.showResults(results);
+        this.showResults(queryResults, edgeResults);
       }
     });
 
@@ -245,21 +255,25 @@ export class GraphClient {
     d3.select("#states").attr("class", fullState);
   }
 
-  private showResults(nodes: any[]) {
-    // Always show JSON results
-    htmlElements.jsonResults.value = JSON.stringify(nodes, null, 2);
-    console.log(JSON.stringify(nodes, null, 2));
+  private showResults(queryResults: any[], edgeResults: any[]): void {
+    // queryResults may contain any type of data, not just vertices or edges
 
-    let [vertices, edges] = this.splitVerticesAndEdges(nodes);
+    // Always show results JSON (but not edgeResults)
+    htmlElements.jsonResults.value = JSON.stringify(queryResults, null, 2);
+    console.log(JSON.stringify(queryResults, null, 2));
+
+    let [vertices, edges] = this.splitVerticesAndEdges(queryResults);
     if (!vertices.length) {
-      // No vertices to show, just show JSON
+      // No vertices to show, just show query JSON
       this.setStateResults(false);
-      return false;
+      return;
     }
+
+    // Fold in additionally-queried edges
+    edges = edges.concat(edgeResults);
 
     this.setStateResults(true);
     this.displayGraph(vertices, edges);
-    return true;
   }
 
   private splitVerticesAndEdges(nodes: any[]): [ResultVertex[], ResultEdge[]] {
@@ -297,7 +311,10 @@ export class GraphClient {
       // Limit number of edges (done after determining which edges are still valid based on reduced vertex set)
       links = links.slice(0, maxEdges);
 
-      d3.select(htmlElements.stats).text(`Displaying ${nodes.length} of ${vertices.length} vertices and ${links.length} of ${edges.length} edges`);
+      var statsText: string = (nodes.length === vertices.length && links.length === edges.length) ?
+        `Displaying all ${nodes.length} vertices and ${links.length} edges` :
+        `Displaying ${nodes.length} of ${vertices.length} vertices and ${links.length} of ${edges.length} edges`;
+      d3.select(htmlElements.stats).text(statsText);
 
       // Set up force simulation
       if (this._force) {
@@ -318,7 +335,7 @@ export class GraphClient {
       force.charge(-3000);
 
       let svg = d3.select(htmlElements.graphSection).append("svg")
-        .attr("width", graphWidth).attr("height", graphHeight);
+        .attr("height", graphHeight);
 
       // Allow user to drag/zoom the entire SVG
       svg = svg

@@ -193,7 +193,7 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private handleGetPageState() {
-    console.log('getPageState');
+    this.log('getPageState');
 
     if (this._previousPageState.query) {
       this._socket.emit('setPageState', this._previousPageState);
@@ -201,12 +201,12 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private handleSetQuery(query: string) {
-    console.log('setQuery');
+    this.log('setQuery');
     this._previousPageState.query = query;
   }
 
   private handleSetView(view: 'graph' | 'json') {
-    console.log('setView');
+    this.log('setView');
     this._previousPageState.view = view;
   }
 

@@ -119,7 +119,6 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	initEvent(context, 'cosmosDB.documentEditor.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument, (doc: vscode.TextDocument) => documentEditor.onDidSaveTextDocument(context.globalState, doc));
-	initEvent(context, 'cosmosDB.documentEditor.onDidCloseTextDocument', vscode.workspace.onDidCloseTextDocument, (doc: vscode.TextDocument) => documentEditor.onDidCloseTextDocument(doc));
 }
 
 function initCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => any) {

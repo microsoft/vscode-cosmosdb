@@ -14,7 +14,7 @@ import * as util from './util';
 export class DocumentEditor implements vscode.Disposable {
     private lastOpenedDocNode: IDocumentNode | undefined;
     private localDocPath: string;
-    private localDocEditor: vscode.TextEditor | undefined;
+    private localDoc: vscode.TextDocument | undefined;
 
     private ignoreSave: boolean = false;
     private isLocalDocOpen: boolean = false;
@@ -34,9 +34,9 @@ export class DocumentEditor implements vscode.Disposable {
 
     public async showDocument(docNode: IDocumentNode): Promise<void> {
         // Prompt to update opened doc if it's dirty
-        if (this.lastOpenedDocNode && this.localDocEditor) {
+        if (this.lastOpenedDocNode && this.localDoc) {
             // soft-copy the node and doc to avoid race conditions
-            const doc: vscode.TextDocument = this.localDocEditor.document;
+            const doc: vscode.TextDocument = this.localDoc;
             const node: IDocumentNode = this.lastOpenedDocNode;
 
             if (doc.isDirty) {
@@ -51,16 +51,16 @@ export class DocumentEditor implements vscode.Disposable {
         }
 
         await fse.ensureFile(this.localDocPath);
-        const textDocument: vscode.TextDocument = await vscode.workspace.openTextDocument(this.localDocPath);
-        this.localDocEditor = await vscode.window.showTextDocument(textDocument);
+        this.localDoc = await vscode.workspace.openTextDocument(this.localDocPath);
+        await vscode.window.showTextDocument(this.localDoc);
         this.lastOpenedDocNode = docNode;
         this.isLocalDocOpen = true;
         await this.updateEditor(docNode.data);
     }
 
     public async updateLastDocument(): Promise<void> {
-        if (this.lastOpenedDocNode && this.localDocEditor) {
-            await this.udpateDocumentToNode(this.lastOpenedDocNode, this.localDocEditor.document);
+        if (this.lastOpenedDocNode && this.localDoc) {
+            await this.udpateDocumentToNode(this.lastOpenedDocNode, this.localDoc);
         } else {
             throw new Error('You must select a Document in the CosmosDB explorer before updating to Azure.');
         }
@@ -110,12 +110,13 @@ export class DocumentEditor implements vscode.Disposable {
     }
 
     private async updateEditor(data: {}): Promise<void> {
-        if (this.isLocalDocOpen && this.localDocEditor) {
-            await util.writeToEditor(this.localDocEditor, JSON.stringify(data, null, 2));
+        const textEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
+        if (textEditor && this.isLocalDocPath(textEditor.document)) {
+            await util.writeToEditor(textEditor, JSON.stringify(data, null, 2));
 
             this.ignoreSave = true;
             try {
-                await this.localDocEditor.document.save();
+                await textEditor.document.save();
             } finally {
                 this.ignoreSave = false;
             }
@@ -147,12 +148,6 @@ export class DocumentEditor implements vscode.Disposable {
             } finally {
                 this.recoveredFileName = undefined;
             }
-        }
-    }
-
-    public async onDidCloseTextDocument(doc: vscode.TextDocument): Promise<void> {
-        if (this.isLocalDocPath(doc)) {
-            this.isLocalDocOpen = false;
         }
     }
 

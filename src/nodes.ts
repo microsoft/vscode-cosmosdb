@@ -113,22 +113,10 @@ export class CosmosDBAccountNode implements IMongoServer {
 	}
 
 	get iconPath(): any {
-		switch (this.defaultExperience) {
-			case "MongoDB":
-				return {
-					light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'DataServer.svg'),
-					dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'DataServer.svg')
-				};
-			case "Graph":
-			case "DocumentDB":
-			case "Table":
-			default:
-				const docDBPathAgnostic = path.join(__filename, '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Azure DocumentDB - DocDB account LARGE.svg');
-				return {
-					light: docDBPathAgnostic,
-					dark: docDBPathAgnostic
-				};
-		}
+		return {
+			light: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'light', 'CosmosDBAccount.svg'),
+			dark: path.join(__filename, '..', '..', '..', 'resources', 'icons', 'dark', 'CosmosDBAccount.svg')
+		};
 	}
 
 	async getConnectionString(): Promise<string> {

@@ -73,8 +73,8 @@ interface ResultNode {
 };
 
 interface ResultEdge extends ResultNode {
-  inV: string;  // Edge source ID
-  outV: string; // Edge target ID
+  outV: string;  // Edge source ID
+  inV: string;   // Edge target ID
 };
 
 interface ResultVertex extends ResultNode {
@@ -379,8 +379,8 @@ export class GraphClient {
 
       // Set source/target for edges
       edges.forEach(e => {
-        var source = nodesById.get(e.inV);
-        var target = nodesById.get(e.outV);
+        var source = nodesById.get(e.outV);
+        var target = nodesById.get(e.inV);
 
         // Source/target might have been eliminated via maxVertices
         if (source && target) {

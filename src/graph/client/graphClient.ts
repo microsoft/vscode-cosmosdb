@@ -355,29 +355,48 @@ export class GraphClient {
       this.clearGraph();
 
       // Set up nodes and links for the force simulation
-      var nodes: ForceNode[] = vertices
-        .slice(0, maxNodes) // Limit # of nodes
+      var allNodes: ForceNode[] = vertices
         .map(v => <ForceNode>{ vertex: v });
+
+      // Create map of nodes by ID, and remove duplicates
+      var nodesById = new Map<string, ForceNode>();
+      var uniqueNodes: ForceNode[] = [];
+      allNodes.forEach(n => {
+        var id = n.vertex.id;
+        if (!nodesById.has(id)) {
+          nodesById.set(id, n);
+          uniqueNodes.push(n);
+        }
+      });
+
+      var nodes = uniqueNodes;
+      var countUniqueNodes = uniqueNodes.length;
+
+      // Enforce max # of nodes after deduping
+      nodes = nodes
+        .slice(0, maxNodes)
       var links: ForceLink[] = [];
 
-      var nodesById = new Map<string, ForceNode>();
-      nodes.forEach(n => nodesById.set(n.vertex.id, n));
+      // Set source/target for edges
       edges.forEach(e => {
         var source = nodesById.get(e.inV);
         var target = nodesById.get(e.outV);
+
         // Source/target might have been eliminated via maxVertices
         if (source && target) {
           links.push({ edge: e, source, target });
+        } else {
+          console.log("Not found");
         }
       });
       nodesById = null;
 
-      // Limit number of edges (done after determining which edges are still valid based on reduced vertex set)
+      // Enforce max # number of edges (after determining which edges are still valid based on reduced vertex set)
       links = links.slice(0, maxEdges);
 
-      var statsText: string = (nodes.length === vertices.length && links.length === edges.length) ?
+      var statsText: string = (nodes.length === countUniqueNodes && links.length === edges.length) ?
         `Displaying all ${nodes.length} vertices and ${links.length} edges` :
-        `Displaying ${nodes.length} of ${vertices.length} vertices and ${links.length} of ${edges.length} edges`;
+        `Displaying ${nodes.length} of ${countUniqueNodes} vertices and ${links.length} of ${edges.length} edges`;
       d3.select(htmlElements.stats).text(statsText);
 
       // Set up force simulation
@@ -467,10 +486,8 @@ export class GraphClient {
         .call(vertexDrag)
         ;
 
+      // On each tick of the simulation, update the positions of each vertex and edge
       force.on("tick", () => {
-        // The force engine has recalculated x and y for each vertex and edge, so
-        // move them in the SVG to those new positions.
-
         vertex
           .transition().ease("linear").duration(animationStepMs)
           .attr("cx", (d: ForceNode) => d.x)

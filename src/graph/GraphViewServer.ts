@@ -11,11 +11,36 @@ import * as io from 'socket.io';
 import { setInterval } from 'timers';
 import { GraphConfiguration } from './GraphConfiguration';
 import * as gremlin from "gremlin";
+import { truncateWithEllipses, removeDuplicatesById } from "../util";
+
+let maxVertices = 300;
+let maxEdges = 1000;
+
+interface Edge {
+  id: string;
+  type: "edge";
+  inV: string;  // Edge source ID
+  outV: string; // Edge target ID
+};
+
+interface Vertex {
+  id: string;
+  type: "edge";
+};
 
 type Results = {
-  queryResults: any[];
-  edgeResults: any[];
+  fullResults: any[];
+  countUniqueVertices: number;
+  countUniqueEdges: number;
+
+  // Limited by max
+  limitedVertices: Vertex[];
+  limitedEdges: Edge[];
 };
+
+function truncateQuery(query: string) {
+  return truncateWithEllipses(query, 100);
+}
 
 /**
  * @class GraphViewServer This is the server side of the graph explorer. It handles all communications
@@ -35,7 +60,6 @@ export class GraphViewServer extends EventEmitter {
     isQueryRunning: boolean,
     runningQueryId: number
   };
-
 
   constructor(private _configuration: GraphConfiguration) {
     super();
@@ -100,7 +124,7 @@ export class GraphViewServer extends EventEmitter {
       });
 
       this._server.on('error', socket => {
-        this.log("Error from server");
+        console.error("Error from server");
       });
     });
   }
@@ -114,14 +138,29 @@ export class GraphViewServer extends EventEmitter {
       this._previousPageState.errorMessage = undefined;
       this._previousPageState.isQueryRunning = true;
       this._previousPageState.runningQueryId = queryId;
-      var queryResults = await this.executeQuery(queryId, gremlinQuery);
-      results = { queryResults, edgeResults: [] };
 
-      // If it returned any vertices, we need to also query for edges
-      if (queryResults.find(v => v.type === "vertex")) {
+      // Full query results - may contain vertices and/or edges and/or other things
+      var fullResults = await this.executeQuery(queryId, gremlinQuery);
+
+      let vertices = this.getVertices(fullResults);
+      let { limitedVertices, countUniqueVertices } = this.limitVertices(vertices);
+      results = {
+        fullResults,
+        countUniqueVertices: countUniqueVertices,
+        limitedVertices: limitedVertices,
+        countUniqueEdges: 0, // Fill in later
+        limitedEdges: []     // Fill in later
+      };
+      this._previousPageState.results = results;
+
+      if (results.limitedVertices.length) {
         try {
-          results.edgeResults = await this.executeQuery(queryId, gremlinQuery + ".bothE()");
-          this._previousPageState.results = results;
+          // If it returned any vertices, we need to also query for edges
+          var edges = await this.queryEdges(queryId, results.limitedVertices);
+          let { countUniqueEdges, limitedEdges } = this.limitEdges(limitedVertices, edges);
+
+          results.countUniqueEdges = countUniqueEdges;
+          results.limitedEdges = limitedEdges;
         } catch (edgesError) {
           // Swallow and just return vertices
           console.warn("Error querying for edges: ", (edgesError.message || edgesError));
@@ -137,7 +176,73 @@ export class GraphViewServer extends EventEmitter {
       this._previousPageState.isQueryRunning = false;
     }
 
-    this._socket.emit("showResults", queryId, results.queryResults, results.edgeResults);
+    this._socket.emit("showResults", queryId, results);
+  }
+
+  private getVertices(queryResults: any[]): Vertex[] {
+    return queryResults.filter(n => n.type === "vertex" && typeof n.id === "string");
+  }
+
+  private limitVertices(vertices: Vertex[]): { countUniqueVertices: number, limitedVertices: Vertex[] } {
+    vertices = removeDuplicatesById(vertices);
+    let countUniqueVertices = vertices.length;
+
+    let limitedVertices = vertices.slice(0, maxVertices);
+
+    return { limitedVertices, countUniqueVertices };
+  }
+
+  private limitEdges(vertices: Vertex[], edges: Edge[]): { countUniqueEdges: number, limitedEdges: Edge[] } {
+    edges = removeDuplicatesById(edges);
+
+    // Remove edges that don't have both source and target in our vertex list
+    let verticesById = new Map<string, Vertex>();
+    vertices.forEach(n => verticesById.set(n.id, n));
+    edges = edges.filter(e => {
+      return verticesById.has(e.inV) && verticesById.has(e.outV);
+    });
+
+    // This should be the full set of edges applicable to these vertices
+    let countUniqueEdges = edges.length;
+
+    // Enforce max limit on edges
+    let limitedEdges = edges.slice(0, maxEdges);
+    return { limitedEdges, countUniqueEdges }
+  }
+
+  private async queryEdges(queryId: number, vertices: { id: string }[]): Promise<Edge[]> {
+    // Split into multiple queries because they fail if they're too large
+    // Each of the form: g.V("id1", "id2", ...).outE().dedup()
+    // Picks up the outgoing edges of all vertices, and removes duplicates
+    let maxIdListLength = 5000; // Liberal buffer, queries seem to start failing around 14,000 characters
+
+    let idLists: string[] = [];
+    let currentIdList = "";
+
+    for (let i = 0; i < vertices.length; ++i) {
+      let vertexId = `"${vertices[i].id}"`;
+      if (currentIdList.length && currentIdList.length + vertexId.length > maxIdListLength) {
+        // Start a new id list
+        idLists.push(currentIdList);
+        currentIdList = "";
+      }
+      currentIdList = (currentIdList ? (currentIdList + ",") : currentIdList) + vertexId;
+    }
+    if (currentIdList.length) {
+      idLists.push(currentIdList);
+    }
+
+    // Build queries from each list of IDs
+    let promises: Promise<any[]>[] = [];
+    for (let i = 0; i < idLists.length; ++i) {
+      let idList = idLists[i];
+      let query = `g.V(${idList}).outE().dedup()`;
+      var promise = this.executeQuery(queryId, query);
+      promises.push(promise);
+    }
+
+    var results = await Promise.all(promises);
+    return Array.prototype.concat(...results);
   }
 
   private removeErrorCallStack(message: string): string {
@@ -150,13 +255,41 @@ export class GraphViewServer extends EventEmitter {
       }
     } catch (error) {
       // Shouldn't happen, just being defensive
+      console.error(error);
     }
 
     return message;
   }
 
   private async executeQuery(queryId: number, gremlinQuery: string): Promise<any[]> {
-    this.log(`Executing query #${queryId}: ${gremlinQuery}`);
+    const maxRetries = 3; // original try + this many extra tries
+    const retryDurationMs = 1000;
+    let iTry = 0;
+
+    while (true) {
+      iTry++;
+
+      try {
+        if (iTry > 1) {
+          this.log(`Retry #${iTry - 1} for query ${queryId}: ${truncateQuery(gremlinQuery)}`);
+        }
+        return await this._executeQueryCore(queryId, gremlinQuery);
+      } catch (err) {
+        if (this.isErrorRetryable(err)) {
+          if (iTry >= maxRetries) {
+            this.log(`Max retries reached for query ${queryId}: ${truncateQuery(gremlinQuery)}`);
+          } else {
+            continue;
+          }
+        }
+
+        throw err;
+      }
+    }
+  }
+
+  private async _executeQueryCore(queryId: number, gremlinQuery: string): Promise<any[]> {
+    this.log(`Executing query #${queryId}: ${truncateQuery(gremlinQuery)}`);
 
     const client = gremlin.createClient(
       this._configuration.endpointPort,
@@ -183,13 +316,25 @@ export class GraphViewServer extends EventEmitter {
     return new Promise<[{}[]]>((resolve, reject) => {
       client.execute(gremlinQuery, {}, (err, results) => {
         if (err) {
-          this.log("Error from gremlin: ", err.message || err.toString());
+          this.log("Error from gremlin server: ", err.message || err.toString());
           reject(new Error(err));
         }
         this.log("Results from gremlin", results);
         resolve(results);
       });
     });
+  }
+
+  private isErrorRetryable(err: any) {
+    // Unfortunately the gremlin server aggregates errors so we can't simply query for status
+    if (err.message) {
+      if (err.message.match(/Status *: *429/) || err.message.match(/RequestRateTooLarge/)) {
+        // Query exceeds allocated RUs, we're supposed to try again
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private handleGetPageState() {
@@ -243,5 +388,6 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private log(message, ...args: any[]) {
+    // console.log(message, ...args);
   }
 }

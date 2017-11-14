@@ -17,8 +17,6 @@ declare let d3: any;
 const animationStepMs = 50;
 const graphWidth = 1200, graphHeight = 700;
 const defaultQuery = "g.V()";
-const maxNodes = 300;
-const maxEdges = 1000;
 
 const linkDistance = graphWidth / 3;
 const linkStrength = 0.01; // Reduce rigidity of the links (if < 1, the full linkDistance is relaxed)
@@ -43,10 +41,7 @@ let htmlElements: {
 type State = "empty" | "querying" | "error" | "json-results" | "graph-results";
 
 type PageState = {
-  results: {
-    queryResults: any[],
-    edgeResults: any[]
-  },
+  results: Results,
   isQueryRunning: boolean,
   errorMessage?: string,
   query: string,
@@ -65,29 +60,36 @@ function logToUI(s: string) {
   // htmlElements.debugLog.value = v;
 }
 
-// results may not be nodes
-interface ResultNode {
-  [key: string]: any;
-  id: string;
-  type: "vertex" | "edge";
+type Results = {
+  fullResults: any[];
+  countUniqueVertices: number;
+  countUniqueEdges: number;
+
+  // Limited by max
+  limitedVertices: Vertex[];
+  limitedEdges: Edge[];
 };
 
-interface ResultEdge extends ResultNode {
+interface Edge {
+  id: string;
+  type: "edge";
   inV: string;  // Edge source ID
   outV: string; // Edge target ID
 };
 
-interface ResultVertex extends ResultNode {
+interface Vertex {
+  id: string;
+  type: "edge";
 };
 
 interface ForceNode {
-  vertex: ResultVertex;
+  vertex: Vertex;
   x: number;
   y: number;
 }
 
 interface ForceLink {
-  edge: ResultEdge;
+  edge: Edge;
   source: ForceNode;
   target: ForceNode;
 }
@@ -153,7 +155,7 @@ export class GraphClient {
       }
 
       if (!pageState.errorMessage) {
-        this.showResults(pageState.results.queryResults, pageState.results.edgeResults);
+        this.showResults(pageState.results);
       } else {
         this.setStateError(pageState.errorMessage);
       }
@@ -170,13 +172,13 @@ export class GraphClient {
       d3.select(htmlElements.title).text(title);
     });
 
-    this._socket.on('showResults', (queryId: number, queryResults: any[], edgeResults: any[]): void => {
-      this.log(`Received results for query ${queryId} - ${queryResults.length} data points, plus ${edgeResults.length} edges`);
+    this._socket.on('showResults', (queryId: number, results: Results): void => {
+      this.log(`Received results for query ${queryId}`);
 
       if (queryId !== this._currentQueryId) {
         this.log("  Ignoring results, out of date");
       } else {
-        this.showResults(queryResults, edgeResults);
+        this.showResults(results);
       }
     });
 
@@ -268,27 +270,23 @@ export class GraphClient {
     d3.select("#states").attr("class", fullState);
   }
 
-  private showResults(queryResults: any[], edgeResults: any[]): void {
+  private showResults(results: Results): void {
     // queryResults may contain any type of data, not just vertices or edges
 
-    // Always show results JSON (but not edgeResults)
-    htmlElements.jsonResults.value = JSON.stringify(queryResults, null, 2);
+    // Always show the full original results JSON
+    htmlElements.jsonResults.value = JSON.stringify(results.fullResults, null, 2);
 
-    let [vertices, edges] = this.splitVerticesAndEdges(queryResults);
-    if (!vertices.length) {
+    if (!results.limitedVertices.length) {
       // No vertices to show, just show query JSON
       this.setStateResults(false);
       return;
     }
 
-    // Fold in additionally-queried edges
-    edges = edges.concat(edgeResults);
-
     this.setStateResults(true);
-    this.displayGraph(vertices, edges);
+    this.displayGraph(results.countUniqueVertices, results.limitedVertices, results.countUniqueEdges, results.limitedEdges);
   }
 
-  private splitVerticesAndEdges(nodes: any[]): [ResultVertex[], ResultEdge[]] {
+  private splitVerticesAndEdges(nodes: any[]): [Vertex[], Edge[]] {
     let vertices = nodes.filter(n => n.type === "vertex");
     let edges = nodes.filter(n => n.type === "edge");
     return [vertices, edges];
@@ -350,53 +348,35 @@ export class GraphClient {
       + " " + ux + "," + uy;
   }
 
-  private displayGraph(vertices: ResultVertex[], edges: ResultEdge[]) {
+  private displayGraph(countUniqueVertices: number, vertices: Vertex[], countUniqueEdges: number, edges: Edge[]) {
     try {
       this.clearGraph();
 
       // Set up nodes and links for the force simulation
-      var allNodes: ForceNode[] = vertices
+      let nodes: ForceNode[] = vertices
         .map(v => <ForceNode>{ vertex: v });
 
-      // Create map of nodes by ID, and remove duplicates
-      var nodesById = new Map<string, ForceNode>();
-      var uniqueNodes: ForceNode[] = [];
-      allNodes.forEach(n => {
-        var id = n.vertex.id;
-        if (!nodesById.has(id)) {
-          nodesById.set(id, n);
-          uniqueNodes.push(n);
-        }
-      });
+      // Create map of nodes by ID
+      let nodesById = new Map<string, ForceNode>();
+      nodes.forEach(n => nodesById.set(n.vertex.id, n));
 
-      var nodes = uniqueNodes;
-      var countUniqueNodes = uniqueNodes.length;
-
-      // Enforce max # of nodes after deduping
-      nodes = nodes
-        .slice(0, maxNodes)
-      var links: ForceLink[] = [];
-
-      // Set source/target for edges
+      // Create edges and set their source/target
+      let links: ForceLink[] = [];
       edges.forEach(e => {
         var source = nodesById.get(e.inV);
         var target = nodesById.get(e.outV);
 
-        // Source/target might have been eliminated via maxVertices
         if (source && target) {
           links.push({ edge: e, source, target });
         } else {
-          console.log("Not found");
+          console.error("Vertex not found");
         }
       });
       nodesById = null;
 
-      // Enforce max # number of edges (after determining which edges are still valid based on reduced vertex set)
-      links = links.slice(0, maxEdges);
-
-      var statsText: string = (nodes.length === countUniqueNodes && links.length === edges.length) ?
+      let statsText: string = (nodes.length === countUniqueVertices && links.length === countUniqueEdges) ?
         `Displaying all ${nodes.length} vertices and ${links.length} edges` :
-        `Displaying ${nodes.length} of ${countUniqueNodes} vertices and ${links.length} of ${edges.length} edges`;
+        `Displaying ${nodes.length} of ${countUniqueVertices} vertices and ${links.length} of ${countUniqueEdges} edges`;
       d3.select(htmlElements.stats).text(statsText);
 
       // Set up force simulation

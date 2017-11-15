@@ -73,8 +73,8 @@ type Results = {
 interface Edge {
   id: string;
   type: "edge";
-  inV: string;  // Edge source ID
-  outV: string; // Edge target ID
+  outV: string;  // Edge source ID
+  inV: string;   // Edge target ID
 };
 
 interface Vertex {
@@ -363,8 +363,8 @@ export class GraphClient {
       // Create edges and set their source/target
       let links: ForceLink[] = [];
       edges.forEach(e => {
-        var source = nodesById.get(e.inV);
-        var target = nodesById.get(e.outV);
+        var source = nodesById.get(e.outV);
+        var target = nodesById.get(e.inV);
 
         if (source && target) {
           links.push({ edge: e, source, target });

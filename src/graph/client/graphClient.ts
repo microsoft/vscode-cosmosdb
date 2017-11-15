@@ -350,43 +350,44 @@ export class GraphClient {
       + " " + ux + "," + uy;
   }
 
+  private removeDuplicateVertices(vertices: ResultVertex[]): ResultVertex[] {
+    // Remove duplicates
+    var mapById = new Map<string, ResultVertex>();
+    vertices.forEach(n => {
+      mapById.set(n.id, n);
+    });
+
+    return [...mapById.values()];
+  }
+
   private displayGraph(vertices: ResultVertex[], edges: ResultEdge[]) {
     try {
       this.clearGraph();
-
       // Set up nodes and links for the force simulation
-      var allNodes: ForceNode[] = vertices
-        .map(v => <ForceNode>{ vertex: v });
 
-      // Create map of nodes by ID, and remove duplicates
-      var nodesById = new Map<string, ForceNode>();
-      var uniqueNodes: ForceNode[] = [];
-      allNodes.forEach(n => {
-        var id = n.vertex.id;
-        if (!nodesById.has(id)) {
-          nodesById.set(id, n);
-          uniqueNodes.push(n);
-        }
-      });
-
-      var nodes = uniqueNodes;
-      var countUniqueNodes = uniqueNodes.length;
+      vertices = this.removeDuplicateVertices(vertices);
+      let countUniqueVertices = vertices.length;
 
       // Enforce max # of nodes after deduping
-      nodes = nodes
+      vertices = vertices
         .slice(0, maxNodes)
-      var links: ForceLink[] = [];
+      let links: ForceLink[] = [];
 
-      // Set source/target for edges
+      // Create nodes and map from remaining vertices
+      let nodes: ForceNode[] = vertices
+        .map(v => <ForceNode>{ vertex: v });
+      let nodesById = new Map<string, ForceNode>();
+      nodes.forEach(n => {
+        nodesById.set(n.vertex.id, n);
+      });
+
+      // Set source/target for edges that connect remaining vertices
       edges.forEach(e => {
         var source = nodesById.get(e.inV);
         var target = nodesById.get(e.outV);
 
-        // Source/target might have been eliminated via maxVertices
         if (source && target) {
           links.push({ edge: e, source, target });
-        } else {
-          console.log("Not found");
         }
       });
       nodesById = null;
@@ -394,9 +395,9 @@ export class GraphClient {
       // Enforce max # number of edges (after determining which edges are still valid based on reduced vertex set)
       links = links.slice(0, maxEdges);
 
-      var statsText: string = (nodes.length === countUniqueNodes && links.length === edges.length) ?
+      let statsText: string = (nodes.length === countUniqueVertices && links.length === edges.length) ?
         `Displaying all ${nodes.length} vertices and ${links.length} edges` :
-        `Displaying ${nodes.length} of ${countUniqueNodes} vertices and ${links.length} of ${edges.length} edges`;
+        `Displaying ${nodes.length} of ${countUniqueVertices} vertices and ${links.length} of ${edges.length} edges`;
       d3.select(htmlElements.stats).text(statsText);
 
       // Set up force simulation
@@ -515,6 +516,7 @@ export class GraphClient {
       force.start();
     } catch (err) {
       this.log(err);
+      this.setStateError(err);
     }
   }
 }

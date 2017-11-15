@@ -147,7 +147,7 @@ export class DocDBDocumentNode implements IDocumentNode {
 		return this.id;
 	}
 
-	getDocLink(): string {
+	getSelfLink(): string {
 		return this.collection.getCollLink() + '/docs/' + this.id;
 	}
 

@@ -60,6 +60,7 @@
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.update",
 		"onCommand:cosmosDB.openDocument",
+		"onCommand:cosmosDB.openCollection",
 		"onCommand:cosmosDB.loadMore",
 		"onCommand:cosmosDB.refresh",
 		"onCommand:cosmosDB.openInPortal",
@@ -262,6 +263,11 @@
 				"category": "CosmosDB",
 				"command": "cosmosDB.openDocument",
 				"title": "Open Document"
+			},
+			{
+				"category": "CosmosDB",
+				"command": "cosmosDB.openCollection",
+				"title": "Open Loaded Documents"
 			}
 		],
 		"menus": {
@@ -400,6 +406,10 @@
 				{
 					"command": "cosmosDB.openInPortal",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+				},
+				{
+					"command": "cosmosDB.openCollection",
+					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
 				},
 				{
 					"command": "cosmosDB.copyConnectionString",

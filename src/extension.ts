@@ -106,6 +106,7 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => await MongoCommands.executeCommandFromActiveEditor(connectedDb, context.extensionPath));
 	initAsyncCommand(context, 'cosmosDB.update', () => documentEditor.updateLastDocument());
 	initAsyncCommand(context, 'cosmosDB.openDocument', async (docNode: IDocumentNode) => await documentEditor.showDocument(docNode));
+	initAsyncCommand(context, 'cosmosDB.openCollection', async (collNode: IDocumentNode) => await documentEditor.showDocument(collNode));
 	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
 	initAsyncCommand(context, 'cosmosDB.loadMore', async (node: LoadMoreNode) => {
 		await node.parentNode.addMoreChildren();

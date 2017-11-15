@@ -202,7 +202,7 @@ export class DocDBCommands {
                 const masterKey = await doc.collection.dbNode.masterKey;
                 const endpoint = await doc.collection.dbNode.documentEndpoint;
                 const client: DocumentClient = new DocumentClient(endpoint, { masterKey: masterKey });
-                const docLink = doc.getDocLink();
+                const docLink = doc.getSelfLink();
                 const options = { partitionKey: doc.partitionKeyValue || Object() }
                 await new Promise((resolve, reject) => {
                     client.deleteDocument(docLink, options, (err) => {

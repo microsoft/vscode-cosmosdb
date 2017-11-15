@@ -185,7 +185,7 @@ export class MongoDatabaseNode implements INode {
 	}
 }
 
-export class MongoCollectionNode implements INode {
+export class MongoCollectionNode implements IDocumentNode {
 
 	constructor(readonly collection: Collection, readonly db: MongoDatabaseNode) {
 	}
@@ -196,6 +196,25 @@ export class MongoCollectionNode implements INode {
 	private _loadMoreNode: LoadMoreNode = new LoadMoreNode(this);
 	private _hasMore: boolean;
 	private _iterator: Cursor;
+	private _data: Object = { test: 'yes', path: this.getSelfLink() };
+
+	get data(): Object {
+		if (this._children.length === 0) {
+			this._data = "No documents loaded!";
+		}
+		else {
+			let docArray: Array<Object> = [];
+			for (let child of this._children) {
+				docArray.push(child.data);
+			}
+			this._data = docArray;
+		}
+		return this._data;
+	}
+
+	update(data: any): Promise<any> {
+		return;
+	}
 
 	get id(): string {
 		return this.collection.collectionName;
@@ -244,6 +263,10 @@ export class MongoCollectionNode implements INode {
 
 	removeNodeFromCache(documentNode: MongoDocumentNode): void {
 		this._children = this._children.filter(doc => doc.id !== documentNode.id);
+	}
+
+	getSelfLink() {
+		return `${this.db.server.id}.${this.db.id}.${this.id}`
 	}
 
 	executeCommand(name: string, args?: string): Thenable<string> {
@@ -381,7 +404,7 @@ export class MongoDocumentNode implements IDocumentNode {
 		return this._data;
 	}
 
-	getDocLink() {
+	getSelfLink() {
 		return `${this.collection.db.server.id}.${this.collection.db.id}.${this.collection.id}.${this.id}`
 	}
 

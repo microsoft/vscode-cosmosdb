@@ -79,7 +79,7 @@ interface Edge {
 
 interface Vertex {
   id: string;
-  type: "edge";
+  type: "vertex";
 };
 
 interface ForceNode {

@@ -25,7 +25,7 @@ interface Edge {
 
 interface Vertex {
   id: string;
-  type: "edge";
+  type: "vertex";
 };
 
 type Results = {

@@ -11,9 +11,9 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as myExtension from '../src/extension';
 
-import * as util from "../src/util";
+import * as arrayUtil from "../src/utils/array";
 
-suite("Util Tests", () => {
+suite("arrayUtil Tests", () => {
 
     test("removeDuplicatesById", () => {
         type Elem = { id: string, data: string };
@@ -25,14 +25,14 @@ suite("Util Tests", () => {
             { id: "id2", data: "data2" }
         ];
 
-        var result = util.removeDuplicatesById(array1);
+        var result = arrayUtil.removeDuplicatesById(array1);
         assert.deepEqual(result, [{ id: "id1", data: "data1" }, { id: "id2", data: "data2" }]);
     });
 
     test("removeDuplicatesById_Empty", () => {
         type Elem = { id: string, data: string };
         var array1: Elem[] = [];
-        var result = util.removeDuplicatesById(array1);
+        var result = arrayUtil.removeDuplicatesById(array1);
         assert.deepEqual(result, []);
     });
 });

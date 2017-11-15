@@ -11,7 +11,7 @@ import * as io from 'socket.io';
 import { setInterval } from 'timers';
 import { GraphConfiguration } from './GraphConfiguration';
 import * as gremlin from "gremlin";
-import { truncateWithEllipses, removeDuplicatesById } from "../util";
+import { removeDuplicatesById } from "../utils/array";
 
 let maxVertices = 300;
 let maxEdges = 1000;
@@ -37,6 +37,14 @@ type Results = {
   limitedVertices: Vertex[];
   limitedEdges: Edge[];
 };
+
+function truncateWithEllipses(s: string, maxCharacters) {
+  if (s && s.length > maxCharacters) {
+    return `${s.slice(0, maxCharacters)}...`;
+  }
+
+  return s;
+}
 
 function truncateQuery(query: string) {
   return truncateWithEllipses(query, 100);

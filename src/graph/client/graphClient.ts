@@ -97,6 +97,15 @@ interface Point2D {
   y: number;
 }
 
+export function removeDuplicates<T extends { id: string }>(entries: T[]): T[] {
+  var mapById = new Map<string, T>();
+  entries.forEach(n => {
+    mapById.set(n.id, n);
+  });
+
+  return [...mapById.values()];
+}
+
 export class GraphClient {
   private _socket: SocketIOClient.Socket;
   private _force: any;
@@ -350,22 +359,12 @@ export class GraphClient {
       + " " + ux + "," + uy;
   }
 
-  private removeDuplicateVertices(vertices: ResultVertex[]): ResultVertex[] {
-    // Remove duplicates
-    var mapById = new Map<string, ResultVertex>();
-    vertices.forEach(n => {
-      mapById.set(n.id, n);
-    });
-
-    return [...mapById.values()];
-  }
-
   private displayGraph(vertices: ResultVertex[], edges: ResultEdge[]) {
     try {
       this.clearGraph();
       // Set up nodes and links for the force simulation
 
-      vertices = this.removeDuplicateVertices(vertices);
+      vertices = removeDuplicates(vertices);
       let countUniqueVertices = vertices.length;
 
       // Enforce max # of nodes after deduping

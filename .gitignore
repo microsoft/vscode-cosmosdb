@@ -257,3 +257,6 @@ package-lock.json
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# Artifacts from running vscode extension tests
+.vscode-test

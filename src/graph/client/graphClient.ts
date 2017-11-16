@@ -1,5 +1,3 @@
-import { error } from "util";
-
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -41,7 +39,7 @@ let htmlElements: {
 type State = "empty" | "querying" | "error" | "json-results" | "graph-results";
 
 type PageState = {
-  results: Results,
+  results: GraphResults,
   isQueryRunning: boolean,
   errorMessage?: string,
   query: string,
@@ -60,36 +58,14 @@ function logToUI(s: string) {
   // htmlElements.debugLog.value = v;
 }
 
-type Results = {
-  fullResults: any[];
-  countUniqueVertices: number;
-  countUniqueEdges: number;
-
-  // Limited by max
-  limitedVertices: Vertex[];
-  limitedEdges: Edge[];
-};
-
-interface Edge {
-  id: string;
-  type: "edge";
-  outV: string;  // Edge source ID
-  inV: string;   // Edge target ID
-};
-
-interface Vertex {
-  id: string;
-  type: "vertex";
-};
-
 interface ForceNode {
-  vertex: Vertex;
+  vertex: GraphVertex;
   x: number;
   y: number;
 }
 
 interface ForceLink {
-  edge: Edge;
+  edge: GraphEdge;
   source: ForceNode;
   target: ForceNode;
 }
@@ -99,8 +75,21 @@ interface Point2D {
   y: number;
 }
 
+class SocketWrapper {
+  constructor(private _socket: SocketIOClient.Socket) { }
+
+  public onServerMessage(message: ServerMessage | "connect" | "disconnect", fn: Function): SocketIOClient.Emitter {
+    return this._socket.on(message, fn);
+  }
+
+  public emitToHost(message: ClientMessage, ...args: any[]): SocketIOClient.Socket {
+    logToUI("Message to host: " + message + " " + args.join(", "));
+    return this._socket.emit(message, ...args);
+  }
+}
+
 export class GraphClient {
-  private _socket: SocketIOClient.Socket;
+  private _socket: SocketWrapper;
   private _force: any;
   private _currentQueryId = 0;
   private _graphView: boolean;
@@ -129,23 +118,23 @@ export class GraphClient {
 
     this.setStateEmpty();
 
-    this.log(`Connecting on port ${port}`);
-    this._socket = io.connect(`http://localhost:${port}`);
+    this.log(`Listening on port ${port}`);
+    this._socket = new SocketWrapper(io.connect(`http://localhost:${port}`));
 
     // setInterval(() => {
     //   this.log(`Client heartbeat on port ${port}: ${Date()}`);
     // }, 10000);
 
-    this._socket.on('connect', (): void => {
+    this._socket.onServerMessage('connect', (): void => {
       this.log(`Client connected on port ${port}`);
-      this._socket.emit('getTitle');
+      this._socket.emitToHost('getTitle');
     });
 
-    this._socket.on('disconnect', (): void => {
+    this._socket.onServerMessage('disconnect', (): void => {
       this.log("disconnect");
     });
 
-    this._socket.on('setPageState', (pageState: PageState) => {
+    this._socket.onServerMessage("setPageState", (pageState: PageState) => {
       htmlElements.queryInput.value = pageState.query;
 
       if (pageState.isQueryRunning) {
@@ -167,12 +156,12 @@ export class GraphClient {
       }
     });
 
-    this._socket.on('setTitle', (title: string): void => {
+    this._socket.onServerMessage("setTitle", (title: string): void => {
       this.log(`Received title: ${title}`);
       d3.select(htmlElements.title).text(title);
     });
 
-    this._socket.on('showResults', (queryId: number, results: Results): void => {
+    this._socket.onServerMessage("showResults", (queryId: number, results: GraphResults): void => {
       this.log(`Received results for query ${queryId}`);
 
       if (queryId !== this._currentQueryId) {
@@ -182,7 +171,7 @@ export class GraphClient {
       }
     });
 
-    this._socket.on('showQueryError', (queryId: number, error: string): void => {
+    this._socket.onServerMessage("showQueryError", (queryId: number, error: string): void => {
       this.log(`Received error for query ${queryId} - ${error}`);
 
       if (queryId !== this._currentQueryId) {
@@ -194,12 +183,12 @@ export class GraphClient {
   }
 
   public getPageState() {
-    this.emitToHost('getPageState');
+    this._socket.emitToHost('getPageState');
   }
 
   public query(gremlin: string) {
     this._currentQueryId += 1;
-    this.emitToHost("query", this._currentQueryId, gremlin);
+    this._socket.emitToHost("query", this._currentQueryId, gremlin);
 
     this.setStateQuerying();
   }
@@ -215,7 +204,7 @@ export class GraphClient {
   }
 
   public setQuery(query: string) {
-    this.emitToHost('setQuery', query);
+    this._socket.emitToHost('setQuery', query);
   }
 
   private setView() {
@@ -223,17 +212,12 @@ export class GraphClient {
     htmlElements.jsonRadio.checked = !this._graphView;
     d3.select(htmlElements.graphSection).classed("active", !!this._graphView);
     d3.select(htmlElements.jsonSection).classed("active", !this._graphView);
-    this.emitToHost('setView', this._graphView ? 'graph' : 'json');
-  }
-
-  private emitToHost(message: string, ...args: any[]) {
-    logToUI("Message to host: " + message + " " + args.join(", "));
-    this._socket.emit(message, ...args);
+    this._socket.emitToHost('setView', this._graphView ? 'graph' : 'json');
   }
 
   private log(s: string) {
     if (this._socket) {
-      this.emitToHost('log', s);
+      this._socket.emitToHost('log', s);
     }
 
     logToUI(s);
@@ -270,7 +254,7 @@ export class GraphClient {
     d3.select("#states").attr("class", fullState);
   }
 
-  private showResults(results: Results): void {
+  private showResults(results: GraphResults): void {
     // queryResults may contain any type of data, not just vertices or edges
 
     // Always show the full original results JSON
@@ -286,7 +270,7 @@ export class GraphClient {
     this.displayGraph(results.countUniqueVertices, results.limitedVertices, results.countUniqueEdges, results.limitedEdges);
   }
 
-  private splitVerticesAndEdges(nodes: any[]): [Vertex[], Edge[]] {
+  private splitVerticesAndEdges(nodes: any[]): [GraphVertex[], GraphEdge[]] {
     let vertices = nodes.filter(n => n.type === "vertex");
     let edges = nodes.filter(n => n.type === "edge");
     return [vertices, edges];
@@ -348,7 +332,7 @@ export class GraphClient {
       + " " + ux + "," + uy;
   }
 
-  private displayGraph(countUniqueVertices: number, vertices: Vertex[], countUniqueEdges: number, edges: Edge[]) {
+  private displayGraph(countUniqueVertices: number, vertices: GraphVertex[], countUniqueEdges: number, edges: GraphEdge[]) {
     try {
       this.clearGraph();
 

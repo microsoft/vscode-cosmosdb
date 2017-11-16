@@ -187,7 +187,7 @@ textarea {
     padding-top: 18%;
 }
 
-#stats {
+#statsBackground {
     box-sizing: border-box;
     padding: 12px 15px;
     color: #cccccc;
@@ -222,7 +222,7 @@ textarea {
     display: none;
 }
 
-#states:not(.state-graph-results) #stats span {
+#states:not(.state-graph-results) #stats {
     display: none;
 }
 

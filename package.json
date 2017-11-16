@@ -484,7 +484,7 @@
 				},
 				"cosmosDB.graph.maxEdges": {
 					"type": "integer",
-					"default": 600,
+					"default": 500,
 					"description": "Set a limit for number of edges displayed in a graph visualization"
 				}
 			}

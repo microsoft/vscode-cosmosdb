@@ -19,8 +19,8 @@ let maxEdges = 1000;
 interface Edge {
   id: string;
   type: "edge";
-  inV: string;  // Edge source ID
-  outV: string; // Edge target ID
+  outV: string;  // Edge source ID
+  inV: string;   // Edge target ID
 };
 
 interface Vertex {

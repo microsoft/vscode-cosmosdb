@@ -78,11 +78,11 @@ interface Point2D {
 class SocketWrapper {
   constructor(private _socket: SocketIOClient.Socket) { }
 
-  public onClientMessage(message: ClientMessage | "connect" | "disconnect", fn: Function): SocketIOClient.Emitter {
+  public onServerMessage(message: ServerMessage | "connect" | "disconnect", fn: Function): SocketIOClient.Emitter {
     return this._socket.on(message, fn);
   }
 
-  public emitToHost(message: ServerMessage, ...args: any[]): SocketIOClient.Socket {
+  public emitToHost(message: ClientMessage, ...args: any[]): SocketIOClient.Socket {
     logToUI("Message to host: " + message + " " + args.join(", "));
     return this._socket.emit(message, ...args);
   }
@@ -125,16 +125,16 @@ export class GraphClient {
     //   this.log(`Client heartbeat on port ${port}: ${Date()}`);
     // }, 10000);
 
-    this._socket.onClientMessage('connect', (): void => {
+    this._socket.onServerMessage('connect', (): void => {
       this.log(`Client connected on port ${port}`);
       this._socket.emitToHost('getTitle');
     });
 
-    this._socket.onClientMessage('disconnect', (): void => {
+    this._socket.onServerMessage('disconnect', (): void => {
       this.log("disconnect");
     });
 
-    this._socket.onClientMessage("setPageState", (pageState: PageState) => {
+    this._socket.onServerMessage("setPageState", (pageState: PageState) => {
       htmlElements.queryInput.value = pageState.query;
 
       if (pageState.isQueryRunning) {
@@ -156,12 +156,12 @@ export class GraphClient {
       }
     });
 
-    this._socket.onClientMessage("setTitle", (title: string): void => {
+    this._socket.onServerMessage("setTitle", (title: string): void => {
       this.log(`Received title: ${title}`);
       d3.select(htmlElements.title).text(title);
     });
 
-    this._socket.onClientMessage("showResults", (queryId: number, results: GraphResults): void => {
+    this._socket.onServerMessage("showResults", (queryId: number, results: GraphResults): void => {
       this.log(`Received results for query ${queryId}`);
 
       if (queryId !== this._currentQueryId) {
@@ -171,7 +171,7 @@ export class GraphClient {
       }
     });
 
-    this._socket.onClientMessage("showQueryError", (queryId: number, error: string): void => {
+    this._socket.onServerMessage("showQueryError", (queryId: number, error: string): void => {
       this.log(`Received error for query ${queryId} - ${error}`);
 
       if (queryId !== this._currentQueryId) {

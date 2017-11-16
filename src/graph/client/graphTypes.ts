@@ -29,8 +29,8 @@ interface GraphVertex {
   type: "vertex";
 }
 
-// Messages that are sent to the client
-type ClientMessage = "setTitle" | "showResults" | "showQueryError" | "setPageState";
+// Messages that are sent from the server to the client
+type ServerMessage = "setTitle" | "showResults" | "showQueryError" | "setPageState";
 
-// Messages that are sent to the server
-type ServerMessage = "getPageState" | "getTitle" | "getPageState" | "query" | "setQuery" | "setView" | "log";
+// Messages that are sent from the client to the server
+type ClientMessage = "getPageState" | "getTitle" | "getPageState" | "query" | "setQuery" | "setView" | "log";

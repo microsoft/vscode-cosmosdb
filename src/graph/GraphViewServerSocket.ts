@@ -11,11 +11,11 @@ import * as io from 'socket.io';
 export class GraphViewServerSocket {
   constructor(private _socket: SocketIO.Socket) { }
 
-  public onServerMessage(event: ServerMessage, listener: Function): void {
+  public onClientMessage(event: ClientMessage, listener: Function): void {
     this._socket.on(event, listener);
   }
 
-  public emitToClient(message: ClientMessage, ...args: any[]): boolean {
+  public emitToClient(message: ServerMessage, ...args: any[]): boolean {
     // console.log("Message to client: " + message + " " + args.join(", "));
     return this._socket.emit(message, ...args);
   }

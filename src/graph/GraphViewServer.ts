@@ -355,24 +355,24 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private setUpSocket() {
-    this._socket.onServerMessage('log', (...args: any[]) => {
+    this._socket.onClientMessage('log', (...args: any[]) => {
       this.log('from client: ', ...args);
     });
 
     // Handle QueryTitle event from client
-    this._socket.onServerMessage('getTitle', () => this.handleGetTitleMessage());
+    this._socket.onClientMessage('getTitle', () => this.handleGetTitleMessage());
 
     // Handle query event from client
-    this._socket.onServerMessage('query', (queryId: number, gremlin: string) => this.handleQueryMessage(queryId, gremlin));
+    this._socket.onClientMessage('query', (queryId: number, gremlin: string) => this.handleQueryMessage(queryId, gremlin));
 
     // Handle state event from client
-    this._socket.onServerMessage('getPageState', () => this.handleGetPageState());
+    this._socket.onClientMessage('getPageState', () => this.handleGetPageState());
 
     // Handle setQuery event from client
-    this._socket.onServerMessage('setQuery', (query: string) => this.handleSetQuery(query));
+    this._socket.onClientMessage('setQuery', (query: string) => this.handleSetQuery(query));
 
     // Handle setView event from client
-    this._socket.onServerMessage('setView', (view: 'graph' | 'json') => this.handleSetView(view));
+    this._socket.onClientMessage('setView', (view: 'graph' | 'json') => this.handleSetView(view));
   }
 
   private log(message, ...args: any[]) {

@@ -86,7 +86,6 @@ export class MongoCommands {
 	public static async createMongoDocument(collectionNode: MongoCollectionNode, explorer: CosmosDBExplorer) {
 		const docId = await vscode.window.showInputBox({
 			placeHolder: "Enter a unique id for the document.",
-			validateInput: MongoCommands.validateDocumentName,
 			ignoreFocusOut: true
 		});
 
@@ -108,12 +107,6 @@ export class MongoCommands {
 		}
 	}
 
-	private static validateDocumentName(name: string): string | null | undefined {
-		if (name.trim().length === 0) {
-			return "Name cannot be empty or contain just spaces";
-		}
-		return;
-	}
 }
 
 export class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {

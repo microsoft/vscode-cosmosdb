@@ -212,8 +212,25 @@ export class MongoCollectionNode implements IDocumentNode {
 		return this._data;
 	}
 
-	update(data: any): Promise<any> {
-		return;
+	async update(data: any): Promise<any> {
+		if (!Array.isArray(data)) {
+			data = [data];
+		}
+		let operationsArray: Array<any> = [];
+		for (let document of data) {
+			const operation: object = {
+				updateOne:
+					{
+						"filter": { _id: new ObjectID(document._id) },
+						"update": _.omit(document, '_id'),
+						"upsert": false
+					}
+			};
+			operationsArray.push(operation);
+		}
+		const result = await this.collection.bulkWrite(operationsArray);
+		this._data = data;
+		return this._data;
 	}
 
 	get id(): string {

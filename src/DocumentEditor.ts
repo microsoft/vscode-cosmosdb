@@ -104,7 +104,7 @@ export class DocumentEditor implements vscode.Disposable {
         const output = util.getOutputChannel();
         const timestamp = (new Date()).toLocaleTimeString();
         const docLink = node.getSelfLink();
-        output.appendLine(`${timestamp}: Updated document "${docLink}"`);
+        output.appendLine(`${timestamp}: Updated entity "${docLink}"`);
         output.show();
         await this.updateEditor(updatedDoc);
     }

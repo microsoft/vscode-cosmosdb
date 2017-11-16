@@ -12,31 +12,11 @@ import { setInterval } from 'timers';
 import { GraphConfiguration } from './GraphConfiguration';
 import * as gremlin from "gremlin";
 import { removeDuplicatesById } from "../utils/array";
+import { GraphViewServerSocket } from "./GraphViewServerSocket";
+import { Socket } from 'net';
 
 let maxVertices = 300;
 let maxEdges = 1000;
-
-interface Edge {
-  id: string;
-  type: "edge";
-  outV: string;  // Edge source ID
-  inV: string;   // Edge target ID
-};
-
-interface Vertex {
-  id: string;
-  type: "vertex";
-};
-
-type Results = {
-  fullResults: any[];
-  countUniqueVertices: number;
-  countUniqueEdges: number;
-
-  // Limited by max
-  limitedVertices: Vertex[];
-  limitedEdges: Edge[];
-};
 
 function truncateWithEllipses(s: string, maxCharacters) {
   if (s && s.length > maxCharacters) {
@@ -59,10 +39,10 @@ export class GraphViewServer extends EventEmitter {
   private _server: SocketIO.Server;
   private _httpServer: http.Server;
   private _port: number | undefined;
-  private _socket: SocketIO.Socket;
+  private _socket: GraphViewServerSocket;
   private _previousPageState: {
     query: string | undefined,
-    results: Results | undefined,
+    results: GraphResults | undefined,
     errorMessage: string | undefined,
     view: 'graph' | 'json',
     isQueryRunning: boolean,
@@ -127,7 +107,7 @@ export class GraphViewServer extends EventEmitter {
 
       this._server.on('connection', socket => {
         this.log(`Connected to client ${socket.id}`);
-        this._socket = socket;
+        this._socket = new GraphViewServerSocket(socket);
         this.setUpSocket();
       });
 
@@ -138,7 +118,7 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private async queryAndShowResults(queryId: number, gremlinQuery: string): Promise<void> {
-    var results: Results | undefined;
+    var results: GraphResults | undefined;
 
     try {
       this._previousPageState.query = gremlinQuery;
@@ -178,20 +158,20 @@ export class GraphViewServer extends EventEmitter {
       // If there's an error, send it to the client to display
       var message = this.removeErrorCallStack(error.message || error.toString());
       this._previousPageState.errorMessage = message;
-      this._socket.emit("showQueryError", queryId, message);
+      this._socket.emitToClient("showQueryError", queryId, message);
       return;
     } finally {
       this._previousPageState.isQueryRunning = false;
     }
 
-    this._socket.emit("showResults", queryId, results);
+    this._socket.emitToClient("showResults", queryId, results);
   }
 
-  private getVertices(queryResults: any[]): Vertex[] {
+  private getVertices(queryResults: any[]): GraphVertex[] {
     return queryResults.filter(n => n.type === "vertex" && typeof n.id === "string");
   }
 
-  private limitVertices(vertices: Vertex[]): { countUniqueVertices: number, limitedVertices: Vertex[] } {
+  private limitVertices(vertices: GraphVertex[]): { countUniqueVertices: number, limitedVertices: GraphVertex[] } {
     vertices = removeDuplicatesById(vertices);
     let countUniqueVertices = vertices.length;
 
@@ -200,11 +180,11 @@ export class GraphViewServer extends EventEmitter {
     return { limitedVertices, countUniqueVertices };
   }
 
-  private limitEdges(vertices: Vertex[], edges: Edge[]): { countUniqueEdges: number, limitedEdges: Edge[] } {
+  private limitEdges(vertices: GraphVertex[], edges: GraphEdge[]): { countUniqueEdges: number, limitedEdges: GraphEdge[] } {
     edges = removeDuplicatesById(edges);
 
     // Remove edges that don't have both source and target in our vertex list
-    let verticesById = new Map<string, Vertex>();
+    let verticesById = new Map<string, GraphVertex>();
     vertices.forEach(n => verticesById.set(n.id, n));
     edges = edges.filter(e => {
       return verticesById.has(e.inV) && verticesById.has(e.outV);
@@ -218,7 +198,7 @@ export class GraphViewServer extends EventEmitter {
     return { limitedEdges, countUniqueEdges }
   }
 
-  private async queryEdges(queryId: number, vertices: { id: string }[]): Promise<Edge[]> {
+  private async queryEdges(queryId: number, vertices: { id: string }[]): Promise<GraphEdge[]> {
     // Split into multiple queries because they fail if they're too large
     // Each of the form: g.V("id1", "id2", ...).outE().dedup()
     // Picks up the outgoing edges of all vertices, and removes duplicates
@@ -349,7 +329,7 @@ export class GraphViewServer extends EventEmitter {
     this.log('getPageState');
 
     if (this._previousPageState.query) {
-      this._socket.emit('setPageState', this._previousPageState);
+      this._socket.emitToClient('setPageState', this._previousPageState);
     }
   }
 
@@ -371,28 +351,28 @@ export class GraphViewServer extends EventEmitter {
 
   private handleGetTitleMessage() {
     this.log(`getTitle`);
-    this._socket.emit('setTitle', `${this._configuration.databaseName} / ${this._configuration.graphName}`);
+    this._socket.emitToClient('setTitle', `${this._configuration.databaseName} / ${this._configuration.graphName}`);
   }
 
   private setUpSocket() {
-    this._socket.on('log', (...args: any[]) => {
+    this._socket.onClientMessage('log', (...args: any[]) => {
       this.log('from client: ', ...args);
     });
 
     // Handle QueryTitle event from client
-    this._socket.on('getTitle', () => this.handleGetTitleMessage());
+    this._socket.onClientMessage('getTitle', () => this.handleGetTitleMessage());
 
     // Handle query event from client
-    this._socket.on('query', (queryId: number, gremlin: string) => this.handleQueryMessage(queryId, gremlin));
+    this._socket.onClientMessage('query', (queryId: number, gremlin: string) => this.handleQueryMessage(queryId, gremlin));
 
     // Handle state event from client
-    this._socket.on('getPageState', () => this.handleGetPageState());
+    this._socket.onClientMessage('getPageState', () => this.handleGetPageState());
 
     // Handle setQuery event from client
-    this._socket.on('setQuery', (query: string) => this.handleSetQuery(query));
+    this._socket.onClientMessage('setQuery', (query: string) => this.handleSetQuery(query));
 
     // Handle setView event from client
-    this._socket.on('setView', (view: 'graph' | 'json') => this.handleSetView(view));
+    this._socket.onClientMessage('setView', (view: 'graph' | 'json') => this.handleSetView(view));
   }
 
   private log(message, ...args: any[]) {

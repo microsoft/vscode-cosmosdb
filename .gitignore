@@ -258,5 +258,5 @@ package-lock.json
 .idea/
 *.sln.iml
 
-# npm test
+# Artifacts from running vscode extension tests
 .vscode-test

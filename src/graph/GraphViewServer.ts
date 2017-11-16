@@ -175,7 +175,7 @@ export class GraphViewServer extends EventEmitter {
           results.countUniqueEdges = countUniqueEdges;
           results.limitedEdges = limitedEdges;
         } catch (edgesError) {
-          throw new Error(`Error querying for edges: ${edgesError.message || edgesError}`;
+          throw new Error(`Error querying for edges: ${edgesError.message || edgesError}`);
         }
       }
     } catch (error) {

@@ -38,7 +38,7 @@ export class MongoCommands {
 				await editor.showDocument(dummy);
 			}
 			else {
-				await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
+				await util.showNewFile(result, extensionPath, 'result-mongo-ouput', '.json', activeEditor.viewColumn + 1);
 			}
 		} else {
 			throw new Error('No executable command found.');

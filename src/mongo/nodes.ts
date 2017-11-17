@@ -13,7 +13,7 @@ import { MongoClient, Db, ReadPreference, Code, Server, Collection, Cursor, Obje
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 import { AzureAccount } from '../azure-account.api';
-import { INode, ErrorNode, IDocumentNode, LoadMoreNode } from '../nodes';
+import { INode, ErrorNode, IDocument, LoadMoreNode } from '../nodes';
 import { MongoCommands } from './commands';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
@@ -185,14 +185,12 @@ export class MongoDatabaseNode implements INode {
 	}
 }
 
-export class MongoDummyNode implements IDocumentNode {
+export class MongoDummyNode implements IDocument {
 	private _data: Object;
 	constructor(private _collection: Collection, readonly findType: string) {
 	}
 
-	readonly id: string = `dummyNode.${this._collection.collectionName}.${this.findType}`;
-	readonly contextValue: string = "DummyNodeFindResult";
-	readonly label: string = this.contextValue;
+	readonly label: string = "DummyNodeFindResult";
 
 	getSelfLink(): string {
 		return `dummyNode.result.${this.findType}`
@@ -217,7 +215,7 @@ export class MongoDummyNode implements IDocumentNode {
 	}
 }
 
-export class MongoCollectionNode implements IDocumentNode {
+export class MongoCollectionNode implements IDocument, INode {
 
 	constructor(readonly collection: Collection, readonly db: MongoDatabaseNode) {
 	}
@@ -428,7 +426,7 @@ export class MongoCollectionNode implements IDocumentNode {
 	}
 }
 
-export class MongoDocumentNode implements IDocumentNode {
+export class MongoDocumentNode implements IDocument, INode {
 	private _data: object;
 	constructor(readonly id: string, readonly collection: MongoCollectionNode, payload: Object) {
 		this._data = payload;

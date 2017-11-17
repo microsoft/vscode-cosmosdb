@@ -8,11 +8,11 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { DialogBoxResponses } from './constants';
 import { UserCancelledError } from './errors';
-import { IDocumentNode } from './nodes';
+import { IDocument } from './nodes';
 import * as util from './util';
 
 export class DocumentEditor implements vscode.Disposable {
-    private lastOpenedDocNode: IDocumentNode | undefined;
+    private lastOpenedDocNode: IDocument | undefined;
     private localDocPath: string;
     private localDoc: vscode.TextDocument | undefined;
 
@@ -32,12 +32,12 @@ export class DocumentEditor implements vscode.Disposable {
         this.promptForRecoveredDocs();
     }
 
-    public async showDocument(docNode: IDocumentNode): Promise<void> {
+    public async showDocument(docNode: IDocument): Promise<void> {
         // Prompt to update opened doc if it's dirty
         if (this.lastOpenedDocNode && this.localDoc) {
             // soft-copy the node and doc to avoid race conditions
             const doc: vscode.TextDocument = this.localDoc;
-            const node: IDocumentNode = this.lastOpenedDocNode;
+            const node: IDocument = this.lastOpenedDocNode;
 
             if (doc.isDirty) {
                 const message: string = `Your changes to document '${this.lastOpenedDocNode.label}' will be lost. Update to Azure?`;
@@ -99,7 +99,7 @@ export class DocumentEditor implements vscode.Disposable {
         }
     }
 
-    private async udpateDocumentToNode(node: IDocumentNode, doc: vscode.TextDocument): Promise<void> {
+    private async udpateDocumentToNode(node: IDocument, doc: vscode.TextDocument): Promise<void> {
         const updatedDoc: {} = await node.update(JSON.parse(doc.getText()));
         const output = util.getOutputChannel();
         const timestamp = (new Date()).toLocaleTimeString();
@@ -126,7 +126,7 @@ export class DocumentEditor implements vscode.Disposable {
     public async onDidSaveTextDocument(globalState: vscode.Memento, doc: vscode.TextDocument): Promise<void> {
         if (!this.ignoreSave && this.isLocalDocPath(doc) && this.lastOpenedDocNode) {
             // soft-copy the node to avoid race conditions
-            const node: IDocumentNode = this.lastOpenedDocNode;
+            const node: IDocument = this.lastOpenedDocNode;
 
             // If the user saved the file as a part of closing VS Code, we might not be able to 'Update to Azure' in time
             // However, we can copy the file to this path and prompt user about it on next activation

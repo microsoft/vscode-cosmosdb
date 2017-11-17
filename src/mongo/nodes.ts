@@ -229,16 +229,11 @@ export class MongoCollectionNode implements IDocument, INode {
 	private _data: Object;
 
 	get data(): Object {
-		if (this._children.length === 0) {
-			this._data = "No documents loaded!";
+		let docArray: Array<Object> = [];
+		for (let child of this._children) {
+			docArray.push(child.data);
 		}
-		else {
-			let docArray: Array<Object> = [];
-			for (let child of this._children) {
-				docArray.push(child.data);
-			}
-			this._data = docArray;
-		}
+		this._data = docArray;
 		return this._data;
 	}
 

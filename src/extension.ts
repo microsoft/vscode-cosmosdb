@@ -127,7 +127,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	initEvent(context, 'cosmosDB.documentEditor.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument,
 		(doc: vscode.TextDocument) => {
-			const editorName = doc.fileName.substring(Math.max(doc.fileName.lastIndexOf('\\'), doc.fileName.lastIndexOf('/')) + 1);
+			const editorName = path.basename(doc.fileName);
 			const editir = editorsMap[editorName];
 			editorsMap[editorName].onDidSaveTextDocument(context.globalState, doc);
 		});

@@ -185,6 +185,53 @@ export class MongoDatabaseNode implements INode {
 	}
 }
 
+export class MongoDummyNode implements IDocumentNode {
+	// data, update, getSelfLink
+	// id, contextValue, no need getChildren
+	// Should be invisible. Should not show up under the db-node's children.
+	// Associated with the docEditor for find and findOne results.
+	// Usage - only within the docEditor
+	// Actions : showDoc(node) (show data), updateLastDocument (update this node's contents),
+
+	private _data: Object;
+	constructor(private _collection: Collection, readonly findType: string) {
+	}
+
+	readonly id: string = `dummyNode.${this.collection.collectionName}.${this.findType}`;
+	readonly contextValue: string = "DummyNodeFindResult";
+	readonly label: string = this.contextValue;
+
+	getSelfLink(): string {
+		return `dummyNode.result.${this.findType}`
+	}
+
+	get data() {
+		return this._data;
+	}
+
+	set data(datum: Object) {
+		this._data = datum;
+	}
+
+	get collection(): Collection {
+		return this._collection;
+	}
+
+	set collection(coll: Collection) {
+		this._collection = coll;
+	}
+
+	async update(data: any): Promise<any> {
+		if (!Array.isArray(data)) {
+			data = [data];
+		}
+		const operations = MongoCollectionNode.getBulkWriteUpdateOperations(data);
+		const result = await this.collection.bulkWrite(operations);
+		this._data = data;
+		return this._data;
+	}
+}
+
 export class MongoCollectionNode implements IDocumentNode {
 
 	constructor(readonly collection: Collection, readonly db: MongoDatabaseNode) {
@@ -196,7 +243,7 @@ export class MongoCollectionNode implements IDocumentNode {
 	private _loadMoreNode: LoadMoreNode = new LoadMoreNode(this);
 	private _hasMore: boolean;
 	private _iterator: Cursor;
-	private _data: Object = { test: 'yes', path: this.getSelfLink() };
+	private _data: Object;
 
 	get data(): Object {
 		if (this._children.length === 0) {
@@ -216,6 +263,13 @@ export class MongoCollectionNode implements IDocumentNode {
 		if (!Array.isArray(data)) {
 			data = [data];
 		}
+		const operations = MongoCollectionNode.getBulkWriteUpdateOperations(data);
+		const result = await this.collection.bulkWrite(operations);
+		this._data = data;
+		return this._data;
+	}
+
+	static getBulkWriteUpdateOperations(data: any): any {
 		let operationsArray: Array<any> = [];
 		for (let document of data) {
 			const operation: object = {
@@ -228,9 +282,7 @@ export class MongoCollectionNode implements IDocumentNode {
 			};
 			operationsArray.push(operation);
 		}
-		const result = await this.collection.bulkWrite(operationsArray);
-		this._data = data;
-		return this._data;
+		return operationsArray;
 	}
 
 	get id(): string {

@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
-import { MongoDatabaseNode, MongoCommand, MongoDocumentNode, MongoCollectionNode } from './nodes';
+import { MongoDatabaseNode, MongoCommand, MongoDocumentNode, MongoCollectionNode, MongoDummyNode } from './nodes';
 import { CosmosDBExplorer } from '../explorer';
 import * as fs from 'fs';
 import * as mongoParser from './grammar/mongoParser';
@@ -15,10 +15,11 @@ import { MongoVisitor } from './grammar/visitors';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as util from './../util';
 import { DialogBoxResponses } from '../constants'
+import { DocumentEditor } from '../DocumentEditor';
 
 export class MongoCommands {
 
-	public static async executeCommandFromActiveEditor(database: MongoDatabaseNode, extensionPath): Promise<MongoCommand> {
+	public static async executeCommandFromActiveEditor(database: MongoDatabaseNode, extensionPath, editor: DocumentEditor): Promise<MongoCommand> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (activeEditor.document.languageId !== 'mongo') {
 			return;
@@ -30,7 +31,15 @@ export class MongoCommands {
 				throw new Error('Please connect to the database first');
 			}
 			const result = await database.executeCommand(command);
-			await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
+			if (command.name === 'find' || command.name === 'findOne') {
+				const db = await database.getDb();
+				const dummy = new MongoDummyNode(db.collection(command.collection), command.name);
+				dummy.data = JSON.parse(result);
+				await editor.showDocument(dummy);
+			}
+			else {
+				await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
+			}
 		} else {
 			throw new Error('No executable command found.');
 		}

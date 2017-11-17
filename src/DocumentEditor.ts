@@ -24,9 +24,9 @@ export class DocumentEditor implements vscode.Disposable {
 
     private readonly dontShowKey: string = 'cosmosDB.dontShow.SaveEqualsUpdateToAzure';
 
-    constructor(context: vscode.ExtensionContext) {
+    constructor(context: vscode.ExtensionContext, readonly filename: string) {
         // Use a workspace-specific path unique to our extension if possible. Otherwise, just use the main folder for our extension
-        this.localDocPath = path.resolve(path.join(context.storagePath || context.extensionPath, 'cosmos-document.json'));
+        this.localDocPath = path.resolve(path.join(context.storagePath || context.extensionPath, filename));
         this.recoveredDocsFolder = path.join(context.extensionPath, 'recoveredDocs');
 
         this.promptForRecoveredDocs();
@@ -134,7 +134,7 @@ export class DocumentEditor implements vscode.Disposable {
             try {
                 const dontShow: boolean | undefined = globalState.get(this.dontShowKey);
                 if (dontShow !== true) {
-                    const message: string = `Saving "cosmos-document.json" will update the CosmosDB document "${node.label}" in Azure.`;
+                    const message: string = `Saving "${this.filename}" will update the CosmosDB entity "${node.label}" in Azure.`;
                     const result: string | undefined = await vscode.window.showWarningMessage(message, DialogBoxResponses.OK, DialogBoxResponses.DontShowAgain);
 
                     if (!result) {

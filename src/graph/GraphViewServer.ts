@@ -15,9 +15,6 @@ import { removeDuplicatesById } from "../utils/array";
 import { GraphViewServerSocket } from "./GraphViewServerSocket";
 import { Socket } from 'net';
 
-let maxVertices = 300;
-let maxEdges = 1000;
-
 function truncateWithEllipses(s: string, maxCharacters) {
   if (s && s.length > maxCharacters) {
     return `${s.slice(0, maxCharacters)}...`;
@@ -117,6 +114,14 @@ export class GraphViewServer extends EventEmitter {
     });
   }
 
+  private get maxVertices(): number {
+    return Math.max(1, vscode.workspace.getConfiguration().get<number>('cosmosDB.graph.maxVertices'));
+  }
+
+  private get maxEdges(): number {
+    return Math.max(1, vscode.workspace.getConfiguration().get<number>('cosmosDB.graph.maxEdges'));
+  }
+
   private async queryAndShowResults(queryId: number, gremlinQuery: string): Promise<void> {
     var results: GraphResults | undefined;
 
@@ -150,8 +155,7 @@ export class GraphViewServer extends EventEmitter {
           results.countUniqueEdges = countUniqueEdges;
           results.limitedEdges = limitedEdges;
         } catch (edgesError) {
-          // Swallow and just return vertices
-          console.warn("Error querying for edges: ", (edgesError.message || edgesError));
+          throw new Error(`Error querying for edges: ${edgesError.message || edgesError}`);
         }
       }
     } catch (error) {
@@ -175,7 +179,7 @@ export class GraphViewServer extends EventEmitter {
     vertices = removeDuplicatesById(vertices);
     let countUniqueVertices = vertices.length;
 
-    let limitedVertices = vertices.slice(0, maxVertices);
+    let limitedVertices = vertices.slice(0, this.maxVertices);
 
     return { limitedVertices, countUniqueVertices };
   }
@@ -194,7 +198,7 @@ export class GraphViewServer extends EventEmitter {
     let countUniqueEdges = edges.length;
 
     // Enforce max limit on edges
-    let limitedEdges = edges.slice(0, maxEdges);
+    let limitedEdges = edges.slice(0, this.maxEdges);
     return { limitedEdges, countUniqueEdges }
   }
 

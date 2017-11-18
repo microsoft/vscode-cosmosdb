@@ -21,7 +21,6 @@ export class DocumentEditor implements vscode.Disposable {
     private readonly dontShowKey: string = 'cosmosDB.dontShow.SaveEqualsUpdateToAzure';
 
     public async showDocument(docNode: IDocument): Promise<void> {
-        //TODO : Iterate through fileMap and delete closed files
         const localDocPath = path.join(os.tmpdir(), randomUtils.getRandomHexString(12), 'cosmos-document.json');
         await fse.ensureFile(localDocPath);
 

@@ -216,9 +216,6 @@ export class MongoCollectionNode implements IDocument {
 
 	async update(data: any): Promise<any> {
 		//TODO : refetch each of the loaded document
-		if (!Array.isArray(data)) {
-			data = [data];
-		}
 		const operations = this.getBulkWriteUpdateOperations(data);
 		const result = await this.collection.bulkWrite(operations);
 		this._data = data;
@@ -409,6 +406,10 @@ export class MongoDocumentNode implements IDocument {
 
 	get data(): object {
 		return this._data;
+	}
+
+	set data(datum: object) {
+		this._data = datum;
 	}
 
 	get label(): string {

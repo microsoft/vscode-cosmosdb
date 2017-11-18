@@ -33,7 +33,13 @@ export class MongoCommands {
 			const result = await database.executeCommand(command);
 			if (command.name === 'find' || command.name === 'findOne') {
 				const db = await database.getDb();
-				const dummy = new MongoCollectionNode(db.collection(command.collection), database);
+				let dummy: MongoCollectionNode | MongoDocumentNode;
+				if (command.name === 'find') {
+					dummy = new MongoCollectionNode(db.collection(command.collection), database);
+				}
+				else {
+					dummy = new MongoDocumentNode(JSON.parse(result)._id, null, result);
+				}
 				dummy.data = JSON.parse(result);
 				await editor.showDocument(dummy);
 			}

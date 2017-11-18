@@ -185,37 +185,7 @@ export class MongoDatabaseNode implements INode {
 	}
 }
 
-export class MongoDummyNode implements IDocument {
-	private _data: Object;
-	constructor(private _collection: Collection, readonly findType: string) {
-	}
-
-	readonly label: string = "DummyNodeFindResult";
-
-	getSelfLink(): string {
-		return `dummyNode.result.${this.findType}`
-	}
-
-	get data() {
-		return this._data;
-	}
-
-	set data(datum: Object) {
-		this._data = datum;
-	}
-
-	async update(data: any): Promise<any> {
-		if (!Array.isArray(data)) {
-			data = [data];
-		}
-		const operations = MongoCollectionNode.getBulkWriteUpdateOperations(data);
-		const result = await this._collection.bulkWrite(operations);
-		this._data = data;
-		return this._data;
-	}
-}
-
-export class MongoCollectionNode implements IDocument, INode {
+export class MongoCollectionNode implements IDocument {
 
 	constructor(readonly collection: Collection, readonly db: MongoDatabaseNode) {
 	}
@@ -238,6 +208,10 @@ export class MongoCollectionNode implements IDocument, INode {
 			this._data = docArray;
 		}
 		return this._data;
+	}
+
+	set data(datum: Object) {
+		this._data = datum;
 	}
 
 	async update(data: any): Promise<any> {
@@ -425,7 +399,7 @@ export class MongoCollectionNode implements IDocument, INode {
 	}
 }
 
-export class MongoDocumentNode implements IDocument, INode {
+export class MongoDocumentNode implements IDocument {
 	private _data: object;
 	constructor(readonly id: string, readonly collection: MongoCollectionNode, payload: Object) {
 		this._data = payload;

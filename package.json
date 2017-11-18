@@ -259,7 +259,7 @@
 			{
 				"category": "CosmosDB",
 				"command": "cosmosDB.updateMongoCollection",
-				"title": "Update Collection to Azure",
+				"title": "Update Collection to Cloud",
 				"icon": {
 					"light": "/resources/icons/theme-agnostic/UpdateOutline.svg",
 					"dark": "/resources/icons/theme-agnostic/UpdateOutline.svg"
@@ -268,7 +268,7 @@
 			{
 				"category": "CosmosDB",
 				"command": "cosmosDB.updateResultToCollection",
-				"title": "Update Result to Azure",
+				"title": "Update Result to Cloud",
 				"icon": {
 					"light": "/resources/icons/theme-agnostic/UpdateOutline.svg",
 					"dark": "/resources/icons/theme-agnostic/UpdateOutline.svg"
@@ -287,7 +287,7 @@
 			{
 				"category": "CosmosDB",
 				"command": "cosmosDB.openCollection",
-				"title": "Open Loaded Documents"
+				"title": "Open Collection"
 			}
 		],
 		"menus": {
@@ -302,7 +302,7 @@
 				},
 				{
 					"command": "cosmosDB.updateMongoCollection",
-					"when": "resourceFilename==cosmos-document.json"
+					"when": "resourceFilename==cosmos-collection.json"
 				},
 				{
 					"command": "cosmosDB.updateResultToCollection",

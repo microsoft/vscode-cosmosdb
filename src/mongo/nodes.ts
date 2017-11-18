@@ -229,15 +229,19 @@ export class MongoCollectionNode implements IDocument, INode {
 	private _data: Object;
 
 	get data(): Object {
-		let docArray: Array<Object> = [];
-		for (let child of this._children) {
-			docArray.push(child.data);
+		//Needs fix
+		if (!this._data) {
+			let docArray: Array<Object> = [];
+			for (let child of this._children) {
+				docArray.push(child.data);
+			}
+			this._data = docArray;
 		}
-		this._data = docArray;
 		return this._data;
 	}
 
 	async update(data: any): Promise<any> {
+		//TODO : refetch each of the loaded document
 		if (!Array.isArray(data)) {
 			data = [data];
 		}

@@ -219,13 +219,13 @@ export class MongoCollectionNode implements IDocument {
 		if (!Array.isArray(data)) {
 			data = [data];
 		}
-		const operations = MongoCollectionNode.getBulkWriteUpdateOperations(data);
+		const operations = this.getBulkWriteUpdateOperations(data);
 		const result = await this.collection.bulkWrite(operations);
 		this._data = data;
 		return this._data;
 	}
 
-	static getBulkWriteUpdateOperations(data: any): any {
+	getBulkWriteUpdateOperations(data: any): any {
 		let operationsArray: Array<any> = [];
 		for (let document of data) {
 			const operation: object = {

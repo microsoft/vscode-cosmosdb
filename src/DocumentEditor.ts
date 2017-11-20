@@ -4,99 +4,39 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as fse from 'fs-extra';
+import * as os from 'os'
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { DialogBoxResponses } from './constants';
 import { UserCancelledError } from './errors';
 import { IDocument } from './nodes';
 import * as util from './util';
+import { randomUtils } from './utils/randomUtils';
+
 
 export class DocumentEditor implements vscode.Disposable {
-    private lastOpenedDocNode: IDocument | undefined;
-    private localDocPath: string;
-    private localDoc: vscode.TextDocument | undefined;
-
+    private fileMap: { [key: string]: [vscode.TextDocument, IDocument] } = {};
     private ignoreSave: boolean = false;
-    private isLocalDocOpen: boolean = false;
-
-    private recoveredDocsFolder: string;
-    private recoveredFileName: string | undefined;
 
     private readonly dontShowKey: string = 'cosmosDB.dontShow.SaveEqualsUpdateToAzure';
 
-    constructor(context: vscode.ExtensionContext, readonly filename: string) {
-        // Use a workspace-specific path unique to our extension if possible. Otherwise, just use the main folder for our extension
-        this.localDocPath = path.resolve(path.join(context.storagePath || context.extensionPath, filename));
-        this.recoveredDocsFolder = path.join(context.extensionPath, 'recoveredDocs');
+    public async showDocument(docNode: IDocument, fileName: string): Promise<void> {
+        const localDocPath = path.join(os.tmpdir(), randomUtils.getRandomHexString(12), fileName);
+        await fse.ensureFile(localDocPath);
 
-        this.promptForRecoveredDocs();
+        const document = await vscode.workspace.openTextDocument(localDocPath);
+        this.fileMap[localDocPath] = [document, docNode];
+        const textEditor = await vscode.window.showTextDocument(document);
+        await this.updateEditor(docNode.data, textEditor);
     }
 
-    public async showDocument(docNode: IDocument): Promise<void> {
-        // Prompt to update opened doc if it's dirty
-        if (this.lastOpenedDocNode && this.localDoc) {
-            // soft-copy the node and doc to avoid race conditions
-            const doc: vscode.TextDocument = this.localDoc;
-            const node: IDocument = this.lastOpenedDocNode;
-
-            if (doc.isDirty) {
-                const message: string = `Your changes to document '${this.lastOpenedDocNode.label}' will be lost. Update to Azure?`;
-                const result: string | undefined = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.No);
-                if (result === DialogBoxResponses.Yes) {
-                    await this.udpateDocumentToNode(node, doc);
-                } else if (result === undefined) {
-                    throw new UserCancelledError();
-                }
-            }
-        }
-
-        await fse.ensureFile(this.localDocPath);
-        this.localDoc = await vscode.workspace.openTextDocument(this.localDocPath);
-        await vscode.window.showTextDocument(this.localDoc);
-        this.lastOpenedDocNode = docNode;
-        this.isLocalDocOpen = true;
-        await this.updateEditor(docNode.data);
-    }
-
-    public async updateLastDocument(): Promise<void> {
-        if (this.lastOpenedDocNode && this.localDoc) {
-            await this.udpateDocumentToNode(this.lastOpenedDocNode, this.localDoc);
-        } else {
-            throw new Error('You must select a Document in the CosmosDB explorer before updating to Azure.');
-        }
+    public async updateLastDocument(doc): Promise<void> {
+        const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.fsPath, filePath) === '');
+        await this.udpateDocumentToNode(this.fileMap[filePath][1], this.fileMap[filePath][0]);
     }
 
     public async dispose(): Promise<void> {
-        if (this.recoveredFileName) {
-            await fse.ensureDir(this.recoveredDocsFolder);
-            await fse.move(this.localDocPath, path.join(this.recoveredDocsFolder, this.recoveredFileName));
-        } else {
-            await fse.unlink(this.localDocPath);
-        }
-    }
-
-    private async promptForRecoveredDocs(): Promise<void> {
-        if (await fse.pathExists(this.recoveredDocsFolder)) {
-            const docs: string[] = await fse.readdir(this.recoveredDocsFolder);
-            for (const fileName of docs) {
-                const recoveredFilePath: string = path.join(this.recoveredDocsFolder, fileName);
-                const textDocument: vscode.TextDocument = await vscode.workspace.openTextDocument(recoveredFilePath);
-                await vscode.window.showTextDocument(textDocument);
-
-                const message: string = `The data in "${fileName}" may not have been updated to your CosmosDB account.`;
-                const saveFile: string = 'Save File';
-                const deleteFile: string = 'Delete File';
-                const result: string | undefined = await vscode.window.showWarningMessage(message, saveFile, deleteFile);
-                if (result === saveFile) {
-                    const savedPath: vscode.Uri | undefined = await vscode.window.showSaveDialog({ filters: { JSON: ['json'] } });
-                    if (savedPath) {
-                        await fse.move(recoveredFilePath, savedPath.fsPath);
-                    }
-                } else if (result === deleteFile) {
-                    await fse.unlink(recoveredFilePath);
-                }
-            }
-        }
+        Object.keys(this.fileMap).forEach(async (key) => await fse.unlink(key));
     }
 
     private async udpateDocumentToNode(node: IDocument, doc: vscode.TextDocument): Promise<void> {
@@ -106,52 +46,37 @@ export class DocumentEditor implements vscode.Disposable {
         const docLink = node.getSelfLink();
         output.appendLine(`${timestamp}: Updated entity "${docLink}"`);
         output.show();
-        await this.updateEditor(updatedDoc);
+        await this.updateEditor(updatedDoc, vscode.window.activeTextEditor);
     }
 
-    private async updateEditor(data: {}): Promise<void> {
-        const textEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
-        if (textEditor && this.isLocalDocPath(textEditor.document)) {
-            await util.writeToEditor(textEditor, JSON.stringify(data, null, 2));
-
-            this.ignoreSave = true;
-            try {
-                await textEditor.document.save();
-            } finally {
-                this.ignoreSave = false;
-            }
+    private async updateEditor(data: {}, textEditor: vscode.TextEditor): Promise<void> {
+        await util.writeToEditor(textEditor, JSON.stringify(data, null, 2));
+        this.ignoreSave = true;
+        try {
+            await textEditor.document.save();
+        } finally {
+            this.ignoreSave = false;
         }
     }
 
     public async onDidSaveTextDocument(globalState: vscode.Memento, doc: vscode.TextDocument): Promise<void> {
-        if (!this.ignoreSave && this.isLocalDocPath(doc) && this.lastOpenedDocNode) {
-            // soft-copy the node to avoid race conditions
-            const node: IDocument = this.lastOpenedDocNode;
+        const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.uri.fsPath, filePath) === '');
+        if (!this.ignoreSave && filePath) {
+            const node: IDocument = this.fileMap[filePath][1];
+            const dontShow: boolean | undefined = globalState.get(this.dontShowKey);
+            if (dontShow !== true) {
+                const message: string = `Saving this file will update the CosmosDB entity "${node.label}" in Azure.`;
+                const result: string | undefined = await vscode.window.showWarningMessage(message, DialogBoxResponses.OK, DialogBoxResponses.DontShowAgain);
 
-            // If the user saved the file as a part of closing VS Code, we might not be able to 'Update to Azure' in time
-            // However, we can copy the file to this path and prompt user about it on next activation
-            this.recoveredFileName = `${this.lastOpenedDocNode.label}${Date.now().toString()}.json`;
-            try {
-                const dontShow: boolean | undefined = globalState.get(this.dontShowKey);
-                if (dontShow !== true) {
-                    const message: string = `Saving "${this.filename}" will update the CosmosDB entity "${node.label}" in Azure.`;
-                    const result: string | undefined = await vscode.window.showWarningMessage(message, DialogBoxResponses.OK, DialogBoxResponses.DontShowAgain);
-
-                    if (!result) {
-                        throw new UserCancelledError();
-                    } else if (result === DialogBoxResponses.DontShowAgain) {
-                        await globalState.update(this.dontShowKey, true);
-                    }
+                if (!result) {
+                    throw new UserCancelledError();
+                } else if (result === DialogBoxResponses.DontShowAgain) {
+                    await globalState.update(this.dontShowKey, true);
                 }
-
-                await this.udpateDocumentToNode(node, doc);
-            } finally {
-                this.recoveredFileName = undefined;
             }
+
+            await this.udpateDocumentToNode(node, doc);
         }
     }
 
-    private isLocalDocPath(doc: vscode.TextDocument): boolean {
-        return path.relative(doc.uri.fsPath, this.localDocPath) == '';
-    }
 }

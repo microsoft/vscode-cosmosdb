@@ -129,7 +129,7 @@ export class DocDBCollectionNode implements INode {
 	}
 }
 
-export class DocDBDocumentNode implements IDocument, INode {
+export class DocDBDocumentNode implements IDocument {
 	public readonly partitionKeyValue: string;
 	private _data: IDocDBDocumentSpec;
 	constructor(readonly id: string, readonly collection: DocDBCollectionNode, payload: IDocDBDocumentSpec) {

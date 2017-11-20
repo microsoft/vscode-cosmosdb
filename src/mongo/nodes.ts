@@ -185,37 +185,7 @@ export class MongoDatabaseNode implements INode {
 	}
 }
 
-export class MongoDummyNode implements IDocument {
-	private _data: Object;
-	constructor(private _collection: Collection, readonly findType: string) {
-	}
-
-	readonly label: string = "DummyNodeFindResult";
-
-	getSelfLink(): string {
-		return `dummyNode.result.${this.findType}`
-	}
-
-	get data() {
-		return this._data;
-	}
-
-	set data(datum: Object) {
-		this._data = datum;
-	}
-
-	async update(data: any): Promise<any> {
-		if (!Array.isArray(data)) {
-			data = [data];
-		}
-		const operations = MongoCollectionNode.getBulkWriteUpdateOperations(data);
-		const result = await this._collection.bulkWrite(operations);
-		this._data = data;
-		return this._data;
-	}
-}
-
-export class MongoCollectionNode implements IDocument, INode {
+export class MongoCollectionNode implements IDocument {
 
 	constructor(readonly collection: Collection, readonly db: MongoDatabaseNode) {
 	}
@@ -226,28 +196,30 @@ export class MongoCollectionNode implements IDocument, INode {
 	private _loadMoreNode: LoadMoreNode = new LoadMoreNode(this);
 	private _hasMore: boolean;
 	private _iterator: Cursor;
-	private _data: Object;
+	private _data: Array<any> = [];
 
-	get data(): Object {
-		let docArray: Array<Object> = [];
-		for (let child of this._children) {
-			docArray.push(child.data);
+	get data(): Array<any> {
+		if (this._data.concat.length < this._children.length) {
+			let docArray: Array<any> = this._children.map(child => child.data);
+			this._data = docArray;
 		}
-		this._data = docArray;
+
 		return this._data;
+	}
+
+	set data(datum: Array<any>) {
+		this._data = datum;
 	}
 
 	async update(data: any): Promise<any> {
-		if (!Array.isArray(data)) {
-			data = [data];
-		}
-		const operations = MongoCollectionNode.getBulkWriteUpdateOperations(data);
+		const operations = this.getBulkWriteUpdateOperations(data);
 		const result = await this.collection.bulkWrite(operations);
 		this._data = data;
+		await this._children.forEach(async (child) => await child.refetch());
 		return this._data;
 	}
 
-	static getBulkWriteUpdateOperations(data: any): any {
+	getBulkWriteUpdateOperations(data: any): any {
 		let operationsArray: Array<any> = [];
 		for (let document of data) {
 			const operation: object = {
@@ -421,7 +393,7 @@ export class MongoCollectionNode implements IDocument, INode {
 	}
 }
 
-export class MongoDocumentNode implements IDocument, INode {
+export class MongoDocumentNode implements IDocument {
 	private _data: object;
 	constructor(readonly id: string, readonly collection: MongoCollectionNode, payload: Object) {
 		this._data = payload;
@@ -431,6 +403,10 @@ export class MongoDocumentNode implements IDocument, INode {
 
 	get data(): object {
 		return this._data;
+	}
+
+	set data(datum: object) {
+		this._data = datum;
 	}
 
 	get label(): string {
@@ -449,6 +425,11 @@ export class MongoDocumentNode implements IDocument, INode {
 		await this.collection.collection.updateOne(filter, _.omit(data, '_id'));
 		this._data = data;
 		return this._data;
+	}
+
+	async refetch(): Promise<void> {
+		const newData = await this.collection.collection.findOne({ '_id': this.id });
+		this._data = newData;
 	}
 
 	getSelfLink() {

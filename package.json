@@ -59,8 +59,6 @@
 		"onCommand:cosmosDB.deleteGraph",
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.update",
-		"onCommand:cosmosDB.updateMongoCollection",
-		"onCommand:cosmosDB.updateResultToCollection",
 		"onCommand:cosmosDB.openDocument",
 		"onCommand:cosmosDB.openCollection",
 		"onCommand:cosmosDB.loadMore",
@@ -250,25 +248,7 @@
 			{
 				"category": "CosmosDB",
 				"command": "cosmosDB.update",
-				"title": "Update to Azure",
-				"icon": {
-					"light": "/resources/icons/theme-agnostic/UpdateOutline.svg",
-					"dark": "/resources/icons/theme-agnostic/UpdateOutline.svg"
-				}
-			},
-			{
-				"category": "CosmosDB",
-				"command": "cosmosDB.updateMongoCollection",
-				"title": "Update Collection to Azure",
-				"icon": {
-					"light": "/resources/icons/theme-agnostic/UpdateOutline.svg",
-					"dark": "/resources/icons/theme-agnostic/UpdateOutline.svg"
-				}
-			},
-			{
-				"category": "CosmosDB",
-				"command": "cosmosDB.updateResultToCollection",
-				"title": "Update Result to Azure",
+				"title": "Update to Cloud",
 				"icon": {
 					"light": "/resources/icons/theme-agnostic/UpdateOutline.svg",
 					"dark": "/resources/icons/theme-agnostic/UpdateOutline.svg"
@@ -287,7 +267,7 @@
 			{
 				"category": "CosmosDB",
 				"command": "cosmosDB.openCollection",
-				"title": "Open Loaded Documents"
+				"title": "Open Collection"
 			}
 		],
 		"menus": {
@@ -301,12 +281,8 @@
 					"when": "resourceFilename==cosmos-document.json"
 				},
 				{
-					"command": "cosmosDB.updateMongoCollection",
-					"when": "resourceFilename==cosmos-document.json"
-				},
-				{
-					"command": "cosmosDB.updateResultToCollection",
-					"when": "resourceFilename==cosmos-result.json"
+					"command": "cosmosDB.update",
+					"when": "resourceFilename==cosmos-collection.json"
 				}
 			],
 			"editor/title": [
@@ -316,13 +292,8 @@
 					"group": "navigation"
 				},
 				{
-					"command": "cosmosDB.updateMongoCollection",
+					"command": "cosmosDB.update",
 					"when": "resourceFilename==cosmos-collection.json",
-					"group": "navigation"
-				},
-				{
-					"command": "cosmosDB.updateResultToCollection",
-					"when": "resourceFileName==find-result.json",
 					"group": "navigation"
 				}
 			],

@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
-import { MongoDatabaseNode, MongoCommand, MongoDocumentNode, MongoCollectionNode, MongoDummyNode } from './nodes';
+import { MongoDatabaseNode, MongoCommand, MongoDocumentNode, MongoCollectionNode } from './nodes';
 import { CosmosDBExplorer } from '../explorer';
 import * as fs from 'fs';
 import * as mongoParser from './grammar/mongoParser';
@@ -33,12 +33,18 @@ export class MongoCommands {
 			const result = await database.executeCommand(command);
 			if (command.name === 'find' || command.name === 'findOne') {
 				const db = await database.getDb();
-				const dummy = new MongoDummyNode(db.collection(command.collection), command.name);
+				let dummy: MongoCollectionNode | MongoDocumentNode;
+				if (command.name === 'find') {
+					dummy = new MongoCollectionNode(db.collection(command.collection), database);
+				}
+				else {
+					dummy = new MongoDocumentNode(JSON.parse(result)._id, null, result);
+				}
 				dummy.data = JSON.parse(result);
-				await editor.showDocument(dummy);
+				await editor.showDocument(dummy, 'cosmos-document.json');
 			}
 			else {
-				await util.showNewFile(result, extensionPath, 'result-mongo-ouput', '.json', activeEditor.viewColumn + 1);
+				await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
 			}
 		} else {
 			throw new Error('No executable command found.');

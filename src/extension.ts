@@ -57,12 +57,8 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(azureAccount.onSessionsChanged(() => explorer.refresh()));
 	context.subscriptions.push(vscode.window.registerTreeDataProvider('cosmosDBExplorer', explorer));
 
-	const documentEditor: DocumentEditor = new DocumentEditor(context, 'cosmos-document.json');
-	const collectionEditor: DocumentEditor = new DocumentEditor(context, 'cosmos-collection.json');
-	const resultEditor: DocumentEditor = new DocumentEditor(context, 'cosmos-result.json');
-	context.subscriptions.push(documentEditor, collectionEditor, resultEditor);
-
-	const editorsMap = { 'cosmos-document.json': documentEditor, 'cosmos-collection.json': collectionEditor, 'cosmos-result.json': resultEditor };
+	const documentEditor: DocumentEditor = new DocumentEditor();
+	context.subscriptions.push(documentEditor);
 
 	context.subscriptions.push(util.getOutputChannel());
 
@@ -106,13 +102,11 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (element: DocDBDocumentNode) => DocDBCommands.deleteDocDBDocument(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteGraphDatabase', (element: GraphDatabaseNode) => DocDBCommands.deleteDatabase(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteGraph', (element: GraphNode) => DocDBCommands.deleteCollection(element, explorer));
-	initAsyncCommand(context, 'cosmosDB.openDocument', async (docNode: IDocument) => await documentEditor.showDocument(docNode));
-	initAsyncCommand(context, 'cosmosDB.openCollection', async (collNode: IDocument) => await collectionEditor.showDocument(collNode));
+	initAsyncCommand(context, 'cosmosDB.openDocument', async (docNode: IDocument) => await documentEditor.showDocument(docNode, 'cosmos-document.json'));
+	initAsyncCommand(context, 'cosmosDB.openCollection', async (collNode: IDocument) => await documentEditor.showDocument(collNode, 'cosmos-collection.json'));
 	initAsyncCommand(context, 'cosmosDB.newMongoScrapbook', async () => await util.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
-	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => await MongoCommands.executeCommandFromActiveEditor(connectedDb, context.extensionPath, resultEditor));
-	initAsyncCommand(context, 'cosmosDB.update', () => documentEditor.updateLastDocument());
-	initAsyncCommand(context, 'cosmosDB.updateMongoCollection', () => collectionEditor.updateLastDocument());
-	initAsyncCommand(context, 'cosmosDB.updateResultToCollection', () => resultEditor.updateLastDocument());
+	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => await MongoCommands.executeCommandFromActiveEditor(connectedDb, context.extensionPath, documentEditor));
+	initAsyncCommand(context, 'cosmosDB.update', (filePath: string) => documentEditor.updateLastDocument(filePath));
 	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
 	initAsyncCommand(context, 'cosmosDB.loadMore', async (node: LoadMoreNode) => {
 		await node.parentNode.addMoreChildren();
@@ -128,8 +122,7 @@ export function activate(context: vscode.ExtensionContext) {
 	initEvent(context, 'cosmosDB.documentEditor.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument,
 		(doc: vscode.TextDocument) => {
 			const editorName = path.basename(doc.fileName);
-			const editir = editorsMap[editorName];
-			editorsMap[editorName].onDidSaveTextDocument(context.globalState, doc);
+			documentEditor.onDidSaveTextDocument(context.globalState, doc);
 		});
 
 }

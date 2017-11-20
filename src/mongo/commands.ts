@@ -41,7 +41,7 @@ export class MongoCommands {
 					dummy = new MongoDocumentNode(JSON.parse(result)._id, null, result);
 				}
 				dummy.data = JSON.parse(result);
-				await editor.showDocument(dummy);
+				await editor.showDocument(dummy, 'cosmos-document.json');
 			}
 			else {
 				await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);

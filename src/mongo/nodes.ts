@@ -196,29 +196,26 @@ export class MongoCollectionNode implements IDocument {
 	private _loadMoreNode: LoadMoreNode = new LoadMoreNode(this);
 	private _hasMore: boolean;
 	private _iterator: Cursor;
-	private _data: Object;
+	private _data: Array<any> = [];
 
-	get data(): Object {
-		//Needs fix
-		if (!this._data) {
-			let docArray: Array<Object> = [];
-			for (let child of this._children) {
-				docArray.push(child.data);
-			}
+	get data(): Array<any> {
+		if (this._data.concat.length < this._children.length) {
+			let docArray: Array<any> = this._children.map(child => child.data);
 			this._data = docArray;
 		}
+
 		return this._data;
 	}
 
-	set data(datum: Object) {
+	set data(datum: Array<any>) {
 		this._data = datum;
 	}
 
 	async update(data: any): Promise<any> {
-		//TODO : refetch each of the loaded document
 		const operations = this.getBulkWriteUpdateOperations(data);
 		const result = await this.collection.bulkWrite(operations);
 		this._data = data;
+		await this._children.forEach(async (child) => await child.refetch());
 		return this._data;
 	}
 
@@ -428,6 +425,11 @@ export class MongoDocumentNode implements IDocument {
 		await this.collection.collection.updateOne(filter, _.omit(data, '_id'));
 		this._data = data;
 		return this._data;
+	}
+
+	async refetch(): Promise<void> {
+		const newData = await this.collection.collection.findOne({ '_id': this.id });
+		this._data = newData;
 	}
 
 	getSelfLink() {

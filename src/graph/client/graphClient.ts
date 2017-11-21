@@ -51,6 +51,10 @@ window.onerror = (message) => {
   logToUI("ERROR: " + message);
 };
 
+function getErrorMessage(error: any) {
+  return error.message || error.toString();
+}
+
 function logToUI(s: string) {
   console.log(s);
   // let v = htmlElements.debugLog.value;
@@ -79,7 +83,14 @@ class SocketWrapper {
   constructor(private _socket: SocketIOClient.Socket) { }
 
   public onServerMessage(message: ServerMessage | "connect" | "disconnect", fn: Function): SocketIOClient.Emitter {
-    return this._socket.on(message, fn);
+    return this._socket.on(message, (...args: any[]) => {
+      try {
+        fn(...args);
+      } catch (err) {
+        this.emitToHost('log', getErrorMessage(err));
+        logToUI(err);
+      }
+    });
   }
 
   public emitToHost(message: ClientMessage, ...args: any[]): SocketIOClient.Socket {
@@ -90,9 +101,9 @@ class SocketWrapper {
 
 export class GraphClient {
   private _socket: SocketWrapper;
-  private _force: any;
   private _currentQueryId = 0;
-  private _graphView: boolean;
+  private _isGraphView: boolean;
+  private _graphView: GraphView;
 
   private selectById<T extends HTMLElement>(id: string): T {
     let elem = <T>d3.select(`#${id}`)[0][0];
@@ -113,6 +124,8 @@ export class GraphClient {
       graphRadio: this.selectById("graphRadio"),
       jsonRadio: this.selectById("jsonRadio")
     };
+
+    this._graphView = new GraphView();
 
     htmlElements.queryInput.value = defaultQuery;
 
@@ -194,12 +207,12 @@ export class GraphClient {
   }
 
   public selectGraphView() {
-    this._graphView = true;
+    this._isGraphView = true;
     this.setView();
   }
 
   public selectJsonView() {
-    this._graphView = false;
+    this._isGraphView = false;
     this.setView();
   }
 
@@ -207,12 +220,13 @@ export class GraphClient {
     this._socket.emitToHost('setQuery', query);
   }
 
+  // Tells the host which view is selected (Json/Graph/etc)
   private setView() {
-    htmlElements.graphRadio.checked = this._graphView;
-    htmlElements.jsonRadio.checked = !this._graphView;
-    d3.select(htmlElements.graphSection).classed("active", !!this._graphView);
-    d3.select(htmlElements.jsonSection).classed("active", !this._graphView);
-    this._socket.emitToHost('setView', this._graphView ? 'graph' : 'json');
+    htmlElements.graphRadio.checked = this._isGraphView;
+    htmlElements.jsonRadio.checked = !this._isGraphView;
+    d3.select(htmlElements.graphSection).classed("active", !!this._isGraphView);
+    d3.select(htmlElements.jsonSection).classed("active", !this._isGraphView);
+    this._socket.emitToHost('setView', this._isGraphView ? 'graph' : 'json');
   }
 
   private log(s: string) {
@@ -229,7 +243,7 @@ export class GraphClient {
 
   private setStateQuerying() {
     this._setState("querying");
-    this.clearGraph();
+    this._graphView.clear();
   }
 
   private setStateResults(hasGraph: boolean) {
@@ -237,10 +251,9 @@ export class GraphClient {
   }
 
   private setStateError(error: any) {
-    let message: string = error.message || error.toString();
-    htmlElements.queryError.value = message;
+    htmlElements.queryError.value = getErrorMessage(error);
     this._setState("error");
-    this.clearGraph();
+    this._graphView.clear();
   }
 
   private _setState(state: State) {
@@ -267,7 +280,7 @@ export class GraphClient {
     }
 
     this.setStateResults(true);
-    this.displayGraph(results.countUniqueVertices, results.limitedVertices, results.countUniqueEdges, results.limitedEdges);
+    this._graphView.display(results.countUniqueVertices, results.limitedVertices, results.countUniqueEdges, results.limitedEdges);
   }
 
   private splitVerticesAndEdges(nodes: any[]): [GraphVertex[], GraphEdge[]] {
@@ -275,8 +288,172 @@ export class GraphClient {
     let edges = nodes.filter(n => n.type === "edge");
     return [vertices, edges];
   }
+}
 
-  private clearGraph(): void {
+class GraphView {
+  private _countUniqueVertices: number;
+  private _vertices: GraphVertex[];
+  private _countUniqueEdges: number;
+  private _edges: GraphEdge[];
+  private _force: any;
+
+  public display(countUniqueVertices: number, vertices: GraphVertex[], countUniqueEdges: number, edges: GraphEdge[]) {
+    this._countUniqueVertices = countUniqueVertices;
+    this._vertices = vertices;
+    this._countUniqueEdges = countUniqueEdges;
+    this._edges = edges;
+
+    this.clear();
+
+    // Set up nodes and links for the force simulation
+    let nodes: ForceNode[] = vertices
+      .map(v => <ForceNode>{ vertex: v });
+
+    // Create map of nodes by ID
+    let nodesById = new Map<string, ForceNode>();
+    nodes.forEach(n => nodesById.set(n.vertex.id, n));
+
+    // Create edges and set their source/target
+    let links: ForceLink[] = [];
+    edges.forEach(e => {
+      var source = nodesById.get(e.outV);
+      var target = nodesById.get(e.inV);
+
+      if (source && target) {
+        links.push({ edge: e, source, target });
+      } else {
+        console.error("Vertex not found");
+      }
+    });
+    nodesById = null;
+
+    let statsText: string = (nodes.length === countUniqueVertices && links.length === countUniqueEdges) ?
+      `Displaying all ${nodes.length} vertices and ${links.length} edges` :
+      `Displaying ${nodes.length} of ${countUniqueVertices} vertices and ${links.length} of ${countUniqueEdges} edges`;
+    d3.select(htmlElements.stats).text(statsText);
+
+    // Set up force simulation
+    if (this._force) {
+      this._force.stop();
+    }
+
+    this._force = d3.layout.force()
+      .size([graphWidth, graphHeight])
+      .nodes(nodes)
+      .links(links);
+    let force = this._force;
+
+    force.gravity(1); // Makes the nodes gravitate toward the center
+    force.friction(.5);
+
+    force.linkDistance(linkDistance); // edge length
+    force.linkStrength(linkStrength);
+    force.charge(charge);
+
+    let svg = d3.select(htmlElements.graphSection).select("svg")
+      .attr("height", graphHeight);
+
+    // Add a re-usable arrow
+    svg.select('defs')
+      .selectAll('marker')
+      .data(['end'])
+      .enter()
+      .append('marker')
+      .attr('id', 'triangle')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', markerDistanceFromVertex) // Shift arrow so that we can see it.
+      .attr('refY', 0)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .attr('markerUnits', 'userSpaceOnUse') // No auto-scaling with stroke width
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5');
+
+    // Allow user to drag/zoom the entire SVG
+    svg = svg
+      .call(d3.behavior.zoom().on("zoom", function () {
+        svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")")
+      }))
+      .append("g");
+
+    // Links before nodes so that links don't get drawn on top of node labels, obscuring them
+    let edge = svg.selectAll(".edge")
+      .data(links)
+      .enter()
+      .append("path")
+      .attr('class', 'edge')
+      .attr('fill', 'none')
+      .attr('marker-end', 'url(#triangle)');
+
+    // Allow user to drag nodes. Set "dragging" class while dragging.
+    let vertexDrag =
+      force.drag()
+        .on("dragstart",
+        function () {
+          d3.select(this).classed("dragging", true);
+
+          // Make sure a drag gesture doesn't also start a zoom action
+          d3.event.sourceEvent.stopPropagation();
+        })
+        .on("dragend", function () { d3.select(this).classed("dragging", false); });
+
+    // Labels
+    let label = svg.selectAll(".label")
+      .data(nodes)
+      .enter().append("text")
+      .attr("class", "label")
+      .attr("x", "10px")
+      .attr("y", "2px")
+      .attr('font-size', 13)
+      .text((d: ForceNode) => {
+        let displayText = d.vertex.id;
+        return displayText;
+      })
+      ;
+
+    // Nodes last so that they're always and top to be able to be dragged
+    let vertex = svg.selectAll(".vertex")
+      .data(nodes)
+      .enter().append("circle")
+      .attr("class", "vertex")
+      .attr("cx", (d: ForceNode) => d.x)
+      .attr("cy", (d: ForceNode) => d.y)
+      .call(vertexDrag)
+      ;
+
+    // On each tick of the simulation, update the positions of each vertex and edge
+    force.on("tick", () => {
+      vertex
+        .transition().ease("linear").duration(animationStepMs)
+        .attr("cx", (d: ForceNode) => d.x)
+        .attr("cy", (d: ForceNode) => d.y)
+        ;
+
+      edge
+        .transition().ease("linear").duration(animationStepMs)
+        .attr("x1", (d: ForceLink) => d.source.x)
+        .attr("y1", (d: ForceLink) => d.source.y)
+        .attr("x2", (d: ForceLink) => d.target.x)
+        .attr("y2", (d: ForceLink) => d.target.y)
+        ;
+
+      edge.attr("d", (d: ForceLink) => { return this.positionLink(d); });
+
+      label
+        .transition().ease("linear").duration(animationStepMs)
+        .attr("class", "label")
+        .attr("dx", (d: ForceNode) => d.x)
+        .attr("dy", (d: ForceNode) => d.y)
+        ;
+    });
+
+    force.start();
+  }
+
+  public clear(): void {
+    this._vertices = [];
+    this._edges = [];
     d3.select(htmlElements.graphSection).select("svg").selectAll(".vertex, .edge, .label").remove();
   }
 
@@ -296,7 +473,7 @@ export class GraphClient {
     const alpha = Math.atan2(end.y - start.y, end.x - start.x);
     const n = Math.floor(alpha / (Math.PI / 2));
     const reducedAlpha = alpha - (n * Math.PI / 2);
-    const reducedBeta = GraphClient.calculateClosestPIOver2(reducedAlpha);
+    const reducedBeta = GraphView.calculateClosestPIOver2(reducedAlpha);
     const beta = reducedBeta + (n * Math.PI / 2);
 
     const length = Math.sqrt((end.y - start.y) * (end.y - start.y) + (end.x - start.x) * (end.x - start.x)) / 2;
@@ -309,7 +486,7 @@ export class GraphClient {
   }
 
   private positionLink(l: any) {
-    const d1 = GraphClient.calculateControlPoint(l.source, l.target);
+    const d1 = GraphView.calculateControlPoint(l.source, l.target);
 
     var radius = vertexRadius + paddingBetweenVertexAndEdge;
 
@@ -330,155 +507,5 @@ export class GraphClient {
     return "M" + tx + "," + ty
       + "S" + d1.x + "," + d1.y
       + " " + ux + "," + uy;
-  }
-
-  private displayGraph(countUniqueVertices: number, vertices: GraphVertex[], countUniqueEdges: number, edges: GraphEdge[]) {
-    try {
-      this.clearGraph();
-
-      // Set up nodes and links for the force simulation
-      let nodes: ForceNode[] = vertices
-        .map(v => <ForceNode>{ vertex: v });
-
-      // Create map of nodes by ID
-      let nodesById = new Map<string, ForceNode>();
-      nodes.forEach(n => nodesById.set(n.vertex.id, n));
-
-      // Create edges and set their source/target
-      let links: ForceLink[] = [];
-      edges.forEach(e => {
-        var source = nodesById.get(e.outV);
-        var target = nodesById.get(e.inV);
-
-        if (source && target) {
-          links.push({ edge: e, source, target });
-        } else {
-          console.error("Vertex not found");
-        }
-      });
-      nodesById = null;
-
-      let statsText: string = (nodes.length === countUniqueVertices && links.length === countUniqueEdges) ?
-        `Displaying all ${nodes.length} vertices and ${links.length} edges` :
-        `Displaying ${nodes.length} of ${countUniqueVertices} vertices and ${links.length} of ${countUniqueEdges} edges`;
-      d3.select(htmlElements.stats).text(statsText);
-
-      // Set up force simulation
-      if (this._force) {
-        this._force.stop();
-      }
-
-      this._force = d3.layout.force()
-        .size([graphWidth, graphHeight])
-        .nodes(nodes)
-        .links(links);
-      let force = this._force;
-
-      force.gravity(1); // Makes the nodes gravitate toward the center
-      force.friction(.5);
-
-      force.linkDistance(linkDistance); // edge length
-      force.linkStrength(linkStrength);
-      force.charge(charge);
-
-      let svg = d3.select(htmlElements.graphSection).select("svg")
-        .attr("height", graphHeight);
-
-      // Add a re-usable arrow
-      svg.select('defs')
-        .selectAll('marker')
-        .data(['end'])
-        .enter()
-        .append('marker')
-        .attr('id', 'triangle')
-        .attr('viewBox', '0 -5 10 10')
-        .attr('refX', markerDistanceFromVertex) // Shift arrow so that we can see it.
-        .attr('refY', 0)
-        .attr('markerWidth', 6)
-        .attr('markerHeight', 6)
-        .attr('orient', 'auto')
-        .attr('markerUnits', 'userSpaceOnUse') // No auto-scaling with stroke width
-        .append('path')
-        .attr('d', 'M0,-5L10,0L0,5');
-
-      // Allow user to drag/zoom the entire SVG
-      svg = svg
-        .call(d3.behavior.zoom().on("zoom", function () {
-          svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")")
-        }))
-        .append("g");
-
-      // Links before nodes so that links don't get drawn on top of node labels, obscuring them
-      let edge = svg.selectAll(".edge")
-        .data(links)
-        .enter()
-        .append("path")
-        .attr('class', 'edge')
-        .attr('fill', 'none')
-        .attr('marker-end', 'url(#triangle)');
-
-      // Allow user to drag nodes. Set "dragging" class while dragging.
-      let vertexDrag = force.drag().on("dragstart", function () {
-        d3.select(this).classed("dragging", true);
-
-        // Make sure a drag gesture doesn't also start a zoom action
-        d3.event.sourceEvent.stopPropagation();
-      })
-        .on("dragend", function () { d3.select(this).classed("dragging", false); });
-
-      // Labels
-      let label = svg.selectAll(".label")
-        .data(nodes)
-        .enter().append("text")
-        .attr("class", "label")
-        .attr("x", "10px")
-        .attr("y", "2px")
-        .attr('font-size', 13)
-        .text((d: ForceNode) => {
-          let displayText = d.vertex.id;
-          return displayText;
-        })
-        ;
-
-      // Nodes last so that they're always and top to be able to be dragged
-      let vertex = svg.selectAll(".vertex")
-        .data(nodes)
-        .enter().append("circle")
-        .attr("class", "vertex")
-        .attr("cx", (d: ForceNode) => d.x)
-        .attr("cy", (d: ForceNode) => d.y)
-        .call(vertexDrag)
-        ;
-
-      // On each tick of the simulation, update the positions of each vertex and edge
-      force.on("tick", () => {
-        vertex
-          .transition().ease("linear").duration(animationStepMs)
-          .attr("cx", (d: ForceNode) => d.x)
-          .attr("cy", (d: ForceNode) => d.y)
-          ;
-
-        edge
-          .transition().ease("linear").duration(animationStepMs)
-          .attr("x1", (d: ForceLink) => d.source.x)
-          .attr("y1", (d: ForceLink) => d.source.y)
-          .attr("x2", (d: ForceLink) => d.target.x)
-          .attr("y2", (d: ForceLink) => d.target.y)
-          ;
-
-        edge.attr("d", (d: ForceLink) => { return this.positionLink(d); });
-
-        label
-          .transition().ease("linear").duration(animationStepMs)
-          .attr("class", "label")
-          .attr("dx", (d: ForceNode) => d.x)
-          .attr("dy", (d: ForceNode) => d.y)
-          ;
-      });
-
-      force.start();
-    } catch (err) {
-      this.log(err);
-    }
   }
 }

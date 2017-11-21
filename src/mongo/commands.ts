@@ -30,18 +30,19 @@ export class MongoCommands {
 			if (!database) {
 				throw new Error('Please connect to the database first');
 			}
+			if (command.name === 'find') {
+				const db = await database.getDb();
+				let node = new MongoCollectionNode(db.collection(command.collection), database, command.arguments);
+				await node.getChildren();
+				await editor.showDocument(node);
+				return command;
+			}
 			const result = await database.executeCommand(command);
 			const parsed = JSON.parse(result);
-			if (command.name === 'find' || command.name === 'findOne') {
+			if (command.name === 'findOne') {
 				const db = await database.getDb();
-				let node: MongoCollectionNode | MongoDocumentNode;
-				if (command.name === 'find') {
-					node = new MongoCollectionNode(db.collection(command.collection), database, parsed, command.arguments);
-				}
-				else {
-					node = new MongoDocumentNode(parsed._id, null, parsed);
-				}
-				await editor.showDocument(node, 'cosmos-editor.json');
+				let node = new MongoDocumentNode(parsed._id, null, parsed);
+				await editor.showDocument(node);
 			}
 			else {
 				await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);

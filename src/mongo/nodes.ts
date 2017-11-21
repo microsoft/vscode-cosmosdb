@@ -94,7 +94,7 @@ export class MongoDatabaseNode implements INode {
 	getChildren(): Promise<INode[]> {
 		return <Promise<INode[]>>this.getDb().then(db => {
 			return db.collections().then(collections => {
-				return collections.map(collection => new MongoCollectionNode(collection, this, [], undefined));
+				return collections.map(collection => new MongoCollectionNode(collection, this, undefined));
 			})
 		});
 	}
@@ -115,7 +115,7 @@ export class MongoDatabaseNode implements INode {
 				.then(db => {
 					const collection = db.collection(command.collection);
 					if (collection) {
-						const result = new MongoCollectionNode(collection, this, [], command.arguments).executeCommand(command.name, command.arguments);
+						const result = new MongoCollectionNode(collection, this, command.arguments).executeCommand(command.name, command.arguments);
 						if (result) {
 							return result;
 						}
@@ -138,7 +138,7 @@ export class MongoDatabaseNode implements INode {
 		// However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
 		const result = await newCollection.insertOne({});
 		await newCollection.deleteOne({ _id: result.insertedId });
-		return new MongoCollectionNode(newCollection, this, [], undefined);
+		return new MongoCollectionNode(newCollection, this, undefined);
 	}
 
 	async drop() {
@@ -156,7 +156,7 @@ export class MongoDatabaseNode implements INode {
 	}
 
 	private getCollection(collection: string): Promise<MongoCollectionNode> {
-		return this.getDb().then(db => new MongoCollectionNode(db.collection(collection), this, [], undefined));
+		return this.getDb().then(db => new MongoCollectionNode(db.collection(collection), this, undefined));
 	}
 
 	executeCommandInShell(command: MongoCommand): Thenable<string> {
@@ -187,10 +187,7 @@ export class MongoDatabaseNode implements INode {
 
 export class MongoCollectionNode implements IEditableNode {
 
-	constructor(readonly collection: Collection, readonly db: MongoDatabaseNode, data: Array<any>, readonly query: string) {
-		data.forEach(element => {
-			this._children.push(new MongoDocumentNode(element._id, this, element));
-		});
+	constructor(readonly collection: Collection, readonly db: MongoDatabaseNode, readonly query: string) {
 	}
 
 	readonly contextValue: string = "MongoCollection";
@@ -232,13 +229,7 @@ export class MongoCollectionNode implements IEditableNode {
 	}
 
 	findDocById(id: string): MongoDocumentNode {
-		let currentDoc;
-		for (currentDoc of this._children) {
-			if (currentDoc.id.toString() === id) {
-				return currentDoc;
-			}
-		}
-		return;
+		return this._children.find((child) => child.id.toString() === id);
 	}
 
 	get id(): string {

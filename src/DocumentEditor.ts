@@ -9,18 +9,18 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { DialogBoxResponses } from './constants';
 import { UserCancelledError } from './errors';
-import { IDocument } from './nodes';
+import { IEditableNode } from './nodes';
 import * as util from './util';
 import { randomUtils } from './utils/randomUtils';
 
 
 export class DocumentEditor implements vscode.Disposable {
-    private fileMap: { [key: string]: [vscode.TextDocument, IDocument] } = {};
+    private fileMap: { [key: string]: [vscode.TextDocument, IEditableNode] } = {};
     private ignoreSave: boolean = false;
 
     private readonly dontShowKey: string = 'cosmosDB.dontShow.SaveEqualsUpdateToAzure';
 
-    public async showDocument(docNode: IDocument, fileName: string): Promise<void> {
+    public async showDocument(docNode: IEditableNode, fileName: string): Promise<void> {
         const localDocPath = path.join(os.tmpdir(), randomUtils.getRandomHexString(12), fileName);
         await fse.ensureFile(localDocPath);
 
@@ -30,7 +30,7 @@ export class DocumentEditor implements vscode.Disposable {
         await this.updateEditor(docNode.data, textEditor);
     }
 
-    public async updateLastDocument(doc): Promise<void> {
+    public async updateMatchingNode(doc): Promise<void> {
         const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.fsPath, filePath) === '');
         await this.udpateDocumentToNode(this.fileMap[filePath][1], this.fileMap[filePath][0]);
     }
@@ -39,7 +39,7 @@ export class DocumentEditor implements vscode.Disposable {
         Object.keys(this.fileMap).forEach(async (key) => await fse.unlink(key));
     }
 
-    private async udpateDocumentToNode(node: IDocument, doc: vscode.TextDocument): Promise<void> {
+    private async udpateDocumentToNode(node: IEditableNode, doc: vscode.TextDocument): Promise<void> {
         const updatedDoc: {} = await node.update(JSON.parse(doc.getText()));
         const output = util.getOutputChannel();
         const timestamp = (new Date()).toLocaleTimeString();
@@ -62,10 +62,10 @@ export class DocumentEditor implements vscode.Disposable {
     public async onDidSaveTextDocument(globalState: vscode.Memento, doc: vscode.TextDocument): Promise<void> {
         const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.uri.fsPath, filePath) === '');
         if (!this.ignoreSave && filePath) {
-            const node: IDocument = this.fileMap[filePath][1];
+            const node: IEditableNode = this.fileMap[filePath][1];
             const dontShow: boolean | undefined = globalState.get(this.dontShowKey);
             if (dontShow !== true) {
-                const message: string = `Saving this file will update the CosmosDB entity "${node.label}" in Azure.`;
+                const message: string = `Saving this file will update the entity "${node.label}" in Azure.`;
                 const result: string | undefined = await vscode.window.showWarningMessage(message, DialogBoxResponses.OK, DialogBoxResponses.DontShowAgain);
 
                 if (!result) {

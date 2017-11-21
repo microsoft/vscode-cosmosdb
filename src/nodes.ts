@@ -20,7 +20,7 @@ import { GraphDatabaseNode } from './graph/graphNodes';
 
 type Experience = "MongoDB" | "DocumentDB" | "Graph" | "Table";
 
-export interface IDocument extends INode {
+export interface IEditableNode extends INode {
 	data: object;
 	label: string;
 	update(data: any): Promise<any>;

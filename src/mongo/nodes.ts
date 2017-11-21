@@ -13,7 +13,7 @@ import { MongoClient, Db, ReadPreference, Code, Server, Collection, Cursor, Obje
 import { Shell } from './shell';
 import { EventEmitter, Event, Command } from 'vscode';
 import { AzureAccount } from '../azure-account.api';
-import { INode, ErrorNode, IDocument, LoadMoreNode } from '../nodes';
+import { INode, ErrorNode, IEditableNode, LoadMoreNode } from '../nodes';
 import { MongoCommands } from './commands';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import docDBModels = require("azure-arm-documentdb/lib/models");
@@ -94,7 +94,7 @@ export class MongoDatabaseNode implements INode {
 	getChildren(): Promise<INode[]> {
 		return <Promise<INode[]>>this.getDb().then(db => {
 			return db.collections().then(collections => {
-				return collections.map(collection => new MongoCollectionNode(collection, this));
+				return collections.map(collection => new MongoCollectionNode(collection, this, [], undefined));
 			})
 		});
 	}
@@ -115,7 +115,7 @@ export class MongoDatabaseNode implements INode {
 				.then(db => {
 					const collection = db.collection(command.collection);
 					if (collection) {
-						const result = new MongoCollectionNode(collection, this).executeCommand(command.name, command.arguments);
+						const result = new MongoCollectionNode(collection, this, [], command.arguments).executeCommand(command.name, command.arguments);
 						if (result) {
 							return result;
 						}
@@ -138,7 +138,7 @@ export class MongoDatabaseNode implements INode {
 		// However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
 		const result = await newCollection.insertOne({});
 		await newCollection.deleteOne({ _id: result.insertedId });
-		return new MongoCollectionNode(newCollection, this);
+		return new MongoCollectionNode(newCollection, this, [], undefined);
 	}
 
 	async drop() {
@@ -156,7 +156,7 @@ export class MongoDatabaseNode implements INode {
 	}
 
 	private getCollection(collection: string): Promise<MongoCollectionNode> {
-		return this.getDb().then(db => new MongoCollectionNode(db.collection(collection), this));
+		return this.getDb().then(db => new MongoCollectionNode(db.collection(collection), this, [], undefined));
 	}
 
 	executeCommandInShell(command: MongoCommand): Thenable<string> {
@@ -185,9 +185,12 @@ export class MongoDatabaseNode implements INode {
 	}
 }
 
-export class MongoCollectionNode implements IDocument {
+export class MongoCollectionNode implements IEditableNode {
 
-	constructor(readonly collection: Collection, readonly db: MongoDatabaseNode) {
+	constructor(readonly collection: Collection, readonly db: MongoDatabaseNode, data: Array<any>, readonly query: string) {
+		data.forEach(element => {
+			this._children.push(new MongoDocumentNode(element._id, this, element));
+		});
 	}
 
 	readonly contextValue: string = "MongoCollection";
@@ -196,27 +199,18 @@ export class MongoCollectionNode implements IDocument {
 	private _loadMoreNode: LoadMoreNode = new LoadMoreNode(this);
 	private _hasMore: boolean;
 	private _iterator: Cursor;
-	private _data: Array<any> = [];
 
 	get data(): Array<any> {
-		if (this._data.concat.length < this._children.length) {
-			let docArray: Array<any> = this._children.map(child => child.data);
-			this._data = docArray;
-		}
-
-		return this._data;
+		return this._children.map(child => child.data);
 	}
-
-	set data(datum: Array<any>) {
-		this._data = datum;
-	}
-
 	async update(data: any): Promise<any> {
 		const operations = this.getBulkWriteUpdateOperations(data);
 		const result = await this.collection.bulkWrite(operations);
-		this._data = data;
-		await this._children.forEach(async (child) => await child.refetch());
-		return this._data;
+		await data.forEach(doc => {
+			const relevantChild: MongoDocumentNode = this.findDocById(doc._id);
+			if (relevantChild) { relevantChild.data = doc };
+		});
+		return data;
 	}
 
 	getBulkWriteUpdateOperations(data: any): any {
@@ -233,6 +227,16 @@ export class MongoCollectionNode implements IDocument {
 			operationsArray.push(operation);
 		}
 		return operationsArray;
+	}
+
+	findDocById(id: string): MongoDocumentNode {
+		let currentDoc;
+		for (currentDoc of this._children) {
+			if (currentDoc.id === id) {
+				return currentDoc;
+			}
+		}
+		return;
 	}
 
 	get id(): string {
@@ -259,7 +263,8 @@ export class MongoCollectionNode implements IDocument {
 
 	async getChildren(): Promise<INode[]> {
 		if (!this._hasFetched) {
-			this._iterator = this.collection.find();
+			this._children = [];
+			this._iterator = this.collection.find(this.query);
 			await this.addMoreChildren();
 			this._hasFetched = true
 		}
@@ -393,7 +398,7 @@ export class MongoCollectionNode implements IDocument {
 	}
 }
 
-export class MongoDocumentNode implements IDocument {
+export class MongoDocumentNode implements IEditableNode {
 	private _data: object;
 	constructor(readonly id: string, readonly collection: MongoCollectionNode, payload: Object) {
 		this._data = payload;
@@ -425,11 +430,6 @@ export class MongoDocumentNode implements IDocument {
 		await this.collection.collection.updateOne(filter, _.omit(data, '_id'));
 		this._data = data;
 		return this._data;
-	}
-
-	async refetch(): Promise<void> {
-		const newData = await this.collection.collection.findOne({ '_id': this.id });
-		this._data = newData;
 	}
 
 	getSelfLink() {

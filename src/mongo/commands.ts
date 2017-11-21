@@ -31,17 +31,17 @@ export class MongoCommands {
 				throw new Error('Please connect to the database first');
 			}
 			const result = await database.executeCommand(command);
+			const parsed = JSON.parse(result);
 			if (command.name === 'find' || command.name === 'findOne') {
 				const db = await database.getDb();
-				let dummy: MongoCollectionNode | MongoDocumentNode;
+				let node: MongoCollectionNode | MongoDocumentNode;
 				if (command.name === 'find') {
-					dummy = new MongoCollectionNode(db.collection(command.collection), database);
+					node = new MongoCollectionNode(db.collection(command.collection), database, parsed, command.arguments);
 				}
 				else {
-					dummy = new MongoDocumentNode(JSON.parse(result)._id, null, result);
+					node = new MongoDocumentNode(parsed._id, null, parsed);
 				}
-				dummy.data = JSON.parse(result);
-				await editor.showDocument(dummy, 'cosmos-document.json');
+				await editor.showDocument(node, 'cosmos-editor.json');
 			}
 			else {
 				await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);

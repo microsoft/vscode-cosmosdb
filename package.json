@@ -60,6 +60,7 @@
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.update",
 		"onCommand:cosmosDB.openDocument",
+		"onCommand:cosmosDB.openCollection",
 		"onCommand:cosmosDB.loadMore",
 		"onCommand:cosmosDB.refresh",
 		"onCommand:cosmosDB.openInPortal",
@@ -247,7 +248,7 @@
 			{
 				"category": "CosmosDB",
 				"command": "cosmosDB.update",
-				"title": "Update to Azure",
+				"title": "Update to Cloud",
 				"icon": {
 					"light": "/resources/icons/theme-agnostic/UpdateOutline.svg",
 					"dark": "/resources/icons/theme-agnostic/UpdateOutline.svg"
@@ -262,6 +263,11 @@
 				"category": "CosmosDB",
 				"command": "cosmosDB.openDocument",
 				"title": "Open Document"
+			},
+			{
+				"category": "CosmosDB",
+				"command": "cosmosDB.openCollection",
+				"title": "Open Collection"
 			}
 		],
 		"menus": {
@@ -272,13 +278,13 @@
 				},
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename==cosmos-document.json"
+					"when": "resourceFilename==cosmos-editor.json"
 				}
 			],
 			"editor/title": [
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename==cosmos-document.json",
+					"when": "resourceFilename==cosmos-editor.json",
 					"group": "navigation"
 				}
 			],
@@ -400,6 +406,10 @@
 				{
 					"command": "cosmosDB.openInPortal",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+				},
+				{
+					"command": "cosmosDB.openCollection",
+					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
 				},
 				{
 					"command": "cosmosDB.copyConnectionString",

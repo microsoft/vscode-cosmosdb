@@ -20,10 +20,11 @@ import { GraphDatabaseNode } from './graph/graphNodes';
 
 type Experience = "MongoDB" | "DocumentDB" | "Graph" | "Table";
 
-export interface IDocumentNode extends INode {
+export interface IEditableNode extends INode {
 	data: object;
+	label: string;
 	update(data: any): Promise<any>;
-	getDocLink(): string;
+	getSelfLink(): string;
 }
 
 export interface INode extends vscode.TreeItem {

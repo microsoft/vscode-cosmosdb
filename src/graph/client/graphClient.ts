@@ -63,11 +63,6 @@ function logToUI(s: string) {
   // htmlElements.debugLog.value = v;
 }
 
-function getHtmlElementDimensions(id: string): number[] {
-  const htmlElement = document.getElementById(id);
-  return [htmlElement.clientWidth, htmlElement.clientHeight];
-}
-
 interface ForceNode {
   vertex: GraphVertex;
   x: number;

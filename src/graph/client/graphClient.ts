@@ -13,10 +13,8 @@
 declare let d3: any;
 
 const animationStepMs = 50;
-const graphWidth = 1200, graphHeight = 700;
 const defaultQuery = "g.V()";
-
-const linkDistance = graphWidth / 3;
+const linkDistance = 400;
 const linkStrength = 0.01; // Reduce rigidity of the links (if < 1, the full linkDistance is relaxed)
 const charge = -3000;
 const markerDistanceFromVertex = 10;
@@ -33,7 +31,8 @@ let htmlElements: {
   queryError: HTMLTextAreaElement,
   queryInput: HTMLInputElement,
   stats: HTMLSpanElement,
-  title: HTMLElement
+  title: HTMLElement,
+  resultsBackground: HTMLDivElement
 };
 
 type State = "empty" | "querying" | "error" | "json-results" | "graph-results";
@@ -51,11 +50,22 @@ window.onerror = (message) => {
   logToUI("ERROR: " + message);
 };
 
+window.addEventListener('resize', resizeSvg, false);
+
+function resizeSvg() {
+  d3.select(htmlElements.graphSection).select("svg")
+    .attr("width", htmlElements.resultsBackground.clientWidth).attr("height", htmlElements.resultsBackground.clientHeight);
+}
 function logToUI(s: string) {
   console.log(s);
   // let v = htmlElements.debugLog.value;
   // v += "\r\n" + s;
   // htmlElements.debugLog.value = v;
+}
+
+function getHtmlElementDimensions(id: string): number[] {
+  const htmlElement = document.getElementById(id);
+  return [htmlElement.clientWidth, htmlElement.clientHeight];
 }
 
 interface ForceNode {
@@ -111,7 +121,8 @@ export class GraphClient {
       stats: this.selectById("stats"),
       title: this.selectById("title"),
       graphRadio: this.selectById("graphRadio"),
-      jsonRadio: this.selectById("jsonRadio")
+      jsonRadio: this.selectById("jsonRadio"),
+      resultsBackground: this.selectById("resultsBackground")
     };
 
     htmlElements.queryInput.value = defaultQuery;
@@ -367,9 +378,8 @@ export class GraphClient {
       if (this._force) {
         this._force.stop();
       }
-
       this._force = d3.layout.force()
-        .size([graphWidth, graphHeight])
+        .size([htmlElements.resultsBackground.clientWidth, htmlElements.resultsBackground.clientHeight])
         .nodes(nodes)
         .links(links);
       let force = this._force;
@@ -382,7 +392,7 @@ export class GraphClient {
       force.charge(charge);
 
       let svg = d3.select(htmlElements.graphSection).select("svg")
-        .attr("height", graphHeight);
+        .attr("height", htmlElements.resultsBackground.clientHeight);
 
       // Add a re-usable arrow
       svg.select('defs')

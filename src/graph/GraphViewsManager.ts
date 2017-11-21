@@ -92,7 +92,7 @@ class GraphViewDocumentContentProvider implements vscode.TextDocumentContentProv
     <!DOCTYPE html>
     <html>
       <body>
-        <iframe src="file://${clientHtmlPath}?port=${server.port}" width="100%" height="1000px" style="border:0"></iframe>
+        <iframe src="file://${clientHtmlPath}?port=${server.port}" style="width: 100%; height: 100%; position: absolute; padding: 0; margin: 0; border: none"></iframe>
       </body>
     </html>
     `;

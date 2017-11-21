@@ -208,7 +208,9 @@ export class MongoCollectionNode implements IEditableNode {
 		const result = await this.collection.bulkWrite(operations);
 		await data.forEach(doc => {
 			const relevantChild: MongoDocumentNode = this.findDocById(doc._id);
-			if (relevantChild) { relevantChild.data = doc };
+			if (relevantChild) {
+				relevantChild.data = doc;
+			}
 		});
 		return data;
 	}
@@ -232,7 +234,8 @@ export class MongoCollectionNode implements IEditableNode {
 	findDocById(id: string): MongoDocumentNode {
 		let currentDoc;
 		for (currentDoc of this._children) {
-			if (currentDoc.id === id) {
+			console.log(currentDoc.id);
+			if (currentDoc.id.toString() === id) {
 				return currentDoc;
 			}
 		}

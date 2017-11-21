@@ -5,7 +5,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { Command } from 'vscode';
-import { INode, IDocumentNode, LoadMoreNode } from '../nodes';
+import { INode, IEditableNode, LoadMoreNode } from '../nodes';
 import { DocumentClient, QueryIterator, CollectionMeta, CollectionPartitionKey } from 'documentdb';
 
 
@@ -129,7 +129,7 @@ export class DocDBCollectionNode implements INode {
 	}
 }
 
-export class DocDBDocumentNode implements IDocumentNode {
+export class DocDBDocumentNode implements IEditableNode {
 	public readonly partitionKeyValue: string;
 	private _data: IDocDBDocumentSpec;
 	constructor(readonly id: string, readonly collection: DocDBCollectionNode, payload: IDocDBDocumentSpec) {
@@ -147,7 +147,7 @@ export class DocDBDocumentNode implements IDocumentNode {
 		return this.id;
 	}
 
-	getDocLink(): string {
+	getSelfLink(): string {
 		return this.collection.getCollLink() + '/docs/' + this.id;
 	}
 

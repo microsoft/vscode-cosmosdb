@@ -15,10 +15,11 @@ import { MongoVisitor } from './grammar/visitors';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as util from './../util';
 import { DialogBoxResponses } from '../constants'
+import { DocumentEditor } from '../DocumentEditor';
 
 export class MongoCommands {
 
-	public static async executeCommandFromActiveEditor(database: MongoDatabaseNode, extensionPath): Promise<MongoCommand> {
+	public static async executeCommandFromActiveEditor(database: MongoDatabaseNode, extensionPath, editor: DocumentEditor): Promise<MongoCommand> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (activeEditor.document.languageId !== 'mongo') {
 			return;
@@ -29,8 +30,23 @@ export class MongoCommands {
 			if (!database) {
 				throw new Error('Please connect to the database first');
 			}
+			if (command.name === 'find') {
+				const db = await database.getDb();
+				let node = new MongoCollectionNode(db.collection(command.collection), database, command.arguments);
+				await node.getChildren();
+				await editor.showDocument(node);
+				return command;
+			}
 			const result = await database.executeCommand(command);
-			await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
+			const parsed = JSON.parse(result);
+			if (command.name === 'findOne') {
+				const db = await database.getDb();
+				let node = new MongoDocumentNode(parsed._id, null, parsed);
+				await editor.showDocument(node);
+			}
+			else {
+				await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
+			}
 		} else {
 			throw new Error('No executable command found.');
 		}
@@ -86,7 +102,6 @@ export class MongoCommands {
 	public static async createMongoDocument(collectionNode: MongoCollectionNode, explorer: CosmosDBExplorer) {
 		const docId = await vscode.window.showInputBox({
 			placeHolder: "Enter a unique id for the document.",
-			validateInput: MongoCommands.validateDocumentName,
 			ignoreFocusOut: true
 		});
 
@@ -108,12 +123,6 @@ export class MongoCommands {
 		}
 	}
 
-	private static validateDocumentName(name: string): string | null | undefined {
-		if (name.trim().length === 0) {
-			return "Name cannot be empty or contain just spaces";
-		}
-		return;
-	}
 }
 
 export class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {

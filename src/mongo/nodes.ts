@@ -234,7 +234,6 @@ export class MongoCollectionNode implements IEditableNode {
 	findDocById(id: string): MongoDocumentNode {
 		let currentDoc;
 		for (currentDoc of this._children) {
-			console.log(currentDoc.id);
 			if (currentDoc.id.toString() === id) {
 				return currentDoc;
 			}

@@ -32,14 +32,14 @@ export class DocumentEditor implements vscode.Disposable {
 
     public async updateMatchingNode(doc): Promise<void> {
         const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.fsPath, filePath) === '');
-        await this.udpateDocumentToNode(this.fileMap[filePath][1], this.fileMap[filePath][0]);
+        await this.updateToCloud(this.fileMap[filePath][1], this.fileMap[filePath][0]);
     }
 
     public async dispose(): Promise<void> {
         Object.keys(this.fileMap).forEach(async (key) => await fse.unlink(key));
     }
 
-    private async udpateDocumentToNode(node: IEditableNode, doc: vscode.TextDocument): Promise<void> {
+    private async updateToCloud(node: IEditableNode, doc: vscode.TextDocument): Promise<void> {
         const updatedDoc: {} = await node.update(JSON.parse(doc.getText()));
         const output = util.getOutputChannel();
         const timestamp = (new Date()).toLocaleTimeString();
@@ -75,7 +75,7 @@ export class DocumentEditor implements vscode.Disposable {
                 }
             }
 
-            await this.udpateDocumentToNode(node, doc);
+            await this.updateToCloud(node, doc);
         }
     }
 

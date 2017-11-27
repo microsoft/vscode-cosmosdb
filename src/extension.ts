@@ -6,23 +6,18 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import * as _ from 'underscore';
-import * as fs from 'fs';
-import * as path from 'path';
 import * as copypaste from 'copy-paste';
 import * as util from "./util";
 import * as cpUtil from './utils/cp';
-
 import { AzureAccount } from './azure-account.api';
 import { ErrorData } from './ErrorData';
 import { CosmosDBCommands } from './commands';
 import { AzureTreeDataProvider, IAzureNode, IAzureParentNode, UserCancelledError } from 'vscode-azureextensionui';
 import { MongoCommands } from './mongo/commands';
-import { MongoDatabaseTreeItem, MongoCollectionTreeItem } from './mongo/nodes';
 import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
 import MongoDBLanguageClient from './mongo/languageClient';
 import { Reporter } from './telemetry';
-import { CosmosEditorManager } from './DocumentEditor';
+import { CosmosEditorManager } from './CosmosEditorManager';
 import { GraphViewsManager } from "./graph/GraphViewsManager";
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
 import { AttachedServersTreeItem } from './tree/AttachedServersTreeItem';
@@ -33,15 +28,12 @@ import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
 import { MongoCollectionNodeEditor } from './mongo/editors/MongoCollectionNodeEditor';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
+import { MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
+import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 
 let connectedDb: IAzureParentNode<MongoDatabaseTreeItem> = null;
 let languageClient: MongoDBLanguageClient = null;
 let explorer: AzureTreeDataProvider;
-let graphViewsManager: GraphViewsManager;
-enum DocumentType {
-	Mongo,
-	DocDB
-};
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(new Reporter(context));

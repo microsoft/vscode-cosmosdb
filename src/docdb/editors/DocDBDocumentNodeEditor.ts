@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IAzureNode } from "vscode-azureextensionui";
-import { ICosmosEditor } from "../../DocumentEditor";
+import { ICosmosEditor } from "../../CosmosEditorManager";
 import { RetrievedDocument } from "documentdb";
 import { DocDBDocumentTreeItem } from "../tree/DocDBDocumentTreeItem";
 

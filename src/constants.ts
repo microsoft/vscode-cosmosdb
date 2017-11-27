@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+export const DefaultBatchSize: number = 50;
+
 export class DialogBoxResponses {
     static readonly Yes: string = "Yes";
     static readonly OK: string = "OK";

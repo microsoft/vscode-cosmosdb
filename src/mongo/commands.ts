@@ -78,51 +78,6 @@ export class MongoCommands {
 		}
 		return lastCommandOnSameLine || lastCommandBeforePosition || commands[commands.length - 1];
 	}
-
-	public static async createMongoCollection(db: MongoDatabaseNode, explorer: CosmosDBExplorer) {
-		const collectionName = await vscode.window.showInputBox({
-			placeHolder: "Enter name of collection",
-			ignoreFocusOut: true
-		});
-		if (collectionName) {
-			await db.createCollection(collectionName);
-			explorer.refresh(db);
-		}
-	}
-
-	public static async deleteMongoCollection(collectionNode: MongoCollectionNode, explorer: CosmosDBExplorer) {
-		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection '${collectionNode.label}'?`, DialogBoxResponses.Yes);
-		if (confirmed === DialogBoxResponses.Yes) {
-			const db = collectionNode.db;
-			db.dropCollection(collectionNode.id);
-			explorer.refresh(collectionNode.db);
-		}
-	}
-
-	public static async createMongoDocument(collectionNode: MongoCollectionNode, explorer: CosmosDBExplorer) {
-		const docId = await vscode.window.showInputBox({
-			placeHolder: "Enter a unique id for the document.",
-			ignoreFocusOut: true
-		});
-
-		if (docId !== undefined) {
-			const result = await collectionNode.collection.insertOne(docId === '' ? {} : { "id": docId });
-			const newDoc = await collectionNode.collection.findOne({ _id: result.insertedId });
-			collectionNode.addNewDocToCache(newDoc);
-			explorer.refresh(collectionNode);
-		}
-	}
-
-	public static async deleteMongoDocument(documentNode: MongoDocumentNode, explorer: CosmosDBExplorer) {
-		const confirmed = await vscode.window.showWarningMessage(`Are you sure you want to delete collection '${documentNode.label}'?`, DialogBoxResponses.Yes);
-		if (confirmed === DialogBoxResponses.Yes) {
-			const coll = documentNode.collection;
-			await coll.collection.deleteOne({ "_id": documentNode.id });
-			documentNode.collection.removeNodeFromCache(documentNode);
-			explorer.refresh(documentNode.collection);
-		}
-	}
-
 }
 
 export class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {

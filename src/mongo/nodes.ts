@@ -243,14 +243,8 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 	executeCommand(name: string, args?: string): Thenable<string> {
 		try {
-			if (name === 'find') {
-				return reportProgress(this.find(args ? parseJSContent(args) : undefined), 'Running find query');
-			}
 			if (name === 'drop') {
 				return reportProgress(this.drop(), 'Dropping collection');
-			}
-			if (name === 'findOne') {
-				return reportProgress(this.findOne(args ? parseJSContent(args) : undefined), 'Running find query');
 			}
 			if (name === 'insertMany') {
 				return reportProgress(this.insertMany(args ? parseJSContent(args) : undefined), 'Inserting documents');
@@ -290,25 +284,6 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		const db: Db = await MongoClient.connect(this._databaseConnectionString);
 		await db.dropCollection(this.collection.collectionName);
 		return `Dropped collection ${this.collection.collectionName}.`;
-	}
-
-	private find(args?: any): Thenable<string> {
-		let maxDocs: number = 0;
-		try {
-			maxDocs = vscode.workspace.getConfiguration().get<number>('cosmosDB.mongo.maxDocs');
-		}
-		catch (error) {
-		}
-		finally {
-			maxDocs = maxDocs > 0 ? maxDocs : 20;
-		}
-		return this.collection.find(args).limit(maxDocs)
-			.toArray().then(docs => this.stringify(docs));
-	}
-
-	private findOne(args?: any): Thenable<string> {
-		return this.collection.findOne(args)
-			.then(result => this.stringify(result));
 	}
 
 	private insert(document: any): Thenable<string> {

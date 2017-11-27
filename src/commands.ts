@@ -4,16 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import * as util from "./util";
 import { AzureAccount, AzureSession } from './azure-account.api';
 import { ResourceModels, ResourceManagementClient, SubscriptionClient, SubscriptionModels } from 'azure-arm-resource';
 import DocumentdbManagementClient = require("azure-arm-documentdb");
 import docDBModels = require("azure-arm-documentdb/lib/models");
-import { DocumentClient } from 'documentdb';
-import { DocumentBase } from 'documentdb/lib';
-import { CosmosDBAccountNode } from './nodes';
-import { DocDBDatabaseNode, DocDBCollectionNode, DocDBDocumentNode, IDocDBDocumentSpec } from './docdb/nodes';
-import { CosmosDBExplorer } from './explorer';
 
 export class CosmosDBCommands {
     public static async createCosmosDBAccount(azureAccount: AzureAccount): Promise<docDBModels.DatabaseAccount> {

@@ -2,22 +2,16 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+
 import * as vscode from 'vscode';
 import * as vm from 'vm';
-import * as cp from 'child_process';
-import * as fs from 'fs';
 import * as path from 'path';
 import * as _ from 'underscore';
-
-import { MongoClient, Db, ReadPreference, Code, Server, Collection, Cursor, ObjectID, MongoError } from 'mongodb';
+import { MongoClient, Db, Collection, Cursor, ObjectID, InsertOneWriteOpResult } from 'mongodb';
 import { Shell } from './shell';
-import { EventEmitter, Event, Command } from 'vscode';
-import { AzureAccount } from '../azure-account.api';
-import { INode, ErrorNode, IEditableNode, LoadMoreNode } from '../nodes';
-import { MongoCommands } from './commands';
-import { ResourceManagementClient } from 'azure-arm-resource';
-import docDBModels = require("azure-arm-documentdb/lib/models");
-import DocumentdbManagementClient = require("azure-arm-documentdb");
+import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
+import { DialogBoxResponses, DefaultBatchSize } from '../constants';
+import { IMongoDocument, MongoDocumentTreeItem } from './tree/MongoDocumentTreeItem';
 
 export interface MongoCommand {
 	range: vscode.Range;
@@ -27,59 +21,30 @@ export interface MongoCommand {
 	arguments?: string;
 }
 
-export interface IMongoServer extends INode {
-	getConnectionString(): Promise<string>;
-}
+export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
+	public static contextValue: string = "mongoDb";
+	public readonly contextValue: string = MongoDatabaseTreeItem.contextValue;
+	public readonly childTypeLabel: string = "Collection";
+	public readonly connectionString: string;
 
-export class MongoServerNode implements IMongoServer {
-	readonly contextValue: string = "mongoServer";
-	readonly label: string;
+	private readonly _databaseName: string;
+	private readonly _accountConnectionString: string;
+	private readonly _parentId: string;
 
-	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-
-	constructor(private readonly _connectionString: string, readonly id: string) {
-		this.label = id;
+	constructor(databaseName: string, accountConnectionString: string, parentId: string) {
+		this._databaseName = databaseName;
+		this._accountConnectionString = accountConnectionString;
+		this._parentId = parentId;
+		const uri: vscode.Uri = vscode.Uri.parse(accountConnectionString);
+		this.connectionString = `${uri.scheme}://${uri.authority}/${this._databaseName}?${uri.query}`;
 	}
 
-	get iconPath(): any {
-		return {
-			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'DatabaseAccount.svg'),
-			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'DatabaseAccount.svg')
-		};
+	public get label(): string {
+		return this._databaseName;
 	}
 
-	getConnectionString(): Promise<string> {
-		return Promise.resolve(this._connectionString);
-	}
-
-	getChildren(): Promise<INode[]> {
-		return MongoServerNode.getMongoDatabaseNodes(this._connectionString, this);
-	}
-
-	static async getMongoDatabaseNodes(connectionString: string, parentNode: IMongoServer): Promise<INode[]> {
-		let db: Db;
-		try {
-			db = await MongoClient.connect(connectionString);
-			const value: { databases: { name }[] } = await db.admin().listDatabases();
-			return value.databases.map(database => new MongoDatabaseNode(database.name, parentNode));
-		} catch (error) {
-			return [new ErrorNode(error.message)];
-		} finally {
-			if (db) {
-				db.close();
-			}
-		}
-	}
-}
-
-export class MongoDatabaseNode implements INode {
-	readonly contextValue: string = 'mongoDb';
-
-	constructor(readonly id: string, readonly server: IMongoServer) {
-	}
-
-	get label(): string {
-		return this.id;
+	public get id(): string {
+		return `${this._parentId}/${this._databaseName}`;
 	}
 
 	get iconPath(): any {
@@ -89,24 +54,44 @@ export class MongoDatabaseNode implements INode {
 		};
 	}
 
-	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-
-	getChildren(): Promise<INode[]> {
-		return <Promise<INode[]>>this.getDb().then(db => {
-			return db.collections().then(collections => {
-				return collections.map(collection => new MongoCollectionNode(collection, this, undefined));
-			})
-		});
+	public hasMoreChildren(): boolean {
+		return false;
 	}
 
-	async getDb(): Promise<Db> {
-		const serverConnectionString = await this.server.getConnectionString();
-		const uri = vscode.Uri.parse(serverConnectionString);
-		const connectionString = `${uri.scheme}://${uri.authority}/${this.id}?${uri.query}`
-		return <Promise<Db>>MongoClient.connect(connectionString)
-			.then(db => {
-				return db.db(this.id)
-			});
+	public async loadMoreChildren(_node: IAzureNode, _clearCache: boolean): Promise<IAzureTreeItem[]> {
+		const db: Db = await this.getDb();
+		const collections: Collection[] = await db.collections();
+		return collections.map(collection => new MongoCollectionTreeItem(this.connectionString, collection, this.id));
+	}
+
+	public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
+		const collectionName = await vscode.window.showInputBox({
+			placeHolder: "Collection Name",
+			prompt: "Enter the name of the collection",
+			ignoreFocusOut: true
+		});
+
+		if (collectionName) {
+			showCreatingNode(collectionName);
+			return await this.createCollection(collectionName);
+		}
+
+		throw new UserCancelledError();
+	}
+
+	public async deleteTreeItem(_node: IAzureNode): Promise<void> {
+		const message: string = `Are you sure you want to delete database '${this.label}'?`;
+		const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes);
+		if (result === DialogBoxResponses.Yes) {
+			const db = await this.getDb();
+			await db.dropDatabase();
+		} else {
+			throw new UserCancelledError();
+		}
+	}
+
+	public async getDb(): Promise<Db> {
+		return await MongoClient.connect(this.connectionString);
 	}
 
 	executeCommand(command: MongoCommand): Thenable<string> {
@@ -115,7 +100,7 @@ export class MongoDatabaseNode implements INode {
 				.then(db => {
 					const collection = db.collection(command.collection);
 					if (collection) {
-						const result = new MongoCollectionNode(collection, this, command.arguments).executeCommand(command.name, command.arguments);
+						const result = new MongoCollectionTreeItem(this.connectionString, collection, command.arguments).executeCommand(command.name, command.arguments);
 						if (result) {
 							return result;
 						}
@@ -131,32 +116,14 @@ export class MongoDatabaseNode implements INode {
 		}
 	}
 
-	async createCollection(collectionName: string): Promise<MongoCollectionNode> {
+	async createCollection(collectionName: string): Promise<MongoCollectionTreeItem> {
 		const db: Db = await this.getDb();
 		const newCollection: Collection = db.collection(collectionName);
 		// db.createCollection() doesn't create empty collections for some reason
 		// However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
 		const result = await newCollection.insertOne({});
 		await newCollection.deleteOne({ _id: result.insertedId });
-		return new MongoCollectionNode(newCollection, this, undefined);
-	}
-
-	async drop() {
-		const db = await this.getDb();
-		await db.dropDatabase();
-	}
-
-	dropCollection(collectionName: string): Thenable<string> {
-		return this.getDb().then(db => {
-			return db.dropCollection(collectionName)
-				.then(result => {
-					return JSON.stringify({ 'dropped': result });
-				});
-		});
-	}
-
-	private getCollection(collection: string): Promise<MongoCollectionNode> {
-		return this.getDb().then(db => new MongoCollectionNode(db.collection(collection), this, undefined));
+		return new MongoCollectionTreeItem(this.connectionString, newCollection, this.id);
 	}
 
 	executeCommandInShell(command: MongoCommand): Thenable<string> {
@@ -177,63 +144,49 @@ export class MongoDatabaseNode implements INode {
 	}
 
 	private async createShell(shellPath: string): Promise<Shell> {
-		const connectionString = await this.server.getConnectionString();
-		return <Promise<null>>Shell.create(shellPath, connectionString)
+		return <Promise<null>>Shell.create(shellPath, this._accountConnectionString)
 			.then(shell => {
-				return shell.useDatabase(this.id).then(() => shell);
+				return shell.useDatabase(this._databaseName).then(() => shell);
 			}, error => vscode.window.showErrorMessage(error));
 	}
 }
 
-export class MongoCollectionNode implements IEditableNode {
+export class MongoCollectionTreeItem implements IAzureParentTreeItem {
+	public static contextValue: string = "MongoCollection";
+	public readonly contextValue: string = MongoCollectionTreeItem.contextValue;
+	public readonly childTypeLabel: string = "Document";
 
-	constructor(readonly collection: Collection, readonly db: MongoDatabaseNode, readonly query: string) {
+	private readonly collection: Collection;
+	private readonly _query: string | undefined;
+	private readonly _databaseConnectionString: string;
+	private _cursor: Cursor | undefined;
+	private _hasMoreChildren: boolean = true;
+	private _parentId: string;
+
+	constructor(databaseConnectionString: string, collection: Collection, parentId: string, query?: string) {
+		this.collection = collection;
+		this._parentId = parentId;
+		this._query = query;
+		this._databaseConnectionString = databaseConnectionString;
 	}
 
-	readonly contextValue: string = "MongoCollection";
-	private _children = [];
-	private _hasFetched: boolean = false;
-	private _loadMoreNode: LoadMoreNode = new LoadMoreNode(this);
-	private _hasMore: boolean;
-	private _iterator: Cursor;
-
-	get data(): Array<any> {
-		return this._children.map(child => child.data);
-	}
-	async update(data: any): Promise<any> {
-		const operations = this.getBulkWriteUpdateOperations(data);
-		const result = await this.collection.bulkWrite(operations);
-		await data.forEach(doc => {
-			const relevantChild: MongoDocumentNode = this.findDocById(doc._id);
-			if (relevantChild) {
-				relevantChild.data = doc;
-			}
-		});
-		return data;
-	}
-
-	getBulkWriteUpdateOperations(data: any): any {
-		let operationsArray: Array<any> = [];
-		for (let document of data) {
-			const operation: object = {
-				updateOne:
-					{
-						"filter": { _id: new ObjectID(document._id) },
-						"update": _.omit(document, '_id'),
-						"upsert": false
-					}
+	public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
+		const operations = documents.map((document) => {
+			return {
+				updateOne: {
+					filter: { _id: new ObjectID(document._id) },
+					update: _.omit(document, '_id'),
+					upsert: false
+				}
 			};
-			operationsArray.push(operation);
-		}
-		return operationsArray;
-	}
+		});
 
-	findDocById(id: string): MongoDocumentNode {
-		return this._children.find((child) => child.id.toString() === id);
+		const result = await this.collection.bulkWrite(operations);
+		return documents;
 	}
 
 	get id(): string {
-		return this.collection.collectionName;
+		return `${this._parentId}/${this.collection.collectionName}`;
 	}
 
 	get label(): string {
@@ -247,43 +200,45 @@ export class MongoCollectionNode implements IEditableNode {
 		};
 	}
 
-	readonly collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-
-	clearCache(): void {
-		this._children = [];
-		this._hasFetched = false;
+	public hasMoreChildren(): boolean {
+		return this._hasMoreChildren;
 	}
 
-	async getChildren(): Promise<INode[]> {
-		if (!this._hasFetched) {
-			this._children = [];
-			this._iterator = this.collection.find(this.query);
-			await this.addMoreChildren();
-			this._hasFetched = true
+	public async loadMoreChildren(_node: IAzureNode, clearCache: boolean): Promise<IAzureTreeItem[]> {
+		if (clearCache || this._cursor === undefined) {
+			this._cursor = this.collection.find(this._query).batchSize(DefaultBatchSize);
 		}
-		return this._hasMore ? this._children.concat([this._loadMoreNode]) : this._children;
+
+		const documents: IMongoDocument[] = [];
+		let count: number = 0;
+		while (count < DefaultBatchSize) {
+			this._hasMoreChildren = await this._cursor.hasNext();
+			if (this._hasMoreChildren) {
+				documents.push(<IMongoDocument>await this._cursor.next());
+				count += 1;
+			} else {
+				break;
+			}
+		}
+
+		return documents.map((document: IMongoDocument) => new MongoDocumentTreeItem(document, this.collection, this.id));
 	}
 
-	async addMoreChildren(): Promise<void> {
-		const getNext = async (iterator: Cursor) => {
-			return await iterator.next();
-		};
-		const elements = await LoadMoreNode.loadMore(this._iterator, getNext);
-		const loadMoreDocuments = elements.results;
-		this._hasMore = elements.hasMore;
-		this._children = this._children.concat(loadMoreDocuments.map(document => new MongoDocumentNode(document._id, this, document)));
-	}
+	public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
+		let docId: string | undefined = await vscode.window.showInputBox({
+			placeHolder: "Docuemnt ID",
+			prompt: "Enter a unique id for the document",
+			ignoreFocusOut: true
+		});
 
-	addNewDocToCache(document: any): void {
-		this._children.unshift(new MongoDocumentNode(document._id, this, document))
-	}
+		if (docId !== undefined) {
+			showCreatingNode(docId);
+			const result: InsertOneWriteOpResult = await this.collection.insertOne(docId === '' ? {} : { "id": docId });
+			const newDocument: IMongoDocument = await this.collection.findOne({ _id: result.insertedId });
+			return new MongoDocumentTreeItem(newDocument, this.collection, this.id);
+		}
 
-	removeNodeFromCache(documentNode: MongoDocumentNode): void {
-		this._children = this._children.filter(doc => doc.id !== documentNode.id);
-	}
-
-	getSelfLink() {
-		return `${this.db.server.id}.${this.db.id}.${this.id}`
+		throw new UserCancelledError();
 	}
 
 	executeCommand(name: string, args?: string): Thenable<string> {
@@ -321,8 +276,20 @@ export class MongoCollectionNode implements IEditableNode {
 		}
 	}
 
-	private drop(): Thenable<string> {
-		return this.db.dropCollection(this.collection.collectionName);
+	public async deleteTreeItem(_node: IAzureNode): Promise<void> {
+		const message: string = `Are you sure you want to delete collection '${this.label}'?`;
+		const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes);
+		if (result === DialogBoxResponses.Yes) {
+			await this.drop();
+		} else {
+			throw new UserCancelledError();
+		}
+	}
+
+	private async drop(): Promise<string> {
+		const db: Db = await MongoClient.connect(this._databaseConnectionString);
+		await db.dropCollection(this.collection.collectionName);
+		return `Dropped collection ${this.collection.collectionName}.`;
 	}
 
 	private find(args?: any): Thenable<string> {
@@ -389,53 +356,6 @@ export class MongoCollectionNode implements IEditableNode {
 	private stringify(result: any): string {
 		return JSON.stringify(result, null, '\t')
 	}
-}
-
-export class MongoDocumentNode implements IEditableNode {
-	private _data: object;
-	constructor(readonly id: string, readonly collection: MongoCollectionNode, payload: Object) {
-		this._data = payload;
-	}
-
-	readonly contextValue: string = "MongoDocument";
-
-	get data(): object {
-		return this._data;
-	}
-
-	set data(datum: object) {
-		this._data = datum;
-	}
-
-	get label(): string {
-		return this.id;
-	}
-
-	get iconPath(): any {
-		return {
-			light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Document.svg'),
-			dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Document.svg'),
-		};
-	}
-
-	public async update(data: any): Promise<any> {
-		const filter: object = { _id: new ObjectID(data._id) };
-		await this.collection.collection.updateOne(filter, _.omit(data, '_id'));
-		this._data = data;
-		return this._data;
-	}
-
-	getSelfLink() {
-		return `${this.collection.db.server.id}.${this.collection.db.id}.${this.collection.id}.${this.id}`
-	}
-
-	readonly collapsibleState = vscode.TreeItemCollapsibleState.None;
-
-	readonly command: Command = {
-		command: 'cosmosDB.openDocument',
-		arguments: [this],
-		title: ''
-	};
 }
 
 function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {

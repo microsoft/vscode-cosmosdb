@@ -482,11 +482,6 @@
 					"default": true,
 					"description": "Show or hide the Cosmos DB Explorer"
 				},
-				"cosmosDB.mongo.maxDocs": {
-					"type": "integer",
-					"default": 20,
-					"description": "Set a page limit for number of results(documents) displayed"
-				},
 				"cosmosDB.graph.maxVertices": {
 					"type": "integer",
 					"default": 300,

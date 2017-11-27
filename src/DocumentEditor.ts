@@ -8,26 +8,31 @@ import * as os from 'os'
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { DialogBoxResponses } from './constants';
-import { UserCancelledError } from './errors';
-import { IEditableNode } from './nodes';
+import { UserCancelledError } from 'vscode-azureextensionui';
 import * as util from './util';
 import { randomUtils } from './utils/randomUtils';
 
+export interface ICosmosEditor<T = {}> {
+    label: string;
+    getData(): Promise<T>;
+    update(data: T): Promise<T>;
+}
 
-export class DocumentEditor implements vscode.Disposable {
-    private fileMap: { [key: string]: [vscode.TextDocument, IEditableNode] } = {};
+export class CosmosEditorManager implements vscode.Disposable {
+    private fileMap: { [key: string]: [vscode.TextDocument, ICosmosEditor] } = {};
     private ignoreSave: boolean = false;
 
     private readonly dontShowKey: string = 'cosmosDB.dontShow.SaveEqualsUpdateToAzure';
 
-    public async showDocument(docNode: IEditableNode): Promise<void> {
+    public async showDocument(editor: ICosmosEditor): Promise<void> {
         const localDocPath = path.join(os.tmpdir(), randomUtils.getRandomHexString(12), 'cosmos-editor.json');
         await fse.ensureFile(localDocPath);
 
         const document = await vscode.workspace.openTextDocument(localDocPath);
-        this.fileMap[localDocPath] = [document, docNode];
+        this.fileMap[localDocPath] = [document, editor];
         const textEditor = await vscode.window.showTextDocument(document);
-        await this.updateEditor(docNode.data, textEditor);
+        const data = await editor.getData();
+        await this.updateEditor(data, textEditor);
     }
 
     public async updateMatchingNode(doc): Promise<void> {
@@ -39,12 +44,11 @@ export class DocumentEditor implements vscode.Disposable {
         Object.keys(this.fileMap).forEach(async (key) => await fse.remove(path.dirname(key)));
     }
 
-    private async updateToCloud(node: IEditableNode, doc: vscode.TextDocument): Promise<void> {
-        const updatedDoc: {} = await node.update(JSON.parse(doc.getText()));
+    private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument): Promise<void> {
+        const updatedDoc: {} = await editor.update(JSON.parse(doc.getText()));
         const output = util.getOutputChannel();
         const timestamp = (new Date()).toLocaleTimeString();
-        const docLink = node.getSelfLink();
-        output.appendLine(`${timestamp}: Updated entity "${docLink}"`);
+        output.appendLine(`${timestamp}: Updated entity "${editor.label}"`);
         output.show();
         await this.updateEditor(updatedDoc, vscode.window.activeTextEditor);
     }
@@ -62,10 +66,10 @@ export class DocumentEditor implements vscode.Disposable {
     public async onDidSaveTextDocument(globalState: vscode.Memento, doc: vscode.TextDocument): Promise<void> {
         const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.uri.fsPath, filePath) === '');
         if (!this.ignoreSave && filePath) {
-            const node: IEditableNode = this.fileMap[filePath][1];
+            const editor: ICosmosEditor = this.fileMap[filePath][1];
             const dontShow: boolean | undefined = globalState.get(this.dontShowKey);
             if (dontShow !== true) {
-                const message: string = `Saving 'cosmos-editor.json' will update the entity "${node.label}" to the Cloud.`;
+                const message: string = `Saving 'cosmos-editor.json' will update the entity "${editor.label}" to the Cloud.`;
                 const result: string | undefined = await vscode.window.showWarningMessage(message, DialogBoxResponses.OK, DialogBoxResponses.DontShowAgain);
 
                 if (!result) {
@@ -75,7 +79,7 @@ export class DocumentEditor implements vscode.Disposable {
                 }
             }
 
-            await this.updateToCloud(node, doc);
+            await this.updateToCloud(editor, doc);
         }
     }
 

@@ -2,24 +2,25 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import * as path from 'path';
+
 import * as vscode from 'vscode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
-import { MongoDatabaseNode, MongoCommand, MongoDocumentNode, MongoCollectionNode } from './nodes';
-import { CosmosDBExplorer } from '../explorer';
-import * as fs from 'fs';
+import { MongoCommand, MongoCollectionTreeItem, MongoDatabaseTreeItem } from './nodes';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as util from './../util';
-import { DialogBoxResponses } from '../constants'
-import { DocumentEditor } from '../DocumentEditor';
+import { CosmosEditorManager } from '../DocumentEditor';
+import { Collection } from 'mongodb';
+import { IAzureParentNode } from 'vscode-azureextensionui';
+import { MongoDocumentTreeItem } from './tree/MongoDocumentTreeItem';
+import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
+import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 
 export class MongoCommands {
-
-	public static async executeCommandFromActiveEditor(database: MongoDatabaseNode, extensionPath, editor: DocumentEditor): Promise<MongoCommand> {
+	public static async executeCommandFromActiveEditor(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager): Promise<void> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (activeEditor.document.languageId !== 'mongo') {
 			return;
@@ -30,28 +31,20 @@ export class MongoCommands {
 			if (!database) {
 				throw new Error('Please connect to the database first');
 			}
+
 			if (command.name === 'find') {
-				const db = await database.getDb();
-				let node = new MongoCollectionNode(db.collection(command.collection), database, command.arguments);
-				await node.getChildren();
-				await editor.showDocument(node);
-				return command;
-			}
-			const result = await database.executeCommand(command);
-			const parsed = JSON.parse(result);
-			if (command.name === 'findOne') {
-				const db = await database.getDb();
-				let node = new MongoDocumentNode(parsed._id, null, parsed);
-				await editor.showDocument(node);
-			}
-			else {
-				await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
+				await editorManager.showDocument(new MongoFindResultEditor(database, command));
+			} else {
+				const result = await database.treeItem.executeCommand(command);
+				if (command.name === 'findOne') {
+					await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result));
+				} else {
+					await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
+				}
 			}
 		} else {
 			throw new Error('No executable command found.');
 		}
-
-		return command;
 	}
 
 	public static getCommand(content: string, position?: vscode.Position): MongoCommand {

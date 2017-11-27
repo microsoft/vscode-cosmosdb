@@ -5,7 +5,7 @@
 
 import { IAzureNode } from "vscode-azureextensionui";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
-import { ICosmosEditor } from "../../DocumentEditor";
+import { ICosmosEditor } from "../../CosmosEditorManager";
 
 export class MongoDocumentNodeEditor implements ICosmosEditor<IMongoDocument> {
     private _collectionNode: IAzureNode<MongoDocumentTreeItem>;

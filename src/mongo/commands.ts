@@ -7,17 +7,16 @@ import * as vscode from 'vscode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
-import { MongoCommand, MongoCollectionTreeItem, MongoDatabaseTreeItem } from './nodes';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as util from './../util';
-import { CosmosEditorManager } from '../DocumentEditor';
-import { Collection } from 'mongodb';
+import { CosmosEditorManager } from '../CosmosEditorManager';
 import { IAzureParentNode } from 'vscode-azureextensionui';
-import { MongoDocumentTreeItem } from './tree/MongoDocumentTreeItem';
 import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
 import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
+import { MongoCommand } from './MongoCommand';
+import { MongoDatabaseTreeItem } from './tree/MongoDatabaseTreeItem';
 
 export class MongoCommands {
 	public static async executeCommandFromActiveEditor(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager): Promise<void> {

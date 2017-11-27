@@ -3,12 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { MongoCollectionTreeItem, MongoCommand, MongoDatabaseTreeItem } from "../nodes";
 import { IAzureParentNode } from "vscode-azureextensionui";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 import { Collection } from "mongodb";
 import { MongoCollectionNodeEditor } from "./MongoCollectionNodeEditor";
-import { ICosmosEditor } from "../../DocumentEditor";
+import { ICosmosEditor } from "../../CosmosEditorManager";
+import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
+import { MongoCommand } from "../MongoCommand";
+import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
 
 export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
     private _databaseNode: IAzureParentNode<MongoDatabaseTreeItem>;

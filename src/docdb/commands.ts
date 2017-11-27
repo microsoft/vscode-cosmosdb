@@ -53,6 +53,7 @@ export class DocDBCommands {
         const client = new DocumentClient(endpoint, { masterKey: masterKey });
         let docID = await vscode.window.showInputBox({
             placeHolder: "Enter a unique id",
+            validateInput: DocDBCommands.validateDocumentID,
             ignoreFocusOut: true
         });
         if (docID || docID === "") {
@@ -135,8 +136,18 @@ export class DocDBCommands {
         return undefined;
     }
 
+    private static validateDocumentID(name: string): string | undefined | null {
+        if (/^[-a-z0-9]+$/ig.test(name)) {
+            return "ID should contain only the following : digits, alphabets and -";
+        }
+        if (name.length > 40) {
+            return "The ID is too long";
+        }
+        return null;
+    }
+
     private static validatePartitionKey(key: string): string | undefined | null {
-        if (/^[#?\\]*$/.test(key)) {
+        if (/[#?\\]+/.test(key)) {
             return "Cannot contain these characters - ?,#,\\, etc."
         }
         return null;

@@ -82,12 +82,20 @@ export class MongoCommands {
 	public static async createMongoCollection(db: MongoDatabaseNode, explorer: CosmosDBExplorer) {
 		const collectionName = await vscode.window.showInputBox({
 			placeHolder: "Enter name of collection",
+			validateInput: MongoCommands.validateCollectionName,
 			ignoreFocusOut: true
 		});
 		if (collectionName) {
 			await db.createCollection(collectionName);
 			explorer.refresh(db);
 		}
+	}
+
+	private static validateCollectionName(key: string): string | undefined | null {
+		if (/[#?\\\/\$]+/.test(key)) {
+			return "Cannot contain these characters - ?,#,\\,/, $ etc."
+		}
+		return null;
 	}
 
 	public static async deleteMongoCollection(collectionNode: MongoCollectionNode, explorer: CosmosDBExplorer) {

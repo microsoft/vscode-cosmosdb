@@ -21,13 +21,13 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     public static contextValue: string = "MongoDocument";
     public readonly contextValue: string = MongoDocumentTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openDocument';
+    public document: IMongoDocument;
 
-    private _document: IMongoDocument;
     private _collection: Collection;
     private _parentId: string;
 
     constructor(document: IMongoDocument, collection: Collection, parentId: string) {
-        this._document = document;
+        this.document = document;
         this._collection = collection;
         this._parentId = parentId;
     }
@@ -38,10 +38,6 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
 
     get label(): string {
         return this.document._id.toString();
-    }
-
-    get document(): IMongoDocument {
-        return this._document;
     }
 
     get iconPath(): any {
@@ -62,9 +58,13 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     }
 
     public async update(newDocument: IMongoDocument): Promise<IMongoDocument> {
+        this.document = await MongoDocumentTreeItem.update(this._collection, newDocument);
+        return this.document;
+    }
+
+    public static async update(collection: Collection, newDocument: IMongoDocument): Promise<IMongoDocument> {
         const filter: object = { _id: new ObjectID(newDocument._id) };
-        await this._collection.updateOne(filter, _.omit(newDocument, '_id'));
-        this._document = newDocument;
+        await collection.updateOne(filter, _.omit(newDocument, '_id'));
         return newDocument;
     }
 }

@@ -55,7 +55,7 @@ h1 {
 #cosmos {
     float: left;
     width: 80px;
-    margin-top:12px
+    margin:11px 0;
 }
 
 header + div {

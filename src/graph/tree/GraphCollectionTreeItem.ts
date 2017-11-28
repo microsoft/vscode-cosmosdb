@@ -62,11 +62,11 @@ export class GraphCollectionTreeItem implements IAzureTreeItem {
     }
 
     public async showExplorer(graphViewsManager: GraphViewsManager): Promise<void> {
-        await graphViewsManager.showGraphViewer(this.id, <GraphConfiguration>{
+        await graphViewsManager.showGraphViewer(this.label, <GraphConfiguration>{
             endpoint: this._database.graphEndpoint,
             endpointPort: this._database.graphPort,
-            databaseName: this._database.id,
-            graphName: this.id,
+            databaseName: this._database.label,
+            graphName: this.label,
             key: this._database.masterKey
         });
     }

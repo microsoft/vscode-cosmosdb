@@ -15,7 +15,7 @@ import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem'
 export class GraphCollectionTreeItem implements IAzureTreeItem {
     public static contextValue: string = "cosmosDBGraph";
     public readonly contextValue: string = GraphCollectionTreeItem.contextValue;
-    public readonly commandId: string = 'graph.openExplorer';
+    public readonly commandId: string = 'cosmosDB.openGraphExplorer';
 
     private readonly _database: GraphDatabaseTreeItem;
     private readonly _collection: CollectionMeta;

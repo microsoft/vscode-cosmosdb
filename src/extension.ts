@@ -131,7 +131,7 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.update', (filePath: string) => editorManager.updateMatchingNode(filePath));
 	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
 	initAsyncCommand(context, 'cosmosDB.loadMore', (node: IAzureNode) => explorer.loadMore(node));
-	initAsyncCommand(context, 'graph.openExplorer', async (graph: IAzureNode<GraphCollectionTreeItem>) => {
+	initAsyncCommand(context, 'cosmosDB.openGraphExplorer', async (graph: IAzureNode<GraphCollectionTreeItem>) => {
 		if (!graph) {
 			return; // TODO: Ask for context instead of ignoring (issue#35)
 		}

@@ -65,7 +65,8 @@
 		"onCommand:cosmosDB.refresh",
 		"onCommand:cosmosDB.openInPortal",
 		"onCommand:cosmosDB.copyConnectionString",
-		"onCommand:cosmosDB.launchMongoShell"
+		"onCommand:cosmosDB.launchMongoShell",
+		"onCommand:cosmosDB.openGraphExplorer"
 	],
 	"contributes": {
 		"views": {
@@ -211,6 +212,11 @@
 				"category": "Graph",
 				"command": "cosmosDB.deleteGraph",
 				"title": "Delete Graph"
+			},
+			{
+				"category": "Graph",
+				"command": "cosmosDB.openGraphExplorer",
+				"title": "Open Graph Explorer"
 			},
 			{
 				"category": "DocumentDB",

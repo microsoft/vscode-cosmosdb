@@ -17,7 +17,7 @@ const defaultQuery = "g.V()";
 const linkDistance = 400;
 const linkStrength = 0.01; // Reduce rigidity of the links (if < 1, the full linkDistance is relaxed)
 const charge = -3000;
-const markerDistanceFromVertex = 10;
+const arrowDistanceFromVertex = 10;
 const vertexRadius = 8; // from css
 const paddingBetweenVertexAndEdge = 3;
 
@@ -54,12 +54,6 @@ function getErrorMessage(error: any) {
   return error.message || error.toString();
 }
 
-window.addEventListener('resize', resizeSvg, false);
-
-function resizeSvg() {
-  d3.select(htmlElements.graphSection).select("svg")
-    .attr("width", htmlElements.resultsBackground.clientWidth).attr("height", htmlElements.resultsBackground.clientHeight);
-}
 function logToUI(s: string) {
   console.log(s);
   // let v = htmlElements.debugLog.value;
@@ -355,8 +349,7 @@ class GraphView {
     force.linkStrength(linkStrength);
     force.charge(charge);
 
-    let svg = d3.select(htmlElements.graphSection).select("svg")
-      .attr("height", htmlElements.resultsBackground.clientHeight);
+    let svg = d3.select(htmlElements.graphSection).select("svg");
 
     // Add a re-usable arrow
     svg.select('defs')
@@ -366,7 +359,7 @@ class GraphView {
       .append('marker')
       .attr('id', 'triangle')
       .attr('viewBox', '0 -5 10 10')
-      .attr('refX', markerDistanceFromVertex) // Shift arrow so that we can see it.
+      .attr('refX', arrowDistanceFromVertex) // Shift arrow so that we can see it.
       .attr('refY', 0)
       .attr('markerWidth', 6)
       .attr('markerHeight', 6)

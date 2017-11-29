@@ -2,7 +2,8 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
- * {
+
+* {
     margin: 0;
     padding: 0;
     box-sizing: content-box;
@@ -19,7 +20,7 @@ body {
     color: #cccccc;
     font-size: 16px;
     box-sizing: border-box;
-    padding: 0 10px;
+    padding: 0px 10px 10px;
     height: 100%;
 }
 
@@ -259,6 +260,7 @@ textarea {
 
 #graphSection svg {
     width: 100%;
+    height: -webkit-fill-available;
 }
 
 #jsonResults {

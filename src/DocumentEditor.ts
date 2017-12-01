@@ -20,12 +20,21 @@ export class DocumentEditor implements vscode.Disposable {
 
     private readonly dontShowKey: string = 'cosmosDB.dontShow.SaveEqualsUpdateToAzure';
 
-    public async showDocument(docNode: IEditableNode): Promise<void> {
-        const localDocPath = path.join(os.tmpdir(), randomUtils.getRandomHexString(12), 'cosmos-editor.json');
+    public async showDocument(docNode: IEditableNode, extensionPath: string, fileName: string): Promise<void> {
+        const localDocPath = path.join(extensionPath, fileName);
         await fse.ensureFile(localDocPath);
 
         const document = await vscode.workspace.openTextDocument(localDocPath);
-        this.fileMap[localDocPath] = [document, docNode];
+        if (!(localDocPath in this.fileMap)) {
+            this.fileMap[localDocPath] = [document, docNode];
+        } else {
+            if (this.fileMap[localDocPath][0].isDirty) {
+                const overwriteFlag = await vscode.window.showWarningMessage(`You are about to overwrite ${fileName}. Continue?`, 'Yes', 'No');
+                if (overwriteFlag === 'No') {
+                    return;
+                }
+            }
+        }
         const textEditor = await vscode.window.showTextDocument(document);
         await this.updateEditor(docNode.data, textEditor);
     }

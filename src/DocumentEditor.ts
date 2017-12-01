@@ -29,8 +29,11 @@ export class DocumentEditor implements vscode.Disposable {
             this.fileMap[localDocPath] = [document, docNode];
         } else {
             if (this.fileMap[localDocPath][0].isDirty) {
-                const overwriteFlag = await vscode.window.showWarningMessage(`You are about to overwrite ${fileName}. Continue?`, 'Yes', 'No');
-                if (overwriteFlag === 'No') {
+                const overwriteFlag = await vscode.window.showWarningMessage(`You are about to overwrite ${fileName}. Do you want to continue?`, DialogBoxResponses.Yes, DialogBoxResponses.No);
+                if (!overwriteFlag) {
+                    throw new UserCancelledError();
+                }
+                if (overwriteFlag === DialogBoxResponses.No) {
                     return;
                 }
             }
@@ -41,7 +44,11 @@ export class DocumentEditor implements vscode.Disposable {
 
     public async updateMatchingNode(doc): Promise<void> {
         const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.fsPath, filePath) === '');
-        await this.updateToCloud(this.fileMap[filePath][1], this.fileMap[filePath][0]);
+        if (filePath) {
+            await this.updateToCloud(this.fileMap[filePath][1], this.fileMap[filePath][0]);
+        } else {
+            await vscode.window.showInformationMessage(`Editing cosmosDB entities across sessions is currently not supported.`)
+        }
     }
 
     public async dispose(): Promise<void> {

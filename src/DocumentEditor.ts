@@ -51,7 +51,10 @@ export class DocumentEditor implements vscode.Disposable {
     }
 
     public async dispose(): Promise<void> {
-        Object.keys(this.fileMap).forEach(async (key) => await fse.remove(path.dirname(key)));
+        Object.keys(this.fileMap).forEach((key) => {
+            fse.copySync(key, "backup-" + key);
+            fse.writeFileSync(key, "");
+        });
     }
 
     private async updateToCloud(node: IEditableNode, doc: vscode.TextDocument): Promise<void> {

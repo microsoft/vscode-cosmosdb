@@ -46,7 +46,7 @@ export class DocumentEditor implements vscode.Disposable {
         if (filePath) {
             await this.updateToCloud(this.fileMap[filePath][1], this.fileMap[filePath][0]);
         } else {
-            await vscode.window.showInformationMessage(`Editing cosmos DB entities across sessions is currently not supported.`)
+            await vscode.window.showInformationMessage(`Editing Cosmos DB entities across sessions is currently not supported.`)
         }
     }
 

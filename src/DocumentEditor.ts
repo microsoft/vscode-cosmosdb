@@ -55,7 +55,7 @@ export class DocumentEditor implements vscode.Disposable {
             const backupFileName = key.substring(0, key.lastIndexOf('.')) + "-backup.json";
             fse.ensureFileSync(backupFileName);
             fse.copySync(key, backupFileName);
-            fse.writeFileSync(key, `Reopen the entity or view your previous changes here: ${backupFileName}`);
+            fse.writeFileSync(key, `We do not support editing entities across sessions. Reopen the entity or view your previous changes here: ${backupFileName}`);
         });
     }
 

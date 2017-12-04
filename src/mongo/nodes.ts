@@ -229,7 +229,7 @@ export class MongoCollectionNode implements IEditableNode {
 	}
 
 	findDocById(id: string): MongoDocumentNode {
-		return this._children.find((child) => child.id.toString() === id);
+		return this._children.find((child) => child._id.toString() === id);
 	}
 
 	get id(): string {

@@ -20,11 +20,22 @@ export class DocumentEditor implements vscode.Disposable {
 
     private readonly dontShowKey: string = 'cosmosDB.dontShow.SaveEqualsUpdateToAzure';
 
-    public async showDocument(docNode: IEditableNode): Promise<void> {
-        const localDocPath = path.join(os.tmpdir(), randomUtils.getRandomHexString(12), 'cosmos-editor.json');
+    public async showDocument(docNode: IEditableNode, extensionPath: string, fileName: string): Promise<void> {
+        const localDocPath = path.join(extensionPath, fileName);
         await fse.ensureFile(localDocPath);
 
         const document = await vscode.workspace.openTextDocument(localDocPath);
+        if (localDocPath in this.fileMap) {
+            if (this.fileMap[localDocPath][0].isDirty) {
+                const overwriteFlag = await vscode.window.showWarningMessage(`You are about to overwrite ${fileName}, which has unsaved changes. Do you want to continue?`, DialogBoxResponses.Yes, DialogBoxResponses.No);
+                if (!overwriteFlag) {
+                    throw new UserCancelledError();
+                }
+                if (overwriteFlag === DialogBoxResponses.No) {
+                    return;
+                }
+            }
+        }
         this.fileMap[localDocPath] = [document, docNode];
         const textEditor = await vscode.window.showTextDocument(document);
         await this.updateEditor(docNode.data, textEditor);
@@ -32,7 +43,11 @@ export class DocumentEditor implements vscode.Disposable {
 
     public async updateMatchingNode(doc): Promise<void> {
         const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.fsPath, filePath) === '');
-        await this.updateToCloud(this.fileMap[filePath][1], this.fileMap[filePath][0]);
+        if (filePath) {
+            await this.updateToCloud(this.fileMap[filePath][1], this.fileMap[filePath][0]);
+        } else {
+            await vscode.window.showInformationMessage(`Editing Cosmos DB entities across sessions is currently not supported.`)
+        }
     }
 
     public async dispose(): Promise<void> {

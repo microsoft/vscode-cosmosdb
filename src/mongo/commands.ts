@@ -34,7 +34,7 @@ export class MongoCommands {
 				const db = await database.getDb();
 				let node = new MongoCollectionNode(db.collection(command.collection), database, command.arguments);
 				await node.getChildren();
-				await editor.showDocument(node, extensionPath, 'cosmos-result.json');
+				await editor.showDocument(node, 'cosmos-result.json');
 				return command;
 			}
 			const result = await database.executeCommand(command);
@@ -46,7 +46,7 @@ export class MongoCommands {
 					id = null;
 				}
 				let node = new MongoDocumentNode(id, null, parsed);
-				await editor.showDocument(node, extensionPath, 'cosmos-result.json');
+				await editor.showDocument(node, 'cosmos-result.json');
 			}
 			else {
 				await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);

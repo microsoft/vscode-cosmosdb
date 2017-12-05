@@ -51,7 +51,12 @@ export class DocumentEditor implements vscode.Disposable {
     }
 
     public async dispose(): Promise<void> {
-        Object.keys(this.fileMap).forEach(async (key) => await fse.remove(path.dirname(key)));
+        Object.keys(this.fileMap).forEach((key) => {
+            const backupFileName = key.substring(0, key.lastIndexOf('.')) + "-backup.json";
+            fse.ensureFileSync(backupFileName);
+            fse.copySync(key, backupFileName);
+            fse.writeFileSync(key, `We do not support editing entities across sessions. Reopen the entity or view your previous changes here: ${backupFileName}`);
+        });
     }
 
     private async updateToCloud(node: IEditableNode, doc: vscode.TextDocument): Promise<void> {

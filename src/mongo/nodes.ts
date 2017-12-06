@@ -229,7 +229,7 @@ export class MongoCollectionNode implements IEditableNode {
 	}
 
 	findDocById(id: string): MongoDocumentNode {
-		return this._children.find((child) => child.id.toString() === id);
+		return this._children.find((child) => child._id.toString() === id);
 	}
 
 	get id(): string {
@@ -257,7 +257,7 @@ export class MongoCollectionNode implements IEditableNode {
 	async getChildren(): Promise<INode[]> {
 		if (!this._hasFetched) {
 			this._children = [];
-			this._iterator = this.collection.find(JSON.parse(this.query));
+			this._iterator = this.query ? this.collection.find(JSON.parse(this.query)) : this.collection.find();
 			await this.addMoreChildren();
 			this._hasFetched = true
 		}

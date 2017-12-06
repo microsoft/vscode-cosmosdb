@@ -21,7 +21,7 @@ export class DocumentEditor implements vscode.Disposable {
     private readonly dontShowKey: string = 'cosmosDB.dontShow.SaveEqualsUpdateToAzure';
 
     public async showDocument(docNode: IEditableNode, fileName: string): Promise<void> {
-        const localDocPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor-json', fileName);
+        const localDocPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', fileName);
         await fse.ensureFile(localDocPath);
 
         const document = await vscode.workspace.openTextDocument(localDocPath);

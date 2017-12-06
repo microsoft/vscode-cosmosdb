@@ -102,8 +102,8 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (element: DocDBDocumentNode) => DocDBCommands.deleteDocDBDocument(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteGraphDatabase', (element: GraphDatabaseNode) => DocDBCommands.deleteDatabase(element, explorer));
 	initAsyncCommand(context, 'cosmosDB.deleteGraph', (element: GraphNode) => DocDBCommands.deleteCollection(element, explorer));
-	initAsyncCommand(context, 'cosmosDB.openDocument', async (docNode: IEditableNode) => await documentEditor.showDocument(docNode, context.extensionPath, 'cosmos-document.json'));
-	initAsyncCommand(context, 'cosmosDB.openCollection', async (collNode: IEditableNode) => await documentEditor.showDocument(collNode, context.extensionPath, 'cosmos-collection.json'));
+	initAsyncCommand(context, 'cosmosDB.openDocument', async (docNode: IEditableNode) => await documentEditor.showDocument(docNode, 'cosmos-document.json'));
+	initAsyncCommand(context, 'cosmosDB.openCollection', async (collNode: IEditableNode) => await documentEditor.showDocument(collNode, 'cosmos-collection.json'));
 	initAsyncCommand(context, 'cosmosDB.newMongoScrapbook', async () => await util.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
 	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => await MongoCommands.executeCommandFromActiveEditor(connectedDb, context.extensionPath, documentEditor));
 	initAsyncCommand(context, 'cosmosDB.update', (filePath: string) => documentEditor.updateMatchingNode(filePath));

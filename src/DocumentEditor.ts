@@ -20,8 +20,8 @@ export class DocumentEditor implements vscode.Disposable {
 
     private readonly dontShowKey: string = 'cosmosDB.dontShow.SaveEqualsUpdateToAzure';
 
-    public async showDocument(docNode: IEditableNode, extensionPath: string, fileName: string): Promise<void> {
-        const localDocPath = path.join(extensionPath, fileName);
+    public async showDocument(docNode: IEditableNode, fileName: string): Promise<void> {
+        const localDocPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', fileName);
         await fse.ensureFile(localDocPath);
 
         const document = await vscode.workspace.openTextDocument(localDocPath);
@@ -55,7 +55,7 @@ export class DocumentEditor implements vscode.Disposable {
             const backupFileName = key.substring(0, key.lastIndexOf('.')) + "-backup.json";
             fse.ensureFileSync(backupFileName);
             fse.copySync(key, backupFileName);
-            fse.writeFileSync(key, `We do not support editing entities across sessions. Reopen the entity or view your previous changes here: ${backupFileName}`);
+            fse.writeFileSync(key, `// We do not support editing entities across sessions.\n// Reopen the entity or view your previous changes here: ${backupFileName}`);
         });
     }
 

@@ -94,7 +94,7 @@ export class MongoDatabaseNode implements INode {
 	getChildren(): Promise<INode[]> {
 		return <Promise<INode[]>>this.getDb().then(db => {
 			return db.collections().then(collections => {
-				return collections.map(collection => new MongoCollectionNode(collection, this, undefined));
+				return collections.map(collection => new MongoCollectionNode(collection, this, null));
 			})
 		});
 	}
@@ -138,7 +138,7 @@ export class MongoDatabaseNode implements INode {
 		// However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
 		const result = await newCollection.insertOne({});
 		await newCollection.deleteOne({ _id: result.insertedId });
-		return new MongoCollectionNode(newCollection, this, undefined);
+		return new MongoCollectionNode(newCollection, this, null);
 	}
 
 	async drop() {
@@ -156,7 +156,7 @@ export class MongoDatabaseNode implements INode {
 	}
 
 	private getCollection(collection: string): Promise<MongoCollectionNode> {
-		return this.getDb().then(db => new MongoCollectionNode(db.collection(collection), this, undefined));
+		return this.getDb().then(db => new MongoCollectionNode(db.collection(collection), this, null));
 	}
 
 	executeCommandInShell(command: MongoCommand): Thenable<string> {
@@ -257,7 +257,7 @@ export class MongoCollectionNode implements IEditableNode {
 	async getChildren(): Promise<INode[]> {
 		if (!this._hasFetched) {
 			this._children = [];
-			this._iterator = this.collection.find(this.query);
+			this._iterator = this.query ? this.collection.find(JSON.parse(this.query)) : this.collection.find();
 			await this.addMoreChildren();
 			this._hasFetched = true
 		}

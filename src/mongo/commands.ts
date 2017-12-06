@@ -41,7 +41,8 @@ export class MongoCommands {
 			const parsed = JSON.parse(result);
 			if (command.name === 'findOne') {
 				const db = await database.getDb();
-				let node = new MongoDocumentNode(parsed._id, null, parsed);
+				let collNode = new MongoCollectionNode(db.collection(command.collection), database, command.arguments);
+				let node = new MongoDocumentNode(parsed._id, collNode, parsed);
 				await editor.showDocument(node, 'cosmos-result.json');
 			}
 			else {

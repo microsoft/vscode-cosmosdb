@@ -555,6 +555,77 @@
 					"type": "integer",
 					"default": 500,
 					"description": "Set a limit for number of edges displayed in a graph visualization"
+				},
+				"cosmosDB.graph.viewSettings": {
+					"type": "object",
+					"description": "Settings for graph visualization. Currently only the 'default' group is supported.",
+					"additionalProperties": false,
+					"required": [
+						"default"
+					],
+					"properties": {
+						"default": {
+							"type": "object",
+							"description": "Default view settings that apply to all graphs",
+							"additionalProperties": false,
+							"properties": {
+								"vertices": {
+									"type": "array",
+									"title": "List of settings groups that apply to vertices having specified label values",
+									"items": {
+										"type": "object",
+										"additionalProperties": false,
+										"properties": {
+											"labels": {
+												"type": "array",
+												"description": "Restricts the settings in this group to vertices matching one of these label values.",
+												"items": {
+													"type": "string"
+												}
+											},
+											"displayProperty": {
+												"type": "array",
+												"description": "The vertex property to display for the text, in preferred order, whichever is first found to have a non-empty value on the vertex. If none is found, the id is displayed.",
+												"items": {
+													"type": "string"
+												}
+											},
+											"color": {
+												"type": "string",
+												"description": "The vertex color, either 'auto', a CSS color name or a CSS RGB value (e.g., '#0088FF')",
+												"pattern": "^(auto)|([a-zA-Z]+)|(#[0-9a-fA-F]{3})|(#[0-9a-fA-F]{6})$",
+												"default": "auto"
+											}
+										}
+									}
+								}
+							}
+						}
+					},
+					"default": {
+						"default": {
+							"vertices": [
+								{
+									"displayProperty": [
+										"name"
+									],
+									"color": "auto"
+								},
+								{
+									"labels": [
+										"person"
+									],
+									"displayProperty": [
+										"fullName",
+										"lastName",
+										"firstName",
+										"name"
+									],
+									"color": "auto"
+								}
+							]
+						}
+					}
 				}
 			}
 		}

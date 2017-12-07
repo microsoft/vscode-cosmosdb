@@ -87,7 +87,6 @@ h1 span {
 
 .vertex {
     transition: fill .2s;
-    fill: #0072c6;
     r: 8px; /* vertex radius */
 }
 

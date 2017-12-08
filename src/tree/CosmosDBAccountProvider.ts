@@ -9,10 +9,10 @@ import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import DocumentdbManagementClient = require("azure-arm-documentdb");
-import { DatabaseAccountsListResult, DatabaseAccount, DatabaseAccountListKeysResult } from 'azure-arm-documentdb/lib/models';
-import { Experience } from '../constants';
+import CosmosDBManagementClient = require("azure-arm-cosmosdb");
+import { DatabaseAccountsListResult, DatabaseAccount, DatabaseAccountListKeysResult } from 'azure-arm-cosmosdb/lib/models';
 import { createCosmosDBAccount } from '../commands';
+import { Experience } from '../constants';
 
 export class CosmosDBAccountProvider implements IChildProvider {
     public hasMoreChildren(): boolean {
@@ -20,7 +20,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
     }
 
     public async loadMoreChildren(node: IAzureNode): Promise<IAzureTreeItem[]> {
-        const client = new DocumentdbManagementClient(node.credentials, node.subscription.subscriptionId);
+        const client = new CosmosDBManagementClient(node.credentials, node.subscription.subscriptionId);
         const accounts: DatabaseAccountsListResult = await client.databaseAccounts.list();
 
         return await Promise.all(accounts.map(async (databaseAccount: DatabaseAccount) => {
@@ -29,12 +29,12 @@ export class CosmosDBAccountProvider implements IChildProvider {
     }
 
     public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
-        const client = new DocumentdbManagementClient(node.credentials, node.subscription.subscriptionId);
+        const client = new CosmosDBManagementClient(node.credentials, node.subscription.subscriptionId);
         const databaseAccount = await createCosmosDBAccount(node, showCreatingNode);
         return await this.initChild(client, databaseAccount);
     }
 
-    private async initChild(client: DocumentdbManagementClient, databaseAccount: DatabaseAccount): Promise<IAzureTreeItem> {
+    private async initChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<IAzureTreeItem> {
         const defaultExperience = <Experience>databaseAccount.tags.defaultExperience;
         const resourceGroup: string = azureUtils.getResourceGroupFromId(databaseAccount.id);
         const label: string = `${databaseAccount.name} (${resourceGroup})`;

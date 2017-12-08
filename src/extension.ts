@@ -11,7 +11,6 @@ import * as vscodeUtil from './utils/vscodeUtils';
 import * as cpUtil from './utils/cp';
 import { AzureAccount } from './azure-account.api';
 import { ErrorData } from './utils/ErrorData';
-import { CosmosDBCommands } from './commands';
 import { AzureTreeDataProvider, IAzureNode, IAzureParentNode, UserCancelledError } from 'vscode-azureextensionui';
 import { MongoCommands } from './mongo/commands';
 import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
@@ -55,11 +54,12 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscodeUtil.getOutputChannel());
 
 	// Commands
-	initAsyncCommand(context, 'cosmosDB.createAccount', async () => {
-		const account = await CosmosDBCommands.createCosmosDBAccount(azureAccount);
-		if (account) {
-			explorer.refresh();
+	initAsyncCommand(context, 'cosmosDB.createAccount', async (node?: IAzureParentNode) => {
+		if (!node) {
+			node = <IAzureParentNode>await explorer.showNodePicker(AzureTreeDataProvider.subscriptionContextValue);
 		}
+
+		await node.createChild();
 	});
 	initAsyncCommand(context, 'cosmosDB.attachDatabaseAccount', async () => {
 		const rootNodes = await explorer.getChildren();

@@ -19,7 +19,7 @@ html {
         var(--background-color) and var(--color)
             - Picked up at runtime and represent the theme background and foreground colors
         var(--graph-background-color) and var(--graph-color):
-            Specifically just for the graph display, regardless of theme
+            Specifically just for the graph itself, regardless of theme
     */
 
     --graph-background-color: black;

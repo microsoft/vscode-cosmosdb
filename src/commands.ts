@@ -6,11 +6,11 @@
 import * as vscode from 'vscode';
 import { AzureAccount, AzureSession } from './azure-account.api';
 import { ResourceModels, ResourceManagementClient, SubscriptionClient, SubscriptionModels } from 'azure-arm-resource';
-import DocumentdbManagementClient = require("azure-arm-documentdb");
-import docDBModels = require("azure-arm-documentdb/lib/models");
+import CosmosDBManagementClient = require("azure-arm-cosmosdb");
+import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
 import { IAzureNode, AzureTreeDataProvider, UserCancelledError } from 'vscode-azureextensionui';
 
-export async function createCosmosDBAccount(subscriptionNode: IAzureNode, showCreatingNode: (label: string) => void): Promise<docDBModels.DatabaseAccount> {
+export async function createCosmosDBAccount(subscriptionNode: IAzureNode, showCreatingNode: (label: string) => void): Promise<DatabaseAccount> {
     const resourceGroupPick = await getOrCreateResourceGroup(subscriptionNode);
 
     if (resourceGroupPick) {
@@ -29,7 +29,7 @@ export async function createCosmosDBAccount(subscriptionNode: IAzureNode, showCr
                     return await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
                         showCreatingNode(accountName);
                         progress.report({ message: `Cosmos DB: Creating account '${accountName}'` });
-                        const docDBClient = new DocumentdbManagementClient(
+                        const docDBClient = new CosmosDBManagementClient(
                             subscriptionNode.credentials, subscriptionNode.subscription.subscriptionId);
                         await docDBClient.databaseAccounts.createOrUpdate(resourceGroupPick.resourceGroup.name,
                             accountName,
@@ -76,7 +76,7 @@ async function createResourceGroup(subscriptionNode: IAzureNode): Promise<Resour
 }
 
 async function getCosmosDBAccountName(subscriptionNode: IAzureNode): Promise<string> {
-    const docDBClient = new DocumentdbManagementClient(subscriptionNode.credentials, subscriptionNode.subscription.subscriptionId);
+    const client = new CosmosDBManagementClient(subscriptionNode.credentials, subscriptionNode.subscription.subscriptionId);
 
     let nameNotAvailable = true;
     while (nameNotAvailable) {
@@ -92,7 +92,7 @@ async function getCosmosDBAccountName(subscriptionNode: IAzureNode): Promise<str
             break;
         } else {
             try {
-                nameNotAvailable = await docDBClient.databaseAccounts.checkNameExists(accountName);
+                nameNotAvailable = await client.databaseAccounts.checkNameExists(accountName);
                 if (nameNotAvailable) {
                     await vscode.window.showErrorMessage(`Account name '${accountName}' is not available.`)
                 } else {

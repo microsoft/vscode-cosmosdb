@@ -120,12 +120,12 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.deleteGraph', (node: IAzureNode) => node.deleteNode());
 	initAsyncCommand(context, 'cosmosDB.openDocument', async (node: IAzureNode) => {
 		if (node.treeItem instanceof MongoDocumentTreeItem) {
-			await editorManager.showDocument(new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>node));
+			await editorManager.showDocument(new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>node), 'cosmos-document.json');
 		} else if (node.treeItem instanceof DocDBDocumentTreeItem) {
-			await editorManager.showDocument(new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>node));
+			await editorManager.showDocument(new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>node), 'cosmos-document.json');
 		}
 	});
-	initAsyncCommand(context, 'cosmosDB.openCollection', (node: IAzureParentNode<MongoCollectionTreeItem>) => editorManager.showDocument(new MongoCollectionNodeEditor(node)));
+	initAsyncCommand(context, 'cosmosDB.openCollection', (node: IAzureParentNode<MongoCollectionTreeItem>) => editorManager.showDocument(new MongoCollectionNodeEditor(node), 'cosmos-collection.json'));
 	initAsyncCommand(context, 'cosmosDB.newMongoScrapbook', async () => await util.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
 	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => await MongoCommands.executeCommandFromActiveEditor(connectedDb, context.extensionPath, editorManager));
 	initAsyncCommand(context, 'cosmosDB.update', (filePath: string) => editorManager.updateMatchingNode(filePath));

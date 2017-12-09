@@ -284,13 +284,31 @@
 				},
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename==cosmos-editor.json"
+					"when": "resourceFilename==cosmos-result.json"
+				},
+				{
+					"command": "cosmosDB.update",
+					"when": "resourceFilename==cosmos-document.json"
+				},
+				{
+					"command": "cosmosDB.update",
+					"when": "resourceFilename==cosmos-collection.json"
 				}
 			],
 			"editor/title": [
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename==cosmos-editor.json",
+					"when": "resourceFilename==cosmos-result.json",
+					"group": "navigation"
+				},
+				{
+					"command": "cosmosDB.update",
+					"when": "resourceFilename==cosmos-document.json",
+					"group": "navigation"
+				},
+				{
+					"command": "cosmosDB.update",
+					"when": "resourceFilename==cosmos-collection.json",
 					"group": "navigation"
 				}
 			],

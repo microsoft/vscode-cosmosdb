@@ -1,6 +1,6 @@
 {
 	"name": "vscode-cosmosdb",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
 	"publisher": "ms-azuretools",
 	"displayName": "Azure Cosmos DB",
@@ -284,13 +284,31 @@
 				},
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename==cosmos-editor.json"
+					"when": "resourceFilename==cosmos-result.json"
+				},
+				{
+					"command": "cosmosDB.update",
+					"when": "resourceFilename==cosmos-document.json"
+				},
+				{
+					"command": "cosmosDB.update",
+					"when": "resourceFilename==cosmos-collection.json"
 				}
 			],
 			"editor/title": [
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename==cosmos-editor.json",
+					"when": "resourceFilename==cosmos-result.json",
+					"group": "navigation"
+				},
+				{
+					"command": "cosmosDB.update",
+					"when": "resourceFilename==cosmos-document.json",
+					"group": "navigation"
+				},
+				{
+					"command": "cosmosDB.update",
+					"when": "resourceFilename==cosmos-collection.json",
 					"group": "navigation"
 				}
 			],

@@ -194,7 +194,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 	private async count(args?: any): Promise<string> {
 		const count = await this.collection.count(args);
-		return String(count);
+		return JSON.stringify(count);
 	}
 
 	private stringify(result: any): string {

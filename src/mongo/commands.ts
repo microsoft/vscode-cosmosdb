@@ -32,11 +32,11 @@ export class MongoCommands {
 			}
 
 			if (command.name === 'find') {
-				await editorManager.showDocument(new MongoFindResultEditor(database, command), 'cosmos-collection.json');
+				await editorManager.showDocument(new MongoFindResultEditor(database, command), 'cosmos-result.json');
 			} else {
 				const result = await database.treeItem.executeCommand(command);
 				if (command.name === 'findOne') {
-					await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result), 'cosmos-document.json');
+					await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result), 'cosmos-result.json');
 				} else {
 					await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
 				}

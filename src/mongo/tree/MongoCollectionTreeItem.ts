@@ -125,6 +125,9 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			if (name === 'remove') {
 				return reportProgress(this.remove(args ? parseJSContent(args) : undefined), 'Removing');
 			}
+			if (name === 'count') {
+				return reportProgress(this.count(args ? parseJSContent(args) : undefined), 'Counting');
+			}
 			return null;
 		} catch (error) {
 			return Promise.resolve(error);
@@ -187,6 +190,11 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			.then(({ deletedCount, result }) => {
 				return this.stringify({ deletedCount, result })
 			});
+	}
+
+	private async count(args?: any): Promise<string> {
+		const count = await this.collection.count(args);
+		return String(count);
 	}
 
 	private stringify(result: any): string {

@@ -3,13 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { MessageItem } from "vscode";
+
 export const DefaultBatchSize: number = 50;
 
-export class DialogBoxResponses {
-    static readonly Yes: string = "Yes";
-    static readonly OK: string = "OK";
-    static readonly DontShowAgain: string = "Don't Show Again";
-    static readonly No: string = "No";
+export namespace DialogBoxResponses {
+    export const Yes: MessageItem = { title: "Yes" };
+    export const OK: MessageItem = { title: "OK" };
+    export const DontShowAgain: MessageItem = { title: "Don't Show Again" };
+    export const No: MessageItem = { title: "No" };
+    export const Cancel: MessageItem = { title: "Cancel", isCloseAffordance: true };
 }
 
 export enum Experience {

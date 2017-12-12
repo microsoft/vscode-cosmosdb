@@ -11,6 +11,7 @@ import { DialogBoxResponses } from './constants';
 import { UserCancelledError } from 'vscode-azureextensionui';
 import * as util from './utils/vscodeUtils';
 import { randomUtils } from './utils/randomUtils';
+import { MessageItem } from 'vscode';
 
 export interface ICosmosEditor<T = {}> {
     label: string;
@@ -31,12 +32,9 @@ export class CosmosEditorManager implements vscode.Disposable {
         const document = await vscode.workspace.openTextDocument(localDocPath);
         if (localDocPath in this.fileMap) {
             if (this.fileMap[localDocPath][0].isDirty) {
-                const overwriteFlag = await vscode.window.showWarningMessage(`You are about to overwrite ${fileName}, which has unsaved changes. Do you want to continue?`, DialogBoxResponses.Yes, DialogBoxResponses.No);
-                if (!overwriteFlag) {
+                const overwriteFlag = await vscode.window.showWarningMessage(`You are about to overwrite "${fileName}", which has unsaved changes. Do you want to continue?`, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
+                if (overwriteFlag !== DialogBoxResponses.Yes) {
                     throw new UserCancelledError();
-                }
-                if (overwriteFlag === DialogBoxResponses.No) {
-                    return;
                 }
             }
         }
@@ -51,7 +49,7 @@ export class CosmosEditorManager implements vscode.Disposable {
         if (filePath) {
             await this.updateToCloud(this.fileMap[filePath][1], this.fileMap[filePath][0]);
         } else {
-            await vscode.window.showInformationMessage(`Editing Cosmos DB entities across sessions is currently not supported.`)
+            await vscode.window.showWarningMessage(`Editing Cosmos DB entities across sessions is currently not supported.`)
         }
     }
 
@@ -90,12 +88,12 @@ export class CosmosEditorManager implements vscode.Disposable {
             const dontShow: boolean | undefined = globalState.get(this.dontShowKey);
             if (dontShow !== true) {
                 const message: string = `Saving 'cosmos-editor.json' will update the entity "${editor.label}" to the Cloud.`;
-                const result: string | undefined = await vscode.window.showWarningMessage(message, DialogBoxResponses.OK, DialogBoxResponses.DontShowAgain);
+                const result: MessageItem | undefined = await vscode.window.showWarningMessage(message, DialogBoxResponses.OK, DialogBoxResponses.DontShowAgain, DialogBoxResponses.Cancel);
 
-                if (!result) {
-                    throw new UserCancelledError();
-                } else if (result === DialogBoxResponses.DontShowAgain) {
+                if (result === DialogBoxResponses.DontShowAgain) {
                     await globalState.update(this.dontShowKey, true);
+                } else if (result !== DialogBoxResponses.Yes) {
+                    throw new UserCancelledError();
                 }
             }
 

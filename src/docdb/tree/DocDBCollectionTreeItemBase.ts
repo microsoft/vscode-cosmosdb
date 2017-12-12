@@ -53,7 +53,7 @@ export abstract class DocDBCollectionTreeItemBase extends DocDBTreeItemBase<Retr
 
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
         const message: string = `Are you sure you want to delete collection '${this.label}' and its contents?`;
-        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.No);
+        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
         if (result === DialogBoxResponses.Yes) {
             const client = this.getDocumentClient();
             await new Promise((resolve, reject) => {

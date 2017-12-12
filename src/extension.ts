@@ -20,7 +20,7 @@ import { Reporter, callWithTelemetry } from './utils/telemetry';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { GraphViewsManager } from "./graph/GraphViewsManager";
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
-import { AttachedAccountsTreeItem } from './tree/AttachedServersTreeItem';
+import { AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { GraphCollectionTreeItem } from './graph/tree/GraphCollectionTreeItem';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';

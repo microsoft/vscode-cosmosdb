@@ -205,7 +205,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     }
 
     private static validateMongoConnectionString(value: string): string | undefined {
-        if (!value.startsWith('mongodb://')) {
+        if (!value || !value.startsWith('mongodb://')) {
             return 'Connection string must start with "mongodb://"';
         }
     }

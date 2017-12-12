@@ -66,7 +66,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     private static validateDatabaseName(name: string): string | undefined | null {
-        if (name.length < 1 || name.length > 255) {
+        if (!name || name.length < 1 || name.length > 255) {
             return "Name has to be between 1 and 255 chars long";
         }
         return undefined;

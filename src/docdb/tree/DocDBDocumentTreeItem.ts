@@ -53,7 +53,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
 
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
         const message: string = `Are you sure you want to delete document '${this.label}'?`;
-        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.No);
+        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
         if (result === DialogBoxResponses.Yes) {
             const client = this._collection.getDocumentClient();
             const options = { partitionKey: this.partitionKeyValue || Object() }

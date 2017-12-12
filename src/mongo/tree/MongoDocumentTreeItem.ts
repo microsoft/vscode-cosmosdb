@@ -48,8 +48,8 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     }
 
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
-        const message: string = `Are you sure you want to delete document '${this.label}' ? `;
-        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes);
+        const message: string = `Are you sure you want to delete document '${this.label}'?`;
+        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
         if (result === DialogBoxResponses.Yes) {
             await this._collection.deleteOne({ "_id": this.document._id });
         } else {

@@ -76,7 +76,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 
 	public async deleteTreeItem(_node: IAzureNode): Promise<void> {
 		const message: string = `Are you sure you want to delete database '${this.label}'?`;
-		const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes);
+		const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
 		if (result === DialogBoxResponses.Yes) {
 			const db = await this.getDb();
 			await db.dropDatabase();

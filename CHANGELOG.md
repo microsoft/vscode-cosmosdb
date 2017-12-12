@@ -1,5 +1,9 @@
 # Change Log
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
+## 0.2.2 - 2017-12-04
+### Added
+- View, edit, and persist a Mongo collection
+- Edit and persist the result of a Mongo command
 
 ## 0.2.1 - 2017-11-16
 ### Fixed

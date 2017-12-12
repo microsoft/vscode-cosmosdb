@@ -24,11 +24,22 @@ export class CosmosEditorManager implements vscode.Disposable {
 
     private readonly dontShowKey: string = 'cosmosDB.dontShow.SaveEqualsUpdateToAzure';
 
-    public async showDocument(editor: ICosmosEditor): Promise<void> {
-        const localDocPath = path.join(os.tmpdir(), randomUtils.getRandomHexString(12), 'cosmos-editor.json');
+    public async showDocument(editor: ICosmosEditor, fileName: string): Promise<void> {
+        const localDocPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', fileName);
         await fse.ensureFile(localDocPath);
 
         const document = await vscode.workspace.openTextDocument(localDocPath);
+        if (localDocPath in this.fileMap) {
+            if (this.fileMap[localDocPath][0].isDirty) {
+                const overwriteFlag = await vscode.window.showWarningMessage(`You are about to overwrite ${fileName}, which has unsaved changes. Do you want to continue?`, DialogBoxResponses.Yes, DialogBoxResponses.No);
+                if (!overwriteFlag) {
+                    throw new UserCancelledError();
+                }
+                if (overwriteFlag === DialogBoxResponses.No) {
+                    return;
+                }
+            }
+        }
         this.fileMap[localDocPath] = [document, editor];
         const textEditor = await vscode.window.showTextDocument(document);
         const data = await editor.getData();
@@ -37,11 +48,20 @@ export class CosmosEditorManager implements vscode.Disposable {
 
     public async updateMatchingNode(doc): Promise<void> {
         const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.fsPath, filePath) === '');
-        await this.updateToCloud(this.fileMap[filePath][1], this.fileMap[filePath][0]);
+        if (filePath) {
+            await this.updateToCloud(this.fileMap[filePath][1], this.fileMap[filePath][0]);
+        } else {
+            await vscode.window.showInformationMessage(`Editing Cosmos DB entities across sessions is currently not supported.`)
+        }
     }
 
     public async dispose(): Promise<void> {
-        Object.keys(this.fileMap).forEach(async (key) => await fse.remove(path.dirname(key)));
+        Object.keys(this.fileMap).forEach((key) => {
+            const backupFileName = key.substring(0, key.lastIndexOf('.')) + "-backup.json";
+            fse.ensureFileSync(backupFileName);
+            fse.copySync(key, backupFileName);
+            fse.writeFileSync(key, `// We do not support editing entities across sessions.\n// Reopen the entity or view your previous changes here: ${backupFileName}`);
+        });
     }
 
     private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument): Promise<void> {

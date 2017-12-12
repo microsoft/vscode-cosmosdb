@@ -199,6 +199,15 @@ export class GraphClient {
     this._socket.emitToHost('getPageState');
   }
 
+  public copyParentStyleSheets() {
+    // Copy style sheets from parent to pick up theme colors
+    var head = document.getElementsByTagName("head")[0];
+    var styleSheets = parent.document.getElementsByTagName("style");
+    for (var i = 0; i < styleSheets.length; ++i) {
+      head.insertBefore(styleSheets[i].cloneNode(true), head.firstChild);
+    }
+  }
+
   public query(gremlin: string) {
     this._currentQueryId += 1;
     this._socket.emitToHost("query", this._currentQueryId, gremlin);

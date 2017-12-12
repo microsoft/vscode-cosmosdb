@@ -9,6 +9,7 @@ import { DocumentClient, QueryIterator, CollectionMeta, RetrievedDocument, Colle
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import { IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { DialogBoxResponses } from '../../constants';
+import { makeError } from '../../utils/makeError';
 
 /**
  * This class provides common logic for DocumentDB, Graph, and Table collections
@@ -58,7 +59,7 @@ export abstract class DocDBCollectionTreeItemBase extends DocDBTreeItemBase<Retr
             const client = this.getDocumentClient();
             await new Promise((resolve, reject) => {
                 client.deleteCollection(this.link, function (err) {
-                    err ? reject(new Error(err.body)) : resolve();
+                    err ? reject(makeError(err)) : resolve();
                 });
             });
         } else {

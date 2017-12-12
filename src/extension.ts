@@ -97,18 +97,21 @@ export function activate(context: vscode.ExtensionContext) {
 	initCommand(context, 'cosmosDB.openInPortal', (node: IAzureNode) => node.openInPortal());
 	initAsyncCommand(context, 'cosmosDB.copyConnectionString', (node: IAzureNode<MongoAccountTreeItem | DocDBAccountTreeItemBase>) => copyConnectionString(node));
 
-	vscode.window.setStatusBarMessage('Mongo: Not connected');
 	initAsyncCommand(context, 'cosmosDB.connectMongoDB', async (node: IAzureParentNode<MongoDatabaseTreeItem>) => {
+		if (connectedDb) {
+			connectedDb.treeItem.isConnected = false;
+			connectedDb.refresh();
+		}
 		connectedDb = node;
 		await languageClient.connect(connectedDb.treeItem.connectionString);
-		vscode.window.setStatusBarMessage('Mongo: ' + node.parent.treeItem.label + '/' + connectedDb.treeItem.label);
+		connectedDb.treeItem.isConnected = true;
+		node.refresh();
 	});
 	initAsyncCommand(context, 'cosmosDB.deleteMongoDB', async (node: IAzureNode<MongoDatabaseTreeItem>) => {
 		await node.deleteNode();
 		if (connectedDb && connectedDb.treeItem.id === node.treeItem.id) {
 			connectedDb = null;
 			languageClient.disconnect();
-			vscode.window.setStatusBarMessage('Mongo: Not connected');
 		}
 	});
 	initAsyncCommand(context, 'cosmosDB.deleteMongoCollection', (node: IAzureNode) => node.deleteNode());

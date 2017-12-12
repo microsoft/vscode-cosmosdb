@@ -11,3 +11,10 @@ export class DialogBoxResponses {
     static readonly DontShowAgain: string = "Don't Show Again";
     static readonly No: string = "No";
 }
+
+export enum Experience {
+    MongoDB = 'MongoDB',
+    Graph = 'Graph',
+    Table = 'Table',
+    DocumentDB = 'DocumentDB'
+}

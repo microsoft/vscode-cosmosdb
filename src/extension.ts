@@ -20,7 +20,7 @@ import { Reporter, callWithTelemetry } from './utils/telemetry';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { GraphViewsManager } from "./graph/GraphViewsManager";
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
-import { AttachedServersTreeItem } from './tree/AttachedServersTreeItem';
+import { AttachedAccountsTreeItem } from './tree/AttachedServersTreeItem';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { GraphCollectionTreeItem } from './graph/tree/GraphCollectionTreeItem';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
@@ -45,7 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
 	let graphViewsManager = new GraphViewsManager(context);
 	context.subscriptions.push(this.graphView);
 
-	explorer = new AzureTreeDataProvider(new CosmosDBAccountProvider(), 'cosmosDB.loadMore', [new AttachedServersTreeItem(context.globalState)]);
+	explorer = new AzureTreeDataProvider(new CosmosDBAccountProvider(), 'cosmosDB.loadMore', [new AttachedAccountsTreeItem(context.globalState)]);
 	context.subscriptions.push(explorer);
 	context.subscriptions.push(vscode.window.registerTreeDataProvider('cosmosDBExplorer', explorer));
 
@@ -61,17 +61,17 @@ export function activate(context: vscode.ExtensionContext) {
 			explorer.refresh();
 		}
 	});
-	initAsyncCommand(context, 'cosmosDB.attachMongoServer', async () => {
+	initAsyncCommand(context, 'cosmosDB.attachDatabaseAccount', async () => {
 		const rootNodes = await explorer.getChildren();
-		const attachedNode = <IAzureParentNode<AttachedServersTreeItem>>rootNodes.find((node) => node.treeItem instanceof AttachedServersTreeItem);
+		const attachedNode = <IAzureParentNode<AttachedAccountsTreeItem>>rootNodes.find((node) => node.treeItem instanceof AttachedAccountsTreeItem);
 		if (attachedNode) {
-			await attachedNode.treeItem.attachNewServer();
+			await attachedNode.treeItem.attachNewAccount();
 			explorer.refresh(attachedNode);
 		}
 	});
 	initCommand(context, 'cosmosDB.refresh', (node: IAzureNode) => explorer.refresh(node));
-	initAsyncCommand(context, 'cosmosDB.removeMongoServer', async (node: IAzureNode) => {
-		const attachedNode = <IAzureParentNode<AttachedServersTreeItem>>node.parent;
+	initAsyncCommand(context, 'cosmosDB.detachDatabaseAccount', async (node: IAzureNode) => {
+		const attachedNode = <IAzureParentNode<AttachedAccountsTreeItem>>node.parent;
 		if (attachedNode) {
 			await attachedNode.treeItem.detach(node.treeItem.id);
 			explorer.refresh(attachedNode);

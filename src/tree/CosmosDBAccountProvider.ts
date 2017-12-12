@@ -11,8 +11,7 @@ import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import DocumentdbManagementClient = require("azure-arm-documentdb");
 import { DatabaseAccountsListResult, DatabaseAccount, DatabaseAccountListKeysResult } from 'azure-arm-documentdb/lib/models';
-
-type Experience = "MongoDB" | "DocumentDB" | "Graph" | "Table";
+import { Experience } from '../constants';
 
 export class CosmosDBAccountProvider implements IChildProvider {
     public hasMoreChildren(): boolean {

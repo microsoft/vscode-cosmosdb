@@ -14,6 +14,15 @@ import * as gremlin from "gremlin";
 import { removeDuplicatesById } from "../utils/array";
 import { GraphViewServerSocket } from "./GraphViewServerSocket";
 import { Socket } from 'net';
+import { callWithTelemetry } from '../utils/telemetry';
+
+class GremlinParseError extends Error {
+  constructor(err: Error) {
+    super(err.message);
+  }
+}
+
+class EdgeQueryError extends Error { }
 
 function truncateWithEllipses(s: string, maxCharacters) {
   if (s && s.length > maxCharacters) {
@@ -124,40 +133,54 @@ export class GraphViewServer extends EventEmitter {
 
   private async queryAndShowResults(queryId: number, gremlinQuery: string): Promise<void> {
     var results: GraphResults | undefined;
+    const start = Date.now();
 
     try {
-      this._previousPageState.query = gremlinQuery;
-      this._previousPageState.results = undefined;
-      this._previousPageState.errorMessage = undefined;
-      this._previousPageState.isQueryRunning = true;
-      this._previousPageState.runningQueryId = queryId;
+      await callWithTelemetry("cosmosDB.gremlinQuery", async (telemetryProperties, measurements) => {
+        this._previousPageState.query = gremlinQuery;
+        this._previousPageState.results = undefined;
+        this._previousPageState.errorMessage = undefined;
+        this._previousPageState.isQueryRunning = true;
+        this._previousPageState.runningQueryId = queryId;
 
-      // Full query results - may contain vertices and/or edges and/or other things
-      var fullResults = await this.executeQuery(queryId, gremlinQuery);
+        measurements.gremlinLength = gremlinQuery.length;
+        measurements.approxGremlinSteps = gremlinQuery.match("[.]").length;
+        telemetryProperties.isDefaultQuery = gremlinQuery === "g.V()" ? "true" : "false";
 
-      let vertices = this.getVertices(fullResults);
-      let { limitedVertices, countUniqueVertices } = this.limitVertices(vertices);
-      results = {
-        fullResults,
-        countUniqueVertices: countUniqueVertices,
-        limitedVertices: limitedVertices,
-        countUniqueEdges: 0, // Fill in later
-        limitedEdges: []     // Fill in later
-      };
-      this._previousPageState.results = results;
+        // Full query results - may contain vertices and/or edges and/or other things
+        var fullResults = await this.executeQuery(queryId, gremlinQuery);
+        measurements.mainQueryDuration = (Date.now() - start) / 1000;
+        const edgesStart = Date.now();
 
-      if (results.limitedVertices.length) {
-        try {
-          // If it returned any vertices, we need to also query for edges
-          var edges = await this.queryEdges(queryId, results.limitedVertices);
-          let { countUniqueEdges, limitedEdges } = this.limitEdges(limitedVertices, edges);
+        let vertices = this.getVertices(fullResults);
+        let { limitedVertices, countUniqueVertices } = this.limitVertices(vertices);
+        results = {
+          fullResults,
+          countUniqueVertices: countUniqueVertices,
+          limitedVertices: limitedVertices,
+          countUniqueEdges: 0, // Fill in later
+          limitedEdges: []     // Fill in later
+        };
+        measurements.countUniqueVertices = countUniqueVertices;
+        measurements.limitedVertices = limitedVertices.length;
+        this._previousPageState.results = results;
 
-          results.countUniqueEdges = countUniqueEdges;
-          results.limitedEdges = limitedEdges;
-        } catch (edgesError) {
-          throw new Error(`Error querying for edges: ${edgesError.message || edgesError}`);
+        if (results.limitedVertices.length) {
+          try {
+            // If it returned any vertices, we need to also query for edges
+            var edges = await this.queryEdges(queryId, results.limitedVertices);
+            let { countUniqueEdges, limitedEdges } = this.limitEdges(limitedVertices, edges);
+
+            results.countUniqueEdges = countUniqueEdges;
+            results.limitedEdges = limitedEdges;
+            measurements.countUniqueEdges = countUniqueEdges;
+            measurements.limitedEdges = limitedEdges.length;
+            measurements.edgesQueryDuration = (Date.now() - edgesStart) / 1000;
+          } catch (edgesError) {
+            throw new EdgeQueryError(`Error querying for edges: ${edgesError.message || edgesError}`);
+          }
         }
-      }
+      });
     } catch (error) {
       // If there's an error, send it to the client to display
       var message = this.removeErrorCallStack(error.message || error.toString());
@@ -273,6 +296,8 @@ export class GraphViewServer extends EventEmitter {
           } else {
             continue;
           }
+        } else if (this.isParseError(err)) {
+          err = new GremlinParseError(err);
         }
 
         throw err;
@@ -317,6 +342,12 @@ export class GraphViewServer extends EventEmitter {
     });
   }
 
+  private isParseError(err: any): boolean {
+    if (err.message) {
+      return !!err.message.match(/ScriptEvaluationError/);
+    }
+  }
+
   private isErrorRetryable(err: any) {
     // Unfortunately the gremlin server aggregates errors so we can't simply query for status
     if (err.message) {
@@ -329,7 +360,7 @@ export class GraphViewServer extends EventEmitter {
     return false;
   }
 
-  private handleGetPageState() {
+  private handleGetPageState(): void {
     this.log('getPageState');
 
     if (this._previousPageState.query) {

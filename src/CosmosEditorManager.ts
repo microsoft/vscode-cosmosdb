@@ -9,7 +9,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { DialogBoxResponses } from './constants';
 import { UserCancelledError } from 'vscode-azureextensionui';
-import * as util from './util';
+import * as util from './utils/vscodeUtils';
 import { randomUtils } from './utils/randomUtils';
 
 export interface ICosmosEditor<T = {}> {

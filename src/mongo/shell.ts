@@ -5,7 +5,7 @@
 import * as cp from 'child_process';
 import * as vscode from 'vscode';
 import * as os from 'os';
-import { IDisposable, toDisposable, dispose } from './../util';
+import { IDisposable, toDisposable, dispose } from '../utils/vscodeUtils';
 import { EventEmitter, window } from 'vscode';
 
 export class Shell {

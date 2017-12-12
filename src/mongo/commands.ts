@@ -10,7 +10,7 @@ import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
 import { mongoLexer } from './grammar/mongoLexer';
-import * as util from './../util';
+import * as vscodeUtil from './../utils/vscodeUtils';
 import { CosmosEditorManager } from '../CosmosEditorManager';
 import { IAzureParentNode } from 'vscode-azureextensionui';
 import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
@@ -38,7 +38,7 @@ export class MongoCommands {
 				if (command.name === 'findOne') {
 					await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result), 'cosmos-result.json');
 				} else {
-					await util.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
+					await vscodeUtil.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
 				}
 			}
 		} else {

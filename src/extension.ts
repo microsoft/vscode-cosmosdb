@@ -7,16 +7,16 @@
 
 import * as vscode from 'vscode';
 import * as copypaste from 'copy-paste';
-import * as util from "./util";
+import * as vscodeUtil from './utils/vscodeUtils';
 import * as cpUtil from './utils/cp';
 import { AzureAccount } from './azure-account.api';
-import { ErrorData } from './ErrorData';
+import { ErrorData } from './utils/ErrorData';
 import { CosmosDBCommands } from './commands';
 import { AzureTreeDataProvider, IAzureNode, IAzureParentNode, UserCancelledError } from 'vscode-azureextensionui';
 import { MongoCommands } from './mongo/commands';
 import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
 import MongoDBLanguageClient from './mongo/languageClient';
-import { Reporter } from './telemetry';
+import { Reporter, callWithTelemetry } from './utils/telemetry';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { GraphViewsManager } from "./graph/GraphViewsManager";
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
@@ -52,7 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const editorManager: CosmosEditorManager = new CosmosEditorManager();
 	context.subscriptions.push(editorManager);
 
-	context.subscriptions.push(util.getOutputChannel());
+	context.subscriptions.push(vscodeUtil.getOutputChannel());
 
 	// Commands
 	initAsyncCommand(context, 'cosmosDB.createAccount', async () => {
@@ -126,7 +126,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	initAsyncCommand(context, 'cosmosDB.openCollection', (node: IAzureParentNode<MongoCollectionTreeItem>) => editorManager.showDocument(new MongoCollectionNodeEditor(node), 'cosmos-collection.json'));
-	initAsyncCommand(context, 'cosmosDB.newMongoScrapbook', async () => await util.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
+	initAsyncCommand(context, 'cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
 	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => await MongoCommands.executeCommandFromActiveEditor(connectedDb, context.extensionPath, editorManager));
 	initAsyncCommand(context, 'cosmosDB.update', (filePath: string) => editorManager.updateMatchingNode(filePath));
 	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
@@ -156,21 +156,13 @@ function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, c
 
 function wrapAsyncCallback(callbackId, callback: (...args: any[]) => Promise<any>): (...args: any[]) => Promise<any> {
 	return async (...args: any[]) => {
-		const start = Date.now();
-		let properties: { [key: string]: string; } = {};
-		properties.result = 'Succeeded';
-		let errorData: ErrorData | undefined = null;
-		const output = util.getOutputChannel();
+		const output = vscodeUtil.getOutputChannel();
 
 		try {
-			await callback(...args);
+			await callWithTelemetry(callbackId, (telemetryProperties, measurements) => callback(...args));
 		} catch (err) {
-			if (err instanceof UserCancelledError) {
-				properties.result = 'Canceled';
-			}
-			else {
-				properties.result = 'Failed';
-				errorData = new ErrorData(err);
+			if (!(err instanceof UserCancelledError)) {
+				let errorData = new ErrorData(err);
 				output.appendLine(errorData.message);
 				if (errorData.message.includes("\n")) {
 					output.show();
@@ -180,13 +172,6 @@ function wrapAsyncCallback(callbackId, callback: (...args: any[]) => Promise<any
 					vscode.window.showErrorMessage(errorData.message);
 				}
 			}
-		} finally {
-			if (errorData) {
-				properties.error = errorData.errorType;
-				properties.errorMessage = errorData.message;
-			}
-			const end = Date.now();
-			util.sendTelemetry(callbackId, properties, { duration: (end - start) / 1000 });
 		}
 	};
 }

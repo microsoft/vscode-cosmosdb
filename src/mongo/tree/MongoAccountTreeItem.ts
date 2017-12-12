@@ -39,8 +39,10 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
         let db: Db | undefined;
         try {
             db = await MongoClient.connect(this.connectionString);
-            const result: { databases: { name }[] } = await db.admin().listDatabases();
-            return result.databases.map(database => new MongoDatabaseTreeItem(database.name, this.connectionString, this.id));
+            const result: { databases: IDatabaseInfo[] } = await db.admin().listDatabases();
+            return result.databases
+                .filter((database: IDatabaseInfo) => !(database.name && database.name.toLowerCase() === "admin" && database.empty)) // Filter out the 'admin' database if it's empty
+                .map(database => new MongoDatabaseTreeItem(database.name, this.connectionString, this.id));
         } catch (error) {
             return [{
                 id: 'cosmosMongoError',
@@ -76,4 +78,9 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
 
         throw new UserCancelledError();
     }
+}
+
+interface IDatabaseInfo {
+    name?: string;
+    empty?: boolean;
 }

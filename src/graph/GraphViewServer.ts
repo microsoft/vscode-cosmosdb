@@ -144,7 +144,8 @@ export class GraphViewServer extends EventEmitter {
         this._previousPageState.runningQueryId = queryId;
 
         measurements.gremlinLength = gremlinQuery.length;
-        measurements.approxGremlinSteps = gremlinQuery.match("[.]").length;
+        let stepMatches = gremlinQuery.match("[.]");
+        measurements.approxGremlinSteps = stepMatches ? stepMatches.length : 0;
         telemetryProperties.isDefaultQuery = gremlinQuery === "g.V()" ? "true" : "false";
 
         // Full query results - may contain vertices and/or edges and/or other things

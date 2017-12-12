@@ -21,6 +21,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	private readonly _databaseName: string;
 	private readonly _accountConnectionString: string;
 	private readonly _parentId: string;
+	public isConnected: boolean = false;
 
 	constructor(databaseName: string, accountConnectionString: string, parentId: string) {
 		this._databaseName = databaseName;
@@ -31,6 +32,9 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	}
 
 	public get label(): string {
+		if (this.isConnected) {
+			return this._databaseName + " (Connected)";
+		}
 		return this._databaseName;
 	}
 

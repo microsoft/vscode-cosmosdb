@@ -100,11 +100,12 @@ export function activate(context: vscode.ExtensionContext) {
 	initAsyncCommand(context, 'cosmosDB.connectMongoDB', async (node: IAzureParentNode<MongoDatabaseTreeItem>) => {
 		if (connectedDb) {
 			connectedDb.treeItem.isConnected = false;
+			connectedDb.refresh();
 		}
 		connectedDb = node;
 		await languageClient.connect(connectedDb.treeItem.connectionString);
 		connectedDb.treeItem.isConnected = true;
-		connectedDb.refresh();
+		node.refresh();
 	});
 	initAsyncCommand(context, 'cosmosDB.deleteMongoDB', async (node: IAzureNode<MongoDatabaseTreeItem>) => {
 		await node.deleteNode();

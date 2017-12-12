@@ -37,9 +37,9 @@
 	"activationEvents": [
 		"onView:cosmosDBExplorer",
 		"onCommand:cosmosDB.executeMongoCommand",
-		"onCommand:cosmosDB.attachMongoServer",
+		"onCommand:cosmosDB.attachDatabaseAccount",
 		"onCommand:cosmosDB.createAccount",
-		"onCommand:cosmosDB.removeMongoServer",
+		"onCommand:cosmosDB.detachDatabaseAccount",
 		"onCommand:cosmosDB.createMongoDatabase",
 		"onCommand:cosmosDB.createMongoCollection",
 		"onCommand:cosmosDB.createMongoDocument",
@@ -112,8 +112,8 @@
 			},
 			{
 				"category": "Cosmos DB",
-				"command": "cosmosDB.attachMongoServer",
-				"title": "Attach Mongo Server",
+				"command": "cosmosDB.attachDatabaseAccount",
+				"title": "Attach Database Account",
 				"icon": {
 					"light": "resources/icons/light/Connect.svg",
 					"dark": "resources/icons/dark/Connect.svg"
@@ -169,9 +169,9 @@
 				"title": "Create Graph"
 			},
 			{
-				"category": "MongoDB",
-				"command": "cosmosDB.removeMongoServer",
-				"title": "Remove Server"
+				"category": "Cosmos DB",
+				"command": "cosmosDB.detachDatabaseAccount",
+				"title": "Detach"
 			},
 			{
 				"category": "MongoDB",
@@ -324,7 +324,7 @@
 					"group": "navigation"
 				},
 				{
-					"command": "cosmosDB.attachMongoServer",
+					"command": "cosmosDB.attachDatabaseAccount",
 					"when": "view == cosmosDBExplorer",
 					"group": "navigation"
 				},
@@ -337,7 +337,7 @@
 			"view/item/context": [
 				{
 					"command": "cosmosDB.createMongoDatabase",
-					"when": "view == cosmosDBExplorer && viewItem == mongoServer"
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
 				},
 				{
 					"command": "cosmosDB.createMongoDatabase",
@@ -364,16 +364,36 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
 				},
 				{
+					"command": "cosmosDB.createDocDBDatabase",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
+				},
+				{
 					"command": "cosmosDB.createGraphDatabase",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+				},
+				{
+					"command": "cosmosDB.createGraphDatabase",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
 				},
 				{
 					"command": "cosmosDB.createGraph",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
 				},
 				{
-					"command": "cosmosDB.removeMongoServer",
-					"when": "view == cosmosDBExplorer && viewItem == mongoServer"
+					"command": "cosmosDB.detachDatabaseAccount",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
+				},
+				{
+					"command": "cosmosDB.detachDatabaseAccount",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
+				},
+				{
+					"command": "cosmosDB.detachDatabaseAccount",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
+				},
+				{
+					"command": "cosmosDB.detachDatabaseAccount",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccountAttached"
 				},
 				{
 					"command": "cosmosDB.connectMongoDB",
@@ -412,8 +432,8 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraph"
 				},
 				{
-					"command": "cosmosDB.attachMongoServer",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedServers"
+					"command": "cosmosDB.attachDatabaseAccount",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccounts"
 				},
 				{
 					"command": "cosmosDB.openInPortal",
@@ -440,6 +460,18 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
 				},
 				{
+					"command": "cosmosDB.copyConnectionString",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+				},
+				{
+					"command": "cosmosDB.copyConnectionString",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+				},
+				{
+					"command": "cosmosDB.copyConnectionString",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
+				},
+				{
 					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem == azureSubscription"
 				},
@@ -461,7 +493,15 @@
 				},
 				{
 					"command": "cosmosDB.refresh",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
+				},
+				{
+					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+				},
+				{
+					"command": "cosmosDB.refresh",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
 				},
 				{
 					"command": "cosmosDB.refresh",
@@ -469,7 +509,7 @@
 				},
 				{
 					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == mongoServer"
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
 				},
 				{
 					"command": "cosmosDB.refresh",

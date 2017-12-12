@@ -11,18 +11,17 @@ import { MongoDatabaseTreeItem } from './MongoDatabaseTreeItem';
 
 export class MongoAccountTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = "cosmosDBMongoServer";
-    public readonly contextValue: string
+    public readonly contextValue: string = MongoAccountTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
     public readonly id: string;
     public readonly label: string;
 
     public readonly connectionString: string;
 
-    constructor(id: string, label: string, connectionString: string, contextValue: string = MongoAccountTreeItem.contextValue) {
+    constructor(id: string, label: string, connectionString: string) {
         this.id = id;
         this.label = label;
         this.connectionString = connectionString;
-        this.contextValue = contextValue;
     }
 
     public get iconPath(): any {

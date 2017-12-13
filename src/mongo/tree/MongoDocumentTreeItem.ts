@@ -66,7 +66,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
         const filter: object = { _id: new ObjectID(newDocument._id) };
         const result = await collection.updateOne(filter, _.omit(newDocument, '_id'));
         if (result.upsertedCount != 1) {
-            throw new Error("Document not found. Please check if ID exists.");
+            throw new Error(`Failed to update document with _id ${newDocument._id}.`);
         }
         return newDocument;
     }

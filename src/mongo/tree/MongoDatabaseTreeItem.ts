@@ -63,6 +63,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		const collectionName = await vscode.window.showInputBox({
 			placeHolder: "Collection Name",
 			prompt: "Enter the name of the collection",
+			validateInput: validateCollectionName,
 			ignoreFocusOut: true
 		});
 
@@ -144,6 +145,21 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 				return shell.useDatabase(this._databaseName).then(() => shell);
 			}, error => vscode.window.showErrorMessage(error));
 	}
+}
+
+export function validateCollectionName(collectionName: string): string | undefined | null {
+	// https://docs.mongodb.com/manual/reference/limits/#Restriction-on-Collection-Names
+	if (collectionName.length === 0) {
+		return "Collection name cannot be empty";
+	}
+	const systemPrefix = "system."
+	if (collectionName.startsWith(systemPrefix)) {
+		return `The "${systemPrefix}" prefix is reserved for internal use. Please refrain from using it`;
+	}
+	if (/[$]/.test(collectionName)) {
+		return "Collection name cannot contain $";
+	}
+	return;
 }
 
 function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {

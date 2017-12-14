@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { MongoClient, Db } from 'mongodb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
-import { MongoDatabaseTreeItem } from './MongoDatabaseTreeItem';
+import { MongoDatabaseTreeItem, validateCollectionName } from './MongoDatabaseTreeItem';
 
 export class MongoAccountTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = "cosmosDBMongoServer";
@@ -66,7 +66,8 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
             const collectionName = await vscode.window.showInputBox({
                 placeHolder: 'Collection Name',
                 prompt: 'A collection is required to create a database',
-                ignoreFocusOut: true
+                ignoreFocusOut: true,
+                validateInput: validateCollectionName
             });
             if (collectionName) {
                 showCreatingNode(databaseName);
@@ -86,7 +87,7 @@ function validateDatabaseName(database: string): string | undefined | null {
     // https://docs.mongodb.com/manual/reference/limits/#naming-restrictions
     const min = 1;
     const max = 63;
-    if(!database || database.length < min || database.length > max) {
+    if (!database || database.length < min || database.length > max) {
         return `The name must be between ${min} and ${max} characters.`;
     }
     if (/[/\\. "$]/.test(database)) {

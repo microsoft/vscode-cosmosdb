@@ -595,6 +595,11 @@
 												"description": "The vertex color, either 'auto', a CSS color name or a CSS RGB value (e.g., '#0088FF')",
 												"pattern": "^(auto)|([a-zA-Z]+)|(#[0-9a-fA-F]{3})|(#[0-9a-fA-F]{6})$",
 												"default": "auto"
+											},
+											"showLabel": {
+												"type": "boolean",
+												"description": "If true, the label will be displayed along with the specified display property",
+												"default": false
 											}
 										}
 									}
@@ -609,7 +614,8 @@
 									"displayProperty": [
 										"name"
 									],
-									"color": "auto"
+									"color": "auto",
+									"showLabel": false
 								},
 								{
 									"labels": [
@@ -620,8 +626,7 @@
 										"lastName",
 										"firstName",
 										"name"
-									],
-									"color": "auto"
+									]
 								}
 							]
 						}

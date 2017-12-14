@@ -559,6 +559,8 @@ class GraphView {
       let candidate = propertyCandidates[i];
       if (candidate === "id") {
         return v.id;
+      } else if (candidate === "label" && v.label) {
+        return v.label;
       } else {
         if (v.properties && candidate in v.properties) {
           let property = v.properties[candidate][0];

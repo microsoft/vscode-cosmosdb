@@ -5,7 +5,7 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 ### Added
 - Graph:
   - Customize the color and display text of vertices through VS Code [settings](README.md#graphSettings)
-  - Automatically choose vertex color based on label
+  - By default display vertex IDs and labels and choose vertex color based on label
   - Honor current VS Code theme
 
 ### Fixed

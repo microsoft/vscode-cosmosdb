@@ -20,6 +20,7 @@ const charge = -3000;
 const arrowDistanceFromVertex = 10;
 const vertexRadius = 8; // from css
 const paddingBetweenVertexAndEdge = 3;
+const AutoColor = "auto";
 
 let htmlElements: {
   debugLog: HTMLTextAreaElement,
@@ -36,15 +37,6 @@ let htmlElements: {
 };
 
 type State = "empty" | "querying" | "error" | "json-results" | "graph-results";
-
-type PageState = {
-  results: GraphResults,
-  isQueryRunning: boolean,
-  errorMessage?: string,
-  query: string,
-  view: 'json' | 'graph',
-  runningQueryId: number
-};
 
 window.onerror = (message) => {
   logToUI("ERROR: " + message);
@@ -147,7 +139,7 @@ export class GraphClient {
       this.log("disconnect");
     });
 
-    this._socket.onServerMessage("setPageState", (pageState: PageState) => {
+    this._socket.onServerMessage("setPageState", (pageState: PageState, viewSettings: ViewSettings) => {
       htmlElements.queryInput.value = pageState.query;
 
       if (pageState.isQueryRunning) {
@@ -157,7 +149,7 @@ export class GraphClient {
       }
 
       if (!pageState.errorMessage) {
-        this.showResults(pageState.results);
+        this.showResults(pageState.results, viewSettings);
       } else {
         this.setStateError(pageState.errorMessage);
       }
@@ -174,13 +166,13 @@ export class GraphClient {
       d3.select(htmlElements.title).text(title);
     });
 
-    this._socket.onServerMessage("showResults", (queryId: number, results: GraphResults): void => {
+    this._socket.onServerMessage("showResults", (queryId: number, results: GraphResults, viewSettings: ViewSettings): void => {
       this.log(`Received results for query ${queryId}`);
 
       if (queryId !== this._currentQueryId) {
         this.log("  Ignoring results, out of date");
       } else {
-        this.showResults(results);
+        this.showResults(results, viewSettings);
       }
     });
 
@@ -276,7 +268,7 @@ export class GraphClient {
     d3.select("#states").attr("class", fullState);
   }
 
-  private showResults(results: GraphResults): void {
+  private showResults(results: GraphResults, viewSettings: ViewSettings): void {
     // queryResults may contain any type of data, not just vertices or edges
 
     // Always show the full original results JSON
@@ -289,7 +281,7 @@ export class GraphClient {
     }
 
     this.setStateResults(true);
-    this._graphView.display(results.countUniqueVertices, results.limitedVertices, results.countUniqueEdges, results.limitedEdges);
+    this._graphView.display(results.countUniqueVertices, results.limitedVertices, results.countUniqueEdges, results.limitedEdges, viewSettings);
   }
 
   private splitVerticesAndEdges(nodes: any[]): [GraphVertex[], GraphEdge[]] {
@@ -305,14 +297,17 @@ class GraphView {
   private _countUniqueEdges: number;
   private _edges: GraphEdge[];
   private _force: any;
+  private _defaultColorsPerLabel = new Map<string, string>();
+  private _colorGenerator: (i: number) => string = d3.scale.category20();
 
-  public display(countUniqueVertices: number, vertices: GraphVertex[], countUniqueEdges: number, edges: GraphEdge[]) {
+  public display(countUniqueVertices: number, vertices: GraphVertex[], countUniqueEdges: number, edges: GraphEdge[], viewSettings: ViewSettings) {
     this._countUniqueVertices = countUniqueVertices;
     this._vertices = vertices;
     this._countUniqueEdges = countUniqueEdges;
     this._edges = edges;
 
     this.clear();
+    this.generateDefaultColors(vertices);
 
     // Set up nodes and links for the force simulation
     let nodes: ForceNode[] = vertices
@@ -410,10 +405,7 @@ class GraphView {
       .attr("x", "10px")
       .attr("y", "2px")
       .attr('font-size', 13)
-      .text((d: ForceNode) => {
-        let displayText = d.vertex.id;
-        return displayText;
-      })
+      .text((d: ForceNode) => this.getVertexDisplayText(d.vertex, viewSettings))
       ;
 
     // Nodes last so that they're always and top to be able to be dragged
@@ -423,6 +415,7 @@ class GraphView {
       .attr("class", "vertex")
       .attr("cx", (d: ForceNode) => d.x)
       .attr("cy", (d: ForceNode) => d.y)
+      .style("fill", (d: ForceNode) => this.getVertexColor(d.vertex, viewSettings))
       .call(vertexDrag)
       ;
 
@@ -459,6 +452,19 @@ class GraphView {
     this._vertices = [];
     this._edges = [];
     d3.select(htmlElements.graphSection).select("svg").selectAll(".vertex, .edge, .label").remove();
+  }
+
+  private generateDefaultColors(vertices: GraphVertex[]): void {
+    // Keep previous entries, changing colors between queries would be confusing
+
+    for (let i = 0; i < vertices.length; ++i) {
+      let label = vertices[i].label;
+      if (!this._defaultColorsPerLabel.get(label)) {
+        let colorIndex = this._defaultColorsPerLabel.size;
+        let newColor = this._colorGenerator(colorIndex);
+        this._defaultColorsPerLabel.set(label, newColor);
+      }
+    }
   }
 
   private static calculateClosestPIOver2(angle: number): number {
@@ -512,4 +518,59 @@ class GraphView {
       + "S" + d1.x + "," + d1.y
       + " " + ux + "," + uy;
   }
+
+  private findVertexPropertySetting(v: GraphVertex, viewSettings: ViewSettings, settingProperty: keyof VertexSettingsGroup): any | undefined {
+    let label = v.label;
+
+    // Only default graph settings currently supported
+    let graphSettings: GraphSettingsGroup = viewSettings && viewSettings.default || {};
+    let groups: VertexSettingsGroup[] = graphSettings.vertices || [];
+
+    // Check groups which specify a label filter first
+    for (let i = 0; i < groups.length; ++i) {
+      let group = groups[i];
+      if (group.labels && group.labels.indexOf(label) >= 0) {
+        // Label applies to this group
+        let value = group[settingProperty];
+        if (value) {
+          return value;
+        }
+      }
+    }
+
+    let defaultGroup: VertexSettingsGroup = groups.find(group => !group.labels || !group.labels.length);
+    return defaultGroup && defaultGroup[settingProperty];
+  }
+
+  private getVertexColor(v: GraphVertex, viewSettings: ViewSettings): string {
+    let color = this.findVertexPropertySetting(v, viewSettings, "color");
+    if (color && color != AutoColor) {
+      return color;
+    }
+
+    // Default is to use "auto" behavior and choose color based on label
+    return this._defaultColorsPerLabel.get(v.label);
+  }
+
+  private getVertexDisplayText(v: GraphVertex, viewSettings: ViewSettings): string {
+    let propertyCandidates = this.findVertexPropertySetting(v, viewSettings, "displayProperty") || [];
+    // Find the first specified property that exists and has a non-empty value
+    for (let i = 0; i < propertyCandidates.length; ++i) {
+      let candidate = propertyCandidates[i];
+      if (candidate === "id") {
+        return v.id;
+      } else {
+        if (v.properties && candidate in v.properties) {
+          let property = v.properties[candidate][0];
+          if (property && property.value) {
+            return property.value;
+          }
+        }
+      }
+    }
+
+    // Otherwise use "id"
+    return v.id;
+  }
+
 }

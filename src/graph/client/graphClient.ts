@@ -22,8 +22,6 @@ const vertexRadius = 8; // from css
 const paddingBetweenVertexAndEdge = 3;
 const AutoColor = "auto";
 
-const defaultVertexFill = "lightblue";
-
 let htmlElements: {
   debugLog: HTMLTextAreaElement,
   graphRadio: HTMLInputElement,

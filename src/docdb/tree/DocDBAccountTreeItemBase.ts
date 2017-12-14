@@ -69,6 +69,12 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         if (!name || name.length < 1 || name.length > 255) {
             return "Name has to be between 1 and 255 chars long";
         }
+        if (name.endsWith(" ")) {
+            return "Name may not end with space";
+        }
+        if (/[/\\?#]/.test(name)) {
+            return `Name cannot contain the characters '\\', '/', '#', '?'`;
+        }
         return undefined;
     }
 }

@@ -93,7 +93,7 @@ function validateDatabaseName(database: string): string | undefined | null {
     if (/[/\\. "$]/.test(database)) {
         return "The name cannot contain these characters - `/\\. \"$`"
     }
-    return null;
+    return undefined;
 }
 
 interface IDatabaseInfo {

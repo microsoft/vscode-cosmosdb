@@ -122,7 +122,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         if (/^[#?\\]*$/.test(key)) {
             return "Cannot contain these characters - ?,#,\\, etc."
         }
-        return null;
+        return undefined;
     }
 
     private static validateThroughput(input: string): string | undefined | null {
@@ -134,6 +134,16 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         } catch (err) {
             return "Input must be a number"
         }
-        return null;
+        return undefined;
+    }
+
+    private static validateCollectionName(name: string): string | undefined | null {
+        if (name.endsWith(" ")) {
+            return "Name may not end with space";
+        }
+        if (/[/\\?#]/.test(name)) {
+            return `Name cannot contain the characters '\\', '/', '#', '?'`;
+        }
+        return undefined;
     }
 }

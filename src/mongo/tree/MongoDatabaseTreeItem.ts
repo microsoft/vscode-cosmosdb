@@ -159,7 +159,7 @@ export function validateCollectionName(collectionName: string): string | undefin
 	if (/[$]/.test(collectionName)) {
 		return "Collection name cannot contain $";
 	}
-	return;
+	return undefined;
 }
 
 function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {

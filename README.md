@@ -36,7 +36,7 @@
 
 ![Query Graphs](resources/Graph.gif)
 
-- Configure the user setting `mongocosmosDB.graph.viewSettings` to customize which properties to display and which colors to use based on vertex label.
+- Configure the user setting `cosmosDB.graph.viewSettings` to customize which properties to display and which colors to use based on vertex label.
 ```javascript
     "cosmosDB.graph.viewSettings": {
         "default": {

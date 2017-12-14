@@ -21,6 +21,7 @@ export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
 
     private _hasMoreChildren: boolean = true;
     private _iterator: QueryIterator<T> | undefined;
+    private _batchSize: number = DefaultBatchSize;
 
     constructor(documentEndpoint: string, masterKey: string) {
         this.documentEndpoint = documentEndpoint;
@@ -44,11 +45,12 @@ export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
             this._hasMoreChildren = true;
             const client = this.getDocumentClient();
             this._iterator = await this.getIterator(client, { maxItemCount: DefaultBatchSize });
+            this._batchSize = DefaultBatchSize;
         }
 
         const resources: T[] = [];
         let count: number = 0;
-        while (count < DefaultBatchSize) {
+        while (count < this._batchSize) {
             const resource: T | undefined = await new Promise<T | undefined>((resolve, reject) => {
                 this._iterator.nextItem((error: QueryError, resource: T | undefined) => {
                     error ? reject(error) : resolve(resource);
@@ -62,6 +64,7 @@ export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
                 count += 1;
             }
         }
+        this._batchSize *= 2;
 
         return resources.map((resource: T) => this.initChild(resource));
     }

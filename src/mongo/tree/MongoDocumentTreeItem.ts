@@ -64,7 +64,10 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
 
     public static async update(collection: Collection, newDocument: IMongoDocument): Promise<IMongoDocument> {
         const filter: object = { _id: new ObjectID(newDocument._id) };
-        await collection.updateOne(filter, _.omit(newDocument, '_id'));
+        const result = await collection.updateOne(filter, _.omit(newDocument, '_id'));
+        if (result.upsertedCount != 1) {
+            throw new Error(`Failed to update document with _id '${newDocument._id}'.`);
+        }
         return newDocument;
     }
 }

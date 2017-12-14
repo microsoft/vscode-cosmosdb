@@ -1,5 +1,16 @@
 # Change Log
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
+
+## 0.3.0 - 2017-12-15
+### Added
+- Graph:
+  - Customize the color and display text of vertices through VS Code [settings](README.md#graphSettings)
+  - Automatically choose vertex color based on label
+  - Honor current VS Code theme
+
+### Fixed
+- [Bugs fixed](https://github.com/Microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A%220.3.0%22+is%3Aclosed+label%3Abug)
+
 ## 0.2.2 - 2017-12-04
 ### Added
 - View, edit, and persist a Mongo collection

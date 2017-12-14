@@ -49,7 +49,7 @@ interface GraphSettingsGroup {
 }
 
 interface ViewSettings {
-  // Currently on default group is supported
+  // Currently only default group is supported
   default: GraphSettingsGroup;
 }
 

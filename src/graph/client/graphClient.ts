@@ -560,7 +560,7 @@ class GraphView {
       if (candidate === "id") {
         return v.id;
       } else {
-        if (candidate in v.properties) {
+        if (v.properties && candidate in v.properties) {
           let property = v.properties[candidate][0];
           if (property && property.value) {
             return property.value;

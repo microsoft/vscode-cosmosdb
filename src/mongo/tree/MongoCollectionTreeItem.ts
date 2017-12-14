@@ -11,6 +11,7 @@ import { MongoClient, Db, Collection, Cursor, ObjectID, InsertOneWriteOpResult }
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { DialogBoxResponses, DefaultBatchSize } from '../../constants';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
+import { DEFAULT_ENCODING } from 'crypto';
 
 export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	public static contextValue: string = "MongoCollection";
@@ -23,6 +24,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	private _cursor: Cursor | undefined;
 	private _hasMoreChildren: boolean = true;
 	private _parentId: string;
+	private _batchSize: number = DefaultBatchSize;
 
 	constructor(databaseConnectionString: string, collection: Collection, parentId: string, query?: string) {
 		this.collection = collection;
@@ -68,11 +70,12 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	public async loadMoreChildren(_node: IAzureNode, clearCache: boolean): Promise<IAzureTreeItem[]> {
 		if (clearCache || this._cursor === undefined) {
 			this._cursor = this.collection.find(this._query).batchSize(DefaultBatchSize);
+			this._batchSize = DefaultBatchSize;
 		}
 
 		const documents: IMongoDocument[] = [];
 		let count: number = 0;
-		while (count < DefaultBatchSize) {
+		while (count < this._batchSize) {
 			this._hasMoreChildren = await this._cursor.hasNext();
 			if (this._hasMoreChildren) {
 				documents.push(<IMongoDocument>await this._cursor.next());
@@ -81,6 +84,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 				break;
 			}
 		}
+		this._batchSize *= 2;
 
 		return documents.map((document: IMongoDocument) => new MongoDocumentTreeItem(document, this.collection, this.id));
 	}

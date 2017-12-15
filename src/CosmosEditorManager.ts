@@ -23,7 +23,7 @@ export class CosmosEditorManager implements vscode.Disposable {
     private fileMap: { [key: string]: [vscode.TextDocument, ICosmosEditor] } = {};
     private ignoreSave: boolean = false;
 
-    private readonly dontShowKey: string = 'cosmosDB.dontShow.SaveEqualsUpdateToAzure';
+    private readonly showSavePromptKey: string = 'cosmosDB.showSavePrompt';
 
     public async showDocument(editor: ICosmosEditor, fileName: string): Promise<void> {
         const localDocPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', fileName);
@@ -85,14 +85,14 @@ export class CosmosEditorManager implements vscode.Disposable {
         const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.uri.fsPath, filePath) === '');
         if (!this.ignoreSave && filePath) {
             const editor: ICosmosEditor = this.fileMap[filePath][1];
-            const dontShow: boolean | undefined = globalState.get(this.dontShowKey);
-            if (dontShow !== true) {
+            const showSaveWarning: boolean | undefined = vscode.workspace.getConfiguration().get(this.showSavePromptKey);
+            if (showSaveWarning !== false) {
                 const message: string = `Saving 'cosmos-editor.json' will update the entity "${editor.label}" to the Cloud.`;
-                const result: MessageItem | undefined = await vscode.window.showWarningMessage(message, DialogBoxResponses.OK, DialogBoxResponses.DontShowAgain, DialogBoxResponses.Cancel);
+                const result: MessageItem | undefined = await vscode.window.showWarningMessage(message, DialogBoxResponses.upload, DialogBoxResponses.uploadDontWarn, DialogBoxResponses.Cancel);
 
-                if (result === DialogBoxResponses.DontShowAgain) {
-                    await globalState.update(this.dontShowKey, true);
-                } else if (result !== DialogBoxResponses.Yes) {
+                if (result === DialogBoxResponses.uploadDontWarn) {
+                    await vscode.workspace.getConfiguration().update(this.showSavePromptKey, false, vscode.ConfigurationTarget.Global);
+                } else if (result !== DialogBoxResponses.upload) {
                     throw new UserCancelledError();
                 }
             }

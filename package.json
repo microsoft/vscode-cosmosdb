@@ -546,6 +546,11 @@
 					"default": true,
 					"description": "Show or hide the Cosmos DB Explorer"
 				},
+				"cosmosDB.showSavePrompt": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show warning dialog when uploading a document to the cloud."
+				},
 				"cosmosDB.graph.maxVertices": {
 					"type": "integer",
 					"default": 300,

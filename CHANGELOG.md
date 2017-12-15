@@ -3,6 +3,7 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 
 ## 0.3.0 - 2017-12-15
 ### Added
+- Attach Cosmos DB accounts by connection string
 - Graph:
   - Customize the color and display text of vertices through VS Code [settings](README.md#graphSettings)
   - By default display vertex IDs and labels and choose vertex color based on label

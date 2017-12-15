@@ -599,7 +599,7 @@
 											"showLabel": {
 												"type": "boolean",
 												"description": "If true, the label will be displayed along with the specified display property",
-												"default": false
+												"default": true
 											}
 										}
 									}
@@ -615,7 +615,7 @@
 										"name"
 									],
 									"color": "auto",
-									"showLabel": false
+									"showLabel": true
 								},
 								{
 									"labels": [

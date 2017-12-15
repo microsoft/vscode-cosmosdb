@@ -564,6 +564,7 @@
 				"cosmosDB.graph.viewSettings": {
 					"type": "array",
 					"description": "Settings for CosmosDB graph visualization.",
+					"maxItems": 1,
 					"items": {
 						"type": "object",
 						"description": "A group of view settings",

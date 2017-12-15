@@ -11,6 +11,9 @@ import * as vscode from 'vscode';
 import { DocumentBase } from 'documentdb/lib';
 import { DialogBoxResponses } from '../../constants';
 
+const minThroughput: number = 1000;
+const maxThroughput: number = 100000;
+
 /**
  * This class provides common logic for DocumentDB, Graph, and Table databases
  * (DocumentDB is the base type for all Cosmos DB accounts)
@@ -81,9 +84,9 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
                     partitionKey = '/' + partitionKey;
                 }
                 const throughput: number = Number(await vscode.window.showInputBox({
-                    value: '10000',
+                    value: minThroughput.toString(),
                     ignoreFocusOut: true,
-                    prompt: 'Initial throughput capacity, between 2500 and 100,000',
+                    prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput}`,
                     validateInput: DocDBDatabaseTreeItemBase.validateThroughput
                 }));
 
@@ -128,8 +131,8 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     private static validateThroughput(input: string): string | undefined | null {
         try {
             const value = Number(input);
-            if (value < 2500 || value > 100000) {
-                return "Value needs to lie between 2500 and 100,000"
+            if (value < minThroughput || value > maxThroughput) {
+                return `Value must be between ${minThroughput} and ${maxThroughput}`
             }
         } catch (err) {
             return "Input must be a number"

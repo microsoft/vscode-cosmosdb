@@ -124,8 +124,8 @@ export class GraphViewServer extends EventEmitter {
     return Math.max(1, vscode.workspace.getConfiguration().get<number>('cosmosDB.graph.maxEdges'));
   }
 
-  private getViewSettings(): ViewSettings {
-    var viewSettings: ViewSettings = vscode.workspace.getConfiguration().get<ViewSettings>('cosmosDB.graph.viewSettings') || <ViewSettings>{};
+  private getViewSettings(): GraphViewSettings {
+    var viewSettings: GraphViewSettings = vscode.workspace.getConfiguration().get<GraphViewSettings>('cosmosDB.graph.viewSettings') || <GraphViewSettings>{};
     return viewSettings;
   }
 

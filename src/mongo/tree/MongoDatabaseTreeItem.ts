@@ -149,7 +149,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 
 export function validateCollectionName(collectionName: string): string | undefined | null {
 	// https://docs.mongodb.com/manual/reference/limits/#Restriction-on-Collection-Names
-	if (collectionName.length === 0) {
+	if (!collectionName) {
 		return "Collection name cannot be empty";
 	}
 	const systemPrefix = "system."

@@ -138,6 +138,9 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     private static validateCollectionName(name: string): string | undefined | null {
+        if (!name) {
+            return "Name may not be empty";
+        }
         if (name.endsWith(" ")) {
             return "Name may not end with space";
         }

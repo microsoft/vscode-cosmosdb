@@ -10,6 +10,7 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import * as vscode from 'vscode';
 import { DocumentBase } from 'documentdb/lib';
 import { DialogBoxResponses } from '../../constants';
+import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
 
 /**
  * This class provides common logic for DocumentDB, Graph, and Table databases
@@ -66,7 +67,8 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
         const collectionName = await vscode.window.showInputBox({
             placeHolder: `Enter a name for your ${this.childTypeLabel}`,
-            ignoreFocusOut: true
+            ignoreFocusOut: true,
+            validateInput: DocDBDatabaseTreeItemBase.validateCollectionName
         });
 
         if (collectionName) {
@@ -139,13 +141,13 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
 
     private static validateCollectionName(name: string): string | undefined | null {
         if (!name) {
-            return "Name may not be empty";
+            return "Collection name cannot be empty";
         }
         if (name.endsWith(" ")) {
-            return "Name may not end with space";
+            return "Collection name cannot end with space";
         }
         if (/[/\\?#]/.test(name)) {
-            return `Name cannot contain the characters '\\', '/', '#', '?'`;
+            return `Collection name cannot contain the characters '\\', '/', '#', '?'`;
         }
         return undefined;
     }

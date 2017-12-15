@@ -88,10 +88,10 @@ function validateDatabaseName(database: string): string | undefined | null {
     const min = 1;
     const max = 63;
     if (!database || database.length < min || database.length > max) {
-        return `The name must be between ${min} and ${max} characters.`;
+        return `Database name must be between ${min} and ${max} characters.`;
     }
     if (/[/\\. "$]/.test(database)) {
-        return "The name cannot contain these characters - `/\\. \"$`"
+        return "Database name cannot contain these characters - `/\\. \"$`"
     }
     return undefined;
 }

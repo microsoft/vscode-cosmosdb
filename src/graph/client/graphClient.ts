@@ -139,7 +139,7 @@ export class GraphClient {
       this.log("disconnect");
     });
 
-    this._socket.onServerMessage("setPageState", (pageState: PageState, viewSettings: ViewSettings) => {
+    this._socket.onServerMessage("setPageState", (pageState: PageState, viewSettings: GraphViewSettings) => {
       htmlElements.queryInput.value = pageState.query;
 
       if (pageState.isQueryRunning) {
@@ -166,7 +166,7 @@ export class GraphClient {
       d3.select(htmlElements.title).text(title);
     });
 
-    this._socket.onServerMessage("showResults", (queryId: number, results: GraphResults, viewSettings: ViewSettings): void => {
+    this._socket.onServerMessage("showResults", (queryId: number, results: GraphResults, viewSettings: GraphViewSettings): void => {
       this.log(`Received results for query ${queryId}`);
 
       if (queryId !== this._currentQueryId) {
@@ -268,7 +268,7 @@ export class GraphClient {
     d3.select("#states").attr("class", fullState);
   }
 
-  private showResults(results: GraphResults, viewSettings: ViewSettings): void {
+  private showResults(results: GraphResults, viewSettings: GraphViewSettings): void {
     // queryResults may contain any type of data, not just vertices or edges
 
     // Always show the full original results JSON
@@ -300,7 +300,7 @@ class GraphView {
   private _defaultColorsPerLabel = new Map<string, string>();
   private _colorGenerator: (i: number) => string = d3.scale.category20();
 
-  public display(countUniqueVertices: number, vertices: GraphVertex[], countUniqueEdges: number, edges: GraphEdge[], viewSettings: ViewSettings) {
+  public display(countUniqueVertices: number, vertices: GraphVertex[], countUniqueEdges: number, edges: GraphEdge[], viewSettings: GraphViewSettings) {
     this._countUniqueVertices = countUniqueVertices;
     this._vertices = vertices;
     this._countUniqueEdges = countUniqueEdges;
@@ -519,30 +519,37 @@ class GraphView {
       + " " + ux + "," + uy;
   }
 
-  private findVertexPropertySetting(v: GraphVertex, viewSettings: ViewSettings, settingProperty: keyof VertexSettingsGroup): any | undefined {
+  private findVertexPropertySetting(v: GraphVertex, viewSettings: GraphViewSettings, settingProperty: keyof VertexSettingsGroup): any | undefined {
     let label = v.label;
 
-    // Only default graph settings currently supported
-    let graphSettings: GraphSettingsGroup = viewSettings && viewSettings.default || {};
-    let groups: VertexSettingsGroup[] = graphSettings.vertices || [];
+    for (let i = 0; i < viewSettings.length; ++i) {
+      let graphSettingsGroup = viewSettings[i];
+      let vertextSettingsGroups: VertexSettingsGroup[] = graphSettingsGroup.vertexSettings || [];
 
-    // Check groups which specify a label filter first
-    for (let i = 0; i < groups.length; ++i) {
-      let group = groups[i];
-      if (group.labels && group.labels.indexOf(label) >= 0) {
-        // Label applies to this group
-        let value = group[settingProperty];
+      // Check groups which specify a label filter first
+      for (let i = 0; i < vertextSettingsGroups.length; ++i) {
+        let group = vertextSettingsGroups[i];
+        if (group.appliesToLabel && group.appliesToLabel === label) {
+          // This settings group is applicable to this vertex
+          let value = group[settingProperty];
+          if (typeof value !== "undefined" && value !== null) {
+            return value;
+          }
+        }
+      }
+
+      // Check for a default group with no appliesToLabel
+      let defaultGroup: VertexSettingsGroup = vertextSettingsGroups.find(group => !group.appliesToLabel);
+      if (defaultGroup) {
+        let value = defaultGroup[settingProperty];
         if (typeof value !== "undefined" && value !== null) {
           return value;
         }
       }
     }
-
-    let defaultGroup: VertexSettingsGroup = groups.find(group => !group.labels || !group.labels.length);
-    return defaultGroup && defaultGroup[settingProperty];
   }
 
-  private getVertexColor(v: GraphVertex, viewSettings: ViewSettings): string {
+  private getVertexColor(v: GraphVertex, viewSettings: GraphViewSettings): string {
     let color = this.findVertexPropertySetting(v, viewSettings, "color");
     if (color && color != AutoColor) {
       return color;
@@ -552,7 +559,7 @@ class GraphView {
     return this._defaultColorsPerLabel.get(v.label);
   }
 
-  private getVertexDisplayText(v: GraphVertex, viewSettings: ViewSettings): string {
+  private getVertexDisplayText(v: GraphVertex, viewSettings: GraphViewSettings): string {
     let text: string;
     let propertyCandidates = this.findVertexPropertySetting(v, viewSettings, "displayProperty") || [];
     // Find the first specified property that exists and has a non-empty value
@@ -577,6 +584,7 @@ class GraphView {
     text = text || v.id;
 
     let showLabel = this.findVertexPropertySetting(v, viewSettings, "showLabel");
+    showLabel = typeof showLabel === "undefined" ? true : showLabel; // Default to true if not specified
     if (showLabel && v.label) {
       text += ` (${v.label})`;
     }

@@ -38,29 +38,29 @@
 
 - <a name="graphSettings"></a>Configure the user setting `cosmosDB.graph.viewSettings` to customize which properties to display and which colors to use based on vertex label.
 ```javascript
-    "cosmosDB.graph.viewSettings": {
-        "default": {
-            "vertices": [
+    "cosmosDB.graph.viewSettings": [
+        {
+            "vertexSettings": [
                 {
                     // Default settings for all vertices
                     "displayProperty": [
-                        // Display name property if exists, otherwise ID
-                        "name"
+                        // Display name property if exists, otherwise firstName if it exists, otherwise ID
+                        "name",
+                        "firstName"
                     ],
                     // Auto-choose color by label
-                    "color": "auto"
+                    "color": "auto",
+                    // Show label after display property
+                    "showLabel": true
                 },
                 {
-                    // These setting apply to vertices with the label 'person' or 'company'
-                    "labels": [
-                        "person",
-                        "company"
-                    ],
+                    // These setting apply to vertices with the label 'person'
+                    "appliesToLabel": "person",
                     "color": "blue"
                 }
             ]
         }
-    }
+    ]
 ```
 
 ## Create a Cosmos DB Account

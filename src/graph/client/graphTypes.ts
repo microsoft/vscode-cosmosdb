@@ -39,20 +39,17 @@ interface GraphVertex {
 }
 
 interface VertexSettingsGroup {
-  labels?: string[];
+  appliesToLabel: string;
   displayProperty?: string[];
   color?: string;
   showLabel?: boolean;
 }
 
 interface GraphSettingsGroup {
-  vertices?: VertexSettingsGroup[];
+  vertexSettings?: VertexSettingsGroup[];
 }
 
-interface ViewSettings {
-  // Currently only default group is supported
-  default: GraphSettingsGroup;
-}
+type GraphViewSettings = GraphSettingsGroup[];
 
 interface PageState {
   query: string | undefined;

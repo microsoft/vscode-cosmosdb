@@ -56,7 +56,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
         const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
         if (result === DialogBoxResponses.Yes) {
             const client = this._collection.getDocumentClient();
-            const options = { partitionKey: this.partitionKeyValue || Object() }
+            const options = { partitionKey: this.partitionKeyValue }
             await new Promise((resolve, reject) => {
                 client.deleteDocument(this.link, options, function (err) {
                     err ? reject(new Error(err.body)) : resolve();
@@ -72,7 +72,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
         const _self: string = this.document._self;
         this._document = await new Promise<RetrievedDocument>((resolve, reject) => {
             client.replaceDocument(_self, newData,
-                { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this.partitionKeyValue || Object() },
+                { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this.partitionKeyValue },
                 (err, updated: RetrievedDocument) => {
                     if (err) {
                         reject(new Error(err.body));

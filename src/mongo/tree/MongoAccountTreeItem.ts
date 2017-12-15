@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { MongoClient, Db } from 'mongodb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
-import { MongoDatabaseTreeItem, validateCollectionName } from './MongoDatabaseTreeItem';
+import { MongoDatabaseTreeItem, validateMongoCollectionName } from './MongoDatabaseTreeItem';
 
 export class MongoAccountTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = "cosmosDBMongoServer";
@@ -67,7 +67,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
                 placeHolder: 'Collection Name',
                 prompt: 'A collection is required to create a database',
                 ignoreFocusOut: true,
-                validateInput: validateCollectionName
+                validateInput: validateMongoCollectionName
             });
             if (collectionName) {
                 showCreatingNode(databaseName);

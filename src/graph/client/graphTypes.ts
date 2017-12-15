@@ -42,6 +42,7 @@ interface VertexSettingsGroup {
   labels?: string[];
   displayProperty?: string[];
   color?: string;
+  showLabel?: boolean;
 }
 
 interface GraphSettingsGroup {

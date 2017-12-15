@@ -532,7 +532,7 @@ class GraphView {
       if (group.labels && group.labels.indexOf(label) >= 0) {
         // Label applies to this group
         let value = group[settingProperty];
-        if (value) {
+        if (typeof value !== "undefined" && value !== null) {
           return value;
         }
       }
@@ -553,26 +553,34 @@ class GraphView {
   }
 
   private getVertexDisplayText(v: GraphVertex, viewSettings: ViewSettings): string {
+    let text: string;
     let propertyCandidates = this.findVertexPropertySetting(v, viewSettings, "displayProperty") || [];
     // Find the first specified property that exists and has a non-empty value
     for (let i = 0; i < propertyCandidates.length; ++i) {
       let candidate = propertyCandidates[i];
       if (candidate === "id") {
-        return v.id;
+        text = v.id;
       } else if (candidate === "label" && v.label) {
-        return v.label;
+        text = v.label;
       } else {
         if (v.properties && candidate in v.properties) {
           let property = v.properties[candidate][0];
           if (property && property.value) {
-            return property.value;
+            text = property.value;
+            break;
           }
         }
       }
     }
 
     // Otherwise use "id"
-    return v.id;
-  }
+    text = text || v.id;
 
+    let showLabel = this.findVertexPropertySetting(v, viewSettings, "showLabel");
+    if (showLabel && v.label) {
+      text += ` (${v.label})`;
+    }
+
+    return text;
+  }
 }

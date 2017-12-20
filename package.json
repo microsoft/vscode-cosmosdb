@@ -336,6 +336,10 @@
 			],
 			"view/item/context": [
 				{
+					"command": "cosmosDB.createAccount",
+					"when": "view == cosmosDBExplorer && viewItem == azureSubscription"
+				},
+				{
 					"command": "cosmosDB.createMongoDatabase",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
 				},

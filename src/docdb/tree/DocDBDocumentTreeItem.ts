@@ -70,18 +70,22 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     public async update(newData: RetrievedDocument): Promise<RetrievedDocument> {
         const client: DocumentClient = this._collection.getDocumentClient();
         const _self: string = this.document._self;
-        this._document = await new Promise<RetrievedDocument>((resolve, reject) => {
-            client.replaceDocument(_self, newData,
-                { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this.partitionKeyValue },
-                (err, updated: RetrievedDocument) => {
-                    if (err) {
-                        reject(new Error(err.body));
-                    } else {
-                        resolve(updated);
-                    }
-                });
-        });
-
+        if (Object.getOwnPropertyNames(newData).length === 0) {
+            throw new Error("Updating a document with no fields in the document does nothing");
+        }
+        else {
+            this._document = await new Promise<RetrievedDocument>((resolve, reject) => {
+                client.replaceDocument(_self, newData,
+                    { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this.partitionKeyValue },
+                    (err, updated: RetrievedDocument) => {
+                        if (err) {
+                            reject(new Error(err.body));
+                        } else {
+                            resolve(updated);
+                        }
+                    });
+            });
+        }
         return this.document;
     }
 

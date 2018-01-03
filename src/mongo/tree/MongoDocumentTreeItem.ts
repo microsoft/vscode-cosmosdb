@@ -58,7 +58,12 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     }
 
     public async update(newDocument: IMongoDocument): Promise<IMongoDocument> {
-        this.document = await MongoDocumentTreeItem.update(this._collection, newDocument);
+        if (Object.getOwnPropertyNames(newDocument).length === 0) {
+            throw new Error("Updating a document with no fields in the document does nothing");
+        }
+        else {
+            this.document = await MongoDocumentTreeItem.update(this._collection, newDocument);
+        }
         return this.document;
     }
 

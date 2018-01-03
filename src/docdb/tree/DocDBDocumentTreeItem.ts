@@ -85,8 +85,8 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
                         }
                     });
             });
+            return this.document;
         }
-        return this.document;
     }
 
     private getPartitionKeyValue(): string | undefined {

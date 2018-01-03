@@ -63,8 +63,8 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
         }
         else {
             this.document = await MongoDocumentTreeItem.update(this._collection, newDocument);
+            return this.document;
         }
-        return this.document;
     }
 
     public static async update(collection: Collection, newDocument: IMongoDocument): Promise<IMongoDocument> {

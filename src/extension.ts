@@ -11,11 +11,11 @@ import * as vscodeUtil from './utils/vscodeUtils';
 import * as cpUtil from './utils/cp';
 import { AzureAccount } from './azure-account.api';
 import { ErrorData } from './utils/ErrorData';
-import { AzureTreeDataProvider, IAzureNode, IAzureParentNode, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureTreeDataProvider, IAzureNode, IAzureParentNode, UserCancelledError, AzureActionHandler } from 'vscode-azureextensionui';
 import { MongoCommands } from './mongo/commands';
 import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
 import MongoDBLanguageClient from './mongo/languageClient';
-import { Reporter, callWithTelemetry } from './utils/telemetry';
+import { Reporter, reporter } from './utils/telemetry';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { GraphViewsManager } from "./graph/GraphViewsManager";
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
@@ -29,6 +29,7 @@ import { MongoCollectionNodeEditor } from './mongo/editors/MongoCollectionNodeEd
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
 import { MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
+import { getOutputChannel } from './utils/vscodeUtils';
 
 let connectedDb: IAzureParentNode<MongoDatabaseTreeItem> = null;
 let languageClient: MongoDBLanguageClient = null;
@@ -53,15 +54,16 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(vscodeUtil.getOutputChannel());
 
+	const actionHandler: AzureActionHandler = new AzureActionHandler(context, getOutputChannel(), reporter);
 	// Commands
-	initAsyncCommand(context, 'cosmosDB.createAccount', async (node?: IAzureParentNode) => {
+	actionHandler.registerCommand('cosmosDB.createAccount', async (node?: IAzureParentNode) => {
 		if (!node) {
 			node = <IAzureParentNode>await explorer.showNodePicker(AzureTreeDataProvider.subscriptionContextValue);
 		}
 
 		await node.createChild();
 	});
-	initAsyncCommand(context, 'cosmosDB.attachDatabaseAccount', async () => {
+	actionHandler.registerCommand('cosmosDB.attachDatabaseAccount', async () => {
 		const rootNodes = await explorer.getChildren();
 		const attachedNode = <IAzureParentNode<AttachedAccountsTreeItem>>rootNodes.find((node) => node.treeItem instanceof AttachedAccountsTreeItem);
 		if (attachedNode) {
@@ -69,35 +71,35 @@ export function activate(context: vscode.ExtensionContext) {
 			explorer.refresh(attachedNode);
 		}
 	});
-	initCommand(context, 'cosmosDB.refresh', (node: IAzureNode) => explorer.refresh(node));
-	initAsyncCommand(context, 'cosmosDB.detachDatabaseAccount', async (node: IAzureNode) => {
+	actionHandler.registerCommand('cosmosDB.refresh', (node: IAzureNode) => explorer.refresh(node));
+	actionHandler.registerCommand('cosmosDB.detachDatabaseAccount', async (node: IAzureNode) => {
 		const attachedNode = <IAzureParentNode<AttachedAccountsTreeItem>>node.parent;
 		if (attachedNode) {
 			await attachedNode.treeItem.detach(node.treeItem.id);
 			explorer.refresh(attachedNode);
 		}
 	});
-	initAsyncCommand(context, 'cosmosDB.createMongoDatabase', async (node: IAzureParentNode) => {
+	actionHandler.registerCommand('cosmosDB.createMongoDatabase', async (node: IAzureParentNode) => {
 		const childNode = await node.createChild();
 		await vscode.commands.executeCommand('cosmosDB.connectMongoDB', childNode);
 	});
-	initAsyncCommand(context, 'cosmosDB.createMongoCollection', async (node: IAzureParentNode<MongoDatabaseTreeItem>) => {
+	actionHandler.registerCommand('cosmosDB.createMongoCollection', async (node: IAzureParentNode<MongoDatabaseTreeItem>) => {
 		const childNode = await node.createChild();
 		await vscode.commands.executeCommand('cosmosDB.connectMongoDB', childNode.parent);
 	});
-	initAsyncCommand(context, 'cosmosDB.createMongoDocument', (node: IAzureParentNode) => node.createChild());
-	initAsyncCommand(context, 'cosmosDB.createDocDBDatabase', async (node: IAzureParentNode) => {
+	actionHandler.registerCommand('cosmosDB.createMongoDocument', (node: IAzureParentNode) => node.createChild());
+	actionHandler.registerCommand('cosmosDB.createDocDBDatabase', async (node: IAzureParentNode) => {
 		const databaseNode: IAzureParentNode = <IAzureParentNode>await node.createChild();
 		await databaseNode.createChild();
 	});
-	initAsyncCommand(context, 'cosmosDB.createGraphDatabase', (node: IAzureParentNode) => node.createChild());
-	initAsyncCommand(context, 'cosmosDB.createDocDBCollection', (node: IAzureParentNode) => node.createChild());
-	initAsyncCommand(context, 'cosmosDB.createGraph', (node: IAzureParentNode) => node.createChild());
-	initAsyncCommand(context, 'cosmosDB.createDocDBDocument', (node: IAzureParentNode) => node.createChild());
-	initCommand(context, 'cosmosDB.openInPortal', (node: IAzureNode) => node.openInPortal());
-	initAsyncCommand(context, 'cosmosDB.copyConnectionString', (node: IAzureNode<MongoAccountTreeItem | DocDBAccountTreeItemBase>) => copyConnectionString(node));
+	actionHandler.registerCommand('cosmosDB.createGraphDatabase', (node: IAzureParentNode) => node.createChild());
+	actionHandler.registerCommand('cosmosDB.createDocDBCollection', (node: IAzureParentNode) => node.createChild());
+	actionHandler.registerCommand('cosmosDB.createGraph', (node: IAzureParentNode) => node.createChild());
+	actionHandler.registerCommand('cosmosDB.createDocDBDocument', (node: IAzureParentNode) => node.createChild());
+	actionHandler.registerCommand('cosmosDB.openInPortal', (node: IAzureNode) => node.openInPortal());
+	actionHandler.registerCommand('cosmosDB.copyConnectionString', (node: IAzureNode<MongoAccountTreeItem | DocDBAccountTreeItemBase>) => copyConnectionString(node));
 
-	initAsyncCommand(context, 'cosmosDB.connectMongoDB', async (node: IAzureParentNode<MongoDatabaseTreeItem>) => {
+	actionHandler.registerCommand('cosmosDB.connectMongoDB', async (node: IAzureParentNode<MongoDatabaseTreeItem>) => {
 		if (connectedDb) {
 			connectedDb.treeItem.isConnected = false;
 			connectedDb.refresh();
@@ -107,76 +109,42 @@ export function activate(context: vscode.ExtensionContext) {
 		connectedDb.treeItem.isConnected = true;
 		node.refresh();
 	});
-	initAsyncCommand(context, 'cosmosDB.deleteMongoDB', async (node: IAzureNode<MongoDatabaseTreeItem>) => {
+	actionHandler.registerCommand('cosmosDB.deleteMongoDB', async (node: IAzureNode<MongoDatabaseTreeItem>) => {
 		await node.deleteNode();
 		if (connectedDb && connectedDb.treeItem.id === node.treeItem.id) {
 			connectedDb = null;
 			languageClient.disconnect();
 		}
 	});
-	initAsyncCommand(context, 'cosmosDB.deleteMongoCollection', (node: IAzureNode) => node.deleteNode());
-	initAsyncCommand(context, 'cosmosDB.deleteMongoDocument', (node: IAzureNode) => node.deleteNode());
-	initAsyncCommand(context, 'cosmosDB.deleteDocDBDatabase', (node: IAzureNode) => node.deleteNode());
-	initAsyncCommand(context, 'cosmosDB.deleteDocDBCollection', (node: IAzureNode) => node.deleteNode());
-	initAsyncCommand(context, 'cosmosDB.deleteDocDBDocument', (node: IAzureNode) => node.deleteNode());
-	initAsyncCommand(context, 'cosmosDB.deleteGraphDatabase', (node: IAzureNode) => node.deleteNode());
-	initAsyncCommand(context, 'cosmosDB.deleteGraph', (node: IAzureNode) => node.deleteNode());
-	initAsyncCommand(context, 'cosmosDB.openDocument', async (node: IAzureNode) => {
+	actionHandler.registerCommand('cosmosDB.deleteMongoCollection', (node: IAzureNode) => node.deleteNode());
+	actionHandler.registerCommand('cosmosDB.deleteMongoDocument', (node: IAzureNode) => node.deleteNode());
+	actionHandler.registerCommand('cosmosDB.deleteDocDBDatabase', (node: IAzureNode) => node.deleteNode());
+	actionHandler.registerCommand('cosmosDB.deleteDocDBCollection', (node: IAzureNode) => node.deleteNode());
+	actionHandler.registerCommand('cosmosDB.deleteDocDBDocument', (node: IAzureNode) => node.deleteNode());
+	actionHandler.registerCommand('cosmosDB.deleteGraphDatabase', (node: IAzureNode) => node.deleteNode());
+	actionHandler.registerCommand('cosmosDB.deleteGraph', (node: IAzureNode) => node.deleteNode());
+	actionHandler.registerCommand('cosmosDB.openDocument', async (node: IAzureNode) => {
 		if (node.treeItem instanceof MongoDocumentTreeItem) {
 			await editorManager.showDocument(new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>node), 'cosmos-document.json');
 		} else if (node.treeItem instanceof DocDBDocumentTreeItem) {
 			await editorManager.showDocument(new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>node), 'cosmos-document.json');
 		}
 	});
-	initAsyncCommand(context, 'cosmosDB.openCollection', (node: IAzureParentNode<MongoCollectionTreeItem>) => editorManager.showDocument(new MongoCollectionNodeEditor(node), 'cosmos-collection.json'));
-	initAsyncCommand(context, 'cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
-	initAsyncCommand(context, 'cosmosDB.executeMongoCommand', async () => await MongoCommands.executeCommandFromActiveEditor(connectedDb, context.extensionPath, editorManager));
-	initAsyncCommand(context, 'cosmosDB.update', (filePath: string) => editorManager.updateMatchingNode(filePath));
-	initCommand(context, 'cosmosDB.launchMongoShell', () => launchMongoShell());
-	initAsyncCommand(context, 'cosmosDB.loadMore', (node: IAzureNode) => explorer.loadMore(node));
-	initAsyncCommand(context, 'cosmosDB.openGraphExplorer', async (graph: IAzureNode<GraphCollectionTreeItem>) => {
+	actionHandler.registerCommand('cosmosDB.openCollection', (node: IAzureParentNode<MongoCollectionTreeItem>) => editorManager.showDocument(new MongoCollectionNodeEditor(node), 'cosmos-collection.json'));
+	actionHandler.registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
+	actionHandler.registerCommand('cosmosDB.executeMongoCommand', async () => await MongoCommands.executeCommandFromActiveEditor(connectedDb, context.extensionPath, editorManager));
+	actionHandler.registerCommand('cosmosDB.update', (filePath: string) => editorManager.updateMatchingNode(filePath));
+	actionHandler.registerCommand('cosmosDB.launchMongoShell', () => launchMongoShell());
+	actionHandler.registerCommand('cosmosDB.loadMore', (node: IAzureNode) => explorer.loadMore(node));
+	actionHandler.registerCommand('cosmosDB.openGraphExplorer', async (graph: IAzureNode<GraphCollectionTreeItem>) => {
 		if (!graph) {
 			return; // TODO: Ask for context instead of ignoring (issue#35)
 		}
 		await graph.treeItem.showExplorer(graphViewsManager);
 	});
-	initEvent(context, 'cosmosDB.CosmosEditorManager.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument,
-		(doc: vscode.TextDocument) => editorManager.onDidSaveTextDocument(context.globalState, doc));
+	actionHandler.registerEvent('cosmosDB.CosmosEditorManager.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument,
+		(trackTelemetry: () => void, doc: vscode.TextDocument) => editorManager.onDidSaveTextDocument(trackTelemetry, context.globalState, doc));
 
-}
-
-function initCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => any) {
-	initAsyncCommand(context, commandId, (...args: any[]) => Promise.resolve(callback(...args)));
-}
-
-function initEvent<T>(context: vscode.ExtensionContext, eventId: string, event: vscode.Event<T>, callback: (...args: any[]) => any) {
-	context.subscriptions.push(event(wrapAsyncCallback(eventId, (...args: any[]) => Promise.resolve(callback(...args)))));
-}
-
-function initAsyncCommand(context: vscode.ExtensionContext, commandId: string, callback: (...args: any[]) => Promise<any>) {
-	context.subscriptions.push(vscode.commands.registerCommand(commandId, wrapAsyncCallback(commandId, callback)));
-}
-
-function wrapAsyncCallback(callbackId, callback: (...args: any[]) => Promise<any>): (...args: any[]) => Promise<any> {
-	return async (...args: any[]) => {
-		const output = vscodeUtil.getOutputChannel();
-
-		try {
-			await callWithTelemetry(callbackId, (telemetryProperties, measurements) => callback(...args));
-		} catch (err) {
-			if (!(err instanceof UserCancelledError)) {
-				let errorData = new ErrorData(err);
-				output.appendLine(errorData.message);
-				if (errorData.message.includes("\n")) {
-					output.show();
-					vscode.window.showErrorMessage('An error has occured. See output window for more details.');
-				}
-				else {
-					vscode.window.showErrorMessage(errorData.message);
-				}
-			}
-		}
-	};
 }
 
 async function copyConnectionString(node: IAzureNode<MongoAccountTreeItem | DocDBAccountTreeItemBase>) {

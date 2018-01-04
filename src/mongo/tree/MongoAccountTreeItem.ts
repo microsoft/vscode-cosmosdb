@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { MongoClient, Db } from 'mongodb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
-import { MongoDatabaseTreeItem } from './MongoDatabaseTreeItem';
+import { MongoDatabaseTreeItem, validateMongoCollectionName } from './MongoDatabaseTreeItem';
 
 export class MongoAccountTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = "cosmosDBMongoServer";
@@ -59,13 +59,15 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
     public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
         const databaseName = await vscode.window.showInputBox({
             placeHolder: "Database Name",
-            prompt: "Enter the name of the database"
+            prompt: "Enter the name of the database",
+            validateInput: validateDatabaseName,
         });
         if (databaseName) {
             const collectionName = await vscode.window.showInputBox({
                 placeHolder: 'Collection Name',
                 prompt: 'A collection is required to create a database',
-                ignoreFocusOut: true
+                ignoreFocusOut: true,
+                validateInput: validateMongoCollectionName
             });
             if (collectionName) {
                 showCreatingNode(databaseName);
@@ -78,6 +80,20 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
 
         throw new UserCancelledError();
     }
+
+}
+
+function validateDatabaseName(database: string): string | undefined | null {
+    // https://docs.mongodb.com/manual/reference/limits/#naming-restrictions
+    const min = 1;
+    const max = 63;
+    if (!database || database.length < min || database.length > max) {
+        return `Database name must be between ${min} and ${max} characters.`;
+    }
+    if (/[/\\. "$]/.test(database)) {
+        return "Database name cannot contain these characters - `/\\. \"$`"
+    }
+    return undefined;
 }
 
 interface IDatabaseInfo {

@@ -1,6 +1,6 @@
 {
 	"name": "vscode-cosmosdb",
-	"version": "0.2.2",
+	"version": "0.3.0",
 	"aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
 	"publisher": "ms-azuretools",
 	"displayName": "Azure Cosmos DB",
@@ -546,6 +546,11 @@
 					"default": true,
 					"description": "Show or hide the Cosmos DB Explorer"
 				},
+				"cosmosDB.showSavePrompt": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show warning dialog when uploading a document to the cloud."
+				},
 				"cosmosDB.graph.maxVertices": {
 					"type": "integer",
 					"default": 300,
@@ -555,6 +560,72 @@
 					"type": "integer",
 					"default": 500,
 					"description": "Set a limit for number of edges displayed in a graph visualization"
+				},
+				"cosmosDB.graph.viewSettings": {
+					"type": "array",
+					"description": "Settings for CosmosDB graph visualization.",
+					"maxItems": 1,
+					"items": {
+						"type": "object",
+						"description": "A group of view settings",
+						"additionalProperties": false,
+						"properties": {
+							"vertexSettings": {
+								"type": "array",
+								"description": "Groups of vertex display settings",
+								"items": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"appliesToLabel": {
+											"type": "string",
+											"description": "Specify a label value to restrict this settings group to only vertices with that label."
+										},
+										"displayProperty": {
+											"type": "array",
+											"description": "The vertex property to display for the text. The first one found to have a non-empty value on the vertex is used. The default is the vertex id.",
+											"items": {
+												"type": "string"
+											}
+										},
+										"color": {
+											"type": "string",
+											"description": "The vertex color, either 'auto', a CSS color name or a CSS RGB value (e.g., '#0088FF')",
+											"pattern": "^(auto)|([a-zA-Z]+)|(#[0-9a-fA-F]{3})|(#[0-9a-fA-F]{6})$",
+											"default": "auto"
+										},
+										"showLabel": {
+											"type": "boolean",
+											"description": "If true, the label will be displayed along with the specified display property",
+											"default": true
+										}
+									}
+								}
+							}
+						}
+					},
+					"default": [
+						{
+							"vertexSettings": [
+								{
+									"displayProperty": [
+										"name"
+									],
+									"color": "auto",
+									"showLabel": true
+								},
+								{
+									"appliesToLabel": "person",
+									"displayProperty": [
+										"fullName",
+										"lastName",
+										"firstName",
+										"name"
+									]
+								}
+							]
+						}
+					]
 				}
 			}
 		}
@@ -597,7 +668,7 @@
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "~0.3.0",
+		"vscode-azureextensionui": "~0.4.1",
 		"vscode-extension-telemetry": "^0.0.8",
 		"vscode-json-languageservice": "^2.0.9",
 		"vscode-languageclient": "^3.1.0-alpha.1",

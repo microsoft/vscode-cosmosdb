@@ -6,11 +6,15 @@
 import * as path from 'path';
 import { DocumentClient, QueryIterator, DatabaseMeta, CollectionMeta, FeedOptions } from 'documentdb';
 import { IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
+import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import * as vscode from 'vscode';
 import { DocumentBase } from 'documentdb/lib';
 import { DialogBoxResponses } from '../../constants';
 import { makeError } from '../../utils/makeError';
+
+const minThroughput: number = 1000;
+const maxThroughput: number = 100000;
 
 /**
  * This class provides common logic for DocumentDB, Graph, and Table databases
@@ -67,7 +71,8 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
         const collectionName = await vscode.window.showInputBox({
             placeHolder: `Enter a name for your ${this.childTypeLabel}`,
-            ignoreFocusOut: true
+            ignoreFocusOut: true,
+            validateInput: DocDBDatabaseTreeItemBase.validateCollectionName
         });
 
         if (collectionName) {
@@ -82,9 +87,9 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
                     partitionKey = '/' + partitionKey;
                 }
                 const throughput: number = Number(await vscode.window.showInputBox({
-                    value: '10000',
+                    value: minThroughput.toString(),
                     ignoreFocusOut: true,
-                    prompt: 'Initial throughput capacity, between 2500 and 100,000',
+                    prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput}`,
                     validateInput: DocDBDatabaseTreeItemBase.validateThroughput
                 }));
 
@@ -123,18 +128,31 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         if (/^[#?\\]*$/.test(key)) {
             return "Cannot contain these characters - ?,#,\\, etc."
         }
-        return null;
+        return undefined;
     }
 
     private static validateThroughput(input: string): string | undefined | null {
         try {
             const value = Number(input);
-            if (value < 2500 || value > 100000) {
-                return "Value needs to lie between 2500 and 100,000"
+            if (value < minThroughput || value > maxThroughput) {
+                return `Value must be between ${minThroughput} and ${maxThroughput}`
             }
         } catch (err) {
             return "Input must be a number"
         }
-        return null;
+        return undefined;
+    }
+
+    private static validateCollectionName(name: string): string | undefined | null {
+        if (!name) {
+            return "Collection name cannot be empty";
+        }
+        if (name.endsWith(" ")) {
+            return "Collection name cannot end with space";
+        }
+        if (/[/\\?#]/.test(name)) {
+            return `Collection name cannot contain the characters '\\', '/', '#', '?'`;
+        }
+        return undefined;
     }
 }

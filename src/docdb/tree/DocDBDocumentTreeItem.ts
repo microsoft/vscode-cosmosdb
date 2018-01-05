@@ -71,7 +71,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
         const client: DocumentClient = this._collection.getDocumentClient();
         const _self: string = this.document._self;
         const newDocProperties = Object.getOwnPropertyNames(newData);
-        if (["_self", "_etag", "_rid"].some((element) => newDocProperties.indexOf(element) < 0)) {
+        if (["_self", "_etag", "_rid"].some((element) => !newDocProperties[element])) {
             throw new Error(`The "_self", "_etag" and "_rid" fields are required to update a document`);
         }
         else {

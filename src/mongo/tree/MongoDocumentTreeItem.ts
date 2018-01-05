@@ -63,7 +63,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     }
 
     public static async update(collection: Collection, newDocument: IMongoDocument): Promise<IMongoDocument> {
-        if (Object.getOwnPropertyNames(newDocument).indexOf("_id") < 0) {
+        if (!newDocument["_id"]) {
             throw new Error(`The "_id" field is required to update a document.`);
         }
         const filter: object = { _id: new ObjectID(newDocument._id) };

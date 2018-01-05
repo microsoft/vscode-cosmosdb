@@ -11,7 +11,6 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import * as vscode from 'vscode';
 import { DocumentBase } from 'documentdb/lib';
 import { DialogBoxResponses } from '../../constants';
-import { makeError } from '../../utils/makeError';
 
 const minThroughput: number = 1000;
 const maxThroughput: number = 100000;
@@ -60,7 +59,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
             const client = this.getDocumentClient();
             await new Promise((resolve, reject) => {
                 client.deleteDatabase(this.link, function (err) {
-                    err ? reject(makeError(err)) : resolve();
+                    err ? reject(err) : resolve();
                 });
             });
         } else {
@@ -107,12 +106,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
                     const client = this.getDocumentClient();
                     const collection: CollectionMeta = await new Promise<CollectionMeta>((resolve, reject) => {
                         client.createCollection(this.link, collectionDef, options, (err, result) => {
-                            if (err) {
-                                reject(makeError(err));
-                            }
-                            else {
-                                resolve(result);
-                            }
+                            err ? reject(err) : resolve(result);
                         });
                     });
 

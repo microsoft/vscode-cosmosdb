@@ -11,41 +11,45 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as myExtension from '../src/extension';
 
-import { makeError } from "../src/utils/makeError";
+import { ErrorData } from "../src/utils/ErrorData";
 import { UserCancelledError } from 'vscode-azureextensionui';
 
-suite("makeError Tests", () => {
+suite("ErrorData Tests", () => {
 
-    function testError(err: Error, expectedMessage: string) {
-        assert.ok(err instanceof Error, "Not an error");
-        assert.equal(err.message, expectedMessage, "Unexpected message");
+    function testError(err: any, expectedMessage: string, expectedType: string) {
+        const errorData = new ErrorData(err);
+        assert.equal(errorData.errorType, expectedType);
+        assert.equal(errorData.message, expectedMessage, "Unexpected message");
     }
 
     test("Already an error", () => {
         const err = new UserCancelledError();
-        let result = makeError(err);
-        assert.strictEqual(result, err);
+        testError(err, "Operation cancelled.", "UserCancelledError");
+    });
+
+    test("stringified message", () => {
+        testError({ message: JSON.stringify({ message: "hi", Code: 432 }) }, "hi", "432");
     });
 
     test("string", () => {
-        testError(makeError("hello"), "hello");
+        testError("hello", "hello", "Error");
     });
 
     test("Unknown", () => {
-        const unknown = "Unknown error";
+        const unknownMessage = "Unknown error";
+        const unknownType = "Error";
 
-        testError(makeError(null), unknown);
-        testError(makeError(undefined), unknown);
-        testError(makeError({}), unknown);
-        testError(makeError({ unknownData: "hi" }), unknown);
+        testError(null, unknownMessage, unknownType);
+        testError(undefined, unknownMessage, unknownType);
+        testError({}, "{}", unknownType);
+        testError({ unknownData: "hi" }, '{"unknownData":"hi"}', unknownType);
     });
 
 
     test("Has message", () => {
         const message = "error message";
         const err = { message };
-        let result = makeError(err);
-        testError(result, "error message");
+        testError(err, "error message", "Error");
     });
 
     test("Has string body", () => {
@@ -55,8 +59,7 @@ suite("makeError Tests", () => {
             body: "{ \"code\":\"BadRequest\",\"message\":\"Message: {\\\"Errors\\\":[\\\"The offer should have valid throughput values between 400 and 1000000 inclusive in increments of 100.\\\"]}\\r\\nActivityId: c11a5bcd-bf76-43c0-b713-b28e423599c4, Request URI: /apps/4c8d65d7-216b-46b4-abb7-52c1a0c7123f/services/36df4f13-26ef-48cf-bc7b-9ab28c345ca3/partitions/68d75b64-4651-4c15-b2a5-fc5550bab323/replicas/131570875506839239p, RequestStats: , SDK: Microsoft.Azure.Documents.Common/1.19.121.4\"}",
             activityId: "c11a5bcd-bf76-43c0-b713-b28e423599c4"
         };
-        let result = makeError(err);
-        testError(result, message);
+        testError(err, message, "BadRequest");
     });
 
     test("Has object body", () => {
@@ -66,7 +69,6 @@ suite("makeError Tests", () => {
             body: JSON.parse("{ \"code\":\"BadRequest\",\"message\":\"Message: {\\\"Errors\\\":[\\\"The offer should have valid throughput values between 400 and 1000000 inclusive in increments of 100.\\\"]}\\r\\nActivityId: c11a5bcd-bf76-43c0-b713-b28e423599c4, Request URI: /apps/4c8d65d7-216b-46b4-abb7-52c1a0c7123f/services/36df4f13-26ef-48cf-bc7b-9ab28c345ca3/partitions/68d75b64-4651-4c15-b2a5-fc5550bab323/replicas/131570875506839239p, RequestStats: , SDK: Microsoft.Azure.Documents.Common/1.19.121.4\"}"),
             activityId: "c11a5bcd-bf76-43c0-b713-b28e423599c4"
         };
-        let result = makeError(err);
-        testError(result, message);
+        testError(err, message, "BadRequest");
     });
 });

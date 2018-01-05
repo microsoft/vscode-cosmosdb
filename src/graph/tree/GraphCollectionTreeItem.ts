@@ -11,7 +11,6 @@ import { DialogBoxResponses } from '../../constants';
 import * as vscode from 'vscode';
 import { CollectionMeta } from 'documentdb';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem'
-import { makeError } from '../../utils/makeError';
 
 export class GraphCollectionTreeItem implements IAzureTreeItem {
     public static contextValue: string = "cosmosDBGraph";
@@ -54,7 +53,7 @@ export class GraphCollectionTreeItem implements IAzureTreeItem {
             const client = this._database.getDocumentClient();
             await new Promise((resolve, reject) => {
                 client.deleteCollection(this.link, function (err) {
-                    err ? reject(makeError(err)) : resolve();
+                    err ? reject(err) : resolve();
                 });
             });
         } else {

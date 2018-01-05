@@ -9,7 +9,6 @@ import { DialogBoxResponses } from '../../constants';
 import { IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { DocDBCollectionTreeItemBase } from './DocDBCollectionTreeItemBase';
 import { RetrievedDocument, DocumentClient } from 'documentdb';
-import { makeError } from '../../utils/makeError';
 
 export class DocDBDocumentTreeItem implements IAzureTreeItem {
     public static contextValue: string = "cosmosDBDocument";
@@ -60,7 +59,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
             const options = { partitionKey: this.partitionKeyValue }
             await new Promise((resolve, reject) => {
                 client.deleteDocument(this.link, options, function (err) {
-                    err ? reject(makeError(err)) : resolve();
+                    err ? reject(err) : resolve();
                 });
             });
         } else {
@@ -75,11 +74,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
             client.replaceDocument(_self, newData,
                 { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this.partitionKeyValue },
                 (err, updated: RetrievedDocument) => {
-                    if (err) {
-                        reject(makeError(err));
-                    } else {
-                        resolve(updated);
-                    }
+                    err ? reject(err) : resolve(updated);
                 });
         });
 

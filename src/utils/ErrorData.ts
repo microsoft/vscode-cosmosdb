@@ -14,20 +14,7 @@ export class ErrorData {
             this.errorType = "";
 
             if (error) {
-                // Handle objects from Azure SDK that contain the error information in a "body" field (serialized or not)
-                let body = error.body;
-                if (body) {
-                    if (typeof body === "string") {
-                        try {
-                            body = JSON.parse(body);
-                        } catch (err) {
-                        }
-                    }
-
-                    if (typeof body === "object") {
-                        error = body;
-                    }
-                }
+                error = unpackErrorFromBody(error);
 
                 if (error instanceof Object && error.constructor !== Object) {
                     this.errorType = error.constructor.name;
@@ -53,17 +40,42 @@ export class ErrorData {
                     this.message = "";
                 }
 
-                // Handle messages like this from Azure:
-                //   ["Errors":["The offer should have valid throughput бн",
-                let errorsInMessage = this.message.match(/"Errors":\["([^"]+)"\]/);
-                if (errorsInMessage) {
-                    let [, firstError] = errorsInMessage;
-                    this.message = firstError;
-                }
+                this.message = unpackErrorsInMessage(this.message);
             }
         } finally {
             this.errorType = this.errorType || unknownType;
             this.message = this.message || "Unknown error";
         }
     }
+}
+
+function unpackErrorsInMessage(message: string): string {
+    // Handle messages like this from Azure:
+    //   ["Errors":["The offer should have valid throughput бн",
+    let errorsInMessage = message.match(/"Errors":\["([^"]+)"\]/);
+    if (errorsInMessage) {
+        let [, firstError] = errorsInMessage;
+        return firstError;
+    }
+
+    return message;
+}
+
+function unpackErrorFromBody(error: any): any {
+    // Handle objects from Azure SDK that contain the error information in a "body" field (serialized or not)
+    let body = error.body;
+    if (body) {
+        if (typeof body === "string") {
+            try {
+                body = JSON.parse(body);
+            } catch (err) {
+            }
+        }
+
+        if (typeof body === "object") {
+            return body;
+        }
+    }
+
+    return error;
 }

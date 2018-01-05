@@ -70,8 +70,9 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     public async update(newData: RetrievedDocument): Promise<RetrievedDocument> {
         const client: DocumentClient = this._collection.getDocumentClient();
         const _self: string = this.document._self;
-        if (Object.getOwnPropertyNames(newData).length === 0) {
-            throw new Error("Updating a document with no fields in the document does nothing");
+        const newDocProperties = Object.getOwnPropertyNames(newData);
+        if (["_self", "_etag", "_rid"].some((element) => newDocProperties.indexOf(element) < 0)) {
+            throw new Error(`The "_self", "_etag" and "_rid" fields are required to update a document`);
         }
         else {
             this._document = await new Promise<RetrievedDocument>((resolve, reject) => {

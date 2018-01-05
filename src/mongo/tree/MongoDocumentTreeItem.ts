@@ -58,16 +58,14 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     }
 
     public async update(newDocument: IMongoDocument): Promise<IMongoDocument> {
-        if (Object.getOwnPropertyNames(newDocument).length === 0) {
-            throw new Error("Updating a document with no fields in the document does nothing");
-        }
-        else {
-            this.document = await MongoDocumentTreeItem.update(this._collection, newDocument);
-            return this.document;
-        }
+        this.document = await MongoDocumentTreeItem.update(this._collection, newDocument);
+        return this.document;
     }
 
     public static async update(collection: Collection, newDocument: IMongoDocument): Promise<IMongoDocument> {
+        if (Object.getOwnPropertyNames(newDocument).indexOf("_id") < 0) {
+            throw new Error(`The "_id" field is required to update a document.`);
+        }
         const filter: object = { _id: new ObjectID(newDocument._id) };
         const result = await collection.updateOne(filter, _.omit(newDocument, '_id'));
         if (result.upsertedCount != 1) {

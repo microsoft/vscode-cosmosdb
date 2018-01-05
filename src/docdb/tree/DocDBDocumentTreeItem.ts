@@ -70,19 +70,23 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     public async update(newData: RetrievedDocument): Promise<RetrievedDocument> {
         const client: DocumentClient = this._collection.getDocumentClient();
         const _self: string = this.document._self;
-        this._document = await new Promise<RetrievedDocument>((resolve, reject) => {
-            client.replaceDocument(_self, newData,
-                { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this.partitionKeyValue },
-                (err, updated: RetrievedDocument) => {
-                    if (err) {
-                        reject(new Error(err.body));
-                    } else {
-                        resolve(updated);
-                    }
-                });
-        });
-
-        return this.document;
+        if (["_self", "_etag"].some((element) => !newData[element])) {
+            throw new Error(`The "_self" and "_etag" fields are required to update a document`);
+        }
+        else {
+            this._document = await new Promise<RetrievedDocument>((resolve, reject) => {
+                client.replaceDocument(_self, newData,
+                    { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this.partitionKeyValue },
+                    (err, updated: RetrievedDocument) => {
+                        if (err) {
+                            reject(new Error(err.body));
+                        } else {
+                            resolve(updated);
+                        }
+                    });
+            });
+            return this.document;
+        }
     }
 
     private getPartitionKeyValue(): string | undefined {

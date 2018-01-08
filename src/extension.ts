@@ -10,7 +10,6 @@ import * as copypaste from 'copy-paste';
 import * as vscodeUtil from './utils/vscodeUtils';
 import * as cpUtil from './utils/cp';
 import { AzureAccount } from './azure-account.api';
-import { ErrorData } from './utils/ErrorData';
 import { AzureTreeDataProvider, IAzureNode, IAzureParentNode, UserCancelledError, AzureActionHandler } from 'vscode-azureextensionui';
 import { MongoCommands } from './mongo/commands';
 import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
@@ -42,7 +41,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 	languageClient = new MongoDBLanguageClient(context);
 
-	let graphViewsManager = new GraphViewsManager(context);
+	const actionHandler: AzureActionHandler = new AzureActionHandler(context, getOutputChannel(), reporter);
+
+	let graphViewsManager = new GraphViewsManager(context, actionHandler);
 	context.subscriptions.push(this.graphView);
 
 	explorer = new AzureTreeDataProvider(new CosmosDBAccountProvider(), 'cosmosDB.loadMore', [new AttachedAccountsTreeItem(context.globalState)]);
@@ -54,7 +55,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(vscodeUtil.getOutputChannel());
 
-	const actionHandler: AzureActionHandler = new AzureActionHandler(context, getOutputChannel(), reporter);
 	// Commands
 	actionHandler.registerCommand('cosmosDB.createAccount', async (node?: IAzureParentNode) => {
 		if (!node) {

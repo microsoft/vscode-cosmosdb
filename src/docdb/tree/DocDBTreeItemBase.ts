@@ -5,6 +5,7 @@
 
 import { DocumentClient, QueryIterator, QueryError, FeedOptions } from 'documentdb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode } from 'vscode-azureextensionui';
+import * as lib from 'documentdb/lib';
 import { DefaultBatchSize } from '../../constants';
 
 /**
@@ -33,7 +34,11 @@ export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
     }
 
     public getDocumentClient(): DocumentClient {
-        return new DocumentClient(this.documentEndpoint, { masterKey: this.masterKey });
+        const documentBase = lib.DocumentBase;
+        var connectionPolicy = new documentBase.ConnectionPolicy();
+        connectionPolicy.DisableSSLVerification = true;
+        const client = new DocumentClient(this.documentEndpoint, { masterKey: this.masterKey }, connectionPolicy);
+        return client;
     }
 
     public abstract initChild(resource: T): IAzureTreeItem;

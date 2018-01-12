@@ -523,6 +523,16 @@
 					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
 				}
+			],
+			"commandPalette": [
+				{
+					"command": "cosmosDB.refresh",
+					"when": "never"
+				},
+				{
+					"command": "cosmosDB.loadMore",
+					"when": "never"
+				}
 			]
 		},
 		"keybindings": [
@@ -672,7 +682,7 @@
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "~0.5.2",
+		"vscode-azureextensionui": "~0.5.3",
 		"vscode-extension-telemetry": "^0.0.10",
 		"vscode-json-languageservice": "^2.0.9",
 		"vscode-languageclient": "^3.1.0-alpha.1",

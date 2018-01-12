@@ -7,6 +7,7 @@ import { DatabaseMeta } from 'documentdb';
 import { IAzureTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
+import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 
 export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBGraphAccount";
@@ -14,5 +15,15 @@ export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
 
     public initChild(database: DatabaseMeta): IAzureTreeItem {
         return new GraphDatabaseTreeItem(this.documentEndpoint, this.masterKey, database, this.id);
+    }
+
+    public isAncestorOf(contextValue: string): boolean {
+        switch (contextValue) {
+            case GraphDatabaseTreeItem.contextValue:
+            case GraphCollectionTreeItem.contextValue:
+                return true;
+            default:
+                return false;
+        }
     }
 }

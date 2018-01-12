@@ -8,6 +8,8 @@ import * as path from 'path';
 import { MongoClient, Db } from 'mongodb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { MongoDatabaseTreeItem, validateMongoCollectionName } from './MongoDatabaseTreeItem';
+import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
+import { MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 
 export class MongoAccountTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = "cosmosDBMongoServer";
@@ -81,6 +83,16 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
         throw new UserCancelledError();
     }
 
+    public isAncestorOf(contextValue: string): boolean {
+        switch (contextValue) {
+            case MongoDatabaseTreeItem.contextValue:
+            case MongoCollectionTreeItem.contextValue:
+            case MongoDocumentTreeItem.contextValue:
+                return true;
+            default:
+                return false;
+        }
+    }
 }
 
 function validateDatabaseName(database: string): string | undefined | null {

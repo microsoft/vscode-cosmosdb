@@ -11,6 +11,7 @@ import * as io from 'socket.io';
 import * as fs from "fs";
 import { GraphConfiguration, areConfigsEquals } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
+import { AzureActionHandler } from 'vscode-azureextensionui';
 
 const scheme = "vscode-cosmosdb-graphresults";
 const previewBaseUri = scheme + '://results/';
@@ -25,7 +26,7 @@ export class GraphViewsManager implements IServerProvider {
   // One server (and one HTML view) per graph, as represented by unique configurations
   private _servers = new Map<number, GraphViewServer>(); // map of id -> map
 
-  public constructor(private _context: vscode.ExtensionContext) {
+  public constructor(private _context: vscode.ExtensionContext, private _actionHandler: AzureActionHandler) {
     let documentProvider = new GraphViewDocumentContentProvider(this);
     let registration = vscode.workspace.registerTextDocumentContentProvider(scheme, documentProvider);
     this._context.subscriptions.push(registration);
@@ -63,7 +64,7 @@ export class GraphViewsManager implements IServerProvider {
       return [existingId, existingServer];
     }
 
-    var server = new GraphViewServer(config);
+    var server = new GraphViewServer(config, this._actionHandler);
     await server.start();
 
     this._lastServerId += 1;

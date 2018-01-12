@@ -13,6 +13,7 @@ import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { Experience } from '../constants';
+import { ConfigurationTarget } from 'vscode';
 
 interface IPersistedAccount {
     id: string,
@@ -93,6 +94,61 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             }
         } else {
             throw new UserCancelledError();
+        }
+    }
+
+    public async attachEmulator(): Promise<void> {
+        let connectionString: string;
+        const defaultExperience = <Experience>await vscode.window.showQuickPick(Object.keys(Experience), { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
+        let validateInput: (input: string) => string | undefined | null = (input: string) => {
+            try {
+                if (parseFloat(input).toString() === input) {
+                    return;
+                }
+                else {
+                    return "Port must be finite integer";
+                }
+            }
+            catch {
+                return "Port must be finite integer";
+            }
+        };
+
+        if (defaultExperience) {
+            let defaultPort: string;
+            if (defaultExperience === Experience.MongoDB) {
+                defaultPort = "10255";
+            }
+            else {
+                defaultPort = "8081";
+            }
+            const port: string = await vscode.window.showInputBox({
+                value: defaultPort,
+                prompt: 'Enter the localhost port for the emulator',
+                validateInput: validateInput,
+                ignoreFocusOut: true
+            });
+            if (port) {
+                if (defaultExperience === Experience.MongoDB) {
+                    connectionString = `mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@localhost:${port}/admin?ssl=true`;
+                }
+                else {
+                    connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;`;
+                }
+                let treeItem: IAzureTreeItem = await this.createTreeItem(connectionString, defaultExperience);
+                if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem) {
+                    treeItem.SSLVerify = false;
+                }
+                if (this._attachedAccounts.find(s => s.id === treeItem.id)) {
+                    vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`)
+                } else {
+                    this._attachedAccounts.push(treeItem);
+                    if (this._keytar) {
+                        await this._keytar.setPassword(this._serviceName, treeItem.id, connectionString);
+                        await this.persistIds();
+                    }
+                }
+            }
         }
     }
 

@@ -38,6 +38,7 @@
 		"onView:cosmosDBExplorer",
 		"onCommand:cosmosDB.executeMongoCommand",
 		"onCommand:cosmosDB.attachDatabaseAccount",
+		"onCommand:cosmosDB.attachEmulator",
 		"onCommand:cosmosDB.createAccount",
 		"onCommand:cosmosDB.detachDatabaseAccount",
 		"onCommand:cosmosDB.createMongoDatabase",
@@ -118,6 +119,11 @@
 					"light": "resources/icons/light/Connect.svg",
 					"dark": "resources/icons/dark/Connect.svg"
 				}
+			},
+			{
+				"category": "Cosmos DB",
+				"command": "cosmosDB.attachEmulator",
+				"title": "Attach Emulator"
 			},
 			{
 				"category": "Cosmos DB",
@@ -437,6 +443,10 @@
 				},
 				{
 					"command": "cosmosDB.attachDatabaseAccount",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccounts"
+				},
+				{
+					"command": "cosmosDB.attachEmulator",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccounts"
 				},
 				{

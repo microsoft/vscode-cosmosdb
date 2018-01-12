@@ -39,10 +39,3 @@ function getPackageInfo(context: vscode.ExtensionContext): IPackageInfo {
     }
     return;
 }
-
-// Send telemetry for the extension
-function sendTelemetry(eventName: string, properties?: { [key: string]: string; }, measures?: { [key: string]: number; }) {
-    if (reporter) {
-        reporter.sendTelemetryEvent(eventName, properties, measures);
-    }
-}

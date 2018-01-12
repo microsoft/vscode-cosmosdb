@@ -15,6 +15,8 @@ import { createCosmosDBAccount } from '../commands';
 import { Experience } from '../constants';
 
 export class CosmosDBAccountProvider implements IChildProvider {
+    public childTypeLabel: string = 'Account';
+
     public hasMoreChildren(): boolean {
         return false;
     }

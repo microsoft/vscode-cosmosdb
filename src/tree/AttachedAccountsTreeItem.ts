@@ -82,15 +82,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
 
             if (connectionString) {
                 let treeItem: IAzureTreeItem = await this.createTreeItem(connectionString, defaultExperience);
-                if (this._attachedAccounts.find(s => s.id === treeItem.id)) {
-                    vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`)
-                } else {
-                    this._attachedAccounts.push(treeItem);
-                    if (this._keytar) {
-                        await this._keytar.setPassword(this._serviceName, treeItem.id, connectionString);
-                        await this.persistIds();
-                    }
-                }
+                await this.attachAccount(treeItem, connectionString);
             }
         } else {
             throw new UserCancelledError();
@@ -99,10 +91,10 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
 
     public async attachEmulator(): Promise<void> {
         let connectionString: string;
-        const defaultExperience = <Experience>await vscode.window.showQuickPick(Object.keys(Experience), { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
+        const defaultExperience = <Experience>await vscode.window.showQuickPick(['MongoDB', 'DocumentDB'], { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
         let validateInput: (input: string) => string | undefined | null = (input: string) => {
             try {
-                if (parseFloat(input).toString() === input) {
+                if (parseInt(input).toString() === input) {
                     return;
                 }
                 else {
@@ -135,19 +127,24 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 else {
                     connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;`;
                 }
-                let treeItem: IAzureTreeItem = await this.createTreeItem(connectionString, defaultExperience);
+                const label = `localhost:${port} (Emulator - ${defaultExperience})`
+                let treeItem: IAzureTreeItem = await this.createTreeItem(connectionString, defaultExperience, label);
                 if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem) {
                     treeItem.SSLVerify = false;
                 }
-                if (this._attachedAccounts.find(s => s.id === treeItem.id)) {
-                    vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`)
-                } else {
-                    this._attachedAccounts.push(treeItem);
-                    if (this._keytar) {
-                        await this._keytar.setPassword(this._serviceName, treeItem.id, connectionString);
-                        await this.persistIds();
-                    }
-                }
+                await this.attachAccount(treeItem, connectionString);
+            }
+        }
+    }
+
+    private async attachAccount(treeItem: IAzureTreeItem, connectionString: string): Promise<void> {
+        if (this._attachedAccounts.find(s => s.id === treeItem.id)) {
+            vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`)
+        } else {
+            this._attachedAccounts.push(treeItem);
+            if (this._keytar) {
+                await this._keytar.setPassword(this._serviceName, treeItem.id, connectionString);
+                await this.persistIds();
             }
         }
     }
@@ -203,7 +200,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                         api = (<IPersistedAccount>account).defaultExperience;
                     }
                     const connectionString: string = await this._keytar.getPassword(this._serviceName, id);
-                    this._attachedAccounts.push(await this.createTreeItem(connectionString, api, id));
+                    this._attachedAccounts.push(await this.createTreeItem(connectionString, api, id, id));
                 }));
             } catch {
                 throw new Error('Failed to load persisted Database Accounts. Reattach the accounts manually.')
@@ -211,26 +208,28 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         }
     }
 
-    private async createTreeItem(connectionString: string, api: Experience, id?: string): Promise<IAzureTreeItem> {
+    private async createTreeItem(connectionString: string, api: Experience, label?: string, id?: string): Promise<IAzureTreeItem> {
         let treeItem: IAzureTreeItem;
         if (api === Experience.MongoDB) {
             if (id === undefined) {
                 id = await this.getServerIdFromConnectionString(connectionString);
             }
 
-            treeItem = new MongoAccountTreeItem(id, id, connectionString);
+            label = label || id;
+            treeItem = new MongoAccountTreeItem(id, label, connectionString);
         } else {
             const [endpoint, masterKey, id] = AttachedAccountsTreeItem.parseDocDBConnectionString(connectionString);
 
+            label = label || id;
             switch (api) {
                 case Experience.Table:
-                    treeItem = new TableAccountTreeItem(id, id, endpoint, masterKey);
+                    treeItem = new TableAccountTreeItem(id, label, endpoint, masterKey);
                     break;
                 case Experience.Graph:
-                    treeItem = new GraphAccountTreeItem(id, id, endpoint, masterKey);
+                    treeItem = new GraphAccountTreeItem(id, label, endpoint, masterKey);
                     break;
                 case Experience.DocumentDB:
-                    treeItem = new DocDBAccountTreeItem(id, id, endpoint, masterKey);
+                    treeItem = new DocDBAccountTreeItem(id, label, endpoint, masterKey);
                     break;
                 default:
                     throw new Error(`Unexpected defaultExperience "${api}".`);

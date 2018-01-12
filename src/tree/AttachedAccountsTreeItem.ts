@@ -17,6 +17,7 @@ import { ConfigurationTarget } from 'vscode';
 
 interface IPersistedAccount {
     id: string,
+    label: string,
     defaultExperience: Experience
 }
 
@@ -189,18 +190,21 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 const accounts: any[] = JSON.parse(value);
                 await Promise.all(accounts.map(async account => {
                     let id: string;
+                    let label: string;
                     let api: Experience;
                     if (typeof (account) === 'string') {
                         // Default to Mongo if the value is a string for the sake of backwards compatiblity
                         // (Mongo was originally the only account type that could be attached)
                         id = account;
+                        label = account;
                         api = Experience.MongoDB;
                     } else {
                         id = (<IPersistedAccount>account).id;
+                        label = (<IPersistedAccount>account).label;
                         api = (<IPersistedAccount>account).defaultExperience;
                     }
                     const connectionString: string = await this._keytar.getPassword(this._serviceName, id);
-                    this._attachedAccounts.push(await this.createTreeItem(connectionString, api, id, id));
+                    this._attachedAccounts.push(await this.createTreeItem(connectionString, api, label, id));
                 }));
             } catch {
                 throw new Error('Failed to load persisted Database Accounts. Reattach the accounts manually.')
@@ -254,7 +258,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             } else {
                 throw new Error(`Unexpected account node "${node.constructor.name}".`);
             }
-            return { id: node.id, defaultExperience: experience };
+            return { id: node.id, label: node.label, defaultExperience: experience };
         });
         await this._globalState.update(this._serviceName, JSON.stringify(value));
     }

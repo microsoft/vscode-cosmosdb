@@ -21,30 +21,30 @@ export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: A
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(DocDBDatabaseTreeItem.contextValue);
         }
-        node.createChild();
+        await node.createChild();
     });
     actionHandler.registerCommand('cosmosDB.createDocDBDocument', async (node?: IAzureParentNode) => {
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(DocDBCollectionTreeItem.contextValue);
         }
-        node.createChild();
+        await node.createChild();
     });
     actionHandler.registerCommand('cosmosDB.deleteDocDBDatabase', async (node?: IAzureNode) => {
         if (!node) {
             node = await tree.showNodePicker(DocDBDatabaseTreeItem.contextValue);
         }
-        node.deleteNode();
+        await node.deleteNode();
     });
     actionHandler.registerCommand('cosmosDB.deleteDocDBCollection', async (node?: IAzureNode) => {
         if (!node) {
             node = await tree.showNodePicker(DocDBCollectionTreeItem.contextValue);
         }
-        node.deleteNode();
+        await node.deleteNode();
     });
     actionHandler.registerCommand('cosmosDB.deleteDocDBDocument', async (node?: IAzureNode) => {
         if (!node) {
             node = await tree.showNodePicker(DocDBDocumentTreeItem.contextValue);
         }
-        node.deleteNode();
+        await node.deleteNode();
     });
 }

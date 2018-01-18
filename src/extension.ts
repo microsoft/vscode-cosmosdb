@@ -65,18 +65,18 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	actionHandler.registerCommand('cosmosDB.attachDatabaseAccount', async () => {
 		const rootNodes = await explorer.getChildren();
-		const attachedDatabasesNode = <IAzureParentNode<AttachedAccountsTreeItem>>rootNodes.find((node) => node.treeItem instanceof AttachedAccountsTreeItem);
-		if (attachedDatabasesNode) {
-			await attachedDatabasesNode.treeItem.attachNewAccount();
-			explorer.refresh(attachedDatabasesNode);
+		const attachedAccountsNode = <IAzureParentNode<AttachedAccountsTreeItem>>rootNodes.find((node) => node.treeItem instanceof AttachedAccountsTreeItem);
+		if (attachedAccountsNode) {
+			await attachedAccountsNode.treeItem.attachNewAccount();
+			explorer.refresh(attachedAccountsNode);
 		}
 	});
 	actionHandler.registerCommand('cosmosDB.attachEmulator', async () => {
 		const rootNodes = await explorer.getChildren();
-		const attachedDatabasesNode = <IAzureParentNode<AttachedAccountsTreeItem>>rootNodes.find((node) => node.treeItem instanceof AttachedAccountsTreeItem);
-		if (attachedDatabasesNode) {
-			await attachedDatabasesNode.treeItem.attachEmulator();
-			explorer.refresh(attachedDatabasesNode);
+		const attachedAccountsNode = <IAzureParentNode<AttachedAccountsTreeItem>>rootNodes.find((node) => node.treeItem instanceof AttachedAccountsTreeItem);
+		if (attachedAccountsNode) {
+			await attachedAccountsNode.treeItem.attachEmulator();
+			explorer.refresh(attachedAccountsNode);
 		}
 	});
 	actionHandler.registerCommand('cosmosDB.refresh', (node: IAzureNode) => explorer.refresh(node));

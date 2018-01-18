@@ -18,25 +18,25 @@ export function registerGraphCommands(context: vscode.ExtensionContext, actionHa
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(GraphAccountTreeItem.contextValue);
         }
-        node.createChild();
+        await node.createChild();
     });
     actionHandler.registerCommand('cosmosDB.createGraph', async (node?: IAzureParentNode) => {
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(GraphDatabaseTreeItem.contextValue);
         }
-        node.createChild();
+        await node.createChild();
     });
     actionHandler.registerCommand('cosmosDB.deleteGraphDatabase', (node?: IAzureNode) => async (node?: IAzureNode) => {
         if (!node) {
             node = await tree.showNodePicker(GraphDatabaseTreeItem.contextValue);
         }
-        node.deleteNode();
+        await node.deleteNode();
     });
     actionHandler.registerCommand('cosmosDB.deleteGraph', (node?: IAzureNode) => async (node?: IAzureNode) => {
         if (!node) {
             node = await tree.showNodePicker(GraphCollectionTreeItem.contextValue);
         }
-        node.deleteNode();
+        await node.deleteNode();
     });
     actionHandler.registerCommand('cosmosDB.openGraphExplorer', async (node: IAzureNode<GraphCollectionTreeItem>) => {
         if (!node) {

@@ -37,7 +37,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(MongoCollectionTreeItem.contextValue);
         }
-        node.createChild();
+        await node.createChild();
     });
     actionHandler.registerCommand('cosmosDB.connectMongoDB', async (node?: IAzureParentNode<MongoDatabaseTreeItem>) => {
         if (!node) {
@@ -45,7 +45,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
         }
         if (connectedDb) {
             connectedDb.treeItem.isConnected = false;
-            connectedDb.refresh();
+            await connectedDb.refresh();
         }
         connectedDb = node;
         await languageClient.connect(connectedDb.treeItem.connectionString);
@@ -66,19 +66,19 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
         if (!node) {
             node = await tree.showNodePicker(MongoCollectionTreeItem.contextValue);
         }
-        node.deleteNode();
+        await node.deleteNode();
     });
     actionHandler.registerCommand('cosmosDB.deleteMongoDocument', async (node?: IAzureNode) => {
         if (!node) {
             node = await tree.showNodePicker(MongoDocumentTreeItem.contextValue);
         }
-        node.deleteNode();
+        await node.deleteNode();
     });
     actionHandler.registerCommand('cosmosDB.openCollection', async (node?: IAzureParentNode<MongoCollectionTreeItem>) => {
         if (!node) {
             node = <IAzureParentNode<MongoCollectionTreeItem>>await tree.showNodePicker(MongoCollectionTreeItem.contextValue);
         }
-        editorManager.showDocument(new MongoCollectionNodeEditor(node), 'cosmos-collection.json');
+        await editorManager.showDocument(new MongoCollectionNodeEditor(node), 'cosmos-collection.json');
     });
     actionHandler.registerCommand('cosmosDB.launchMongoShell', () => launchMongoShell());
     actionHandler.registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));

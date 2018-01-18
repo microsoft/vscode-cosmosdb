@@ -53,7 +53,7 @@ export class GraphCollectionTreeItem implements IAzureTreeItem {
             const client = this._database.getDocumentClient();
             await new Promise((resolve, reject) => {
                 client.deleteCollection(this.link, function (err) {
-                    err ? reject(new Error(err.body)) : resolve();
+                    err ? reject(err) : resolve();
                 });
             });
         } else {

@@ -52,7 +52,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
             const database: DatabaseMeta = await new Promise<DatabaseMeta>((resolve, reject) => {
                 client.createDatabase({ id: databaseName }, (err, database: DatabaseMeta) => {
                     if (err) {
-                        reject(new Error(err.body));
+                        reject(err);
                     } else {
                         resolve(database);
                     }

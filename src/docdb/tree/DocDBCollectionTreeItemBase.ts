@@ -58,7 +58,7 @@ export abstract class DocDBCollectionTreeItemBase extends DocDBTreeItemBase<Retr
             const client = this.getDocumentClient();
             await new Promise((resolve, reject) => {
                 client.deleteCollection(this.link, function (err) {
-                    err ? reject(new Error(err.body)) : resolve();
+                    err ? reject(err) : resolve();
                 });
             });
         } else {

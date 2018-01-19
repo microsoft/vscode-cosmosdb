@@ -5,7 +5,7 @@
 
 import { DocumentClient, QueryIterator, QueryError, FeedOptions } from 'documentdb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode } from 'vscode-azureextensionui';
-import * as lib from 'documentdb/lib';
+import * as DocDBLib from 'documentdb/lib';
 import * as vscode from 'vscode';
 import { DefaultBatchSize } from '../../constants';
 
@@ -37,10 +37,9 @@ export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
     }
 
     public getDocumentClient(): DocumentClient {
-        const documentBase = lib.DocumentBase;
+        const documentBase = DocDBLib.DocumentBase;
         var connectionPolicy = new documentBase.ConnectionPolicy();
-        const userPreferenceSSLVerify: boolean = vscode.workspace.getConfiguration().get("http.proxyStrictSSL");
-        connectionPolicy.DisableSSLVerification = !userPreferenceSSLVerify && !this.SSLVerify;
+        connectionPolicy.DisableSSLVerification = !this.SSLVerify;
         const client = new DocumentClient(this.documentEndpoint, { masterKey: this.masterKey }, connectionPolicy);
         return client;
     }

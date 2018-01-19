@@ -565,6 +565,16 @@
 					"default": true,
 					"description": "Show warning dialog when uploading a document to the cloud."
 				},
+				"cosmosDB.emulator.mongoPort": {
+					"type": "integer",
+					"default": 10255,
+					"description": "Port to use when connecting to a CosmosDB Mongo Emulator instance"
+				},
+				"cosmosDB.emulator.port": {
+					"type": "integer",
+					"default": 8081,
+					"description": "Port to use when connecting to a CosmosDB Emulator instance"
+				},
 				"cosmosDB.graph.maxVertices": {
 					"type": "integer",
 					"default": 300,

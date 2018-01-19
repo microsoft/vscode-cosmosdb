@@ -93,34 +93,14 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     public async attachEmulator(): Promise<void> {
         let connectionString: string;
         const defaultExperience = <Experience>await vscode.window.showQuickPick(['MongoDB', 'DocumentDB'], { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
-        let validateInput: (input: string) => string | undefined | null = (input: string) => {
-            try {
-                if (parseInt(input).toString() === input) {
-                    return;
-                }
-                else {
-                    return "Port must be finite integer";
-                }
-            }
-            catch {
-                return "Port must be finite integer";
-            }
-        };
-
         if (defaultExperience) {
-            let defaultPort: string;
+            let port: number;
             if (defaultExperience === Experience.MongoDB) {
-                defaultPort = "10255";
+                port = vscode.workspace.getConfiguration().get<number>("cosmoDB.emulator.mongoPort") || 10255;
             }
             else {
-                defaultPort = "8081";
+                port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.port") || 8081;
             }
-            const port: string = await vscode.window.showInputBox({
-                value: defaultPort,
-                prompt: 'Enter the localhost port for the emulator',
-                validateInput: validateInput,
-                ignoreFocusOut: true
-            });
             if (port) {
                 if (defaultExperience === Experience.MongoDB) {
                     connectionString = `mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@localhost:${port}/admin?ssl=true`;
@@ -128,7 +108,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 else {
                     connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;`;
                 }
-                const label = `localhost:${port} (Emulator - ${defaultExperience})`
+                const label = `${defaultExperience} Emulator`
                 let treeItem: IAzureTreeItem = await this.createTreeItem(connectionString, defaultExperience, label);
                 if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem) {
                     treeItem.SSLVerify = false;

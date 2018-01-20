@@ -12,6 +12,7 @@ import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import CosmosDBManagementClient = require("azure-arm-cosmosdb");
 import { DatabaseAccountsListResult, DatabaseAccount, DatabaseAccountListKeysResult } from 'azure-arm-cosmosdb/lib/models';
 import { createCosmosDBAccount } from '../commands';
+import { GetGremlinEndpoint } from "../graph/GremlinEndpoint";
 import { Experience } from '../constants';
 
 export class CosmosDBAccountProvider implements IChildProvider {
@@ -26,6 +27,11 @@ export class CosmosDBAccountProvider implements IChildProvider {
         const accounts: DatabaseAccountsListResult = await client.databaseAccounts.list();
 
         return await Promise.all(accounts.map(async (databaseAccount: DatabaseAccount) => {
+            let resourceGroup = azureUtils.getResourceGroupFromId(databaseAccount.id);
+
+            client.databaseAccounts.get(resourceGroup, databaseAccount.name, (error, result, httpRequest, response) => {
+                let r = result;
+            });
             return await this.initChild(client, databaseAccount);
         }));
     }
@@ -50,7 +56,8 @@ export class CosmosDBAccountProvider implements IChildProvider {
                 case "Table":
                     return new TableAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey);
                 case "Graph":
-                    return new GraphAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey);
+                    const gremlinEndpoint = await GetGremlinEndpoint(client, databaseAccount.documentEndpoint, azureUtils.getResourceGroupFromId(databaseAccount.id), databaseAccount.name);
+                    return new GraphAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, gremlinEndpoint, keyResult.primaryMasterKey);
                 case "DocumentDB":
                 default:
                     // Default to DocumentDB, the base type for all Cosmos DB Accounts

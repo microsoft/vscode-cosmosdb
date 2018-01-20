@@ -12,7 +12,7 @@ import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import CosmosDBManagementClient = require("azure-arm-cosmosdb");
 import { DatabaseAccountsListResult, DatabaseAccount, DatabaseAccountListKeysResult } from 'azure-arm-cosmosdb/lib/models';
 import { createCosmosDBAccount } from '../commands';
-import { GetGremlinEndpoint } from "../graph/GremlinEndpoint";
+import { GetGremlinEndpointFromAzure } from "../graph/GremlinEndpoint";
 import { Experience } from '../constants';
 
 export class CosmosDBAccountProvider implements IChildProvider {
@@ -56,7 +56,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
                 case "Table":
                     return new TableAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey);
                 case "Graph":
-                    const gremlinEndpoint = await GetGremlinEndpoint(client, databaseAccount.documentEndpoint, azureUtils.getResourceGroupFromId(databaseAccount.id), databaseAccount.name);
+                    const gremlinEndpoint = await GetGremlinEndpointFromAzure(client, databaseAccount.documentEndpoint, azureUtils.getResourceGroupFromId(databaseAccount.id), databaseAccount.name);
                     return new GraphAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, gremlinEndpoint, keyResult.primaryMasterKey);
                 case "DocumentDB":
                 default:

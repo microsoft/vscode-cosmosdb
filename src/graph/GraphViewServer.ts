@@ -332,14 +332,26 @@ export class GraphViewServer extends EventEmitter {
       originalHandleProtocolMessage.call(this, message);
     };
 
+    let streamError = undefined;
+    client.on('error', error => handleError(error));
+
+    function handleError(err) {
+      console.warn(err);
+      streamError = err;
+    }
+
     return new Promise<[{}[]]>((resolve, reject) => {
       client.execute(gremlinQuery, {}, (err, results) => {
-        if (err) {
+        if (streamError) {
+          this.log("Gremlin client error: ", streamError.message || streamError.toString());
+          reject(streamError);
+        } else if (err) {
           this.log("Error from gremlin server: ", err.message || err.toString());
           reject(new Error(err));
+        } else {
+          this.log("Results from gremlin", results);
+          resolve(results);
         }
-        this.log("Results from gremlin", results);
-        resolve(results);
       });
     });
   }

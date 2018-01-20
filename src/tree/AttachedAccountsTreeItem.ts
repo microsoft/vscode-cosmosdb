@@ -8,11 +8,13 @@ import * as path from 'path';
 import * as keytarType from 'keytar';
 import { MongoClient, ReplSet } from "mongodb";
 import { IAzureTreeItem, IAzureNode, IAzureParentTreeItem, UserCancelledError, AzureTreeDataProvider } from 'vscode-azureextensionui';
+import CosmosDBManagementClient = require("azure-arm-cosmosdb");
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { Experience } from '../constants';
+import { getGremlinEndpointFromDocEndpoint } from '../graph/GremlinEndpoint';
 
 interface IPersistedAccount {
     id: string,
@@ -190,7 +192,8 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                     treeItem = new TableAccountTreeItem(id, id, endpoint, masterKey);
                     break;
                 case Experience.Graph:
-                    // asdf treeItem = new GraphAccountTreeItem(id, id, endpoint, masterKey);
+                    let gremlinEndpoint = await getGremlinEndpointFromDocEndpoint(endpoint);
+                    treeItem = new GraphAccountTreeItem(id, id, endpoint, gremlinEndpoint, masterKey);
                     break;
                 case Experience.DocumentDB:
                     treeItem = new DocDBAccountTreeItem(id, id, endpoint, masterKey);

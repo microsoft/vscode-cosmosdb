@@ -8,7 +8,7 @@ import { IAzureTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
-import { IGremlinEndpoint, GetGremlinEndpoint } from '../GremlinEndpoint';
+import { IGremlinEndpoint, GetGremlinEndpointFromAzure } from '../GremlinEndpoint';
 
 export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBGraphAccount";

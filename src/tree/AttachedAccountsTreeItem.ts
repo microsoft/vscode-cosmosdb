@@ -111,7 +111,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 const label = `${defaultExperience} Emulator`
                 let treeItem: IAzureTreeItem = await this.createTreeItem(connectionString, defaultExperience, label);
                 if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem) {
-                    treeItem.SSLVerify = false;
+                    treeItem.isEmulator = true;
                 }
                 await this.attachAccount(treeItem, connectionString);
             }

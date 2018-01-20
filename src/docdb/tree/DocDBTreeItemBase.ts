@@ -21,7 +21,7 @@ export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
     public readonly documentEndpoint: string;
     public readonly masterKey: string;
 
-    public SSLVerify: boolean;
+    public isEmulator: boolean;
 
     private _hasMoreChildren: boolean = true;
     private _iterator: QueryIterator<T> | undefined;
@@ -39,7 +39,7 @@ export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
     public getDocumentClient(): DocumentClient {
         const documentBase = DocDBLib.DocumentBase;
         var connectionPolicy = new documentBase.ConnectionPolicy();
-        connectionPolicy.DisableSSLVerification = !this.SSLVerify;
+        connectionPolicy.DisableSSLVerification = this.isEmulator;
         const client = new DocumentClient(this.documentEndpoint, { masterKey: this.masterKey }, connectionPolicy);
         return client;
     }
@@ -74,6 +74,13 @@ export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
         }
         this._batchSize *= 2;
 
-        return resources.map((resource: T) => this.initChild(resource));
+        return resources.map((resource: T) => {
+            const child = this.initChild(resource);
+            if (child instanceof DocDBTreeItemBase) {
+                child.isEmulator = this.isEmulator;
+            }
+            return child;
+        }
+        );
     }
 }

@@ -13,6 +13,7 @@ import CosmosDBManagementClient = require("azure-arm-cosmosdb");
 import { DatabaseAccountsListResult, DatabaseAccount, DatabaseAccountListKeysResult } from 'azure-arm-cosmosdb/lib/models';
 import { createCosmosDBAccount } from '../commands';
 import { Experience } from '../constants';
+import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 
 export class CosmosDBAccountProvider implements IChildProvider {
     public childTypeLabel: string = 'Account';
@@ -49,8 +50,10 @@ export class CosmosDBAccountProvider implements IChildProvider {
             switch (defaultExperience) {
                 case "Table":
                     return new TableAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey);
-                case "Graph":
-                    return new GraphAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey);
+                case "Graph": {
+                    const gremlinEndpoint = await TryGetGremlinEndpointFromAzure(client, databaseAccount.documentEndpoint, resourceGroup, databaseAccount.name);
+                    return new GraphAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, gremlinEndpoint, keyResult.primaryMasterKey);
+                }
                 case "DocumentDB":
                 default:
                     // Default to DocumentDB, the base type for all Cosmos DB Accounts

@@ -8,6 +8,7 @@ import { DocumentClient, QueryIterator, DatabaseMeta, FeedOptions } from 'docume
 import { IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import * as vscode from 'vscode';
+import { IGremlinEndpoint } from '../../graph/gremlinEndpoints';
 
 /**
  * This class provides common logic for DocumentDB, Graph, and Table accounts

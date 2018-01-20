@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { AzureAccount, AzureSession } from './azure-account.api';
 import { ResourceModels, ResourceManagementClient, SubscriptionClient, SubscriptionModels } from 'azure-arm-resource';
 import CosmosDBManagementClient = require("azure-arm-cosmosdb");
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';

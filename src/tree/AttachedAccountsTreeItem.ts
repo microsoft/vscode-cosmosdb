@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as keytarType from 'keytar';
 import { MongoClient, ReplSet } from "mongodb";
-import { IAzureTreeItem, IAzureNode, IAzureParentTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { IAzureTreeItem, IAzureNode, IAzureParentTreeItem, UserCancelledError, AzureTreeDataProvider } from 'vscode-azureextensionui';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
@@ -21,11 +21,14 @@ interface IPersistedAccount {
     defaultExperience: Experience
 }
 
+export const AttachedAccountSuffix: string = 'Attached';
+
 export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = 'cosmosDBAttachedAccounts';
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
     public readonly id: string = AttachedAccountsTreeItem.contextValue;
     public readonly label: string = 'Attached Database Accounts';
+    public childTypeLabel: string = 'Account';
 
     private readonly _serviceName = "ms-azuretools.vscode-cosmosdb.connectionStrings";
     private _attachedAccounts: IAzureTreeItem[] = [];
@@ -57,8 +60,24 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             contextValue: 'cosmosDBAttachDatabaseAccount',
             label: 'Attach Database Account...',
             id: 'cosmosDBAttachDatabaseAccount',
-            commandId: 'cosmosDB.attachDatabaseAccount'
+            commandId: 'cosmosDB.attachDatabaseAccount',
+            isAncestorOf: () => { return false; }
         }];
+    }
+
+    public isAncestorOf(contextValue: string): boolean {
+        switch (contextValue) {
+            // We have to make sure the Attached Accounts node is not shown for commands like
+            // 'Open in Portal', which only work for the non-attached version
+            case GraphAccountTreeItem.contextValue:
+            case MongoAccountTreeItem.contextValue:
+            case DocDBAccountTreeItem.contextValue:
+            case TableAccountTreeItem.contextValue:
+            case AzureTreeDataProvider.subscriptionContextValue:
+                return false;
+            default:
+                return true;
+        }
     }
 
     public async attachNewAccount(): Promise<void> {
@@ -220,7 +239,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             }
         }
 
-        treeItem.contextValue += "Attached";
+        treeItem.contextValue += AttachedAccountSuffix;
         return treeItem;
     }
 

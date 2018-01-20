@@ -59,7 +59,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
             const options = { partitionKey: this.partitionKeyValue }
             await new Promise((resolve, reject) => {
                 client.deleteDocument(this.link, options, function (err) {
-                    err ? reject(new Error(err.body)) : resolve();
+                    err ? reject(err) : resolve();
                 });
             });
         } else {
@@ -79,7 +79,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
                     { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this.partitionKeyValue },
                     (err, updated: RetrievedDocument) => {
                         if (err) {
-                            reject(new Error(err.body));
+                            reject(err);
                         } else {
                             resolve(updated);
                         }

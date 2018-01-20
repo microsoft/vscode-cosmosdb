@@ -14,7 +14,7 @@ import * as gremlin from "gremlin";
 import { removeDuplicatesById } from "../utils/array";
 import { GraphViewServerSocket } from "./GraphViewServerSocket";
 import { Socket } from 'net';
-import { callWithTelemetry } from '../utils/telemetry';
+import { AzureActionHandler } from 'vscode-azureextensionui';
 
 class GremlinParseError extends Error {
   constructor(err: Error) {
@@ -48,7 +48,7 @@ export class GraphViewServer extends EventEmitter {
   private _socket: GraphViewServerSocket;
   private _pageState: PageState;
 
-  constructor(private _configuration: GraphConfiguration) {
+  constructor(private _configuration: GraphConfiguration, private _actionHandler: AzureActionHandler) {
     super();
     this._pageState = {
       query: undefined,
@@ -134,7 +134,7 @@ export class GraphViewServer extends EventEmitter {
     const start = Date.now();
 
     try {
-      await callWithTelemetry("cosmosDB.gremlinQuery", async (telemetryProperties, measurements) => {
+      await this._actionHandler.callWithTelemetry("cosmosDB.gremlinQuery", async (telemetryProperties, measurements) => {
         this._pageState = {
           query: gremlinQuery,
           results: undefined,

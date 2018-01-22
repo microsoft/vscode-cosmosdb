@@ -115,14 +115,14 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         if (defaultExperience) {
             let port: number;
             if (defaultExperience === Experience.MongoDB) {
-                port = vscode.workspace.getConfiguration().get<number>("cosmoDB.emulator.mongoPort") || 10255;
+                port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.mongoPort");
             }
             else {
-                port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.port") || 8081;
+                port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.port");
             }
             if (port) {
                 if (defaultExperience === Experience.MongoDB) {
-                    connectionString = `mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@localhost:${port}/admin?ssl=true`;
+                    connectionString = `mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@localhost:${port}?ssl=true`;
                 }
                 else {
                     connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;`;

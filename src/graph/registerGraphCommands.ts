@@ -26,13 +26,13 @@ export function registerGraphCommands(context: vscode.ExtensionContext, actionHa
         }
         await node.createChild();
     });
-    actionHandler.registerCommand('cosmosDB.deleteGraphDatabase', (node?: IAzureNode) => async (node?: IAzureNode) => {
+    actionHandler.registerCommand('cosmosDB.deleteGraphDatabase', async (node?: IAzureNode) => {
         if (!node) {
             node = await tree.showNodePicker(GraphDatabaseTreeItem.contextValue);
         }
         await node.deleteNode();
     });
-    actionHandler.registerCommand('cosmosDB.deleteGraph', (node?: IAzureNode) => async (node?: IAzureNode) => {
+    actionHandler.registerCommand('cosmosDB.deleteGraph', async (node?: IAzureNode) => {
         if (!node) {
             node = await tree.showNodePicker(GraphCollectionTreeItem.contextValue);
         }

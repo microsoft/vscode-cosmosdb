@@ -28,7 +28,14 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		this._accountConnectionString = accountConnectionString;
 		this._parentId = parentId;
 		const uri: vscode.Uri = vscode.Uri.parse(accountConnectionString);
-		this.connectionString = `${uri.scheme}://${uri.authority}/${this._databaseName}?${uri.query}`;
+		let path: string = uri.path;
+		if (path.startsWith('/')) {
+			path = path.slice(1);
+		}
+		if (path.endsWith('/')) {
+			path = path.slice(0, -1);
+		}
+		this.connectionString = `${uri.scheme}://${uri.authority}/${path}/${this._databaseName}?${uri.query}`;
 	}
 
 	public get label(): string {

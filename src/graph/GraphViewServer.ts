@@ -332,7 +332,7 @@ export class GraphViewServer extends EventEmitter {
       if (firstValidError) {
         throw firstValidError;
       } else {
-        throw new Error(`Could not find a valid gremlin endpoint for graph ${this.configuration.graphName}.`)
+        throw new Error(`Could not find a valid gremlin endpoint for ${this.configuration.graphName}.\r\n\r\nTried ${this.configuration.possibleGremlinEndpoints.map(e => e.host).join(", ")}`)
       }
     }
   }

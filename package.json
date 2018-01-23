@@ -38,6 +38,7 @@
 		"onView:cosmosDBExplorer",
 		"onCommand:cosmosDB.executeMongoCommand",
 		"onCommand:cosmosDB.attachDatabaseAccount",
+		"onCommand:cosmosDB.attachEmulator",
 		"onCommand:cosmosDB.createAccount",
 		"onCommand:cosmosDB.detachDatabaseAccount",
 		"onCommand:cosmosDB.createMongoDatabase",
@@ -118,6 +119,11 @@
 					"light": "resources/icons/light/Connect.svg",
 					"dark": "resources/icons/dark/Connect.svg"
 				}
+			},
+			{
+				"category": "Cosmos DB",
+				"command": "cosmosDB.attachEmulator",
+				"title": "Attach Emulator"
 			},
 			{
 				"category": "Cosmos DB",
@@ -440,6 +446,10 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccounts"
 				},
 				{
+					"command": "cosmosDB.attachEmulator",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccounts"
+				},
+				{
 					"command": "cosmosDB.openInPortal",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
 				},
@@ -564,6 +574,16 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Show warning dialog when uploading a document to the cloud."
+				},
+				"cosmosDB.emulator.mongoPort": {
+					"type": "integer",
+					"default": 10255,
+					"description": "Port to use when connecting to a CosmosDB Mongo Emulator instance"
+				},
+				"cosmosDB.emulator.port": {
+					"type": "integer",
+					"default": 8081,
+					"description": "Port to use when connecting to a CosmosDB Emulator instance"
 				},
 				"cosmosDB.graph.maxVertices": {
 					"type": "integer",

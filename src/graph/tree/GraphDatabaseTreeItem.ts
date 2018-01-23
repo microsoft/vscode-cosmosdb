@@ -30,7 +30,7 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
         // Gremlin endpoint: <graphname>.graphs.azure.com
         let [, address, , port] = documentEndpoint.match(/^[^:]+:\/\/([^:]+)(:([0-9]+))?\/?$/);
         this._graphEndpoint = address.replace(".documents.azure.com", ".graphs.azure.com");
-        console.assert(this._graphEndpoint.match(/\.graphs\.azure\.com$/), "Unexpected endpoint format");
+        console.assert(this._graphEndpoint.match(/\.graphs\.azure\.com$/) || this._graphEndpoint.indexOf('localhost') > -1, "Unexpected endpoint format");
         this._graphPort = parseInt(port || "443");
         console.assert(this._graphPort > 0, "Unexpected port");
     }

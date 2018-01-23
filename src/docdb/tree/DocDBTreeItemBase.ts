@@ -5,6 +5,8 @@
 
 import { DocumentClient, QueryIterator, QueryError, FeedOptions } from 'documentdb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode } from 'vscode-azureextensionui';
+import * as DocDBLib from 'documentdb/lib';
+import * as vscode from 'vscode';
 import { DefaultBatchSize } from '../../constants';
 
 /**
@@ -18,6 +20,8 @@ export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
 
     public readonly documentEndpoint: string;
     public readonly masterKey: string;
+
+    public isEmulator: boolean;
 
     private _hasMoreChildren: boolean = true;
     private _iterator: QueryIterator<T> | undefined;
@@ -33,7 +37,11 @@ export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
     }
 
     public getDocumentClient(): DocumentClient {
-        return new DocumentClient(this.documentEndpoint, { masterKey: this.masterKey });
+        const documentBase = DocDBLib.DocumentBase;
+        var connectionPolicy = new documentBase.ConnectionPolicy();
+        connectionPolicy.DisableSSLVerification = this.isEmulator;
+        const client = new DocumentClient(this.documentEndpoint, { masterKey: this.masterKey }, connectionPolicy);
+        return client;
     }
 
     public abstract initChild(resource: T): IAzureTreeItem;
@@ -66,6 +74,13 @@ export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
         }
         this._batchSize *= 2;
 
-        return resources.map((resource: T) => this.initChild(resource));
+        return resources.map((resource: T) => {
+            const child = this.initChild(resource);
+            if (child instanceof DocDBTreeItemBase) {
+                child.isEmulator = this.isEmulator;
+            }
+            return child;
+        }
+        );
     }
 }

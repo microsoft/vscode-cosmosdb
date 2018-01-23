@@ -51,7 +51,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
                 case "Table":
                     return new TableAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey);
                 case "Graph": {
-                    const gremlinEndpoint = await TryGetGremlinEndpointFromAzure(client, databaseAccount.documentEndpoint, resourceGroup, databaseAccount.name);
+                    const gremlinEndpoint = await TryGetGremlinEndpointFromAzure(client, resourceGroup, databaseAccount.name);
                     return new GraphAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, gremlinEndpoint, keyResult.primaryMasterKey);
                 }
                 case "DocumentDB":

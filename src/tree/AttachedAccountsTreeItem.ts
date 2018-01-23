@@ -229,7 +229,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                     treeItem = new TableAccountTreeItem(id, label, endpoint, masterKey);
                     break;
                 case Experience.Graph:
-                    treeItem = new GraphAccountTreeItem(id, label, endpoint, masterKey);
+                    treeItem = new GraphAccountTreeItem(id, label, endpoint, undefined, masterKey);
                     break;
                 case Experience.DocumentDB:
                     treeItem = new DocDBAccountTreeItem(id, label, endpoint, masterKey);

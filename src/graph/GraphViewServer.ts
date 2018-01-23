@@ -13,6 +13,7 @@ import { GraphConfiguration } from './GraphConfiguration';
 import * as gremlin from "gremlin";
 import { removeDuplicatesById } from "../utils/array";
 import { GraphViewServerSocket } from "./GraphViewServerSocket";
+import { IGremlinEndpoint, getPossibleGremlinEndpoints } from "./gremlinEndpoints";
 import { Socket } from 'net';
 import { AzureActionHandler } from 'vscode-azureextensionui';
 
@@ -99,7 +100,7 @@ export class GraphViewServer extends EventEmitter {
         0, // dynamnically pick an unused port
         () => {
           this._port = this._httpServer.address().port;
-          console.log(`** GraphViewServer listening to port ${this._port} for ${this._configuration.endpoint}`);
+          console.log(`** GraphViewServer listening to port ${this._port} for ${this.configuration.gremlinEndpoint ? this.configuration.gremlinEndpoint.host : this.configuration.documentEndpoint}/${this._configuration.databaseName}/${this._configuration.graphName}`);
           resolve();
         });
       this._server = io(this._httpServer);
@@ -308,14 +309,43 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private async _executeQueryCore(queryId: number, gremlinQuery: string): Promise<any[]> {
-    this.log(`Executing query #${queryId}: ${truncateQuery(gremlinQuery)}`);
+    if (this.configuration.gremlinEndpoint) {
+      return this._executeQueryCoreForEndpoint(queryId, gremlinQuery, this.configuration.gremlinEndpoint);
+    } else {
+      // We haven't figured out yet which endpoint actually works (if any - network could be down, etc.), so try them all
+      let firstValidError: any = null;
+      for (let endpoint of this.configuration.possibleGremlinEndpoints) {
+        try {
+          const result = await this._executeQueryCoreForEndpoint(queryId, gremlinQuery, endpoint);
+          this.configuration.gremlinEndpoint = endpoint;
+          return Promise.resolve(result);
+        } catch (err) {
+          if (err.code === "ENOTFOUND") {
+            // Not a valid endpoint
+          } else {
+            firstValidError = firstValidError || err;
+          }
+        }
+      }
+
+      // If here, no endpoint succeeded
+      if (firstValidError) {
+        throw firstValidError;
+      } else {
+        throw new Error(`Could not find a valid gremlin endpoint for ${this.configuration.graphName}.\r\n\r\nTried ${this.configuration.possibleGremlinEndpoints.map(e => e.host).join(", ")}`)
+      }
+    }
+  }
+
+  private async _executeQueryCoreForEndpoint(queryId: number, gremlinQuery: string, endpoint: IGremlinEndpoint): Promise<any[]> {
+    this.log(`Executing query #${queryId} (${endpoint.host}:${endpoint.port}): ${truncateQuery(gremlinQuery)}`);
 
     const client = gremlin.createClient(
-      this._configuration.endpointPort,
-      this._configuration.endpoint,
+      endpoint.port,
+      endpoint.host,
       {
         "session": false,
-        "ssl": this._configuration.endpointPort === 443 || this._configuration.endpointPort === 8080,
+        "ssl": endpoint.ssl,
         "user": `/dbs/${this._configuration.databaseName}/colls/${this._configuration.graphName}`,
         "password": this._configuration.key
       });
@@ -332,14 +362,26 @@ export class GraphViewServer extends EventEmitter {
       originalHandleProtocolMessage.call(this, message);
     };
 
+    let socketError = undefined;
+    client.on('error', error => handleError(error));
+
+    function handleError(err) {
+      // These are errors that come from the web socket communication (i.e. address not found)
+      socketError = err;
+    }
+
     return new Promise<[{}[]]>((resolve, reject) => {
       client.execute(gremlinQuery, {}, (err, results) => {
-        if (err) {
+        if (socketError) {
+          this.log("Gremlin communication error: ", socketError.message || socketError.toString());
+          reject(socketError);
+        } else if (err) {
           this.log("Error from gremlin server: ", err.message || err.toString());
-          reject(new Error(err));
+          reject(err);
+        } else {
+          this.log("Results from gremlin", results);
+          resolve(results);
         }
-        this.log("Results from gremlin", results);
-        resolve(results);
       });
     });
   }

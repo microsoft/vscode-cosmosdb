@@ -63,8 +63,9 @@ export class GraphCollectionTreeItem implements IAzureTreeItem {
 
     public async showExplorer(graphViewsManager: GraphViewsManager): Promise<void> {
         await graphViewsManager.showGraphViewer(this.label, <GraphConfiguration>{
-            endpoint: this._database.graphEndpoint,
-            endpointPort: this._database.graphPort,
+            documentEndpoint: this._database.documentEndpoint,
+            gremlinEndpoint: this._database.gremlinEndpoint,
+            possibleGremlinEndpoints: this._database.possibleGremlinEndpoints,
             databaseName: this._database.label,
             graphName: this.label,
             key: this._database.masterKey

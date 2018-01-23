@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import * as path from "path";
 import * as io from 'socket.io';
 import * as fs from "fs";
-import { GraphConfiguration, areConfigsEquals } from './GraphConfiguration';
+import { GraphConfiguration, areConfigsEqual } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
 import { AzureActionHandler } from 'vscode-azureextensionui';
 
@@ -55,7 +55,7 @@ export class GraphViewsManager implements IServerProvider {
     var existingServer: GraphViewServer = null;
     var existingId: number;
     this._servers.forEach((server, key) => {
-      if (areConfigsEquals(server.configuration, config)) {
+      if (areConfigsEqual(server.configuration, config)) {
         existingServer = server;
         existingId = key;
       }

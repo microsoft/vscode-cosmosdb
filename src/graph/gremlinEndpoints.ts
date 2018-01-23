@@ -39,10 +39,10 @@ export function getPossibleGremlinEndpoints(documentEndpoint: string): IGremlinE
     const documentSuffix = '.documents.azure.com';
     if (documentEndpoint.indexOf(documentSuffix) >= 0) {
         // Pre-GA style (Dec 2017)
-        let preGAEndpoint = documentEndpoint.replace(documentSuffix, '.graphs.azure.com');
+        const preGAEndpoint = documentEndpoint.replace(documentSuffix, '.graphs.azure.com');
 
         // Post-GA style (Dec 2017)
-        let postGAEndpoint = documentEndpoint.replace(documentSuffix, '.gremlin.cosmosdb.azure.com');
+        const postGAEndpoint = documentEndpoint.replace(documentSuffix, '.gremlin.cosmosdb.azure.com');
 
         return [parseEndpointUrl(postGAEndpoint), parseEndpointUrl(preGAEndpoint)];
     } else {

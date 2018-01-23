@@ -100,7 +100,7 @@ export class GraphViewServer extends EventEmitter {
         0, // dynamnically pick an unused port
         () => {
           this._port = this._httpServer.address().port;
-          console.log(`** GraphViewServer listening to port ${this._port} for endpoint ${this.configuration.gremlinEndpoint ? this.configuration.gremlinEndpoint.host : this.configuration.documentEndpoint}`);
+          console.log(`** GraphViewServer listening to port ${this._port} for ${this.configuration.gremlinEndpoint ? this.configuration.gremlinEndpoint.host : this.configuration.documentEndpoint}/${this._configuration.databaseName}/${this._configuration.graphName}`);
           resolve();
         });
       this._server = io(this._httpServer);
@@ -310,7 +310,7 @@ export class GraphViewServer extends EventEmitter {
 
   private async _executeQueryCore(queryId: number, gremlinQuery: string): Promise<any[]> {
     if (this.configuration.gremlinEndpoint) {
-      return this._executeQueryCoreForEndpoint(queryId, gremlinQuery, this.configuration.gremlinEndpoint);
+      return this._executeQueryCoreForEndpoint(queryId, gremlin, this.configuration.gremlinEndpoint);
     } else {
       // We haven't figured out yet which endpoint actually works (if any - network could be down, etc.), so try them all
       let firstValidError: any = null;

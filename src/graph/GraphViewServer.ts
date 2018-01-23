@@ -310,7 +310,7 @@ export class GraphViewServer extends EventEmitter {
 
   private async _executeQueryCore(queryId: number, gremlinQuery: string): Promise<any[]> {
     if (this.configuration.gremlinEndpoint) {
-      return this._executeQueryCoreForEndpoint(queryId, gremlin, this.configuration.gremlinEndpoint);
+      return this._executeQueryCoreForEndpoint(queryId, gremlinQuery, this.configuration.gremlinEndpoint);
     } else {
       // We haven't figured out yet which endpoint actually works (if any - network could be down, etc.), so try them all
       let firstValidError: any = null;

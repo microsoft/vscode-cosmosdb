@@ -56,13 +56,11 @@ export function activate(context: vscode.ExtensionContext) {
 		await node.createChild();
 	});
 	actionHandler.registerCommand('cosmosDB.attachDatabaseAccount', async () => {
-		const rootNodes = await tree.getChildren();
 		const attachedAccountsNode = await getAttachedNode(tree);
 		await attachedAccountsNode.treeItem.attachNewAccount();
 		tree.refresh(attachedAccountsNode);
 	});
 	actionHandler.registerCommand('cosmosDB.attachEmulator', async () => {
-		const rootNodes = await tree.getChildren();
 		const attachedAccountsNode = await getAttachedNode(tree);
 		await attachedAccountsNode.treeItem.attachEmulator();
 		tree.refresh(attachedAccountsNode);

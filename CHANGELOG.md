@@ -1,6 +1,14 @@
 # Change Log
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.4.0 - 2018-01-25
+### Added
+- Attach to Cosmos DB emulator
+- Run commands from the command palette
+
+### Fixed
+- [Bugs fixed](https://github.com/Microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A%220.4.0%22+is%3Aclosed+label%3Abug)
+
 ## 0.3.0 - 2017-12-15
 ### Added
 - Attach Cosmos DB accounts by connection string

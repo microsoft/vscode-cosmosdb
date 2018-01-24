@@ -27,9 +27,10 @@ export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
     private _iterator: QueryIterator<T> | undefined;
     private _batchSize: number = DefaultBatchSize;
 
-    constructor(documentEndpoint: string, masterKey: string) {
+    constructor(documentEndpoint: string, masterKey: string, isEmulator?: boolean) {
         this.documentEndpoint = documentEndpoint;
         this.masterKey = masterKey;
+        this.isEmulator = isEmulator;
     }
 
     public hasMoreChildren(): boolean {

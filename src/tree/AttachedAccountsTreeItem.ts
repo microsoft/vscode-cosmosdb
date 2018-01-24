@@ -17,7 +17,6 @@ import { ConfigurationTarget } from 'vscode';
 
 interface IPersistedAccount {
     id: string,
-    label: string,
     defaultExperience: Experience,
     isEmulator: boolean
 }
@@ -130,7 +129,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 }
                 const label = `${defaultExperience} Emulator`
                 let treeItem: IAzureTreeItem = await this.createTreeItem(connectionString, defaultExperience, label);
-                if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem) {
+                if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem || treeItem instanceof MongoAccountTreeItem) {
                     treeItem.isEmulator = true;
                 }
                 await this.attachAccount(treeItem, connectionString);
@@ -202,9 +201,9 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                         isEmulator = false;
                     } else {
                         id = (<IPersistedAccount>account).id;
-                        label = (<IPersistedAccount>account).label;
                         api = (<IPersistedAccount>account).defaultExperience;
                         isEmulator = (<IPersistedAccount>account).isEmulator;
+                        label = isEmulator ? `${api} Emulator` : id;
                     }
                     const connectionString: string = await this._keytar.getPassword(this._serviceName, id);
                     this._attachedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
@@ -223,7 +222,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             }
 
             label = label || id;
-            treeItem = new MongoAccountTreeItem(id, label, connectionString);
+            treeItem = new MongoAccountTreeItem(id, label, connectionString, isEmulator);
         } else {
             const [endpoint, masterKey, id] = AttachedAccountsTreeItem.parseDocDBConnectionString(connectionString);
 
@@ -253,7 +252,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             let isEmulator: boolean;
             if (node instanceof MongoAccountTreeItem) {
                 experience = Experience.MongoDB;
-                isEmulator = false;
+                isEmulator = node.isEmulator;
             } else if (node instanceof GraphAccountTreeItem) {
                 experience = Experience.Graph;
                 isEmulator = node.isEmulator;
@@ -266,7 +265,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             } else {
                 throw new Error(`Unexpected account node "${node.constructor.name}".`);
             }
-            return { id: node.id, label: node.label, defaultExperience: experience, isEmulator: isEmulator };
+            return { id: node.id, defaultExperience: experience, isEmulator: isEmulator };
         });
         await this._globalState.update(this._serviceName, JSON.stringify(value));
     }

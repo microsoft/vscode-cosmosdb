@@ -6,7 +6,7 @@
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Collection, ObjectID } from 'mongodb';
+import { Collection, ObjectID, DeleteWriteOpResultObject, UpdateWriteOpResult } from 'mongodb';
 import { IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { DialogBoxResponses } from '../../constants';
 
@@ -51,7 +51,10 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
         const message: string = `Are you sure you want to delete document '${this.label}'?`;
         const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
         if (result === DialogBoxResponses.Yes) {
-            await this._collection.deleteOne({ "_id": this.document._id });
+            const result: DeleteWriteOpResultObject = await this._collection.deleteOne({ "_id": this.document._id });
+            if (result.deletedCount != 1) {
+                throw new Error(`Failed to delete document with _id '${this.document._id}'.`);
+            }
         } else {
             throw new UserCancelledError();
         }
@@ -67,8 +70,8 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
             throw new Error(`The "_id" field is required to update a document.`);
         }
         const filter: object = { _id: new ObjectID(newDocument._id) };
-        const result = await collection.updateOne(filter, _.omit(newDocument, '_id'));
-        if (result.upsertedCount != 1) {
+        const result: UpdateWriteOpResult = await collection.updateOne(filter, _.omit(newDocument, '_id'));
+        if (result.modifiedCount != 1) {
             throw new Error(`Failed to update document with _id '${newDocument._id}'.`);
         }
         return newDocument;

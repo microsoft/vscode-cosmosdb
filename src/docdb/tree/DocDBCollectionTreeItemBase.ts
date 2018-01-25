@@ -18,8 +18,8 @@ export abstract class DocDBCollectionTreeItemBase extends DocDBTreeItemBase<Retr
     private readonly _collection: CollectionMeta;
     private readonly _parentId: string;
 
-    constructor(documentEndpoint: string, masterKey: string, collection: CollectionMeta, parentId: string) {
-        super(documentEndpoint, masterKey);
+    constructor(documentEndpoint: string, masterKey: string, collection: CollectionMeta, parentId: string, isEmulator: boolean) {
+        super(documentEndpoint, masterKey, isEmulator);
         this._collection = collection;
         this._parentId = parentId;
     }

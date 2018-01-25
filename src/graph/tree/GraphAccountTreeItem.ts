@@ -14,12 +14,12 @@ export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBGraphAccount";
     public contextValue: string = GraphAccountTreeItem.contextValue;
 
-    constructor(id: string, label: string, documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, isEmulator?: boolean) {
+    constructor(id: string, label: string, documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, isEmulator: boolean) {
         super(id, label, documentEndpoint, masterKey, isEmulator);
     }
 
     public initChild(database: DatabaseMeta): IAzureTreeItem {
-        return new GraphDatabaseTreeItem(this.documentEndpoint, this._gremlinEndpoint, this.masterKey, database, this.id);
+        return new GraphDatabaseTreeItem(this.documentEndpoint, this._gremlinEndpoint, this.masterKey, database, this.id, this.isEmulator);
     }
 
     public isAncestorOf(contextValue: string): boolean {

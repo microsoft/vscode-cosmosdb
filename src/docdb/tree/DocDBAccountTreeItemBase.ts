@@ -18,7 +18,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     public readonly label: string;
     public readonly childTypeLabel: string = "Database";
 
-    constructor(id: string, label: string, documentEndpoint: string, masterKey: string, isEmulator?: boolean) {
+    constructor(id: string, label: string, documentEndpoint: string, masterKey: string, isEmulator: boolean) {
         super(documentEndpoint, masterKey, isEmulator);
         this.id = id;
         this.label = label;

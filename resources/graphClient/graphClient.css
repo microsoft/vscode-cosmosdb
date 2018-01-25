@@ -22,12 +22,12 @@ html {
             Specifically just for the graph itself, regardless of theme
     */
 
-    --graph-background-color: black;
-    --graph-color: #ccc;
+    --graph-background-color: #1e1e1e;
+    --graph-color: #eee;
+
     --graph-border:  #454545 1px solid;
     --button-background-color: #0e639c;
     --button-color: white;
-    --tab-underline-color: #0072c6;
 }
 
 body {
@@ -114,6 +114,7 @@ h1 span {
     width: 100%;
     height: calc(100% - 198px);
     background: var(--graph-background-color);
+    border: var(--graph-border);
 }
 
 .error {
@@ -168,6 +169,7 @@ button:active {
 
 .watermark {
     text-align: center;
+    padding-top: 18%;
 }
 
 textarea {
@@ -181,8 +183,8 @@ textarea {
     width: 100%;
     height: 100%;
     height: -webkit-fill-available;
-    color: var(--background-color);
-    background-color: var(--color);
+    color: var(--graph-color);
+    background-color: var(--graph-background-color);
     border: 0;
 }
 
@@ -216,11 +218,15 @@ textarea {
 .toggle-radio-buttons input[type="radio"]:checked:not([disabled]) + label {
     color: var(--color);
     padding-bottom: 3px;
-    border-bottom-color:  var(--tab-underline-color);
+    border-bottom-color: var(--color);
 }
 
 #queryWatermark, #graphWatermark {
     padding-top: 18%;
+}
+
+.watermark, #queryStatus {
+    color: var(--graph-color);
 }
 
 #statsBackground {

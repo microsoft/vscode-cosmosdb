@@ -14,8 +14,8 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
     public readonly contextValue: string = GraphDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Graph';
 
-    constructor(documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, database: DatabaseMeta, parentId: string) {
-        super(documentEndpoint, masterKey, database, parentId);
+    constructor(documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, database: DatabaseMeta, parentId: string, isEmulator: boolean) {
+        super(documentEndpoint, masterKey, database, parentId, isEmulator);
     }
 
     public initChild(collection: CollectionMeta): IAzureTreeItem {

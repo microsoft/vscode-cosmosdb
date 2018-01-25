@@ -21,7 +21,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
 
     public isEmulator: boolean;
 
-    constructor(id: string, label: string, connectionString: string, isEmulator?: boolean) {
+    constructor(id: string, label: string, connectionString: string, isEmulator: boolean) {
         this.id = id;
         this.label = label;
         this.connectionString = connectionString;

@@ -71,6 +71,13 @@
 
 ![Mongo Intellisense](resources/intellisense.gif)
 
+## Attach to the Cosmos DB Emulator
+
+* Install and run the [Cosmos DB Emulator](https://docs.microsoft.com/azure/cosmos-db/local-emulator) on your local machine
+* Right click 'Attached Database Accounts' and select 'Attach Emulator'
+
+![Attach Emulator](resources/attachEmulator.png)
+
 # Contributing
 There are a couple of ways you can contribute to this repo:
 

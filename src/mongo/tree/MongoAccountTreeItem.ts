@@ -17,13 +17,15 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
     public readonly childTypeLabel: string = "Database";
     public readonly id: string;
     public readonly label: string;
-
     public readonly connectionString: string;
 
-    constructor(id: string, label: string, connectionString: string) {
+    public isEmulator: boolean;
+
+    constructor(id: string, label: string, connectionString: string, isEmulator?: boolean) {
         this.id = id;
         this.label = label;
         this.connectionString = connectionString;
+        this.isEmulator = isEmulator;
     }
 
     public get iconPath(): any {

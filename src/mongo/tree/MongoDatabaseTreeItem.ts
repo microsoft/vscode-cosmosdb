@@ -35,7 +35,11 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		if (path.endsWith('/')) {
 			path = path.slice(0, -1);
 		}
-		this.connectionString = `${uri.scheme}://${uri.authority}/${path}/${this._databaseName}?${uri.query}`;
+		if (path) {
+			this.connectionString = `${uri.scheme}://${uri.authority}/${path}/${this._databaseName}?${uri.query}`;
+		} else {
+			this.connectionString = `${uri.scheme}://${uri.authority}/${this._databaseName}?${uri.query}`;
+		}
 	}
 
 	public get label(): string {

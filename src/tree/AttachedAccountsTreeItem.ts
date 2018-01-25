@@ -17,8 +17,8 @@ import { ConfigurationTarget } from 'vscode';
 
 interface IPersistedAccount {
     id: string,
-    label: string,
-    defaultExperience: Experience
+    defaultExperience: Experience,
+    isEmulator: boolean
 }
 
 export const AttachedAccountSuffix: string = 'Attached';
@@ -111,7 +111,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
 
     public async attachEmulator(): Promise<void> {
         let connectionString: string;
-        const defaultExperience = <Experience>await vscode.window.showQuickPick(['MongoDB', 'DocumentDB', 'Graph'], { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
+        const defaultExperience = <Experience>await vscode.window.showQuickPick(['MongoDB', 'DocumentDB'], { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
         if (defaultExperience) {
             let port: number;
             if (defaultExperience === Experience.MongoDB) {
@@ -129,7 +129,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 }
                 const label = `${defaultExperience} Emulator`
                 let treeItem: IAzureTreeItem = await this.createTreeItem(connectionString, defaultExperience, label);
-                if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem) {
+                if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem || treeItem instanceof MongoAccountTreeItem) {
                     treeItem.isEmulator = true;
                 }
                 await this.attachAccount(treeItem, connectionString);
@@ -191,19 +191,22 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                     let id: string;
                     let label: string;
                     let api: Experience;
+                    let isEmulator: boolean;
                     if (typeof (account) === 'string') {
                         // Default to Mongo if the value is a string for the sake of backwards compatiblity
                         // (Mongo was originally the only account type that could be attached)
                         id = account;
                         label = account;
                         api = Experience.MongoDB;
+                        isEmulator = false;
                     } else {
                         id = (<IPersistedAccount>account).id;
-                        label = (<IPersistedAccount>account).label;
                         api = (<IPersistedAccount>account).defaultExperience;
+                        isEmulator = (<IPersistedAccount>account).isEmulator;
+                        label = isEmulator ? `${api} Emulator` : id;
                     }
                     const connectionString: string = await this._keytar.getPassword(this._serviceName, id);
-                    this._attachedAccounts.push(await this.createTreeItem(connectionString, api, label, id));
+                    this._attachedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
                 }));
             } catch {
                 throw new Error('Failed to load persisted Database Accounts. Reattach the accounts manually.')
@@ -211,7 +214,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         }
     }
 
-    private async createTreeItem(connectionString: string, api: Experience, label?: string, id?: string): Promise<IAzureTreeItem> {
+    private async createTreeItem(connectionString: string, api: Experience, label?: string, id?: string, isEmulator?: boolean): Promise<IAzureTreeItem> {
         let treeItem: IAzureTreeItem;
         if (api === Experience.MongoDB) {
             if (id === undefined) {
@@ -219,20 +222,20 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             }
 
             label = label || id;
-            treeItem = new MongoAccountTreeItem(id, label, connectionString);
+            treeItem = new MongoAccountTreeItem(id, label, connectionString, isEmulator);
         } else {
             const [endpoint, masterKey, id] = AttachedAccountsTreeItem.parseDocDBConnectionString(connectionString);
 
             label = label || id;
             switch (api) {
                 case Experience.Table:
-                    treeItem = new TableAccountTreeItem(id, label, endpoint, masterKey);
+                    treeItem = new TableAccountTreeItem(id, label, endpoint, masterKey, isEmulator);
                     break;
                 case Experience.Graph:
-                    treeItem = new GraphAccountTreeItem(id, label, endpoint, undefined, masterKey);
+                    treeItem = new GraphAccountTreeItem(id, label, endpoint, undefined, masterKey, isEmulator);
                     break;
                 case Experience.DocumentDB:
-                    treeItem = new DocDBAccountTreeItem(id, label, endpoint, masterKey);
+                    treeItem = new DocDBAccountTreeItem(id, label, endpoint, masterKey, isEmulator);
                     break;
                 default:
                     throw new Error(`Unexpected defaultExperience "${api}".`);
@@ -246,6 +249,10 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     private async persistIds() {
         const value: IPersistedAccount[] = this._attachedAccounts.map((node: IAzureTreeItem) => {
             let experience: Experience;
+            let isEmulator: boolean;
+            if (node instanceof MongoAccountTreeItem || node instanceof DocDBAccountTreeItem || node instanceof GraphAccountTreeItem || node instanceof TableAccountTreeItem) {
+                isEmulator = node.isEmulator;
+            }
             if (node instanceof MongoAccountTreeItem) {
                 experience = Experience.MongoDB;
             } else if (node instanceof GraphAccountTreeItem) {
@@ -257,7 +264,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             } else {
                 throw new Error(`Unexpected account node "${node.constructor.name}".`);
             }
-            return { id: node.id, label: node.label, defaultExperience: experience };
+            return { id: node.id, defaultExperience: experience, isEmulator: isEmulator };
         });
         await this._globalState.update(this._serviceName, JSON.stringify(value));
     }

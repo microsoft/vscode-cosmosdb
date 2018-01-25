@@ -49,8 +49,8 @@ export default class MongoDBLanguageClient {
 		context.subscriptions.push(disposable);
 	}
 
-	async connect(databaseConnectionString: string) {
-		await this.client.sendRequest('connect', { connectionString: databaseConnectionString });
+	async connect(connectionString: string, databaseName: string) {
+		await this.client.sendRequest('connect', { connectionString: connectionString, databaseName: databaseName });
 	}
 
 	disconnect(): void {

@@ -17,40 +17,26 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public readonly contextValue: string = MongoDatabaseTreeItem.contextValue;
 	public readonly childTypeLabel: string = "Collection";
 	public readonly connectionString: string;
+	public readonly databaseName: string;
 
-	private readonly _databaseName: string;
-	private readonly _accountConnectionString: string;
 	private readonly _parentId: string;
 	public isConnected: boolean = false;
 
-	constructor(databaseName: string, accountConnectionString: string, parentId: string) {
-		this._databaseName = databaseName;
-		this._accountConnectionString = accountConnectionString;
+	constructor(databaseName: string, connectionString: string, parentId: string) {
+		this.databaseName = databaseName;
+		this.connectionString = connectionString;
 		this._parentId = parentId;
-		const uri: vscode.Uri = vscode.Uri.parse(accountConnectionString);
-		let path: string = uri.path;
-		if (path.startsWith('/')) {
-			path = path.slice(1);
-		}
-		if (path.endsWith('/')) {
-			path = path.slice(0, -1);
-		}
-		if (path) {
-			this.connectionString = `${uri.scheme}://${uri.authority}/${path}/${this._databaseName}?${uri.query}`;
-		} else {
-			this.connectionString = `${uri.scheme}://${uri.authority}/${this._databaseName}?${uri.query}`;
-		}
 	}
 
 	public get label(): string {
 		if (this.isConnected) {
-			return this._databaseName + " (Connected)";
+			return this.databaseName + " (Connected)";
 		}
-		return this._databaseName;
+		return this.databaseName;
 	}
 
 	public get id(): string {
-		return `${this._parentId}/${this._databaseName}`;
+		return `${this._parentId}/${this.databaseName}`;
 	}
 
 	get iconPath(): any {
@@ -67,7 +53,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public async loadMoreChildren(_node: IAzureNode, _clearCache: boolean): Promise<IAzureTreeItem[]> {
 		const db: Db = await this.getDb();
 		const collections: Collection[] = await db.collections();
-		return collections.map(collection => new MongoCollectionTreeItem(this.connectionString, collection, this.id));
+		return collections.map(collection => new MongoCollectionTreeItem(collection, this.id));
 	}
 
 	public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
@@ -98,7 +84,8 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	}
 
 	public async getDb(): Promise<Db> {
-		return await MongoClient.connect(this.connectionString);
+		const accountConnection = await MongoClient.connect(this.connectionString);
+		return accountConnection.db(this.databaseName);
 	}
 
 	executeCommand(command: MongoCommand): Thenable<string> {
@@ -107,7 +94,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 				.then(db => {
 					const collection = db.collection(command.collection);
 					if (collection) {
-						const result = new MongoCollectionTreeItem(this.connectionString, collection, command.arguments).executeCommand(command.name, command.arguments);
+						const result = new MongoCollectionTreeItem(collection, command.arguments).executeCommand(command.name, command.arguments);
 						if (result) {
 							return result;
 						}
@@ -130,7 +117,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		// However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
 		const result = await newCollection.insertOne({});
 		await newCollection.deleteOne({ _id: result.insertedId });
-		return new MongoCollectionTreeItem(this.connectionString, newCollection, this.id);
+		return new MongoCollectionTreeItem(newCollection, this.id);
 	}
 
 	executeCommandInShell(command: MongoCommand): Thenable<string> {
@@ -151,9 +138,9 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	}
 
 	private async createShell(shellPath: string): Promise<Shell> {
-		return <Promise<null>>Shell.create(shellPath, this._accountConnectionString)
+		return <Promise<null>>Shell.create(shellPath, this.connectionString)
 			.then(shell => {
-				return shell.useDatabase(this._databaseName).then(() => shell);
+				return shell.useDatabase(this.databaseName).then(() => shell);
 			}, error => vscode.window.showErrorMessage(error));
 	}
 }

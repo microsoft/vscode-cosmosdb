@@ -20,17 +20,15 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 	private readonly collection: Collection;
 	private readonly _query: string | undefined;
-	private readonly _databaseConnectionString: string;
 	private _cursor: Cursor | undefined;
 	private _hasMoreChildren: boolean = true;
 	private _parentId: string;
 	private _batchSize: number = DefaultBatchSize;
 
-	constructor(databaseConnectionString: string, collection: Collection, parentId: string, query?: string) {
+	constructor(collection: Collection, parentId: string, query?: string) {
 		this.collection = collection;
 		this._parentId = parentId;
 		this._query = query;
-		this._databaseConnectionString = databaseConnectionString;
 	}
 
 	public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
@@ -149,8 +147,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	}
 
 	private async drop(): Promise<string> {
-		const db: Db = await MongoClient.connect(this._databaseConnectionString);
-		await db.dropCollection(this.collection.collectionName);
+		await this.collection.drop();
 		return `Dropped collection ${this.collection.collectionName}.`;
 	}
 

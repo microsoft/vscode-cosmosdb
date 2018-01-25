@@ -48,7 +48,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
             await connectedDb.refresh();
         }
         connectedDb = node;
-        await languageClient.connect(connectedDb.treeItem.connectionString);
+        await languageClient.connect(connectedDb.treeItem.connectionString, connectedDb.treeItem.databaseName);
         connectedDb.treeItem.isConnected = true;
         await node.refresh();
     });

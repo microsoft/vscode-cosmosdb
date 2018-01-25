@@ -250,18 +250,17 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         const value: IPersistedAccount[] = this._attachedAccounts.map((node: IAzureTreeItem) => {
             let experience: Experience;
             let isEmulator: boolean;
+            if (node instanceof MongoAccountTreeItem || node instanceof DocDBAccountTreeItem || node instanceof GraphAccountTreeItem || node instanceof TableAccountTreeItem) {
+                isEmulator = node.isEmulator;
+            }
             if (node instanceof MongoAccountTreeItem) {
                 experience = Experience.MongoDB;
-                isEmulator = node.isEmulator;
             } else if (node instanceof GraphAccountTreeItem) {
                 experience = Experience.Graph;
-                isEmulator = node.isEmulator;
             } else if (node instanceof TableAccountTreeItem) {
                 experience = Experience.Table;
-                isEmulator = node.isEmulator;
             } else if (node instanceof DocDBAccountTreeItem) {
                 experience = Experience.DocumentDB;
-                isEmulator = node.isEmulator;
             } else {
                 throw new Error(`Unexpected account node "${node.constructor.name}".`);
             }

@@ -44,8 +44,8 @@ export class LanguageService {
 
 		connection.onRequest('connect', (connectionParams) => {
 			MongoClient.connect(connectionParams.connectionString)
-				.then(db => {
-					this.db = db;
+				.then(account => {
+					this.db = account.db(connectionParams.databaseName);
 					this.schemaService.registerSchemas(this.db)
 						.then(schemas => {
 							this.configureSchemas(schemas);

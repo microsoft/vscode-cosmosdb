@@ -1,5 +1,6 @@
 
 # Cosmos DB Support for VS Code (Preview)
+[![Build Status](https://travis-ci.org/Microsoft/vscode-cosmosdb.svg?branch=master)](https://travis-ci.org/Microsoft/vscode-cosmosdb) [![Release Status](https://img.shields.io/github/tag/Microsoft/vscode-cosmosdb.svg?label=prerelease&colorB=0E7FC0)](https://github.com/Microsoft/vscode-cosmosdb/releases)
 
 # Prerequisites
 

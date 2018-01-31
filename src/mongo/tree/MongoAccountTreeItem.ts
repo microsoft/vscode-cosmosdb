@@ -10,6 +10,7 @@ import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } 
 import { MongoDatabaseTreeItem, validateMongoCollectionName } from './MongoDatabaseTreeItem';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './MongoDocumentTreeItem';
+import { deleteCosmosDBAccount } from '../../commands';
 
 export class MongoAccountTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = "cosmosDBMongoServer";
@@ -94,6 +95,10 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
             default:
                 return false;
         }
+    }
+
+    public async deleteTreeItem(): Promise<void> {
+        //        await deleteCosmosDBAccount()
     }
 }
 

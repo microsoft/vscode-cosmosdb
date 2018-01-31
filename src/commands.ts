@@ -8,6 +8,8 @@ import { ResourceModels, ResourceManagementClient, SubscriptionClient, Subscript
 import CosmosDBManagementClient = require("azure-arm-cosmosdb");
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
 import { IAzureNode, AzureTreeDataProvider, UserCancelledError } from 'vscode-azureextensionui';
+import { DialogBoxResponses } from './constants';
+import { azureUtils } from './utils/azureUtils';
 
 export async function createCosmosDBAccount(subscriptionNode: IAzureNode, showCreatingNode: (label: string) => void): Promise<DatabaseAccount> {
     const resourceGroupPick = await getOrCreateResourceGroup(subscriptionNode);
@@ -202,3 +204,18 @@ export class ResourceGroupQuickPick implements vscode.QuickPickItem {
         this.description = resourceGroup.location;
     }
 }
+export async function deleteCosmosDBAccount(node: IAzureNode): Promise<void> {
+    const message: string = `Are you sure you want to delete account '${node.treeItem.label}'?`;
+    const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
+    if (result === DialogBoxResponses.Yes) {
+        const docDBClient = new CosmosDBManagementClient(node.credentials, node.subscription.subscriptionId);
+        const resourceGroup: string = azureUtils.getResourceGroupFromId(node.treeItem.id);
+        let label: string = node.treeItem.label;
+        let accountName: string = label.substring(0, label.indexOf(" "));
+        await docDBClient.databaseAccounts.deleteMethod(resourceGroup, accountName);
+        node.parent.refresh();
+    } else {
+        throw new UserCancelledError();
+    }
+}
+

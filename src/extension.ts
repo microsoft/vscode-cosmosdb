@@ -27,6 +27,7 @@ import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase'
 import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
+import { deleteCosmosDBAccount } from './commands';
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(new Reporter(context));
@@ -55,6 +56,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 		await node.createChild();
 	});
+	actionHandler.registerCommand('cosmosDB.deleteAccount', async (node?: IAzureNode) => {
+		if (node) {
+			await deleteCosmosDBAccount(node);
+		}
+	});
+
 	actionHandler.registerCommand('cosmosDB.attachDatabaseAccount', async () => {
 		const attachedAccountsNode = await getAttachedNode(tree);
 		await attachedAccountsNode.treeItem.attachNewAccount();

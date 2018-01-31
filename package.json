@@ -40,6 +40,7 @@
 		"onCommand:cosmosDB.attachDatabaseAccount",
 		"onCommand:cosmosDB.attachEmulator",
 		"onCommand:cosmosDB.createAccount",
+		"onCommand:cosmosDB.deleteAccount",
 		"onCommand:cosmosDB.detachDatabaseAccount",
 		"onCommand:cosmosDB.createMongoDatabase",
 		"onCommand:cosmosDB.createMongoCollection",
@@ -133,6 +134,11 @@
 					"light": "resources/icons/light/add.svg",
 					"dark": "resources/icons/dark/add.svg"
 				}
+			},
+			{
+				"category": "Cosmos DB",
+				"command": "cosmosDB.deleteAccount",
+				"title": "Delete Account"
 			},
 			{
 				"category": "MongoDB",
@@ -344,6 +350,10 @@
 				{
 					"command": "cosmosDB.createAccount",
 					"when": "view == cosmosDBExplorer && viewItem == azureSubscription"
+				},
+				{
+					"command": "cosmosDB.deleteAccount",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
 				},
 				{
 					"command": "cosmosDB.createMongoDatabase",

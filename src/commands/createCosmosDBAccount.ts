@@ -202,5 +202,3 @@ export class ResourceGroupQuickPick implements vscode.QuickPickItem {
         this.description = resourceGroup.location;
     }
 }
-
-

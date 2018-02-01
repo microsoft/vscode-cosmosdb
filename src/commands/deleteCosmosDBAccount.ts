@@ -12,8 +12,8 @@ export async function deleteCosmosDBAccount(node: IAzureNode): Promise<void> {
     if (result === DialogBoxResponses.Yes) {
         const docDBClient = new CosmosDBManagementClient(node.credentials, node.subscription.subscriptionId);
         const resourceGroup: string = azureUtils.getResourceGroupFromId(node.treeItem.id);
-        let label: string = node.treeItem.label;
-        let accountName: string = label.substring(0, label.indexOf(" "));
+        const label: string = node.treeItem.label;
+        const accountName: string = label.substring(0, label.indexOf(" "));
         const output = util.getOutputChannel();
         output.appendLine(`Starting removal of account ${accountName}`);
         output.show();

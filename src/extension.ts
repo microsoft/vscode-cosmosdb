@@ -55,6 +55,14 @@ export function activate(context: vscode.ExtensionContext) {
 
 		await node.createChild();
 	});
+	actionHandler.registerCommand('cosmosDB.deleteAccount', async (node?: IAzureNode) => {
+		if (!node) {
+			node = await tree.showNodePicker(accountContextValues);
+		}
+
+		await node.deleteNode();
+	});
+
 	actionHandler.registerCommand('cosmosDB.attachDatabaseAccount', async () => {
 		const attachedAccountsNode = await getAttachedNode(tree);
 		await attachedAccountsNode.treeItem.attachNewAccount();

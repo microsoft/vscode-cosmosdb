@@ -8,6 +8,7 @@ import { DocumentClient, QueryIterator, DatabaseMeta, FeedOptions } from 'docume
 import { IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import * as vscode from 'vscode';
+import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 
 /**
  * This class provides common logic for DocumentDB, Graph, and Table accounts
@@ -77,4 +78,9 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         }
         return undefined;
     }
+
+    public async deleteTreeItem(node: IAzureNode): Promise<void> {
+        await deleteCosmosDBAccount(node);
+    }
+
 }

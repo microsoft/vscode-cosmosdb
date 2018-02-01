@@ -11,7 +11,7 @@ import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import CosmosDBManagementClient = require("azure-arm-cosmosdb");
 import { DatabaseAccountsListResult, DatabaseAccount, DatabaseAccountListKeysResult } from 'azure-arm-cosmosdb/lib/models';
-import { createCosmosDBAccount } from '../commands';
+import { createCosmosDBAccount } from '../commands/createCosmosDBAccount';
 import { Experience } from '../constants';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 

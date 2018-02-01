@@ -13,4 +13,13 @@ export namespace azureUtils {
 
         return matches[2];
     }
+    export function getAccountNameFromId(id: string): string {
+        const matches: RegExpMatchArray | null = id.match(/\/subscriptions\/(.*)\/resourceGroups\/(.*)\/providers\/(.*)\/databaseAccounts\/(.*)/);
+
+        if (matches === null || matches.length < 5) {
+            throw new Error('Invalid Azure Resource Id');
+        }
+
+        return matches[4];
+    }
 }

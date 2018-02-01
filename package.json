@@ -356,6 +356,18 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
 				},
 				{
+					"command": "cosmosDB.deleteAccount",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+				},
+				{
+					"command": "cosmosDB.deleteAccount",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+				},
+				{
+					"command": "cosmosDB.deleteAccount",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
+				},
+				{
 					"command": "cosmosDB.createMongoDatabase",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
 				},

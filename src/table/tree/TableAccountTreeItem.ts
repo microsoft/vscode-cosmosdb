@@ -5,6 +5,7 @@
 
 import { IAzureNode, IAzureTreeItem } from "vscode-azureextensionui";
 import { DocDBAccountTreeItemBase } from "../../docdb/tree/DocDBAccountTreeItemBase";
+import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 
 export class TableAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBTableAccount";
@@ -25,4 +26,9 @@ export class TableAccountTreeItem extends DocDBAccountTreeItemBase {
             label: 'Table Accounts are not supported yet.'
         }];
     }
+
+    public async deleteTreeItem(node: IAzureNode): Promise<void> {
+        await deleteCosmosDBAccount(node);
+    }
+
 }

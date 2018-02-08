@@ -20,7 +20,7 @@ export interface ICosmosEditor<T = {}> {
 }
 
 export class CosmosEditorManager implements vscode.Disposable {
-    private fileMap: { [key: string]: [vscode.TextDocument, ICosmosEditor] } = {};
+    private fileMap: { [key: string]: ICosmosEditor } = {};
     private ignoreSave: boolean = false;
 
     private readonly showSavePromptKey: string = 'cosmosDB.showSavePrompt';
@@ -30,24 +30,23 @@ export class CosmosEditorManager implements vscode.Disposable {
         await fse.ensureFile(localDocPath);
 
         const document = await vscode.workspace.openTextDocument(localDocPath);
-        if (localDocPath in this.fileMap) {
-            if (this.fileMap[localDocPath][0].isDirty) {
-                const overwriteFlag = await vscode.window.showWarningMessage(`You are about to overwrite "${fileName}", which has unsaved changes. Do you want to continue?`, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
-                if (overwriteFlag !== DialogBoxResponses.Yes) {
-                    throw new UserCancelledError();
-                }
+        if (document.isDirty) {
+            const overwriteFlag = await vscode.window.showWarningMessage(`You are about to overwrite "${fileName}", which has unsaved changes. Do you want to continue?`, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
+            if (overwriteFlag !== DialogBoxResponses.Yes) {
+                throw new UserCancelledError();
             }
         }
-        this.fileMap[localDocPath] = [document, editor];
+        this.fileMap[localDocPath] = editor;
         const textEditor = await vscode.window.showTextDocument(document);
         const data = await editor.getData();
         await this.updateEditor(data, textEditor);
     }
 
-    public async updateMatchingNode(doc): Promise<void> {
-        const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.fsPath, filePath) === '');
+    public async updateMatchingNode(documentUri: vscode.Uri): Promise<void> {
+        const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(documentUri.fsPath, filePath) === '');
         if (filePath) {
-            await this.updateToCloud(this.fileMap[filePath][1], this.fileMap[filePath][0]);
+            const document = await vscode.workspace.openTextDocument(documentUri.fsPath);
+            await this.updateToCloud(this.fileMap[filePath], document);
         } else {
             await vscode.window.showWarningMessage(`Editing Cosmos DB entities across sessions is currently not supported.`)
         }
@@ -85,7 +84,7 @@ export class CosmosEditorManager implements vscode.Disposable {
         const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.uri.fsPath, filePath) === '');
         if (!this.ignoreSave && filePath) {
             trackTelemetry();
-            const editor: ICosmosEditor = this.fileMap[filePath][1];
+            const editor: ICosmosEditor = this.fileMap[filePath];
             const showSaveWarning: boolean | undefined = vscode.workspace.getConfiguration().get(this.showSavePromptKey);
             if (showSaveWarning !== false) {
                 const message: string = `Saving 'cosmos-editor.json' will update the entity "${editor.label}" to the Cloud.`;

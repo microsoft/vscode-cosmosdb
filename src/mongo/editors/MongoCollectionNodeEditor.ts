@@ -17,7 +17,8 @@ export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]
     public get label(): string {
         const databaseNode = this._collectionNode.parent;
         const accountNode = databaseNode.parent;
-        return `${accountNode.treeItem.label}/${databaseNode.treeItem.label}/${this._collectionNode.treeItem.label}`;
+        const subscriptionNode = accountNode.parent;
+        return `${subscriptionNode.treeItem.label}/${accountNode.treeItem.label}/${databaseNode.treeItem.label}/${this._collectionNode.treeItem.label}`;
     }
 
     public async getData(): Promise<IMongoDocument[]> {

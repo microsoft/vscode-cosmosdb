@@ -24,7 +24,8 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
 
     public get label(): string {
         const accountNode = this._databaseNode.parent;
-        return `${accountNode.treeItem.label}/${this._databaseNode.treeItem.label}/${this._command.collection}`;
+        const subscriptionNode = accountNode.parent;
+        return `${subscriptionNode.treeItem.label}/${accountNode.treeItem.label}/${this._databaseNode.treeItem.label}/${this._command.collection}`;
     }
 
     public async getData(): Promise<IMongoDocument[]> {

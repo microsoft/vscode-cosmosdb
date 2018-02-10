@@ -18,7 +18,8 @@ export class DocDBDocumentNodeEditor implements ICosmosEditor<RetrievedDocument>
         const collectionNode = this._documentNode.parent;
         const databaseNode = collectionNode.parent;
         const accountNode = databaseNode.parent;
-        return `${accountNode.treeItem.label}/${databaseNode.treeItem.label}/${collectionNode.treeItem.label}/${this._documentNode.treeItem.label}`;
+        const subscriptionNode = accountNode.parent;
+        return `${subscriptionNode.treeItem.label}/${accountNode.treeItem.label}/${databaseNode.treeItem.label}/${collectionNode.treeItem.label}/${this._documentNode.treeItem.label}`;
     }
 
     public async getData(): Promise<RetrievedDocument> {

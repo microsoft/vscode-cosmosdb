@@ -8,7 +8,7 @@ import * as os from 'os'
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { DialogBoxResponses } from './constants';
-import { UserCancelledError } from 'vscode-azureextensionui';
+import { UserCancelledError, AzureTreeDataProvider } from 'vscode-azureextensionui';
 import * as util from './utils/vscodeUtils';
 import { randomUtils } from './utils/randomUtils';
 import { MessageItem } from 'vscode';
@@ -42,13 +42,34 @@ export class CosmosEditorManager implements vscode.Disposable {
         await this.updateEditor(data, textEditor);
     }
 
-    public async updateMatchingNode(documentUri: vscode.Uri): Promise<void> {
+    public async updateMatchingNode(documentUri: vscode.Uri, tree?: AzureTreeDataProvider): Promise<void> {
         const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(documentUri.fsPath, filePath) === '');
         if (filePath) {
             const document = await vscode.workspace.openTextDocument(documentUri.fsPath);
             await this.updateToCloud(this.fileMap[filePath], document);
         } else {
-            await vscode.window.showWarningMessage(`Editing Cosmos DB entities across sessions is currently not supported.`)
+            //De-pickle the labels.json file.
+            const labelsPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', 'labels.json');
+            const pickledLabels = fse.readJSONSync(labelsPath);
+            //Based on the documentUri, split just the appropriate kay's value on '/'
+            const relevantFilePath = Object.keys(pickledLabels).find((label) => path.relative(documentUri.fsPath, label) === '');
+            if (relevantFilePath) {
+                const descriptors = pickledLabels[relevantFilePath].split('/');
+                let node = tree;
+                let children;
+                for (let descriptor of descriptors) {
+                    //Traverse the children in using getChildren till end of the split array.
+                    children = await node.getChildren();
+                    node = children.find((child) => child.treeItem.label === descriptor);
+                    if (!node) {
+                        break;
+                    }
+                }
+                console.log(node);
+            }
+            else {
+                await vscode.window.showWarningMessage(`Editing Cosmos DB entities across sessions is currently not supported.`);
+            }
         }
     }
 
@@ -59,6 +80,11 @@ export class CosmosEditorManager implements vscode.Disposable {
             fse.copySync(key, backupFileName);
             fse.writeFileSync(key, `// We do not support editing entities across sessions.\n// Reopen the entity or view your previous changes here: ${backupFileName}`);
         });
+        const fileMapLabels = {};
+        Object.keys(this.fileMap).forEach((key) => fileMapLabels[key] = this.fileMap[key]['label']);
+        const labelsPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', 'labels.json');
+        fse.ensureFileSync(labelsPath);
+        fse.writeJSONSync(labelsPath, fileMapLabels);
     }
 
     private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument): Promise<void> {

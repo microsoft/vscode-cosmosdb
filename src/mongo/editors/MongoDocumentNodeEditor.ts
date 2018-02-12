@@ -18,7 +18,7 @@ export class MongoDocumentNodeEditor implements ICosmosEditor<IMongoDocument> {
         const databaseNode = collectionNode.parent;
         const accountNode = databaseNode.parent;
         const subscriptionNode = accountNode.parent;
-        return `${subscriptionNode.treeItem.label}/${accountNode.treeItem.label}/${databaseNode.treeItem.label}/${collectionNode.treeItem.label}/${this._collectionNode.treeItem.label}`;
+        return `${subscriptionNode.treeItem.label}|${accountNode.treeItem.label}|${databaseNode.treeItem.label}|${collectionNode.treeItem.label}|${this._collectionNode.treeItem.label}`;
     }
 
     public async getData(): Promise<IMongoDocument> {

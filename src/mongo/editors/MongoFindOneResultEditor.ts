@@ -23,7 +23,7 @@ export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
     public get label(): string {
         const accountNode = this._databaseNode.parent;
         const subscriptionNode = accountNode.parent;
-        return `${subscriptionNode.treeItem.label}/${accountNode.treeItem.label}/${this._databaseNode.treeItem.label}/${this._collectionName}/${this._originalDocument._id}`;
+        return `${subscriptionNode.treeItem.label}|${accountNode.treeItem.label}|${this._databaseNode.treeItem.label}|${this._collectionName}|${this._originalDocument._id}`;
     }
 
     public async getData(): Promise<IMongoDocument> {

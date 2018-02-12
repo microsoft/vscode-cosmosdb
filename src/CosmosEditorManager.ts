@@ -8,10 +8,16 @@ import * as os from 'os'
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { DialogBoxResponses } from './constants';
-import { UserCancelledError, AzureTreeDataProvider } from 'vscode-azureextensionui';
+import { UserCancelledError, AzureTreeDataProvider, IAzureParentNode, IAzureNode } from 'vscode-azureextensionui';
 import * as util from './utils/vscodeUtils';
 import { randomUtils } from './utils/randomUtils';
 import { MessageItem } from 'vscode';
+import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
+import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
+import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
+import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
+import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
+import { MongoCollectionNodeEditor } from './mongo/editors/MongoCollectionNodeEditor';
 
 export interface ICosmosEditor<T = {}> {
     label: string;
@@ -43,43 +49,23 @@ export class CosmosEditorManager implements vscode.Disposable {
     }
 
     public async updateMatchingNode(documentUri: vscode.Uri, tree?: AzureTreeDataProvider): Promise<void> {
-        const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(documentUri.fsPath, filePath) === '');
-        if (filePath) {
-            const document = await vscode.workspace.openTextDocument(documentUri.fsPath);
-            await this.updateToCloud(this.fileMap[filePath], document);
-        } else {
-            //De-pickle the labels.json file.
-            const labelsPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', 'labels.json');
-            const pickledLabels = fse.readJSONSync(labelsPath);
-            //Based on the documentUri, split just the appropriate kay's value on '/'
-            const relevantFilePath = Object.keys(pickledLabels).find((label) => path.relative(documentUri.fsPath, label) === '');
-            if (relevantFilePath) {
-                const descriptors = pickledLabels[relevantFilePath].split('/');
-                let node = tree;
-                let children;
-                for (let descriptor of descriptors) {
-                    //Traverse the children in using getChildren till end of the split array.
-                    children = await node.getChildren();
-                    node = children.find((child) => child.treeItem.label === descriptor);
-                    if (!node) {
-                        break;
-                    }
-                }
-                console.log(node);
-            }
-            else {
-                await vscode.window.showWarningMessage(`Editing Cosmos DB entities across sessions is currently not supported.`);
-            }
+        let filePath: string = Object.keys(this.fileMap).find((filePath) => path.relative(documentUri.fsPath, filePath) === '');
+        if (!filePath) {
+            filePath = await this.createDocumentEditor(documentUri, tree);
         }
+        const document = await vscode.workspace.openTextDocument(documentUri.fsPath);
+        await this.updateToCloud(this.fileMap[filePath], document);
     }
 
     public async dispose(): Promise<void> {
+        /*
         Object.keys(this.fileMap).forEach((key) => {
             const backupFileName = key.substring(0, key.lastIndexOf('.')) + "-backup.json";
             fse.ensureFileSync(backupFileName);
             fse.copySync(key, backupFileName);
             fse.writeFileSync(key, `// We do not support editing entities across sessions.\n// Reopen the entity or view your previous changes here: ${backupFileName}`);
         });
+        */
         const fileMapLabels = {};
         Object.keys(this.fileMap).forEach((key) => fileMapLabels[key] = this.fileMap[key]['label']);
         const labelsPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', 'labels.json');
@@ -104,6 +90,42 @@ export class CosmosEditorManager implements vscode.Disposable {
         } finally {
             this.ignoreSave = false;
         }
+    }
+
+    private async createDocumentEditor(documentUri: vscode.Uri, tree: AzureTreeDataProvider): Promise<string> {
+        //De-pickle the labels.json file.
+        const labelsPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', 'labels.json');
+        const pickledLabels = fse.readJSONSync(labelsPath);
+        //Based on the documentUri, split just the appropriate kay's value on '/'
+        const relevantFilePath = Object.keys(pickledLabels).find((label) => path.relative(documentUri.fsPath, label) === '');
+        if (relevantFilePath) {
+            const descriptors = pickledLabels[relevantFilePath].split('|');
+            let node: AzureTreeDataProvider | IAzureParentNode = tree;
+            let children;
+            for (let descriptor of descriptors) {
+                //Traverse the children in using getChildren till end of the split array.
+                if (node instanceof AzureTreeDataProvider) {
+                    children = <IAzureParentNode[]>(await node.getChildren());
+                } else {
+                    children = await node.getCachedChildren();
+                }
+                node = children.find((child) => child.treeItem.label === descriptor);
+                if (!node) {
+                    break;
+                }
+            }
+            const editorNode = <IAzureNode>node;
+            let editor: ICosmosEditor;
+            if (editorNode.treeItem instanceof MongoCollectionTreeItem) {
+                editor = new MongoCollectionNodeEditor(<IAzureParentNode<MongoCollectionTreeItem>>editorNode);
+            } else if (editorNode.treeItem instanceof DocDBDocumentTreeItem) {
+                editor = new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>editorNode);
+            } else if (editorNode.treeItem instanceof MongoDocumentTreeItem) {
+                editor = new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>editorNode);
+            }
+            this.fileMap[relevantFilePath] = editor;
+        }
+        return relevantFilePath;
     }
 
     public async onDidSaveTextDocument(trackTelemetry: () => void, globalState: vscode.Memento, doc: vscode.TextDocument): Promise<void> {

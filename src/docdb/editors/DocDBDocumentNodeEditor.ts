@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IAzureNode } from "vscode-azureextensionui";
-import { ICosmosEditor } from "../../CosmosEditorManager";
+import { ICosmosEditor, EditableConfig } from "../../CosmosEditorManager";
 import { RetrievedDocument } from "documentdb";
 import { DocDBDocumentTreeItem } from "../tree/DocDBDocumentTreeItem";
 
@@ -19,7 +19,7 @@ export class DocDBDocumentNodeEditor implements ICosmosEditor<RetrievedDocument>
         const databaseNode = collectionNode.parent;
         const accountNode = databaseNode.parent;
         const subscriptionNode = accountNode.parent;
-        return `${subscriptionNode.treeItem.label}|${accountNode.treeItem.label}|${databaseNode.treeItem.label}|${collectionNode.treeItem.label}|${this._documentNode.treeItem.label}`;
+        return `${subscriptionNode.treeItem.label}/${accountNode.treeItem.label}/${databaseNode.treeItem.label}/${collectionNode.treeItem.label}/${this._documentNode.treeItem.label}`;
     }
 
     public async getData(): Promise<RetrievedDocument> {
@@ -29,4 +29,10 @@ export class DocDBDocumentNodeEditor implements ICosmosEditor<RetrievedDocument>
     public async update(document: RetrievedDocument): Promise<RetrievedDocument> {
         return await this._documentNode.treeItem.update(document);
     }
+
+    public get id(): EditableConfig {
+        const subscriptionNode = this._documentNode.parent.parent.parent.parent;
+        return { subscriptionName: subscriptionNode.treeItem.id, path: this._documentNode.treeItem.id };
+    }
+
 }

@@ -5,27 +5,32 @@
 
 import { IAzureNode } from "vscode-azureextensionui";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
-import { ICosmosEditor } from "../../CosmosEditorManager";
+import { ICosmosEditor, EditableConfig } from "../../CosmosEditorManager";
 
 export class MongoDocumentNodeEditor implements ICosmosEditor<IMongoDocument> {
-    private _collectionNode: IAzureNode<MongoDocumentTreeItem>;
+    private _documentNode: IAzureNode<MongoDocumentTreeItem>;
     constructor(collectionNode: IAzureNode<MongoDocumentTreeItem>) {
-        this._collectionNode = collectionNode;
+        this._documentNode = collectionNode;
     }
 
     public get label(): string {
-        const collectionNode = this._collectionNode.parent;
+        const collectionNode = this._documentNode.parent;
         const databaseNode = collectionNode.parent;
         const accountNode = databaseNode.parent;
         const subscriptionNode = accountNode.parent;
-        return `${subscriptionNode.treeItem.label}|${accountNode.treeItem.label}|${databaseNode.treeItem.label}|${collectionNode.treeItem.label}|${this._collectionNode.treeItem.label}`;
+        return `${subscriptionNode.treeItem.label}/${accountNode.treeItem.label}/${databaseNode.treeItem.label}/${collectionNode.treeItem.label}/${this._documentNode.treeItem.label}`;
     }
 
     public async getData(): Promise<IMongoDocument> {
-        return this._collectionNode.treeItem.document;
+        return this._documentNode.treeItem.document;
     }
 
     public async update(document: IMongoDocument): Promise<IMongoDocument> {
-        return await this._collectionNode.treeItem.update(document);
+        return await this._documentNode.treeItem.update(document);
+    }
+
+    public get id(): EditableConfig {
+        const subscriptionNode = this._documentNode.parent.parent.parent.parent;
+        return { subscriptionName: subscriptionNode.treeItem.id, path: this._documentNode.treeItem.id };
     }
 }

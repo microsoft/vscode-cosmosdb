@@ -11,6 +11,7 @@ import { DialogBoxResponses } from './constants';
 import { UserCancelledError, AzureTreeDataProvider, IAzureParentNode, IAzureNode } from 'vscode-azureextensionui';
 import * as util from './utils/vscodeUtils';
 import { randomUtils } from './utils/randomUtils';
+import { azureUtils } from './utils/azureUtils';
 import { MessageItem } from 'vscode';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
@@ -21,8 +22,14 @@ import { MongoCollectionNodeEditor } from './mongo/editors/MongoCollectionNodeEd
 
 export interface ICosmosEditor<T = {}> {
     label: string;
+    id: EditableConfig;
     getData(): Promise<T>;
     update(data: T): Promise<T>;
+}
+
+export interface EditableConfig {
+    subscriptionName: string;
+    path: string;
 }
 
 export class CosmosEditorManager implements vscode.Disposable {
@@ -58,19 +65,11 @@ export class CosmosEditorManager implements vscode.Disposable {
     }
 
     public async dispose(): Promise<void> {
-        /*
-        Object.keys(this.fileMap).forEach((key) => {
-            const backupFileName = key.substring(0, key.lastIndexOf('.')) + "-backup.json";
-            fse.ensureFileSync(backupFileName);
-            fse.copySync(key, backupFileName);
-            fse.writeFileSync(key, `// We do not support editing entities across sessions.\n// Reopen the entity or view your previous changes here: ${backupFileName}`);
-        });
-        */
         const fileMapLabels = {};
-        Object.keys(this.fileMap).forEach((key) => fileMapLabels[key] = this.fileMap[key]['label']);
+        Object.keys(this.fileMap).forEach((key) => fileMapLabels[key] = (this.fileMap[key]).id);
         const labelsPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', 'labels.json');
         fse.ensureFileSync(labelsPath);
-        fse.writeJSONSync(labelsPath, fileMapLabels);
+        fse.writeJSONSync(labelsPath, fileMapLabels, { spaces: 2 });
     }
 
     private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument): Promise<void> {
@@ -96,22 +95,26 @@ export class CosmosEditorManager implements vscode.Disposable {
         //De-pickle the labels.json file.
         const labelsPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', 'labels.json');
         const pickledLabels = fse.readJSONSync(labelsPath);
-        //Based on the documentUri, split just the appropriate kay's value on '/'
+        //Based on the documentUri, split just the appropriate key's value on '/'
         const relevantFilePath = Object.keys(pickledLabels).find((label) => path.relative(documentUri.fsPath, label) === '');
         if (relevantFilePath) {
-            const descriptors = pickledLabels[relevantFilePath].split('|');
-            let node: AzureTreeDataProvider | IAzureParentNode = tree;
-            let children;
+            const config = pickledLabels[relevantFilePath];
+            let descriptors: string[];
+            if ((config.path.match(/\//g) || []).length < 4) {
+                descriptors = config.path.split('/');
+            } else {
+                descriptors = azureUtils.getAccountNameFromId(config.path).split('/');
+            }
+            const subscriptionId = config.subscriptionName;
+            // Look at the tree's children (subscriptions) to find the relevant subscription
+            let children: IAzureNode[] = <IAzureParentNode[]>(await tree.getChildren());
+            let node: IAzureParentNode = <IAzureParentNode>children.find((child) => child.treeItem.id === subscriptionId);
             for (let descriptor of descriptors) {
-                //Traverse the children in using getChildren till end of the split array.
-                if (node instanceof AzureTreeDataProvider) {
-                    children = <IAzureParentNode[]>(await node.getChildren());
-                } else {
-                    children = await node.getCachedChildren();
-                }
-                node = children.find((child) => child.treeItem.label === descriptor);
+                //Traverse the children in using getChildren/getCachedChildren till end of the split array.
+                children = await node.getCachedChildren();
+                node = <IAzureParentNode>children.find((child) => child.treeItem.id.substr(child.treeItem.id.lastIndexOf('/') + 1) === descriptor);
                 if (!node) {
-                    break;
+                    await vscode.window.showErrorMessage("Could not find the entity in the explorer tree. The entity may have been deleted.");
                 }
             }
             const editorNode = <IAzureNode>node;

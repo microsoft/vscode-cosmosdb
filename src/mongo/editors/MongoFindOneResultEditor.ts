@@ -5,7 +5,7 @@
 
 import { IAzureParentNode, IAzureNode } from "vscode-azureextensionui";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
-import { ICosmosEditor } from "../../CosmosEditorManager";
+import { ICosmosEditor, EditableConfig } from "../../CosmosEditorManager";
 import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
 import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
 
@@ -23,7 +23,7 @@ export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
     public get label(): string {
         const accountNode = this._databaseNode.parent;
         const subscriptionNode = accountNode.parent;
-        return `${subscriptionNode.treeItem.label}|${accountNode.treeItem.label}|${this._databaseNode.treeItem.label}|${this._collectionName}|${this._originalDocument._id}`;
+        return `${subscriptionNode.treeItem.label}/${accountNode.treeItem.label}/${this._databaseNode.treeItem.label}/${this._collectionName}/${this._originalDocument._id}`;
     }
 
     public async getData(): Promise<IMongoDocument> {
@@ -45,4 +45,10 @@ export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
         const db = await this._databaseNode.treeItem.getDb();
         return await MongoDocumentTreeItem.update(db.collection(this._collectionName), newDocument);
     }
+
+    public get id(): EditableConfig {
+        const subscriptionNode = this._databaseNode.parent.parent;
+        return { subscriptionName: subscriptionNode.treeItem.id, path: `${this._databaseNode.treeItem.id}/${this._collectionName}/${this._originalDocument._id}` };
+    }
+
 }

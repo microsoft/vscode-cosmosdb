@@ -35,8 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(tree);
 	context.subscriptions.push(vscode.window.registerTreeDataProvider('cosmosDBExplorer', tree));
 
-	const editorManager: CosmosEditorManager = new CosmosEditorManager();
-	context.subscriptions.push(editorManager);
+	const editorManager: CosmosEditorManager = new CosmosEditorManager(context.globalState);
 
 	context.subscriptions.push(vscodeUtil.getOutputChannel());
 

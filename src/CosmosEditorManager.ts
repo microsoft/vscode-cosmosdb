@@ -32,11 +32,17 @@ export interface EditableConfig {
     path: string;
 }
 
-export class CosmosEditorManager implements vscode.Disposable {
+export class CosmosEditorManager {
     private fileMap: { [key: string]: ICosmosEditor } = {};
     private ignoreSave: boolean = false;
 
     private readonly showSavePromptKey: string = 'cosmosDB.showSavePrompt';
+    private _globalState: vscode.Memento;
+    private readonly _editorConfigs: string = "ms-azuretools.vscode-cosmosdb.editorConfigs";
+
+    constructor(globalState: vscode.Memento) {
+        this._globalState = globalState;
+    }
 
     public async showDocument(editor: ICosmosEditor, fileName: string): Promise<void> {
         const localDocPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', fileName);
@@ -50,6 +56,9 @@ export class CosmosEditorManager implements vscode.Disposable {
             }
         }
         this.fileMap[localDocPath] = editor;
+        const fileMapLabels = {};
+        Object.keys(this.fileMap).forEach((key) => fileMapLabels[key] = (this.fileMap[key]).id);
+        this._globalState.update(this._editorConfigs, fileMapLabels);
         const textEditor = await vscode.window.showTextDocument(document);
         const data = await editor.getData();
         await this.updateEditor(data, textEditor);
@@ -58,18 +67,10 @@ export class CosmosEditorManager implements vscode.Disposable {
     public async updateMatchingNode(documentUri: vscode.Uri, tree?: AzureTreeDataProvider): Promise<void> {
         let filePath: string = Object.keys(this.fileMap).find((filePath) => path.relative(documentUri.fsPath, filePath) === '');
         if (!filePath) {
-            filePath = await this.createDocumentEditor(documentUri, tree);
+            filePath = await this.loadPersistedEditor(documentUri, tree);
         }
         const document = await vscode.workspace.openTextDocument(documentUri.fsPath);
         await this.updateToCloud(this.fileMap[filePath], document);
-    }
-
-    public async dispose(): Promise<void> {
-        const fileMapLabels = {};
-        Object.keys(this.fileMap).forEach((key) => fileMapLabels[key] = (this.fileMap[key]).id);
-        const labelsPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', 'labels.json');
-        fse.ensureFileSync(labelsPath);
-        fse.writeJSONSync(labelsPath, fileMapLabels, { spaces: 2 });
     }
 
     private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument): Promise<void> {
@@ -91,10 +92,8 @@ export class CosmosEditorManager implements vscode.Disposable {
         }
     }
 
-    private async createDocumentEditor(documentUri: vscode.Uri, tree: AzureTreeDataProvider): Promise<string> {
-        //De-pickle the labels.json file.
-        const labelsPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', 'labels.json');
-        const pickledLabels = fse.readJSONSync(labelsPath);
+    private async loadPersistedEditor(documentUri: vscode.Uri, tree: AzureTreeDataProvider): Promise<string> {
+        const pickledLabels = this._globalState.get(this._editorConfigs);
         //Based on the documentUri, split just the appropriate key's value on '/'
         const relevantFilePath = Object.keys(pickledLabels).find((label) => path.relative(documentUri.fsPath, label) === '');
         if (relevantFilePath) {
@@ -108,7 +107,7 @@ export class CosmosEditorManager implements vscode.Disposable {
             const subscriptionId = config.subscriptionName;
             // Look at the tree's children (subscriptions) to find the relevant subscription
             let children: IAzureNode[] = <IAzureParentNode[]>(await tree.getChildren());
-            let node: IAzureParentNode = <IAzureParentNode>children.find((child) => child.treeItem.id === subscriptionId);
+            let node: IAzureParentNode = <IAzureParentNode | undefined>children.find((child) => child.treeItem.id === subscriptionId);
             for (let descriptor of descriptors) {
                 //Traverse the children in using getChildren/getCachedChildren till end of the split array.
                 children = await node.getCachedChildren();

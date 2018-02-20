@@ -32,7 +32,7 @@ export abstract class DocDBCollectionTreeItemBase extends DocDBTreeItemBase<Retr
     }
 
     public get id(): string {
-        return `${this._parentId}/${this._collection.id}`;
+        return this._collection.id;
     }
 
     public get label(): string {

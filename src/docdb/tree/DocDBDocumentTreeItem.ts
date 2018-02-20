@@ -29,7 +29,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     }
 
     public get id(): string {
-        return `${this._parentId}/${this.document.id}`;
+        return this.document.id;
     }
 
     public get label(): string {

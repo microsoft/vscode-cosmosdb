@@ -22,14 +22,9 @@ import { MongoCollectionNodeEditor } from './mongo/editors/MongoCollectionNodeEd
 
 export interface ICosmosEditor<T = {}> {
     label: string;
-    id: EditableConfig;
+    id: string;
     getData(): Promise<T>;
     update(data: T): Promise<T>;
-}
-
-export interface EditableConfig {
-    subscriptionName: string;
-    path: string;
 }
 
 export class CosmosEditorManager {
@@ -97,26 +92,7 @@ export class CosmosEditorManager {
         //Based on the documentUri, split just the appropriate key's value on '/'
         const relevantFilePath = Object.keys(pickledLabels).find((label) => path.relative(documentUri.fsPath, label) === '');
         if (relevantFilePath) {
-            const config = pickledLabels[relevantFilePath];
-            let descriptors: string[];
-            if ((config.path.match(/\//g) || []).length < 4) {
-                descriptors = config.path.split('/');
-            } else {
-                descriptors = azureUtils.getAccountNameFromId(config.path).split('/');
-            }
-            const subscriptionId = config.subscriptionName;
-            // Look at the tree's children (subscriptions) to find the relevant subscription
-            let children: IAzureNode[] = <IAzureParentNode[]>(await tree.getChildren());
-            let node: IAzureParentNode = <IAzureParentNode | undefined>children.find((child) => child.treeItem.id === subscriptionId);
-            for (let descriptor of descriptors) {
-                //Traverse the children in using getChildren/getCachedChildren till end of the split array.
-                children = await node.getCachedChildren();
-                node = <IAzureParentNode>children.find((child) => child.treeItem.id.substr(child.treeItem.id.lastIndexOf('/') + 1) === descriptor);
-                if (!node) {
-                    await vscode.window.showErrorMessage("Could not find the entity in the explorer tree. The entity may have been deleted.");
-                }
-            }
-            const editorNode = <IAzureNode>node;
+            const editorNode = await tree.findNode(pickledLabels[relevantFilePath]);
             let editor: ICosmosEditor;
             if (editorNode.treeItem instanceof MongoCollectionTreeItem) {
                 editor = new MongoCollectionNodeEditor(<IAzureParentNode<MongoCollectionTreeItem>>editorNode);

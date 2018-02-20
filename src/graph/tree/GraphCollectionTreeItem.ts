@@ -28,7 +28,7 @@ export class GraphCollectionTreeItem implements IAzureTreeItem {
     }
 
     public get id(): string {
-        return `${this._parentId}/${this._collection.id}`;
+        return this._collection.id;
     }
 
     public get label(): string {

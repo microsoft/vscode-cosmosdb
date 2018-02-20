@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IAzureNode } from "vscode-azureextensionui";
-import { ICosmosEditor, EditableConfig } from "../../CosmosEditorManager";
+import { ICosmosEditor } from "../../CosmosEditorManager";
 import { RetrievedDocument } from "documentdb";
 import { DocDBDocumentTreeItem } from "../tree/DocDBDocumentTreeItem";
 
@@ -29,9 +29,8 @@ export class DocDBDocumentNodeEditor implements ICosmosEditor<RetrievedDocument>
         return await this._documentNode.treeItem.update(document);
     }
 
-    public get id(): EditableConfig {
-        const subscriptionNode = this._documentNode.parent.parent.parent.parent;
-        return { subscriptionName: subscriptionNode.treeItem.id, path: this._documentNode.treeItem.id };
+    public get id(): string {
+        return this._documentNode.id;
     }
 
 }

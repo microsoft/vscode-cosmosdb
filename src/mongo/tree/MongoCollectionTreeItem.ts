@@ -47,7 +47,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	}
 
 	get id(): string {
-		return `${this._parentId}/${this.collection.collectionName}`;
+		return this.collection.collectionName;
 	}
 
 	get label(): string {

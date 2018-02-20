@@ -36,7 +36,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	}
 
 	public get id(): string {
-		return `${this._parentId}/${this.databaseName}`;
+		return this.databaseName;
 	}
 
 	get iconPath(): any {

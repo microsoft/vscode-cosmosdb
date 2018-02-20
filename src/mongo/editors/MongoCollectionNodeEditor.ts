@@ -5,7 +5,7 @@
 
 import { IAzureParentNode, IAzureNode } from "vscode-azureextensionui";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
-import { ICosmosEditor, EditableConfig } from "../../CosmosEditorManager";
+import { ICosmosEditor } from "../../CosmosEditorManager";
 import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
 
 export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]> {
@@ -41,9 +41,9 @@ export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]
         }
     }
 
-    public get id(): EditableConfig {
+    public get id(): string {
         const subscriptionNode = this._collectionNode.parent.parent.parent;
-        return { subscriptionName: subscriptionNode.treeItem.id, path: this._collectionNode.treeItem.id };
+        return this._collectionNode.id;
     }
 
 }

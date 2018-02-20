@@ -33,7 +33,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     }
 
     get id(): string {
-        return `${this._parentId}/${this.document._id}`;
+        return this.document._id.toString();
     }
 
     get label(): string {

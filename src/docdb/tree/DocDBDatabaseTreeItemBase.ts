@@ -37,7 +37,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     public get id(): string {
-        return `${this._parentId}/${this._database.id}`;
+        return this._database.id;
     }
 
     public get label(): string {

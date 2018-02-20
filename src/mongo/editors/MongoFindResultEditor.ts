@@ -7,7 +7,7 @@ import { IAzureParentNode } from "vscode-azureextensionui";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 import { Collection } from "mongodb";
 import { MongoCollectionNodeEditor } from "./MongoCollectionNodeEditor";
-import { ICosmosEditor, EditableConfig } from "../../CosmosEditorManager";
+import { ICosmosEditor } from "../../CosmosEditorManager";
 import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
 import { MongoCommand } from "../MongoCommand";
 import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
@@ -49,9 +49,8 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
         return updatedDocs;
     }
 
-    public get id(): EditableConfig {
-        const subscriptionNode = this._databaseNode.parent.parent;
-        return { subscriptionName: subscriptionNode.treeItem.id, path: this._collectionTreeItem.id };
+    public get id(): string {
+        return `${this._databaseNode.id}/${this._command.collection}`;
     }
 
 }

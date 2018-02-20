@@ -46,7 +46,7 @@ export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
     }
 
     public get id(): string {
-        return <string>this._originalDocument._id;
+        return this._originalDocument._id.toString();
     }
 
 }

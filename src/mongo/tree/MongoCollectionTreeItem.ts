@@ -130,6 +130,9 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			if (name === 'count') {
 				return reportProgress(this.count(args ? parseJSContent(args) : undefined), 'Counting');
 			}
+			if (name === 'findOne') {
+				return reportProgress(this.findOne(args ? parseJSContent(args) : undefined), 'Counting');
+			}
 			return null;
 		} catch (error) {
 			return Promise.resolve(error);
@@ -149,6 +152,11 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	private async drop(): Promise<string> {
 		await this.collection.drop();
 		return `Dropped collection ${this.collection.collectionName}.`;
+	}
+
+	private async findOne(args?: any): Promise<string> {
+		const result = await this.collection.findOne(args);
+		return this.stringify(result);
 	}
 
 	private insert(document: any): Thenable<string> {

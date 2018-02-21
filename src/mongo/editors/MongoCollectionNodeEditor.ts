@@ -42,7 +42,6 @@ export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]
     }
 
     public get id(): string {
-        const subscriptionNode = this._collectionNode.parent.parent.parent;
         return this._collectionNode.id;
     }
 

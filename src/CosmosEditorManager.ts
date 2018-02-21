@@ -33,7 +33,7 @@ export class CosmosEditorManager {
 
     private readonly showSavePromptKey: string = 'cosmosDB.showSavePrompt';
     private _globalState: vscode.Memento;
-    private readonly _editorConfigs: string = "ms-azuretools.vscode-cosmosdb.editorConfigs";
+    private readonly _persistedEditorsKey: string = "ms-azuretools.vscode-cosmosdb.editors";
 
     constructor(globalState: vscode.Memento) {
         this._globalState = globalState;
@@ -53,7 +53,7 @@ export class CosmosEditorManager {
         this.fileMap[localDocPath] = editor;
         const fileMapLabels = {};
         Object.keys(this.fileMap).forEach((key) => fileMapLabels[key] = (this.fileMap[key]).id);
-        this._globalState.update(this._editorConfigs, fileMapLabels);
+        this._globalState.update(this._persistedEditorsKey, fileMapLabels);
         const textEditor = await vscode.window.showTextDocument(document);
         const data = await editor.getData();
         await this.updateEditor(data, textEditor);
@@ -88,22 +88,24 @@ export class CosmosEditorManager {
     }
 
     private async loadPersistedEditor(documentUri: vscode.Uri, tree: AzureTreeDataProvider): Promise<string> {
-        const pickledLabels = this._globalState.get(this._editorConfigs);
+        const persistedEditors = this._globalState.get(this._persistedEditorsKey);
         //Based on the documentUri, split just the appropriate key's value on '/'
-        const relevantFilePath = Object.keys(pickledLabels).find((label) => path.relative(documentUri.fsPath, label) === '');
-        if (relevantFilePath) {
-            const editorNode = await tree.findNode(pickledLabels[relevantFilePath]);
+        const editorFilePath = Object.keys(persistedEditors).find((label) => path.relative(documentUri.fsPath, label) === '');
+        if (editorFilePath) {
+            const editorNode: IAzureNode | undefined = await tree.findNode(persistedEditors[editorFilePath]);
             let editor: ICosmosEditor;
-            if (editorNode.treeItem instanceof MongoCollectionTreeItem) {
-                editor = new MongoCollectionNodeEditor(<IAzureParentNode<MongoCollectionTreeItem>>editorNode);
-            } else if (editorNode.treeItem instanceof DocDBDocumentTreeItem) {
-                editor = new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>editorNode);
-            } else if (editorNode.treeItem instanceof MongoDocumentTreeItem) {
-                editor = new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>editorNode);
+            if (editorNode) {
+                if (editorNode.treeItem instanceof MongoCollectionTreeItem) {
+                    editor = new MongoCollectionNodeEditor(<IAzureParentNode<MongoCollectionTreeItem>>editorNode);
+                } else if (editorNode.treeItem instanceof DocDBDocumentTreeItem) {
+                    editor = new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>editorNode);
+                } else if (editorNode.treeItem instanceof MongoDocumentTreeItem) {
+                    editor = new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>editorNode);
+                }
+                this.fileMap[editorFilePath] = editor;
             }
-            this.fileMap[relevantFilePath] = editor;
         }
-        return relevantFilePath;
+        return editorFilePath;
     }
 
     public async onDidSaveTextDocument(trackTelemetry: () => void, globalState: vscode.Memento, doc: vscode.TextDocument): Promise<void> {

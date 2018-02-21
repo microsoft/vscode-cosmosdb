@@ -14,6 +14,6 @@ export class DocDBDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
     public readonly childTypeLabel: string = 'Collection';
 
     public initChild(collection: CollectionMeta): IAzureTreeItem {
-        return new DocDBCollectionTreeItem(this.documentEndpoint, this.masterKey, collection, this.id, this.isEmulator);
+        return new DocDBCollectionTreeItem(this.documentEndpoint, this.masterKey, collection, this.isEmulator);
     }
 }

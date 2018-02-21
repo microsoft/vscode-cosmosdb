@@ -22,12 +22,10 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	private readonly _query: string | undefined;
 	private _cursor: Cursor | undefined;
 	private _hasMoreChildren: boolean = true;
-	private _parentId: string;
 	private _batchSize: number = DefaultBatchSize;
 
-	constructor(collection: Collection, parentId: string, query?: string) {
+	constructor(collection: Collection, query?: string) {
 		this.collection = collection;
-		this._parentId = parentId;
 		this._query = query;
 	}
 
@@ -84,7 +82,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		}
 		this._batchSize *= 2;
 
-		return documents.map((document: IMongoDocument) => new MongoDocumentTreeItem(document, this.collection, this.id));
+		return documents.map((document: IMongoDocument) => new MongoDocumentTreeItem(document, this.collection));
 	}
 
 	public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
@@ -98,7 +96,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			showCreatingNode(docId);
 			const result: InsertOneWriteOpResult = await this.collection.insertOne(docId === '' ? {} : { "id": docId });
 			const newDocument: IMongoDocument = await this.collection.findOne({ _id: result.insertedId });
-			return new MongoDocumentTreeItem(newDocument, this.collection, this.id);
+			return new MongoDocumentTreeItem(newDocument, this.collection);
 		}
 
 		throw new UserCancelledError();

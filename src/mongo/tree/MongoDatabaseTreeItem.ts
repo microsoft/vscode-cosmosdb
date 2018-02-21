@@ -19,13 +19,11 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public readonly connectionString: string;
 	public readonly databaseName: string;
 
-	private readonly _parentId: string;
 	public isConnected: boolean = false;
 
-	constructor(databaseName: string, connectionString: string, parentId: string) {
+	constructor(databaseName: string, connectionString: string) {
 		this.databaseName = databaseName;
 		this.connectionString = connectionString;
-		this._parentId = parentId;
 	}
 
 	public get label(): string {
@@ -53,7 +51,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public async loadMoreChildren(_node: IAzureNode, _clearCache: boolean): Promise<IAzureTreeItem[]> {
 		const db: Db = await this.getDb();
 		const collections: Collection[] = await db.collections();
-		return collections.map(collection => new MongoCollectionTreeItem(collection, this.id));
+		return collections.map(collection => new MongoCollectionTreeItem(collection));
 	}
 
 	public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
@@ -117,7 +115,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		// However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
 		const result = await newCollection.insertOne({});
 		await newCollection.deleteOne({ _id: result.insertedId });
-		return new MongoCollectionTreeItem(newCollection, this.id);
+		return new MongoCollectionTreeItem(newCollection);
 	}
 
 	executeCommandInShell(command: MongoCommand): Thenable<string> {

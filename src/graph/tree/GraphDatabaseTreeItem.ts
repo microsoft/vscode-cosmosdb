@@ -14,12 +14,12 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
     public readonly contextValue: string = GraphDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Graph';
 
-    constructor(documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, database: DatabaseMeta, parentId: string, isEmulator: boolean) {
-        super(documentEndpoint, masterKey, database, parentId, isEmulator);
+    constructor(documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, database: DatabaseMeta, isEmulator: boolean) {
+        super(documentEndpoint, masterKey, database, isEmulator);
     }
 
     public initChild(collection: CollectionMeta): IAzureTreeItem {
-        return new GraphCollectionTreeItem(this, collection, this.id);
+        return new GraphCollectionTreeItem(this, collection);
     }
 
     // Gremlin endpoint, if definitely known

@@ -47,7 +47,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
             const result: { databases: IDatabaseInfo[] } = await db.admin().listDatabases();
             return result.databases
                 .filter((database: IDatabaseInfo) => !(database.name && database.name.toLowerCase() === "admin" && database.empty)) // Filter out the 'admin' database if it's empty
-                .map(database => new MongoDatabaseTreeItem(database.name, this.connectionString, this.id));
+                .map(database => new MongoDatabaseTreeItem(database.name, this.connectionString));
         } catch (error) {
             return [{
                 id: 'cosmosMongoError',
@@ -77,7 +77,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
             if (collectionName) {
                 showCreatingNode(databaseName);
 
-                const databaseTreeItem = new MongoDatabaseTreeItem(databaseName, this.connectionString, this.id);
+                const databaseTreeItem = new MongoDatabaseTreeItem(databaseName, this.connectionString);
                 await databaseTreeItem.createCollection(collectionName);
                 return databaseTreeItem;
             }

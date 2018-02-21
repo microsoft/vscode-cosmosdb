@@ -19,12 +19,10 @@ export class GraphCollectionTreeItem implements IAzureTreeItem {
 
     private readonly _database: GraphDatabaseTreeItem;
     private readonly _collection: CollectionMeta;
-    private readonly _parentId: string;
 
-    constructor(database: GraphDatabaseTreeItem, collection: CollectionMeta, parentId: string) {
+    constructor(database: GraphDatabaseTreeItem, collection: CollectionMeta) {
         this._database = database;
         this._collection = collection;
-        this._parentId = parentId;
     }
 
     public get id(): string {

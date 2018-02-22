@@ -66,3 +66,13 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
 
     throw new Error('Could not find unique name for new file.');
 }
+
+export function fetchNodeModule(moduleName: string) {
+    try {
+        return require(`${vscode.env.appRoot}/node_modules.asar/${moduleName}`);
+    } catch (err) { }
+    try {
+        return require(`${vscode.env.appRoot}/node_modules/${moduleName}`);
+    } catch (err) { }
+    return null;
+}

@@ -14,6 +14,7 @@ import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { Experience } from '../constants';
 import { ConfigurationTarget } from 'vscode';
+import { fetchNodeModule } from '../utils/vscodeUtils';
 
 interface IPersistedAccount {
     id: string,
@@ -35,12 +36,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     private _keytar: typeof keytarType;
 
     constructor(private readonly _globalState: vscode.Memento) {
-        try {
-            this._keytar = require(`${vscode.env.appRoot}/node_modules/keytar`);
-        } catch (e) {
-            // unable to find keytar
-        }
-
+        this._keytar = fetchNodeModule('keytar');
         this.loadPersistedServers();
     }
 

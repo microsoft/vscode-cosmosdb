@@ -131,7 +131,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 				return reportProgress(this.count(args ? parseJSContent(args) : undefined), 'Counting');
 			}
 			if (name === 'findOne') {
-				return reportProgress(this.findOne(args ? parseJSContent(args) : undefined), 'Counting');
+				return reportProgress(this.findOne(args ? parseJSContent(args) : undefined), 'Finding');
 			}
 			return null;
 		} catch (error) {

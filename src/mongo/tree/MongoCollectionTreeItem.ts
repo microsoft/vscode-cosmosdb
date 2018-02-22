@@ -19,14 +19,14 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	public readonly childTypeLabel: string = "Document";
 
 	private readonly collection: Collection;
-	private readonly _query: string | undefined;
+	private readonly _query: object | undefined;
 	private _cursor: Cursor | undefined;
 	private _hasMoreChildren: boolean = true;
 	private _batchSize: number = DefaultBatchSize;
 
 	constructor(collection: Collection, query?: string) {
 		this.collection = collection;
-		this._query = query;
+		this._query = query ? JSON.parse(query) : undefined;
 	}
 
 	public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
@@ -128,6 +128,9 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			if (name === 'count') {
 				return reportProgress(this.count(args ? parseJSContent(args) : undefined), 'Counting');
 			}
+			if (name === 'findOne') {
+				return reportProgress(this.findOne(args ? parseJSContent(args) : undefined), 'Finding');
+			}
 			return null;
 		} catch (error) {
 			return Promise.resolve(error);
@@ -147,6 +150,11 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	private async drop(): Promise<string> {
 		await this.collection.drop();
 		return `Dropped collection ${this.collection.collectionName}.`;
+	}
+
+	private async findOne(args?: any): Promise<string> {
+		const result = await this.collection.findOne(args);
+		return this.stringify(result);
 	}
 
 	private insert(document: any): Thenable<string> {

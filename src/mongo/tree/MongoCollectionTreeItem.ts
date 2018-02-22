@@ -19,13 +19,13 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	public readonly childTypeLabel: string = "Document";
 
 	private readonly collection: Collection;
-	private readonly _query: string | undefined;
+	private readonly _query: object | undefined;
 	private _cursor: Cursor | undefined;
 	private _hasMoreChildren: boolean = true;
 	private _parentId: string;
 	private _batchSize: number = DefaultBatchSize;
 
-	constructor(collection: Collection, parentId: string, query?: string) {
+	constructor(collection: Collection, parentId: string, query?: object) {
 		this.collection = collection;
 		this._parentId = parentId;
 		this._query = query;

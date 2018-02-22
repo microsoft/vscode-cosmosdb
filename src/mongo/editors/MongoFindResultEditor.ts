@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IAzureParentNode } from "vscode-azureextensionui";
+import { IAzureParentNode, AzureTreeDataProvider } from "vscode-azureextensionui";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 import { Collection } from "mongodb";
 import { MongoCollectionNodeEditor } from "./MongoCollectionNodeEditor";
@@ -16,10 +16,12 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
     private _databaseNode: IAzureParentNode<MongoDatabaseTreeItem>;
     private _command: MongoCommand;
     private _collectionTreeItem: MongoCollectionTreeItem;
+    private _tree: AzureTreeDataProvider;
 
-    constructor(databaseNode: IAzureParentNode<MongoDatabaseTreeItem>, command: MongoCommand) {
+    constructor(databaseNode: IAzureParentNode<MongoDatabaseTreeItem>, command: MongoCommand, tree: AzureTreeDataProvider) {
         this._databaseNode = databaseNode;
         this._command = command;
+        this._tree = tree;
     }
 
     public get label(): string {
@@ -40,12 +42,10 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
 
     public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
         const updatedDocs = await this._collectionTreeItem.update(documents);
-        const cachedCollectionNodes = <IAzureParentNode<MongoCollectionTreeItem>[]>await this._databaseNode.getCachedChildren();
-        const cachedCollectionNode = cachedCollectionNodes.find((node) => node.treeItem.id === this._collectionTreeItem.id);
+        const cachedCollectionNode = await this._tree.findNode(`${this._databaseNode.id}/${this._collectionTreeItem.id}`);
         if (cachedCollectionNode) {
-            MongoCollectionNodeEditor.updateCachedDocNodes(updatedDocs, cachedCollectionNode);
+            MongoCollectionNodeEditor.updateCachedDocNodes(updatedDocs, <IAzureParentNode<MongoCollectionTreeItem>>cachedCollectionNode);
         }
-
         return updatedDocs;
     }
 

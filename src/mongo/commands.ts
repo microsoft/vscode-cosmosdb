@@ -12,14 +12,14 @@ import { MongoVisitor } from './grammar/visitors';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as vscodeUtil from './../utils/vscodeUtils';
 import { CosmosEditorManager } from '../CosmosEditorManager';
-import { IAzureParentNode } from 'vscode-azureextensionui';
+import { IAzureParentNode, AzureTreeDataProvider } from 'vscode-azureextensionui';
 import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
 import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 import { MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem } from './tree/MongoDatabaseTreeItem';
 
 export class MongoCommands {
-	public static async executeCommandFromActiveEditor(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager): Promise<void> {
+	public static async executeCommandFromActiveEditor(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider): Promise<void> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (activeEditor.document.languageId !== 'mongo') {
 			return;
@@ -32,14 +32,14 @@ export class MongoCommands {
 			}
 
 			if (command.name === 'find') {
-				await editorManager.showDocument(new MongoFindResultEditor(database, command), 'cosmos-result.json');
+				await editorManager.showDocument(new MongoFindResultEditor(database, command, tree), 'cosmos-result.json');
 			} else {
 				const result = await database.treeItem.executeCommand(command);
 				if (command.name === 'findOne') {
 					if (result === "null") {
 						throw new Error(`Could not find any documents`)
 					}
-					await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result), 'cosmos-result.json');
+					await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result, tree), 'cosmos-result.json');
 				} else {
 					await vscodeUtil.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
 				}

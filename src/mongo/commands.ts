@@ -36,6 +36,9 @@ export class MongoCommands {
 			} else {
 				const result = await database.treeItem.executeCommand(command);
 				if (command.name === 'findOne') {
+					if (result === "null") {
+						throw new Error(`Could not find any documents`)
+					}
 					await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result), 'cosmos-result.json');
 				} else {
 					await vscodeUtil.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);

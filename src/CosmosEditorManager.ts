@@ -110,8 +110,11 @@ export class CosmosEditorManager {
         return editorFilePath;
     }
 
-    public async onDidSaveTextDocument(trackTelemetry: () => void, globalState: vscode.Memento, doc: vscode.TextDocument): Promise<void> {
-        const filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.uri.fsPath, filePath) === '');
+    public async onDidSaveTextDocument(trackTelemetry: () => void, globalState: vscode.Memento, doc: vscode.TextDocument, tree: AzureTreeDataProvider): Promise<void> {
+        let filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.uri.fsPath, filePath) === '');
+        if (!filePath) {
+            filePath = await this.loadPersistedEditor(doc.uri, tree);
+        }
         if (!this.ignoreSave && filePath) {
             trackTelemetry();
             const editor: ICosmosEditor = this.fileMap[filePath];

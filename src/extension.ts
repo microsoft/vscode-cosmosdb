@@ -110,7 +110,7 @@ export function activate(context: vscode.ExtensionContext) {
 	actionHandler.registerCommand('cosmosDB.update', (filePath: vscode.Uri) => editorManager.updateMatchingNode(filePath, tree));
 	actionHandler.registerCommand('cosmosDB.loadMore', (node?: IAzureNode) => tree.loadMore(node));
 	actionHandler.registerEvent('cosmosDB.CosmosEditorManager.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument,
-		(trackTelemetry: () => void, doc: vscode.TextDocument) => editorManager.onDidSaveTextDocument(trackTelemetry, context.globalState, doc));
+		(trackTelemetry: () => void, doc: vscode.TextDocument) => editorManager.onDidSaveTextDocument(trackTelemetry, context.globalState, doc, tree));
 }
 
 async function getAttachedNode(tree: AzureTreeDataProvider): Promise<IAzureParentNode<AttachedAccountsTreeItem>> {

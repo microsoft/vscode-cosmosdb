@@ -42,7 +42,7 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
 
     public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
         const updatedDocs = await this._collectionTreeItem.update(documents);
-        const cachedCollectionNode = await this._tree.findNode(`${this._databaseNode.id}/${this._collectionTreeItem.id}`);
+        const cachedCollectionNode = await this._tree.findNode(this.id);
         if (cachedCollectionNode) {
             MongoCollectionNodeEditor.updateCachedDocNodes(updatedDocs, <IAzureParentNode<MongoCollectionTreeItem>>cachedCollectionNode);
         }

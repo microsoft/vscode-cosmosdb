@@ -32,7 +32,7 @@ export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
     }
 
     public async update(newDocument: IMongoDocument): Promise<IMongoDocument> {
-        const node = await this._tree.findNode(`${this._databaseNode.id}/${this._collectionName}/${newDocument._id.toString()}`);
+        const node = await this._tree.findNode(this.id);
         if (node) {
             return (<IAzureNode<MongoDocumentTreeItem>>node).treeItem.update(newDocument);
         }

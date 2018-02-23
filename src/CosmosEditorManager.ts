@@ -103,6 +103,8 @@ export class CosmosEditorManager {
                     editor = new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>editorNode);
                 }
                 this.fileMap[editorFilePath] = editor;
+            } else {
+                throw new Error("Failed to find entity on the tree. Please check the explorer to confirm that the entity exists, and that permissions are intact.");
             }
         }
         return editorFilePath;

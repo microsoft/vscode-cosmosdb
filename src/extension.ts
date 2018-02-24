@@ -35,8 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(tree);
 	context.subscriptions.push(vscode.window.registerTreeDataProvider('cosmosDBExplorer', tree));
 
-	const editorManager: CosmosEditorManager = new CosmosEditorManager();
-	context.subscriptions.push(editorManager);
+	const editorManager: CosmosEditorManager = new CosmosEditorManager(context.globalState);
 
 	context.subscriptions.push(vscodeUtil.getOutputChannel());
 
@@ -108,10 +107,10 @@ export function activate(context: vscode.ExtensionContext) {
 			await editorManager.showDocument(new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>node), 'cosmos-document.json');
 		}
 	});
-	actionHandler.registerCommand('cosmosDB.update', (filePath: string) => editorManager.updateMatchingNode(filePath));
+	actionHandler.registerCommand('cosmosDB.update', (filePath: vscode.Uri) => editorManager.updateMatchingNode(filePath, tree));
 	actionHandler.registerCommand('cosmosDB.loadMore', (node?: IAzureNode) => tree.loadMore(node));
 	actionHandler.registerEvent('cosmosDB.CosmosEditorManager.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument,
-		(trackTelemetry: () => void, doc: vscode.TextDocument) => editorManager.onDidSaveTextDocument(trackTelemetry, context.globalState, doc));
+		(trackTelemetry: () => void, doc: vscode.TextDocument) => editorManager.onDidSaveTextDocument(trackTelemetry, context.globalState, doc, tree));
 }
 
 async function getAttachedNode(tree: AzureTreeDataProvider): Promise<IAzureParentNode<AttachedAccountsTreeItem>> {

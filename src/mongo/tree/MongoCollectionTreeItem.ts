@@ -22,13 +22,11 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	private readonly _query: object | undefined;
 	private _cursor: Cursor | undefined;
 	private _hasMoreChildren: boolean = true;
-	private _parentId: string;
 	private _batchSize: number = DefaultBatchSize;
 
-	constructor(collection: Collection, parentId: string, query?: object) {
+	constructor(collection: Collection, query?: string) {
 		this.collection = collection;
-		this._parentId = parentId;
-		this._query = query;
+		this._query = query ? JSON.parse(query) : undefined;
 	}
 
 	public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
@@ -47,7 +45,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	}
 
 	get id(): string {
-		return `${this._parentId}/${this.collection.collectionName}`;
+		return this.collection.collectionName;
 	}
 
 	get label(): string {
@@ -84,7 +82,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		}
 		this._batchSize *= 2;
 
-		return documents.map((document: IMongoDocument) => new MongoDocumentTreeItem(document, this.collection, this.id));
+		return documents.map((document: IMongoDocument) => new MongoDocumentTreeItem(document, this.collection));
 	}
 
 	public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
@@ -98,7 +96,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			showCreatingNode(docId);
 			const result: InsertOneWriteOpResult = await this.collection.insertOne(docId === '' ? {} : { "id": docId });
 			const newDocument: IMongoDocument = await this.collection.findOne({ _id: result.insertedId });
-			return new MongoDocumentTreeItem(newDocument, this.collection, this.id);
+			return new MongoDocumentTreeItem(newDocument, this.collection);
 		}
 
 		throw new UserCancelledError();

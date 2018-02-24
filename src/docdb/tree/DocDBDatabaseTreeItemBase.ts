@@ -21,12 +21,10 @@ const maxThroughput: number = 100000;
  */
 export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<CollectionMeta> {
     private readonly _database: DatabaseMeta;
-    private readonly _parentId: string;
 
-    constructor(documentEndpoint: string, masterKey: string, database: DatabaseMeta, parentId: string, isEmulator: boolean) {
+    constructor(documentEndpoint: string, masterKey: string, database: DatabaseMeta, isEmulator: boolean) {
         super(documentEndpoint, masterKey, isEmulator);
         this._database = database;
-        this._parentId = parentId;
     }
 
     public get iconPath(): any {
@@ -37,7 +35,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     public get id(): string {
-        return `${this._parentId}/${this._database.id}`;
+        return this._database.id;
     }
 
     public get label(): string {

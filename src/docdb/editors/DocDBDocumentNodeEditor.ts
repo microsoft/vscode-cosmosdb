@@ -28,4 +28,9 @@ export class DocDBDocumentNodeEditor implements ICosmosEditor<RetrievedDocument>
     public async update(document: RetrievedDocument): Promise<RetrievedDocument> {
         return await this._documentNode.treeItem.update(document);
     }
+
+    public get id(): string {
+        return this._documentNode.id;
+    }
+
 }

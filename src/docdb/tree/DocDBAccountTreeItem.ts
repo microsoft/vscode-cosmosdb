@@ -15,7 +15,7 @@ export class DocDBAccountTreeItem extends DocDBAccountTreeItemBase {
     public contextValue: string = DocDBAccountTreeItem.contextValue;
 
     public initChild(database: DatabaseMeta): IAzureTreeItem {
-        return new DocDBDatabaseTreeItem(this.documentEndpoint, this.masterKey, database, this.id, this.isEmulator);
+        return new DocDBDatabaseTreeItem(this.documentEndpoint, this.masterKey, database, this.isEmulator);
     }
 
     public isAncestorOf(contextValue: string): boolean {

@@ -8,23 +8,27 @@ import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTree
 import { ICosmosEditor } from "../../CosmosEditorManager";
 
 export class MongoDocumentNodeEditor implements ICosmosEditor<IMongoDocument> {
-    private _collectionNode: IAzureNode<MongoDocumentTreeItem>;
+    private _documentNode: IAzureNode<MongoDocumentTreeItem>;
     constructor(collectionNode: IAzureNode<MongoDocumentTreeItem>) {
-        this._collectionNode = collectionNode;
+        this._documentNode = collectionNode;
     }
 
     public get label(): string {
-        const collectionNode = this._collectionNode.parent;
+        const collectionNode = this._documentNode.parent;
         const databaseNode = collectionNode.parent;
         const accountNode = databaseNode.parent;
-        return `${accountNode.treeItem.label}/${databaseNode.treeItem.label}/${collectionNode.treeItem.label}/${this._collectionNode.treeItem.label}`;
+        return `${accountNode.treeItem.label}/${databaseNode.treeItem.label}/${collectionNode.treeItem.label}/${this._documentNode.treeItem.label}`;
     }
 
     public async getData(): Promise<IMongoDocument> {
-        return this._collectionNode.treeItem.document;
+        return this._documentNode.treeItem.document;
     }
 
     public async update(document: IMongoDocument): Promise<IMongoDocument> {
-        return await this._collectionNode.treeItem.update(document);
+        return await this._documentNode.treeItem.update(document);
+    }
+
+    public get id(): string {
+        return this._documentNode.id;
     }
 }

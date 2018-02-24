@@ -40,4 +40,9 @@ export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]
             }
         }
     }
+
+    public get id(): string {
+        return this._collectionNode.id;
+    }
+
 }

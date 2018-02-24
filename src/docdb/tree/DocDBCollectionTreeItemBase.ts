@@ -16,12 +16,10 @@ import { DialogBoxResponses } from '../../constants';
  */
 export abstract class DocDBCollectionTreeItemBase extends DocDBTreeItemBase<RetrievedDocument> {
     private readonly _collection: CollectionMeta;
-    private readonly _parentId: string;
 
-    constructor(documentEndpoint: string, masterKey: string, collection: CollectionMeta, parentId: string, isEmulator: boolean) {
+    constructor(documentEndpoint: string, masterKey: string, collection: CollectionMeta, isEmulator: boolean) {
         super(documentEndpoint, masterKey, isEmulator);
         this._collection = collection;
-        this._parentId = parentId;
     }
 
     public get iconPath(): any {
@@ -32,7 +30,7 @@ export abstract class DocDBCollectionTreeItemBase extends DocDBTreeItemBase<Retr
     }
 
     public get id(): string {
-        return `${this._parentId}/${this._collection.id}`;
+        return this._collection.id;
     }
 
     public get label(): string {

@@ -24,16 +24,14 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     public document: IMongoDocument;
 
     private _collection: Collection;
-    private _parentId: string;
 
-    constructor(document: IMongoDocument, collection: Collection, parentId: string) {
+    constructor(document: IMongoDocument, collection: Collection) {
         this.document = document;
         this._collection = collection;
-        this._parentId = parentId;
     }
 
     get id(): string {
-        return `${this._parentId}/${this.document._id}`;
+        return this.document._id.toString();
     }
 
     get label(): string {

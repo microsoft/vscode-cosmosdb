@@ -19,7 +19,7 @@ export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
     }
 
     public initChild(database: DatabaseMeta): IAzureTreeItem {
-        return new GraphDatabaseTreeItem(this.documentEndpoint, this._gremlinEndpoint, this.masterKey, database, this.id, this.isEmulator);
+        return new GraphDatabaseTreeItem(this.documentEndpoint, this._gremlinEndpoint, this.masterKey, database, this.isEmulator);
     }
 
     public isAncestorOf(contextValue: string): boolean {

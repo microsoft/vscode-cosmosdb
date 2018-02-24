@@ -19,17 +19,15 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
 
     private _document: RetrievedDocument;
     private _collection: DocDBCollectionTreeItemBase;
-    private _parentId: string;
 
-    constructor(collection: DocDBCollectionTreeItemBase, document: RetrievedDocument, parentId: string) {
+    constructor(collection: DocDBCollectionTreeItemBase, document: RetrievedDocument) {
         this._collection = collection;
         this._document = document;
-        this._parentId = parentId;
         this.partitionKeyValue = this.getPartitionKeyValue();
     }
 
     public get id(): string {
-        return `${this._parentId}/${this.document.id}`;
+        return this.document.id;
     }
 
     public get label(): string {

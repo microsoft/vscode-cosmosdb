@@ -15,7 +15,7 @@ export class DocDBCollectionTreeItem extends DocDBCollectionTreeItemBase {
     public readonly childTypeLabel: string = "Document";
 
     public initChild(document: RetrievedDocument): IAzureTreeItem {
-        return new DocDBDocumentTreeItem(this, document, this.id);
+        return new DocDBDocumentTreeItem(this, document);
     }
 
     public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {

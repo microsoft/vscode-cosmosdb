@@ -13,7 +13,6 @@ import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { Experience } from '../constants';
-import { ConfigurationTarget } from 'vscode';
 
 interface IPersistedAccount {
     id: string,

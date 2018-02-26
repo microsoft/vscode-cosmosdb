@@ -7,11 +7,10 @@ import * as vscode from 'vscode';
 import * as vm from 'vm';
 import * as path from 'path';
 import * as _ from 'underscore';
-import { MongoClient, Db, Collection, Cursor, ObjectID, InsertOneWriteOpResult } from 'mongodb';
+import { Collection, Cursor, ObjectID, InsertOneWriteOpResult } from 'mongodb'; 
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { DialogBoxResponses, DefaultBatchSize } from '../../constants';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
-import { DEFAULT_ENCODING } from 'crypto';
 
 export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	public static contextValue: string = "MongoCollection";
@@ -40,7 +39,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			};
 		});
 
-		const result = await this.collection.bulkWrite(operations);
+		await this.collection.bulkWrite(operations);
 		return documents;
 	}
 

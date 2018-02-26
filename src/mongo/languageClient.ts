@@ -4,11 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 import * as path from 'path';
 import * as nls from 'vscode-nls';
-import { workspace, languages, ExtensionContext, extensions, Uri, Range } from 'vscode';
-import { LanguageClient, LanguageClientOptions, RequestType, ServerOptions, TransportKind, NotificationType } from 'vscode-languageclient';
+import { ExtensionContext } from 'vscode';
+import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient'; 
 
 const localize = nls.loadMessageBundle();
 
+/*
 namespace ConnectDBRequest {
 	export const type: RequestType<string, string, any, any> = new RequestType('vscode/content');
 }
@@ -16,6 +17,7 @@ namespace ConnectDBRequest {
 namespace ColorSymbolRequest {
 	export const type: RequestType<string, Range[], any, any> = new RequestType('json/colorSymbols');
 }
+*/
 
 export default class MongoDBLanguageClient {
 

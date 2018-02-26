@@ -3,11 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { EventEmitter } from 'events';
-import * as http from 'http';
 import * as vscode from 'vscode';
 import * as path from "path";
-import * as io from 'socket.io';
 import * as fs from "fs";
 import { GraphConfiguration, areConfigsEqual } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
@@ -37,7 +34,7 @@ export class GraphViewsManager implements IServerProvider {
     config: GraphConfiguration
   ): Promise<void> {
     try {
-      var [id, server] = await this.getOrCreateServer(config);
+      var [id,] = await this.getOrCreateServer(config);
 
       // Add server ID to the URL so that GraphViewDocumentContentProvider knows which port to use in the HTML
       var serverUri = previewBaseUri + id.toString();

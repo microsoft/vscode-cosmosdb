@@ -11,7 +11,7 @@
  */
 
 declare let d3: any;
-/* tslint:disable */
+
 const animationStepMs = 50;
 const defaultQuery = "g.V()";
 const linkDistance = 400;

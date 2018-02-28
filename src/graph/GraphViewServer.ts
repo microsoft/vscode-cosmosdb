@@ -12,7 +12,8 @@ import * as gremlin from "gremlin";
 import { removeDuplicatesById } from "../utils/array";
 import { GraphViewServerSocket } from "./GraphViewServerSocket";
 import { IGremlinEndpoint } from "./gremlinEndpoints";
-import { AzureActionHandler } from 'vscode-azureextensionui';
+import { AzureActionHandler, IActionContext } from 'vscode-azureextensionui';
+import { reporter } from '../utils/telemetry';
 
 class GremlinParseError extends Error {
   constructor(err: Error) {
@@ -46,7 +47,7 @@ export class GraphViewServer extends EventEmitter {
   private _socket: GraphViewServerSocket;
   private _pageState: PageState;
 
-  constructor(private _configuration: GraphConfiguration, private _actionHandler: AzureActionHandler) {
+  constructor(private _configuration: GraphConfiguration) {
     super();
     this._pageState = {
       query: undefined,
@@ -132,28 +133,29 @@ export class GraphViewServer extends EventEmitter {
     const start = Date.now();
 
     try {
-      await this._actionHandler.callWithTelemetry("cosmosDB.gremlinQuery", async (telemetryProperties, measurements) => {
-        this._pageState = {
+      const graphViewServier: GraphViewServer = this;
+      await AzureActionHandler.callWithTelemetry("cosmosDB.gremlinQuery", reporter, async function (this: IActionContext): Promise<void> {
+        graphViewServier._pageState = {
           query: gremlinQuery,
           results: undefined,
           errorMessage: undefined,
           isQueryRunning: true,
           runningQueryId: queryId,
-          view: this._pageState.view
+          view: graphViewServier._pageState.view
         };
 
-        measurements.gremlinLength = gremlinQuery.length;
+        this.measurements.gremlinLength = gremlinQuery.length;
         let stepMatches = gremlinQuery.match(/[.]/g);
-        measurements.approxGremlinSteps = stepMatches ? stepMatches.length : 0;
-        telemetryProperties.isDefaultQuery = gremlinQuery === "g.V()" ? "true" : "false";
+        this.measurements.approxGremlinSteps = stepMatches ? stepMatches.length : 0;
+        this.properties.isDefaultQuery = gremlinQuery === "g.V()" ? "true" : "false";
 
         // Full query results - may contain vertices and/or edges and/or other things
-        var fullResults = await this.executeQuery(queryId, gremlinQuery);
-        measurements.mainQueryDuration = (Date.now() - start) / 1000;
+        var fullResults = await graphViewServier.executeQuery(queryId, gremlinQuery);
+        this.measurements.mainQueryDuration = (Date.now() - start) / 1000;
         const edgesStart = Date.now();
 
-        let vertices = this.getVertices(fullResults);
-        let { limitedVertices, countUniqueVertices } = this.limitVertices(vertices);
+        let vertices = graphViewServier.getVertices(fullResults);
+        let { limitedVertices, countUniqueVertices } = graphViewServier.limitVertices(vertices);
         results = {
           fullResults,
           countUniqueVertices: countUniqueVertices,
@@ -161,21 +163,21 @@ export class GraphViewServer extends EventEmitter {
           countUniqueEdges: 0, // Fill in later
           limitedEdges: []     // Fill in later
         };
-        measurements.countUniqueVertices = countUniqueVertices;
-        measurements.limitedVertices = limitedVertices.length;
-        this._pageState.results = results;
+        this.measurements.countUniqueVertices = countUniqueVertices;
+        this.measurements.limitedVertices = limitedVertices.length;
+        graphViewServier._pageState.results = results;
 
         if (results.limitedVertices.length) {
           try {
             // If it returned any vertices, we need to also query for edges
-            var edges = await this.queryEdges(queryId, results.limitedVertices);
-            let { countUniqueEdges, limitedEdges } = this.limitEdges(limitedVertices, edges);
+            var edges = await graphViewServier.queryEdges(queryId, results.limitedVertices);
+            let { countUniqueEdges, limitedEdges } = graphViewServier.limitEdges(limitedVertices, edges);
 
             results.countUniqueEdges = countUniqueEdges;
             results.limitedEdges = limitedEdges;
-            measurements.countUniqueEdges = countUniqueEdges;
-            measurements.limitedEdges = limitedEdges.length;
-            measurements.edgesQueryDuration = (Date.now() - edgesStart) / 1000;
+            this.measurements.countUniqueEdges = countUniqueEdges;
+            this.measurements.limitedEdges = limitedEdges.length;
+            this.measurements.edgesQueryDuration = (Date.now() - edgesStart) / 1000;
           } catch (edgesError) {
             throw new EdgeQueryError(`Error querying for edges: ${edgesError.message || edgesError}`);
           }

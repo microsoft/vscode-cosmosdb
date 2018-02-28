@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import * as copypaste from 'copy-paste';
 import * as vscodeUtil from './utils/vscodeUtils';
 import * as cpUtil from './utils/cp';
-import { AzureTreeDataProvider, IAzureNode, AzureActionHandler, IAzureParentNode } from 'vscode-azureextensionui';
+import { AzureTreeDataProvider, IAzureNode, AzureActionHandler, IAzureParentNode, IActionContext } from 'vscode-azureextensionui';
 import { Reporter, reporter } from './utils/telemetry';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
@@ -109,8 +109,8 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	actionHandler.registerCommand('cosmosDB.update', (filePath: vscode.Uri) => editorManager.updateMatchingNode(filePath, tree));
 	actionHandler.registerCommand('cosmosDB.loadMore', (node?: IAzureNode) => tree.loadMore(node));
-	actionHandler.registerEvent('cosmosDB.CosmosEditorManager.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument,
-		(trackTelemetry: () => void, doc: vscode.TextDocument) => editorManager.onDidSaveTextDocument(trackTelemetry, context.globalState, doc, tree));
+	actionHandler.registerEvent('cosmosDB.CosmosEditorManager.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument, async function
+		(this: IActionContext, doc: vscode.TextDocument): Promise<void> { await editorManager.onDidSaveTextDocument(this, context.globalState, doc, tree) });
 }
 
 async function getAttachedNode(tree: AzureTreeDataProvider): Promise<IAzureParentNode<AttachedAccountsTreeItem>> {

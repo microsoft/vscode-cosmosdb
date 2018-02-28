@@ -11,7 +11,7 @@ import { GraphCollectionTreeItem } from "./tree/GraphCollectionTreeItem";
 import { GraphViewsManager } from "./GraphViewsManager";
 
 export function registerGraphCommands(context: vscode.ExtensionContext, actionHandler: AzureActionHandler, tree: AzureTreeDataProvider): void {
-    let graphViewsManager = new GraphViewsManager(context, actionHandler);
+    let graphViewsManager = new GraphViewsManager(context);
 
     actionHandler.registerCommand('cosmosDB.createGraphDatabase', async (node?: IAzureParentNode) => {
         if (!node) {

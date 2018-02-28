@@ -7,7 +7,6 @@ import { IAzureParentNode, IAzureNode, AzureTreeDataProvider } from "vscode-azur
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
-import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
 
 export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
     private _databaseNode: IAzureParentNode<MongoDatabaseTreeItem>;

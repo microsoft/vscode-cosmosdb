@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import { Db, Cursor } from 'mongodb';
-import { LanguageService as JsonLanguageService, SchemaConfiguration } from 'vscode-json-languageservice';
+import { SchemaConfiguration } from 'vscode-json-languageservice';
 import { JSONSchema } from 'vscode-json-languageservice/lib/jsonSchema';
 
 export default class SchemaService {

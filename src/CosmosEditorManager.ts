@@ -10,8 +10,6 @@ import * as vscode from 'vscode';
 import { DialogBoxResponses } from './constants';
 import { UserCancelledError, AzureTreeDataProvider, IAzureParentNode, IAzureNode } from 'vscode-azureextensionui';
 import * as util from './utils/vscodeUtils';
-import { randomUtils } from './utils/randomUtils';
-import { azureUtils } from './utils/azureUtils';
 import { MessageItem } from 'vscode';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';

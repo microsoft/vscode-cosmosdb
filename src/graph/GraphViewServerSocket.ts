@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as io from 'socket.io';
-
 /**
  * Wraps SocketIO.Socket to provide type safety
  */

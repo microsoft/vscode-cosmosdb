@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseMeta, DocumentClient } from 'documentdb';
-import { IAzureTreeItem } from 'vscode-azureextensionui';
 import CosmosDBManagementClient = require("azure-arm-cosmosdb");
 
 export interface IGremlinEndpoint {

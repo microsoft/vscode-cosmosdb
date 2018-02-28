@@ -6,7 +6,6 @@
 import { DocumentClient, QueryIterator, QueryError, FeedOptions } from 'documentdb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode } from 'vscode-azureextensionui';
 import * as DocDBLib from 'documentdb/lib';
-import * as vscode from 'vscode';
 import { DefaultBatchSize } from '../../constants';
 
 /**

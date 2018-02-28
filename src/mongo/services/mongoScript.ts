@@ -7,9 +7,7 @@ import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
-import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { Interval } from 'antlr4ts/misc/Interval';
-import { Token } from 'antlr4ts/Token';
 import { Db } from 'mongodb';
 import * as mongoParser from './../grammar/mongoParser';
 import { mongoLexer } from './../grammar/mongoLexer';
@@ -17,7 +15,7 @@ import { MongoVisitor } from './../grammar/visitors';
 import { CompletionItemsVisitor } from './completionItemProvider';
 import SchemaService from './schemaService';
 import { LanguageService as JsonLanguageService } from 'vscode-json-languageservice';
-import { TextDocument, CompletionItem, Position, Range, CompletionItemKind } from 'vscode-languageserver';
+import { TextDocument, CompletionItem, Position } from 'vscode-languageserver';
 
 export class MongoScriptDocumentManager {
 

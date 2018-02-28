@@ -4,8 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import vscode = require('vscode');
-import * as vscodeUtil from './vscodeUtils';
-import { UserCancelledError } from 'vscode-azureextensionui';
 import TelemetryReporter from 'vscode-extension-telemetry';
 
 export var reporter: TelemetryReporter;

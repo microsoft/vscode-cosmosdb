@@ -34,12 +34,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     private _keytar: typeof keytarType;
 
     constructor(private readonly _globalState: vscode.Memento) {
-        try {
-            this._keytar = require(`${vscode.env.appRoot}/node_modules/keytar`);
-        } catch (e) {
-            // unable to find keytar
-        }
-
+        this._keytar = fetchNodeModule('keytar');
         this.loadPersistedServers();
     }
 

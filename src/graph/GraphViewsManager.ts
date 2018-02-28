@@ -34,7 +34,7 @@ export class GraphViewsManager implements IServerProvider {
     config: GraphConfiguration
   ): Promise<void> {
     try {
-      var [id,] = await this.getOrCreateServer(config);
+      var id = await this.getOrCreateServer(config);
 
       // Add server ID to the URL so that GraphViewDocumentContentProvider knows which port to use in the HTML
       var serverUri = previewBaseUri + id.toString();
@@ -48,7 +48,7 @@ export class GraphViewsManager implements IServerProvider {
     return this._servers.get(id);
   }
 
-  private async getOrCreateServer(config: GraphConfiguration): Promise<[number, GraphViewServer]> {
+  private async getOrCreateServer(config: GraphConfiguration): Promise<number> {
     var existingServer: GraphViewServer = null;
     var existingId: number;
     this._servers.forEach((server, key) => {
@@ -58,7 +58,7 @@ export class GraphViewsManager implements IServerProvider {
       }
     })
     if (existingServer) {
-      return [existingId, existingServer];
+      return existingId;
     }
 
     var server = new GraphViewServer(config, this._actionHandler);
@@ -67,7 +67,7 @@ export class GraphViewsManager implements IServerProvider {
     this._lastServerId += 1;
     var id = this._lastServerId;
     this._servers.set(id, server);
-    return [id, server];
+    return id;
   }
 }
 

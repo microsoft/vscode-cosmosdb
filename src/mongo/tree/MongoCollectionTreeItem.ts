@@ -7,7 +7,8 @@ import * as vscode from 'vscode';
 import * as vm from 'vm';
 import * as path from 'path';
 import * as _ from 'underscore';
-import { Collection, Cursor, ObjectID, InsertOneWriteOpResult } from 'mongodb'; 
+import * as util from '../../utils/vscodeUtils';
+import { Collection, Cursor, ObjectID, InsertOneWriteOpResult, BulkWriteOpResultObject } from 'mongodb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { DialogBoxResponses, DefaultBatchSize } from '../../constants';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
@@ -39,7 +40,9 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			};
 		});
 
-		await this.collection.bulkWrite(operations);
+		const result: BulkWriteOpResultObject = await this.collection.bulkWrite(operations);
+		const output = util.getOutputChannel();
+		output.appendLine(`Successfully updated ${result.modifiedCount} document(s), inserted ${result.insertedCount} document(s)`);
 		return documents;
 	}
 

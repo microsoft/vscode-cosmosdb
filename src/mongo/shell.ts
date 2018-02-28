@@ -99,7 +99,6 @@ export class Shell {
 				disposable.dispose();
 				let lines = (<string>result.result).split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');
 				lines = lines[lines.length - 1] === 'Type "it" for more' ? lines.splice(lines.length - 1, 1) : lines;
-				lines.join(os.EOL);
 				executed = true;
 				c(lines.join(os.EOL));
 				if (handler) {

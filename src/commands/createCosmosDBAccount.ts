@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { ResourceModels, ResourceManagementClient, SubscriptionClient, SubscriptionModels } from 'azure-arm-resource';
 import CosmosDBManagementClient = require("azure-arm-cosmosdb");
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
-import { IAzureNode, AzureTreeDataProvider, UserCancelledError } from 'vscode-azureextensionui';
+import { IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 
 export async function createCosmosDBAccount(subscriptionNode: IAzureNode, showCreatingNode: (label: string) => void): Promise<DatabaseAccount> {
     const resourceGroupPick = await getOrCreateResourceGroup(subscriptionNode);

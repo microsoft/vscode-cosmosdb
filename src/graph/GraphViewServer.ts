@@ -6,15 +6,12 @@
 import { EventEmitter } from 'events';
 import * as http from 'http';
 import * as vscode from 'vscode';
-import * as path from "path";
 import * as io from 'socket.io';
-import { setInterval } from 'timers';
 import { GraphConfiguration } from './GraphConfiguration';
 import * as gremlin from "gremlin";
 import { removeDuplicatesById } from "../utils/array";
 import { GraphViewServerSocket } from "./GraphViewServerSocket";
-import { IGremlinEndpoint, getPossibleGremlinEndpoints } from "./gremlinEndpoints";
-import { Socket } from 'net';
+import { IGremlinEndpoint } from "./gremlinEndpoints";
 import { AzureActionHandler } from 'vscode-azureextensionui';
 
 class GremlinParseError extends Error {
@@ -281,7 +278,6 @@ export class GraphViewServer extends EventEmitter {
 
   private async executeQuery(queryId: number, gremlinQuery: string): Promise<any[]> {
     const maxRetries = 3; // original try + this many extra tries
-    const retryDurationMs = 1000;
     let iTry = 0;
 
     while (true) {

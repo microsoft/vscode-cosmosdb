@@ -3,9 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as cp from 'child_process';
-import * as vscode from 'vscode';
 import * as os from 'os';
-import { IDisposable, toDisposable, dispose } from '../utils/vscodeUtils';
+import { IDisposable, toDisposable } from '../utils/vscodeUtils';
 import { EventEmitter, window } from 'vscode';
 
 export class Shell {
@@ -83,7 +82,8 @@ export class Shell {
 		}
 
 		const disposables: IDisposable[] = [];
-		const once = (ee: NodeJS.EventEmitter, name: string, fn: Function) => {
+		(ee: NodeJS.EventEmitter, name: string, fn: Function) => {
+
 			ee.once(name, fn);
 			disposables.push(toDisposable(() => ee.removeListener(name, fn)));
 		};
@@ -99,7 +99,6 @@ export class Shell {
 				disposable.dispose();
 				let lines = (<string>result.result).split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');
 				lines = lines[lines.length - 1] === 'Type "it" for more' ? lines.splice(lines.length - 1, 1) : lines;
-				let value = lines.join(os.EOL);
 				executed = true;
 				c(lines.join(os.EOL));
 				if (handler) {

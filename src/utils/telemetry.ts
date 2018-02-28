@@ -28,7 +28,7 @@ interface IPackageInfo {
     aiKey: string;
 }
 
-function getPackageInfo(context: vscode.ExtensionContext): IPackageInfo {
+function getPackageInfo(context: vscode.ExtensionContext): IPackageInfo | undefined {
     let extensionPackage = require(context.asAbsolutePath('./package.json'));
     if (extensionPackage) {
         return {
@@ -37,5 +37,5 @@ function getPackageInfo(context: vscode.ExtensionContext): IPackageInfo {
             aiKey: extensionPackage.aiKey
         };
     }
-    return;
+    return undefined;
 }

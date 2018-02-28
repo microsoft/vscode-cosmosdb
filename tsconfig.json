@@ -8,6 +8,8 @@
 			"dom"
 		],
 		"sourceMap": true,
+		"noImplicitThis": true,
+		"noImplicitReturns": true,
 		"rootDir": ".",
 		"experimentalDecorators": true
 	},

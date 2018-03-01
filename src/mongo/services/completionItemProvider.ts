@@ -411,6 +411,10 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		if (parserRuleContext instanceof TerminalNode) {
 			return this._createRange(parserRuleContext.symbol.stopIndex + 1, parserRuleContext.symbol.stopIndex + 1);
 		}
+
+		//currently returning an null for the sake of linting. Would prefer to throw an error, but don't want
+		// to introduce a regression bug.
+		return null;
 	}
 
 	private _createRange(start: number, end: number): Range {

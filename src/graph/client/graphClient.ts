@@ -374,13 +374,13 @@ class GraphView {
       .attr('marker-end', 'url(#triangle)');
 
     // Allow user to drag nodes. Set "dragging" class while dragging.
-    let vertexDrag = force.drag().on("dragstart", function () {
+    let vertexDrag = force.drag().on("dragstart", function (this: any) {
       d3.select(this).classed("dragging", true);
 
       // Make sure a drag gesture doesn't also start a zoom action
       d3.event.sourceEvent.stopPropagation();
     })
-      .on("dragend", function () { d3.select(this).classed("dragging", false); });
+      .on("dragend", function (this: any) { d3.select(this).classed("dragging", false); });
 
     // Labels
     let label = svg.selectAll(".label")

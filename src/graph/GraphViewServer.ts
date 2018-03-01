@@ -392,6 +392,9 @@ export class GraphViewServer extends EventEmitter {
     if (err.message) {
       return !!err.message.match(/ScriptEvaluationError/);
     }
+    else {
+      return false;
+    }
   }
 
   private isErrorRetryable(err: any) {

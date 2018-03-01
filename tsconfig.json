@@ -8,6 +8,8 @@
 			"dom"
 		],
 		"sourceMap": true,
+		"noImplicitThis": true,
+		"noImplicitReturns": true,
 		"noUnusedLocals": true,
 		"rootDir": ".",
 		"experimentalDecorators": true

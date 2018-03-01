@@ -703,6 +703,7 @@
 		"@types/node": "^6.0.40",
 		"@types/socket.io": "^1.4.28",
 		"@types/socket.io-client": "^1.4.27",
+		"@types/d3": "5.0.0",
 		"antlr4ts-cli": "^0.4.0-alpha.4",
 		"mocha": "^2.3.3",
 		"typescript": "^2.0.3",

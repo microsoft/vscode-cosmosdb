@@ -8,7 +8,7 @@ import * as os from 'os'
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { DialogBoxResponses } from './constants';
-import { UserCancelledError, AzureTreeDataProvider, IAzureParentNode, IAzureNode } from 'vscode-azureextensionui';
+import { UserCancelledError, AzureTreeDataProvider, IAzureParentNode, IAzureNode, IActionContext } from 'vscode-azureextensionui';
 import * as util from './utils/vscodeUtils';
 import { MessageItem } from 'vscode';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
@@ -108,13 +108,14 @@ export class CosmosEditorManager {
         return editorFilePath;
     }
 
-    public async onDidSaveTextDocument(trackTelemetry: () => void, globalState: vscode.Memento, doc: vscode.TextDocument, tree: AzureTreeDataProvider): Promise<void> {
+    public async onDidSaveTextDocument(context: IActionContext, globalState: vscode.Memento, doc: vscode.TextDocument, tree: AzureTreeDataProvider): Promise<void> {
+        context.suppressTelemetry = true;
         let filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.uri.fsPath, filePath) === '');
         if (!filePath) {
             filePath = await this.loadPersistedEditor(doc.uri, tree);
         }
         if (!this.ignoreSave && filePath) {
-            trackTelemetry();
+            context.suppressTelemetry = false;
             const editor: ICosmosEditor = this.fileMap[filePath];
             const showSaveWarning: boolean | undefined = vscode.workspace.getConfiguration().get(this.showSavePromptKey);
             if (showSaveWarning !== false) {

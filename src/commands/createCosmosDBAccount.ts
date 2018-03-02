@@ -6,7 +6,7 @@
 import * as vscode from 'vscode';
 import { ResourceModels, ResourceManagementClient, SubscriptionClient, SubscriptionModels } from 'azure-arm-resource';
 import CosmosDBManagementClient = require("azure-arm-cosmosdb");
-import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
+import { DatabaseAccount, Capability } from 'azure-arm-cosmosdb/lib/models';
 import { IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 
 export async function createCosmosDBAccount(subscriptionNode: IAzureNode, showCreatingNode: (label: string) => void): Promise<DatabaseAccount> {
@@ -28,16 +28,21 @@ export async function createCosmosDBAccount(subscriptionNode: IAzureNode, showCr
                     return await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
                         showCreatingNode(accountName);
                         progress.report({ message: `Cosmos DB: Creating account '${accountName}'` });
+
                         const docDBClient = new CosmosDBManagementClient(
                             subscriptionNode.credentials, subscriptionNode.subscription.subscriptionId);
-                        await docDBClient.databaseAccounts.createOrUpdate(resourceGroupPick.resourceGroup.name,
-                            accountName,
-                            {
-                                location: locationPick.location.name,
-                                locations: [{ locationName: locationPick.location.name }],
-                                kind: apiPick.kind,
-                                tags: { defaultExperience: apiPick.defaultExperience }
-                            });
+                        let options = {
+                            location: locationPick.location.name,
+                            locations: [{ locationName: locationPick.location.name }],
+                            kind: apiPick.kind,
+                            tags: { defaultExperience: apiPick.defaultExperience },
+                            capabilities: [
+                            ]
+                        };
+                        if (apiPick.defaultExperience === 'Graph') {
+                            options.capabilities.push(<Capability>{ name: "EnableGremlin" });
+                        }
+                        await docDBClient.databaseAccounts.createOrUpdate(resourceGroupPick.resourceGroup.name, accountName, options);
 
                         // createOrUpdate always returns an empty object - so we have to get the DatabaseAccount separately
                         return await docDBClient.databaseAccounts.get(resourceGroupPick.resourceGroup.name, accountName);

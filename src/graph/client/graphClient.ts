@@ -283,29 +283,14 @@ export class GraphClient {
     this.setStateResults(true);
     this._graphView.display(results.countUniqueVertices, results.limitedVertices, results.countUniqueEdges, results.limitedEdges, viewSettings);
   }
-
-  private splitVerticesAndEdges(nodes: any[]): [GraphVertex[], GraphEdge[]] {
-    let vertices = nodes.filter(n => n.type === "vertex");
-    let edges = nodes.filter(n => n.type === "edge");
-    return [vertices, edges];
-  }
 }
 
 class GraphView {
-  private _countUniqueVertices: number;
-  private _vertices: GraphVertex[];
-  private _countUniqueEdges: number;
-  private _edges: GraphEdge[];
   private _force: any;
   private _defaultColorsPerLabel = new Map<string, string>();
   private _colorGenerator: (i: number) => string = d3.scale.category20();
 
   public display(countUniqueVertices: number, vertices: GraphVertex[], countUniqueEdges: number, edges: GraphEdge[], viewSettings: GraphViewSettings) {
-    this._countUniqueVertices = countUniqueVertices;
-    this._vertices = vertices;
-    this._countUniqueEdges = countUniqueEdges;
-    this._edges = edges;
-
     this.clear();
     this.generateDefaultColors(vertices);
 
@@ -389,13 +374,13 @@ class GraphView {
       .attr('marker-end', 'url(#triangle)');
 
     // Allow user to drag nodes. Set "dragging" class while dragging.
-    let vertexDrag = force.drag().on("dragstart", function () {
+    let vertexDrag = force.drag().on("dragstart", function (this: any) {
       d3.select(this).classed("dragging", true);
 
       // Make sure a drag gesture doesn't also start a zoom action
       d3.event.sourceEvent.stopPropagation();
     })
-      .on("dragend", function () { d3.select(this).classed("dragging", false); });
+      .on("dragend", function (this: any) { d3.select(this).classed("dragging", false); });
 
     // Labels
     let label = svg.selectAll(".label")
@@ -449,8 +434,6 @@ class GraphView {
   }
 
   public clear(): void {
-    this._vertices = [];
-    this._edges = [];
     d3.select(htmlElements.graphSection).select("svg").selectAll(".vertex, .edge, .label").remove();
   }
 
@@ -470,12 +453,6 @@ class GraphView {
   private static calculateClosestPIOver2(angle: number): number {
     const CURVATURE_FACTOR = 40;
     const result = (Math.atan(CURVATURE_FACTOR * (angle - (Math.PI / 4))) / 2) + (Math.PI / 4);
-    return result;
-  }
-
-  private static calculateClosestPIOver4(angle: number): number {
-    const CURVATURE_FACTOR = 100;
-    const result = (Math.atan(CURVATURE_FACTOR * (angle - (Math.PI / 8))) / 4) + (Math.PI / 8);
     return result;
   }
 

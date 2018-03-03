@@ -4,8 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import vscode = require('vscode');
-import * as vscodeUtil from './vscodeUtils';
-import { UserCancelledError } from 'vscode-azureextensionui';
 import TelemetryReporter from 'vscode-extension-telemetry';
 
 export var reporter: TelemetryReporter;
@@ -28,7 +26,7 @@ interface IPackageInfo {
     aiKey: string;
 }
 
-function getPackageInfo(context: vscode.ExtensionContext): IPackageInfo {
+function getPackageInfo(context: vscode.ExtensionContext): IPackageInfo | undefined {
     let extensionPackage = require(context.asAbsolutePath('./package.json'));
     if (extensionPackage) {
         return {
@@ -37,5 +35,5 @@ function getPackageInfo(context: vscode.ExtensionContext): IPackageInfo {
             aiKey: extensionPackage.aiKey
         };
     }
-    return;
+    return undefined;
 }

@@ -6,8 +6,8 @@
 import * as vscode from 'vscode';
 import { ResourceModels, ResourceManagementClient, SubscriptionClient, SubscriptionModels } from 'azure-arm-resource';
 import CosmosDBManagementClient = require("azure-arm-cosmosdb");
-import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
-import { IAzureNode, AzureTreeDataProvider, UserCancelledError } from 'vscode-azureextensionui';
+import { DatabaseAccount, Capability } from 'azure-arm-cosmosdb/lib/models';
+import { IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 
 export async function createCosmosDBAccount(subscriptionNode: IAzureNode, showCreatingNode: (label: string) => void): Promise<DatabaseAccount> {
     const resourceGroupPick = await getOrCreateResourceGroup(subscriptionNode);
@@ -28,16 +28,21 @@ export async function createCosmosDBAccount(subscriptionNode: IAzureNode, showCr
                     return await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
                         showCreatingNode(accountName);
                         progress.report({ message: `Cosmos DB: Creating account '${accountName}'` });
+
                         const docDBClient = new CosmosDBManagementClient(
                             subscriptionNode.credentials, subscriptionNode.subscription.subscriptionId);
-                        await docDBClient.databaseAccounts.createOrUpdate(resourceGroupPick.resourceGroup.name,
-                            accountName,
-                            {
-                                location: locationPick.location.name,
-                                locations: [{ locationName: locationPick.location.name }],
-                                kind: apiPick.kind,
-                                tags: { defaultExperience: apiPick.defaultExperience }
-                            });
+                        let options = {
+                            location: locationPick.location.name,
+                            locations: [{ locationName: locationPick.location.name }],
+                            kind: apiPick.kind,
+                            tags: { defaultExperience: apiPick.defaultExperience },
+                            capabilities: [
+                            ]
+                        };
+                        if (apiPick.defaultExperience === 'Graph') {
+                            options.capabilities.push(<Capability>{ name: "EnableGremlin" });
+                        }
+                        await docDBClient.databaseAccounts.createOrUpdate(resourceGroupPick.resourceGroup.name, accountName, options);
 
                         // createOrUpdate always returns an empty object - so we have to get the DatabaseAccount separately
                         return await docDBClient.databaseAccounts.get(resourceGroupPick.resourceGroup.name, accountName);
@@ -70,38 +75,28 @@ async function createResourceGroup(subscriptionNode: IAzureNode): Promise<Resour
                 const resourceManagementClient = new ResourceManagementClient(subscriptionNode.credentials, subscriptionNode.subscription.subscriptionId);
                 return resourceManagementClient.resourceGroups.createOrUpdate(resourceGroupName, { location: locationPick.location.name });
             });
+        } else {
+            throw new UserCancelledError();
         }
+    } else {
+        throw new UserCancelledError();
     }
 }
 
 async function getCosmosDBAccountName(subscriptionNode: IAzureNode): Promise<string> {
     const client = new CosmosDBManagementClient(subscriptionNode.credentials, subscriptionNode.subscription.subscriptionId);
 
-    let nameNotAvailable = true;
-    while (nameNotAvailable) {
-        const accountName = await vscode.window.showInputBox({
-            placeHolder: "Account name",
-            prompt: "Provide a Cosmos DB account name",
-            validateInput: validateCosmosDBAccountName,
-            ignoreFocusOut: true
-        });
+    let accountName: string = await vscode.window.showInputBox({
+        placeHolder: "Account name",
+        prompt: "Provide a Cosmos DB account name",
+        validateInput: (name: string) => validateCosmosDBAccountName(name, client),
+        ignoreFocusOut: true
+    });
 
-        if (!accountName) {
-            // If the user escaped the input box, exit the while loop
-            break;
-        } else {
-            try {
-                nameNotAvailable = await client.databaseAccounts.checkNameExists(accountName);
-                if (nameNotAvailable) {
-                    await vscode.window.showErrorMessage(`Account name '${accountName}' is not available.`)
-                } else {
-                    return accountName;
-                }
-            } catch (error) {
-                await vscode.window.showErrorMessage(error.message);
-            }
-        }
+    if (!accountName) {
+        throw new UserCancelledError();
     }
+    return accountName;
 }
 
 function getCosmosDBApi(): Thenable<ApiQuickPick> {
@@ -138,10 +133,11 @@ async function getOrCreateResourceGroup(subscriptionPick: IAzureNode): Promise<R
             return pick;
         } else {
             const newGroup = await createResourceGroup(subscriptionPick);
-            if (newGroup) {
-                return new ResourceGroupQuickPick(newGroup);
-            }
+            return new ResourceGroupQuickPick(newGroup);
         }
+    }
+    else {
+        throw new UserCancelledError();
     }
 }
 
@@ -155,17 +151,20 @@ async function getResourceGroupQuickPicks(subscriptionNode: IAzureNode): Promise
     return quickPicks.concat(existingGroups.map(rg => new ResourceGroupQuickPick(rg)));
 }
 
-function validateCosmosDBAccountName(name: string): string {
+async function validateCosmosDBAccountName(name: string, client: CosmosDBManagementClient): Promise<string | undefined> {
     const min = 3;
     const max = 31;
     if (!name || name.length < min || name.length > max) {
         return `The name must be between ${min} and ${max} characters.`;
     } else if (name.match(/[^a-z0-9-]/)) {
         return "The name can only contain lowercase letters, numbers, and the '-' character.";
+    } else if (await client.databaseAccounts.checkNameExists(name)) {
+        return `Account name '${name}' is not available.`
     }
+    return undefined;
 }
 
-function validateResourceGroupName(name: string): string {
+function validateResourceGroupName(name: string): string | undefined {
     const min = 1;
     const max = 90;
     if (!name || name.length < min || name.length > max) {
@@ -175,6 +174,7 @@ function validateResourceGroupName(name: string): string {
     } else if (name.endsWith('.')) {
         return "The name cannot end in a period."
     }
+    return undefined;
 }
 
 export class LocationQuickPick implements vscode.QuickPickItem {

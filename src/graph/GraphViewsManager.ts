@@ -3,15 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { EventEmitter } from 'events';
-import * as http from 'http';
 import * as vscode from 'vscode';
 import * as path from "path";
-import * as io from 'socket.io';
 import * as fs from "fs";
 import { GraphConfiguration, areConfigsEqual } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
-import { AzureActionHandler } from 'vscode-azureextensionui';
 
 const scheme = "vscode-cosmosdb-graphresults";
 const previewBaseUri = scheme + '://results/';
@@ -26,7 +22,7 @@ export class GraphViewsManager implements IServerProvider {
   // One server (and one HTML view) per graph, as represented by unique configurations
   private _servers = new Map<number, GraphViewServer>(); // map of id -> map
 
-  public constructor(private _context: vscode.ExtensionContext, private _actionHandler: AzureActionHandler) {
+  public constructor(private _context: vscode.ExtensionContext) {
     let documentProvider = new GraphViewDocumentContentProvider(this);
     let registration = vscode.workspace.registerTextDocumentContentProvider(scheme, documentProvider);
     this._context.subscriptions.push(registration);
@@ -37,7 +33,7 @@ export class GraphViewsManager implements IServerProvider {
     config: GraphConfiguration
   ): Promise<void> {
     try {
-      var [id, server] = await this.getOrCreateServer(config);
+      var id = await this.getOrCreateServer(config);
 
       // Add server ID to the URL so that GraphViewDocumentContentProvider knows which port to use in the HTML
       var serverUri = previewBaseUri + id.toString();
@@ -51,7 +47,7 @@ export class GraphViewsManager implements IServerProvider {
     return this._servers.get(id);
   }
 
-  private async getOrCreateServer(config: GraphConfiguration): Promise<[number, GraphViewServer]> {
+  private async getOrCreateServer(config: GraphConfiguration): Promise<number> {
     var existingServer: GraphViewServer = null;
     var existingId: number;
     this._servers.forEach((server, key) => {
@@ -61,16 +57,16 @@ export class GraphViewsManager implements IServerProvider {
       }
     })
     if (existingServer) {
-      return [existingId, existingServer];
+      return existingId;
     }
 
-    var server = new GraphViewServer(config, this._actionHandler);
+    var server = new GraphViewServer(config);
     await server.start();
 
     this._lastServerId += 1;
     var id = this._lastServerId;
     this._servers.set(id, server);
-    return [id, server];
+    return id;
   }
 }
 

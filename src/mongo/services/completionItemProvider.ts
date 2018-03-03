@@ -2,13 +2,10 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
-import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
-import { Token } from 'antlr4ts/Token';
 import { Db } from 'mongodb';
 import * as mongoParser from './../grammar/mongoParser';
 import { mongoLexer } from './../grammar/mongoLexer';
@@ -308,7 +305,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 					label: collection.collectionName,
 					kind: CompletionItemKind.Property,
 					filterText: collection.collectionName,
-					sortText:`1:${collection.collectionName}`
+					sortText: `1:${collection.collectionName}`
 				}));
 			});
 		}
@@ -414,6 +411,10 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		if (parserRuleContext instanceof TerminalNode) {
 			return this._createRange(parserRuleContext.symbol.stopIndex + 1, parserRuleContext.symbol.stopIndex + 1);
 		}
+
+		//currently returning an null for the sake of linting. Would prefer to throw an error, but don't want
+		// to introduce a regression bug.
+		return null;
 	}
 
 	private _createRange(start: number, end: number): Range {

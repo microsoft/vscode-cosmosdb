@@ -13,7 +13,6 @@ import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { Experience } from '../constants';
-import { ConfigurationTarget } from 'vscode';
 import { fetchNodeModule } from '../utils/vscodeUtils';
 
 interface IPersistedAccount {
@@ -268,6 +267,8 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     private static validateMongoConnectionString(value: string): string | undefined {
         if (!value || !value.startsWith('mongodb://')) {
             return 'Connection string must start with "mongodb://"';
+        } else {
+            return undefined;
         }
     }
 

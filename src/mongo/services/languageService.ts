@@ -3,12 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import { TextDocumentPositionParams, TextDocuments, IConnection, InitializeParams, InitializeResult, CompletionItem } from 'vscode-languageserver';
-import URI from 'vscode-uri';
-import { MongoClient, Db, Cursor } from 'mongodb';
+import { MongoClient, Db } from 'mongodb';
 import { MongoScriptDocumentManager } from './mongoScript';
 import SchemaService from './schemaService';
 import { getLanguageService, LanguageService as JsonLanguageService, SchemaConfiguration } from 'vscode-json-languageservice';
-import { JSONSchema } from 'vscode-json-languageservice/lib/jsonSchema';
 
 export class LanguageService {
 
@@ -27,9 +25,7 @@ export class LanguageService {
 		this.textDocuments.listen(connection);
 		// After the server has started the client sends an initilize request. The server receives
 		// in the passed params the rootPath of the workspace plus the client capabilities.
-		let workspaceRoot: URI;
 		connection.onInitialize((params: InitializeParams): InitializeResult => {
-			workspaceRoot = URI.parse(params.rootPath);
 			return {
 				capabilities: {
 					textDocumentSync: this.textDocuments.syncKind, // Tell the client that the server works in FULL text document sync mode

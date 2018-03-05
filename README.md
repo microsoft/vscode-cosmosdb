@@ -79,6 +79,11 @@
 
 ![Attach Emulator](resources/attachEmulator.png)
 
+## Known Issues
+
+- Azure no longer supports gremlin queries on pre-GA graph accounts. If you see the error "Could not find a valid gremlin endpoint for *graph*", then choose "Open Portal" on the graph node and check the "Gremlin Endpoint" in the Overview tab. If it does not take the form of '...[graph-name].***gremlin***.cosmosdb.azure.com...', then you will need to create a new graph account using the Azure portal or the current version of the extension.
+- Graphs are not currently supported with the emulator
+
 # Contributing
 There are a couple of ways you can contribute to this repo:
 

@@ -252,7 +252,7 @@ paket-files/
 .fake/
 
 # package-lock file
-package-lock.json
+# package-lock.json
 
 # JetBrains Rider
 .idea/

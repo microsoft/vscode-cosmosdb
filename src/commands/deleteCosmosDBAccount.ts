@@ -19,10 +19,10 @@ export async function deleteCosmosDBAccount(node: IAzureNode): Promise<void> {
         const resourceGroup: string = azureUtils.getResourceGroupFromId(node.treeItem.id);
         const accountName: string = azureUtils.getAccountNameFromId(node.treeItem.id);
         const output = util.getOutputChannel();
-        output.appendLine(`Deleting account ${accountName}`);
+        output.appendLine(`Deleting account "${accountName}"...`);
         output.show();
         await docDBClient.databaseAccounts.deleteMethod(resourceGroup, accountName);
-        output.appendLine(`Successfully deleted account ${accountName}`);
+        output.appendLine(`Successfully deleted account "${accountName}"`);
         output.show();
     } else {
         throw new UserCancelledError();

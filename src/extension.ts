@@ -31,7 +31,7 @@ import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(new Reporter(context));
 
-	const tree: AzureTreeDataProvider = new AzureTreeDataProvider(new CosmosDBAccountProvider(), 'cosmosDB.loadMore', [new AttachedAccountsTreeItem(context.globalState)]);
+	const tree: AzureTreeDataProvider = new AzureTreeDataProvider(new CosmosDBAccountProvider(), 'cosmosDB.loadMore', [new AttachedAccountsTreeItem(context.globalState)], reporter);
 	context.subscriptions.push(tree);
 	context.subscriptions.push(vscode.window.registerTreeDataProvider('cosmosDBExplorer', tree));
 

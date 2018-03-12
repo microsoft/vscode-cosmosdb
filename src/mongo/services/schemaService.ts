@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 import { Db, Cursor } from 'mongodb';
 import { SchemaConfiguration } from 'vscode-json-languageservice';
-import { JSONSchema } from 'vscode-json-languageservice/lib/jsonSchema';
+import { JSONSchema } from 'vscode-json-languageservice/lib/umd/jsonSchema';
 
 export default class SchemaService {
 

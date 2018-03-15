@@ -41,7 +41,7 @@ function truncateQuery(query: string) {
  * sockets.
  */
 export class GraphViewServer extends EventEmitter {
-  private _server: SocketIO.Server;
+  private _server: io.Server;
   private _httpServer: http.Server;
   private _port: number | undefined;
   private _socket: GraphViewServerSocket;

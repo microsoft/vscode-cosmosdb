@@ -10,6 +10,15 @@
  * Client code should be kept small.
  */
 
+/**
+ * TO DEBUG
+ *
+ * In the *running* instance VS Code (if you're debugging, it will be the Extension Development Host, not the one containing
+ * the extension source code), display a graph, then use the "Developer: Open Webview Developer Tools" command to open a
+ * new debugger window for the graphs' HTML/CSS/JS. You should find sources under
+ * top/active-frame/graphClient.html/Electron Isolated Context, or use CTRL+P.
+ */
+
 declare let d3: any;
 
 const animationStepMs = 50;
@@ -36,7 +45,7 @@ let htmlElements: {
   resultsBackground: HTMLDivElement
 };
 
-type State = "initial" | "querying" | "error" | "json-results" | "graph-results";
+type State = "initial" | "querying" | "error" | "json-results" | "graph-results" | "empty-results";
 
 window.onerror = (message) => {
   logToUI("ERROR: " + message);
@@ -247,10 +256,6 @@ export class GraphClient {
     this._graphView.clear();
   }
 
-  private setStateResults(hasGraph: boolean) {
-    this._setState(hasGraph ? "graph-results" : "json-results");
-  }
-
   private setStateError(error: any) {
     htmlElements.queryError.value = getErrorMessage(error);
     this._setState("error");
@@ -258,13 +263,25 @@ export class GraphClient {
   }
 
   private _setState(state: State) {
-    let fullState = `state-${state}`;
+    let fullState: string;
+
     switch (state) {
       case "graph-results":
+        fullState = 'state-results state-graph-results';
+        break;
       case "json-results":
-        fullState += " state-results";
+        fullState = 'state-results state-json-results state-non-graph-results';
+        break;
+      case "empty-results":
+        fullState = 'state-results state-json-results state-empty-results';
+        break;
+      default:
+        fullState = `state-${state}`;
+        break;
     }
 
+    // Sets the state name into a CSS class onto the "#states" element. This is then used by CSS to
+    //   control visibility of HTML elements.
     d3.select("#states").attr("class", fullState);
   }
 
@@ -274,14 +291,15 @@ export class GraphClient {
     // Always show the full original results JSON
     htmlElements.jsonResults.value = JSON.stringify(results.fullResults, null, 2);
 
-    if (!results.limitedVertices.length) {
+    if (Array.isArray(results.fullResults) && !results.fullResults.length) {
+      this._setState("empty-results");
+    } else if (!results.limitedVertices.length) {
       // No vertices to show, just show query JSON
-      this.setStateResults(false);
-      return;
+      this._setState("json-results");
+    } else {
+      this._setState("graph-results");
+      this._graphView.display(results.countUniqueVertices, results.limitedVertices, results.countUniqueEdges, results.limitedEdges, viewSettings);
     }
-
-    this.setStateResults(true);
-    this._graphView.display(results.countUniqueVertices, results.limitedVertices, results.countUniqueEdges, results.limitedEdges, viewSettings);
   }
 }
 

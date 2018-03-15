@@ -221,7 +221,7 @@ textarea {
     border-bottom-color: var(--color);
 }
 
-#queryWatermark, #graphWatermark {
+#initialWatermark, #graphWatermark {
     padding-top: 18%;
 }
 
@@ -241,7 +241,7 @@ textarea {
 
 /* Handle visibility of sections depending on current state */
 
-#states:not(.state-empty) #queryWatermark {
+#states:not(.state-initial) #initialWatermark {
     display:none;
 }
 

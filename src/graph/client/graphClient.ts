@@ -36,7 +36,7 @@ let htmlElements: {
   resultsBackground: HTMLDivElement
 };
 
-type State = "empty" | "querying" | "error" | "json-results" | "graph-results";
+type State = "initial" | "querying" | "error" | "json-results" | "graph-results";
 
 window.onerror = (message) => {
   logToUI("ERROR: " + message);
@@ -121,7 +121,7 @@ export class GraphClient {
 
     htmlElements.queryInput.value = defaultQuery;
 
-    this.setStateEmpty();
+    this.setStateInitial();
 
     this.log(`Listening on port ${port}`);
     this._socket = new SocketWrapper(io.connect(`http://localhost:${port}`));
@@ -238,8 +238,8 @@ export class GraphClient {
     logToUI(s);
   }
 
-  private setStateEmpty() {
-    this._setState("empty");
+  private setStateInitial() {
+    this._setState("initial");
   }
 
   private setStateQuerying() {

@@ -3,55 +3,41 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from 'vscode';
 import * as path from 'path';
-import { DialogBoxResponses } from '../../constants';
-import { IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
-import { RetrievedDocument, DocumentClient } from 'documentdb';
-import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import { IAzureTreeItem } from 'vscode-azureextensionui';
+import { ProcedureMeta } from 'documentdb';
 
 /**
- * Represents a Cosmos DB DocumentDB (SQL) document
+ * Represents a Cosmos DB DocumentDB (SQL) stored procedure
  */
-export class DocDBDocumentTreeItem implements IAzureTreeItem {
-    public static contextValue: string = "cosmosDBDocument";
-    public readonly contextValue: string = DocDBDocumentTreeItem.contextValue;
-    public readonly commandId: string = 'cosmosDB.openDocument';
+export class DocDBStoredProcedureTreeItem implements IAzureTreeItem {
+    public static contextValue: string = "cosmosDBStoredProcedure";
+    public readonly contextValue: string = DocDBStoredProcedureTreeItem.contextValue;
+    //asdf public readonly commandId: string = 'cosmosDB.openDocument';
 
-    public readonly partitionKeyValue: string | undefined;
-
-    private _document: RetrievedDocument;
-    private _collection: DocDBCollectionTreeItem;
-
-    constructor(collection: DocDBCollectionTreeItem, document: RetrievedDocument) {
-        this._collection = collection;
-        this._document = document;
-        this.partitionKeyValue = this.getPartitionKeyValue();
+    constructor(/*asdf private _collection: DocDBCollectionTreeItemBase,*/ private _procedure: ProcedureMeta) {
     }
 
     public get id(): string {
-        return this.document.id;
+        return this._procedure.id;
     }
 
     public get label(): string {
-        return this.document.id;
+        return this._procedure.id;
     }
 
     public get link(): string {
-        return this.document._self;
-    }
-
-    get document(): RetrievedDocument {
-        return this._document;
+        return this._procedure._self;
     }
 
     public get iconPath(): any {
         return {
-            light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Document.svg'),
-            dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Document.svg'),
+            light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'light', 'Process_16x.svg'),
+            dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'dark', 'Process_16x.svg')
         };
     }
 
+    /*asdf
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
         const message: string = `Are you sure you want to delete document '${this.label}'?`;
         const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
@@ -107,5 +93,5 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
             }
         }
         return value;
-    }
+    }*/
 }

@@ -49,6 +49,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         return await client.readCollections(this.link, feedOptions);
     }
 
+    // Delete the database
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
         const message: string = `Are you sure you want to delete database '${this.label}' and its contents?`;
         const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
@@ -64,6 +65,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         }
     }
 
+    // Create a DB collection
     public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
         const collectionName = await vscode.window.showInputBox({
             placeHolder: `Enter a name for your ${this.childTypeLabel}`,

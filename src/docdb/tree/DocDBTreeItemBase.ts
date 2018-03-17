@@ -9,7 +9,7 @@ import * as DocDBLib from 'documentdb/lib';
 import { DefaultBatchSize } from '../../constants';
 
 /**
- * This class provides common iteration logic for DocumentDB accounts, databases, and collections
+ * This class provides common iteration logic for DocumentDB accounts, databases, and collections asdf  confusing name
  */
 export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
     public abstract readonly id: string;

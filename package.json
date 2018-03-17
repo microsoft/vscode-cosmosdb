@@ -385,7 +385,7 @@
 				},
 				{
 					"command": "cosmosDB.createDocDBDocument",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentsGroup"
 				},
 				{
 					"command": "cosmosDB.createDocDBCollection",
@@ -522,6 +522,14 @@
 				{
 					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
+				},
+				{
+					"command": "cosmosDB.refresh",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentsGroup"
+				},
+				{
+					"command": "cosmosDB.refresh",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProceduresGroup"
 				},
 				{
 					"command": "cosmosDB.refresh",

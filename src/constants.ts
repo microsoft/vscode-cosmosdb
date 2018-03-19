@@ -23,3 +23,8 @@ export enum Experience {
     Table = 'Table',
     DocumentDB = 'DocumentDB'
 }
+
+export enum DBAccountKind {
+    MongoDB = 'MongoDB',
+    GlobalDocumentDB = 'GlobalDocumentDB'
+}

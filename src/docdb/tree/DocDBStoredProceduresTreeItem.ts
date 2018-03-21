@@ -27,8 +27,8 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
 
     public get iconPath(): any {
         return {
-            light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'dark', 'stored procedures.svg'),
-            dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'light', 'stored procedures.svg')
+            light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'stored procedures.svg'),
+            dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'stored procedures.svg')
         };
     }
 

@@ -5,7 +5,7 @@
 
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DocumentClient, QueryIterator, CollectionMeta, FeedOptions, ProcedureMeta, RetrievedDocument } from 'documentdb';
+import { DocumentClient, QueryIterator, FeedOptions, RetrievedDocument } from 'documentdb';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import { IAzureTreeItem, UserCancelledError, IAzureNode } from 'vscode-azureextensionui';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';

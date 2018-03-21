@@ -261,7 +261,15 @@ textarea {
     display: none;
 }
 
-#states.state-graph-results #graphWatermark {
+#states:not(.state-json-results) #graphWatermark {
+    display: none;
+}
+
+#states:not(.state-non-graph-results) #nonGraphResults {
+    display: none;
+}
+
+#states:not(.state-empty-results) #emptyResults {
     display: none;
 }
 

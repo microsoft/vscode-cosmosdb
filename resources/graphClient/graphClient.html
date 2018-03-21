@@ -24,12 +24,14 @@
     <script src="../../out/src/graph/client/graphClient.js"></script>
 </head>
 
-<!-- Possible states (set on #states)
+<!-- Possible states (set on #states - see "type State" in graphClient.ts)
     state-initial   (just loaded - user needs to do a query)
     state-querying
     state-error
+    // The following have multiple classes set on the #states element:
     state-results + state-graph-results
-    state-results + state-json-results
+    state-results + state-json-results state-non-graph-results
+    state-results + state-json-results state-empty-results
 -->
 
 <body>
@@ -65,7 +67,12 @@
                         <defs></defs>
                     </svg>
                     <div id="graphWatermark" class="watermark">
-                        The results cannot be displayed visually. Please see the JSON tab for detailed results.
+                        <div id="nonGraphResults">
+                            The results cannot be displayed visually. Please see the JSON tab for detailed results.
+                        </div>
+                        <div id="emptyResults">
+                            The returned results are empty. Please enter a query and click Execute.
+                        </div>
                     </div>
                 </div>
                 <div id="jsonSection">

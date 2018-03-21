@@ -38,11 +38,6 @@ export abstract class DocDBDocumentsTreeItemBase extends DocDBTreeItemBase<Retri
         return this._collection._self;
     }
 
-    //asdf
-    // public get partitionKey(): CollectionPartitionKey | undefined {
-    //     return this._collection.partitionKey;
-    // }
-
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<RetrievedDocument>> {
         return await client.readDocuments(this.link, feedOptions);
     }

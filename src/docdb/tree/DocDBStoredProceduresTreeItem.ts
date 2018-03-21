@@ -10,9 +10,7 @@ import { IAzureTreeItem } from 'vscode-azureextensionui';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 
 /**
- * asdf
- * This class provides common logic for DocumentDB, Graph, and Table collections
- * (DocumentDB is the base type for all Cosmos DB accounts)
+ * This class represents the DocumentDB "Stored Procedures" node in the tree
  */
 export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMeta> {
     public static contextValue: string = "cosmosDBStoredProceduresGroup";
@@ -49,20 +47,4 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<ProcedureMeta>> {
         return await client.readStoredProcedures(this.link, feedOptions);
     }
-
-    /*asdf
-    public async deleteTreeItem(_node: IAzureNode): Promise<void> {
-        const message: string = `Are you sure you want to delete collection '${this.label}' and its contents?`;
-        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
-        if (result === DialogBoxResponses.Yes) {
-            const client = this.getDocumentClient();
-            await new Promise((resolve, reject) => {
-                client.deleteCollection(this.link, function (err) {
-                    err ? reject(err) : resolve();
-                });
-            });
-        } else {
-            throw new UserCancelledError();
-        }
-    }*/
 }

@@ -6,22 +6,31 @@
 import { CollectionMeta, DocumentClient, CollectionPartitionKey } from 'documentdb';
 import { IAzureNode, IAzureTreeItem, IAzureParentTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import * as vscode from 'vscode';
-import * as DocDBLib from 'documentdb/lib';
 import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
+import { getDocumentClient } from "../getDocumentClient";
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import * as path from "path";
 import { DialogBoxResponses } from '../../constants';
 
-// asdf create base class for this?
+/**
+ * Represents a DocumentDB collection
+ */
 export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = "cosmosDBDocumentCollection";
     public readonly contextValue: string = DocDBCollectionTreeItem.contextValue;
+
+    private readonly _children: IAzureTreeItem[];
 
     constructor(
         private _documentEndpoint: string,
         private _masterKey: string,
         private _collection: CollectionMeta,
         private _isEmulator: boolean) {
+
+        this._children = [
+            new DocDBDocumentsTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator),
+            new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this._collection, this._isEmulator)
+        ];
     }
 
     public get id(): string {
@@ -40,10 +49,7 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
     }
 
     public async loadMoreChildren(node: IAzureNode<IAzureTreeItem>, clearCache: boolean): Promise<IAzureTreeItem[]> {
-        return [
-            new DocDBDocumentsTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator),
-            new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this._collection, this._isEmulator)
-        ];
+        return this._children;
     }
 
     public hasMoreChildren(): boolean {
@@ -58,13 +64,8 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
         return this._collection.partitionKey;
     }
 
-    // asdf shared code?
     public getDocumentClient(): DocumentClient {
-        const documentBase = DocDBLib.DocumentBase;
-        var connectionPolicy = new documentBase.ConnectionPolicy();
-        connectionPolicy.DisableSSLVerification = this._isEmulator;
-        const client = new DocumentClient(this._documentEndpoint, { masterKey: this._masterKey }, connectionPolicy);
-        return client;
+        return getDocumentClient(this._documentEndpoint, this._masterKey, this._isEmulator);
     }
 
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
@@ -80,5 +81,9 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
         } else {
             throw new UserCancelledError();
         }
+    }
+
+    public pickTreeItem?(expectedContextValue: string): IAzureTreeItem | undefined {
+        return this._children.find(node => node.contextValue === expectedContextValue);
     }
 }

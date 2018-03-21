@@ -10,6 +10,7 @@ import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
+import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 
 export class DocDBAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBDocumentServer";
@@ -24,7 +25,8 @@ export class DocDBAccountTreeItem extends DocDBAccountTreeItemBase {
             case DocDBDatabaseTreeItem.contextValue:
             case DocDBCollectionTreeItem.contextValue:
             case DocDBDocumentTreeItem.contextValue:
-            case DocDBStoredProcedureTreeItem.contextValue: //asdf
+            case DocDBStoredProcedureTreeItem.contextValue:
+            case DocDBDocumentsTreeItem.contextValue:
                 return true;
             default:
                 return false;

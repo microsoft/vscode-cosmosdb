@@ -12,9 +12,7 @@ import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 
 /**
- * asdf
- * This class provides common logic for DocumentDB, Graph, and Table collections
- * (DocumentDB is the base type for all Cosmos DB accounts)
+ * This class provides logic for DocumentDB collections
  */
 export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument> {
     public static contextValue: string = "cosmosDBDocumentsGroup";
@@ -33,7 +31,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
     }
 
     public get id(): string {
-        return "$Documents"; // asdf testpoint
+        return "$Documents";
     }
 
     public get label(): string {

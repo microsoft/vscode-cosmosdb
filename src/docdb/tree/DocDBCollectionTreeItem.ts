@@ -3,44 +3,87 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { RetrievedDocument } from 'documentdb';
-import { IAzureNode, UserCancelledError, IAzureTreeItem } from 'vscode-azureextensionui';
+import { CollectionMeta, DocumentClient, CollectionPartitionKey } from 'documentdb';
+import { IAzureNode, IAzureTreeItem, IAzureParentTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import * as vscode from 'vscode';
-import { DocDBCollectionTreeItemBase } from './DocDBCollectionTreeItemBase';
-import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
+import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
+import { getDocumentClient } from "../getDocumentClient";
+import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
+import * as path from "path";
+import { DialogBoxResponses } from '../../constants';
 
-export class DocDBCollectionTreeItem extends DocDBCollectionTreeItemBase {
+/**
+ * Represents a DocumentDB collection
+ */
+export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = "cosmosDBDocumentCollection";
     public readonly contextValue: string = DocDBCollectionTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Document";
 
-    public initChild(document: RetrievedDocument): IAzureTreeItem {
-        return new DocDBDocumentTreeItem(this, document);
+    private readonly _children: IAzureTreeItem[];
+
+    constructor(
+        private _documentEndpoint: string,
+        private _masterKey: string,
+        private _collection: CollectionMeta,
+        private _isEmulator: boolean) {
+
+        this._children = [
+            new DocDBDocumentsTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator),
+            new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this._collection, this._isEmulator)
+        ];
     }
 
-    public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
-        const client = this.getDocumentClient();
-        let docID = await vscode.window.showInputBox({
-            placeHolder: "Enter a unique id",
-            ignoreFocusOut: true
-        });
+    public get id(): string {
+        return this._collection.id;
+    }
 
-        if (docID || docID === "") {
-            docID = docID.trim();
-            showCreatingNode(docID);
-            const document: RetrievedDocument = await new Promise<RetrievedDocument>((resolve, reject) => {
-                client.createDocument(this.link, { 'id': docID }, (err, result: RetrievedDocument) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(result);
-                    }
+    public get label(): string {
+        return this._collection.id;
+    }
+
+    public get iconPath(): any {
+        return {
+            light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Collection.svg'),
+            dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Collection.svg')
+        };
+    }
+
+    public async loadMoreChildren(node: IAzureNode<IAzureTreeItem>, clearCache: boolean): Promise<IAzureTreeItem[]> {
+        return this._children;
+    }
+
+    public hasMoreChildren(): boolean {
+        return false;
+    }
+
+    public get link(): string {
+        return this._collection._self;
+    }
+
+    public get partitionKey(): CollectionPartitionKey | undefined {
+        return this._collection.partitionKey;
+    }
+
+    public getDocumentClient(): DocumentClient {
+        return getDocumentClient(this._documentEndpoint, this._masterKey, this._isEmulator);
+    }
+
+    public async deleteTreeItem(_node: IAzureNode): Promise<void> {
+        const message: string = `Are you sure you want to delete collection '${this.label}' and its contents?`;
+        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
+        if (result === DialogBoxResponses.Yes) {
+            const client = this.getDocumentClient();
+            await new Promise((resolve, reject) => {
+                client.deleteCollection(this.link, function (err) {
+                    err ? reject(err) : resolve();
                 });
             });
-
-            return this.initChild(document);
+        } else {
+            throw new UserCancelledError();
         }
+    }
 
-        throw new UserCancelledError();
+    public pickTreeItem?(expectedContextValue: string): IAzureTreeItem | undefined {
+        return this._children.find(node => node.contextValue === expectedContextValue);
     }
 }

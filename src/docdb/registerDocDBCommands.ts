@@ -8,6 +8,7 @@ import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
 import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
 import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
+import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
 
 export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: AzureTreeDataProvider): void {
     actionHandler.registerCommand('cosmosDB.createDocDBDatabase', async (node?: IAzureParentNode) => {
@@ -25,7 +26,7 @@ export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: A
     });
     actionHandler.registerCommand('cosmosDB.createDocDBDocument', async (node?: IAzureParentNode) => {
         if (!node) {
-            node = <IAzureParentNode>await tree.showNodePicker(DocDBCollectionTreeItem.contextValue);
+            node = <IAzureParentNode>await tree.showNodePicker(DocDBDocumentsTreeItem.contextValue);
         }
         await node.createChild();
     });

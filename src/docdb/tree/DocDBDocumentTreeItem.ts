@@ -7,9 +7,12 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { DialogBoxResponses } from '../../constants';
 import { IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
-import { DocDBCollectionTreeItemBase } from './DocDBCollectionTreeItemBase';
 import { RetrievedDocument, DocumentClient } from 'documentdb';
+import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 
+/**
+ * Represents a Cosmos DB DocumentDB (SQL) document
+ */
 export class DocDBDocumentTreeItem implements IAzureTreeItem {
     public static contextValue: string = "cosmosDBDocument";
     public readonly contextValue: string = DocDBDocumentTreeItem.contextValue;
@@ -18,9 +21,9 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     public readonly partitionKeyValue: string | undefined;
 
     private _document: RetrievedDocument;
-    private _collection: DocDBCollectionTreeItemBase;
+    private _collection: DocDBCollectionTreeItem;
 
-    constructor(collection: DocDBCollectionTreeItemBase, document: RetrievedDocument) {
+    constructor(collection: DocDBCollectionTreeItem, document: RetrievedDocument) {
         this._collection = collection;
         this._document = document;
         this.partitionKeyValue = this.getPartitionKeyValue();

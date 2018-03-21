@@ -3,19 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from 'vscode';
 import * as path from 'path';
-import { DocumentClient, QueryIterator, CollectionMeta, RetrievedDocument, CollectionPartitionKey, FeedOptions } from 'documentdb';
+import { DocumentClient, QueryIterator, CollectionMeta, RetrievedDocument, FeedOptions } from 'documentdb';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
-import { IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
-import { DialogBoxResponses } from '../../constants';
 
 /**
- * This class provides common logic for DocumentDB, Graph, and Table collections
+ * This class provides common logic for DocumentDB, Graph, and Table "documents" (or whatever passes for a "document" in this API type)
  * (DocumentDB is the base type for all Cosmos DB accounts)
  */
-export abstract class DocDBCollectionTreeItemBase extends DocDBTreeItemBase<RetrievedDocument> {
-    private readonly _collection: CollectionMeta;
+export abstract class DocDBDocumentsTreeItemBase extends DocDBTreeItemBase<RetrievedDocument> {
+    protected readonly _collection: CollectionMeta;
 
     constructor(documentEndpoint: string, masterKey: string, collection: CollectionMeta, isEmulator: boolean) {
         super(documentEndpoint, masterKey, isEmulator);
@@ -37,30 +34,11 @@ export abstract class DocDBCollectionTreeItemBase extends DocDBTreeItemBase<Retr
         return this._collection.id;
     }
 
-    public get link(): string {
+    private get link(): string {
         return this._collection._self;
-    }
-
-    public get partitionKey(): CollectionPartitionKey | undefined {
-        return this._collection.partitionKey;
     }
 
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<RetrievedDocument>> {
         return await client.readDocuments(this.link, feedOptions);
-    }
-
-    public async deleteTreeItem(_node: IAzureNode): Promise<void> {
-        const message: string = `Are you sure you want to delete collection '${this.label}' and its contents?`;
-        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
-        if (result === DialogBoxResponses.Yes) {
-            const client = this.getDocumentClient();
-            await new Promise((resolve, reject) => {
-                client.deleteCollection(this.link, function (err) {
-                    err ? reject(err) : resolve();
-                });
-            });
-        } else {
-            throw new UserCancelledError();
-        }
     }
 }

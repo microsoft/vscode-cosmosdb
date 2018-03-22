@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import * as copypaste from 'copy-paste';
 import * as vscodeUtil from './utils/vscodeUtils';
 import * as cpUtil from './utils/cp';
-import { AzureTreeDataProvider, IAzureNode, AzureActionHandler, IAzureParentNode, IActionContext } from 'vscode-azureextensionui';
+import { AzureTreeDataProvider, IAzureNode, AzureActionHandler, IAzureParentNode, IActionContext, IAzureUserInput, AzureUserInput } from 'vscode-azureextensionui';
 import { Reporter, reporter } from './utils/telemetry';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
@@ -31,7 +31,9 @@ import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(new Reporter(context));
 
-	const tree: AzureTreeDataProvider = new AzureTreeDataProvider(new CosmosDBAccountProvider(), 'cosmosDB.loadMore', [new AttachedAccountsTreeItem(context.globalState)], reporter);
+	const ui: IAzureUserInput = new AzureUserInput(context.globalState);
+
+	const tree: AzureTreeDataProvider = new AzureTreeDataProvider(new CosmosDBAccountProvider(), 'cosmosDB.loadMore', ui, reporter, [new AttachedAccountsTreeItem(context.globalState)]);
 	context.subscriptions.push(tree);
 	context.subscriptions.push(vscode.window.registerTreeDataProvider('cosmosDBExplorer', tree));
 
@@ -47,12 +49,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Common commands
 	const accountContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
-	actionHandler.registerCommand('cosmosDB.createAccount', async (node?: IAzureParentNode) => {
+	actionHandler.registerCommand('cosmosDB.createAccount', async function (this: IActionContext, node?: IAzureParentNode): Promise<void> {
 		if (!node) {
 			node = <IAzureParentNode>await tree.showNodePicker(AzureTreeDataProvider.subscriptionContextValue);
 		}
 
-		await node.createChild();
+		await node.createChild(this);
 	});
 	actionHandler.registerCommand('cosmosDB.deleteAccount', async (node?: IAzureNode) => {
 		if (!node) {

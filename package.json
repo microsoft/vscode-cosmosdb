@@ -698,6 +698,7 @@
 		"vscode:prepublish": "tsc -p ./",
 		"build": "tsc -p ./",
 		"compile": "tsc -watch -p ./",
+		"lint": "tslint --project tsconfig.json -t verbose",
 		"postinstall": "node ./node_modules/vscode/bin/install",
 		"test": "node ./node_modules/vscode/bin/test",
 		"antlr4ts": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src"
@@ -717,6 +718,8 @@
 		"azure-storage": "^2.8.1",
 		"gulp": "^3.9.1",
 		"mocha": "^2.3.3",
+		"tslint": "^5.7.0",
+		"tslint-microsoft-contrib": "5.0.1",
 		"typescript": "^2.0.3",
 		"vscode": "^1.0.0",
 		"vsce": "^1.37.5"
@@ -737,7 +740,7 @@
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "~0.8.2",
+		"vscode-azureextensionui": "~0.9.0",
 		"vscode-extension-telemetry": "^0.0.15",
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.0.0",

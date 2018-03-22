@@ -191,14 +191,14 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                         // Default to Mongo if the value is a string for the sake of backwards compatiblity
                         // (Mongo was originally the only account type that could be attached)
                         id = account;
-                        label = account;
+                        label = `${account} (${api})`;
                         api = Experience.MongoDB;
                         isEmulator = false;
                     } else {
                         id = (<IPersistedAccount>account).id;
                         api = (<IPersistedAccount>account).defaultExperience;
                         isEmulator = (<IPersistedAccount>account).isEmulator;
-                        label = isEmulator ? `${api} Emulator` : id;
+                        label = isEmulator ? `${api} Emulator` : `${id} (${api})`;
                     }
                     const connectionString: string = await this._keytar.getPassword(this._serviceName, id);
                     this._attachedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
@@ -216,12 +216,12 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 id = await this.getServerIdFromConnectionString(connectionString);
             }
 
-            label = label || id;
+            label = label || `${id} (${api})`;
             treeItem = new MongoAccountTreeItem(id, label, connectionString, isEmulator);
         } else {
             const [endpoint, masterKey, id] = AttachedAccountsTreeItem.parseDocDBConnectionString(connectionString);
 
-            label = label || id;
+            label = label || `${id} (${api})`;
             switch (api) {
                 case Experience.Table:
                     treeItem = new TableAccountTreeItem(id, label, endpoint, masterKey, isEmulator);

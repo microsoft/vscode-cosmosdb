@@ -90,11 +90,13 @@ export class Shell {
 
 		return await new Promise<string>((c, e) => {
 			let executed = false;
-			const handler = setTimeout(() => {
-				if (!executed) {
-					e('Timed out executing ' + script);
-				}
-			}, 5000);
+			const handler = setTimeout(
+				() => {
+					if (!executed) {
+						e('Timed out executing ' + script);
+					}
+				},
+				5000);
 			const disposable = this.onResult.event(result => {
 				disposable.dispose();
 				let lines = (<string>result.result).split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');

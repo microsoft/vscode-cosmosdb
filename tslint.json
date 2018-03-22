@@ -160,7 +160,7 @@
         "no-require-imports": false, // changed
         // TODO: "no-shadowed-variable": true,
         "no-suspicious-comment": true,
-        // TODO: "no-typeof-undefined": true,
+        "no-typeof-undefined": true,
         "no-unnecessary-field-initialization": true,
         // TODO: "no-unnecessary-local-variable": true,
         "no-unnecessary-qualifier": true,
@@ -215,7 +215,7 @@
         "react-a11y-tabindex-no-positive": true,
         "react-a11y-titles": true,
         "align": [
-            false, // TODO: true,
+            true,
             "parameters",
             "arguments",
             "statements"

@@ -18,7 +18,10 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 
 	private at: Position;
 
-	constructor(private textDocument: TextDocument, private db: Db, private offset: number,
+	constructor(
+		private textDocument: TextDocument,
+		private db: Db,
+		private offset: number,
 		private schemaService: SchemaService,
 		private jsonLanguageService: JsonLanguageService
 	) {

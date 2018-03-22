@@ -4,16 +4,21 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { azureUtils } from '../utils/azureUtils';
-import { IAzureTreeItem, IAzureNode, IChildProvider } from 'vscode-azureextensionui';
+import { IAzureTreeItem, IAzureNode, IChildProvider, ResourceGroupStep, LocationStep, AzureWizard, IActionContext } from 'vscode-azureextensionui';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import CosmosDBManagementClient = require("azure-arm-cosmosdb");
 import { DatabaseAccountsListResult, DatabaseAccount, DatabaseAccountListKeysResult } from 'azure-arm-cosmosdb/lib/models';
-import { createCosmosDBAccount } from '../commands/createCosmosDBAccount';
 import { Experience } from '../constants';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
+import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
+import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
+import { CosmosDBAccountStep } from './CosmosDBAccountWizard/CosmosDBAccountStep';
+import * as vscodeUtil from '../utils/vscodeUtils';
+import * as vscode from 'vscode';
+import { CosmosDBAccountApiStep } from './CosmosDBAccountWizard/CosmosDBAccountApiStep';
 
 export class CosmosDBAccountProvider implements IChildProvider {
     public childTypeLabel: string = 'Account';
@@ -31,10 +36,28 @@ export class CosmosDBAccountProvider implements IChildProvider {
         }));
     }
 
-    public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
+    public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void, actionContext: IActionContext): Promise<IAzureTreeItem> {
         const client = new CosmosDBManagementClient(node.credentials, node.subscription.subscriptionId);
-        const databaseAccount = await createCosmosDBAccount(node, showCreatingNode);
-        return await this.initChild(client, databaseAccount);
+        const wizardContext: ICosmosDBWizardContext = {
+            credentials: node.credentials,
+            subscription: node.subscription
+        };
+
+        const wizard = new AzureWizard([
+            new CosmosDBAccountNameStep(),
+            new CosmosDBAccountApiStep(),
+            new ResourceGroupStep(),
+            new LocationStep(),
+            new CosmosDBAccountStep()
+        ], wizardContext);
+
+        await wizard.prompt(actionContext, node.ui);
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
+            showCreatingNode(wizardContext.accountName);
+            progress.report({ message: `Cosmos DB: Creating account '${wizardContext.accountName}'` });
+            await wizard.execute(actionContext, vscodeUtil.getOutputChannel());
+        });
+        return await this.initChild(client, wizardContext.databaseAccount);
     }
 
     private async initChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<IAzureTreeItem> {

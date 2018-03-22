@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
-import { IResourceGroupWizardContext } from 'vscode-azureextensionui';
+import { IResourceGroupWizardContext, IActionContext } from 'vscode-azureextensionui';
 import { Experience, DBAccountKind } from '../../constants';
 
 export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
@@ -30,5 +30,10 @@ export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
      * The kind to use
      * This will be defined after `CosmosDBAccountApiStep.prompt` occurs.
      */
-    kind?: DBAccountKind
+    kind?: DBAccountKind,
+
+    /**
+     * Action context for the running command
+     */
+    actionContext: IActionContext
 }

@@ -18,6 +18,7 @@ install:
 script:
   - gulp package
   - gulp upload-vsix
+  - npm run lint
   - npm test
 
 notifications:

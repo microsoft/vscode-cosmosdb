@@ -223,6 +223,7 @@ function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
 function parseJSContent(content: string): any {
 	try {
 		const sandbox = {};
+		// tslint:disable-next-line:insecure-random
 		const key = 'parse' + Math.floor(Math.random() * 1000000);
 		sandbox[key] = {};
 		vm.runInNewContext(key + '=' + content, sandbox);

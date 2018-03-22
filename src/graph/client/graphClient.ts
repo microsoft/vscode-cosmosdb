@@ -133,6 +133,7 @@ export class GraphClient {
     this.setStateInitial();
 
     this.log(`Listening on port ${port}`);
+    // tslint:disable-next-line:no-http-string
     this._socket = new SocketWrapper(io.connect(`http://localhost:${port}`));
 
     // setInterval(() => {

@@ -43,13 +43,15 @@ export class CosmosDBAccountProvider implements IChildProvider {
             subscription: node.subscription
         };
 
-        const wizard = new AzureWizard([
-            new CosmosDBAccountNameStep(),
-            new CosmosDBAccountApiStep(),
-            new ResourceGroupStep(),
-            new LocationStep(),
-            new CosmosDBAccountStep()
-        ], wizardContext);
+        const wizard = new AzureWizard(
+            [
+                new CosmosDBAccountNameStep(),
+                new CosmosDBAccountApiStep(),
+                new ResourceGroupStep(),
+                new LocationStep(),
+                new CosmosDBAccountStep()
+            ],
+            wizardContext);
 
         await wizard.prompt(actionContext, node.ui);
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {

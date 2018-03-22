@@ -488,14 +488,6 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
 				},
 				{
-					"command": "cosmosDB.openInPortal",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProceduresGroup"
-				},
-				{
-					"command": "cosmosDB.openInPortal",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProcedure"
-				},
-				{
 					"command": "cosmosDB.openCollection",
 					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
 				},

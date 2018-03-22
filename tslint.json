@@ -308,11 +308,7 @@
     "rulesDirectory": "node_modules/tslint-microsoft-contrib/",
     "linterOptions": {
         "exclude": [
-            "src/diagnostics/**", // should be handled by the Log Points team
-            "src/explorer/loadedScriptsExplorer.ts", // should be handled by the Log Points team
-            "src/utils/logpointsUtil.ts", // should be handled by the Log Points team
-            "src/KuduClient.ts", // working to phase this file
-            "test/**"
+            "test/**" // TODO
         ]
     }
 }

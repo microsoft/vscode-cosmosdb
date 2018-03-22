@@ -36,7 +36,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
         }));
     }
 
-    public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void, _userOptions?: any, actionContext?: IActionContext): Promise<IAzureTreeItem> {
+    public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void, actionContext?: IActionContext): Promise<IAzureTreeItem> {
         const client = new CosmosDBManagementClient(node.credentials, node.subscription.subscriptionId);
         const wizardContext: ICosmosDBWizardContext = {
             credentials: node.credentials,

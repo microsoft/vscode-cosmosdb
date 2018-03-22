@@ -35,5 +35,5 @@ export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
     /**
      * Action context for the running command
      */
-    actionContext: IActionContext
+    actionContext?: IActionContext
 }

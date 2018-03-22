@@ -1,7 +1,7 @@
 {
     "rules": {
-        // TODO: "insecure-random": true,
-        // TODO: "no-banned-terms": true,
+        "insecure-random": true,
+        "no-banned-terms": true,
         "no-cookies": true,
         "no-delete-expression": true,
         "no-disable-auto-sanitization": true,
@@ -11,13 +11,13 @@
         "no-exec-script": true,
         "no-function-constructor-with-string-args": true,
         "no-http-string": [
-            false, // TODO: true,
+            true,
             "http://www.example.com/?.*",
             "http://www.examples.com/?.*"
         ],
         "no-inner-html": true,
         "no-octal-literal": true,
-        // TODO: "no-reserved-keywords": true,
+        "no-reserved-keywords": true,
         "no-string-based-set-immediate": true,
         "no-string-based-set-interval": true,
         "no-string-based-set-timeout": true,
@@ -308,6 +308,7 @@
     "rulesDirectory": "node_modules/tslint-microsoft-contrib/",
     "linterOptions": {
         "exclude": [
+            "src/mongo/grammar/**", // generated files
             "test/**" // TODO
         ]
     }

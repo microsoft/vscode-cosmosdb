@@ -53,7 +53,8 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
     public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
         const client = this.getDocumentClient();
         let docID = await vscode.window.showInputBox({
-            placeHolder: "Enter a unique document id",
+            placeHolder: "(Auto-generated)",
+            prompt: "Enter a unique document ID",
             ignoreFocusOut: true
         });
 

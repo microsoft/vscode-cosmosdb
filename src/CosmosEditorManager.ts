@@ -90,24 +90,28 @@ export class CosmosEditorManager {
     private async loadPersistedEditor(documentUri: vscode.Uri, tree: AzureTreeDataProvider): Promise<string> {
         const persistedEditors = this._globalState.get(this._persistedEditorsKey);
         //Based on the documentUri, split just the appropriate key's value on '/'
-        const editorFilePath = Object.keys(persistedEditors).find((label) => path.relative(documentUri.fsPath, label) === '');
-        if (editorFilePath) {
-            const editorNode: IAzureNode | undefined = await tree.findNode(persistedEditors[editorFilePath]);
-            let editor: ICosmosEditor;
-            if (editorNode) {
-                if (editorNode.treeItem instanceof MongoCollectionTreeItem) {
-                    editor = new MongoCollectionNodeEditor(<IAzureParentNode<MongoCollectionTreeItem>>editorNode);
-                } else if (editorNode.treeItem instanceof DocDBDocumentTreeItem) {
-                    editor = new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>editorNode);
-                } else if (editorNode.treeItem instanceof MongoDocumentTreeItem) {
-                    editor = new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>editorNode);
+        if (persistedEditors) {
+            const editorFilePath = Object.keys(persistedEditors).find((label) => path.relative(documentUri.fsPath, label) === '');
+            if (editorFilePath) {
+                const editorNode: IAzureNode | undefined = await tree.findNode(persistedEditors[editorFilePath]);
+                let editor: ICosmosEditor;
+                if (editorNode) {
+                    if (editorNode.treeItem instanceof MongoCollectionTreeItem) {
+                        editor = new MongoCollectionNodeEditor(<IAzureParentNode<MongoCollectionTreeItem>>editorNode);
+                    } else if (editorNode.treeItem instanceof DocDBDocumentTreeItem) {
+                        editor = new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>editorNode);
+                    } else if (editorNode.treeItem instanceof MongoDocumentTreeItem) {
+                        editor = new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>editorNode);
+                    }
+                    this.fileMap[editorFilePath] = editor;
+                } else {
+                    throw new Error("Failed to find entity on the tree. Please check the explorer to confirm that the entity exists, and that permissions are intact.");
                 }
-                this.fileMap[editorFilePath] = editor;
-            } else {
-                throw new Error("Failed to find entity on the tree. Please check the explorer to confirm that the entity exists, and that permissions are intact.");
             }
+            return editorFilePath;
+        } else {
+            return undefined;
         }
-        return editorFilePath;
     }
 
     public async onDidSaveTextDocument(trackTelemetry: () => void, globalState: vscode.Memento, doc: vscode.TextDocument, tree: AzureTreeDataProvider): Promise<void> {

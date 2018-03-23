@@ -76,7 +76,9 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
         }
         else {
             this._document = await new Promise<RetrievedDocument>((resolve, reject) => {
-                client.replaceDocument(_self, newData,
+                client.replaceDocument(
+                    _self,
+                    newData,
                     { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this.partitionKeyValue },
                     (err, updated: RetrievedDocument) => {
                         if (err) {

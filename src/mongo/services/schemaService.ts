@@ -6,6 +6,8 @@ import { Db, Cursor } from 'mongodb';
 import { SchemaConfiguration } from 'vscode-json-languageservice';
 import { JSONSchema } from 'vscode-json-languageservice/lib/umd/jsonSchema';
 
+// tslint:disable:no-reserved-keywords // Grandfathered in ("arguments" and "type")
+
 export default class SchemaService {
 
 	private _db: Db;

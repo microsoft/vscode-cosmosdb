@@ -44,13 +44,15 @@ export class CosmosDBAccountProvider implements IChildProvider {
             actionContext: actionContext
         };
 
-        const wizard = new AzureWizard([
-            new CosmosDBAccountNameStep(),
-            new CosmosDBAccountApiStep(),
-            new ResourceGroupStep(),
-            new LocationStep(),
-            new CosmosDBAccountStep()
-        ], wizardContext);
+        const wizard = new AzureWizard(
+            [
+                new CosmosDBAccountNameStep(),
+                new CosmosDBAccountApiStep(),
+                new ResourceGroupStep(),
+                new LocationStep(),
+                new CosmosDBAccountStep()
+            ],
+            wizardContext);
 
         await wizard.prompt(actionContext, node.ui);
 

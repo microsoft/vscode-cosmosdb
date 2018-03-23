@@ -7,6 +7,8 @@
  * These types are shared between server and client code
  */
 
+// tslint:disable:no-reserved-keywords (This code is deprecated anyway)
+
 interface GraphResults {
   fullResults: any[];
   countUniqueVertices: number;

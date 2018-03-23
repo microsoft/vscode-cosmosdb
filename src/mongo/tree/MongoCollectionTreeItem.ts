@@ -90,7 +90,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
 		let docId: string | undefined = await vscode.window.showInputBox({
 			placeHolder: "Document ID",
-			prompt: "Enter a unique id for the document",
+			prompt: "Enter a unique document ID or leave blank for a generated ID",
 			ignoreFocusOut: true
 		});
 
@@ -212,17 +212,20 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 }
 
 function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
-	return vscode.window.withProgress<T>({
-		location: vscode.ProgressLocation.Window,
-		title
-	}, (progress) => {
-		return promise;
-	})
+	return vscode.window.withProgress<T>(
+		{
+			location: vscode.ProgressLocation.Window,
+			title
+		},
+		(progress) => {
+			return promise;
+		})
 }
 
 function parseJSContent(content: string): any {
 	try {
 		const sandbox = {};
+		// tslint:disable-next-line:insecure-random
 		const key = 'parse' + Math.floor(Math.random() * 1000000);
 		sandbox[key] = {};
 		vm.runInNewContext(key + '=' + content, sandbox);

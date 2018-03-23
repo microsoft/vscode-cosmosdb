@@ -35,7 +35,9 @@ export class MongoScriptDocument {
 
 	private readonly _lexer: mongoLexer;
 
-	constructor(private textDocument: TextDocument, private db: Db,
+	constructor(
+		private textDocument: TextDocument,
+		private db: Db,
 		private schemaService: SchemaService,
 		private jsonLanguageService: JsonLanguageService
 	) {

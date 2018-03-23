@@ -28,7 +28,6 @@ export class CosmosDBAccountStep extends AzureWizardStep<ICosmosDBWizardContext>
         if (wizardContext.defaultExperience === Experience.Graph) {
             options.capabilities.push(<Capability>{ name: "EnableGremlin" });
         }
-
         wizardContext.databaseAccount = await client.databaseAccounts.createOrUpdate(wizardContext.resourceGroup.name, wizardContext.accountName, options);
 
         // createOrUpdate always returns an empty object - so we have to get the DatabaseAccount separately

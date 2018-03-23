@@ -36,7 +36,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
         }));
     }
 
-    public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void, actionContext: IActionContext): Promise<IAzureTreeItem> {
+    public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void, actionContext?: IActionContext): Promise<IAzureTreeItem> {
         const client = new CosmosDBManagementClient(node.credentials, node.subscription.subscriptionId);
         const wizardContext: ICosmosDBWizardContext = {
             credentials: node.credentials,
@@ -54,6 +54,12 @@ export class CosmosDBAccountProvider implements IChildProvider {
             wizardContext);
 
         await wizard.prompt(actionContext, node.ui);
+
+        if (actionContext) {
+            actionContext.properties.defaultExperience = wizardContext.defaultExperience;
+            actionContext.properties.kind = wizardContext.kind;
+        }
+
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
             showCreatingNode(wizardContext.accountName);
             progress.report({ message: `Cosmos DB: Creating account '${wizardContext.accountName}'` });

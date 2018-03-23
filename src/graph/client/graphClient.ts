@@ -528,7 +528,7 @@ class GraphView {
         if (group.appliesToLabel && group.appliesToLabel === label) {
           // This settings group is applicable to this vertex
           let value = group[settingProperty];
-          if (typeof value !== "undefined" && value !== null) {
+          if (value !== undefined && value !== null) {
             return value;
           }
         }
@@ -538,7 +538,7 @@ class GraphView {
       let defaultGroup: VertexSettingsGroup = vertextSettingsGroups.find(group => !group.appliesToLabel);
       if (defaultGroup) {
         let value = defaultGroup[settingProperty];
-        if (typeof value !== "undefined" && value !== null) {
+        if (value !== undefined && value !== null) {
           return value;
         }
       }
@@ -580,7 +580,7 @@ class GraphView {
     text = text || v.id;
 
     let showLabel = this.findVertexPropertySetting(v, viewSettings, "showLabel");
-    showLabel = typeof showLabel === "undefined" ? true : showLabel; // Default to true if not specified
+    showLabel = showLabel === undefined ? true : showLabel; // Default to true if not specified
     if (showLabel && v.label) {
       text += ` (${v.label})`;
     }

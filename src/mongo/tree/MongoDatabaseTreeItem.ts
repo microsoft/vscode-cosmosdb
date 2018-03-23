@@ -137,9 +137,11 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 
 	private async createShell(shellPath: string): Promise<Shell> {
 		return <Promise<null>>Shell.create(shellPath, this.connectionString)
-			.then(shell => {
-				return shell.useDatabase(this.databaseName).then(() => shell);
-			}, error => vscode.window.showErrorMessage(error));
+			.then(
+				shell => {
+					return shell.useDatabase(this.databaseName).then(() => shell);
+				},
+				error => vscode.window.showErrorMessage(error));
 	}
 }
 
@@ -159,12 +161,14 @@ export function validateMongoCollectionName(collectionName: string): string | un
 }
 
 function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
-	return vscode.window.withProgress<T>({
-		location: vscode.ProgressLocation.Window,
-		title
-	}, (progress) => {
-		return promise;
-	})
+	return vscode.window.withProgress<T>(
+		{
+			location: vscode.ProgressLocation.Window,
+			title
+		},
+		(progress) => {
+			return promise;
+		})
 }
 
 function stripQuotes(term: string): string {

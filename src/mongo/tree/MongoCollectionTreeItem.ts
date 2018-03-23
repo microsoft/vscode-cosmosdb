@@ -212,12 +212,14 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 }
 
 function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
-	return vscode.window.withProgress<T>({
-		location: vscode.ProgressLocation.Window,
-		title
-	}, (progress) => {
-		return promise;
-	})
+	return vscode.window.withProgress<T>(
+		{
+			location: vscode.ProgressLocation.Window,
+			title
+		},
+		(progress) => {
+			return promise;
+		})
 }
 
 function parseJSContent(content: string): any {

@@ -211,6 +211,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
 
     private async createTreeItem(connectionString: string, api: Experience, label?: string, id?: string, isEmulator?: boolean): Promise<IAzureTreeItem> {
         let treeItem: IAzureTreeItem;
+        // tslint:disable-next-line:possible-timing-attack // not security related
         if (api === Experience.MongoDB) {
             if (id === undefined) {
                 id = await this.getServerIdFromConnectionString(connectionString);
@@ -283,6 +284,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 }
             }
         } catch (error) {
+            // Swallow specific errors, show error message below
         }
 
         return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..."';

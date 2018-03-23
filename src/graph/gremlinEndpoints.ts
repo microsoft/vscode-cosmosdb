@@ -56,7 +56,7 @@ export function getPossibleGremlinEndpoints(documentEndpoint: string): IGremlinE
 function parseEndpointUrl(url: string): IGremlinEndpoint {
     let [, protocol, host, , portString] = url.match(/^([^:]+):\/\/([^:]+)(:([0-9]+))?\/?$/);
     console.assert(!!protocol && !!host, "Unexpected endpoint format");
-    let port = parseInt(portString || "443");
+    let port = parseInt(portString || "443", 10);
     console.assert(port > 0, "Unexpected port");
     return { host, port, ssl: protocol.toLowerCase() === "https" };
 }

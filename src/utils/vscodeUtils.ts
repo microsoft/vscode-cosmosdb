@@ -69,9 +69,11 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
 
 export function fetchNodeModule(moduleName: string) {
     try {
+        // tslint:disable-next-line:non-literal-require
         return require(`${vscode.env.appRoot}/node_modules.asar/${moduleName}`);
     } catch (err) { }
     try {
+        // tslint:disable-next-line:non-literal-require
         return require(`${vscode.env.appRoot}/node_modules/${moduleName}`);
     } catch (err) { }
     return null;

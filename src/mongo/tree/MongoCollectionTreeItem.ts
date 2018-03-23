@@ -90,7 +90,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
 		let docId: string | undefined = await vscode.window.showInputBox({
 			placeHolder: "Document ID",
-			prompt: "Enter a unique id for the document",
+			prompt: "Enter a unique document ID or leave blank for a generated ID",
 			ignoreFocusOut: true
 		});
 

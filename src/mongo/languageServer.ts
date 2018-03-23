@@ -10,6 +10,7 @@ let connection: IConnection = createConnection();
 console.log = connection.console.log.bind(connection.console);
 console.error = connection.console.error.bind(connection.console);
 
+// tslint:disable-next-line:no-unused-expression
 new LanguageService(connection);
 
 // Listen on the connection

@@ -83,7 +83,6 @@ export class Shell {
 
 		const disposables: IDisposable[] = [];
 		(ee: NodeJS.EventEmitter, name: string, fn: Function) => {
-
 			ee.once(name, fn);
 			disposables.push(toDisposable(() => ee.removeListener(name, fn)));
 		};

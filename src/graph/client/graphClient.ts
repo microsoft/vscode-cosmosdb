@@ -19,6 +19,8 @@
  * top/active-frame/graphClient.html/Electron Isolated Context, or use CTRL+P.
  */
 
+// tslint:disable:restrict-plus-operands // Grand-fathered in, code should be replaced soon
+
 declare let d3: any;
 
 const animationStepMs = 50;

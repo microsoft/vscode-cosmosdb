@@ -286,6 +286,7 @@ export class GraphViewServer extends EventEmitter {
     const maxRetries = 3; // original try + this many extra tries
     let iTry = 0;
 
+    // tslint:disable-next-line:no-constant-condition
     while (true) {
       iTry++;
 
@@ -364,8 +365,8 @@ export class GraphViewServer extends EventEmitter {
       originalHandleProtocolMessage.call(this, message);
     };
 
-    let socketError = undefined;
-    client.on('error', error => handleError(error));
+    let socketError: { message?: string };
+    client.on('error', handleError);
 
     function handleError(err) {
       // These are errors that come from the web socket communication (i.e. address not found)

@@ -80,7 +80,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
         }
         await editorManager.showDocument(new MongoCollectionNodeEditor(node), 'cosmos-collection.json');
     });
-    actionHandler.registerCommand('cosmosDB.launchMongoShell', () => launchMongoShell());
+    actionHandler.registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
     actionHandler.registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
     actionHandler.registerCommand('cosmosDB.executeMongoCommand', async () => await MongoCommands.executeCommandFromActiveEditor(connectedDb, context.extensionPath, editorManager, tree));
 }

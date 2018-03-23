@@ -53,6 +53,12 @@ export class CosmosDBAccountProvider implements IChildProvider {
         ], wizardContext);
 
         await wizard.prompt(actionContext, node.ui);
+
+        if (actionContext) {
+            actionContext.properties.defaultExperience = wizardContext.defaultExperience;
+            actionContext.properties.kind = wizardContext.kind;
+        }
+
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
             showCreatingNode(wizardContext.accountName);
             progress.report({ message: `Cosmos DB: Creating account '${wizardContext.accountName}'` });

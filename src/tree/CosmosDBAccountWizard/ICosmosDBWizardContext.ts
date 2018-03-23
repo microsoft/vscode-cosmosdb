@@ -30,10 +30,5 @@ export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
      * The kind to use
      * This will be defined after `CosmosDBAccountApiStep.prompt` occurs.
      */
-    kind?: DBAccountKind,
-
-    /**
-     * Action context for the running command
-     */
-    actionContext?: IActionContext
+    kind?: DBAccountKind
 }

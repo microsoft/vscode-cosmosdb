@@ -85,3 +85,4 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 - Connect to Cosmos DB via MongoDB adaptor
 - Command to launch the `mongo` shell
 - Rich MongoDB intellisense in scrapbooks
+

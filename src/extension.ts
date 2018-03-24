@@ -49,6 +49,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Common commands
 	const accountContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
+
+	actionHandler.registerCommand('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
+
 	actionHandler.registerCommand('cosmosDB.createAccount', async function (this: IActionContext, node?: IAzureParentNode): Promise<void> {
 		if (!node) {
 			node = <IAzureParentNode>await tree.showNodePicker(AzureTreeDataProvider.subscriptionContextValue);

@@ -103,6 +103,14 @@
 		],
 		"commands": [
 			{
+				"command": "cosmosDB.selectSubscriptions",
+				"title": "Select Subscriptions...",
+				"icon": {
+					"light": "resources/icons/light/filter.svg",
+					"dark": "resources/icons/dark/filter.svg"
+				}
+			},
+			{
 				"category": "MongoDB",
 				"command": "cosmosDB.executeMongoCommand",
 				"title": "Execute Command"
@@ -347,6 +355,11 @@
 				}
 			],
 			"view/item/context": [
+				{
+					"command": "cosmosDB.selectSubscriptions",
+					"when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+					"group": "inline"
+				},
 				{
 					"command": "cosmosDB.createAccount",
 					"when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription"

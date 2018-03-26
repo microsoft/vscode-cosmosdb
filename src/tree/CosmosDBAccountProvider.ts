@@ -28,7 +28,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
     }
 
     public async loadMoreChildren(node: IAzureNode): Promise<IAzureTreeItem[]> {
-        const client = new CosmosDBManagementClient(node.credentials, node.subscription.subscriptionId);
+        const client = new CosmosDBManagementClient(node.credentials, node.subscriptionId);
         const accounts: DatabaseAccountsListResult = await client.databaseAccounts.list();
 
         return await Promise.all(accounts.map(async (databaseAccount: DatabaseAccount) => {
@@ -37,10 +37,11 @@ export class CosmosDBAccountProvider implements IChildProvider {
     }
 
     public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void, actionContext?: IActionContext): Promise<IAzureTreeItem> {
-        const client = new CosmosDBManagementClient(node.credentials, node.subscription.subscriptionId);
+        const client = new CosmosDBManagementClient(node.credentials, node.subscriptionId);
         const wizardContext: ICosmosDBWizardContext = {
             credentials: node.credentials,
-            subscription: node.subscription
+            subscriptionId: node.subscriptionId,
+            subscriptionDisplayName: node.subscriptionDisplayName
         };
 
         const wizard = new AzureWizard(

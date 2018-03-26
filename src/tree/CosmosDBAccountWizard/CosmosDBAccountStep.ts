@@ -16,7 +16,7 @@ export class CosmosDBAccountStep extends AzureWizardStep<ICosmosDBWizardContext>
     }
 
     public async execute(wizardContext: ICosmosDBWizardContext, outputChannel: vscode.OutputChannel): Promise<ICosmosDBWizardContext> {
-        const client = new CosmosDBManagementClient(wizardContext.credentials, wizardContext.subscription.subscriptionId);
+        const client = new CosmosDBManagementClient(wizardContext.credentials, wizardContext.subscriptionId);
         outputChannel.appendLine(`Creating Cosmos DB account "${wizardContext.accountName}" with API "${wizardContext.defaultExperience}"...`);
         let options = {
             location: wizardContext.location.name,

@@ -1,5 +1,8 @@
 # Change Log
+
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
+
+<!-- markdownlint-disable blanks-around-headers blanks-around-lists no-duplicate-header -->
 
 ## 0.4.0 - 2018-01-25
 ### Added
@@ -46,7 +49,6 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 - DocumentDB and Mongo:
   - Click on a document to open in the editor
   - Edit a document and persist changes to the cloud
-
 
 ### Removed
 - View Mongo documents in 'result.json' by clicking on a collection in the explorer

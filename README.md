@@ -31,8 +31,6 @@
 
 ## Managing Azure Subscriptions
 
-Sign in to Azure to view your Cosmos DB Accounts
-
 If you are not signed in to Azure, you will see a "Sign in to Azure..." link. Alternatively, you can select "View->Command Palette" in the VS Code menu, and search for "Azure: Sign In".
 
 ![Sign in to Azure](resources/SignIn.gif)

@@ -29,9 +29,19 @@
 - IntelliSense (completions) will be provided as you write your scripts
 - Select the script and press `CMD+"` (`CTRL+"` on Windows and Linux) to see the results
 
-## Sign in to Azure to view your Cosmos DB Accounts
+## Managing Azure Subscriptions
 
-![Azure Sign In](resources/signin.gif)
+If you are not signed in to Azure, you will see a "Sign in to Azure..." link. Alternatively, you can select "View->Command Palette" in the VS Code menu, and search for "Azure: Sign In".
+
+![Sign in to Azure](resources/SignIn.gif)
+
+If you don't have an Azure Account, you can sign up for one today for free and receive $200 in credits by selecting "Create a Free Azure Account..." or selecting "View->Command Palette" and searching for "Azure: Create an Account".
+
+You may sign out of Azure by selecting "View->Command Palette" and searching for "Azure: Sign Out".
+
+To select which subscriptions show up in the extension's explorer, click on the "Select Subscriptions..." button on any subscription node (indicated by a "filter" icon when you hover over it), or select "View->Command Palette" and search for "Azure: Select Subscriptions". Note that this selection affects all VS Code extensions that support the [Azure Account and Sign-In](https://github.com/Microsoft/vscode-azure-account) extension.
+
+![Select Azure Subscriptions](resources/SelectSubscriptions.gif)
 
 ## Use [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support) to query graphs
 

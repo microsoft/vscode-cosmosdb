@@ -49,7 +49,7 @@ export class CosmosEditorManager {
             }
         }
         this.fileMap[localDocPath] = editor;
-        const fileMapLabels = {};
+        const fileMapLabels = this._globalState.get(this._persistedEditorsKey);
         Object.keys(this.fileMap).forEach((key) => fileMapLabels[key] = (this.fileMap[key]).id);
         this._globalState.update(this._persistedEditorsKey, fileMapLabels);
         const textEditor = await vscode.window.showTextDocument(document);

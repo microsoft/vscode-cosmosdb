@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as path from 'path';
+import * as vscode from "vscode";
 import { DocumentClient, QueryIterator, CollectionMeta, RetrievedDocument, FeedOptions } from 'documentdb';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
@@ -19,7 +20,7 @@ export abstract class DocDBDocumentsTreeItemBase extends DocDBTreeItemBase<Retri
         this._collection = collection;
     }
 
-    public get iconPath(): any {
+    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
             light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Collection.svg'),
             dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Collection.svg')

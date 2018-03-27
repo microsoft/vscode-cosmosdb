@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as path from 'path';
+import * as vscode from "vscode";
 import { DocumentClient, QueryIterator, CollectionMeta, FeedOptions, ProcedureMeta } from 'documentdb';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import { IAzureTreeItem } from 'vscode-azureextensionui';
@@ -25,7 +26,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
         return new DocDBStoredProcedureTreeItem(resource);
     }
 
-    public get iconPath(): any {
+    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
             light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'stored procedures.svg'),
             dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'stored procedures.svg')

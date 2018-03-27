@@ -10,6 +10,7 @@
 // tslint:disable:no-reserved-keywords (This code is deprecated anyway)
 
 interface GraphResults {
+  // tslint:disable-next-line:no-any
   fullResults: any[];
   countUniqueVertices: number;
   countUniqueEdges: number;

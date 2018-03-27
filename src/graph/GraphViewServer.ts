@@ -200,6 +200,7 @@ export class GraphViewServer extends EventEmitter {
     this._socket.emitToClient("showResults", queryId, results, this.getViewSettings());
   }
 
+  // tslint:disable-next-line:no-any
   private getVertices(queryResults: any[]): GraphVertex[] {
     return queryResults.filter(n => n.type === "vertex" && typeof n.id === "string");
   }
@@ -254,6 +255,7 @@ export class GraphViewServer extends EventEmitter {
     }
 
     // Build queries from each list of IDs
+    // tslint:disable-next-line:no-any
     let promises: Promise<any[]>[] = [];
     for (let i = 0; i < idLists.length; ++i) {
       let idList = idLists[i];
@@ -282,6 +284,7 @@ export class GraphViewServer extends EventEmitter {
     return message;
   }
 
+  // tslint:disable-next-line:no-any
   private async executeQuery(queryId: number, gremlinQuery: string): Promise<any[]> {
     const maxRetries = 3; // original try + this many extra tries
     let iTry = 0;
@@ -311,12 +314,12 @@ export class GraphViewServer extends EventEmitter {
     }
   }
 
-  private async _executeQueryCore(queryId: number, gremlinQuery: string): Promise<any[]> {
+  private async _executeQueryCore(queryId: number, gremlinQuery: string): Promise<Object[]> {
     if (this.configuration.gremlinEndpoint) {
       return this._executeQueryCoreForEndpoint(queryId, gremlinQuery, this.configuration.gremlinEndpoint);
     } else {
       // We haven't figured out yet which endpoint actually works (if any - network could be down, etc.), so try them all
-      let firstValidError: any = null;
+      let firstValidError: Object = null;
       for (let endpoint of this.configuration.possibleGremlinEndpoints) {
         try {
           const result = await this._executeQueryCoreForEndpoint(queryId, gremlinQuery, endpoint);
@@ -326,7 +329,7 @@ export class GraphViewServer extends EventEmitter {
           if (err.code === "ENOTFOUND") {
             // Not a valid endpoint
           } else {
-            firstValidError = firstValidError || err;
+            firstValidError = firstValidError || err || Object
           }
         }
       }
@@ -340,6 +343,7 @@ export class GraphViewServer extends EventEmitter {
     }
   }
 
+  // tslint:disable-next-line:no-any
   private async _executeQueryCoreForEndpoint(queryId: number, gremlinQuery: string, endpoint: IGremlinEndpoint): Promise<any[]> {
     this.log(`Executing query #${queryId} (${endpoint.host}:${endpoint.port}): ${truncateQuery(gremlinQuery)}`);
 
@@ -373,7 +377,7 @@ export class GraphViewServer extends EventEmitter {
       socketError = err;
     }
 
-    return new Promise<[{}[]]>((resolve, reject) => {
+    return new Promise<[Object[]]>((resolve, reject) => {
       client.execute(gremlinQuery, {}, (err, results) => {
         if (socketError) {
           this.log("Gremlin communication error: ", socketError.message || socketError.toString());
@@ -389,7 +393,7 @@ export class GraphViewServer extends EventEmitter {
     });
   }
 
-  private isParseError(err: any): boolean {
+  private isParseError(err: { message?: string }): boolean {
     if (err.message) {
       return !!err.message.match(/ScriptEvaluationError/);
     }
@@ -398,7 +402,7 @@ export class GraphViewServer extends EventEmitter {
     }
   }
 
-  private isErrorRetryable(err: any) {
+  private isErrorRetryable(err: { message?: string }) {
     // Unfortunately the gremlin server aggregates errors so we can't simply query for status
     if (err.message) {
       if (err.message.match(/Status *: *429/) || err.message.match(/RequestRateTooLarge/)) {
@@ -440,6 +444,7 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private setUpSocket() {
+    // tslint:disable-next-line:no-any
     this._socket.onClientMessage('log', (...args: any[]) => {
       this.log('from client: ', ...args);
     });
@@ -460,6 +465,7 @@ export class GraphViewServer extends EventEmitter {
     this._socket.onClientMessage('setView', (view: 'graph' | 'json') => this.handleSetView(view));
   }
 
+  // tslint:disable-next-line:no-any
   private log(message, ...args: any[]) {
     // console.log(message, ...args);
   }

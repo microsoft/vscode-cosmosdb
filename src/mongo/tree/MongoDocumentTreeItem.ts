@@ -14,6 +14,7 @@ export interface IMongoDocument {
     _id: string | ObjectID;
 
     // custom properties
+    // tslint:disable-next-line:no-any
     [key: string]: any;
 }
 
@@ -38,7 +39,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
         return this.document._id.toString();
     }
 
-    get iconPath(): any {
+    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
             light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Document.svg'),
             dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Document.svg'),

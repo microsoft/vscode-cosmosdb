@@ -15,6 +15,7 @@ export class GraphViewServerSocket {
     this._socket.on(event, listener);
   }
 
+  // tslint:disable-next-line:no-any
   public emitToClient(message: ServerMessage, ...args: any[]): boolean {
     // console.log("Message to client: " + message + " " + args.join(", "));
     return this._socket.emit(message, ...args);

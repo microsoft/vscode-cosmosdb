@@ -39,7 +39,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         this.loadPersistedServers();
     }
 
-    get iconPath(): any {
+    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
             light: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'light', 'ConnectPlugged.svg'),
             dark: path.join(__filename, '..', '..', '..', '..', 'resources', 'icons', 'dark', 'ConnectPlugged.svg')
@@ -166,6 +166,8 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             // get the first connection string from the seedlist for the ReplSet
             // this may not be best solution, but the connection (below) gives
             // the replicaset host name, which is different than what is in the connection string
+            // "s" is not part of ReplSet static definition but can't find any official documentation on it. Yet it is definitely there at runtime. Grandfathering in.
+            // tslint:disable-next-line:no-any
             let rs: any = serverConfig;
             host = rs.s.replset.s.seedlist[0].host;
             port = rs.s.replset.s.seedlist[0].port;
@@ -178,10 +180,10 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     }
 
     private async loadPersistedServers() {
-        const value: any = this._globalState.get(this._serviceName);
+        const value: string | undefined = this._globalState.get(this._serviceName);
         if (value && this._keytar) {
             try {
-                const accounts: any[] = JSON.parse(value);
+                const accounts: (string | IPersistedAccount)[] = JSON.parse(value);
                 await Promise.all(accounts.map(async account => {
                     let id: string;
                     let label: string;

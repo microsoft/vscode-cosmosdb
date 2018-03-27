@@ -1,5 +1,23 @@
 # Change Log
+
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
+
+## 0.5.1 - 2018-03-23
+
+### Fixed
+- [Bug fixed](https://github.com/Microsoft/vscode-cosmosdb/issues/372)
+## 0.5.0 - 2018-03-05
+
+### Fixed
+
+- [Bugs fixed](https://github.com/Microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A%220.5.0%22+is%3Aclosed+label%3Abug)
+
+### Added
+
+- DocumentDB and Mongo
+  - Allow updating documents and collections re-opened from a previous VS Code session
+- Mongo
+  - Delete databases
 
 ## 0.4.0 - 2018-01-25
 ### Added

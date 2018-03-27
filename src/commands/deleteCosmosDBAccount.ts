@@ -15,7 +15,7 @@ export async function deleteCosmosDBAccount(node: IAzureNode): Promise<void> {
     const message: string = `Are you sure you want to delete account '${node.treeItem.label}' and its contents?`;
     const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
     if (result === DialogBoxResponses.Yes) {
-        const docDBClient = new CosmosDBManagementClient(node.credentials, node.subscription.subscriptionId);
+        const docDBClient = new CosmosDBManagementClient(node.credentials, node.subscriptionId);
         const resourceGroup: string = azureUtils.getResourceGroupFromId(node.treeItem.id);
         const accountName: string = azureUtils.getAccountNameFromId(node.treeItem.id);
         const output = util.getOutputChannel();

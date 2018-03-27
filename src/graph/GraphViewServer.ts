@@ -329,7 +329,7 @@ export class GraphViewServer extends EventEmitter {
           if (err.code === "ENOTFOUND") {
             // Not a valid endpoint
           } else {
-            firstValidError = firstValidError || err || Object
+            firstValidError = firstValidError || err;
           }
         }
       }

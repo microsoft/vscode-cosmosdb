@@ -7,6 +7,7 @@ import { SchemaConfiguration } from 'vscode-json-languageservice';
 import { JSONSchema } from 'vscode-json-languageservice/lib/umd/jsonSchema';
 
 // tslint:disable:no-reserved-keywords // Grandfathered in ("arguments" and "type")
+// tslint:disable:no-any
 
 export default class SchemaService {
 
@@ -103,7 +104,7 @@ export default class SchemaService {
 		})
 	}
 
-	private setSchemaForDocument(parent: string, document: {}, schema: JSONSchema): void {
+	private setSchemaForDocument(parent: string, document: any, schema: JSONSchema): void {
 		const type = Array.isArray(document) ? 'array' : typeof document;
 		if (type === 'object') {
 			for (const property of Object.keys(document)) {
@@ -116,7 +117,7 @@ export default class SchemaService {
 		}
 	}
 
-	private setSchemaForDocumentProperty(parent: string, property: string, document: {}, schema: JSONSchema): void {
+	private setSchemaForDocumentProperty(parent: string, property: string, document: any, schema: JSONSchema): void {
 		const scopedProperty = parent ? `${parent}.${property}` : property;
 		const value = document[property]
 		const type = Array.isArray(value) ? 'array' : typeof value;
@@ -205,7 +206,6 @@ Use the $where operator to pass either a string containing a JavaScript expressi
 		}
 
 		const expressionSchema = {
-			// tslint:disable-next-line:no-any
 			properties: <any>{}
 		}
 		// Comparison operators
@@ -598,7 +598,7 @@ Use the $where operator to pass either a string containing a JavaScript expressi
 		};
 	}
 
-	private readNext(result: {}[], cursor: Cursor<{}>, batchSize: number, callback: (result: {}[]) => void): void {
+	private readNext(result: any[], cursor: Cursor<any>, batchSize: number, callback: (result: any[]) => void): void {
 		if (result.length === batchSize) {
 			callback(result);
 			return;

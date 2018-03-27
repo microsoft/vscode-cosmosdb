@@ -314,12 +314,13 @@ export class GraphViewServer extends EventEmitter {
     }
   }
 
-  private async _executeQueryCore(queryId: number, gremlinQuery: string): Promise<Object[]> {
+  // tslint:disable-next-line:no-any
+  private async _executeQueryCore(queryId: number, gremlinQuery: string): Promise<any[]> {
     if (this.configuration.gremlinEndpoint) {
       return this._executeQueryCoreForEndpoint(queryId, gremlinQuery, this.configuration.gremlinEndpoint);
     } else {
       // We haven't figured out yet which endpoint actually works (if any - network could be down, etc.), so try them all
-      let firstValidError: Object = null;
+      let firstValidError: {} = null;
       for (let endpoint of this.configuration.possibleGremlinEndpoints) {
         try {
           const result = await this._executeQueryCoreForEndpoint(queryId, gremlinQuery, endpoint);
@@ -377,7 +378,8 @@ export class GraphViewServer extends EventEmitter {
       socketError = err;
     }
 
-    return new Promise<[Object[]]>((resolve, reject) => {
+    // tslint:disable-next-line:no-any
+    return new Promise<[any[]]>((resolve, reject) => {
       client.execute(gremlinQuery, {}, (err, results) => {
         if (socketError) {
           this.log("Gremlin communication error: ", socketError.message || socketError.toString());

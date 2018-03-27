@@ -362,7 +362,18 @@
 				},
 				{
 					"command": "cosmosDB.createAccount",
-					"when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription"
+					"when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+					"group": "1@1"
+				},
+				{
+					"command": "cosmosDB.openInPortal",
+					"when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+					"group": "1@2"
+				},
+				{
+					"command": "cosmosDB.refresh",
+					"when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+					"group": "2@1"
 				},
 				{
 					"command": "cosmosDB.deleteAccount",
@@ -519,10 +530,6 @@
 				{
 					"command": "cosmosDB.copyConnectionString",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription"
 				},
 				{
 					"command": "cosmosDB.refresh",

@@ -7,6 +7,7 @@ import { SchemaConfiguration } from 'vscode-json-languageservice';
 import { JSONSchema } from 'vscode-json-languageservice/lib/umd/jsonSchema';
 
 // tslint:disable:no-reserved-keywords // Grandfathered in ("arguments" and "type")
+// tslint:disable:no-any
 
 export default class SchemaService {
 

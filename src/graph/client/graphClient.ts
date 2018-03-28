@@ -20,6 +20,7 @@
  */
 
 // tslint:disable:restrict-plus-operands // Grand-fathered in, code should be replaced soon
+// tslint:disable:no-any // Grand-fathered in, code should be replaced soon
 
 declare let d3: any;
 

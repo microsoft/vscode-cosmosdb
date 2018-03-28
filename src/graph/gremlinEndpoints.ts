@@ -18,7 +18,7 @@ export async function TryGetGremlinEndpointFromAzure(client: CosmosDBManagementC
             if (error) {
                 reject(error);
             } else {
-                let body = <{ properties: { gremlinEndpoint: string } }>JSON.parse((<any>response).body);
+                let body = <{ properties: { gremlinEndpoint: string } }>JSON.parse((<{ body?: string }>response).body);
                 let endpointUri = body.properties.gremlinEndpoint;
                 if (endpointUri) {
                     resolve(parseEndpointUrl(endpointUri));

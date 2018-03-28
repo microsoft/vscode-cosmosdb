@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as path from 'path';
+import * as vscode from "vscode";
 import { IAzureTreeItem } from 'vscode-azureextensionui';
 import { ProcedureMeta } from 'documentdb';
 
@@ -29,7 +30,7 @@ export class DocDBStoredProcedureTreeItem implements IAzureTreeItem {
         return this._procedure._self;
     }
 
-    public get iconPath(): any {
+    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
             light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'light', 'Process_16x.svg'),
             dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'dark', 'Process_16x.svg')

@@ -68,4 +68,12 @@ suite("scrapbook parsing Tests", () => {
         let command = MongoCommands.getCommand(text, new Position(5, 0));
         assert.equal(command.text, line2);
     });
+
+    test("first of two commands, Windows, on blank line before second command", () => {
+        let line1 = "db.find()";
+        let line2 = "db.insertOne({'a': 'b'})";
+        let text = `${line1}\r\n\r\n\r\n${line2}`;
+        let command = MongoCommands.getCommand(text, new Position(2, 0));
+        assert.equal(command.text, line1);
+    });
 });

@@ -29,9 +29,10 @@
 - Optionally configure the user setting `mongo.shell.path` to your mongo shell executable path (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
 - Right-click on a database and select "Connect"
 - Click on "New Mongo Scrapbook" in the tree title bar
-- Enter your commands or comments, eg: `db.<collectionName>.find()`
-- IntelliSense (auto-completions) will be provided as you write your command
+- Enter your commands and/or comments, eg: `db.<collectionName>.find()`
+- IntelliSense (auto-completions) will be provided
 - Place the cursor inside the command to execute and press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to see the results
+- Save and re-use later
 
 ![Mongo Intellisense](resources/intellisense.gif)
 

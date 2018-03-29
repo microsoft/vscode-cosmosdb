@@ -4,7 +4,7 @@
 
 # Prerequisites
 
-- For Mongo DB support, install [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
+- Some less-common commands in the Mongo [scrapbook](#mongo-scrapbooks) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
 
 # Features
 
@@ -21,27 +21,19 @@
 
 *Support for Table accounts in CosmosDB is coming soon!
 
-## Mongo "Scrapbooks"
+![Browse CosmosDB and MongoDB databases](resources/Browse.png)
 
-- Configure the user setting `mongo.shell.path` to your mongo shell executable path
-- Click on any DB to open the Mongo shell playground editor
-- Enter your scripts, eg: `db.<collectionName>.find()`
-- IntelliSense (completions) will be provided as you write your scripts
-- Select the script and press `CMD+"` (`CTRL+"` on Windows and Linux) to see the results
+## Mongo "Scrapbooks" (Run Mongo Commands with Rich Intellisense)
 
-## Managing Azure Subscriptions
+- Attach to a MongoDB database account
+- Optionally configure the user setting `mongo.shell.path` to your mongo shell executable path (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
+- Right-click on a database and select "Connect"
+- Click on "New Mongo Scrapbook" in the tree title bar
+- Enter your script, eg: `db.<collectionName>.find()`
+- IntelliSense (completions) will be provided as you write your script
+- Select the script and press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to see the results
 
-If you are not signed in to Azure, you will see a "Sign in to Azure..." link. Alternatively, you can select "View->Command Palette" in the VS Code menu, and search for "Azure: Sign In".
-
-![Sign in to Azure](resources/SignIn.gif)
-
-If you don't have an Azure Account, you can sign up for one today for free and receive $200 in credits by selecting "Create a Free Azure Account..." or selecting "View->Command Palette" and searching for "Azure: Create an Account".
-
-You may sign out of Azure by selecting "View->Command Palette" and searching for "Azure: Sign Out".
-
-To select which subscriptions show up in the extension's explorer, click on the "Select Subscriptions..." button on any subscription node (indicated by a "filter" icon when you hover over it), or select "View->Command Palette" and search for "Azure: Select Subscriptions". Note that this selection affects all VS Code extensions that support the [Azure Account and Sign-In](https://github.com/Microsoft/vscode-azure-account) extension.
-
-![Select Azure Subscriptions](resources/SelectSubscriptions.gif)
+![Mongo Intellisense](resources/intellisense.gif)
 
 ## Use [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support) to query graphs
 
@@ -78,16 +70,26 @@ To select which subscriptions show up in the extension's explorer, click on the 
 
 ![Create Cosmos DB Account](resources/create.gif)
 
-## Create and Run Mongo Commands in a Scrapbook with Rich Intellisense
-
-![Mongo Intellisense](resources/intellisense.gif)
-
 ## Attach to the Cosmos DB Emulator
 
 * Install and run the [Cosmos DB Emulator](https://docs.microsoft.com/azure/cosmos-db/local-emulator) on your local machine
 * Right click 'Attached Database Accounts' and select 'Attach Emulator'
 
 ![Attach Emulator](resources/attachEmulator.png)
+
+## Managing Azure Subscriptions
+
+If you are not signed in to Azure, you will see a "Sign in to Azure..." link. Alternatively, you can select "View->Command Palette" in the VS Code menu, and search for "Azure: Sign In".
+
+![Sign in to Azure](resources/SignIn.gif)
+
+If you don't have an Azure Account, you can sign up for one today for free and receive $200 in credits by selecting "Create a Free Azure Account..." or selecting "View->Command Palette" and searching for "Azure: Create an Account".
+
+You may sign out of Azure by selecting "View->Command Palette" and searching for "Azure: Sign Out".
+
+To select which subscriptions show up in the extension's explorer, click on the "Select Subscriptions..." button on any subscription node (indicated by a "filter" icon when you hover over it), or select "View->Command Palette" and search for "Azure: Select Subscriptions". Note that this selection affects all VS Code extensions that support the [Azure Account and Sign-In](https://github.com/Microsoft/vscode-azure-account) extension.
+
+![Select Azure Subscriptions](resources/SelectSubscriptions.gif)
 
 ## Known Issues
 

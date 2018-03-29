@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // Generated from ./grammar/mongo.g4 by ANTLR 4.6-SNAPSHOT
+/*tslint:disable */
 
 
 import { ParseTreeListener } from 'antlr4ts/tree/ParseTreeListener';

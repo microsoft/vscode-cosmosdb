@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // Generated from ./grammar/mongo.g4 by ANTLR 4.6-SNAPSHOT
+/*tslint:disable */
 
 
 import { ATN } from 'antlr4ts/atn/ATN';
@@ -21,36 +22,36 @@ import * as Utils from 'antlr4ts/misc/Utils';
 
 
 export class mongoLexer extends Lexer {
-	public static T__0 = 1;
-	public static T__1 = 2;
-	public static T__2 = 3;
-	public static T__3 = 4;
-	public static T__4 = 5;
-	public static T__5 = 6;
-	public static T__6 = 7;
-	public static T__7 = 8;
-	public static SingleLineComment = 9;
-	public static MultiLineComment = 10;
-	public static StringLiteral = 11;
-	public static NullLiteral = 12;
-	public static BooleanLiteral = 13;
-	public static NumericLiteral = 14;
-	public static DecimalLiteral = 15;
-	public static LineTerminator = 16;
-	public static SEMICOLON = 17;
-	public static DOT = 18;
-	public static DB = 19;
-	public static LF = 20;
-	public static CRLF = 21;
-	public static STRING_LITERAL = 22;
-	public static DOUBLE_QUOTED_STRING_LITERAL = 23;
-	public static SINGLE_QUOTED_STRING_LITERAL = 24;
-	public static WHITESPACE = 25;
-	public static modeNames: string[] = [
+	public static readonly T__0 = 1;
+	public static readonly T__1 = 2;
+	public static readonly T__2 = 3;
+	public static readonly T__3 = 4;
+	public static readonly T__4 = 5;
+	public static readonly T__5 = 6;
+	public static readonly T__6 = 7;
+	public static readonly T__7 = 8;
+	public static readonly SingleLineComment = 9;
+	public static readonly MultiLineComment = 10;
+	public static readonly StringLiteral = 11;
+	public static readonly NullLiteral = 12;
+	public static readonly BooleanLiteral = 13;
+	public static readonly NumericLiteral = 14;
+	public static readonly DecimalLiteral = 15;
+	public static readonly LineTerminator = 16;
+	public static readonly SEMICOLON = 17;
+	public static readonly DOT = 18;
+	public static readonly DB = 19;
+	public static readonly LF = 20;
+	public static readonly CRLF = 21;
+	public static readonly STRING_LITERAL = 22;
+	public static readonly DOUBLE_QUOTED_STRING_LITERAL = 23;
+	public static readonly SINGLE_QUOTED_STRING_LITERAL = 24;
+	public static readonly WHITESPACE = 25;
+	public static readonly modeNames: string[] = [
 		"DEFAULT_MODE"
 	];
 
-	public static ruleNames: string[] = [
+	public static readonly ruleNames: string[] = [
 		"T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6", "T__7", "SingleLineComment",
 		"MultiLineComment", "StringLiteral", "NullLiteral", "BooleanLiteral",
 		"NumericLiteral", "DecimalLiteral", "LineTerminator", "SEMICOLON", "DOT",
@@ -71,7 +72,7 @@ export class mongoLexer extends Lexer {
 		"SEMICOLON", "DOT", "DB", "LF", "CRLF", "STRING_LITERAL", "DOUBLE_QUOTED_STRING_LITERAL",
 		"SINGLE_QUOTED_STRING_LITERAL", "WHITESPACE"
 	];
-	public static VOCABULARY: Vocabulary = new VocabularyImpl(mongoLexer._LITERAL_NAMES, mongoLexer._SYMBOLIC_NAMES, []);
+	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoLexer._LITERAL_NAMES, mongoLexer._SYMBOLIC_NAMES, []);
 
 	@Override
 	@NotNull
@@ -118,7 +119,7 @@ export class mongoLexer extends Lexer {
 		return true;
 	}
 
-	public static _serializedATN: string =
+	public static readonly _serializedATN: string =
 		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x02\x1B\xE1\b\x01" +
 		"\x04\x02\t\x02\x04\x03\t\x03\x04\x04\t\x04\x04\x05\t\x05\x04\x06\t\x06" +
 		"\x04\x07\t\x07\x04\b\t\b\x04\t\t\t\x04\n\t\n\x04\v\t\v\x04\f\t\f\x04\r" +

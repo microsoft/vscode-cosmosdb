@@ -105,11 +105,29 @@ export class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		if (argumentsContext) {
 			let functionCallContext = argumentsContext.parent;
 			if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
-				this.commands[this.commands.length - 1].arguments = ctx.text;
+				if (!this.commands[this.commands.length - 1].arguments) {
+					this.commands[this.commands.length - 1].arguments = [];
+				}
+				this.commands[this.commands.length - 1].arguments.push(ctx.text);
 			}
 		}
 		return super.visitArgumentList(ctx);
 	}
+
+	/*
+	visitArguments(ctx: mongoParser.ArgumentsContext): MongoCommand[] {
+		if (ctx) {
+			let args = [];
+			for (let child of ctx.children) {
+				if (child instanceof mongoParser.ArgumentListContext) {
+					args.push(child.text);
+				}
+			}
+			this.commands[this.commands.length - 1].arguments = args;
+		}
+		return this.commands;
+	}
+	*/
 
 	protected defaultResult(node: ParseTree): MongoCommand[] {
 		return this.commands;

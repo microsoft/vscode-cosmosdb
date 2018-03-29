@@ -92,7 +92,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 				.then(db => {
 					const collection = db.collection(command.collection);
 					if (collection) {
-						const result = new MongoCollectionTreeItem(collection, command.arguments).executeCommand(command.name, command.arguments);
+						const result = new MongoCollectionTreeItem(collection, command.arguments).executeCommand(command.name, command.arguments && command.arguments.length ? command.arguments[0] : "");
 						if (result) {
 							return result;
 						}
@@ -102,7 +102,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		}
 
 		if (command.name === 'createCollection') {
-			return reportProgress(this.createCollection(stripQuotes(command.arguments)).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
+			return reportProgress(this.createCollection(stripQuotes(command.arguments.join(','))).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
 		} else {
 			return reportProgress(this.executeCommandInShell(command), 'Executing command');
 		}

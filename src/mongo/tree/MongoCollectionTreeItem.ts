@@ -24,9 +24,9 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	private _hasMoreChildren: boolean = true;
 	private _batchSize: number = DefaultBatchSize;
 
-	constructor(collection: Collection, query?: string) {
+	constructor(collection: Collection, query?: string[]) {
 		this.collection = collection;
-		this._query = query ? JSON.parse(query) : undefined;
+		this._query = query && query.length > 0 ? JSON.parse(query[0]) : undefined;
 	}
 
 	public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {

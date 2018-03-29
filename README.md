@@ -25,13 +25,13 @@
 
 ## Mongo "Scrapbooks" (Run Mongo Commands with Rich Intellisense)
 
-- Attach to a MongoDB database account
+- View your MongoDB database account by [signing in to Azure](#managing-azure-subscriptions) or attaching with a connection string
 - Optionally configure the user setting `mongo.shell.path` to your mongo shell executable path (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
 - Right-click on a database and select "Connect"
 - Click on "New Mongo Scrapbook" in the tree title bar
-- Enter your script, eg: `db.<collectionName>.find()`
-- IntelliSense (completions) will be provided as you write your script
-- Select the script and press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to see the results
+- Enter your commands or comments, eg: `db.<collectionName>.find()`
+- IntelliSense (auto-completions) will be provided as you write your command
+- Place the cursor inside the command to execute and press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to see the results
 
 ![Mongo Intellisense](resources/intellisense.gif)
 

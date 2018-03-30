@@ -27,8 +27,8 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 	constructor(collection: Collection, query?: string[]) {
 		this.collection = collection;
-		this._query = query && query.length > 0 ? JSON.parse(query[0]) : undefined;
-		this._projection = query && query.length > 1 ? JSON.parse(query[1]) : undefined;
+		this._query = query && query.length && JSON.parse(query[0]);
+		this._projection = query && query.length > 1 && JSON.parse(query[1]);
 	}
 
 	public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {

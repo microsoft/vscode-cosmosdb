@@ -29,7 +29,9 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
 
         this._children = [
             new DocDBDocumentsTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator),
-            new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this._collection, this._isEmulator)
+
+            // Disable showing stored procedures until users can edit them (https://github.com/Microsoft/vscode-cosmosdb/issues/457, https://github.com/Microsoft/vscode-cosmosdb/issues/413)
+            // new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this._collection, this._isEmulator)
         ];
     }
 

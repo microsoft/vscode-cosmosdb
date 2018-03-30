@@ -104,36 +104,42 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		throw new UserCancelledError();
 	}
 
-	executeCommand(name: string, args?: string): Thenable<string> {
+	executeCommand(name: string, args?: string[]): Thenable<string> {
 		try {
+			if (name === 'findOne') {
+				return reportProgress(this.findOne(args ? args.map(parseJSContent) : undefined), 'Finding');
+			}
 			if (name === 'drop') {
 				return reportProgress(this.drop(), 'Dropping collection');
 			}
-			if (name === 'insertMany') {
-				return reportProgress(this.insertMany(args ? parseJSContent(args) : undefined), 'Inserting documents');
+			else {
+				let argument;
+				if (args) {
+					argument = argument[0];
+				}
+				if (name === 'insertMany') {
+					return reportProgress(this.insertMany(argument ? parseJSContent(argument) : undefined), 'Inserting documents');
+				}
+				if (name === 'insert') {
+					return reportProgress(this.insert(argument ? parseJSContent(argument) : undefined), 'Inserting document');
+				}
+				if (name === 'insertOne') {
+					return reportProgress(this.insertOne(argument ? parseJSContent(argument) : undefined), 'Inserting document');
+				}
+				if (name === 'deleteOne') {
+					return reportProgress(this.deleteOne(argument ? parseJSContent(argument) : undefined), 'Deleting document');
+				}
+				if (name === 'deleteMany') {
+					return reportProgress(this.deleteMany(argument ? parseJSContent(argument) : undefined), 'Deleting documents');
+				}
+				if (name === 'remove') {
+					return reportProgress(this.remove(argument ? parseJSContent(argument) : undefined), 'Removing');
+				}
+				if (name === 'count') {
+					return reportProgress(this.count(argument ? parseJSContent(argument) : undefined), 'Counting');
+				}
+				return null;
 			}
-			if (name === 'insert') {
-				return reportProgress(this.insert(args ? parseJSContent(args) : undefined), 'Inserting document');
-			}
-			if (name === 'insertOne') {
-				return reportProgress(this.insertOne(args ? parseJSContent(args) : undefined), 'Inserting document');
-			}
-			if (name === 'deleteOne') {
-				return reportProgress(this.deleteOne(args ? parseJSContent(args) : undefined), 'Deleting document');
-			}
-			if (name === 'deleteMany') {
-				return reportProgress(this.deleteMany(args ? parseJSContent(args) : undefined), 'Deleting documents');
-			}
-			if (name === 'remove') {
-				return reportProgress(this.remove(args ? parseJSContent(args) : undefined), 'Removing');
-			}
-			if (name === 'count') {
-				return reportProgress(this.count(args ? parseJSContent(args) : undefined), 'Counting');
-			}
-			if (name === 'findOne') {
-				return reportProgress(this.findOne(args ? parseJSContent(args) : undefined), 'Finding');
-			}
-			return null;
 		} catch (error) {
 			return Promise.resolve(error);
 		}
@@ -155,7 +161,17 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	}
 
 	private async findOne(args?: any): Promise<string> {
-		const result = await this.collection.findOne(args);
+		if (args && args.length > 2) {
+			throw new Error("Too many arguments")
+		}
+		let result;
+		if (args.length === 1) {
+			result = await this.collection.findOne(args[0]);
+		} else if (args.length === 2) {
+			result = await this.collection.findOne(args[0], { fields: args[1] });
+		} else {
+			result = await this.collection.findOne({});
+		}
 		return this.stringify(result);
 	}
 

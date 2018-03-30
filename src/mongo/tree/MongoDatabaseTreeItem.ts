@@ -92,7 +92,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 				.then(db => {
 					const collection = db.collection(command.collection);
 					if (collection) {
-						const result = new MongoCollectionTreeItem(collection, command.arguments).executeCommand(command.name, command.arguments && command.arguments.length ? command.arguments[0] : "");
+						const result = new MongoCollectionTreeItem(collection, command.arguments).executeCommand(command.name, command.arguments);
 						if (result) {
 							return result;
 						}

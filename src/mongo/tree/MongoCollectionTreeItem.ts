@@ -8,7 +8,7 @@ import * as vm from 'vm';
 import * as path from 'path';
 import * as _ from 'underscore';
 import * as util from '../../utils/vscodeUtils';
-import { Collection, Cursor, ObjectID, InsertOneWriteOpResult, BulkWriteOpResultObject } from 'mongodb';
+import { Collection, Cursor, ObjectID, InsertOneWriteOpResult, BulkWriteOpResultObject, CollectionInsertManyOptions } from 'mongodb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { DialogBoxResponses, DefaultBatchSize } from '../../constants';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
@@ -28,7 +28,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	constructor(collection: Collection, query?: string[]) {
 		this.collection = collection;
 		this._query = query && query.length > 0 ? JSON.parse(query[0]) : undefined;
-		this._projection = query && query.length >= 2 ? JSON.parse(query[1]) : undefined;
+		this._projection = query && query.length > 1 ? JSON.parse(query[1]) : undefined;
 	}
 
 	public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
@@ -196,19 +196,19 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 	private insertMany(args: any[]): Thenable<string> {
 		// documents = args[0], collectionWriteOptions from args[1]
-		let collectionWriteOptions = {};
+		let insertManyOptions: CollectionInsertManyOptions = {};
 		if (args.length > 2) {
 			throw new Error("Too many arguments. Please see mongo shell documentation. https://docs.mongodb.com/manual/reference/method/db.collection.insertMany/#db.collection.insertMany");
 		} else if (args.length === 2) {
 			if (args[1] && args[1].ordered) {
-				collectionWriteOptions["ordered"] = args[1].ordered;
+				insertManyOptions["ordered"] = args[1].ordered;
 			}
 			if (args[1] && args[1].writeConcern) {
-				collectionWriteOptions["writeConcern"] = args[1].writeConcern;
+				insertManyOptions["w"] = args[1].writeConcern;
 			}
 		}
 
-		return this.collection.insertMany(args[0], collectionWriteOptions)
+		return this.collection.insertMany(args[0], insertManyOptions)
 			.then(({ insertedCount, insertedIds, result }) => {
 				return this.stringify({ insertedCount, insertedIds, result })
 			});

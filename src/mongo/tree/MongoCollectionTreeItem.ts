@@ -20,6 +20,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 	private readonly collection: Collection;
 	private readonly _query: object | undefined;
+	private readonly _projection: object | undefined;
 	private _cursor: Cursor | undefined;
 	private _hasMoreChildren: boolean = true;
 	private _batchSize: number = DefaultBatchSize;
@@ -27,6 +28,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	constructor(collection: Collection, query?: string[]) {
 		this.collection = collection;
 		this._query = query && query.length > 0 ? JSON.parse(query[0]) : undefined;
+		this._projection = query && query.length >= 2 ? JSON.parse(query[1]) : undefined;
 	}
 
 	public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
@@ -68,6 +70,9 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	public async loadMoreChildren(_node: IAzureNode, clearCache: boolean): Promise<IAzureTreeItem[]> {
 		if (clearCache || this._cursor === undefined) {
 			this._cursor = this.collection.find(this._query).batchSize(DefaultBatchSize);
+			if (this._projection) {
+				this._cursor = this._cursor.project(this._projection);
+			}
 			this._batchSize = DefaultBatchSize;
 		}
 

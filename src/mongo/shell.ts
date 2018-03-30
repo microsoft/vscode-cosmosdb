@@ -92,7 +92,7 @@ export class Shell {
 			const handler = setTimeout(
 				() => {
 					if (!executed) {
-						e('Timed out executing ' + script);
+						e(`Timed out executing MongoDB command "${script}"`);
 					}
 				},
 				5000);

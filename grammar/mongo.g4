@@ -118,8 +118,10 @@ LineTerminator
 SEMICOLON: ';';
 DOT: '.';
 DB: 'db';
-LF: '\n';
-CRLF: '\r\n';
+
+// Don't declare LR/CRLF tokens - they'll interfere with matching against LineTerminator
+// LF: '\n';
+// CRLF: '\r\n';
 
 STRING_LITERAL: ((~[",\\ \t\n:.;(){}\-]) | STRING_ESCAPE )+ {!this.isExternalIdentifierText(this.text)}?;
 DOUBLE_QUOTED_STRING_LITERAL: '"' ((~["\\]) | STRING_ESCAPE)* '"';

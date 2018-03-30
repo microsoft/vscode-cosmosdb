@@ -1,20 +1,19 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 // Generated from ./grammar/mongo.g4 by ANTLR 4.6-SNAPSHOT
 
 
 import { ATN } from 'antlr4ts/atn/ATN';
 import { ATNDeserializer } from 'antlr4ts/atn/ATNDeserializer';
+//import { FailedPredicateException } from 'antlr4ts/FailedPredicateException';
 import { NotNull } from 'antlr4ts/Decorators';
 import { NoViableAltException } from 'antlr4ts/NoViableAltException';
 import { Override } from 'antlr4ts/Decorators';
 import { Parser } from 'antlr4ts/Parser';
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 import { ParserATNSimulator } from 'antlr4ts/atn/ParserATNSimulator';
+//import { ParseTreeListener } from 'antlr4ts/tree/ParseTreeListener';
+//import { ParseTreeVisitor } from 'antlr4ts/tree/ParseTreeVisitor';
 import { RecognitionException } from 'antlr4ts/RecognitionException';
+//import { RuleContext } from 'antlr4ts/RuleContext';
 import { RuleVersion } from 'antlr4ts/RuleVersion';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { Token } from 'antlr4ts/Token';
@@ -29,49 +28,47 @@ import { mongoVisitor } from './mongoVisitor';
 
 
 export class mongoParser extends Parser {
-	public static T__0 = 1;
-	public static T__1 = 2;
-	public static T__2 = 3;
-	public static T__3 = 4;
-	public static T__4 = 5;
-	public static T__5 = 6;
-	public static T__6 = 7;
-	public static T__7 = 8;
-	public static SingleLineComment = 9;
-	public static MultiLineComment = 10;
-	public static StringLiteral = 11;
-	public static NullLiteral = 12;
-	public static BooleanLiteral = 13;
-	public static NumericLiteral = 14;
-	public static DecimalLiteral = 15;
-	public static LineTerminator = 16;
-	public static SEMICOLON = 17;
-	public static DOT = 18;
-	public static DB = 19;
-	public static LF = 20;
-	public static CRLF = 21;
-	public static STRING_LITERAL = 22;
-	public static DOUBLE_QUOTED_STRING_LITERAL = 23;
-	public static SINGLE_QUOTED_STRING_LITERAL = 24;
-	public static WHITESPACE = 25;
-	public static RULE_mongoCommands = 0;
-	public static RULE_commands = 1;
-	public static RULE_command = 2;
-	public static RULE_emptyCommand = 3;
-	public static RULE_collection = 4;
-	public static RULE_functionCall = 5;
-	public static RULE_arguments = 6;
-	public static RULE_argumentList = 7;
-	public static RULE_objectLiteral = 8;
-	public static RULE_arrayLiteral = 9;
-	public static RULE_elementList = 10;
-	public static RULE_propertyNameAndValueList = 11;
-	public static RULE_propertyAssignment = 12;
-	public static RULE_propertyValue = 13;
-	public static RULE_literal = 14;
-	public static RULE_propertyName = 15;
-	public static RULE_comment = 16;
-	public static ruleNames: string[] = [
+	public static readonly T__0 = 1;
+	public static readonly T__1 = 2;
+	public static readonly T__2 = 3;
+	public static readonly T__3 = 4;
+	public static readonly T__4 = 5;
+	public static readonly T__5 = 6;
+	public static readonly T__6 = 7;
+	public static readonly T__7 = 8;
+	public static readonly SingleLineComment = 9;
+	public static readonly MultiLineComment = 10;
+	public static readonly StringLiteral = 11;
+	public static readonly NullLiteral = 12;
+	public static readonly BooleanLiteral = 13;
+	public static readonly NumericLiteral = 14;
+	public static readonly DecimalLiteral = 15;
+	public static readonly LineTerminator = 16;
+	public static readonly SEMICOLON = 17;
+	public static readonly DOT = 18;
+	public static readonly DB = 19;
+	public static readonly STRING_LITERAL = 20;
+	public static readonly DOUBLE_QUOTED_STRING_LITERAL = 21;
+	public static readonly SINGLE_QUOTED_STRING_LITERAL = 22;
+	public static readonly WHITESPACE = 23;
+	public static readonly RULE_mongoCommands = 0;
+	public static readonly RULE_commands = 1;
+	public static readonly RULE_command = 2;
+	public static readonly RULE_emptyCommand = 3;
+	public static readonly RULE_collection = 4;
+	public static readonly RULE_functionCall = 5;
+	public static readonly RULE_arguments = 6;
+	public static readonly RULE_argumentList = 7;
+	public static readonly RULE_objectLiteral = 8;
+	public static readonly RULE_arrayLiteral = 9;
+	public static readonly RULE_elementList = 10;
+	public static readonly RULE_propertyNameAndValueList = 11;
+	public static readonly RULE_propertyAssignment = 12;
+	public static readonly RULE_propertyValue = 13;
+	public static readonly RULE_literal = 14;
+	public static readonly RULE_propertyName = 15;
+	public static readonly RULE_comment = 16;
+	public static readonly ruleNames: string[] = [
 		"mongoCommands", "commands", "command", "emptyCommand", "collection",
 		"functionCall", "arguments", "argumentList", "objectLiteral", "arrayLiteral",
 		"elementList", "propertyNameAndValueList", "propertyAssignment", "propertyValue",
@@ -81,16 +78,16 @@ export class mongoParser extends Parser {
 	private static readonly _LITERAL_NAMES: (string | undefined)[] = [
 		undefined, "'('", "')'", "'{'", "','", "'}'", "'['", "']'", "':'", undefined,
 		undefined, undefined, "'null'", undefined, undefined, undefined, undefined,
-		"';'", "'.'", "'db'", "'\n'", "'\r\n'"
+		"';'", "'.'", "'db'"
 	];
 	private static readonly _SYMBOLIC_NAMES: (string | undefined)[] = [
 		undefined, undefined, undefined, undefined, undefined, undefined, undefined,
 		undefined, undefined, "SingleLineComment", "MultiLineComment", "StringLiteral",
 		"NullLiteral", "BooleanLiteral", "NumericLiteral", "DecimalLiteral", "LineTerminator",
-		"SEMICOLON", "DOT", "DB", "LF", "CRLF", "STRING_LITERAL", "DOUBLE_QUOTED_STRING_LITERAL",
+		"SEMICOLON", "DOT", "DB", "STRING_LITERAL", "DOUBLE_QUOTED_STRING_LITERAL",
 		"SINGLE_QUOTED_STRING_LITERAL", "WHITESPACE"
 	];
-	public static VOCABULARY: Vocabulary = new VocabularyImpl(mongoParser._LITERAL_NAMES, mongoParser._SYMBOLIC_NAMES, []);
+	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoParser._LITERAL_NAMES, mongoParser._SYMBOLIC_NAMES, []);
 
 	@Override
 	@NotNull
@@ -795,8 +792,8 @@ export class mongoParser extends Parser {
 		return _localctx;
 	}
 
-	public static _serializedATN: string =
-		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\x1B~\x04\x02" +
+	public static readonly _serializedATN: string =
+		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\x19~\x04\x02" +
 		"\t\x02\x04\x03\t\x03\x04\x04\t\x04\x04\x05\t\x05\x04\x06\t\x06\x04\x07" +
 		"\t\x07\x04\b\t\b\x04\t\t\t\x04\n\t\n\x04\v\t\v\x04\f\t\f\x04\r\t\r\x04" +
 		"\x0E\t\x0E\x04\x0F\t\x0F\x04\x10\t\x10\x04\x11\t\x11\x04\x12\t\x12\x03" +
@@ -823,8 +820,8 @@ export class mongoParser extends Parser {
 		"\x0206\x05\f\x07\x0212\x05\n\x06\x0223\x07\x14\x02\x0234\x05\f\x07\x02" +
 		"46\x03\x02\x02\x0250\x03\x02\x02\x0251\x03\x02\x02\x0268\x03\x02\x02\x02" +
 		"79\x07\x13\x02\x0287\x03\x02\x02\x0289\x03\x02\x02\x029\x07\x03\x02\x02" +
-		"\x02:;\x07\x13\x02\x02;\t\x03\x02\x02\x02<=\x07\x18\x02\x02=\v\x03\x02" +
-		"\x02\x02>?\x07\x18\x02\x02?@\x05\x0E\b\x02@\r\x03\x02\x02\x02AC\x07\x03" +
+		"\x02:;\x07\x13\x02\x02;\t\x03\x02\x02\x02<=\x07\x16\x02\x02=\v\x03\x02" +
+		"\x02\x02>?\x07\x16\x02\x02?@\x05\x0E\b\x02@\r\x03\x02\x02\x02AC\x07\x03" +
 		"\x02\x02BD\x05\x10\t\x02CB\x03\x02\x02\x02CD\x03\x02\x02\x02DE\x03\x02" +
 		"\x02\x02EF\x07\x04\x02\x02F\x0F\x03\x02\x02\x02GK\x05\x1E\x10\x02HK\x05" +
 		"\x12\n\x02IK\x05\x14\v\x02JG\x03\x02\x02\x02JH\x03\x02\x02\x02JI\x03\x02" +

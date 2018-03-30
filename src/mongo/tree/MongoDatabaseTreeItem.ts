@@ -126,7 +126,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		const shellPath = <string>vscode.workspace.getConfiguration().get('mongo.shell.path')
 		if (!shellPath) {
 			return <Promise<null>>vscode.window.showInputBox({
-				placeHolder: "Configure the path to mongo shell executable",
+				placeHolder: "Configure the path to the mongo shell executable",
 				ignoreFocusOut: true
 			}).then(value => vscode.workspace.getConfiguration().update('mongo.shell.path', value, true)
 				.then(() => this.createShell(value)));

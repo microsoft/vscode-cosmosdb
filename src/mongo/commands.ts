@@ -22,13 +22,14 @@ export class MongoCommands {
 	public static async executeCommandFromActiveEditor(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider): Promise<void> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (activeEditor.document.languageId !== 'mongo') {
+			vscode.window.showInformationMessage("This command can only be run inside of a MongoDB scrapbook (*.mongo)");
 			return;
 		}
 		const selection = activeEditor.selection;
 		const command = MongoCommands.getCommand(activeEditor.document.getText(), selection.start);
 		if (command) {
 			if (!database) {
-				throw new Error('Please connect to the database first');
+				throw new Error('Please select a MongoDB database to run against by selecting it in the explorer and selecting the "Connect" context menu item');
 			}
 
 			if (command.name === 'find') {
@@ -45,7 +46,7 @@ export class MongoCommands {
 				}
 			}
 		} else {
-			throw new Error('No executable command found.');
+			throw new Error('No MongoDB command found at the current cursor location.');
 		}
 	}
 

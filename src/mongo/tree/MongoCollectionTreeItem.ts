@@ -112,13 +112,13 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			if (name === 'drop') {
 				return reportProgress(this.drop(), 'Dropping collection');
 			}
+			if (name === 'insertMany') {
+				return reportProgress(this.insertMany(args ? args.map(parseJSContent) : undefined), 'Inserting documents');
+			}
 			else {
 				let argument;
 				if (args) {
 					argument = argument[0];
-				}
-				if (name === 'insertMany') {
-					return reportProgress(this.insertMany(argument ? parseJSContent(argument) : undefined), 'Inserting documents');
 				}
 				if (name === 'insert') {
 					return reportProgress(this.insert(argument ? parseJSContent(argument) : undefined), 'Inserting document');
@@ -189,8 +189,21 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			});
 	}
 
-	private insertMany(documents: any[]): Thenable<string> {
-		return this.collection.insertMany(documents)
+	private insertMany(args: any[]): Thenable<string> {
+		// documents = args[0], collectionWriteOptions from args[1]
+		let collectionWriteOptions = {};
+		if (args.length > 2) {
+			throw new Error("Too many arguments. Please see mongo shell documentation. https://docs.mongodb.com/manual/reference/method/db.collection.insertMany/#db.collection.insertMany");
+		} else if (args.length === 2) {
+			if (args[1] && args[1].ordered) {
+				collectionWriteOptions["ordered"] = args[1].ordered;
+			}
+			if (args[1] && args[1].writeConcern) {
+				collectionWriteOptions["writeConcern"] = args[1].writeConcern;
+			}
+		}
+
+		return this.collection.insertMany(args[0], collectionWriteOptions)
 			.then(({ insertedCount, insertedIds, result }) => {
 				return this.stringify({ insertedCount, insertedIds, result })
 			});

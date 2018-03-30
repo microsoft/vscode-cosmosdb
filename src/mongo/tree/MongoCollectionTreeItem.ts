@@ -151,7 +151,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 	private async drop(): Promise<string> {
 		await this.collection.drop();
-		return `Dropped collection ${this.collection.collectionName}.`;
+		return `Dropped collection '${this.collection.collectionName}'.`;
 	}
 
 	private async findOne(args?: Object): Promise<string> {

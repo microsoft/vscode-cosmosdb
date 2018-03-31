@@ -1,20 +1,23 @@
 // Generated from ./grammar/mongo.g4 by ANTLR 4.6-SNAPSHOT
+
+
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 /*tslint:disable */
 
 
 import { ATN } from 'antlr4ts/atn/ATN';
 import { ATNDeserializer } from 'antlr4ts/atn/ATNDeserializer';
-//import { FailedPredicateException } from 'antlr4ts/FailedPredicateException';
 import { NotNull } from 'antlr4ts/Decorators';
 import { NoViableAltException } from 'antlr4ts/NoViableAltException';
 import { Override } from 'antlr4ts/Decorators';
 import { Parser } from 'antlr4ts/Parser';
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 import { ParserATNSimulator } from 'antlr4ts/atn/ParserATNSimulator';
-//import { ParseTreeListener } from 'antlr4ts/tree/ParseTreeListener';
-//import { ParseTreeVisitor } from 'antlr4ts/tree/ParseTreeVisitor';
 import { RecognitionException } from 'antlr4ts/RecognitionException';
-//import { RuleContext } from 'antlr4ts/RuleContext';
 import { RuleVersion } from 'antlr4ts/RuleVersion';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { Token } from 'antlr4ts/Token';
@@ -48,12 +51,10 @@ export class mongoParser extends Parser {
 	public static readonly SEMICOLON = 17;
 	public static readonly DOT = 18;
 	public static readonly DB = 19;
-	public static readonly LF = 20;
-	public static readonly CRLF = 21;
-	public static readonly STRING_LITERAL = 22;
-	public static readonly DOUBLE_QUOTED_STRING_LITERAL = 23;
-	public static readonly SINGLE_QUOTED_STRING_LITERAL = 24;
-	public static readonly WHITESPACE = 25;
+	public static readonly STRING_LITERAL = 20;
+	public static readonly DOUBLE_QUOTED_STRING_LITERAL = 21;
+	public static readonly SINGLE_QUOTED_STRING_LITERAL = 22;
+	public static readonly WHITESPACE = 23;
 	public static readonly RULE_mongoCommands = 0;
 	public static readonly RULE_commands = 1;
 	public static readonly RULE_command = 2;
@@ -800,7 +801,7 @@ export class mongoParser extends Parser {
 	}
 
 	public static readonly _serializedATN: string =
-		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\x1B\x81\x04\x02" +
+		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\x19\x81\x04\x02" +
 		"\t\x02\x04\x03\t\x03\x04\x04\t\x04\x04\x05\t\x05\x04\x06\t\x06\x04\x07" +
 		"\t\x07\x04\b\t\b\x04\t\t\t\x04\n\t\n\x04\v\t\v\x04\f\t\f\x04\r\t\r\x04" +
 		"\x0E\t\x0E\x04\x0F\t\x0F\x04\x10\t\x10\x04\x11\t\x11\x04\x12\t\x12\x03" +
@@ -827,8 +828,8 @@ export class mongoParser extends Parser {
 		"\x02/5\x07\x14\x02\x0206\x05\f\x07\x0212\x05\n\x06\x0223\x07\x14\x02\x02" +
 		"34\x05\f\x07\x0246\x03\x02\x02\x0250\x03\x02\x02\x0251\x03\x02\x02\x02" +
 		"68\x03\x02\x02\x0279\x07\x13\x02\x0287\x03\x02\x02\x0289\x03\x02\x02\x02" +
-		"9\x07\x03\x02\x02\x02:;\x07\x13\x02\x02;\t\x03\x02\x02\x02<=\x07\x18\x02" +
-		"\x02=\v\x03\x02\x02\x02>?\x07\x18\x02\x02?@\x05\x0E\b\x02@\r\x03\x02\x02" +
+		"9\x07\x03\x02\x02\x02:;\x07\x13\x02\x02;\t\x03\x02\x02\x02<=\x07\x16\x02" +
+		"\x02=\v\x03\x02\x02\x02>?\x07\x16\x02\x02?@\x05\x0E\b\x02@\r\x03\x02\x02" +
 		"\x02AE\x07\x03\x02\x02BD\x05\x10\t\x02CB\x03\x02\x02\x02DG\x03\x02\x02" +
 		"\x02EC\x03\x02\x02\x02EF\x03\x02\x02\x02FH\x03\x02\x02\x02GE\x03\x02\x02" +
 		"\x02HI\x07\x04\x02\x02I\x0F\x03\x02\x02\x02JN\x05\x1E\x10\x02KN\x05\x12" +

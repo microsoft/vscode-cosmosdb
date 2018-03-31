@@ -749,7 +749,7 @@
 		"vsce": "^1.37.5"
 	},
 	"dependencies": {
-		"antlr4ts": "^0.4.0-burt.2",
+		"antlr4ts": "^0.4.0-alpha.4",
 		"azure-arm-cosmosdb": "^1.1.0-preview",
 		"azure-arm-resource": "^3.0.0-preview",
 		"azure-graph": "^2.2.0",

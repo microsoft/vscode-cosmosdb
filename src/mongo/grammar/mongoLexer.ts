@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 // Generated from ./grammar/mongo.g4 by ANTLR 4.6-SNAPSHOT
 /*tslint:disable */
 
@@ -63,13 +58,13 @@ export class mongoLexer extends Lexer {
 	private static readonly _LITERAL_NAMES: (string | undefined)[] = [
 		undefined, "'('", "')'", "'{'", "','", "'}'", "'['", "']'", "':'", undefined,
 		undefined, undefined, "'null'", undefined, undefined, undefined, undefined,
-		"';'", "'.'", "'db'", "'\n'", "'\r\n'"
+		"';'", "'.'", "'db'"
 	];
 	private static readonly _SYMBOLIC_NAMES: (string | undefined)[] = [
 		undefined, undefined, undefined, undefined, undefined, undefined, undefined,
 		undefined, undefined, "SingleLineComment", "MultiLineComment", "StringLiteral",
 		"NullLiteral", "BooleanLiteral", "NumericLiteral", "DecimalLiteral", "LineTerminator",
-		"SEMICOLON", "DOT", "DB", "LF", "CRLF", "STRING_LITERAL", "DOUBLE_QUOTED_STRING_LITERAL",
+		"SEMICOLON", "DOT", "DB", "STRING_LITERAL", "DOUBLE_QUOTED_STRING_LITERAL",
 		"SINGLE_QUOTED_STRING_LITERAL", "WHITESPACE"
 	];
 	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoLexer._LITERAL_NAMES, mongoLexer._SYMBOLIC_NAMES, []);
@@ -106,7 +101,7 @@ export class mongoLexer extends Lexer {
 	@Override
 	public sempred(_localctx: RuleContext, ruleIndex: number, predIndex: number): boolean {
 		switch (ruleIndex) {
-			case 21:
+			case 19:
 				return this.STRING_LITERAL_sempred(_localctx, predIndex);
 		}
 		return true;

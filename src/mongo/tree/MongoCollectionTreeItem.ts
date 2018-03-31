@@ -48,15 +48,15 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		return documents;
 	}
 
-	get id(): string {
+	public get id(): string {
 		return this.collection.collectionName;
 	}
 
-	get label(): string {
+	public get label(): string {
 		return this.collection.collectionName;
 	}
 
-	get iconPath(): any {
+	public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
 		return {
 			light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Collection.svg'),
 			dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Collection.svg'),
@@ -162,10 +162,11 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 	private async drop(): Promise<string> {
 		await this.collection.drop();
-		return `Dropped collection ${this.collection.collectionName}.`;
+		return `Dropped collection '${this.collection.collectionName}'.`;
 	}
 
-	private async findOne(args?: any): Promise<string> {
+	//tslint:disable:no-any
+	private async findOne(args?: any[]): Promise<string> {
 		if (args && args.length > 2) {
 			throw new Error("Too many arguments")
 		}
@@ -180,20 +181,21 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		return this.stringify(result);
 	}
 
-	private insert(document: any): Thenable<string> {
+	private insert(document: Object): Thenable<string> {
 		return this.collection.insert(document)
 			.then(({ insertedCount, insertedId, result }) => {
 				return this.stringify({ insertedCount, insertedId, result })
 			});
 	}
 
-	private insertOne(document: any): Thenable<string> {
+	private insertOne(document: Object): Thenable<string> {
 		return this.collection.insertOne(document)
 			.then(({ insertedCount, insertedId, result }) => {
 				return this.stringify({ insertedCount, insertedId, result })
 			});
 	}
 
+	//tslint:disable:no-any
 	private insertMany(args: any[]): Thenable<string> {
 		// documents = args[0], collectionWriteOptions from args[1]
 		let insertManyOptions: CollectionInsertManyOptions = {};
@@ -214,32 +216,33 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			});
 	}
 
-	private remove(args?: any): Thenable<string> {
+	private remove(args?: Object): Thenable<string> {
 		return this.collection.remove(args)
 			.then(({ ops, result }) => {
 				return this.stringify({ ops, result })
 			});
 	}
 
-	private deleteOne(args?: any): Thenable<string> {
+	private deleteOne(args?: Object): Thenable<string> {
 		return this.collection.deleteOne(args)
 			.then(({ deletedCount, result }) => {
 				return this.stringify({ deletedCount, result })
 			});
 	}
 
-	private deleteMany(args?: any): Thenable<string> {
+	private deleteMany(args?: Object): Thenable<string> {
 		return this.collection.deleteMany(args)
 			.then(({ deletedCount, result }) => {
 				return this.stringify({ deletedCount, result })
 			});
 	}
 
-	private async count(args?: any): Promise<string> {
+	private async count(args?: Object): Promise<string> {
 		const count = await this.collection.count(args);
 		return JSON.stringify(count);
 	}
 
+	// tslint:disable-next-line:no-any
 	private stringify(result: any): string {
 		return JSON.stringify(result, null, '\t')
 	}
@@ -256,6 +259,7 @@ function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
 		})
 }
 
+// tslint:disable-next-line:no-any
 function parseJSContent(content: string): any {
 	try {
 		const sandbox = {};

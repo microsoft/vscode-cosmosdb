@@ -1,21 +1,20 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 // Generated from ./grammar/mongo.g4 by ANTLR 4.6-SNAPSHOT
 /*tslint:disable */
 
 
 import { ATN } from 'antlr4ts/atn/ATN';
 import { ATNDeserializer } from 'antlr4ts/atn/ATNDeserializer';
+//import { FailedPredicateException } from 'antlr4ts/FailedPredicateException';
 import { NotNull } from 'antlr4ts/Decorators';
 import { NoViableAltException } from 'antlr4ts/NoViableAltException';
 import { Override } from 'antlr4ts/Decorators';
 import { Parser } from 'antlr4ts/Parser';
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 import { ParserATNSimulator } from 'antlr4ts/atn/ParserATNSimulator';
+//import { ParseTreeListener } from 'antlr4ts/tree/ParseTreeListener';
+//import { ParseTreeVisitor } from 'antlr4ts/tree/ParseTreeVisitor';
 import { RecognitionException } from 'antlr4ts/RecognitionException';
+//import { RuleContext } from 'antlr4ts/RuleContext';
 import { RuleVersion } from 'antlr4ts/RuleVersion';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { Token } from 'antlr4ts/Token';
@@ -82,13 +81,13 @@ export class mongoParser extends Parser {
 	private static readonly _LITERAL_NAMES: (string | undefined)[] = [
 		undefined, "'('", "')'", "'{'", "','", "'}'", "'['", "']'", "':'", undefined,
 		undefined, undefined, "'null'", undefined, undefined, undefined, undefined,
-		"';'", "'.'", "'db'", "'\n'", "'\r\n'"
+		"';'", "'.'", "'db'"
 	];
 	private static readonly _SYMBOLIC_NAMES: (string | undefined)[] = [
 		undefined, undefined, undefined, undefined, undefined, undefined, undefined,
 		undefined, undefined, "SingleLineComment", "MultiLineComment", "StringLiteral",
 		"NullLiteral", "BooleanLiteral", "NumericLiteral", "DecimalLiteral", "LineTerminator",
-		"SEMICOLON", "DOT", "DB", "LF", "CRLF", "STRING_LITERAL", "DOUBLE_QUOTED_STRING_LITERAL",
+		"SEMICOLON", "DOT", "DB", "STRING_LITERAL", "DOUBLE_QUOTED_STRING_LITERAL",
 		"SINGLE_QUOTED_STRING_LITERAL", "WHITESPACE"
 	];
 	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoParser._LITERAL_NAMES, mongoParser._SYMBOLIC_NAMES, []);

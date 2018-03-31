@@ -29,7 +29,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
         this.isEmulator = isEmulator;
     }
 
-    public get iconPath(): any {
+    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
             light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'light', 'CosmosDBAccount.svg'),
             dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'dark', 'CosmosDBAccount.svg')

@@ -20,7 +20,7 @@ export class Shell {
 				const shellProcess = cp.spawn(execPath, ['--quiet', connectionString]);
 				return c(new Shell(shellProcess));
 			} catch (error) {
-				e(`Error while creating mongo shell with path ${execPath}: ${error}`);
+				e(`Error while creating mongo shell with path '${execPath}': ${error}`);
 			}
 		});
 	}
@@ -64,8 +64,8 @@ export class Shell {
 		once(this.mongoShell.stderr, 'close', result => this.onResult.fire(result));
 	}
 
-	async useDatabase(databse: string): Promise<string> {
-		return this.exec(`use ${databse}`);
+	async useDatabase(database: string): Promise<string> {
+		return this.exec(`use ${database}`);
 	}
 
 	async exec(script: string): Promise<string> {
@@ -92,7 +92,7 @@ export class Shell {
 			const handler = setTimeout(
 				() => {
 					if (!executed) {
-						e('Timed out executing ' + script);
+						e(`Timed out executing MongoDB command "${script}"`);
 					}
 				},
 				5000);

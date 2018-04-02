@@ -8,7 +8,7 @@ import * as vm from 'vm';
 import * as path from 'path';
 import * as _ from 'underscore';
 import * as util from '../../utils/vscodeUtils';
-import { Collection, Cursor, ObjectID, InsertOneWriteOpResult, BulkWriteOpResultObject } from 'mongodb';
+import { Collection, Cursor, ObjectID, InsertOneWriteOpResult, BulkWriteOpResultObject, CollectionInsertManyOptions } from 'mongodb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { DialogBoxResponses, DefaultBatchSize } from '../../constants';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
@@ -20,13 +20,15 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 	private readonly collection: Collection;
 	private readonly _query: object | undefined;
+	private readonly _projection: object | undefined;
 	private _cursor: Cursor | undefined;
 	private _hasMoreChildren: boolean = true;
 	private _batchSize: number = DefaultBatchSize;
 
-	constructor(collection: Collection, query?: string) {
+	constructor(collection: Collection, query?: string[]) {
 		this.collection = collection;
-		this._query = query ? JSON.parse(query) : undefined;
+		this._query = query && query.length && JSON.parse(query[0]);
+		this._projection = query && query.length > 1 && JSON.parse(query[1]);
 	}
 
 	public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
@@ -68,6 +70,9 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	public async loadMoreChildren(_node: IAzureNode, clearCache: boolean): Promise<IAzureTreeItem[]> {
 		if (clearCache || this._cursor === undefined) {
 			this._cursor = this.collection.find(this._query).batchSize(DefaultBatchSize);
+			if (this._projection) {
+				this._cursor = this._cursor.project(this._projection);
+			}
 			this._batchSize = DefaultBatchSize;
 		}
 
@@ -104,36 +109,42 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		throw new UserCancelledError();
 	}
 
-	executeCommand(name: string, args?: string): Thenable<string> {
+	executeCommand(name: string, args?: string[]): Thenable<string> {
 		try {
+			if (name === 'findOne') {
+				return reportProgress(this.findOne(args ? args.map(parseJSContent) : undefined), 'Finding');
+			}
 			if (name === 'drop') {
 				return reportProgress(this.drop(), 'Dropping collection');
 			}
 			if (name === 'insertMany') {
-				return reportProgress(this.insertMany(args ? parseJSContent(args) : undefined), 'Inserting documents');
+				return reportProgress(this.insertMany(args ? args.map(parseJSContent) : undefined), 'Inserting documents');
 			}
-			if (name === 'insert') {
-				return reportProgress(this.insert(args ? parseJSContent(args) : undefined), 'Inserting document');
+			else {
+				let argument;
+				if (args) {
+					argument = args[0];
+				}
+				if (name === 'insert') {
+					return reportProgress(this.insert(argument ? parseJSContent(argument) : undefined), 'Inserting document');
+				}
+				if (name === 'insertOne') {
+					return reportProgress(this.insertOne(argument ? parseJSContent(argument) : undefined), 'Inserting document');
+				}
+				if (name === 'deleteOne') {
+					return reportProgress(this.deleteOne(argument ? parseJSContent(argument) : undefined), 'Deleting document');
+				}
+				if (name === 'deleteMany') {
+					return reportProgress(this.deleteMany(argument ? parseJSContent(argument) : undefined), 'Deleting documents');
+				}
+				if (name === 'remove') {
+					return reportProgress(this.remove(argument ? parseJSContent(argument) : undefined), 'Removing');
+				}
+				if (name === 'count') {
+					return reportProgress(this.count(argument ? parseJSContent(argument) : undefined), 'Counting');
+				}
+				return null;
 			}
-			if (name === 'insertOne') {
-				return reportProgress(this.insertOne(args ? parseJSContent(args) : undefined), 'Inserting document');
-			}
-			if (name === 'deleteOne') {
-				return reportProgress(this.deleteOne(args ? parseJSContent(args) : undefined), 'Deleting document');
-			}
-			if (name === 'deleteMany') {
-				return reportProgress(this.deleteMany(args ? parseJSContent(args) : undefined), 'Deleting documents');
-			}
-			if (name === 'remove') {
-				return reportProgress(this.remove(args ? parseJSContent(args) : undefined), 'Removing');
-			}
-			if (name === 'count') {
-				return reportProgress(this.count(args ? parseJSContent(args) : undefined), 'Counting');
-			}
-			if (name === 'findOne') {
-				return reportProgress(this.findOne(args ? parseJSContent(args) : undefined), 'Finding');
-			}
-			return null;
 		} catch (error) {
 			return Promise.resolve(error);
 		}
@@ -154,8 +165,19 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		return `Dropped collection '${this.collection.collectionName}'.`;
 	}
 
-	private async findOne(args?: Object): Promise<string> {
-		const result = await this.collection.findOne(args);
+	//tslint:disable:no-any
+	private async findOne(args?: any[]): Promise<string> {
+		if (args && args.length > 2) {
+			throw new Error("Too many arguments")
+		}
+		let result;
+		if (args.length === 1) {
+			result = await this.collection.findOne(args[0]);
+		} else if (args.length === 2) {
+			result = await this.collection.findOne(args[0], { fields: args[1] });
+		} else {
+			result = await this.collection.findOne({});
+		}
 		return this.stringify(result);
 	}
 
@@ -173,8 +195,22 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			});
 	}
 
-	private insertMany(documents: Object[]): Thenable<string> {
-		return this.collection.insertMany(documents)
+	//tslint:disable:no-any
+	private insertMany(args: any[]): Thenable<string> {
+		// documents = args[0], collectionWriteOptions from args[1]
+		let insertManyOptions: CollectionInsertManyOptions = {};
+		if (args.length > 2) {
+			throw new Error("Too many arguments. Please see mongo shell documentation. https://docs.mongodb.com/manual/reference/method/db.collection.insertMany/#db.collection.insertMany");
+		} else if (args.length === 2) {
+			if (args[1] && args[1].ordered) {
+				insertManyOptions["ordered"] = args[1].ordered;
+			}
+			if (args[1] && args[1].writeConcern) {
+				insertManyOptions["w"] = args[1].writeConcern;
+			}
+		}
+
+		return this.collection.insertMany(args[0], insertManyOptions)
 			.then(({ insertedCount, insertedIds, result }) => {
 				return this.stringify({ insertedCount, insertedIds, result })
 			});

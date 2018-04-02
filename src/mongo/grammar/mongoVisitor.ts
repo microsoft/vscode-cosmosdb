@@ -1,6 +1,14 @@
 // Generated from ./grammar/mongo.g4 by ANTLR 4.6-SNAPSHOT
 
 
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+ /*tslint:disable */
+
+
 import { ParseTreeVisitor } from 'antlr4ts/tree/ParseTreeVisitor';
 
 import { MongoCommandsContext } from './mongoParser';

@@ -104,6 +104,12 @@ suite("scrapbook parsing Tests", () => {
             { collection: "test", name: "drop", args: [] });
     });
 
+    test("find, with empty object argument", () => {
+        testParse(
+            `db.test.find({})`,
+            { collection: "test", name: "find", args: [{}] });
+    });
+
     test("end-of-line comment", () => {
         testParse(
             `db.test.drop() // Ignore error "ns not found", it means "test" does not exist yet`,
@@ -197,7 +203,7 @@ suite("scrapbook parsing Tests", () => {
     test("test function call with nested parameters - documents in an array", () => {
         let arg0 = `[{"name": "a"}, {"name": "b"}, {"name": "c"}]`;
         let arg1 = `{"ordered": true}`;
-        let text = `db.test1.insertMany(${arg0},\r\n,\r\n\r\n${arg1})`;
+        let text = `db.test1.insertMany(${arg0},\r\n\r\n\r\n${arg1})`;
         let command = MongoCommands.getCommand(text, new Position(0, 0));
         assert.deepEqual(JSON.parse(command.arguments[0]), JSON.parse(arg0));
         assert.deepEqual(JSON.parse(command.arguments[1]), JSON.parse(arg1));

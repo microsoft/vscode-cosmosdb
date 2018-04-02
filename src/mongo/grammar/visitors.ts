@@ -64,7 +64,7 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 	}
 
 	visitErrorNode(node: ErrorNode): T {
-		return this.defaultResult(node);
+		throw new Error(`Error at line ${node._symbol.line}, from ${node.symbol.startIndex} to ${node.symbol.stopIndex}, near '${node.text}'. Please check syntax.`);
 	}
 
 	protected defaultResult(node: ParseTree): T {

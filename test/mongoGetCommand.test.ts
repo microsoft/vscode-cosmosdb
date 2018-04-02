@@ -8,6 +8,17 @@ import * as assert from 'assert';
 import { MongoCommands } from '../src/mongo/commands';
 import { Position } from 'vscode';
 
+function testParseExpectError(text: string, expected: { collection: string, name: string, args: object[] }) {
+    let caughtError = false;
+    try {
+        testParse(text, expected);
+    } catch (error) {
+        caughtError = true;
+    }
+
+    assert.equal(caughtError, true, "Parse should have thrown an exception but didn't");
+}
+
 function testParse(text: string, expected: { collection: string, name: string, args: object[] }) {
     let command = MongoCommands.getCommand(text, new Position(0, 0));
 
@@ -116,6 +127,21 @@ suite("scrapbook parsing Tests", () => {
     test("find/project from #214", () => {
         testParse(
             `db.heroes.find({ "id": 2 }, { "saying": 1 })`,
+            {
+                collection: "heroes", name: "find", args: [
+                    {
+                        id: 2
+                    },
+                    {
+                        saying: 1
+                    }
+                ]
+            });
+    });
+
+    test("expect error: missing comma in arguments", () => {
+        testParseExpectError(
+            `db.heroes.find({ "id": 2 } { "saying": 1 })`,
             {
                 collection: "heroes", name: "find", args: [
                     {

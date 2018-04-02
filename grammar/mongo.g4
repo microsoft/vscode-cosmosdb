@@ -35,8 +35,7 @@ functionCall
 	;
 
 arguments
-	: OPEN_PARENTHESIS = '(' argumentList (',' argumentList)* CLOSED_PARENTHESIS = ')'
-	| OPEN_PARENTHESIS = '(' CLOSED_PARENTHESIS = ')'
+	: OPEN_PARENTHESIS = '(' ( argumentList (',' argumentList)* )? CLOSED_PARENTHESIS = ')'
 	;
 
 argumentList

@@ -8,6 +8,27 @@ import * as assert from 'assert';
 import { MongoCommands } from '../src/mongo/commands';
 import { Position } from 'vscode';
 
+function testParseExpectError(text: string, expected: { collection: string, name: string, args: object[] }) {
+    let caughtError = false;
+    try {
+        testParse(text, expected);
+    } catch (error) {
+        caughtError = true;
+    }
+
+    assert.equal(caughtError, true, "Parse should have thrown an exception but didn't");
+}
+
+function testParse(text: string, expected: { collection: string, name: string, args: object[] }) {
+    let command = MongoCommands.getCommand(text, new Position(0, 0));
+
+    assert.equal(command.collection, expected.collection, "Parsed collection name is not correct");
+    assert.equal(command.name, expected.name, "Parsed command name is not correct");
+
+    let actualArgs = (command.arguments || []).map(arg => JSON.parse(arg));
+    assert.deepEqual(actualArgs, expected.args, "Parsed arguments are not correct");
+}
+
 suite("scrapbook parsing Tests", () => {
     test("find", () => {
         let text = "db.find()";
@@ -76,6 +97,95 @@ suite("scrapbook parsing Tests", () => {
         let command = MongoCommands.getCommand(text, new Position(2, 0));
         assert.equal(command.text, line1);
     });
+
+    test("drop", () => {
+        testParse(
+            `db.test.drop()`,
+            { collection: "test", name: "drop", args: [] });
+    });
+
+    test("end-of-line comment", () => {
+        testParse(
+            `db.test.drop() // Ignore error "ns not found", it means "test" does not exist yet`,
+            { collection: "test", name: "drop", args: [] });
+    });
+
+    test("multi-line insert from #214", () => {
+        testParse(
+            `db.heroes.insert({\n"id": 2,\r\n"name": "Batman",\r\n\r\n"saying": "I'm Batman"\r})`,
+            {
+                collection: "heroes", name: "insert", args: [
+                    {
+                        id: 2,
+                        name: "Batman",
+                        saying: "I'm Batman"
+                    }
+                ]
+            });
+    });
+
+    test("find/project from #214", () => {
+        testParse(
+            `db.heroes.find({ "id": 2 }, { "saying": 1 })`,
+            {
+                collection: "heroes", name: "find", args: [
+                    {
+                        id: 2
+                    },
+                    {
+                        saying: 1
+                    }
+                ]
+            });
+    });
+
+    test("expect error: missing comma in arguments", () => {
+        testParseExpectError(
+            `db.heroes.find({ "id": 2 } { "saying": 1 })`,
+            {
+                collection: "heroes", name: "find", args: [
+                    {
+                        id: 2
+                    },
+                    {
+                        saying: 1
+                    }
+                ]
+            });
+    });
+
+    // https://github.com/Microsoft/vscode-cosmosdb/issues/467
+    // test("single quoted property names", () => {
+    //     testParse(
+    //         `db.heroes.find({ 'id': 2 }, { 'saying': 1 })`,
+    //         {
+    //             collection: "heroes", name: "find", args: [
+    //                 {
+    //                     id: 2
+    //                 },
+    //                 {
+    //                     saying: 1
+    //                 }
+    //             ]
+    //         });
+    // });
+
+    // https://github.com/Microsoft/vscode-cosmosdb/issues/466
+    // test("Unquoted property names", () => {
+    //     testParse(
+    //         `db.heroes.find({ id: 2 }, { saying: 1 })`,
+    //         {
+    //             collection: "heroes", name: "find", args: [
+    //                 {
+    //                     id: 2
+    //                 },
+    //                 {
+    //                     saying: 1
+    //                 }
+    //             ]
+    //         });
+    // });
+
     test("test function call that has 2 arguments", () => {
         let arg0 = `{"Age": 31}`;
         let arg1 = `{"Name": true}`;

@@ -102,7 +102,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		}
 
 		if (command.name === 'createCollection') {
-			return reportProgress(this.createCollection(stripQuotes(command.arguments)).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
+			return reportProgress(this.createCollection(stripQuotes(command.arguments.join(','))).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
 		} else {
 			return reportProgress(this.executeCommandInShell(command), 'Executing command');
 		}

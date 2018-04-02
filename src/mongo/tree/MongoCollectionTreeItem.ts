@@ -123,7 +123,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			else {
 				let argument;
 				if (args) {
-					argument = argument[0];
+					argument = args[0];
 				}
 				if (name === 'insert') {
 					return reportProgress(this.insert(argument ? parseJSContent(argument) : undefined), 'Inserting document');

@@ -8,7 +8,6 @@ import * as vscode from "vscode";
 import { IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { ProcedureMeta } from 'documentdb';
 import { DialogBoxResponses } from '../../constants';
-import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { getDocumentClient } from '../getDocumentClient';
 
 /**

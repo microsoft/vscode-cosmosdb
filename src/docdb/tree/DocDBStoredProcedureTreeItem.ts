@@ -40,7 +40,7 @@ export class DocDBStoredProcedureTreeItem implements IAzureTreeItem {
     }
 
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
-        const message: string = `Are you sure you want to delete collection '${this.label}' and its contents?`;
+        const message: string = `Are you sure you want to delete stored procedure '${this.label}'?`;
         const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
         if (result === DialogBoxResponses.Yes) {
             const client = getDocumentClient(this._documentEndpoint, this._masterKey, this._isEmulator);

@@ -30,7 +30,7 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 ## Mongo "Scrapbooks" (Run Mongo Commands with Rich Intellisense)
 
 - View your MongoDB database account by [signing in to Azure](#managing-azure-subscriptions) or attaching with a connection string
-- Optionally configure the user setting `mongo.shell.path` to your mongo shell executable path (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
+- Optionally configure the setting `mongo.shell.path` if your mongo executable is not already on your system's PATH (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
 - Right-click on a database and select "Connect"
 - Click on "New Mongo Scrapbook" in the tree title bar
 - Enter your commands and/or comments, eg: `db.<collectionName>.find()`

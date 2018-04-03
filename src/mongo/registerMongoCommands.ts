@@ -86,11 +86,13 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
     actionHandler.registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
     actionHandler.registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
     actionHandler.registerCommand('cosmosDB.executeMongoCommand', async () => {
-        const persistedNodeId: string | undefined = context.globalState.get(connectedDBKey);
-        if (persistedNodeId) {
-            const persistedNode: IAzureNode | undefined = await tree.findNode(persistedNodeId);
-            if (persistedNode) {
-                await vscode.commands.executeCommand('cosmosDB.connectMongoDB', persistedNode);
+        if (!connectedDb) {
+            const persistedNodeId: string | undefined = context.globalState.get(connectedDBKey);
+            if (persistedNodeId) {
+                const persistedNode: IAzureNode | undefined = await tree.findNode(persistedNodeId);
+                if (persistedNode) {
+                    await vscode.commands.executeCommand('cosmosDB.connectMongoDB', persistedNode);
+                }
             }
         }
 

@@ -6,7 +6,6 @@
 import { CollectionMeta, DocumentClient, CollectionPartitionKey } from 'documentdb';
 import { IAzureNode, IAzureTreeItem, IAzureParentTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import * as vscode from 'vscode';
-import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { getDocumentClient } from "../getDocumentClient";
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import * as path from "path";
@@ -31,7 +30,9 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
         private _isEmulator: boolean) {
 
         this._documentsTreeItem = new DocDBDocumentsTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator);
-        this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this._collection, this._isEmulator);
+
+        // Disable showing stored procedures until users can edit them (https://github.com/Microsoft/vscode-cosmosdb/issues/457, https://github.com/Microsoft/vscode-cosmosdb/issues/413)
+        // this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this._collection, this._isEmulator);
     }
 
     public get id(): string {
@@ -50,7 +51,7 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
     }
 
     public async loadMoreChildren(node: IAzureNode<IAzureTreeItem>, clearCache: boolean): Promise<IAzureTreeItem[]> {
-        return [this._documentsTreeItem, this._storedProceduresTreeItem];
+        return [this._documentsTreeItem /*, this._storedProceduresTreeItem */];
     }
 
     public hasMoreChildren(): boolean {

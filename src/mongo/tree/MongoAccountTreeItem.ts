@@ -11,6 +11,7 @@ import { MongoDatabaseTreeItem, validateMongoCollectionName } from './MongoDatab
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
+import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
 
 export class MongoAccountTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = "cosmosDBMongoServer";
@@ -43,11 +44,24 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
     public async loadMoreChildren(_node: IAzureNode, _clearCache: boolean): Promise<IAzureTreeItem[]> {
         let db: Db | undefined;
         try {
+            let databases: IDatabaseInfo[];
+
             db = await MongoClient.connect(this.connectionString);
-            const result: { databases: IDatabaseInfo[] } = await db.admin().listDatabases();
-            return result.databases
+            let databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);
+            if (databaseInConnectionString && !this.isEmulator) { // emulator violates the connection string format
+                // If the database is in the connection string, that's all we connect to (we might not even have permissions to list databases)
+                databases = [{
+                    name: databaseInConnectionString,
+                    empty: false
+                }];
+            } else {
+                let result: { databases: IDatabaseInfo[] } = await db.admin().listDatabases();
+                databases = result.databases;
+            }
+            return databases
                 .filter((database: IDatabaseInfo) => !(database.name && database.name.toLowerCase() === "admin" && database.empty)) // Filter out the 'admin' database if it's empty
                 .map(database => new MongoDatabaseTreeItem(database.name, this.connectionString));
+
         } catch (error) {
             return [{
                 id: 'cosmosMongoError',

@@ -13,6 +13,7 @@ import * as path from "path";
 import { DialogBoxResponses } from '../../constants';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
+import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 
 /**
  * Represents a DocumentDB collection

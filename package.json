@@ -245,6 +245,11 @@
 			},
 			{
 				"category": "Cosmos DB",
+				"command": "cosmosDB.deleteStoredProcedure",
+				"title": "Delete Stored Procedure"
+			},
+			{
+				"category": "Cosmos DB",
 				"command": "cosmosDB.newMongoScrapbook",
 				"title": "New Mongo Scrapbook",
 				"icon": {
@@ -474,6 +479,10 @@
 				{
 					"command": "cosmosDB.deleteDocDBDocument",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocument"
+				},
+				{
+					"command": "cosmosDB.deleteStoredProcedure",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProcedure"
 				},
 				{
 					"command": "cosmosDB.deleteDocDBDatabase",

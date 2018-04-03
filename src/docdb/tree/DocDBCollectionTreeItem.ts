@@ -11,6 +11,8 @@ import { getDocumentClient } from "../getDocumentClient";
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import * as path from "path";
 import { DialogBoxResponses } from '../../constants';
+import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
+import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 
 /**
  * Represents a DocumentDB collection
@@ -19,7 +21,8 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = "cosmosDBDocumentCollection";
     public readonly contextValue: string = DocDBCollectionTreeItem.contextValue;
 
-    private readonly _children: IAzureTreeItem[];
+    private readonly _documentsTreeItem: DocDBDocumentsTreeItem;
+    private readonly _storedProceduresTreeItem: DocDBStoredProceduresTreeItem;
 
     constructor(
         private _documentEndpoint: string,
@@ -27,10 +30,8 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
         private _collection: CollectionMeta,
         private _isEmulator: boolean) {
 
-        this._children = [
-            new DocDBDocumentsTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator),
-            new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this._collection, this._isEmulator)
-        ];
+        this._documentsTreeItem = new DocDBDocumentsTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator);
+        this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this._collection, this._isEmulator);
     }
 
     public get id(): string {
@@ -49,7 +50,7 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
     }
 
     public async loadMoreChildren(node: IAzureNode<IAzureTreeItem>, clearCache: boolean): Promise<IAzureTreeItem[]> {
-        return this._children;
+        return [this._documentsTreeItem, this._storedProceduresTreeItem];
     }
 
     public hasMoreChildren(): boolean {
@@ -84,6 +85,17 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
     }
 
     public pickTreeItem?(expectedContextValue: string): IAzureTreeItem | undefined {
-        return this._children.find(node => node.contextValue === expectedContextValue);
+        switch (expectedContextValue) {
+            case DocDBDocumentsTreeItem.contextValue:
+            case DocDBDocumentTreeItem.contextValue:
+                return this._documentsTreeItem;
+
+            case DocDBStoredProceduresTreeItem.contextValue:
+            case DocDBStoredProcedureTreeItem.contextValue:
+                return this._storedProceduresTreeItem;
+
+            default:
+                return undefined;
+        }
     }
 }

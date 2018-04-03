@@ -23,7 +23,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
     }
 
     public initChild(resource: ProcedureMeta): IAzureTreeItem {
-        return new DocDBStoredProcedureTreeItem(resource);
+        return new DocDBStoredProcedureTreeItem(this.documentEndpoint, this.masterKey, this.isEmulator, resource);
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {

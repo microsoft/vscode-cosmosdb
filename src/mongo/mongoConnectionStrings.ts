@@ -12,7 +12,7 @@ export function getDatabaseNameFromConnectionString(connectionString: string): s
     //   mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/
 
     try {
-        let matches = connectionString.match(/[a-zA-Z]+:\/\/[^/]+(\/([^ /?]+))/);
+        let matches = connectionString.match(/[a-zA-Z]+:\/\/[^/]+(\/([^/?]+))/);
         if (matches) {
             let [, , database] = matches;
             return database;

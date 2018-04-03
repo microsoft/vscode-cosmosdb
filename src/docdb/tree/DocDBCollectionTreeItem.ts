@@ -6,7 +6,6 @@
 import { CollectionMeta, DocumentClient, CollectionPartitionKey } from 'documentdb';
 import { IAzureNode, IAzureTreeItem, IAzureParentTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import * as vscode from 'vscode';
-import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { getDocumentClient } from "../getDocumentClient";
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import * as path from "path";

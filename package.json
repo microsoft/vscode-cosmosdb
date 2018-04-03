@@ -616,8 +616,7 @@
 						"null"
 					],
 					"description": "Path to the Mongo shell executable",
-					"default": null,
-					"isExecutable": true
+					"default": null
 				},
 				"cosmosDB.showExplorer": {
 					"type": "boolean",

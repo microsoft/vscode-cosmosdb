@@ -7,7 +7,7 @@ import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
-import { CommandsContext, CommandContext, FunctionCallContext, MongoCommandsContext, CollectionContext, ArgumentListContext } from './mongoParser';
+import { CommandsContext, CommandContext, FunctionCallContext, MongoCommandsContext, CollectionContext, ArgumentListContext, ArgumentsContext } from './mongoParser';
 import { mongoVisitor } from './mongoVisitor';
 
 export class MongoVisitor<T> implements mongoVisitor<T> {
@@ -36,6 +36,10 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 		return this.visitChildren(ctx);
 	}
 
+	visitArguments(ctx: ArgumentsContext): T {
+		return this.visitChildren(ctx);
+	}
+
 	visit(tree: ParseTree): T {
 		return tree.accept(this);
 	}
@@ -60,7 +64,7 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 	}
 
 	visitErrorNode(node: ErrorNode): T {
-		return this.defaultResult(node);
+		throw new Error(`Error at line ${node._symbol.line}, from ${node.symbol.startIndex} to ${node.symbol.stopIndex}, near '${node.text}'. Please check syntax.`);
 	}
 
 	protected defaultResult(node: ParseTree): T {

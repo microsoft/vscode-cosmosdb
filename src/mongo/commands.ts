@@ -106,7 +106,11 @@ export class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		if (argumentsContext) {
 			let functionCallContext = argumentsContext.parent;
 			if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
-				this.commands[this.commands.length - 1].arguments = ctx.text;
+				const lastCommand = this.commands[this.commands.length - 1];
+				if (!lastCommand.arguments) {
+					lastCommand.arguments = [];
+				}
+				lastCommand.arguments.push(ctx.text);
 			}
 		}
 		return super.visitArgumentList(ctx);

@@ -9,6 +9,7 @@ import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
 import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
 import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
+import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
 
 export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: AzureTreeDataProvider): void {
     actionHandler.registerCommand('cosmosDB.createDocDBDatabase', async (node?: IAzureParentNode) => {
@@ -45,6 +46,12 @@ export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: A
     actionHandler.registerCommand('cosmosDB.deleteDocDBDocument', async (node?: IAzureNode) => {
         if (!node) {
             node = await tree.showNodePicker(DocDBDocumentTreeItem.contextValue);
+        }
+        await node.deleteNode();
+    });
+    actionHandler.registerCommand('cosmosDB.deleteStoredProcedure', async (node?: IAzureNode) => {
+        if (!node) {
+            node = await tree.showNodePicker(DocDBStoredProcedureTreeItem.contextValue);
         }
         await node.deleteNode();
     });

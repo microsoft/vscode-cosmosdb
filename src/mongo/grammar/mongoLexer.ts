@@ -1,6 +1,14 @@
 // Generated from ./grammar/mongo.g4 by ANTLR 4.6-SNAPSHOT
 
 
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+ /*tslint:disable */
+
+
 import { ATN } from 'antlr4ts/atn/ATN';
 import { ATNDeserializer } from 'antlr4ts/atn/ATNDeserializer';
 import { CharStream } from 'antlr4ts/CharStream';
@@ -53,7 +61,7 @@ export class mongoLexer extends Lexer {
 	];
 
 	private static readonly _LITERAL_NAMES: (string | undefined)[] = [
-		undefined, "'('", "')'", "'{'", "','", "'}'", "'['", "']'", "':'", undefined, 
+		undefined, "'('", "','", "')'", "'{'", "'}'", "'['", "']'", "':'", undefined, 
 		undefined, undefined, "'null'", undefined, undefined, undefined, undefined, 
 		"';'", "'.'", "'db'"
 	];
@@ -157,8 +165,8 @@ export class mongoLexer extends Lexer {
 		"\x02\x02\x02%\x9B\x03\x02\x02\x02\'\x9D\x03\x02\x02\x02)\xA2\x03\x02\x02"+
 		"\x02+\xA8\x03\x02\x02\x02-\xB2\x03\x02\x02\x02/\xBC\x03\x02\x02\x021\xC7"+
 		"\x03\x02\x02\x023\xC9\x03\x02\x02\x025\xD2\x03\x02\x02\x027\xD4\x03\x02"+
-		"\x02\x029:\x07*\x02\x02:\x04\x03\x02\x02\x02;<\x07+\x02\x02<\x06\x03\x02"+
-		"\x02\x02=>\x07}\x02\x02>\b\x03\x02\x02\x02?@\x07.\x02\x02@\n\x03\x02\x02"+
+		"\x02\x029:\x07*\x02\x02:\x04\x03\x02\x02\x02;<\x07.\x02\x02<\x06\x03\x02"+
+		"\x02\x02=>\x07+\x02\x02>\b\x03\x02\x02\x02?@\x07}\x02\x02@\n\x03\x02\x02"+
 		"\x02AB\x07\x7F\x02\x02B\f\x03\x02\x02\x02CD\x07]\x02\x02D\x0E\x03\x02"+
 		"\x02\x02EF\x07_\x02\x02F\x10\x03\x02\x02\x02GH\x07<\x02\x02H\x12\x03\x02"+
 		"\x02\x02IJ\x071\x02\x02JK\x071\x02\x02KO\x03\x02\x02\x02LN\n\x02\x02\x02"+

@@ -1,5 +1,14 @@
 grammar mongo;
 
+@header{
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+ /*tslint:disable */
+}
+
 @lexer::members {
 	private isExternalIdentifierText(text) {
 		return text === 'db';
@@ -26,7 +35,7 @@ functionCall
 	;
 
 arguments
-	: OPEN_PARENTHESIS = '(' argumentList? CLOSED_PARENTHESIS = ')'
+	: OPEN_PARENTHESIS = '(' ( argumentList (',' argumentList)* )? CLOSED_PARENTHESIS = ')'
 	;
 
 argumentList

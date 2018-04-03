@@ -93,20 +93,10 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	}
 
 	public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
-		let docId: string | undefined = await vscode.window.showInputBox({
-			placeHolder: "Document ID",
-			prompt: "Enter a unique document ID or leave blank for a generated ID",
-			ignoreFocusOut: true
-		});
-
-		if (docId !== undefined) {
-			showCreatingNode(docId);
-			const result: InsertOneWriteOpResult = await this.collection.insertOne(docId === '' ? {} : { "id": docId });
-			const newDocument: IMongoDocument = await this.collection.findOne({ _id: result.insertedId });
-			return new MongoDocumentTreeItem(newDocument, this.collection);
-		}
-
-		throw new UserCancelledError();
+		showCreatingNode("");
+		const result: InsertOneWriteOpResult = await this.collection.insertOne({});
+		const newDocument: IMongoDocument = await this.collection.findOne({ _id: result.insertedId });
+		return new MongoDocumentTreeItem(newDocument, this.collection);
 	}
 
 	executeCommand(name: string, args?: string[]): Thenable<string> {

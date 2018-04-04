@@ -8,7 +8,7 @@ import * as cpUtils from '../../utils/cp';
 import * as path from 'path';
 import { MongoClient, Db, Collection } from 'mongodb';
 import { Shell } from '../shell';
-import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
+import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, IActionContext } from 'vscode-azureextensionui';
 import { DialogBoxResponses } from '../../constants';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoCommand } from '../MongoCommand';
@@ -87,7 +87,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		return accountConnection.db(this.databaseName);
 	}
 
-	executeCommand(command: MongoCommand): Thenable<string> {
+	executeCommand(command: MongoCommand, context: IActionContext): Thenable<string> {
 		if (command.collection) {
 			return this.getDb()
 				.then(db => {
@@ -98,14 +98,14 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 							return result;
 						}
 					}
-					return reportProgress(this.executeCommandInShell(command), 'Executing command');
+					return reportProgress(this.executeCommandInShell(command, context), 'Executing command');
 				});
 		}
 
 		if (command.name === 'createCollection') {
 			return reportProgress(this.createCollection(stripQuotes(command.arguments.join(','))).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
 		} else {
-			return reportProgress(this.executeCommandInShell(command), 'Executing command');
+			return reportProgress(this.executeCommandInShell(command, context), 'Executing command');
 		}
 	}
 
@@ -119,7 +119,8 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		return new MongoCollectionTreeItem(newCollection);
 	}
 
-	executeCommandInShell(command: MongoCommand): Thenable<string> {
+	executeCommandInShell(command: MongoCommand, context: IActionContext): Thenable<string> {
+		context.properties["executeInShell"] = "true";
 		return this.getShell().then(shell => shell.exec(command.text));
 	}
 

@@ -12,14 +12,14 @@ import { MongoVisitor } from './grammar/visitors';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as vscodeUtil from './../utils/vscodeUtils';
 import { CosmosEditorManager } from '../CosmosEditorManager';
-import { IAzureParentNode, AzureTreeDataProvider } from 'vscode-azureextensionui';
+import { IAzureParentNode, AzureTreeDataProvider, IActionContext } from 'vscode-azureextensionui';
 import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
 import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 import { MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem } from './tree/MongoDatabaseTreeItem';
 
 export class MongoCommands {
-	public static async executeCommandFromActiveEditor(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider): Promise<void> {
+	public static async executeCommandFromActiveEditor(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext): Promise<void> {
 		const activeEditor = vscode.window.activeTextEditor;
 		if (activeEditor.document.languageId !== 'mongo') {
 			vscode.window.showInformationMessage("This command can only be run inside of a MongoDB scrapbook (*.mongo)");
@@ -28,6 +28,13 @@ export class MongoCommands {
 		const selection = activeEditor.selection;
 		const command = MongoCommands.getCommand(activeEditor.document.getText(), selection.start);
 		if (command) {
+			try {
+				context.properties["command"] = command.name;
+				context.properties["argsCount"] = String(command.arguments ? command.arguments.length : 0);
+			} catch (error) {
+				// Ignore
+			}
+
 			if (!database) {
 				throw new Error('Please select a MongoDB database to run against by selecting it in the explorer and selecting the "Connect" context menu item');
 			}
@@ -35,7 +42,7 @@ export class MongoCommands {
 			if (command.name === 'find') {
 				await editorManager.showDocument(new MongoFindResultEditor(database, command, tree), 'cosmos-result.json');
 			} else {
-				const result = await database.treeItem.executeCommand(command);
+				const result = await database.treeItem.executeCommand(command, context);
 				if (command.name === 'findOne') {
 					if (result === "null") {
 						throw new Error(`Could not find any documents`)

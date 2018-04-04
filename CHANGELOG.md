@@ -2,6 +2,28 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.6.0 - 2018-04-05
+
+### Added
+
+- Mongo
+  - mongo.shell.path setting no longer required if shell is in system path
+  - Allow mongo.shell.path to be specified in workspace settings as well as user settings
+  - No longer asking for an id for new documents
+  - Multiple arguments (e.g. projections) now work for common commands in the scrapbook
+  - Connected database is now persisted between sessions
+
+- Azure subscriptions
+  - New "filter" button on subscription nodes
+  - New "Open in Portal" menu item for subscriptions
+
+- Miscellaneous
+  - New "Report an Issue" button on error dialogs
+
+### Fixed
+
+- [Bugs fixed](https://github.com/Microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A%220.6.0%22+is%3Aclosed+label%3Abug)
+
 ## 0.5.1 - 2018-03-23
 
 ### Fixed

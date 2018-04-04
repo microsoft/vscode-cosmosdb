@@ -12,6 +12,7 @@ import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, I
 import { DialogBoxResponses } from '../../constants';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoCommand } from '../MongoCommand';
+import { ext } from '../../extensionVariables';
 
 export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public static contextValue: string = "mongoDb";
@@ -20,22 +21,28 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public readonly connectionString: string;
 	public readonly databaseName: string;
 
-	public isConnected: boolean = false;
+	private _isConnected: boolean;
 
-	constructor(databaseName: string, connectionString: string) {
+	constructor(databaseName: string, connectionString: string, parentId: string) {
 		this.databaseName = databaseName;
 		this.connectionString = connectionString;
+		this._isConnected = ext.connectedMongoDB && ext.connectedMongoDB.id === `${parentId}/${databaseName}`;
 	}
 
 	public get label(): string {
-		if (this.isConnected) {
-			return this.databaseName + " (Connected)";
-		}
 		return this.databaseName;
+	}
+
+	public get description(): string {
+		return this._isConnected ? 'Connected' : '';
 	}
 
 	public get id(): string {
 		return this.databaseName;
+	}
+
+	public async refreshLabel(node: IAzureNode): Promise<void> {
+		this._isConnected = ext.connectedMongoDB && ext.connectedMongoDB.id === node.id;
 	}
 
 	public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {

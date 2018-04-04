@@ -99,6 +99,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		return new MongoDocumentTreeItem(newDocument, this.collection);
 	}
 
+	//tslint:disable:cyclomatic-complexity
 	executeCommand(name: string, args?: string[]): Thenable<string> {
 		try {
 			if (name === 'findOne') {
@@ -112,6 +113,9 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			}
 			else {
 				let argument;
+				if (args && args.length > 1) {
+					return undefined;
+				}
 				if (args) {
 					argument = args[0];
 				}

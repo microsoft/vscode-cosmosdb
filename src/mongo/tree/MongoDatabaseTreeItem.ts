@@ -21,12 +21,12 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public readonly connectionString: string;
 	public readonly databaseName: string;
 
-	private _isConnected: boolean;
+	private _parentId: string;
 
 	constructor(databaseName: string, connectionString: string, parentId: string) {
 		this.databaseName = databaseName;
 		this.connectionString = connectionString;
-		this._isConnected = ext.connectedMongoDB && ext.connectedMongoDB.id === `${parentId}/${databaseName}`;
+		this._parentId = parentId;
 	}
 
 	public get label(): string {
@@ -34,15 +34,11 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	}
 
 	public get description(): string {
-		return this._isConnected ? 'Connected' : '';
+		return ext.connectedMongoDB && ext.connectedMongoDB.id === `${this._parentId}/${this.id}` ? 'Connected' : '';
 	}
 
 	public get id(): string {
 		return this.databaseName;
-	}
-
-	public async refreshLabel(node: IAzureNode): Promise<void> {
-		this._isConnected = ext.connectedMongoDB && ext.connectedMongoDB.id === node.id;
 	}
 
 	public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {

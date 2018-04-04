@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureActionHandler, IAzureParentNode, AzureTreeDataProvider, IAzureNode, IActionContext } from "vscode-azureextensionui";
+import { AzureActionHandler, IAzureParentNode, AzureTreeDataProvider, IAzureNode, IActionContext, callWithTelemetryAndErrorHandling } from "vscode-azureextensionui";
 import * as vscode from 'vscode';
 import { MongoCollectionTreeItem } from "./tree/MongoCollectionTreeItem";
 import { MongoDatabaseTreeItem } from "./tree/MongoDatabaseTreeItem";
@@ -15,6 +15,7 @@ import { MongoDocumentTreeItem } from "./tree/MongoDocumentTreeItem";
 import { MongoCollectionNodeEditor } from "./editors/MongoCollectionNodeEditor";
 import { CosmosEditorManager } from "../CosmosEditorManager";
 import { ext } from "../extensionVariables";
+import { reporter } from "../utils/telemetry";
 
 const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 
@@ -96,13 +97,17 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
 }
 
 async function loadPersistedMongoDB(context: vscode.ExtensionContext, tree: AzureTreeDataProvider): Promise<void> {
-    const persistedNodeId: string | undefined = context.globalState.get(connectedDBKey);
-    if (persistedNodeId) {
-        const persistedNode: IAzureNode | undefined = await tree.findNode(persistedNodeId);
-        if (persistedNode) {
-            await vscode.commands.executeCommand('cosmosDB.connectMongoDB', persistedNode);
+    await callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', reporter, undefined, async function (this: IActionContext): Promise<void> {
+        this.suppressErrorDisplay = true;
+        this.properties.isActivationEvent = 'true';
+        const persistedNodeId: string | undefined = context.globalState.get(connectedDBKey);
+        if (persistedNodeId) {
+            const persistedNode: IAzureNode | undefined = await tree.findNode(persistedNodeId);
+            if (persistedNode) {
+                await vscode.commands.executeCommand('cosmosDB.connectMongoDB', persistedNode);
+            }
         }
-    }
+    });
 }
 
 function launchMongoShell() {

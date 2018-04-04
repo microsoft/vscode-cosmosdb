@@ -98,15 +98,14 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 							return result;
 						}
 					}
-					return reportProgress(this.executeCommandInShell(command), 'Executing command');
+					return reportProgress(this.executeCommandInShell(command, context), 'Executing command');
 				});
 		}
 
 		if (command.name === 'createCollection') {
 			return reportProgress(this.createCollection(stripQuotes(command.arguments.join(','))).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
 		} else {
-			context.properties["executeInShell"] = "true";
-			return reportProgress(this.executeCommandInShell(command), 'Executing command');
+			return reportProgress(this.executeCommandInShell(command, context), 'Executing command');
 		}
 	}
 
@@ -120,7 +119,8 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		return new MongoCollectionTreeItem(newCollection);
 	}
 
-	executeCommandInShell(command: MongoCommand): Thenable<string> {
+	executeCommandInShell(command: MongoCommand, context: IActionContext): Thenable<string> {
+		context.properties["executeInShell"] = "true";
 		return this.getShell().then(shell => shell.exec(command.text));
 	}
 

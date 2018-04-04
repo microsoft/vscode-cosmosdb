@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
+import * as cpUtils from '../../utils/cp';
 import * as path from 'path';
 import { MongoClient, Db, Collection } from 'mongodb';
 import { Shell } from '../shell';
@@ -122,17 +123,29 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		return this.getShell().then(shell => shell.exec(command.text));
 	}
 
-	private getShell(): Promise<Shell> {
-		const shellPath = <string>vscode.workspace.getConfiguration().get('mongo.shell.path')
+	private async getShell(): Promise<Shell> {
+		const settingKey: string = 'mongo.shell.path';
+		let shellPath: string | undefined = vscode.workspace.getConfiguration().get(settingKey)
 		if (!shellPath) {
-			return <Promise<null>>vscode.window.showInputBox({
-				placeHolder: "Configure the path to the mongo shell executable",
-				ignoreFocusOut: true
-			}).then(value => vscode.workspace.getConfiguration().update('mongo.shell.path', value, true)
-				.then(() => this.createShell(value)));
-		} else {
-			return this.createShell(shellPath);
+			if (await cpUtils.commandSucceeds('mongo', '--version')) {
+				// If the user already has mongo in their system path, just use that
+				shellPath = 'mongo';
+			} else {
+				// If all else fails, prompt the user for the mongo path
+				shellPath = await vscode.window.showInputBox({
+					placeHolder: "Configure the path to the mongo shell executable",
+					ignoreFocusOut: true
+				});
+
+				if (shellPath) {
+					await vscode.workspace.getConfiguration().update(settingKey, shellPath, vscode.ConfigurationTarget.Global);
+				} else {
+					throw new UserCancelledError();
+				}
+			}
 		}
+
+		return await this.createShell(shellPath);
 	}
 
 	private async createShell(shellPath: string): Promise<Shell> {

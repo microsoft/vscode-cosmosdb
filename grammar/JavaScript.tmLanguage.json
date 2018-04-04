@@ -1,11 +1,14 @@
 {
-	"name": "JavaScript (with React support)",
-	"scopeName": "source.js",
+	"name.$comment": "** Changed **",
+	"name": "Mongo Scrapbooks (JavaScript)",
+	"scopeName.$comment": "** Changed **",
+	"scopeName": "source.mongo.js",
+	"fileTypes.$comment": "** Changed from .js/.jsx **",
 	"fileTypes": [
-		".js",
-		".jsx"
+		".mongo"
 	],
-	"uuid": "805375ec-d614-41f5-8993-5843fe63ea82",
+	"uuid.$comment": "** Changed **",
+	"uuid": "311c363f-7b1d-4dc4-b237-da46f717cca4",
 	"patterns": [
 		{
 			"include": "#directives"

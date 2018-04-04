@@ -7,7 +7,8 @@
 	<key>hideFromUser</key>
 	<true/>
 	<key>name</key>
-	<string>Regular Expressions (JavaScript)</string>
+	<!-- changed -->
+	<string>Mongo Scrapbooks Regular Expressions (JavaScript)</string>
 	<key>patterns</key>
 	<array>
 		<dict>
@@ -230,8 +231,10 @@
 		</dict>
 	</dict>
 	<key>scopeName</key>
-	<string>source.js.regexp</string>
+	<!-- changed -->
+	<string>source.mongo.js.regexp</string>
 	<key>uuid</key>
-	<string>AC8679DE-3AC7-4056-84F9-69A7ADC29DDD</string>
+	<!-- changed -->
+	<string>c362a36f-6fd7-49c1-b7fb-90f53cdb7ee1</string>
 </dict>
 </plist>

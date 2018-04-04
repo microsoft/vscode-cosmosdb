@@ -48,11 +48,15 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
             node = <IAzureParentNode<MongoDatabaseTreeItem>>await tree.showNodePicker(MongoDatabaseTreeItem.contextValue);
         }
 
+        const oldNode: IAzureNode | undefined = ext.connectedMongoDB;
         await languageClient.connect(node.treeItem.connectionString, node.treeItem.databaseName);
         context.globalState.update(connectedDBKey, node.id);
         ext.connectedMongoDB = node;
-
         await tree.refresh(node.parent);
+
+        if (oldNode) {
+            await tree.refresh(oldNode.parent);
+        }
     });
     actionHandler.registerCommand('cosmosDB.deleteMongoDB', async (node?: IAzureNode<MongoDatabaseTreeItem>) => {
         if (!node) {

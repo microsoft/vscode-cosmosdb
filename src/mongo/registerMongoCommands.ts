@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureActionHandler, IAzureParentNode, AzureTreeDataProvider, IAzureNode } from "vscode-azureextensionui";
+import { AzureActionHandler, IAzureParentNode, AzureTreeDataProvider, IAzureNode, IActionContext } from "vscode-azureextensionui";
 import * as vscode from 'vscode';
 import { MongoCollectionTreeItem } from "./tree/MongoCollectionTreeItem";
 import { MongoDatabaseTreeItem } from "./tree/MongoDatabaseTreeItem";
@@ -85,7 +85,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
     });
     actionHandler.registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
     actionHandler.registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
-    actionHandler.registerCommand('cosmosDB.executeMongoCommand', async () => {
+    actionHandler.registerCommand('cosmosDB.executeMongoCommand', async function (this: IActionContext) {
         if (!connectedDb) {
             const persistedNodeId: string | undefined = context.globalState.get(connectedDBKey);
             if (persistedNodeId) {
@@ -96,7 +96,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
             }
         }
 
-        await MongoCommands.executeCommandFromActiveEditor(connectedDb, context.extensionPath, editorManager, tree);
+        await MongoCommands.executeCommandFromActiveEditor(connectedDb, context.extensionPath, editorManager, tree, this);
     });
 }
 

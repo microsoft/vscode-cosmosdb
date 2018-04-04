@@ -11,6 +11,8 @@ import { IAzureTreeItem, UserCancelledError, IAzureNode } from 'vscode-azureexte
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 
+// NOTE: This node not used until viewing/editor stored procedures is implemented
+
 /**
  * This class provides logic for DocumentDB collections
  */

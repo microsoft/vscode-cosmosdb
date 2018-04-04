@@ -6,7 +6,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as keytarType from 'keytar';
-import { MongoClient, ReplSet } from "mongodb";
+import { MongoClient, ReplSet, connect } from "mongodb";
 import { IAzureTreeItem, IAzureNode, IAzureParentTreeItem, UserCancelledError, AzureTreeDataProvider } from 'vscode-azureextensionui';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
@@ -14,6 +14,7 @@ import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { Experience } from '../constants';
 import { fetchNodeModule } from '../utils/vscodeUtils';
+import { getDatabaseNameFromConnectionString } from '../mongo/mongoConnectionStrings';
 
 interface IPersistedAccount {
     id: string,
@@ -217,6 +218,12 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         if (api === Experience.MongoDB) {
             if (id === undefined) {
                 id = await this.getServerIdFromConnectionString(connectionString);
+
+                // Add database to node id if specified in connection string
+                let database = !isEmulator && getDatabaseNameFromConnectionString(connectionString);
+                if (database) {
+                    id = `${id}/${database}`;
+                }
             }
 
             label = label || `${id} (${api})`;

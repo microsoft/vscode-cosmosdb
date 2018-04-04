@@ -49,16 +49,18 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
             node = <IAzureParentNode<MongoDatabaseTreeItem>>await tree.showNodePicker(MongoDatabaseTreeItem.contextValue);
         }
 
-        const oldNode: IAzureNode | undefined = ext.connectedMongoDB;
+        const oldNodeId: string | undefined = ext.connectedMongoDB && ext.connectedMongoDB.id;
         await languageClient.connect(node.treeItem.connectionString, node.treeItem.databaseName);
         context.globalState.update(connectedDBKey, node.id);
         ext.connectedMongoDB = node;
         await node.refresh();
 
-        if (oldNode) {
-            // Refresh the old node's parent, rather than calling `oldNode.refresh()`
-            // Since there's no guarantee that the specific instance of the old node is the one being displayed in the tree at this point in time
-            await tree.refresh(oldNode.parent);
+        if (oldNodeId) {
+            // We have to use findNode to get the instance of the old node that's being displayed in the tree. Our specific instance might have been out-of-date
+            const oldNode: IAzureNode | undefined = await tree.findNode(oldNodeId);
+            if (oldNode) {
+                await oldNode.refresh();
+            }
         }
     });
     actionHandler.registerCommand('cosmosDB.deleteMongoDB', async (node?: IAzureNode<MongoDatabaseTreeItem>) => {

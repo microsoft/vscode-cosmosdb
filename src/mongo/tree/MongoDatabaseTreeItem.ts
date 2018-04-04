@@ -12,6 +12,7 @@ import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, I
 import { DialogBoxResponses } from '../../constants';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoCommand } from '../MongoCommand';
+import { ext } from '../../extensionVariables';
 
 export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public static contextValue: string = "mongoDb";
@@ -20,18 +21,20 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public readonly connectionString: string;
 	public readonly databaseName: string;
 
-	public isConnected: boolean = false;
+	private _parentId: string;
 
-	constructor(databaseName: string, connectionString: string) {
+	constructor(databaseName: string, connectionString: string, parentId: string) {
 		this.databaseName = databaseName;
 		this.connectionString = connectionString;
+		this._parentId = parentId;
 	}
 
 	public get label(): string {
-		if (this.isConnected) {
-			return this.databaseName + " (Connected)";
-		}
 		return this.databaseName;
+	}
+
+	public get description(): string {
+		return ext.connectedMongoDB && ext.connectedMongoDB.id === `${this._parentId}/${this.id}` ? 'Connected' : '';
 	}
 
 	public get id(): string {

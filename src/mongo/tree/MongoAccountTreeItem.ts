@@ -41,7 +41,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
         return false;
     }
 
-    public async loadMoreChildren(_node: IAzureNode, _clearCache: boolean): Promise<IAzureTreeItem[]> {
+    public async loadMoreChildren(node: IAzureNode, _clearCache: boolean): Promise<IAzureTreeItem[]> {
         let db: Db | undefined;
         try {
             let databases: IDatabaseInfo[];
@@ -60,7 +60,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
             }
             return databases
                 .filter((database: IDatabaseInfo) => !(database.name && database.name.toLowerCase() === "admin" && database.empty)) // Filter out the 'admin' database if it's empty
-                .map(database => new MongoDatabaseTreeItem(database.name, this.connectionString));
+                .map(database => new MongoDatabaseTreeItem(database.name, this.connectionString, node.id));
 
         } catch (error) {
             return [{
@@ -75,7 +75,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
         }
     }
 
-    public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
+    public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
         const databaseName = await vscode.window.showInputBox({
             placeHolder: "Database Name",
             prompt: "Enter the name of the database",
@@ -91,7 +91,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
             if (collectionName) {
                 showCreatingNode(databaseName);
 
-                const databaseTreeItem = new MongoDatabaseTreeItem(databaseName, this.connectionString);
+                const databaseTreeItem = new MongoDatabaseTreeItem(databaseName, this.connectionString, node.id);
                 await databaseTreeItem.createCollection(collectionName);
                 return databaseTreeItem;
             }

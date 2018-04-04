@@ -53,9 +53,11 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
         await languageClient.connect(node.treeItem.connectionString, node.treeItem.databaseName);
         context.globalState.update(connectedDBKey, node.id);
         ext.connectedMongoDB = node;
-        await tree.refresh(node.parent);
+        await node.refresh();
 
         if (oldNode) {
+            // Refresh the old node's parent, rather than calling `oldNode.refresh()`
+            // Since there's no guarantee that the specific instance of the old node is the one being displayed in the tree at this point in time
             await tree.refresh(oldNode.parent);
         }
     });

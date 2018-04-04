@@ -93,11 +93,11 @@
 		"grammars": [
 			{
 				"language": "mongo",
-				"scopeName": "source.js",
+				"scopeName": "source.mongo.js",
 				"path": "./grammar/JavaScript.tmLanguage.json"
 			},
 			{
-				"scopeName": "source.js.regexp",
+				"scopeName": "source.mongo.js.regexp",
 				"path": "./grammar/Regular Expressions (JavaScript).tmLanguage"
 			}
 		],

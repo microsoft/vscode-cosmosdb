@@ -10,7 +10,6 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
   - mongo.shell.path setting no longer required if shell is in system path
   - Allow mongo.shell.path to be specified in workspace settings as well as user settings
   - No longer asking for an id for new documents
-  - Multiple arguments (e.g. projections) now work for common commands in the scrapbook
   - Connected database is now persisted between sessions
 
 - Azure subscriptions
@@ -22,7 +21,10 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 
 ### Fixed
 
-- [Bugs fixed](https://github.com/Microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A%220.6.0%22+is%3Aclosed+label%3Abug)
+- [Allow access to multi-tenant mongo server](https://github.com/Microsoft/vscode-cosmosdb/issues/473)
+- [Can only run the first command in a Mongo Scrapbook on Windows](https://github.com/Microsoft/vscode-cosmosdb/issues/386)
+- [Projections Not Working In Mongo Scrapbooks](https://github.com/Microsoft/vscode-cosmosdb/issues/214)
+- [Additional bugs fixed](https://github.com/Microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A%220.6.0%22+is%3Aclosed+label%3Abug)
 
 ## 0.5.1 - 2018-03-23
 

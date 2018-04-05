@@ -6,26 +6,27 @@ import * as cp from 'child_process';
 import * as os from 'os';
 import { IDisposable, toDisposable } from '../utils/vscodeUtils';
 import { EventEmitter, window } from 'vscode';
+import { ext } from '../extensionVariables';
 
 export class Shell {
 
 	private executionId: number = 0;
 	private disposables: IDisposable[] = [];
 
-	private onResult: EventEmitter<{ exitCode, result, stderr }> = new EventEmitter<{ exitCode, result, stderr }>();
+	private onResult: EventEmitter<{ exitCode, result, stderr, code?: string, message?: string }> = new EventEmitter<{ exitCode, result, stderr, code?: string, message?: string }>();
 
 	public static create(execPath: string, connectionString: string): Promise<Shell> {
 		return new Promise((c, e) => {
 			try {
 				const shellProcess = cp.spawn(execPath, ['--quiet', connectionString]);
-				return c(new Shell(shellProcess));
+				return c(new Shell(execPath, shellProcess));
 			} catch (error) {
 				e(`Error while creating mongo shell with path '${execPath}': ${error}`);
 			}
 		});
 	}
 
-	constructor(private mongoShell: cp.ChildProcess) {
+	constructor(private execPath: string, private mongoShell: cp.ChildProcess) {
 		this.initialize();
 	}
 
@@ -98,6 +99,17 @@ export class Shell {
 				5000);
 			const disposable = this.onResult.event(result => {
 				disposable.dispose();
+
+				if (result.code) {
+					let message = result.message || result.code;
+					if (result.code === 'ENOENT') {
+						message = `Could not find Mongo shell. Make sure it is on your path or you have set the '${ext.settingsKeys.mongoShellPath}' VS Code setting to point to the Mongo shell executable file. Attempted path: "${this.execPath}"`;
+					}
+
+					e(message);
+					return;
+				}
+
 				let lines = (<string>result.result).split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');
 				lines = lines[lines.length - 1] === 'Type "it" for more' ? lines.splice(lines.length - 1, 1) : lines;
 				executed = true;

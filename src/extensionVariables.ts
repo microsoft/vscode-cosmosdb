@@ -10,4 +10,8 @@ import { IAzureNode } from "vscode-azureextensionui";
  */
 export namespace ext {
     export let connectedMongoDB: IAzureNode | undefined;
+
+    export namespace settingsKeys {
+        export const mongoShellPath = 'mongo.shell.path';
+    }
 }

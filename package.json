@@ -605,6 +605,10 @@
 				{
 					"command": "cosmosDB.loadMore",
 					"when": "never"
+				},
+				{
+					"command": "cosmosDB.deleteStoredProcedure",
+					"when": "never"
 				}
 			]
 		},

@@ -11,7 +11,7 @@ const localize = nls.loadMessageBundle();
 
 export default class MongoDBLanguageClient {
 
-	private client: LanguageClient;
+	public client: LanguageClient;
 
 	constructor(context: ExtensionContext) {
 		// The server is implemented in node

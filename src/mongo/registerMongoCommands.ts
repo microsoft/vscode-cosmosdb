@@ -22,7 +22,7 @@ const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 export function registerMongoCommands(context: vscode.ExtensionContext, actionHandler: AzureActionHandler, tree: AzureTreeDataProvider, editorManager: CosmosEditorManager): void {
     let languageClient: MongoDBLanguageClient = new MongoDBLanguageClient(context);
 
-    const loadPersistedMongoDBTask: Promise<void> = loadPersistedMongoDB(context, tree);
+    const loadPersistedMongoDBTask: Promise<void> = loadPersistedMongoDB(context, tree, languageClient);
 
     actionHandler.registerCommand('cosmosDB.createMongoDatabase', async (node?: IAzureParentNode) => {
         if (!node) {
@@ -100,7 +100,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
     });
 }
 
-async function loadPersistedMongoDB(context: vscode.ExtensionContext, tree: AzureTreeDataProvider): Promise<void> {
+async function loadPersistedMongoDB(context: vscode.ExtensionContext, tree: AzureTreeDataProvider, languageClient: MongoDBLanguageClient): Promise<void> {
     await callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', reporter, undefined, async function (this: IActionContext): Promise<void> {
         this.suppressErrorDisplay = true;
         this.properties.isActivationEvent = 'true';
@@ -108,6 +108,7 @@ async function loadPersistedMongoDB(context: vscode.ExtensionContext, tree: Azur
         if (persistedNodeId) {
             const persistedNode: IAzureNode | undefined = await tree.findNode(persistedNodeId);
             if (persistedNode) {
+                await languageClient.client.onReady();
                 await vscode.commands.executeCommand('cosmosDB.connectMongoDB', persistedNode);
             }
         }

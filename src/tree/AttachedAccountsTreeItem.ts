@@ -32,12 +32,14 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     public childTypeLabel: string = 'Account';
 
     private readonly _serviceName = "ms-azuretools.vscode-cosmosdb.connectionStrings";
-    private _attachedAccounts: IAzureTreeItem[] = [];
+    private _attachedAccounts: IAzureTreeItem[] | undefined;
     private _keytar: typeof keytarType;
+
+    private _loadPersistedAccountsTask: Promise<IAzureTreeItem[]>;
 
     constructor(private readonly _globalState: vscode.Memento) {
         this._keytar = fetchNodeModule('keytar');
-        this.loadPersistedServers();
+        this._loadPersistedAccountsTask = this.loadPersistedAccounts();
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -52,6 +54,10 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     }
 
     public async loadMoreChildren(_node: IAzureNode, clearCache: boolean): Promise<IAzureTreeItem[]> {
+        if (!this._attachedAccounts) {
+            this._attachedAccounts = await this._loadPersistedAccountsTask;
+        }
+
         return this._attachedAccounts.length > 0 ? this._attachedAccounts : [{
             contextValue: 'cosmosDBAttachDatabaseAccount',
             label: 'Attach Database Account...',
@@ -134,6 +140,10 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     }
 
     private async attachAccount(treeItem: IAzureTreeItem, connectionString: string): Promise<void> {
+        if (!this._attachedAccounts) {
+            this._attachedAccounts = await this._loadPersistedAccountsTask;
+        }
+
         if (this._attachedAccounts.find(s => s.id === treeItem.id)) {
             vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`)
         } else {
@@ -146,6 +156,10 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     }
 
     public async detach(id: string): Promise<void> {
+        if (!this._attachedAccounts) {
+            this._attachedAccounts = await this._loadPersistedAccountsTask;
+        }
+
         const index = this._attachedAccounts.findIndex((account) => account.id === id);
         if (index !== -1) {
             this._attachedAccounts.splice(index, 1);
@@ -180,7 +194,8 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         return `${host}:${port}`;
     }
 
-    private async loadPersistedServers() {
+    private async loadPersistedAccounts(): Promise<IAzureTreeItem[]> {
+        const persistedAccounts: IAzureTreeItem[] = [];
         const value: string | undefined = this._globalState.get(this._serviceName);
         if (value && this._keytar) {
             try {
@@ -204,12 +219,14 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                         label = isEmulator ? `${api} Emulator` : `${id} (${api})`;
                     }
                     const connectionString: string = await this._keytar.getPassword(this._serviceName, id);
-                    this._attachedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
+                    persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
                 }));
             } catch {
                 throw new Error('Failed to load persisted Database Accounts. Reattach the accounts manually.')
             }
         }
+
+        return persistedAccounts;
     }
 
     private async createTreeItem(connectionString: string, api: Experience, label?: string, id?: string, isEmulator?: boolean): Promise<IAzureTreeItem> {

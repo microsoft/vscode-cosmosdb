@@ -628,7 +628,7 @@
 						"string",
 						"null"
 					],
-					"description": "Path to the Mongo shell executable file (not folder), if not in PATH.",
+					"description": "Command to execute to start the Mongo shell",
 					"default": null
 				},
 				"cosmosDB.showExplorer": {

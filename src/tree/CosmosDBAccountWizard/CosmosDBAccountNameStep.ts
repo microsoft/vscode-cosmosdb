@@ -6,6 +6,7 @@
 import CosmosDBManagementClient = require("azure-arm-cosmosdb");
 import { IAzureUserInput, AzureNameStep, ResourceGroupStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
+import { validOnTimeout } from "../../utils/inputValidation";
 
 export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContext> {
     protected async isRelatedNameAvailable(wizardContext: ICosmosDBWizardContext, name: string): Promise<boolean> {
@@ -17,7 +18,7 @@ export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContex
         wizardContext.accountName = (await ui.showInputBox({
             placeHolder: "Account name",
             prompt: "Provide a Cosmos DB account name",
-            validateInput: (name: string) => validateCosmosDBAccountName(name, client)
+            validateInput: (name: string) => validOnTimeout(() => validateCosmosDBAccountName(name, client))
         })).trim();
 
         wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.accountName, resourceGroupNamingRules);
@@ -35,6 +36,7 @@ async function validateCosmosDBAccountName(name: string, client: CosmosDBManagem
 
     const min = 3;
     const max = 31;
+
     if (name.length < min || name.length > max) {
         return `The name must be between ${min} and ${max} characters.`;
     } else if (name.match(/[^a-z0-9-]/)) {

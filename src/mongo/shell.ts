@@ -7,7 +7,6 @@ import * as os from 'os';
 import { IDisposable, toDisposable } from '../utils/vscodeUtils';
 import { EventEmitter, window } from 'vscode';
 import { ext } from '../extensionVariables';
-import { parseError, IParsedError } from 'vscode-azureextensionui';
 
 export class Shell {
 
@@ -101,7 +100,7 @@ export class Shell {
 			const disposable = this.onResult.event(result => {
 				disposable.dispose();
 
-				if (result.code) {
+				if (result && result.code) {
 					if (result.code === 'ENOENT') {
 						result.message = `Could not find Mongo shell. Make sure it is on your path or you have set the '${ext.settingsKeys.mongoShellPath}' VS Code setting to point to the Mongo shell executable file. Attempted command: "${this.execPath}"`;
 					}

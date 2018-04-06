@@ -2,7 +2,7 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
-## 0.6.0 - 2018-04-05
+## 0.6.0 - 2018-04-09
 
 ### Added
 

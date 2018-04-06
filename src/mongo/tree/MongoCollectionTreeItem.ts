@@ -165,9 +165,9 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			throw new Error("Too many arguments")
 		}
 		let result;
-		if (args.length === 1) {
+		if (args && args.length === 1) {
 			result = await this.collection.findOne(args[0]);
-		} else if (args.length === 2) {
+		} else if (args && args.length === 2) {
 			result = await this.collection.findOne(args[0], { fields: args[1] });
 		} else {
 			result = await this.collection.findOne({});

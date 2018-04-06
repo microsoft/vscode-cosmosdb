@@ -106,13 +106,13 @@ export class Shell {
 					}
 
 					e(result);
-					return;
+				} else {
+					let lines = (<string>result.result).split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');
+					lines = lines[lines.length - 1] === 'Type "it" for more' ? lines.splice(lines.length - 1, 1) : lines;
+					executed = true;
+					c(lines.join(os.EOL));
 				}
 
-				let lines = (<string>result.result).split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');
-				lines = lines[lines.length - 1] === 'Type "it" for more' ? lines.splice(lines.length - 1, 1) : lines;
-				executed = true;
-				c(lines.join(os.EOL));
 				if (handler) {
 					clearTimeout(handler);
 				}

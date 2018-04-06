@@ -12,22 +12,17 @@ export async function valueOnTimeout<T>(timeoutMs: number, timeoutValue: T, acti
 }
 
 export function throwOnTimeout<T>(timeoutMs: number, action: () => Promise<T>) {
-    let hasTimedOut = false;
-    let hasValue = false;
-
     return new Promise<T>(async (resolve, reject) => {
-        setTimeout(
+        let timer: NodeJS.Timer = setTimeout(
             () => {
-                if (!hasValue) {
-                    hasTimedOut = true;
-                    reject("Execution timed out");
-                }
+                timer = null;
+                reject("Execution timed out");
             },
             timeoutMs);
 
         let value = await action();
-        if (!hasTimedOut) {
-            hasValue = true;
+        if (timer) {
+            clearTimeout(timer);
             resolve(value);
         }
     });

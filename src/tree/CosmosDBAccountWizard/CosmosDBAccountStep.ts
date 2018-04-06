@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import CosmosDBManagementClient = require("azure-arm-cosmosdb");
+import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { Capability } from 'azure-arm-cosmosdb/lib/models';
 import { AzureWizardStep } from 'vscode-azureextensionui';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';

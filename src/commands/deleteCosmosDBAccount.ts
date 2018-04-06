@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import CosmosDBManagementClient = require("azure-arm-cosmosdb");
+import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { IAzureNode } from 'vscode-azureextensionui';
 import { DialogBoxResponses } from '../constants';
 import { azureUtils } from '../utils/azureUtils';

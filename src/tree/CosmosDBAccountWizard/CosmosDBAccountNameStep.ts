@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import CosmosDBManagementClient = require("azure-arm-cosmosdb");
+import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { IAzureUserInput, AzureNameStep, ResourceGroupStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 import { validOnTimeoutOrException } from "../../utils/inputValidation";

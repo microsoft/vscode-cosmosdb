@@ -9,7 +9,7 @@ import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import CosmosDBManagementClient = require("azure-arm-cosmosdb");
+import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccountsListResult, DatabaseAccount, DatabaseAccountListKeysResult } from 'azure-arm-cosmosdb/lib/models';
 import { Experience } from '../constants';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';

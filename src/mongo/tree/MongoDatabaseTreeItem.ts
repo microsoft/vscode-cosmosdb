@@ -128,7 +128,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	}
 
 	private async getShell(): Promise<Shell> {
-		const settingKey: string = 'mongo.shell.path';
+		const settingKey: string = ext.settingsKeys.mongoShellPath;
 		let shellPath: string | undefined = vscode.workspace.getConfiguration().get(settingKey)
 		if (!shellPath) {
 			if (await cpUtils.commandSucceeds('mongo', '--version')) {

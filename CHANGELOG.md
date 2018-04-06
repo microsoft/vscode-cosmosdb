@@ -2,7 +2,7 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
-## 0.6.0 - 2018-04-05
+## 0.6.0 - 2018-04-09
 
 ### Added
 
@@ -11,6 +11,7 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
   - Allow mongo.shell.path to be specified in workspace settings as well as user settings
   - No longer asking for an id for new documents
   - Connected database is now persisted between sessions
+  - Improvements to scrapbook setup and error handling
 
 - Azure subscriptions
   - New "filter" button on subscription nodes

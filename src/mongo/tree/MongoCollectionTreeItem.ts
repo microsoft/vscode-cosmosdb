@@ -161,16 +161,15 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 	//tslint:disable:no-any
 	private async findOne(args?: any[]): Promise<string> {
-		if (args && args.length > 2) {
-			throw new Error("Too many arguments")
-		}
 		let result;
-		if (args && args.length === 1) {
+		if (!args || args.length === 0) {
+			result = await this.collection.findOne({});
+		} else if (args.length === 1) {
 			result = await this.collection.findOne(args[0]);
-		} else if (args && args.length === 2) {
+		} else if (args.length === 2) {
 			result = await this.collection.findOne(args[0], { fields: args[1] });
 		} else {
-			result = await this.collection.findOne({});
+			return Promise.reject(new Error("Too many arguments"));
 		}
 		return this.stringify(result);
 	}
@@ -193,8 +192,12 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	private insertMany(args: any[]): Thenable<string> {
 		// documents = args[0], collectionWriteOptions from args[1]
 		let insertManyOptions: CollectionInsertManyOptions = {};
+		const docsLink: string = "Please see mongo shell documentation. https://docs.mongodb.com/manual/reference/method/db.collection.insertMany/#db.collection.insertMany";
+		if (!args || args.length === 0) {
+			return Promise.reject(new Error("Too few arguments " + docsLink));
+		}
 		if (args.length > 2) {
-			throw new Error("Too many arguments. Please see mongo shell documentation. https://docs.mongodb.com/manual/reference/method/db.collection.insertMany/#db.collection.insertMany");
+			return Promise.reject(new Error("Too many arguments " + docsLink));
 		} else if (args.length === 2) {
 			if (args[1] && args[1].ordered) {
 				insertManyOptions["ordered"] = args[1].ordered;

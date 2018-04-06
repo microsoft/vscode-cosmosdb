@@ -6,7 +6,7 @@
 import CosmosDBManagementClient = require("azure-arm-cosmosdb");
 import { IAzureUserInput, AzureNameStep, ResourceGroupStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
-import { validOnTimeout } from "../../utils/inputValidation";
+import { validOnTimeoutOrException } from "../../utils/inputValidation";
 
 export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContext> {
     protected async isRelatedNameAvailable(wizardContext: ICosmosDBWizardContext, name: string): Promise<boolean> {
@@ -18,7 +18,7 @@ export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContex
         wizardContext.accountName = (await ui.showInputBox({
             placeHolder: "Account name",
             prompt: "Provide a Cosmos DB account name",
-            validateInput: (name: string) => validOnTimeout(() => validateCosmosDBAccountName(name, client))
+            validateInput: (name: string) => validOnTimeoutOrException(() => validateCosmosDBAccountName(name, client))
         })).trim();
 
         wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.accountName, resourceGroupNamingRules);

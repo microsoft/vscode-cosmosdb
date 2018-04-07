@@ -27,6 +27,7 @@ import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase'
 import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
+import { MongoCodeLensProvider } from './mongo/services/MongoCodeLensProvider';
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(new Reporter(context));
@@ -37,6 +38,9 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(tree);
 	context.subscriptions.push(vscode.window.registerTreeDataProvider('cosmosDBExplorer', tree));
 
+	const codeLensProvider = new MongoCodeLensProvider();
+	context.subscriptions.push(vscode.languages.registerCodeLensProvider('mongo', codeLensProvider));
+
 	const editorManager: CosmosEditorManager = new CosmosEditorManager(context.globalState);
 
 	context.subscriptions.push(vscodeUtil.getOutputChannel());
@@ -45,7 +49,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	registerDocDBCommands(actionHandler, tree);
 	registerGraphCommands(context, actionHandler, tree);
-	registerMongoCommands(context, actionHandler, tree, editorManager);
+	registerMongoCommands(context, actionHandler, tree, editorManager, codeLensProvider);
 
 	// Common commands
 	const accountContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];

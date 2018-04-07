@@ -35,8 +35,10 @@
 	},
 	"main": "./out/src/extension",
 	"activationEvents": [
+		"onLanguage:mongo",
 		"onView:cosmosDBExplorer",
 		"onCommand:cosmosDB.executeMongoCommand",
+		"onCommand:cosmosDB.executeAllMongoCommands",
 		"onCommand:cosmosDB.attachDatabaseAccount",
 		"onCommand:cosmosDB.attachEmulator",
 		"onCommand:cosmosDB.createAccount",
@@ -113,7 +115,12 @@
 			{
 				"category": "MongoDB",
 				"command": "cosmosDB.executeMongoCommand",
-				"title": "Execute Command"
+				"title": "Execute Mongo Command"
+			},
+			{
+				"category": "MongoDB",
+				"command": "cosmosDB.executeAllMongoCommands",
+				"title": "Execute All Mongo Commands"
 			},
 			{
 				"category": "MongoDB",
@@ -305,6 +312,10 @@
 			"editor/context": [
 				{
 					"command": "cosmosDB.executeMongoCommand",
+					"when": "resourceLangId==mongo"
+				},
+				{
+					"command": "cosmosDB.executeAllMongoCommands",
 					"when": "resourceLangId==mongo"
 				},
 				{

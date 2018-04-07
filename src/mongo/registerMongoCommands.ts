@@ -10,19 +10,20 @@ import { MongoDatabaseTreeItem } from "./tree/MongoDatabaseTreeItem";
 import { MongoAccountTreeItem } from "./tree/MongoAccountTreeItem";
 import MongoDBLanguageClient from "./languageClient";
 import * as vscodeUtil from '../utils/vscodeUtils';
-import { MongoCommands } from "./commands";
+import { MongoCommands } from "./MongoCommands";
 import { MongoDocumentTreeItem } from "./tree/MongoDocumentTreeItem";
 import { MongoCollectionNodeEditor } from "./editors/MongoCollectionNodeEditor";
 import { CosmosEditorManager } from "../CosmosEditorManager";
-import { ext } from "../extensionVariables";
 import { reporter } from "../utils/telemetry";
+import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
+import { ext } from "../extensionVariables";
 
 const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 
-export function registerMongoCommands(context: vscode.ExtensionContext, actionHandler: AzureActionHandler, tree: AzureTreeDataProvider, editorManager: CosmosEditorManager): void {
+export function registerMongoCommands(context: vscode.ExtensionContext, actionHandler: AzureActionHandler, tree: AzureTreeDataProvider, editorManager: CosmosEditorManager, codeLensProvider: MongoCodeLensProvider): void {
     let languageClient: MongoDBLanguageClient = new MongoDBLanguageClient(context);
 
-    const loadPersistedMongoDBTask: Promise<void> = loadPersistedMongoDB(context, tree, languageClient);
+    const loadPersistedMongoDBTask: Promise<void> = loadPersistedMongoDB(context, tree, languageClient, codeLensProvider);
 
     actionHandler.registerCommand('cosmosDB.createMongoDatabase', async (node?: IAzureParentNode) => {
         if (!node) {
@@ -52,7 +53,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
         const oldNodeId: string | undefined = ext.connectedMongoDB && ext.connectedMongoDB.id;
         await languageClient.connect(node.treeItem.connectionString, node.treeItem.databaseName);
         context.globalState.update(connectedDBKey, node.id);
-        ext.connectedMongoDB = node;
+        setConnectedNode(node, codeLensProvider);
         await node.refresh();
 
         if (oldNodeId) {
@@ -69,7 +70,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
         }
         await node.deleteNode();
         if (ext.connectedMongoDB && ext.connectedMongoDB.id === node.id) {
-            ext.connectedMongoDB = undefined;
+            setConnectedNode(undefined, codeLensProvider);
             context.globalState.update(connectedDBKey, undefined);
             languageClient.disconnect();
         }
@@ -94,29 +95,49 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
     });
     actionHandler.registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
     actionHandler.registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
-    actionHandler.registerCommand('cosmosDB.executeMongoCommand', async function (this: IActionContext) {
+    actionHandler.registerCommand('cosmosDB.executeMongoCommand', async function (this: IActionContext, commandText: object) {
         await loadPersistedMongoDBTask;
-        await MongoCommands.executeCommandFromActiveEditor(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this);
+        if (typeof commandText === "string") {
+            await MongoCommands.executeCommandFromText(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this, <string>commandText);
+        } else {
+            await MongoCommands.executeCommandFromActiveEditor(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this);
+        }
+    });
+    actionHandler.registerCommand('cosmosDB.executeAllMongoCommands', async function (this: IActionContext) {
+        await loadPersistedMongoDBTask;
+        await MongoCommands.executeAllCommandsFromActiveEditor(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this);
     });
 }
 
-async function loadPersistedMongoDB(context: vscode.ExtensionContext, tree: AzureTreeDataProvider, languageClient: MongoDBLanguageClient): Promise<void> {
+async function loadPersistedMongoDB(context: vscode.ExtensionContext, tree: AzureTreeDataProvider, languageClient: MongoDBLanguageClient, codeLensProvider: MongoCodeLensProvider): Promise<void> {
+    let persistedNode: IAzureNode | undefined;
+
     await callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', reporter, undefined, async function (this: IActionContext): Promise<void> {
         this.suppressErrorDisplay = true;
         this.properties.isActivationEvent = 'true';
         const persistedNodeId: string | undefined = context.globalState.get(connectedDBKey);
         if (persistedNodeId) {
-            const persistedNode: IAzureNode | undefined = await tree.findNode(persistedNodeId);
-            if (persistedNode) {
-                await languageClient.client.onReady();
-                await vscode.commands.executeCommand('cosmosDB.connectMongoDB', persistedNode);
-            }
+            persistedNode = await tree.findNode(persistedNodeId);
         }
     });
+
+    if (persistedNode) {
+        await languageClient.client.onReady();
+        await vscode.commands.executeCommand('cosmosDB.connectMongoDB', persistedNode);
+    } else {
+        // Let code lens provider know we've initialized and there's no connected database
+        codeLensProvider.setConnectedDatabase(undefined);
+    }
 }
 
 function launchMongoShell() {
     const terminal: vscode.Terminal = vscode.window.createTerminal('Mongo Shell');
     terminal.sendText(`mongo`);
     terminal.show();
+}
+
+function setConnectedNode(node: IAzureNode | undefined, codeLensProvider: MongoCodeLensProvider) {
+    ext.connectedMongoDB = node;
+    let dbName = node && node.treeItem.label;
+    codeLensProvider.setConnectedDatabase(dbName);
 }

@@ -3,14 +3,21 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+const timedOutMessage = "Execution timed out";
+
 /**
  * Returns the result of awaiting a specified action. Rejects if the action throws. Returns timeoutValue if a time-out occurs.
  */
 export async function valueOnTimeout<T>(timeoutMs: number, timeoutValue: T, action: () => Promise<T> | T) {
     try {
         return await rejectOnTimeout(timeoutMs, action);
-    } catch (error) {
-        return timeoutValue;
+    } catch (err) {
+        let error = <{ message?: string }>err;
+        if (error && error.message === timedOutMessage) {
+            return timeoutValue;
+        }
+
+        throw err;
     }
 }
 
@@ -22,20 +29,27 @@ export async function rejectOnTimeout<T>(timeoutMs: number, action: () => Promis
         let timer: NodeJS.Timer = setTimeout(
             () => {
                 timer = null;
-                reject(new Error("Execution timed out"));
+                reject(new Error(timedOutMessage));
             },
             timeoutMs);
 
         let value: T;
+        let error;
+
         try {
             value = await action();
-        } catch (error) {
-            reject(error);
+        } catch (err) {
+            error = err;
         }
 
         if (timer) {
             clearTimeout(timer);
-            resolve(value);
+
+            if (error) {
+                reject(error);
+            } else {
+                resolve(value);
+            }
         }
     });
 }

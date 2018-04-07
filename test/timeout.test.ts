@@ -33,13 +33,15 @@ suite("timeout Tests", () => {
             assert.equal(executed, true);
         });
 
-        test("executes before time-out", async () => {
+        test("executes asynchnously before time-out", async () => {
             let executed = false;
 
-            await rejectOnTimeout(1, () => {
+            await rejectOnTimeout(1000, () => {
                 return new Promise((resolve, reject) => {
-                    executed = true;
-                    resolve();
+                    setTimeout(() => {
+                        executed = true;
+                        resolve();
+                    }, 1);
                 });
             })
             assert.equal(executed, true);
@@ -106,6 +108,20 @@ suite("timeout Tests", () => {
             assert.equal(value, 123);
         });
 
+        test("reject", async () => {
+            let error;
+            try {
+                await valueOnTimeout(1000, 123, async () => {
+                    return await new Promise<number>((resolve, reject) => {
+                        setTimeout(() => { reject(new Error("rejected")); }, 1);
+                    });
+                });
+            } catch (err) {
+                error = err;
+            }
+
+            assert.equal(error && error.message, "rejected");
+        });
     });
 
 });

@@ -36,7 +36,7 @@ suite("inputValidation Tests", () => {
         test("exception", async () => {
             let value = await validOnTimeoutOrException(async () => {
                 return await new Promise<string | undefined>((resolve, reject) => {
-                    setTimeout(() => { reject("Oh, boy"); }, 1);
+                    setTimeout(() => { reject(new Error("Oh, boy")); }, 1);
                 });
             });
 

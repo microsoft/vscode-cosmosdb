@@ -11,10 +11,10 @@ const inputValidationTimeoutMs = 2000;
  * Intended to be used for VS Code validateInput to protect against long-running validations. If a time-out occurs or the action throws,
  * returns undefined (indicating a valid input). Use for optional validations.
  */
-export function validOnTimeoutOrException(inputValidation: () => Promise<string | undefined>, timeoutMs?: number): Promise<string | undefined> {
+export async function validOnTimeoutOrException(inputValidation: () => Promise<string | undefined>, timeoutMs?: number): Promise<string | undefined> {
     try {
         timeoutMs = timeoutMs || inputValidationTimeoutMs;
-        return valueOnTimeout(timeoutMs, undefined, inputValidation);
+        return await valueOnTimeout(timeoutMs, undefined, inputValidation);
     } catch (error) {
         return undefined;
     }

@@ -74,7 +74,7 @@ export default class SchemaService {
 	private _resolveQueryCollectionSchema(collectionName: string, schemaUri: string): Thenable<string> {
 		const collection = this._db.collection(collectionName)
 		const cursor = collection.find();
-		return new Promise((c, e) => {
+		return new Promise((resolve, _reject) => {
 			this.readNext([], cursor, 10, (result) => {
 				const schema: JSONSchema = {
 					type: 'object',
@@ -85,7 +85,7 @@ export default class SchemaService {
 				}
 				this.setGlobalOperatorProperties(schema);
 				this.setLogicalOperatorProperties(schema, schemaUri);
-				c(JSON.stringify(schema));
+				resolve(JSON.stringify(schema));
 			});
 		})
 	}
@@ -93,13 +93,13 @@ export default class SchemaService {
 	private _resolveAggregateCollectionSchema(collectionName: string): Thenable<string> {
 		const collection = this._db.collection(collectionName)
 		const cursor = collection.find();
-		return new Promise((c, e) => {
-			this.readNext([], cursor, 10, (result) => {
+		return new Promise((resolve, _reject) => {
+			this.readNext([], cursor, 10, (_result) => {
 				const schema: JSONSchema = {
 					type: 'array',
 					items: this.getAggregateStagePropertiesSchema(this.queryCollectionSchema(collectionName)),
 				}
-				c(JSON.stringify(schema));
+				resolve(JSON.stringify(schema));
 			});
 		})
 	}

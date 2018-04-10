@@ -48,10 +48,6 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 		var result = this.defaultResult(ctx);
 		var n = ctx.childCount
 		for (var i = 0; i < n; i++) {
-			if (!this.shouldVisitNextChild(ctx, result)) {
-				break;
-			}
-
 			var childNode = ctx.getChild(i);
 			var childResult = childNode.accept(this);
 			result = this.aggregateResult(result, childResult);
@@ -67,15 +63,11 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 		throw new Error(`Error near line ${node._symbol.line}, column ${node.symbol.charPositionInLine + 1}, text '${node.text}'. Please check syntax.`);
 	}
 
-	protected defaultResult(node: ParseTree): T {
+	protected defaultResult(_node: ParseTree): T {
 		return null;
 	}
 
 	protected aggregateResult(aggregate: T, nextResult: T): T {
 		return nextResult === null ? aggregate : nextResult;
-	}
-
-	shouldVisitNextChild(node, currentResult: T): boolean {
-		return true;
 	}
 }

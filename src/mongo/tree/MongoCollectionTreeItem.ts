@@ -251,7 +251,7 @@ function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
 			location: vscode.ProgressLocation.Window,
 			title
 		},
-		(progress) => {
+		(_progress) => {
 			return promise;
 		})
 }

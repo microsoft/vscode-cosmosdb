@@ -79,7 +79,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		let collectionName = this.getCollectionName(ctx);
 		if (collectionName && functionName) {
 			if (['find', 'findOne', 'findOneAndDelete', 'findOneAndUpdate', 'findOneAndReplace', 'deleteOne', 'deleteMany', 'remove'].indexOf(functionName) !== -1) {
-				return this.getArgumentCompletionItems(this.schemaService.queryDocumentUri(collectionName), collectionName, ctx);
+				return this.getArgumentCompletionItems(this.schemaService.queryDocumentUri(collectionName), ctx);
 			}
 		}
 		return ctx.parent.accept(this);
@@ -90,13 +90,13 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		let collectionName = this.getCollectionName(ctx);
 		if (collectionName && functionName) {
 			if (['aggregate'].indexOf(functionName) !== -1) {
-				return this.getArgumentCompletionItems(this.schemaService.aggregateDocumentUri(collectionName), collectionName, ctx);
+				return this.getArgumentCompletionItems(this.schemaService.aggregateDocumentUri(collectionName), ctx);
 			}
 		}
 		return ctx.parent.accept(this);
 	}
 
-	private getArgumentCompletionItems(documentUri: string, collectionName: string, ctx: ParserRuleContext): Thenable<CompletionItem[]> {
+	private getArgumentCompletionItems(documentUri: string, ctx: ParserRuleContext): Thenable<CompletionItem[]> {
 		const text = this.textDocument.getText();
 		const document = TextDocument.create(documentUri, 'json', 1, text.substring(ctx.start.startIndex, ctx.stop.stopIndex + 1));
 		const positionOffset = this.textDocument.offsetAt(this.at);

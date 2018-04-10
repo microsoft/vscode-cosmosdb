@@ -123,7 +123,7 @@ export class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		return super.visitArgumentList(ctx);
 	}
 
-	protected defaultResult(node: ParseTree): MongoCommand[] {
+	protected defaultResult(_node: ParseTree): MongoCommand[] {
 		return this.commands;
 	}
 }

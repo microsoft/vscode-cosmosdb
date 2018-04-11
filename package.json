@@ -115,12 +115,12 @@
 			{
 				"category": "MongoDB",
 				"command": "cosmosDB.executeMongoCommand",
-				"title": "Execute Mongo Command"
+				"title": "Execute MongoDB Command"
 			},
 			{
 				"category": "MongoDB",
 				"command": "cosmosDB.executeAllMongoCommands",
-				"title": "Execute All Mongo Commands"
+				"title": "Execute All MongoDB Commands"
 			},
 			{
 				"category": "MongoDB",

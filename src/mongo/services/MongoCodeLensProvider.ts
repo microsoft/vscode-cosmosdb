@@ -42,7 +42,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 			// Run all
 			lenses.push(<vscode.CodeLens>{
 				command: {
-					title: "Run All",
+					title: "Execute All",
 					command: 'cosmosDB.executeAllMongoCommands'
 				},
 				range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0))
@@ -53,7 +53,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 				// run individual
 				lenses.push(<vscode.CodeLens>{
 					command: {
-						title: "Run",
+						title: "Execute",
 						command: 'cosmosDB.executeMongoCommand',
 						arguments: [cmd.text]
 					},

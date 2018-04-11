@@ -113,22 +113,21 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
 }
 
 async function loadPersistedMongoDB(context: vscode.ExtensionContext, tree: AzureTreeDataProvider, languageClient: MongoDBLanguageClient, codeLensProvider: MongoCodeLensProvider): Promise<void> {
-    let persistedNode: IAzureNode | undefined;
-
     await callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', reporter, undefined, async function (this: IActionContext): Promise<void> {
         this.suppressErrorDisplay = true;
         this.properties.isActivationEvent = 'true';
         const persistedNodeId: string | undefined = context.globalState.get(connectedDBKey);
         if (persistedNodeId) {
-            persistedNode = await tree.findNode(persistedNodeId);
+            const persistedNode = await tree.findNode(persistedNodeId);
+            if (persistedNode) {
+                await languageClient.client.onReady();
+                await vscode.commands.executeCommand('cosmosDB.connectMongoDB', persistedNode);
+            }
         }
     });
 
-    if (persistedNode) {
-        await languageClient.client.onReady();
-        await vscode.commands.executeCommand('cosmosDB.connectMongoDB', persistedNode);
-    } else {
-        // Let code lens provider know we've initialized and there's no connected database
+    // Get code lens provider out of initializing state if there's no connected DB
+    if (!ext.connectedMongoDB) {
         codeLensProvider.setConnectedDatabase(undefined);
     }
 }

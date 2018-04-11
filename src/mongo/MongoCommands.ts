@@ -24,7 +24,6 @@ const notInScrapbookMessage = "This command can only be run inside of a MongoDB 
 export class MongoCommands {
 
 	public static async executeAllCommandsFromActiveEditor(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext): Promise<void> {
-		output.show();
 		output.appendLine("Running all commands in scrapbook...")
 		let commands = MongoCommands.getAllCommandsFromActiveEditor();
 		await MongoCommands.executeCommands(vscode.window.activeTextEditor, database, extensionPath, editorManager, tree, context, commands);
@@ -35,13 +34,13 @@ export class MongoCommands {
 		const activeEditor = vscode.window.activeTextEditor;
 		const selection = activeEditor.selection;
 		const command = MongoCommands.findCommandAtPosition(commands, selection.start);
-		return this.executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
+		return await this.executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
 	}
 
 	public static async executeCommandFromText(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext, commandText: string): Promise<void> {
 		const activeEditor = vscode.window.activeTextEditor;
 		const command = MongoCommands.getCommandFromText(commandText, new vscode.Position(0, 0));
-		return this.executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
+		return await this.executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
 	}
 
 	public static getAllCommandsFromActiveEditor(): MongoCommand[] {
@@ -70,7 +69,6 @@ export class MongoCommands {
 
 	public static async executeCommand(activeEditor: vscode.TextEditor, database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext, command: MongoCommand): Promise<void> {
 		if (command) {
-			output.show();
 			output.appendLine(command.text);
 
 			try {

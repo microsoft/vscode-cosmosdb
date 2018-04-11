@@ -48,6 +48,10 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 		var result = this.defaultResult(ctx);
 		var n = ctx.childCount
 		for (var i = 0; i < n; i++) {
+			if (!this.shouldVisitNextChild(ctx, result)) {
+				break;
+			}
+
 			var childNode = ctx.getChild(i);
 			var childResult = childNode.accept(this);
 			result = this.aggregateResult(result, childResult);
@@ -69,5 +73,9 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 
 	protected aggregateResult(aggregate: T, nextResult: T): T {
 		return nextResult === null ? aggregate : nextResult;
+	}
+
+	shouldVisitNextChild(_node, _currentResult: T): boolean {
+		return true;
 	}
 }

@@ -113,6 +113,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
 }
 
 async function loadPersistedMongoDB(context: vscode.ExtensionContext, tree: AzureTreeDataProvider, languageClient: MongoDBLanguageClient, codeLensProvider: MongoCodeLensProvider): Promise<void> {
+    // NOTE: We want to make sure this function never throws or returns a rejected promise because it gets awaited multiple times
     await callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', reporter, undefined, async function (this: IActionContext): Promise<void> {
         this.suppressErrorDisplay = true;
         this.properties.isActivationEvent = 'true';

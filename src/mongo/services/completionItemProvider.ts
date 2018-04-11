@@ -96,7 +96,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		return ctx.parent.accept(this);
 	}
 
-	private getArgumentCompletionItems(documentUri: string, collectionName: string, ctx: ParserRuleContext): Thenable<CompletionItem[]> {
+	private getArgumentCompletionItems(documentUri: string, _collectionName: string, ctx: ParserRuleContext): Thenable<CompletionItem[]> {
 		const text = this.textDocument.getText();
 		const document = TextDocument.create(documentUri, 'json', 1, text.substring(ctx.start.startIndex, ctx.stop.stopIndex + 1));
 		const positionOffset = this.textDocument.offsetAt(this.at);

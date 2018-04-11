@@ -27,7 +27,7 @@ export function toDisposable(dispose: () => void): IDisposable {
 }
 
 export async function showNewFile(data: string, extensionPath: string, fileName: string, fileExtension: string, column?: vscode.ViewColumn): Promise<void> {
-    let uri: vscode.Uri = null;
+    let uri: vscode.Uri;
     const folderPath: string = vscode.workspace.rootPath || extensionPath;
     const fullFileName: string | undefined = await getUniqueFileName(folderPath, fileName, fileExtension);
     uri = vscode.Uri.file(path.join(folderPath, fullFileName)).with({ scheme: 'untitled' });

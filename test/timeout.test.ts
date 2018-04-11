@@ -11,7 +11,7 @@ suite("timeout Tests", () => {
     suite("rejectOnTimeout", () => {
 
         test("executes synchronously", async () => {
-            let executed: boolean;
+            let executed: boolean = false;
 
             await rejectOnTimeout(1, () => {
                 executed = true;
@@ -69,7 +69,7 @@ suite("timeout Tests", () => {
 
         test("throws before time-out", async () => {
             let executed = false;
-            let error: Error;
+            let error: Error = new Error("I haven't thrown up yet");;
 
             try {
                 await rejectOnTimeout(1000, async () => {

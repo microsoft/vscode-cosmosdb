@@ -20,8 +20,11 @@ import { ext } from "../extensionVariables";
 
 const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 
-export function registerMongoCommands(context: vscode.ExtensionContext, actionHandler: AzureActionHandler, tree: AzureTreeDataProvider, editorManager: CosmosEditorManager, codeLensProvider: MongoCodeLensProvider): void {
+export function registerMongoCommands(context: vscode.ExtensionContext, actionHandler: AzureActionHandler, tree: AzureTreeDataProvider, editorManager: CosmosEditorManager): void {
     let languageClient: MongoDBLanguageClient = new MongoDBLanguageClient(context);
+
+    const codeLensProvider = new MongoCodeLensProvider();
+    context.subscriptions.push(vscode.languages.registerCodeLensProvider('mongo', codeLensProvider));
 
     const loadPersistedMongoDBTask: Promise<void> = loadPersistedMongoDB(context, tree, languageClient, codeLensProvider);
 

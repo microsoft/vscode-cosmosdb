@@ -27,7 +27,7 @@ export class MongoCommands {
 		output.show();
 		output.appendLine("Running all commands in scrapbook...")
 		let commands = MongoCommands.getAllCommandsFromActiveEditor();
-		await MongoCommands.executeCommands(commands, vscode.window.activeTextEditor, database, extensionPath, editorManager, tree, context);
+		await MongoCommands.executeCommands(vscode.window.activeTextEditor, database, extensionPath, editorManager, tree, context, commands);
 	}
 
 	public static async executeCommandFromActiveEditor(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext): Promise<void> {
@@ -62,7 +62,7 @@ export class MongoCommands {
 		return MongoCommands.getAllCommands(document.getText());
 	}
 
-	public static async executeCommands(commands: MongoCommand[], activeEditor: vscode.TextEditor, database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext): Promise<void> {
+	public static async executeCommands(activeEditor: vscode.TextEditor, database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext, commands: MongoCommand[]): Promise<void> {
 		for (let command of commands) {
 			await this.executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
 		}

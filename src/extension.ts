@@ -115,7 +115,7 @@ export function activate(context: vscode.ExtensionContext) {
 	actionHandler.registerCommand('cosmosDB.update', (filePath: vscode.Uri) => editorManager.updateMatchingNode(filePath, tree));
 	actionHandler.registerCommand('cosmosDB.loadMore', (node?: IAzureNode) => tree.loadMore(node));
 	actionHandler.registerEvent('cosmosDB.CosmosEditorManager.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument, async function
-		(this: IActionContext, doc: vscode.TextDocument): Promise<void> { await editorManager.onDidSaveTextDocument(this, context.globalState, doc, tree) });
+		(this: IActionContext, doc: vscode.TextDocument): Promise<void> { await editorManager.onDidSaveTextDocument(this, doc, tree) });
 }
 
 async function getAttachedNode(tree: AzureTreeDataProvider): Promise<IAzureParentNode<AttachedAccountsTreeItem>> {

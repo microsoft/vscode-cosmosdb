@@ -92,7 +92,7 @@ export class GraphViewServer extends EventEmitter {
     }
 
     // how know resolve/reject?
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
       this._httpServer = http.createServer()
       this._httpServer.listen(
         0, // dynamnically pick an unused port
@@ -109,7 +109,7 @@ export class GraphViewServer extends EventEmitter {
         this.setUpSocket();
       });
 
-      this._server.on('error', socket => {
+      this._server.on('error', _socket => {
         console.error("Error from server");
       });
     });
@@ -468,7 +468,7 @@ export class GraphViewServer extends EventEmitter {
   }
 
   // tslint:disable-next-line:no-any
-  private log(message, ...args: any[]) {
+  private log(_message, ..._args: any[]) {
     // console.log(message, ...args);
   }
 }

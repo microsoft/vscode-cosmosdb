@@ -12,7 +12,9 @@
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
-			"outFiles": ["${workspaceRoot}/out/src/**/*.js"],
+			"outFiles": [
+				"${workspaceRoot}/out/src/**/*.js"
+			],
 			"preLaunchTask": "npm"
 		},
 		{
@@ -26,14 +28,16 @@
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
-			"outFiles": ["${workspaceRoot}/out/test"],
+			"outFiles": [
+				"${workspaceRoot}/out/test"
+			],
 			"preLaunchTask": "npm"
 		},
 		{
 			"type": "node",
 			"request": "attach",
-			"name": "Attach to Server",
-			"protocol": "legacy",
+			"name": "Attach to Language Server",
+			"protocol": "inspector",
 			"port": 6005,
 			"sourceMaps": true,
 			"outFiles": [
@@ -44,11 +48,13 @@
 			"type": "node",
 			"request": "attach",
 			"name": "Attach to Extension Host",
-			"protocol": "legacy",
+			"protocol": "inspector",
 			"port": 5870,
 			"sourceMaps": true,
 			"restart": true,
-			"outFiles": ["${workspaceRoot}/out/src"]
+			"outFiles": [
+				"${workspaceRoot}/out/src"
+			]
 		}
 	]
 }

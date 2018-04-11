@@ -13,7 +13,7 @@ suite("inputValidation Tests", () => {
 
         test("executed", async () => {
             let value = await validOnTimeoutOrException(async () => {
-                return await new Promise<string | undefined>((resolve, reject) => {
+                return await new Promise<string | undefined>((resolve, _reject) => {
                     setTimeout(() => { resolve("invalid input"); }, 1);
                 });
             });
@@ -24,7 +24,7 @@ suite("inputValidation Tests", () => {
         test("timed out",
             async () => {
                 let value = await validOnTimeoutOrException(async () => {
-                    return await new Promise<string | undefined>((resolve, reject) => {
+                    return await new Promise<string | undefined>((resolve, _reject) => {
                         setTimeout(() => { resolve("invalid input"); }, 1000);
                     });
                 },
@@ -35,7 +35,7 @@ suite("inputValidation Tests", () => {
 
         test("exception", async () => {
             let value = await validOnTimeoutOrException(async () => {
-                return await new Promise<string | undefined>((resolve, reject) => {
+                return await new Promise<string | undefined>((_resolve, reject) => {
                     setTimeout(() => { reject(new Error("Oh, boy")); }, 1);
                 });
             });

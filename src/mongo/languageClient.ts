@@ -17,7 +17,7 @@ export default class MongoDBLanguageClient {
 		// The server is implemented in node
 		let serverModule = context.asAbsolutePath(path.join('out', 'src', 'mongo', 'languageServer.js'));
 		// The debug options for the server
-		let debugOptions = { execArgv: ['--nolazy', '--debug=6005'] };
+		let debugOptions = { execArgv: ['--nolazy', '--debug=6005', '--inspect'] };
 
 		// If the extension is launch in debug mode the debug server options are use
 		// Otherwise the run options are used

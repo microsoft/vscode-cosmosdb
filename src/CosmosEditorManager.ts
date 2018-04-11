@@ -112,7 +112,7 @@ export class CosmosEditorManager {
         }
     }
 
-    public async onDidSaveTextDocument(context: IActionContext, globalState: vscode.Memento, doc: vscode.TextDocument, tree: AzureTreeDataProvider): Promise<void> {
+    public async onDidSaveTextDocument(context: IActionContext, doc: vscode.TextDocument, tree: AzureTreeDataProvider): Promise<void> {
         context.suppressTelemetry = true;
         let filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.uri.fsPath, filePath) === '');
         if (!filePath) {

@@ -11,6 +11,8 @@ export function getExperienceName(experience: Experience) {
         case Experience.Graph: return "Gremlin (graph)";
         case Experience.MongoDB: return "MongoDB";
         case Experience.Table: return "Azure Table";
+        default:
+            return experience;
     }
 }
 
@@ -20,5 +22,7 @@ export function getShortExperienceName(experience: Experience) {
         case Experience.Graph: return "Gremlin";
         case Experience.MongoDB: return "MongoDB";
         case Experience.Table: return "Table";
+        default:
+            return experience;
     }
 }

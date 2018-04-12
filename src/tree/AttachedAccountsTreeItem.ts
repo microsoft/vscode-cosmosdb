@@ -66,7 +66,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         return false;
     }
 
-    public async loadMoreChildren(_node: IAzureNode, clearCache: boolean): Promise<IAzureTreeItem[]> {
+    public async loadMoreChildren(_node: IAzureNode, _clearCache: boolean): Promise<IAzureTreeItem[]> {
         const attachedAccounts: IAzureTreeItem[] = await this.getAttachedAccounts();
 
         return attachedAccounts.length > 0 ? attachedAccounts : [{

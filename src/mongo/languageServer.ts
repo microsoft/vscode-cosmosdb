@@ -5,6 +5,22 @@
 import { createConnection, IConnection } from 'vscode-languageserver';
 import { LanguageService } from './services/languageService'
 
+
+//
+//
+//
+// HOW TO DEBUG THE LANGUAGE SERVER
+//
+//
+// 1. Start the extension via F5
+// 2. Under vscode Debug pane, switch to "Attach to Language Server"
+// 3. F5
+//
+//
+//
+
+
+
 // Create a connection for the server
 let connection: IConnection = createConnection();
 console.log = connection.console.log.bind(connection.console);

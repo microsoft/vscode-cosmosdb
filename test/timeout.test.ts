@@ -11,7 +11,7 @@ suite("timeout Tests", () => {
     suite("rejectOnTimeout", () => {
 
         test("executes synchronously", async () => {
-            let executed: boolean;
+            let executed: boolean = false;
 
             await rejectOnTimeout(1, () => {
                 executed = true;
@@ -24,7 +24,7 @@ suite("timeout Tests", () => {
             let executed = false;
 
             await rejectOnTimeout(1, () => {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve, _reject) => {
                     executed = true;
                     resolve();
                 });
@@ -37,7 +37,7 @@ suite("timeout Tests", () => {
             let executed = false;
 
             await rejectOnTimeout(1000, () => {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve, _reject) => {
                     setTimeout(() => {
                         executed = true;
                         resolve();
@@ -52,7 +52,7 @@ suite("timeout Tests", () => {
 
             try {
                 await rejectOnTimeout(1, async () => {
-                    await new Promise((resolve, reject) => {
+                    await new Promise((resolve, _reject) => {
                         setTimeout(() => {
                             executed = true;
                             resolve();
@@ -69,11 +69,11 @@ suite("timeout Tests", () => {
 
         test("throws before time-out", async () => {
             let executed = false;
-            let error: Error;
+            let error: Error = new Error("I haven't thrown up yet");;
 
             try {
                 await rejectOnTimeout(1000, async () => {
-                    await new Promise((resolve, reject) => {
+                    await new Promise((_resolve, _reject) => {
                         throw new Error("I threw up");
                     });
                 })
@@ -90,7 +90,7 @@ suite("timeout Tests", () => {
 
         test("executed", async () => {
             let value = await valueOnTimeout(1000, 123, async () => {
-                return await new Promise<number>((resolve, reject) => {
+                return await new Promise<number>((resolve, _reject) => {
                     setTimeout(() => { resolve(-123); }, 1);
                 });
             });
@@ -100,7 +100,7 @@ suite("timeout Tests", () => {
 
         test("timed out", async () => {
             let value = await valueOnTimeout(1, 123, async () => {
-                return await new Promise<number>((resolve, reject) => {
+                return await new Promise<number>((resolve, _reject) => {
                     setTimeout(() => { resolve(-123); }, 1000);
                 });
             });
@@ -112,7 +112,7 @@ suite("timeout Tests", () => {
             let error;
             try {
                 await valueOnTimeout(1000, 123, async () => {
-                    return await new Promise<number>((resolve, reject) => {
+                    return await new Promise<number>((_resolve, reject) => {
                         setTimeout(() => { reject(new Error("rejected")); }, 1);
                     });
                 });

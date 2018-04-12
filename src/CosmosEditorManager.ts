@@ -100,6 +100,8 @@ export class CosmosEditorManager {
                         editor = new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>editorNode);
                     } else if (editorNode.treeItem instanceof MongoDocumentTreeItem) {
                         editor = new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>editorNode);
+                    } else {
+                        throw new Error("Unexpected type of Editor treeItem")
                     }
                     this.fileMap[editorFilePath] = editor;
                 } else {
@@ -112,7 +114,7 @@ export class CosmosEditorManager {
         }
     }
 
-    public async onDidSaveTextDocument(context: IActionContext, globalState: vscode.Memento, doc: vscode.TextDocument, tree: AzureTreeDataProvider): Promise<void> {
+    public async onDidSaveTextDocument(context: IActionContext, doc: vscode.TextDocument, tree: AzureTreeDataProvider): Promise<void> {
         context.suppressTelemetry = true;
         let filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.uri.fsPath, filePath) === '');
         if (!filePath) {

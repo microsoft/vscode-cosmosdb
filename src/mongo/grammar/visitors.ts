@@ -67,7 +67,7 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 		throw new Error(`Error near line ${node._symbol.line}, column ${node.symbol.charPositionInLine + 1}, text '${node.text}'. Please check syntax.`);
 	}
 
-	protected defaultResult(node: ParseTree): T {
+	protected defaultResult(_node: ParseTree): T {
 		return null;
 	}
 
@@ -75,7 +75,7 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 		return nextResult === null ? aggregate : nextResult;
 	}
 
-	shouldVisitNextChild(node, currentResult: T): boolean {
+	shouldVisitNextChild(_node, _currentResult: T): boolean {
 		return true;
 	}
 }

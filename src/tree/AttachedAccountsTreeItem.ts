@@ -13,7 +13,7 @@ import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { Experience } from '../constants';
-import { fetchNodeModule } from '../utils/vscodeUtils';
+import { tryfetchNodeModule } from '../utils/vscodeUtils';
 import { getDatabaseNameFromConnectionString } from '../mongo/mongoConnectionStrings';
 
 interface IPersistedAccount {
@@ -38,7 +38,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     private _loadPersistedAccountsTask: Promise<IAzureTreeItem[]>;
 
     constructor(private readonly _globalState: vscode.Memento) {
-        this._keytar = fetchNodeModule('keytar');
+        this._keytar = tryfetchNodeModule('keytar');
         this._loadPersistedAccountsTask = this.loadPersistedAccounts();
     }
 

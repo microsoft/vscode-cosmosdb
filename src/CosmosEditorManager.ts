@@ -100,6 +100,8 @@ export class CosmosEditorManager {
                         editor = new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>editorNode);
                     } else if (editorNode.treeItem instanceof MongoDocumentTreeItem) {
                         editor = new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>editorNode);
+                    } else {
+                        throw new Error("Unexpected type of Editor treeItem")
                     }
                     this.fileMap[editorFilePath] = editor;
                 } else {

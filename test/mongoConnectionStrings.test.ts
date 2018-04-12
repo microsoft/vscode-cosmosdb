@@ -7,7 +7,7 @@
 import * as assert from 'assert';
 import { getDatabaseNameFromConnectionString } from '../src/mongo/mongoConnectionStrings';
 
-function testDatabaseFromConnectionString(connectionString: string, expectedDatabase: string) {
+function testDatabaseFromConnectionString(connectionString: string, expectedDatabase: string | undefined) {
     let database = getDatabaseNameFromConnectionString(connectionString);
     assert.equal(database, expectedDatabase);
 }

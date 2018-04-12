@@ -620,6 +620,14 @@
 				{
 					"command": "cosmosDB.deleteStoredProcedure",
 					"when": "never"
+				},
+				{
+					"command": "cosmosDB.executeAllMongoCommands",
+					"when": "never"
+				},
+				{
+					"command": "cosmosDB.executeMongoCommand",
+					"when": "never"
 				}
 			]
 		},
@@ -628,6 +636,12 @@
 				"command": "cosmosDB.executeMongoCommand",
 				"key": "ctrl+shift+'",
 				"mac": "cmd+shift+'",
+				"when": "editorLangId == 'mongo' && editorTextFocus"
+			},
+			{
+				"command": "cosmosDB.executeAllMongoCommands",
+				"key": "ctrl+shift+;",
+				"mac": "cmd+shift+;",
 				"when": "editorLangId == 'mongo' && editorTextFocus"
 			}
 		],

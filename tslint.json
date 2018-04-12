@@ -78,7 +78,7 @@
         "no-unnecessary-override": true,
         // TODO: "no-unsafe-any": true,
         "no-unsafe-finally": true,
-        // TODO: "no-unused-expression": true,
+        "no-unused-expression": true,
         // TODO: "no-use-before-declare": true,
         "no-with-statement": true,
         // TODO: "promise-function-async": true,

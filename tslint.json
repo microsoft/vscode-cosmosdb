@@ -122,7 +122,7 @@
         // TODO: "interface-name": true,
         "jsdoc-format": true,
         "max-classes-per-file": [
-            false, // TODO: true,
+            true, // TODO: true,
             3
         ],
         "max-file-line-count": true,

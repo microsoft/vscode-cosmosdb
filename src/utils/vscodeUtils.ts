@@ -8,7 +8,6 @@ import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
 import { IAzureNode } from 'vscode-azureextensionui';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 
 const outputChannel = vscode.window.createOutputChannel("Azure CosmosDB");

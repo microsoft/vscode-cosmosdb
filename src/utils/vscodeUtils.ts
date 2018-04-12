@@ -6,6 +6,10 @@
 import * as path from 'path';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
+import { IAzureNode } from 'vscode-azureextensionui';
+import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
+import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
+import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 
 const outputChannel = vscode.window.createOutputChannel("Azure CosmosDB");
 
@@ -77,4 +81,16 @@ export function fetchNodeModule(moduleName: string) {
         return require(`${vscode.env.appRoot}/node_modules/${moduleName}`);
     } catch (err) { }
     return null;
+}
+
+export function getLabel(node: IAzureNode): string {
+    let labels = [node.treeItem.label];
+    while (node.parent) {
+        node = node.parent;
+        labels.unshift(node.treeItem.label);
+        if ((node.treeItem instanceof MongoAccountTreeItem) || (node.treeItem instanceof DocDBAccountTreeItemBase)) {
+            break;
+        }
+    }
+    return labels.join('/');
 }

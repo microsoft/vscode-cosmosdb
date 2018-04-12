@@ -6,14 +6,15 @@
 import { AzureWizardStep, IAzureUserInput, IAzureQuickPickItem } from 'vscode-azureextensionui';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 import { Experience, DBAccountKind } from '../../constants';
+import { getExperienceName } from '../../utils/experienceNames';
 
 export class CosmosDBAccountApiStep extends AzureWizardStep<ICosmosDBWizardContext> {
     public async prompt(wizardContext: ICosmosDBWizardContext, ui: IAzureUserInput): Promise<ICosmosDBWizardContext> {
         const picks: IAzureQuickPickItem<string>[] = [
-            { label: Experience.MongoDB, description: '', data: DBAccountKind.MongoDB },
-            { label: Experience.DocumentDB, description: '', data: DBAccountKind.GlobalDocumentDB },
-            { label: Experience.Graph, description: '', data: DBAccountKind.GlobalDocumentDB },
-            { label: Experience.Table, description: '', data: DBAccountKind.GlobalDocumentDB }
+            { label: getExperienceName(Experience.DocumentDB), description: '', data: DBAccountKind.GlobalDocumentDB },
+            { label: getExperienceName(Experience.MongoDB), description: '', data: DBAccountKind.MongoDB },
+            { label: getExperienceName(Experience.Table), description: '', data: DBAccountKind.GlobalDocumentDB },
+            { label: getExperienceName(Experience.Graph), description: '', data: DBAccountKind.GlobalDocumentDB }
         ];
 
         const result: IAzureQuickPickItem<string> = await ui.showQuickPick(picks, {

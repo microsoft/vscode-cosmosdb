@@ -124,7 +124,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
 
     public async attachEmulator(): Promise<void> {
         let connectionString: string;
-        const defaultExperience = <Experience>await vscode.window.showQuickPick(['MongoDB', 'DocumentDB'], { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
+        const defaultExperience = <Experience>await vscode.window.showQuickPick(['MongoDB', 'SQL'], { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
         if (defaultExperience) {
             let port: number;
             if (defaultExperience === Experience.MongoDB) {

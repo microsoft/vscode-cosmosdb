@@ -5,7 +5,7 @@
 
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
 import { IResourceGroupWizardContext } from 'vscode-azureextensionui';
-import { Experience, DBAccountKind } from '../../constants';
+import { Experience } from '../../experiences';
 
 export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
     /**
@@ -25,10 +25,4 @@ export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
      * This will be defined after `CosmosDBAccountApiStep.prompt` occurs.
      */
     defaultExperience?: Experience,
-
-    /**
-     * The kind to use
-     * This will be defined after `CosmosDBAccountApiStep.prompt` occurs.
-     */
-    kind?: DBAccountKind
 }

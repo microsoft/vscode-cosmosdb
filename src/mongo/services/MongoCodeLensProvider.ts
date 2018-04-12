@@ -19,7 +19,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 		this._onDidChangeEmitter.fire();
 	}
 
-	public provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeLens[]> {
+	public provideCodeLenses(document: vscode.TextDocument, _token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeLens[]> {
 		let isInitialized = this._connectedDatabaseInitialized;
 		let isConnected = !!this._connectedDatabase;
 		let database = isConnected && this._connectedDatabase;

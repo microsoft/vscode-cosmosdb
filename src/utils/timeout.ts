@@ -26,9 +26,9 @@ export async function valueOnTimeout<T>(timeoutMs: number, timeoutValue: T, acti
  */
 export async function rejectOnTimeout<T>(timeoutMs: number, action: () => Promise<T> | T) {
     return await new Promise<T>(async (resolve, reject) => {
-        let timer: NodeJS.Timer | null = setTimeout(
+        let timer: NodeJS.Timer | undefined = setTimeout(
             () => {
-                timer = null;
+                timer = undefined;
                 reject(new Error(timedOutMessage));
             },
             timeoutMs);

@@ -6,7 +6,7 @@
 import * as path from 'path';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
-import { IAzureNode } from 'vscode-azureextensionui';
+import { IAzureNode, IAzureTreeItem } from 'vscode-azureextensionui';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 
@@ -82,14 +82,18 @@ export function fetchNodeModule(moduleName: string) {
     return null;
 }
 
-export function getLabel(node: IAzureNode): string {
+export function getNodeEditorLabel(node: IAzureNode): string {
     let labels = [node.treeItem.label];
     while (node.parent) {
         node = node.parent;
         labels.unshift(node.treeItem.label);
-        if ((node.treeItem instanceof MongoAccountTreeItem) || (node.treeItem instanceof DocDBAccountTreeItemBase)) {
+        if (isAccountTreeItem(node.treeItem)) {
             break;
         }
     }
     return labels.join('/');
+}
+
+function isAccountTreeItem(treeItem: IAzureTreeItem): boolean {
+    return (treeItem instanceof MongoAccountTreeItem) || (treeItem instanceof DocDBAccountTreeItemBase);
 }

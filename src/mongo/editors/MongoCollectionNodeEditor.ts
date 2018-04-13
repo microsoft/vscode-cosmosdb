@@ -7,7 +7,7 @@ import { IAzureParentNode, IAzureNode } from "vscode-azureextensionui";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
-import { getLabel } from '../../utils/vscodeUtils';
+import { getNodeEditorLabel } from '../../utils/vscodeUtils';
 
 export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]> {
     private _collectionNode: IAzureParentNode<MongoCollectionTreeItem>;
@@ -16,7 +16,7 @@ export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]
     }
 
     public get label(): string {
-        return getLabel(this._collectionNode);
+        return getNodeEditorLabel(this._collectionNode);
     }
 
     public async getData(): Promise<IMongoDocument[]> {

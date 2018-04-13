@@ -16,7 +16,6 @@ install:
   - npm install
 
 script:
-  - npm run build
   - gulp package
   - gulp upload-vsix
   - npm run lint
@@ -24,7 +23,7 @@ script:
 
 after_failure:
   # This gives better error output than gulp package
-  - gulp run build
+  - npm run build
 
 notifications:
   email:

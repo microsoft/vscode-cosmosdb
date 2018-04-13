@@ -16,14 +16,11 @@ install:
   - npm install
 
 script:
+  - npm run build
   - gulp package
   - gulp upload-vsix
   - npm run lint
   - npm test
-
-after_failure:
-  # This gives better error output than gulp package
-  - npm run build
 
 notifications:
   email:

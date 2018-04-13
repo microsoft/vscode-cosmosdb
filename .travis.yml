@@ -16,6 +16,7 @@ install:
   - npm install
 
 script:
+  - npm run build
   - gulp package
   - gulp upload-vsix
   - npm run lint

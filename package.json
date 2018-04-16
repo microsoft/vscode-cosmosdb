@@ -50,6 +50,7 @@
 		"onCommand:cosmosDB.createDocDBDatabase",
 		"onCommand:cosmosDB.createDocDBCollection",
 		"onCommand:cosmosDB.createDocDBDocument",
+		"onCommand:cosmosDB.createDocDBStoredProcedure",
 		"onCommand:cosmosDB.createGraphDatabase",
 		"onCommand:cosmosDB.createGraph",
 		"onCommand:cosmosDB.connectMongoDB",
@@ -184,6 +185,11 @@
 				"category": "DocumentDB",
 				"command": "cosmosDB.createDocDBDocument",
 				"title": "Create Document"
+			},
+			{
+				"category": "DocumentDB",
+				"command": "cosmosDB.createDocDBStoredProcedure",
+				"title": "Create Stored Procedure"
 			},
 			{
 				"category": "Graph",
@@ -426,6 +432,10 @@
 				{
 					"command": "cosmosDB.createDocDBDocument",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentsGroup"
+				},
+				{
+					"command": "cosmosDB.createDocDBStoredProcedure",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProceduresGroup"
 				},
 				{
 					"command": "cosmosDB.createDocDBCollection",

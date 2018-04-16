@@ -7,7 +7,7 @@ import * as path from 'path';
 import * as vscode from "vscode";
 import { DocumentClient, QueryIterator, CollectionMeta, FeedOptions, ProcedureMeta } from 'documentdb';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
-import { IAzureTreeItem } from 'vscode-azureextensionui';
+import { IAzureTreeItem, UserCancelledError, IAzureNode } from 'vscode-azureextensionui';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 
 /**
@@ -31,6 +31,31 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
             light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'stored procedures.svg'),
             dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'stored procedures.svg')
         };
+    }
+
+    public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
+        const client = this.getDocumentClient();
+        let spID = await vscode.window.showInputBox({
+            prompt: "Enter a unique stored Procedure ID or leave blank for a generated ID",
+            ignoreFocusOut: true
+        });
+
+        if (spID || spID === "") {
+            spID = spID.trim();
+            showCreatingNode(spID);
+            const sproc: ProcedureMeta = await new Promise<ProcedureMeta>((resolve, reject) => {
+                client.createStoredProcedure(this.link, { id: spID, body: "" }, (err, result: ProcedureMeta) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(result);
+                    }
+                });
+            });
+
+            return this.initChild(sproc);
+        }
+        throw new UserCancelledError();
     }
 
     public get id(): string {

@@ -425,7 +425,7 @@
 				},
 				{
 					"command": "cosmosDB.createDocDBDocument",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentsGroup"
 				},
 				{
 					"command": "cosmosDB.createDocDBCollection",

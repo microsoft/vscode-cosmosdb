@@ -8,6 +8,7 @@ import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
 import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
 import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
+import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
 import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
 
 export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: AzureTreeDataProvider): void {
@@ -27,8 +28,8 @@ export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: A
     actionHandler.registerCommand('cosmosDB.createDocDBDocument', async (node?: IAzureParentNode) => {
         if (!node) {
             // #region Temporary changes to remove Documents node until viewing/editor stored procedures is implemented
-            // node = <IAzureParentNode>await tree.showNodePicker(DocDBDocumentsTreeItem.contextValue);
-            node = <IAzureParentNode>await tree.showNodePicker(DocDBCollectionTreeItem.contextValue);
+            node = <IAzureParentNode>await tree.showNodePicker(DocDBDocumentsTreeItem.contextValue);
+            //node = <IAzureParentNode>await tree.showNodePicker(DocDBCollectionTreeItem.contextValue);
             // #endregion
         }
         await node.createChild();

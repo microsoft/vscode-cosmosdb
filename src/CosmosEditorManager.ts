@@ -76,7 +76,11 @@ export class CosmosEditorManager {
     }
 
     private async updateEditor(data: {}, textEditor: vscode.TextEditor): Promise<void> {
-        await util.writeToEditor(textEditor, JSON.stringify(data, null, 2));
+        if (typeof data === "string") {
+            await util.writeToEditor(textEditor, <string>data);
+        } else {
+            await util.writeToEditor(textEditor, JSON.stringify(data, null, 2));
+        }
         this.ignoreSave = true;
         try {
             await textEditor.document.save();

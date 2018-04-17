@@ -84,7 +84,7 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
     //     this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this._collection, this._isEmulator);
     // }
 
-    public async loadMoreChildren(_node: IAzureNode<IAzureTreeItem>, clearCache: boolean): Promise<IAzureTreeItem[]> {
+    public async loadMoreChildren(_node: IAzureNode<IAzureTreeItem>, _clearCache: boolean): Promise<IAzureTreeItem[]> {
         return [this._documentsTreeItem, this._storedProceduresTreeItem];
     }
 

@@ -6,7 +6,7 @@
 import * as path from 'path';
 import * as vscode from "vscode";
 import { IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
-import { ProcedureMeta, Procedure } from 'documentdb';
+import { ProcedureMeta } from 'documentdb';
 import { DialogBoxResponses } from '../../constants';
 import { getDocumentClient } from '../getDocumentClient';
 

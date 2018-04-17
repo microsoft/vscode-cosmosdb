@@ -5,7 +5,6 @@
 
 import { IAzureNode } from "vscode-azureextensionui";
 import { ICosmosEditor } from "../../CosmosEditorManager";
-import { Procedure } from "documentdb";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
 import { DocDBStoredProcedureTreeItem } from "../tree/DocDBStoredProcedureTreeItem";
 

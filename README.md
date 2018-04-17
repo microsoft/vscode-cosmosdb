@@ -2,7 +2,7 @@
 # Cosmos DB Support for VS Code (Preview)
 [![Build Status](https://travis-ci.org/Microsoft/vscode-cosmosdb.svg?branch=master)](https://travis-ci.org/Microsoft/vscode-cosmosdb) [![Release Status](https://img.shields.io/github/tag/Microsoft/vscode-cosmosdb.svg?label=prerelease&colorB=0E7FC0)](https://github.com/Microsoft/vscode-cosmosdb/releases)
 
-Browse and query your MongoDB databases both locally and in the cloud using [_scrapbooks_](#mongo-scrapbooks) with rich Intellisense then connect to Azure to manage your Cosmos DB databases with support for MongoDB, Graph (Gremlin), and DocumentDB (SQL).
+Browse and query your MongoDB databases both locally and in the cloud using [_scrapbooks_](#mongo-scrapbooks) with rich Intellisense then connect to Azure to manage your Cosmos DB databases with support for MongoDB, Graph (Gremlin), and SQL (previously known as DocumentDB).
 
 ![Cosmos DB Extension](resources/features.png)
 

@@ -82,12 +82,6 @@ export class Shell {
 			window.showErrorMessage(error.toString());
 		}
 
-		const disposables: IDisposable[] = [];
-		(ee: NodeJS.EventEmitter, name: string, fn: Function) => {
-			ee.once(name, fn);
-			disposables.push(toDisposable(() => ee.removeListener(name, fn)));
-		};
-
 		return await new Promise<string>((c, e) => {
 			let executed = false;
 			const handler = setTimeout(

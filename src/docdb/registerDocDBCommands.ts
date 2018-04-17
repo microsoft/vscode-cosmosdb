@@ -10,8 +10,10 @@ import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
 import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
 import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
+import { CosmosEditorManager } from "../CosmosEditorManager";
+import { DocDBStoredProcedureNodeEditor } from "./editors/DocDBStoredProcedureNodeEditor";
 
-export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: AzureTreeDataProvider): void {
+export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: AzureTreeDataProvider, editorManager: CosmosEditorManager): void {
     actionHandler.registerCommand('cosmosDB.createDocDBDatabase', async (node?: IAzureParentNode) => {
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(DocDBAccountTreeItem.contextValue);
@@ -54,6 +56,12 @@ export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: A
             node = await tree.showNodePicker(DocDBCollectionTreeItem.contextValue);
         }
         await node.deleteNode();
+    });
+    actionHandler.registerCommand('cosmosDB.openStoredProcedure', async (node?: IAzureNode) => {
+        if (!node) {
+            node = await tree.showNodePicker([DocDBStoredProcedureTreeItem.contextValue]);
+        }
+        await editorManager.showDocument(new DocDBStoredProcedureNodeEditor(<IAzureNode<DocDBStoredProcedureTreeItem>>node), 'cosmos-stored-procedure.js');
     });
     actionHandler.registerCommand('cosmosDB.deleteDocDBDocument', async (node?: IAzureNode) => {
         if (!node) {

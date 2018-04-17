@@ -65,6 +65,7 @@
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.update",
 		"onCommand:cosmosDB.openDocument",
+		"onCommand:cosmosDB.openStoredProcedure",
 		"onCommand:cosmosDB.openCollection",
 		"onCommand:cosmosDB.loadMore",
 		"onCommand:cosmosDB.refresh",
@@ -307,6 +308,11 @@
 				"category": "CosmosDB",
 				"command": "cosmosDB.openDocument",
 				"title": "Open Document"
+			},
+			{
+				"category": "CosmosDB",
+				"command": "cosmosDB.openStoredProcedure",
+				"title": "Open Stored Procedure"
 			},
 			{
 				"category": "CosmosDB",

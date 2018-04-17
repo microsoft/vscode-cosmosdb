@@ -9,6 +9,7 @@ import { DocumentClient, QueryIterator, CollectionMeta, FeedOptions, ProcedureMe
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import { IAzureTreeItem, UserCancelledError, IAzureNode } from 'vscode-azureextensionui';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
+import { defaultStoredProcedure } from '../../constants';
 
 /**
  * This class represents the DocumentDB "Stored Procedures" node in the tree
@@ -18,8 +19,8 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
     public readonly contextValue: string = DocDBStoredProceduresTreeItem.contextValue;
     public readonly childTypeLabel: string = "Stored Procedure";
 
-    constructor(documentEndpoint: string, masterKey: string, private _collection: CollectionMeta, isEmulator: boolean) {
-        super(documentEndpoint, masterKey, isEmulator);
+    constructor(endpoint: string, masterKey: string, private _collection: CollectionMeta, isEmulator: boolean) {
+        super(endpoint, masterKey, isEmulator);
     }
 
     public initChild(resource: ProcedureMeta): IAzureTreeItem {
@@ -44,7 +45,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
             spID = spID.trim();
             showCreatingNode(spID);
             const sproc: ProcedureMeta = await new Promise<ProcedureMeta>((resolve, reject) => {
-                client.createStoredProcedure(this.link, { id: spID, body: "" }, (err, result: ProcedureMeta) => {
+                client.createStoredProcedure(this.link, { id: spID, body: defaultStoredProcedure }, (err, result: ProcedureMeta) => {
                     if (err) {
                         reject(err);
                     } else {

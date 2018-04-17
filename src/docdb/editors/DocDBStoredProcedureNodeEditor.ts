@@ -5,30 +5,30 @@
 
 import { IAzureNode } from "vscode-azureextensionui";
 import { ICosmosEditor } from "../../CosmosEditorManager";
-import { RetrievedDocument } from "documentdb";
-import { DocDBDocumentTreeItem } from "../tree/DocDBDocumentTreeItem";
+import { Procedure } from "documentdb";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
+import { DocDBStoredProcedureTreeItem } from "../tree/DocDBStoredProcedureTreeItem";
 
-export class DocDBStoredProcedureNodeEditor implements ICosmosEditor<RetrievedDocument> {
-    private _documentNode: IAzureNode<DocDBDocumentTreeItem>;
-    constructor(documentNode: IAzureNode<DocDBDocumentTreeItem>) {
-        this._documentNode = documentNode;
+export class DocDBStoredProcedureNodeEditor implements ICosmosEditor<string> {
+    private _spNode: IAzureNode<DocDBStoredProcedureTreeItem>;
+    constructor(spNode: IAzureNode<DocDBStoredProcedureTreeItem>) {
+        this._spNode = spNode;
     }
 
     public get label(): string {
-        return getNodeEditorLabel(this._documentNode);
+        return getNodeEditorLabel(this._spNode);
     }
 
-    public async getData(): Promise<RetrievedDocument> {
-        return this._documentNode.treeItem.document;
+    public async getData(): Promise<string> {
+        return this._spNode.treeItem.procedure.body;
     }
 
-    public async update(document: RetrievedDocument): Promise<RetrievedDocument> {
-        return await this._documentNode.treeItem.update(document);
+    public async update(document: string): Promise<string> {
+        return await this._spNode.treeItem.update(document);
     }
 
     public get id(): string {
-        return this._documentNode.id;
+        return this._spNode.id;
     }
 
 }

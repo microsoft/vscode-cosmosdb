@@ -29,7 +29,6 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
         private _masterKey: string,
         private _collection: CollectionMeta,
         private _isEmulator: boolean) {
-        //super(_documentEndpoint, _masterKey, _isEmulator);
         this._documentsTreeItem = new DocDBDocumentsTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator);
         this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this._collection, this._isEmulator);
     }
@@ -76,13 +75,6 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
         }
     }
 
-    // #region Temporary changes to remove Documents node until viewing/editor stored procedures is implemented
-
-
-    // public constructor() {
-    //     this._documentsTreeItem = new DocDBDocumentsTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator);
-    //     this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this._collection, this._isEmulator);
-    // }
 
     public async loadMoreChildren(_node: IAzureNode<IAzureTreeItem>, _clearCache: boolean): Promise<IAzureTreeItem[]> {
         return [this._documentsTreeItem, this._storedProceduresTreeItem];
@@ -107,41 +99,4 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
         }
     }
 
-    // public readonly childTypeLabel: string = "Documents";
-
-    // public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<RetrievedDocument>> {
-    //     return await client.readDocuments(this.link, feedOptions);
-    // }
-
-    // public initChild(document: RetrievedDocument): IAzureTreeItem {
-    //     return new DocDBDocumentTreeItem(this, document);
-    // }
-
-    // public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
-    //     const client = this.getDocumentClient();
-    //     let docID = await vscode.window.showInputBox({
-    //         prompt: "Enter a unique document ID or leave blank for a generated ID",
-    //         ignoreFocusOut: true
-    //     });
-
-    //     if (docID || docID === "") {
-    //         docID = docID.trim();
-    //         showCreatingNode(docID);
-    //         const document: RetrievedDocument = await new Promise<RetrievedDocument>((resolve, reject) => {
-    //             client.createDocument(this.link, { 'id': docID }, (err, result: RetrievedDocument) => {
-    //                 if (err) {
-    //                     reject(err);
-    //                 } else {
-    //                     resolve(result);
-    //                 }
-    //             });
-    //         });
-
-    //         return this.initChild(document);
-    //     }
-
-    //     throw new UserCancelledError();
-    // }
-
-    // #endregion
 }

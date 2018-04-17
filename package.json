@@ -35,8 +35,10 @@
 	},
 	"main": "./out/src/extension",
 	"activationEvents": [
+		"onLanguage:mongo",
 		"onView:cosmosDBExplorer",
 		"onCommand:cosmosDB.executeMongoCommand",
+		"onCommand:cosmosDB.executeAllMongoCommands",
 		"onCommand:cosmosDB.attachDatabaseAccount",
 		"onCommand:cosmosDB.attachEmulator",
 		"onCommand:cosmosDB.createAccount",
@@ -48,6 +50,7 @@
 		"onCommand:cosmosDB.createDocDBDatabase",
 		"onCommand:cosmosDB.createDocDBCollection",
 		"onCommand:cosmosDB.createDocDBDocument",
+		"onCommand:cosmosDB.createDocDBStoredProcedure",
 		"onCommand:cosmosDB.createGraphDatabase",
 		"onCommand:cosmosDB.createGraph",
 		"onCommand:cosmosDB.connectMongoDB",
@@ -62,6 +65,7 @@
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.update",
 		"onCommand:cosmosDB.openDocument",
+		"onCommand:cosmosDB.openStoredProcedure",
 		"onCommand:cosmosDB.openCollection",
 		"onCommand:cosmosDB.loadMore",
 		"onCommand:cosmosDB.refresh",
@@ -113,7 +117,12 @@
 			{
 				"category": "MongoDB",
 				"command": "cosmosDB.executeMongoCommand",
-				"title": "Execute Command"
+				"title": "Execute MongoDB Command"
+			},
+			{
+				"category": "MongoDB",
+				"command": "cosmosDB.executeAllMongoCommands",
+				"title": "Execute All MongoDB Commands"
 			},
 			{
 				"category": "MongoDB",
@@ -177,6 +186,11 @@
 				"category": "DocumentDB",
 				"command": "cosmosDB.createDocDBDocument",
 				"title": "Create Document"
+			},
+			{
+				"category": "DocumentDB",
+				"command": "cosmosDB.createDocDBStoredProcedure",
+				"title": "Create Stored Procedure"
 			},
 			{
 				"category": "Graph",
@@ -297,6 +311,11 @@
 			},
 			{
 				"category": "CosmosDB",
+				"command": "cosmosDB.openStoredProcedure",
+				"title": "Open Stored Procedure"
+			},
+			{
+				"category": "CosmosDB",
 				"command": "cosmosDB.openCollection",
 				"title": "Open Collection"
 			}
@@ -305,6 +324,10 @@
 			"editor/context": [
 				{
 					"command": "cosmosDB.executeMongoCommand",
+					"when": "resourceLangId==mongo"
+				},
+				{
+					"command": "cosmosDB.executeAllMongoCommands",
 					"when": "resourceLangId==mongo"
 				},
 				{
@@ -414,7 +437,11 @@
 				},
 				{
 					"command": "cosmosDB.createDocDBDocument",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentsGroup"
+				},
+				{
+					"command": "cosmosDB.createDocDBStoredProcedure",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProceduresGroup"
 				},
 				{
 					"command": "cosmosDB.createDocDBCollection",

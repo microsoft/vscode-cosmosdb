@@ -8,7 +8,7 @@ import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { Capability } from 'azure-arm-cosmosdb/lib/models';
 import { AzureWizardStep } from 'vscode-azureextensionui';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
-import { Experience } from '../../constants';
+import { API } from '../../experiences';
 
 export class CosmosDBAccountStep extends AzureWizardStep<ICosmosDBWizardContext> {
     public async prompt(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {
@@ -17,15 +17,15 @@ export class CosmosDBAccountStep extends AzureWizardStep<ICosmosDBWizardContext>
 
     public async execute(wizardContext: ICosmosDBWizardContext, outputChannel: vscode.OutputChannel): Promise<ICosmosDBWizardContext> {
         const client = new CosmosDBManagementClient(wizardContext.credentials, wizardContext.subscriptionId);
-        outputChannel.appendLine(`Creating Cosmos DB account "${wizardContext.accountName}" with API "${wizardContext.defaultExperience}"...`);
+        outputChannel.appendLine(`Creating Cosmos DB account "${wizardContext.accountName}" with API "${wizardContext.defaultExperience.shortName}"...`);
         let options = {
             location: wizardContext.location.name,
             locations: [{ locationName: wizardContext.location.name }],
-            kind: wizardContext.kind,
-            tags: { defaultExperience: wizardContext.defaultExperience },
+            kind: wizardContext.defaultExperience.kind,
+            tags: { defaultExperience: wizardContext.defaultExperience.api },
             capabilities: []
         };
-        if (wizardContext.defaultExperience === Experience.Graph) {
+        if (wizardContext.defaultExperience.api === API.Graph) {
             options.capabilities.push(<Capability>{ name: "EnableGremlin" });
         }
         wizardContext.databaseAccount = await client.databaseAccounts.createOrUpdate(wizardContext.resourceGroup.name, wizardContext.accountName, options);

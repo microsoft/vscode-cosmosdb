@@ -65,10 +65,6 @@ class NodeFinder extends MongoVisitor<ParseTree> {
 		super();
 	}
 
-	visitErrorNode(_node: ErrorNode) {
-		return null;
-	}
-
 	protected defaultResult(ctx: ParseTree): ParseTree {
 		if (ctx instanceof ParserRuleContext) {
 			const stop = ctx.stop ? ctx.stop.stopIndex : ctx.start.stopIndex;

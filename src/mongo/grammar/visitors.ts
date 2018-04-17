@@ -63,8 +63,8 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 		return this.defaultResult(node);
 	}
 
-	visitErrorNode(node: ErrorNode): T {
-		throw new Error(`Error near line ${node._symbol.line}, column ${node.symbol.charPositionInLine + 1}, text '${node.text}'. Please check syntax.`);
+	visitErrorNode(_node: ErrorNode): T {
+		return null;
 	}
 
 	protected defaultResult(_node: ParseTree): T {

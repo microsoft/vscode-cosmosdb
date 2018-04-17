@@ -16,7 +16,6 @@ import { CompletionItemsVisitor } from './completionItemProvider';
 import SchemaService from './schemaService';
 import { LanguageService as JsonLanguageService } from 'vscode-json-languageservice';
 import { TextDocument, CompletionItem, Position } from 'vscode-languageserver';
-import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 
 export class MongoScriptDocumentManager {
 

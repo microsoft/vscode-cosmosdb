@@ -6,6 +6,9 @@
 import * as path from 'path';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
+import { IAzureNode, IAzureTreeItem } from 'vscode-azureextensionui';
+import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
+import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 
 const outputChannel = vscode.window.createOutputChannel("Azure CosmosDB");
 
@@ -67,14 +70,34 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
     throw new Error('Could not find unique name for new file.');
 }
 
-export function fetchNodeModule(moduleName: string) {
+export function tryfetchNodeModule(moduleName: string) {
     try {
         // tslint:disable-next-line:non-literal-require
         return require(`${vscode.env.appRoot}/node_modules.asar/${moduleName}`);
-    } catch (err) { }
+    } catch (err) {
+        //Empty catch block intended
+    }
     try {
         // tslint:disable-next-line:non-literal-require
         return require(`${vscode.env.appRoot}/node_modules/${moduleName}`);
-    } catch (err) { }
+    } catch (err) {
+        //Empty catch block intended
+    }
     return null;
+}
+
+export function getNodeEditorLabel(node: IAzureNode): string {
+    let labels = [node.treeItem.label];
+    while (node.parent) {
+        node = node.parent;
+        labels.unshift(node.treeItem.label);
+        if (isAccountTreeItem(node.treeItem)) {
+            break;
+        }
+    }
+    return labels.join('/');
+}
+
+function isAccountTreeItem(treeItem: IAzureTreeItem): boolean {
+    return (treeItem instanceof MongoAccountTreeItem) || (treeItem instanceof DocDBAccountTreeItemBase);
 }

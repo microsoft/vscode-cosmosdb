@@ -623,11 +623,11 @@
 				},
 				{
 					"command": "cosmosDB.executeAllMongoCommands",
-					"when": "never"
+					"when": "editorLangId == 'mongo'"
 				},
 				{
 					"command": "cosmosDB.executeMongoCommand",
-					"when": "never"
+					"when": "editorLangId == 'mongo'"
 				}
 			]
 		},

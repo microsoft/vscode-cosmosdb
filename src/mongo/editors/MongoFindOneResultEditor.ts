@@ -44,4 +44,8 @@ export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
         return `${this._databaseNode.id}/${this._collectionName}/${this._originalDocument._id.toString()}`;
     }
 
+    public convertData(data: string): IMongoDocument {
+        return JSON.parse(data);
+    }
+
 }

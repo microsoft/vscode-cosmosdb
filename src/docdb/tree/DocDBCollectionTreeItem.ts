@@ -30,7 +30,7 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
         private _collection: CollectionMeta,
         private _isEmulator: boolean) {
         this._documentsTreeItem = new DocDBDocumentsTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator);
-        this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this._collection, this._isEmulator);
+        this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator);
     }
 
     public get id(): string {
@@ -98,5 +98,4 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
                 return undefined;
         }
     }
-
 }

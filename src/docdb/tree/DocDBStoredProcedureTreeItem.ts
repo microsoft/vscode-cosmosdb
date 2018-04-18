@@ -6,9 +6,10 @@
 import * as path from 'path';
 import * as vscode from "vscode";
 import { IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
-import { ProcedureMeta } from 'documentdb';
+import { ProcedureMeta, DocumentClient } from 'documentdb';
 import { DialogBoxResponses } from '../../constants';
 import { getDocumentClient } from '../getDocumentClient';
+import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) stored procedure
@@ -18,7 +19,7 @@ export class DocDBStoredProcedureTreeItem implements IAzureTreeItem {
     public readonly contextValue: string = DocDBStoredProcedureTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openStoredProcedure';
 
-    constructor(private _endpoint: string, private _masterKey: string, private _isEmulator: boolean, public procedure: ProcedureMeta) {
+    constructor(private _endpoint: string, private _masterKey: string, private _isEmulator: boolean, private _collection: DocDBCollectionTreeItem, public procedure: ProcedureMeta) {
     }
 
     public get id(): string {
@@ -33,8 +34,20 @@ export class DocDBStoredProcedureTreeItem implements IAzureTreeItem {
         return this.procedure._self;
     }
 
-    public async update(newProc: string): Promise<string> {
-        return newProc;
+    public async update(newProcBody: string): Promise<string> {
+        const client: DocumentClient = this._collection.getDocumentClient();
+        this.procedure = await new Promise<ProcedureMeta>((resolve, reject) => client.replaceStoredProcedure(
+            this.link,
+            { body: newProcBody, id: this.procedure.id },
+            (err, updated: ProcedureMeta) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(updated);
+                }
+            })
+        );
+        return newProcBody;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {

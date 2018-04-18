@@ -44,4 +44,8 @@ export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]
         return this._collectionNode.id;
     }
 
+    public convertData(data: string): IMongoDocument[] {
+        return JSON.parse(data);
+    }
+
 }

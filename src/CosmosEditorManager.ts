@@ -23,6 +23,7 @@ export interface ICosmosEditor<T = {}> {
     id: string;
     getData(): Promise<T>;
     update(data: T): Promise<T>;
+    convertData(data: string): T;
 }
 
 export class CosmosEditorManager {
@@ -67,7 +68,8 @@ export class CosmosEditorManager {
     }
 
     private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument): Promise<void> {
-        const updatedDoc: {} = await editor.update(JSON.parse(doc.getText()));
+        const text = editor.convertData(doc.getText());
+        const updatedDoc: {} = await editor.update(text);
         const output = util.getOutputChannel();
         const timestamp = (new Date()).toLocaleTimeString();
         output.appendLine(`${timestamp}: Updated entity "${editor.label}"`);

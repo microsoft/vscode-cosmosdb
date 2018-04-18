@@ -10,13 +10,13 @@ import { MongoDatabaseTreeItem } from "./tree/MongoDatabaseTreeItem";
 import { MongoAccountTreeItem } from "./tree/MongoAccountTreeItem";
 import MongoDBLanguageClient from "./languageClient";
 import * as vscodeUtil from '../utils/vscodeUtils';
-import { MongoCommands } from "./MongoCommands";
 import { MongoDocumentTreeItem } from "./tree/MongoDocumentTreeItem";
 import { MongoCollectionNodeEditor } from "./editors/MongoCollectionNodeEditor";
 import { CosmosEditorManager } from "../CosmosEditorManager";
 import { reporter } from "../utils/telemetry";
 import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
 import { ext } from "../extensionVariables";
+import { executeCommandFromText, executeCommandFromActiveEditor, executeAllCommandsFromActiveEditor } from "./MongoScrapbook";
 
 const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 
@@ -101,14 +101,14 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
     actionHandler.registerCommand('cosmosDB.executeMongoCommand', async function (this: IActionContext, commandText: object) {
         await loadPersistedMongoDBTask;
         if (typeof commandText === "string") {
-            await MongoCommands.executeCommandFromText(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this, <string>commandText);
+            await executeCommandFromText(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this, <string>commandText);
         } else {
-            await MongoCommands.executeCommandFromActiveEditor(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this);
+            await executeCommandFromActiveEditor(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this);
         }
     });
     actionHandler.registerCommand('cosmosDB.executeAllMongoCommands', async function (this: IActionContext) {
         await loadPersistedMongoDBTask;
-        await MongoCommands.executeAllCommandsFromActiveEditor(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this);
+        await executeAllCommandsFromActiveEditor(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this);
     });
 }
 

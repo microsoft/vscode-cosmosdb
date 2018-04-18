@@ -41,7 +41,7 @@ export async function executeCommandFromText(database: IAzureParentNode<MongoDat
 	return await executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
 }
 
-export function getAllCommandsFromActiveEditor(): MongoCommand[] {
+function getAllCommandsFromActiveEditor(): MongoCommand[] {
 	const activeEditor = vscode.window.activeTextEditor;
 	if (activeEditor) {
 		const commands = getAllCommandsFromTextDocument(activeEditor.document);
@@ -56,13 +56,13 @@ export function getAllCommandsFromTextDocument(document: vscode.TextDocument): M
 	return getAllCommands(document.getText());
 }
 
-export async function executeCommands(activeEditor: vscode.TextEditor, database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext, commands: MongoCommand[]): Promise<void> {
+async function executeCommands(activeEditor: vscode.TextEditor, database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext, commands: MongoCommand[]): Promise<void> {
 	for (let command of commands) {
 		await executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
 	}
 }
 
-export async function executeCommand(activeEditor: vscode.TextEditor, database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext, command: MongoCommand): Promise<void> {
+async function executeCommand(activeEditor: vscode.TextEditor, database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext, command: MongoCommand): Promise<void> {
 	if (command) {
 		output.appendLine(command.text);
 
@@ -100,7 +100,7 @@ export function getCommandFromText(content: string, position?: vscode.Position):
 	return findCommandAtPosition(commands, position);
 }
 
-export function getAllCommands(content: string): MongoCommand[] {
+function getAllCommands(content: string): MongoCommand[] {
 	const lexer = new mongoLexer(new InputStream(content));
 	lexer.removeErrorListeners();
 	const parser = new mongoParser.mongoParser(new CommonTokenStream(lexer));
@@ -110,7 +110,7 @@ export function getAllCommands(content: string): MongoCommand[] {
 	return commands;
 }
 
-export function findCommandAtPosition(commands: MongoCommand[], position?: vscode.Position): MongoCommand {
+function findCommandAtPosition(commands: MongoCommand[], position?: vscode.Position): MongoCommand {
 	let lastCommandOnSameLine = null;
 	let lastCommandBeforePosition = null;
 	if (position) {

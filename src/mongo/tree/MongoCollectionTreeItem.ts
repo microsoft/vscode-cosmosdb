@@ -155,8 +155,18 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	}
 
 	private async drop(): Promise<string> {
-		await this.collection.drop();
-		return `Dropped collection '${this.collection.collectionName}'.`;
+		try {
+			await this.collection.drop();
+			return `Dropped collection '${this.collection.collectionName}'.`;
+		} catch (e) {
+			let error: { code?: number, name?: string } = e;
+			const NamespaceNotFoundCode = 26;
+			if (error.name === 'MongoError' && error.code === NamespaceNotFoundCode) {
+				return `Collection '${this.collection.collectionName}' could not be dropped because it does not exist.`;
+			} else {
+				throw error;
+			}
+		}
 	}
 
 	//tslint:disable:no-any

@@ -44,7 +44,7 @@ export class CosmosEditorManager {
         this._globalState = globalState;
     }
 
-    public async showDocument(editor: ICosmosEditor, fileName: string, options: ShowEditorDocumentOptions): Promise<void> {
+    public async showDocument(editor: ICosmosEditor, fileName: string, options?: ShowEditorDocumentOptions): Promise<void> {
         let column: vscode.ViewColumn = vscode.ViewColumn.Active;
         let preserveFocus: boolean = false;
         if (options && options.showInNextColumn) {

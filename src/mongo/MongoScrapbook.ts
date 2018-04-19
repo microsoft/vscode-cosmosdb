@@ -78,14 +78,14 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: IAzureP
 		}
 
 		if (command.name === 'find') {
-			await editorManager.showDocument(new MongoFindResultEditor(database, command, tree), 'cosmos-result.json');
+			await editorManager.showDocument(new MongoFindResultEditor(database, command, tree), 'cosmos-result.json', { showInNextColumn: true });
 		} else {
 			const result = await database.treeItem.executeCommand(command, context);
 			if (command.name === 'findOne') {
 				if (result === "null") {
 					throw new Error(`Could not find any documents`)
 				}
-				await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result, tree), 'cosmos-result.json');
+				await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result, tree), 'cosmos-result.json', { showInNextColumn: true });
 			} else {
 				await vscodeUtil.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
 			}

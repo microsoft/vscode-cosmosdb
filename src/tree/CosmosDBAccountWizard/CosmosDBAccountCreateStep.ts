@@ -6,15 +6,11 @@
 import * as vscode from 'vscode';
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { Capability } from 'azure-arm-cosmosdb/lib/models';
-import { AzureWizardStep } from 'vscode-azureextensionui';
+import { AzureWizardExecuteStep } from 'vscode-azureextensionui';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 import { API } from '../../experiences';
 
-export class CosmosDBAccountStep extends AzureWizardStep<ICosmosDBWizardContext> {
-    public async prompt(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {
-        return wizardContext;
-    }
-
+export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBWizardContext> {
     public async execute(wizardContext: ICosmosDBWizardContext, outputChannel: vscode.OutputChannel): Promise<ICosmosDBWizardContext> {
         const client = new CosmosDBManagementClient(wizardContext.credentials, wizardContext.subscriptionId);
         outputChannel.appendLine(`Creating Cosmos DB account "${wizardContext.accountName}" with API "${wizardContext.defaultExperience.shortName}"...`);

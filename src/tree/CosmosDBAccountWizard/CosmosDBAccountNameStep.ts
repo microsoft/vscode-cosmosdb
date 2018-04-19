@@ -4,13 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
-import { IAzureUserInput, AzureNameStep, ResourceGroupStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
+import { IAzureUserInput, AzureNameStep, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 import { validOnTimeoutOrException } from "../../utils/inputValidation";
 
 export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContext> {
     protected async isRelatedNameAvailable(wizardContext: ICosmosDBWizardContext, name: string): Promise<boolean> {
-        return await ResourceGroupStep.isNameAvailable(wizardContext, name);
+        return await ResourceGroupListStep.isNameAvailable(wizardContext, name);
     }
 
     public async prompt(wizardContext: ICosmosDBWizardContext, ui: IAzureUserInput): Promise<ICosmosDBWizardContext> {
@@ -23,10 +23,6 @@ export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContex
 
         wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.accountName, resourceGroupNamingRules);
 
-        return wizardContext;
-    }
-
-    public async execute(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {
         return wizardContext;
     }
 }

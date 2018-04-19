@@ -154,7 +154,7 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		return super.visitFunctionCall(ctx);
 	}
 
-	visitArgumentList(ctx: mongoParser.ArgumentListContext): MongoCommand[] {
+	visitArgument(ctx: mongoParser.ArgumentContext): MongoCommand[] {
 		let argumentsContext = ctx.parent;
 		if (argumentsContext) {
 			let functionCallContext = argumentsContext.parent;
@@ -166,7 +166,7 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 				lastCommand.arguments.push(ctx.text);
 			}
 		}
-		return super.visitArgumentList(ctx);
+		return super.visitArgument(ctx);
 	}
 
 	protected defaultResult(_node: ParseTree): MongoCommand[] {

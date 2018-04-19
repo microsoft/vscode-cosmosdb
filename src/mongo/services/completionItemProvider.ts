@@ -70,7 +70,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		return this.thenable();
 	}
 
-	visitArgumentList(ctx: mongoParser.ArgumentListContext): Promise<CompletionItem[]> {
+	visitArgument(ctx: mongoParser.ArgumentContext): Promise<CompletionItem[]> {
 		return ctx.parent.accept(this);
 	}
 
@@ -115,7 +115,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 
 	private getFunctionName(ctx: ParseTree): string {
 		let parent = ctx.parent;
-		if (!(parent && parent instanceof mongoParser.ArgumentListContext)) {
+		if (!(parent && parent instanceof mongoParser.ArgumentContext)) {
 			return null;
 		}
 		parent = parent.parent;
@@ -131,7 +131,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 
 	private getCollectionName(ctx: ParseTree): string {
 		let parent = ctx.parent;
-		if (!(parent && parent instanceof mongoParser.ArgumentListContext)) {
+		if (!(parent && parent instanceof mongoParser.ArgumentContext)) {
 			return null;
 		}
 		parent = parent.parent;

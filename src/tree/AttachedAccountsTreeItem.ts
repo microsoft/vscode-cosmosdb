@@ -98,9 +98,10 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         if (defaultExperiencePick) {
             const defaultExperience = defaultExperiencePick.data;
             let placeholder: string;
+            let defaultValue: string;
             let validateInput: (value: string) => string | undefined | null;
             if (defaultExperience.api === API.MongoDB) {
-                placeholder = 'mongodb://host:port';
+                defaultValue = placeholder = 'mongodb://127.0.0.1:27017';
                 validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
             } else {
                 placeholder = 'AccountEndpoint=...;AccountKey=...'
@@ -111,7 +112,8 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 placeHolder: placeholder,
                 prompt: 'Enter the connection string for your database account',
                 validateInput: validateInput,
-                ignoreFocusOut: true
+                ignoreFocusOut: true,
+                value: defaultValue
             });
 
             if (connectionString) {

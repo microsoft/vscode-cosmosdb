@@ -17,6 +17,7 @@ import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
 import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 import { MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem } from './tree/MongoDatabaseTreeItem';
+import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 
 export class MongoCommands {
 	public static async executeCommandFromActiveEditor(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext): Promise<void> {
@@ -38,7 +39,10 @@ export class MongoCommands {
 			if (!database) {
 				throw new Error('Please select a MongoDB database to run against by selecting it in the explorer and selecting the "Connect" context menu item');
 			}
-
+			if (command.errors) {
+				command.errors.sort((a, b) => a.position.character - b.position.character);
+				throw new Error(`Error near line ${command.errors[0].position.line}, column ${command.errors[0].position.character}, text '${command.errors[0].text}'. Please check syntax.`);
+			}
 			if (command.name === 'find') {
 				await editorManager.showDocument(new MongoFindResultEditor(database, command, tree), 'cosmos-result.json');
 			} else {
@@ -121,6 +125,15 @@ export class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			}
 		}
 		return super.visitArgumentList(ctx);
+	}
+
+	visitErrorNode(node: ErrorNode): MongoCommand[] {
+		const position = new vscode.Position(node._symbol.line - 1, node._symbol.charPositionInLine); // Symbol lines are 1 indexed. Position lines are 0 index
+		const text = node.text;
+		const badCommand = this.commands.find((command) => command.range && command.range.contains(position));
+		badCommand.errors = badCommand.errors || [];
+		badCommand.errors.push({ position: position, text: text });
+		return this.defaultResult(node);
 	}
 
 	protected defaultResult(_node: ParseTree): MongoCommand[] {

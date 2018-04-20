@@ -40,16 +40,8 @@ export class MongoCommands {
 				throw new Error('Please select a MongoDB database to run against by selecting it in the explorer and selecting the "Connect" context menu item');
 			}
 			if (command.errors && command.errors.length > 0) {
-				const err = command.errors.reduce(
-					function (error1, error2) {
-						if (error1.position.line < error2.position.line) {
-							return error1;
-						} else if (error1.position.line === error2.position.line && error1.position.character <= error2.position.character) {
-							return error1;
-						} else {
-							return error2;
-						}
-					});
+				//Currently, we take the first error pushed. Tests correlate that the parser visits errors in left-to-right, top-to-bottom.
+				const err = command.errors[0];
 				throw new Error(`Error near line ${err.position.line}, column ${err.position.character}, text '${err.text}'. Please check syntax.`);
 			}
 			if (command.name === 'find') {

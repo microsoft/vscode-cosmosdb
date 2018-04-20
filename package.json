@@ -171,17 +171,17 @@
 				"title": "Create Document"
 			},
 			{
-				"category": "DocumentDB (SQL)",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.createDocDBDatabase",
 				"title": "Create Database"
 			},
 			{
-				"category": "DocumentDB (SQL)",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.createDocDBCollection",
 				"title": "Create Collection"
 			},
 			{
-				"category": "DocumentDB (SQL)",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.createDocDBDocument",
 				"title": "Create Document"
 			},
@@ -221,12 +221,12 @@
 				"title": "Delete Document"
 			},
 			{
-				"category": "DocumentDB (SQL)",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.deleteDocDBDatabase",
 				"title": "Delete Database"
 			},
 			{
-				"category": "DocumentDB (SQL)",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.deleteDocDBCollection",
 				"title": "Delete Collection"
 			},
@@ -246,7 +246,7 @@
 				"title": "Open Graph Explorer"
 			},
 			{
-				"category": "DocumentDB (SQL)",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.deleteDocDBDocument",
 				"title": "Delete Document"
 			},
@@ -293,7 +293,7 @@
 				}
 			},
 			{
-				"category": "DocumentDB (SQL)",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.loadMore",
 				"title": "Load More"
 			},

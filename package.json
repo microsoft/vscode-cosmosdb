@@ -341,6 +341,10 @@
 				{
 					"command": "cosmosDB.update",
 					"when": "resourceFilename==cosmos-collection.json"
+				},
+				{
+					"command": "cosmosDB.update",
+					"when": "resourceFilename==cosmos-stored-procedure.js"
 				}
 			],
 			"editor/title": [
@@ -357,6 +361,11 @@
 				{
 					"command": "cosmosDB.update",
 					"when": "resourceFilename==cosmos-collection.json",
+					"group": "navigation"
+				},
+				{
+					"command": "cosmosDB.update",
+					"when": "resourceFilename==cosmos-stored-procedure.js",
 					"group": "navigation"
 				}
 			],

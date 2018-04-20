@@ -17,6 +17,8 @@ import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoCollectionNodeEditor } from './mongo/editors/MongoCollectionNodeEditor';
+import { DocDBStoredProcedureTreeItem } from './docdb/tree/DocDBStoredProcedureTreeItem';
+import { DocDBStoredProcedureNodeEditor } from './docdb/editors/DocDBStoredProcedureNodeEditor';
 
 export interface ICosmosEditor<T = {}> {
     label: string;
@@ -104,6 +106,8 @@ export class CosmosEditorManager {
                         editor = new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>editorNode);
                     } else if (editorNode.treeItem instanceof MongoDocumentTreeItem) {
                         editor = new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>editorNode);
+                    } else if (editorNode.treeItem instanceof DocDBStoredProcedureTreeItem) {
+                        editor = new DocDBStoredProcedureNodeEditor(<IAzureNode<DocDBStoredProcedureTreeItem>>editorNode);
                     } else {
                         throw new Error("Unexpected type of Editor treeItem")
                     }

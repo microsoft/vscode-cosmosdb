@@ -57,4 +57,8 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
         return JSON.parse(data);
     }
 
+    public convertToString(data: IMongoDocument[]): string {
+        return JSON.stringify(data, null, 2);
+    }
+
 }

@@ -34,4 +34,8 @@ export class DocDBStoredProcedureNodeEditor implements ICosmosEditor<string> {
         return data;
     }
 
+    public convertToString(data: string): string {
+        return data;
+    }
+
 }

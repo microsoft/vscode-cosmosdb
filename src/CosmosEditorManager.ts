@@ -24,6 +24,7 @@ export interface ICosmosEditor<T = {}> {
     getData(): Promise<T>;
     update(data: T): Promise<T>;
     convertData(data: string): T;
+    convertToString(data: T): string;
 }
 
 export class CosmosEditorManager {
@@ -55,7 +56,7 @@ export class CosmosEditorManager {
         this._globalState.update(this._persistedEditorsKey, fileMapLabels);
         const textEditor = await vscode.window.showTextDocument(document);
         const data = await editor.getData();
-        await this.updateEditor(data, textEditor);
+        await this.updateEditor(data, textEditor, editor);
     }
 
     public async updateMatchingNode(documentUri: vscode.Uri, tree?: AzureTreeDataProvider): Promise<void> {
@@ -74,11 +75,11 @@ export class CosmosEditorManager {
         const timestamp = (new Date()).toLocaleTimeString();
         output.appendLine(`${timestamp}: Updated entity "${editor.label}"`);
         output.show();
-        await this.updateEditor(updatedDoc, vscode.window.activeTextEditor);
+        await this.updateEditor(updatedDoc, vscode.window.activeTextEditor, editor);
     }
 
-    private async updateEditor(data: {}, textEditor: vscode.TextEditor): Promise<void> {
-        const text = (typeof data === "string") ? data : JSON.stringify(data, null, 2);
+    private async updateEditor(data: {}, textEditor: vscode.TextEditor, editor: ICosmosEditor): Promise<void> {
+        const text = editor.convertToString(data);
         await util.writeToEditor(textEditor, text);
         this.ignoreSave = true;
         try {

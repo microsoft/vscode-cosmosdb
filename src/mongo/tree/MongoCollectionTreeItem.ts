@@ -35,7 +35,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		const operations = documents.map((document) => {
 			return {
 				updateOne: {
-					filter: { _id: new ObjectID(document._id) },
+					filter: { _id: ObjectID.isValid(document._id) ? new ObjectID(document._id) : document._id },
 					update: _.omit(document, '_id'),
 					upsert: false
 				}

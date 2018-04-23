@@ -7,8 +7,7 @@ import * as fse from 'fs-extra';
 import * as os from 'os'
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DialogBoxResponses } from './constants';
-import { UserCancelledError, AzureTreeDataProvider, IAzureParentNode, IAzureNode, IActionContext } from 'vscode-azureextensionui';
+import { UserCancelledError, AzureTreeDataProvider, IAzureParentNode, IAzureNode, IActionContext, DialogResponses } from 'vscode-azureextensionui';
 import * as util from './utils/vscodeUtils';
 import { MessageItem, ViewColumn } from 'vscode';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
@@ -60,8 +59,8 @@ export class CosmosEditorManager {
 
         const document = await vscode.workspace.openTextDocument(localDocPath);
         if (document.isDirty) {
-            const overwriteFlag = await vscode.window.showWarningMessage(`You are about to overwrite "${fileName}", which has unsaved changes. Do you want to continue?`, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
-            if (overwriteFlag !== DialogBoxResponses.Yes) {
+            const overwriteFlag = await vscode.window.showWarningMessage(`You are about to overwrite "${fileName}", which has unsaved changes. Do you want to continue?`, { modal: true }, DialogResponses.yes, DialogResponses.cancel);
+            if (overwriteFlag !== DialogResponses.yes) {
                 throw new UserCancelledError();
             }
         }
@@ -145,11 +144,11 @@ export class CosmosEditorManager {
             const showSaveWarning: boolean | undefined = vscode.workspace.getConfiguration().get(this.showSavePromptKey);
             if (showSaveWarning !== false) {
                 const message: string = `Saving 'cosmos-editor.json' will update the entity "${editor.label}" to the Cloud.`;
-                const result: MessageItem | undefined = await vscode.window.showWarningMessage(message, DialogBoxResponses.upload, DialogBoxResponses.uploadDontWarn, DialogBoxResponses.Cancel);
+                const result: MessageItem | undefined = await vscode.window.showWarningMessage(message, DialogResponses.upload, DialogResponses.alwaysUpload, DialogResponses.cancel);
 
-                if (result === DialogBoxResponses.uploadDontWarn) {
+                if (result === DialogResponses.alwaysUpload) {
                     await vscode.workspace.getConfiguration().update(this.showSavePromptKey, false, vscode.ConfigurationTarget.Global);
-                } else if (result !== DialogBoxResponses.upload) {
+                } else if (result !== DialogResponses.upload) {
                     throw new UserCancelledError();
                 }
             }

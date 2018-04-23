@@ -5,8 +5,7 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { DialogBoxResponses } from '../../constants';
-import { IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { IAzureNode, IAzureTreeItem, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
 import { RetrievedDocument, DocumentClient } from 'documentdb';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 
@@ -54,8 +53,8 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
 
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
         const message: string = `Are you sure you want to delete document '${this.label}'?`;
-        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
-        if (result === DialogBoxResponses.Yes) {
+        const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+        if (result === DialogResponses.deleteResponse) {
             const client = this._collection.getDocumentClient();
             const options = { partitionKey: this.partitionKeyValue }
             await new Promise((resolve, reject) => {

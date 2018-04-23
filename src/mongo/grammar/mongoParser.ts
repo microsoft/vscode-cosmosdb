@@ -11,13 +11,17 @@
 
 import { ATN } from 'antlr4ts/atn/ATN';
 import { ATNDeserializer } from 'antlr4ts/atn/ATNDeserializer';
+// import { FailedPredicateException } from 'antlr4ts/FailedPredicateException';
 import { NotNull } from 'antlr4ts/Decorators';
 import { NoViableAltException } from 'antlr4ts/NoViableAltException';
 import { Override } from 'antlr4ts/Decorators';
 import { Parser } from 'antlr4ts/Parser';
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 import { ParserATNSimulator } from 'antlr4ts/atn/ParserATNSimulator';
+// import { ParseTreeListener } from 'antlr4ts/tree/ParseTreeListener';
+// import { ParseTreeVisitor } from 'antlr4ts/tree/ParseTreeVisitor';
 import { RecognitionException } from 'antlr4ts/RecognitionException';
+// import { RuleContext } from 'antlr4ts/RuleContext';
 import { RuleVersion } from 'antlr4ts/RuleVersion';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { Token } from 'antlr4ts/Token';
@@ -62,7 +66,7 @@ export class mongoParser extends Parser {
 	public static readonly RULE_collection = 4;
 	public static readonly RULE_functionCall = 5;
 	public static readonly RULE_arguments = 6;
-	public static readonly RULE_argumentList = 7;
+	public static readonly RULE_argument = 7;
 	public static readonly RULE_objectLiteral = 8;
 	public static readonly RULE_arrayLiteral = 9;
 	public static readonly RULE_elementList = 10;
@@ -74,7 +78,7 @@ export class mongoParser extends Parser {
 	public static readonly RULE_comment = 16;
 	public static readonly ruleNames: string[] = [
 		"mongoCommands", "commands", "command", "emptyCommand", "collection",
-		"functionCall", "arguments", "argumentList", "objectLiteral", "arrayLiteral",
+		"functionCall", "arguments", "argument", "objectLiteral", "arrayLiteral",
 		"elementList", "propertyNameAndValueList", "propertyAssignment", "propertyValue",
 		"literal", "propertyName", "comment"
 	];
@@ -351,7 +355,7 @@ export class mongoParser extends Parser {
 				if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__3) | (1 << mongoParser.T__5) | (1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.NumericLiteral))) !== 0)) {
 					{
 						this.state = 64;
-						this.argumentList();
+						this.argument();
 						this.state = 69;
 						this._errHandler.sync(this);
 						_la = this._input.LA(1);
@@ -361,7 +365,7 @@ export class mongoParser extends Parser {
 									this.state = 65;
 									this.match(mongoParser.T__1);
 									this.state = 66;
-									this.argumentList();
+									this.argument();
 								}
 							}
 							this.state = 71;
@@ -390,9 +394,9 @@ export class mongoParser extends Parser {
 		return _localctx;
 	}
 	@RuleVersion(0)
-	public argumentList(): ArgumentListContext {
-		let _localctx: ArgumentListContext = new ArgumentListContext(this._ctx, this.state);
-		this.enterRule(_localctx, 14, mongoParser.RULE_argumentList);
+	public argument(): ArgumentContext {
+		let _localctx: ArgumentContext = new ArgumentContext(this._ctx, this.state);
+		this.enterRule(_localctx, 14, mongoParser.RULE_argument);
 		try {
 			this.state = 79;
 			this._errHandler.sync(this);
@@ -1071,13 +1075,13 @@ export class FunctionCallContext extends ParserRuleContext {
 export class ArgumentsContext extends ParserRuleContext {
 	public _OPEN_PARENTHESIS: Token;
 	public _CLOSED_PARENTHESIS: Token;
-	public argumentList(): ArgumentListContext[];
-	public argumentList(i: number): ArgumentListContext;
-	public argumentList(i?: number): ArgumentListContext | ArgumentListContext[] {
+	public argument(): ArgumentContext[];
+	public argument(i: number): ArgumentContext;
+	public argument(i?: number): ArgumentContext | ArgumentContext[] {
 		if (i === undefined) {
-			return this.getRuleContexts(ArgumentListContext);
+			return this.getRuleContexts(ArgumentContext);
 		} else {
-			return this.getRuleContext(i, ArgumentListContext);
+			return this.getRuleContext(i, ArgumentContext);
 		}
 	}
 	constructor(parent: ParserRuleContext, invokingState: number);
@@ -1102,7 +1106,7 @@ export class ArgumentsContext extends ParserRuleContext {
 }
 
 
-export class ArgumentListContext extends ParserRuleContext {
+export class ArgumentContext extends ParserRuleContext {
 	public literal(): LiteralContext | undefined {
 		return this.tryGetRuleContext(0, LiteralContext);
 	}
@@ -1117,18 +1121,18 @@ export class ArgumentListContext extends ParserRuleContext {
 		super(parent, invokingState);
 
 	}
-	@Override public get ruleIndex(): number { return mongoParser.RULE_argumentList; }
+	@Override public get ruleIndex(): number { return mongoParser.RULE_argument; }
 	@Override
 	public enterRule(listener: mongoListener): void {
-		if (listener.enterArgumentList) listener.enterArgumentList(this);
+		if (listener.enterArgument) listener.enterArgument(this);
 	}
 	@Override
 	public exitRule(listener: mongoListener): void {
-		if (listener.exitArgumentList) listener.exitArgumentList(this);
+		if (listener.exitArgument) listener.exitArgument(this);
 	}
 	@Override
 	public accept<Result>(visitor: mongoVisitor<Result>): Result {
-		if (visitor.visitArgumentList) return visitor.visitArgumentList(this);
+		if (visitor.visitArgument) return visitor.visitArgument(this);
 		else return visitor.visitChildren(this);
 	}
 }

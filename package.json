@@ -35,8 +35,10 @@
 	},
 	"main": "./out/src/extension",
 	"activationEvents": [
+		"onLanguage:mongo",
 		"onView:cosmosDBExplorer",
 		"onCommand:cosmosDB.executeMongoCommand",
+		"onCommand:cosmosDB.executeAllMongoCommands",
 		"onCommand:cosmosDB.attachDatabaseAccount",
 		"onCommand:cosmosDB.attachEmulator",
 		"onCommand:cosmosDB.createAccount",
@@ -113,7 +115,12 @@
 			{
 				"category": "MongoDB",
 				"command": "cosmosDB.executeMongoCommand",
-				"title": "Execute Command"
+				"title": "Execute MongoDB Command"
+			},
+			{
+				"category": "MongoDB",
+				"command": "cosmosDB.executeAllMongoCommands",
+				"title": "Execute All MongoDB Commands"
 			},
 			{
 				"category": "MongoDB",
@@ -305,6 +312,10 @@
 			"editor/context": [
 				{
 					"command": "cosmosDB.executeMongoCommand",
+					"when": "resourceLangId==mongo"
+				},
+				{
+					"command": "cosmosDB.executeAllMongoCommands",
 					"when": "resourceLangId==mongo"
 				},
 				{
@@ -609,6 +620,14 @@
 				{
 					"command": "cosmosDB.deleteStoredProcedure",
 					"when": "never"
+				},
+				{
+					"command": "cosmosDB.executeAllMongoCommands",
+					"when": "editorLangId == 'mongo'"
+				},
+				{
+					"command": "cosmosDB.executeMongoCommand",
+					"when": "editorLangId == 'mongo'"
 				}
 			]
 		},
@@ -617,6 +636,12 @@
 				"command": "cosmosDB.executeMongoCommand",
 				"key": "ctrl+shift+'",
 				"mac": "cmd+shift+'",
+				"when": "editorLangId == 'mongo' && editorTextFocus"
+			},
+			{
+				"command": "cosmosDB.executeAllMongoCommands",
+				"key": "ctrl+shift+;",
+				"mac": "cmd+shift+;",
 				"when": "editorLangId == 'mongo' && editorTextFocus"
 			}
 		],
@@ -776,7 +801,7 @@
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "~0.11.6",
+		"vscode-azureextensionui": "~0.12.0",
 		"vscode-extension-telemetry": "^0.0.15",
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.0.0",

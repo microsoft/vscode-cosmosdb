@@ -16,15 +16,3 @@ export namespace DialogBoxResponses {
     export const No: MessageItem = { title: "No" };
     export const Cancel: MessageItem = { title: "Cancel", isCloseAffordance: true };
 }
-
-export enum Experience {
-    MongoDB = 'MongoDB',
-    Graph = 'Graph',
-    Table = 'Table',
-    DocumentDB = 'DocumentDB'
-}
-
-export enum DBAccountKind {
-    MongoDB = 'MongoDB',
-    GlobalDocumentDB = 'GlobalDocumentDB'
-}

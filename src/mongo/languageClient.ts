@@ -29,7 +29,10 @@ export default class MongoDBLanguageClient {
 		// Options to control the language client
 		let clientOptions: LanguageClientOptions = {
 			// Register the server for mongo javascript documents
-			documentSelector: ['mongo'],
+			documentSelector: [
+				{ language: 'mongo', scheme: 'file' },
+				{ language: 'mongo', scheme: 'untitled' }
+			],
 		};
 
 		// Create the language client and start the client.

@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { DialogBoxResponses } from './constants';
 import { UserCancelledError, AzureTreeDataProvider, IAzureParentNode, IAzureNode, IActionContext } from 'vscode-azureextensionui';
 import * as util from './utils/vscodeUtils';
-import { MessageItem } from 'vscode';
+import { MessageItem, ViewColumn } from 'vscode';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
@@ -25,6 +25,13 @@ export interface ICosmosEditor<T = {}> {
     update(data: T): Promise<T>;
 }
 
+export interface ShowEditorDocumentOptions {
+    /**
+     * Shows the document to the right of the current editor, and keeps focus on the active document
+     */
+    showInNextColumn?: boolean;
+}
+
 export class CosmosEditorManager {
     private fileMap: { [key: string]: ICosmosEditor } = {};
     private ignoreSave: boolean = false;
@@ -37,7 +44,17 @@ export class CosmosEditorManager {
         this._globalState = globalState;
     }
 
-    public async showDocument(editor: ICosmosEditor, fileName: string): Promise<void> {
+    public async showDocument(editor: ICosmosEditor, fileName: string, options?: ShowEditorDocumentOptions): Promise<void> {
+        let column: vscode.ViewColumn = vscode.ViewColumn.Active;
+        let preserveFocus: boolean = false;
+        if (options && options.showInNextColumn) {
+            preserveFocus = true;
+            const activeEditor = vscode.window.activeTextEditor;
+            if (activeEditor && activeEditor.viewColumn >= vscode.ViewColumn.One) {
+                column = activeEditor.viewColumn < ViewColumn.Three ? activeEditor.viewColumn + 1 : ViewColumn.One;
+            }
+        }
+
         const localDocPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', fileName);
         await fse.ensureFile(localDocPath);
 
@@ -48,11 +65,13 @@ export class CosmosEditorManager {
                 throw new UserCancelledError();
             }
         }
+
         this.fileMap[localDocPath] = editor;
         const fileMapLabels = this._globalState.get(this._persistedEditorsKey, {});
         Object.keys(this.fileMap).forEach((key) => fileMapLabels[key] = (this.fileMap[key]).id);
         this._globalState.update(this._persistedEditorsKey, fileMapLabels);
-        const textEditor = await vscode.window.showTextDocument(document);
+
+        const textEditor = await vscode.window.showTextDocument(document, column, preserveFocus);
         const data = await editor.getData();
         await this.updateEditor(data, textEditor);
     }

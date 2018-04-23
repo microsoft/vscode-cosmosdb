@@ -18,7 +18,7 @@ import { EmptyCommandContext } from './mongoParser';
 import { CollectionContext } from './mongoParser';
 import { FunctionCallContext } from './mongoParser';
 import { ArgumentsContext } from './mongoParser';
-import { ArgumentListContext } from './mongoParser';
+import { ArgumentContext } from './mongoParser';
 import { ObjectLiteralContext } from './mongoParser';
 import { ArrayLiteralContext } from './mongoParser';
 import { ElementListContext } from './mongoParser';
@@ -88,11 +88,11 @@ export interface mongoVisitor<Result> extends ParseTreeVisitor<Result> {
 	visitArguments?: (ctx: ArgumentsContext) => Result;
 
 	/**
-	 * Visit a parse tree produced by `mongoParser.argumentList`.
+	 * Visit a parse tree produced by `mongoParser.argument`.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	visitArgumentList?: (ctx: ArgumentListContext) => Result;
+	visitArgument?: (ctx: ArgumentContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `mongoParser.objectLiteral`.

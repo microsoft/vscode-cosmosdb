@@ -7,6 +7,7 @@ import { IAzureNode } from "vscode-azureextensionui";
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { RetrievedDocument } from "documentdb";
 import { DocDBDocumentTreeItem } from "../tree/DocDBDocumentTreeItem";
+import { getNodeEditorLabel } from '../../utils/vscodeUtils';
 
 export class DocDBDocumentNodeEditor implements ICosmosEditor<RetrievedDocument> {
     private _documentNode: IAzureNode<DocDBDocumentTreeItem>;
@@ -15,10 +16,7 @@ export class DocDBDocumentNodeEditor implements ICosmosEditor<RetrievedDocument>
     }
 
     public get label(): string {
-        const collectionNode = this._documentNode.parent;
-        const databaseNode = collectionNode.parent;
-        const accountNode = databaseNode.parent;
-        return `${accountNode.treeItem.label}/${databaseNode.treeItem.label}/${collectionNode.treeItem.label}/${this._documentNode.treeItem.label}`;
+        return getNodeEditorLabel(this._documentNode);
     }
 
     public async getData(): Promise<RetrievedDocument> {

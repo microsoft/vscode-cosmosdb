@@ -35,10 +35,10 @@ functionCall
 	;
 
 arguments
-	: OPEN_PARENTHESIS = '(' ( argumentList (',' argumentList)* )? CLOSED_PARENTHESIS = ')'
+	: OPEN_PARENTHESIS = '(' ( argument (',' argument)* )? CLOSED_PARENTHESIS = ')'
 	;
 
-argumentList
+argument
 	: literal
 	| objectLiteral
 	| arrayLiteral

@@ -4,21 +4,21 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { azureUtils } from '../utils/azureUtils';
-import { IAzureTreeItem, IAzureNode, IChildProvider, ResourceGroupStep, LocationStep, AzureWizard, IActionContext } from 'vscode-azureextensionui';
+import { IAzureTreeItem, IAzureNode, IChildProvider, ResourceGroupListStep, LocationListStep, AzureWizard, IActionContext } from 'vscode-azureextensionui';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccountsListResult, DatabaseAccount, DatabaseAccountListKeysResult } from 'azure-arm-cosmosdb/lib/models';
-import { Experience } from '../constants';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
-import { CosmosDBAccountStep } from './CosmosDBAccountWizard/CosmosDBAccountStep';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import * as vscode from 'vscode';
 import { CosmosDBAccountApiStep } from './CosmosDBAccountWizard/CosmosDBAccountApiStep';
+import { API, getExperience } from '../experiences';
+import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccountCreateStep';
 
 export class CosmosDBAccountProvider implements IChildProvider {
     public childTypeLabel: string = 'Account';
@@ -48,9 +48,11 @@ export class CosmosDBAccountProvider implements IChildProvider {
             [
                 new CosmosDBAccountNameStep(),
                 new CosmosDBAccountApiStep(),
-                new ResourceGroupStep(),
-                new LocationStep(),
-                new CosmosDBAccountStep()
+                new ResourceGroupListStep(),
+                new LocationListStep()
+            ],
+            [
+                new CosmosDBAccountCreateStep()
             ],
             wizardContext);
 
@@ -59,8 +61,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
 
         await wizard.prompt(actionContext, node.ui);
 
-        actionContext.properties.defaultExperience = wizardContext.defaultExperience;
-        actionContext.properties.kind = wizardContext.kind;
+        actionContext.properties.defaultExperience = wizardContext.defaultExperience.api;
 
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
             showCreatingNode(wizardContext.accountName);
@@ -71,9 +72,9 @@ export class CosmosDBAccountProvider implements IChildProvider {
     }
 
     private async initChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<IAzureTreeItem> {
-        const defaultExperience = <Experience>databaseAccount.tags.defaultExperience;
+        const defaultExperience = <API>databaseAccount.tags.defaultExperience;
         const resourceGroup: string = azureUtils.getResourceGroupFromId(databaseAccount.id);
-        const label: string = `${databaseAccount.name} (${defaultExperience})`;
+        const label: string = `${databaseAccount.name} (${getExperience(defaultExperience).shortName})`;
         const isEmulator: boolean = false;
         if (defaultExperience === "MongoDB") {
             const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, databaseAccount.name);

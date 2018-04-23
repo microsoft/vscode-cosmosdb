@@ -8,8 +8,7 @@ import * as cpUtils from '../../utils/cp';
 import * as path from 'path';
 import { MongoClient, Db, Collection } from 'mongodb';
 import { Shell } from '../shell';
-import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, IActionContext } from 'vscode-azureextensionui';
-import { DialogBoxResponses } from '../../constants';
+import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, IActionContext, DialogResponses } from 'vscode-azureextensionui';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoCommand } from '../MongoCommand';
 import { ext } from '../../extensionVariables';
@@ -76,8 +75,8 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 
 	public async deleteTreeItem(_node: IAzureNode): Promise<void> {
 		const message: string = `Are you sure you want to delete database '${this.label}'?`;
-		const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
-		if (result === DialogBoxResponses.Yes) {
+		const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+		if (result === DialogResponses.deleteResponse) {
 			const db = await this.getDb();
 			await db.dropDatabase();
 		} else {

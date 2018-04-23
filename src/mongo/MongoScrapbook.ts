@@ -17,6 +17,7 @@ import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
 import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 import { MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem } from './tree/MongoDatabaseTreeItem';
+import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 
 const output = vscodeUtil.getOutputChannel();
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
@@ -76,7 +77,11 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: IAzureP
 		if (!database) {
 			throw new Error('Please select a MongoDB database to run against by selecting it in the explorer and selecting the "Connect" context menu item');
 		}
-
+		if (command.errors && command.errors.length > 0) {
+			//Currently, we take the first error pushed. Tests correlate that the parser visits errors in left-to-right, top-to-bottom.
+			const err = command.errors[0];
+			throw new Error(`Error near line ${err.position.line}, column ${err.position.character}, text '${err.text}'. Please check syntax.`);
+		}
 		if (command.name === 'find') {
 			await editorManager.showDocument(new MongoFindResultEditor(database, command, tree), 'cosmos-result.json', { showInNextColumn: true });
 		} else {
@@ -167,6 +172,15 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			}
 		}
 		return super.visitArgument(ctx);
+	}
+
+	visitErrorNode(node: ErrorNode): MongoCommand[] {
+		const position = new vscode.Position(node._symbol.line - 1, node._symbol.charPositionInLine); // Symbol lines are 1 indexed. Position lines are 0 indexed
+		const text = node.text;
+		const badCommand = this.commands.find((command) => command.range && command.range.contains(position));
+		badCommand.errors = badCommand.errors || [];
+		badCommand.errors.push({ position: position, text: text });
+		return this.defaultResult(node);
 	}
 
 	protected defaultResult(_node: ParseTree): MongoCommand[] {

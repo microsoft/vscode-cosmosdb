@@ -214,4 +214,42 @@ suite("scrapbook parsing Tests", () => {
         let command = getCommandFromText(text, new Position(0, 0));
         assert.deepEqual(JSON.parse(command.arguments![0]), JSON.parse(arg0));
     });
+    test("test function call with erroneous syntax: missing comma", () => {
+        let arg0 = `{"name": {"First" : "a", "Last":"b"} }`;
+        let arg1 = `{"ordered": true}`;
+        let text = `db.test1.insertMany(${arg0}   ${arg1})`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        const err = command.errors[0];
+        assert.deepEqual(err.text, "{");
+        assert.deepEqual(err.position.line, 0);
+        assert.deepEqual(err.position.character, 61);
+    });
+    test("test function call with erroneous syntax: missing comma, parameters separated with newline", () => {
+        let arg0 = `{"name": {"First" : "a", "Last":"b"} }`;
+        let arg1 = `{"ordered": \ntrue}`;
+        let text = `db.test1.insertMany(${arg0} \n  ${arg1})`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        const err = command.errors[0];
+        assert.deepEqual(err.text, "{");
+        assert.deepEqual(err.position.line, 1);
+        assert.deepEqual(err.position.character, 2);
+    });
+    test("test function call with erroneous syntax: missing double quote", () => {
+        let arg0 = `{name": {"First" : "a", "Last":"b"} }`;
+        let text = `db.test1.insertMany(${arg0})`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        const err = command.errors[0];
+        assert.deepEqual(err.text, "name");
+        assert.deepEqual(err.position.line, 0);
+        assert.deepEqual(err.position.character, 21);
+    });
+    test("test function call with erroneous syntax: missing opening brace", () => {
+        let arg0 = `"name": {"First" : "a", "Last":"b"} }`;
+        let text = `db.test1.insertMany(${arg0})`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        const err = command.errors[0];
+        assert.deepEqual(err.text, ":");
+        assert.deepEqual(err.position.line, 0);
+        assert.deepEqual(err.position.character, 26);
+    });
 });

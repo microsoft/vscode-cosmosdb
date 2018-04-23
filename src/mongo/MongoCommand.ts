@@ -12,4 +12,10 @@ export interface MongoCommand {
     name: string;
     // tslint:disable-next-line:no-banned-terms
     arguments?: string[];
+    errors?: errorDescription[];
+}
+
+interface errorDescription {
+    position: vscode.Position;
+    text: string
 }

@@ -171,17 +171,17 @@
 				"title": "Create Document"
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.createDocDBDatabase",
 				"title": "Create Database"
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.createDocDBCollection",
 				"title": "Create Collection"
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.createDocDBDocument",
 				"title": "Create Document"
 			},
@@ -221,12 +221,12 @@
 				"title": "Delete Document"
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.deleteDocDBDatabase",
 				"title": "Delete Database"
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.deleteDocDBCollection",
 				"title": "Delete Collection"
 			},
@@ -246,7 +246,7 @@
 				"title": "Open Graph Explorer"
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.deleteDocDBDocument",
 				"title": "Delete Document"
 			},
@@ -274,17 +274,17 @@
 				}
 			},
 			{
-				"category": "CosmosDB",
+				"category": "Cosmos DB",
 				"command": "cosmosDB.openInPortal",
 				"title": "Open In Portal"
 			},
 			{
-				"category": "CosmosDB",
+				"category": "Cosmos DB",
 				"command": "cosmosDB.copyConnectionString",
 				"title": "Copy Connection String"
 			},
 			{
-				"category": "CosmosDB",
+				"category": "Cosmos DB",
 				"command": "cosmosDB.update",
 				"title": "Update to Cloud",
 				"icon": {
@@ -293,17 +293,17 @@
 				}
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.loadMore",
 				"title": "Load More"
 			},
 			{
-				"category": "CosmosDB",
+				"category": "Cosmos DB",
 				"command": "cosmosDB.openDocument",
 				"title": "Open Document"
 			},
 			{
-				"category": "CosmosDB",
+				"category": "Cosmos DB",
 				"command": "cosmosDB.openCollection",
 				"title": "Open Collection"
 			}

@@ -30,7 +30,7 @@ export class MongoDocumentNodeEditor implements ICosmosEditor<IMongoDocument> {
         return this._documentNode.id;
     }
 
-    public convertData(data: string): IMongoDocument {
+    public convertFromString(data: string): IMongoDocument {
         return JSON.parse(data);
     }
 

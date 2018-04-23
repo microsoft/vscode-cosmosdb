@@ -31,7 +31,7 @@ export class DocDBDocumentNodeEditor implements ICosmosEditor<RetrievedDocument>
         return this._documentNode.id;
     }
 
-    public convertData(data: string): RetrievedDocument {
+    public convertFromString(data: string): RetrievedDocument {
         return JSON.parse(data);
     }
 

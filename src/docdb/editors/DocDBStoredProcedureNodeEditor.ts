@@ -30,7 +30,7 @@ export class DocDBStoredProcedureNodeEditor implements ICosmosEditor<string> {
         return this._spNode.id;
     }
 
-    public convertData(data: string): string {
+    public convertFromString(data: string): string {
         return data;
     }
 

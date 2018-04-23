@@ -25,7 +25,7 @@ export interface ICosmosEditor<T = {}> {
     id: string;
     getData(): Promise<T>;
     update(data: T): Promise<T>;
-    convertData(data: string): T;
+    convertFromString(data: string): T;
     convertToString(data: T): string;
 }
 
@@ -71,18 +71,18 @@ export class CosmosEditorManager {
     }
 
     private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument): Promise<void> {
-        const text = editor.convertData(doc.getText());
-        const updatedDoc: {} = await editor.update(text);
+        const newContent = editor.convertFromString(doc.getText());
+        const updatedContent: {} = await editor.update(newContent);
         const output = util.getOutputChannel();
         const timestamp = (new Date()).toLocaleTimeString();
         output.appendLine(`${timestamp}: Updated entity "${editor.label}"`);
         output.show();
-        await this.updateEditor(updatedDoc, vscode.window.activeTextEditor, editor);
+        await this.updateEditor(updatedContent, vscode.window.activeTextEditor, editor);
     }
 
     private async updateEditor(data: {}, textEditor: vscode.TextEditor, editor: ICosmosEditor): Promise<void> {
-        const text = editor.convertToString(data);
-        await util.writeToEditor(textEditor, text);
+        const updatedText = editor.convertToString(data);
+        await util.writeToEditor(textEditor, updatedText);
         this.ignoreSave = true;
         try {
             await textEditor.document.save();

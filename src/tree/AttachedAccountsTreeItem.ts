@@ -14,7 +14,7 @@ import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { tryfetchNodeModule } from '../utils/vscodeUtils';
 import { getDatabaseNameFromConnectionString } from '../mongo/mongoConnectionStrings';
-import { API, getExperienceQuickPicks, getExperienceQuickPick } from '../experiences';
+import { API, getExperienceQuickPicks, getExperienceQuickPick, getExperience } from '../experiences';
 
 interface IPersistedAccount {
     id: string,
@@ -227,14 +227,14 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                     // Default to Mongo if the value is a string for the sake of backwards compatiblity
                     // (Mongo was originally the only account type that could be attached)
                     id = account;
-                    label = `${account} (${api})`;
+                    label = `${account} (${getExperience(api).shortName})`;
                     api = API.MongoDB;
                     isEmulator = false;
                 } else {
                     id = (<IPersistedAccount>account).id;
                     api = (<IPersistedAccount>account).defaultExperience;
                     isEmulator = (<IPersistedAccount>account).isEmulator;
-                    label = isEmulator ? `${api} Emulator` : `${id} (${api})`;
+                    label = isEmulator ? `${getExperience(api).shortName} Emulator` : `${id} (${getExperience(api).shortName})`;
                 }
                 const connectionString: string = await this._keytar.getPassword(this._serviceName, id);
                 persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
@@ -258,12 +258,12 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 }
             }
 
-            label = label || `${id} (${api})`;
+            label = label || `${id} (${getExperience(api).shortName})`;
             treeItem = new MongoAccountTreeItem(id, label, connectionString, isEmulator);
         } else {
             const [endpoint, masterKey, id] = AttachedAccountsTreeItem.parseDocDBConnectionString(connectionString);
 
-            label = label || `${id} (${api})`;
+            label = label || `${id} (${getExperience(api).shortName})`;
             switch (api) {
                 case API.Table:
                     treeItem = new TableAccountTreeItem(id, label, endpoint, masterKey, isEmulator);

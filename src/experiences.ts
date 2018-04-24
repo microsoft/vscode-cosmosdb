@@ -48,10 +48,10 @@ export function getExperienceQuickPick(api: API): IAzureQuickPickItem<Experience
 }
 
 const experiencesArray: Experience[] = [
-    { api: API.DocumentDB, longName: "SQL", shortName: "SQL", kind: DBAccountKind.GlobalDocumentDB },
+    { api: API.DocumentDB, longName: "SQL", description: "(DocumentDB)", shortName: "SQL", kind: DBAccountKind.GlobalDocumentDB },
     { api: API.MongoDB, longName: "MongoDB", shortName: "MongoDB", kind: DBAccountKind.MongoDB },
     { api: API.Table, longName: "Azure Table", shortName: "Table", kind: DBAccountKind.GlobalDocumentDB },
-    { api: API.Graph, longName: "Gremlin (Graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB }
+    { api: API.Graph, longName: "Gremlin", description: "(Graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB }
 ];
 
 const experiencesMap = new Map<API, Experience>(experiencesArray.map((info: Experience): [API, Experience] => [info.api, info]));

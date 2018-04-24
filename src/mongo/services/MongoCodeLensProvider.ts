@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from "vscode";
-import { MongoCommands } from "../MongoCommands";
+import { getAllCommandsFromTextDocument } from "../MongoScrapbook";
 
 export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 	private _onDidChangeEmitter = new vscode.EventEmitter<void>();
@@ -48,7 +48,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 				range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0))
 			});
 
-			let commands = MongoCommands.getAllCommandsFromTextDocument(document)
+			let commands = getAllCommandsFromTextDocument(document)
 			for (let cmd of commands) {
 				// run individual
 				lenses.push(<vscode.CodeLens>{

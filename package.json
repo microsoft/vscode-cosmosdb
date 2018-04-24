@@ -173,17 +173,17 @@
 				"title": "Create Document"
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.createDocDBDatabase",
 				"title": "Create Database"
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.createDocDBCollection",
 				"title": "Create Collection"
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.createDocDBDocument",
 				"title": "Create Document"
 			},
@@ -228,12 +228,12 @@
 				"title": "Delete Document"
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.deleteDocDBDatabase",
 				"title": "Delete Database"
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.deleteDocDBCollection",
 				"title": "Delete Collection"
 			},
@@ -253,7 +253,7 @@
 				"title": "Open Graph Explorer"
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.deleteDocDBDocument",
 				"title": "Delete Document"
 			},
@@ -281,17 +281,17 @@
 				}
 			},
 			{
-				"category": "CosmosDB",
+				"category": "Cosmos DB",
 				"command": "cosmosDB.openInPortal",
 				"title": "Open In Portal"
 			},
 			{
-				"category": "CosmosDB",
+				"category": "Cosmos DB",
 				"command": "cosmosDB.copyConnectionString",
 				"title": "Copy Connection String"
 			},
 			{
-				"category": "CosmosDB",
+				"category": "Cosmos DB",
 				"command": "cosmosDB.update",
 				"title": "Update to Cloud",
 				"icon": {
@@ -300,22 +300,22 @@
 				}
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.loadMore",
 				"title": "Load More"
 			},
 			{
-				"category": "CosmosDB",
+				"category": "Cosmos DB",
 				"command": "cosmosDB.openDocument",
 				"title": "Open Document"
 			},
 			{
-				"category": "CosmosDB",
+				"category": "Cosmos DB",
 				"command": "cosmosDB.openStoredProcedure",
 				"title": "Open Stored Procedure"
 			},
 			{
-				"category": "CosmosDB",
+				"category": "Cosmos DB",
 				"command": "cosmosDB.openCollection",
 				"title": "Open Collection"
 			}
@@ -645,6 +645,14 @@
 				{
 					"command": "cosmosDB.deleteStoredProcedure",
 					"when": "never"
+				},
+				{
+					"command": "cosmosDB.executeAllMongoCommands",
+					"when": "editorLangId == 'mongo'"
+				},
+				{
+					"command": "cosmosDB.executeMongoCommand",
+					"when": "editorLangId == 'mongo'"
 				}
 			]
 		},
@@ -653,6 +661,12 @@
 				"command": "cosmosDB.executeMongoCommand",
 				"key": "ctrl+shift+'",
 				"mac": "cmd+shift+'",
+				"when": "editorLangId == 'mongo' && editorTextFocus"
+			},
+			{
+				"command": "cosmosDB.executeAllMongoCommands",
+				"key": "ctrl+shift+;",
+				"mac": "cmd+shift+;",
 				"when": "editorLangId == 'mongo' && editorTextFocus"
 			}
 		],
@@ -812,7 +826,7 @@
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "~0.11.6",
+		"vscode-azureextensionui": "~0.12.0",
 		"vscode-extension-telemetry": "^0.0.15",
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.0.0",

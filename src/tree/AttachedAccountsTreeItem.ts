@@ -12,7 +12,7 @@ import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
-import { fetchNodeModule } from '../utils/vscodeUtils';
+import { tryfetchNodeModule } from '../utils/vscodeUtils';
 import { getDatabaseNameFromConnectionString } from '../mongo/mongoConnectionStrings';
 import { API, getExperienceQuickPicks, getExperienceQuickPick } from '../experiences';
 
@@ -38,7 +38,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     private _loadPersistedAccountsTask: Promise<IAzureTreeItem[]>;
 
     constructor(private readonly _globalState: vscode.Memento) {
-        this._keytar = fetchNodeModule('keytar');
+        this._keytar = tryfetchNodeModule('keytar');
         this._loadPersistedAccountsTask = this.loadPersistedAccounts();
     }
 
@@ -98,9 +98,10 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         if (defaultExperiencePick) {
             const defaultExperience = defaultExperiencePick.data;
             let placeholder: string;
+            let defaultValue: string;
             let validateInput: (value: string) => string | undefined | null;
             if (defaultExperience.api === API.MongoDB) {
-                placeholder = 'mongodb://host:port';
+                defaultValue = placeholder = 'mongodb://127.0.0.1:27017';
                 validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
             } else {
                 placeholder = 'AccountEndpoint=...;AccountKey=...'
@@ -111,7 +112,8 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 placeHolder: placeholder,
                 prompt: 'Enter the connection string for your database account',
                 validateInput: validateInput,
-                ignoreFocusOut: true
+                ignoreFocusOut: true,
+                value: defaultValue
             });
 
             if (connectionString) {

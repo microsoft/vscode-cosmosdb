@@ -5,9 +5,8 @@
 
 import * as path from 'path';
 import * as vscode from "vscode";
-import { IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
+import { IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
 import { ProcedureMeta, DocumentClient } from 'documentdb';
-import { DialogBoxResponses } from '../../constants';
 import { getDocumentClient } from '../getDocumentClient';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 
@@ -59,8 +58,8 @@ export class DocDBStoredProcedureTreeItem implements IAzureTreeItem {
 
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
         const message: string = `Are you sure you want to delete stored procedure '${this.label}'?`;
-        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
-        if (result === DialogBoxResponses.Yes) {
+        const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+        if (result === DialogResponses.deleteResponse) {
             const client = getDocumentClient(this._endpoint, this._masterKey, this._isEmulator);
             await new Promise((resolve, reject) => {
                 client.deleteStoredProcedure(this.link, function (err) {

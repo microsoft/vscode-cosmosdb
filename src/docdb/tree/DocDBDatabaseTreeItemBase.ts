@@ -5,11 +5,10 @@
 
 import * as path from 'path';
 import { DocumentClient, QueryIterator, DatabaseMeta, CollectionMeta, FeedOptions } from 'documentdb';
-import { IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
+import { IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import * as vscode from 'vscode';
 import { DocumentBase } from 'documentdb/lib';
-import { DialogBoxResponses } from '../../constants';
 
 const minThroughput: number = 1000;
 const maxThroughput: number = 100000;
@@ -52,8 +51,8 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     // Delete the database
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
         const message: string = `Are you sure you want to delete database '${this.label}' and its contents?`;
-        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
-        if (result === DialogBoxResponses.Yes) {
+        const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+        if (result === DialogResponses.deleteResponse) {
             const client = this.getDocumentClient();
             await new Promise((resolve, reject) => {
                 client.deleteDatabase(this.link, function (err) {

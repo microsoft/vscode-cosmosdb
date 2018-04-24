@@ -7,10 +7,9 @@ import * as fse from 'fs-extra';
 import * as os from 'os'
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DialogBoxResponses } from './constants';
-import { UserCancelledError, AzureTreeDataProvider, IAzureParentNode, IAzureNode, IActionContext } from 'vscode-azureextensionui';
+import { UserCancelledError, AzureTreeDataProvider, IAzureParentNode, IAzureNode, IActionContext, DialogResponses } from 'vscode-azureextensionui';
 import * as util from './utils/vscodeUtils';
-import { MessageItem } from 'vscode';
+import { MessageItem, ViewColumn } from 'vscode';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
@@ -29,6 +28,13 @@ export interface ICosmosEditor<T = {}> {
     convertToString(data: T): string;
 }
 
+export interface ShowEditorDocumentOptions {
+    /**
+     * Shows the document to the right of the current editor, and keeps focus on the active document
+     */
+    showInNextColumn?: boolean;
+}
+
 export class CosmosEditorManager {
     private fileMap: { [key: string]: ICosmosEditor } = {};
     private ignoreSave: boolean = false;
@@ -41,22 +47,34 @@ export class CosmosEditorManager {
         this._globalState = globalState;
     }
 
-    public async showDocument(editor: ICosmosEditor, fileName: string): Promise<void> {
+    public async showDocument(editor: ICosmosEditor, fileName: string, options?: ShowEditorDocumentOptions): Promise<void> {
+        let column: vscode.ViewColumn = vscode.ViewColumn.Active;
+        let preserveFocus: boolean = false;
+        if (options && options.showInNextColumn) {
+            preserveFocus = true;
+            const activeEditor = vscode.window.activeTextEditor;
+            if (activeEditor && activeEditor.viewColumn >= vscode.ViewColumn.One) {
+                column = activeEditor.viewColumn < ViewColumn.Three ? activeEditor.viewColumn + 1 : ViewColumn.One;
+            }
+        }
+
         const localDocPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', fileName);
         await fse.ensureFile(localDocPath);
 
         const document = await vscode.workspace.openTextDocument(localDocPath);
         if (document.isDirty) {
-            const overwriteFlag = await vscode.window.showWarningMessage(`You are about to overwrite "${fileName}", which has unsaved changes. Do you want to continue?`, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
-            if (overwriteFlag !== DialogBoxResponses.Yes) {
+            const overwriteFlag = await vscode.window.showWarningMessage(`You are about to overwrite "${fileName}", which has unsaved changes. Do you want to continue?`, { modal: true }, DialogResponses.yes, DialogResponses.cancel);
+            if (overwriteFlag !== DialogResponses.yes) {
                 throw new UserCancelledError();
             }
         }
+
         this.fileMap[localDocPath] = editor;
         const fileMapLabels = this._globalState.get(this._persistedEditorsKey, {});
         Object.keys(this.fileMap).forEach((key) => fileMapLabels[key] = (this.fileMap[key]).id);
         this._globalState.update(this._persistedEditorsKey, fileMapLabels);
-        const textEditor = await vscode.window.showTextDocument(document);
+
+        const textEditor = await vscode.window.showTextDocument(document, column, preserveFocus);
         const data = await editor.getData();
         await this.updateEditor(data, textEditor, editor);
     }
@@ -134,11 +152,11 @@ export class CosmosEditorManager {
             const showSaveWarning: boolean | undefined = vscode.workspace.getConfiguration().get(this.showSavePromptKey);
             if (showSaveWarning !== false) {
                 const message: string = `Saving 'cosmos-editor.json' will update the entity "${editor.label}" to the Cloud.`;
-                const result: MessageItem | undefined = await vscode.window.showWarningMessage(message, DialogBoxResponses.upload, DialogBoxResponses.uploadDontWarn, DialogBoxResponses.Cancel);
+                const result: MessageItem | undefined = await vscode.window.showWarningMessage(message, DialogResponses.upload, DialogResponses.alwaysUpload, DialogResponses.cancel);
 
-                if (result === DialogBoxResponses.uploadDontWarn) {
+                if (result === DialogResponses.alwaysUpload) {
                     await vscode.workspace.getConfiguration().update(this.showSavePromptKey, false, vscode.ConfigurationTarget.Global);
-                } else if (result !== DialogBoxResponses.upload) {
+                } else if (result !== DialogResponses.upload) {
                     throw new UserCancelledError();
                 }
             }

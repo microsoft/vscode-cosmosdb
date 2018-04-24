@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { azureUtils } from '../utils/azureUtils';
-import { IAzureTreeItem, IAzureNode, IChildProvider, ResourceGroupStep, LocationStep, AzureWizard, IActionContext } from 'vscode-azureextensionui';
+import { IAzureTreeItem, IAzureNode, IChildProvider, ResourceGroupListStep, LocationListStep, AzureWizard, IActionContext } from 'vscode-azureextensionui';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
@@ -14,11 +14,11 @@ import { DatabaseAccountsListResult, DatabaseAccount, DatabaseAccountListKeysRes
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
-import { CosmosDBAccountStep } from './CosmosDBAccountWizard/CosmosDBAccountStep';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import * as vscode from 'vscode';
 import { CosmosDBAccountApiStep } from './CosmosDBAccountWizard/CosmosDBAccountApiStep';
 import { API, getExperience } from '../experiences';
+import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccountCreateStep';
 
 export class CosmosDBAccountProvider implements IChildProvider {
     public childTypeLabel: string = 'Account';
@@ -48,9 +48,11 @@ export class CosmosDBAccountProvider implements IChildProvider {
             [
                 new CosmosDBAccountNameStep(),
                 new CosmosDBAccountApiStep(),
-                new ResourceGroupStep(),
-                new LocationStep(),
-                new CosmosDBAccountStep()
+                new ResourceGroupListStep(),
+                new LocationListStep()
+            ],
+            [
+                new CosmosDBAccountCreateStep()
             ],
             wizardContext);
 

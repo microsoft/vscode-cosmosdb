@@ -9,8 +9,8 @@ import * as path from 'path';
 import * as _ from 'underscore';
 import * as util from '../../utils/vscodeUtils';
 import { Collection, Cursor, ObjectID, InsertOneWriteOpResult, BulkWriteOpResultObject, CollectionInsertManyOptions } from 'mongodb';
-import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
-import { DialogBoxResponses, DefaultBatchSize } from '../../constants';
+import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
+import { DefaultBatchSize } from '../../constants';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 
 export class MongoCollectionTreeItem implements IAzureParentTreeItem {
@@ -146,8 +146,8 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 	public async deleteTreeItem(_node: IAzureNode): Promise<void> {
 		const message: string = `Are you sure you want to delete collection '${this.label}'?`;
-		const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
-		if (result === DialogBoxResponses.Yes) {
+		const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+		if (result === DialogResponses.deleteResponse) {
 			await this.drop();
 		} else {
 			throw new UserCancelledError();
@@ -155,8 +155,18 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	}
 
 	private async drop(): Promise<string> {
-		await this.collection.drop();
-		return `Dropped collection '${this.collection.collectionName}'.`;
+		try {
+			await this.collection.drop();
+			return `Dropped collection '${this.collection.collectionName}'.`;
+		} catch (e) {
+			let error: { code?: number, name?: string } = e;
+			const NamespaceNotFoundCode = 26;
+			if (error.name === 'MongoError' && error.code === NamespaceNotFoundCode) {
+				return `Collection '${this.collection.collectionName}' could not be dropped because it does not exist.`;
+			} else {
+				throw error;
+			}
+		}
 	}
 
 	//tslint:disable:no-any

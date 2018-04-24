@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardStep, IAzureUserInput, IAzureQuickPickItem } from 'vscode-azureextensionui';
+import { IAzureUserInput, IAzureQuickPickItem, AzureWizardPromptStep } from 'vscode-azureextensionui';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 import { Experience, getExperienceQuickPicks } from '../../experiences';
 
-export class CosmosDBAccountApiStep extends AzureWizardStep<ICosmosDBWizardContext> {
+export class CosmosDBAccountApiStep extends AzureWizardPromptStep<ICosmosDBWizardContext> {
     public async prompt(wizardContext: ICosmosDBWizardContext, ui: IAzureUserInput): Promise<ICosmosDBWizardContext> {
         const picks: IAzureQuickPickItem<Experience>[] = getExperienceQuickPicks();
 
@@ -17,10 +17,6 @@ export class CosmosDBAccountApiStep extends AzureWizardStep<ICosmosDBWizardConte
 
         wizardContext.defaultExperience = result.data;
 
-        return wizardContext;
-    }
-
-    public async execute(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {
         return wizardContext;
     }
 }

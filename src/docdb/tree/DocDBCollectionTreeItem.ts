@@ -4,11 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CollectionMeta, DocumentClient, CollectionPartitionKey } from 'documentdb';
-import { IAzureNode, IAzureTreeItem, UserCancelledError, IAzureParentTreeItem } from 'vscode-azureextensionui';
+import { IAzureNode, IAzureTreeItem, UserCancelledError, IAzureParentTreeItem, DialogResponses } from 'vscode-azureextensionui';
 import * as vscode from 'vscode';
 import { getDocumentClient } from "../getDocumentClient";
 import * as path from "path";
-import { DialogBoxResponses } from '../../constants';
 import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
@@ -62,8 +61,8 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
 
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
         const message: string = `Are you sure you want to delete collection '${this.label}' and its contents?`;
-        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
-        if (result === DialogBoxResponses.Yes) {
+        const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+        if (result === DialogResponses.deleteResponse) {
             const client = this.getDocumentClient();
             await new Promise((resolve, reject) => {
                 client.deleteCollection(this.link, function (err) {

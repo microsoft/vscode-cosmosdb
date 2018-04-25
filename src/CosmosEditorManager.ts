@@ -16,12 +16,16 @@ import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoCollectionNodeEditor } from './mongo/editors/MongoCollectionNodeEditor';
+import { DocDBStoredProcedureTreeItem } from './docdb/tree/DocDBStoredProcedureTreeItem';
+import { DocDBStoredProcedureNodeEditor } from './docdb/editors/DocDBStoredProcedureNodeEditor';
 
 export interface ICosmosEditor<T = {}> {
     label: string;
     id: string;
     getData(): Promise<T>;
     update(data: T): Promise<T>;
+    convertFromString(data: string): T;
+    convertToString(data: T): string;
 }
 
 export interface ShowEditorDocumentOptions {
@@ -72,7 +76,7 @@ export class CosmosEditorManager {
 
         const textEditor = await vscode.window.showTextDocument(document, column, preserveFocus);
         const data = await editor.getData();
-        await this.updateEditor(data, textEditor);
+        await this.updateEditor(data, textEditor, editor);
     }
 
     public async updateMatchingNode(documentUri: vscode.Uri, tree?: AzureTreeDataProvider): Promise<void> {
@@ -85,16 +89,18 @@ export class CosmosEditorManager {
     }
 
     private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument): Promise<void> {
-        const updatedDoc: {} = await editor.update(JSON.parse(doc.getText()));
+        const newContent = editor.convertFromString(doc.getText());
+        const updatedContent: {} = await editor.update(newContent);
         const output = util.getOutputChannel();
         const timestamp = (new Date()).toLocaleTimeString();
         output.appendLine(`${timestamp}: Updated entity "${editor.label}"`);
         output.show();
-        await this.updateEditor(updatedDoc, vscode.window.activeTextEditor);
+        await this.updateEditor(updatedContent, vscode.window.activeTextEditor, editor);
     }
 
-    private async updateEditor(data: {}, textEditor: vscode.TextEditor): Promise<void> {
-        await util.writeToEditor(textEditor, JSON.stringify(data, null, 2));
+    private async updateEditor(data: {}, textEditor: vscode.TextEditor, editor: ICosmosEditor): Promise<void> {
+        const updatedText = editor.convertToString(data);
+        await util.writeToEditor(textEditor, updatedText);
         this.ignoreSave = true;
         try {
             await textEditor.document.save();
@@ -118,6 +124,8 @@ export class CosmosEditorManager {
                         editor = new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>editorNode);
                     } else if (editorNode.treeItem instanceof MongoDocumentTreeItem) {
                         editor = new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>editorNode);
+                    } else if (editorNode.treeItem instanceof DocDBStoredProcedureTreeItem) {
+                        editor = new DocDBStoredProcedureNodeEditor(<IAzureNode<DocDBStoredProcedureTreeItem>>editorNode);
                     } else {
                         throw new Error("Unexpected type of Editor treeItem")
                     }

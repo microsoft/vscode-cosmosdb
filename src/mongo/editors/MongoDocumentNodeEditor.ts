@@ -29,4 +29,12 @@ export class MongoDocumentNodeEditor implements ICosmosEditor<IMongoDocument> {
     public get id(): string {
         return this._documentNode.id;
     }
+
+    public convertFromString(data: string): IMongoDocument {
+        return JSON.parse(data);
+    }
+
+    public convertToString(data: IMongoDocument): string {
+        return JSON.stringify(data, null, 2);
+    }
 }

@@ -5,10 +5,12 @@
 
 import * as path from 'path';
 import * as vscode from "vscode";
-import { DocumentClient, QueryIterator, CollectionMeta, FeedOptions, ProcedureMeta } from 'documentdb';
+import { DocumentClient, QueryIterator, FeedOptions, ProcedureMeta } from 'documentdb';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
-import { IAzureTreeItem } from 'vscode-azureextensionui';
+import { IAzureTreeItem, UserCancelledError, IAzureNode } from 'vscode-azureextensionui';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
+import { defaultStoredProcedure } from '../../constants';
+import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 
 /**
  * This class represents the DocumentDB "Stored Procedures" node in the tree
@@ -18,12 +20,12 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
     public readonly contextValue: string = DocDBStoredProceduresTreeItem.contextValue;
     public readonly childTypeLabel: string = "Stored Procedure";
 
-    constructor(documentEndpoint: string, masterKey: string, private _collection: CollectionMeta, isEmulator: boolean) {
-        super(documentEndpoint, masterKey, isEmulator);
+    constructor(endpoint: string, masterKey: string, private _collection: DocDBCollectionTreeItem, isEmulator: boolean) {
+        super(endpoint, masterKey, isEmulator);
     }
 
     public initChild(resource: ProcedureMeta): IAzureTreeItem {
-        return new DocDBStoredProcedureTreeItem(this.documentEndpoint, this.masterKey, this.isEmulator, resource);
+        return new DocDBStoredProcedureTreeItem(this.documentEndpoint, this.masterKey, this.isEmulator, this._collection, resource);
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -31,6 +33,31 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
             light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'stored procedures.svg'),
             dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'stored procedures.svg')
         };
+    }
+
+    public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
+        const client = this.getDocumentClient();
+        let spID = await vscode.window.showInputBox({
+            prompt: "Enter a unique stored Procedure ID or leave blank for a generated ID",
+            ignoreFocusOut: true
+        });
+
+        if (spID || spID === "") {
+            spID = spID.trim();
+            showCreatingNode(spID);
+            const sproc: ProcedureMeta = await new Promise<ProcedureMeta>((resolve, reject) => {
+                client.createStoredProcedure(this.link, { id: spID, body: defaultStoredProcedure }, (err, result: ProcedureMeta) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(result);
+                    }
+                });
+            });
+
+            return this.initChild(sproc);
+        }
+        throw new UserCancelledError();
     }
 
     public get id(): string {
@@ -42,7 +69,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
     }
 
     public get link(): string {
-        return this._collection._self;
+        return this._collection.link;
     }
 
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<ProcedureMeta>> {

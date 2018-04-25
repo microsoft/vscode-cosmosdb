@@ -43,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const actionHandler: AzureActionHandler = new AzureActionHandler(context, getOutputChannel(), reporter);
 
-	registerDocDBCommands(actionHandler, tree);
+	registerDocDBCommands(actionHandler, tree, editorManager);
 	registerGraphCommands(context, actionHandler, tree);
 	registerMongoCommands(context, actionHandler, tree, editorManager);
 

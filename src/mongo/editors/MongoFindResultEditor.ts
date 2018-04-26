@@ -11,19 +11,19 @@ import { ICosmosEditor } from "../../CosmosEditorManager";
 import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
 import { MongoCommand } from "../MongoCommand";
 import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
+// tslint:disable:no-var-requires
+const EJSON = require("mongodb-extended-json");
 
 export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
     private _databaseNode: IAzureParentNode<MongoDatabaseTreeItem>;
     private _command: MongoCommand;
     private _collectionTreeItem: MongoCollectionTreeItem;
     private _tree: AzureTreeDataProvider;
-    private EJSON;
 
     constructor(databaseNode: IAzureParentNode<MongoDatabaseTreeItem>, command: MongoCommand, tree: AzureTreeDataProvider) {
         this._databaseNode = databaseNode;
         this._command = command;
         this._tree = tree;
-        this.EJSON = require('mongodb-extended-json');
     }
 
     public get label(): string {
@@ -56,11 +56,11 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
     }
 
     public convertFromString(data: string): IMongoDocument[] {
-        return this.EJSON.parse(data);
+        return EJSON.parse(data);
     }
 
     public convertToString(data: IMongoDocument[]): string {
-        return this.EJSON.stringify(data, null, 2);
+        return EJSON.stringify(data, null, 2);
     }
 
 }

@@ -11,8 +11,10 @@ import { getNodeEditorLabel } from '../../utils/vscodeUtils';
 
 export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]> {
     private _collectionNode: IAzureParentNode<MongoCollectionTreeItem>;
+    private EJSON;
     constructor(collectionNode: IAzureParentNode<MongoCollectionTreeItem>) {
         this._collectionNode = collectionNode;
+        this.EJSON = require('mongodb-extended-json');
     }
 
     public get label(): string {
@@ -45,11 +47,11 @@ export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]
     }
 
     public convertFromString(data: string): IMongoDocument[] {
-        return JSON.parse(data);
+        return this.EJSON.parse(data);
     }
 
     public convertToString(data: IMongoDocument[]): string {
-        return JSON.stringify(data, null, 2);
+        return this.EJSON.stringify(data, null, 2);
     }
 
 }

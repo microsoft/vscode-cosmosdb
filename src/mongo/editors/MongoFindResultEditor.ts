@@ -17,11 +17,13 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
     private _command: MongoCommand;
     private _collectionTreeItem: MongoCollectionTreeItem;
     private _tree: AzureTreeDataProvider;
+    private EJSON;
 
     constructor(databaseNode: IAzureParentNode<MongoDatabaseTreeItem>, command: MongoCommand, tree: AzureTreeDataProvider) {
         this._databaseNode = databaseNode;
         this._command = command;
         this._tree = tree;
+        this.EJSON = require('mongodb-extended-json');
     }
 
     public get label(): string {
@@ -54,11 +56,11 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
     }
 
     public convertFromString(data: string): IMongoDocument[] {
-        return JSON.parse(data);
+        return this.EJSON.parse(data);
     }
 
     public convertToString(data: IMongoDocument[]): string {
-        return JSON.stringify(data, null, 2);
+        return this.EJSON.stringify(data, null, 2);
     }
 
 }

@@ -7,8 +7,7 @@ import * as _ from 'underscore';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { Collection, ObjectID, DeleteWriteOpResultObject, UpdateWriteOpResult } from 'mongodb';
-import { IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
-import { DialogBoxResponses } from '../../constants';
+import { IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
 
 export interface IMongoDocument {
     _id: string | ObjectID;
@@ -48,8 +47,8 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
 
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
         const message: string = `Are you sure you want to delete document '${this.label}'?`;
-        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
-        if (result === DialogBoxResponses.Yes) {
+        const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+        if (result === DialogResponses.deleteResponse) {
             const result: DeleteWriteOpResultObject = await this._collection.deleteOne({ "_id": this.document._id });
             if (result.deletedCount != 1) {
                 throw new Error(`Failed to delete document with _id '${this.document._id}'.`);

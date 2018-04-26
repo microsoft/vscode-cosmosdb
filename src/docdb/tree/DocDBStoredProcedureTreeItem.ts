@@ -5,10 +5,10 @@
 
 import * as path from 'path';
 import * as vscode from "vscode";
-import { IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
-import { ProcedureMeta } from 'documentdb';
-import { DialogBoxResponses } from '../../constants';
+import { IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
+import { ProcedureMeta, DocumentClient } from 'documentdb';
 import { getDocumentClient } from '../getDocumentClient';
+import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) stored procedure
@@ -16,20 +16,37 @@ import { getDocumentClient } from '../getDocumentClient';
 export class DocDBStoredProcedureTreeItem implements IAzureTreeItem {
     public static contextValue: string = "cosmosDBStoredProcedure";
     public readonly contextValue: string = DocDBStoredProcedureTreeItem.contextValue;
+    public readonly commandId: string = 'cosmosDB.openStoredProcedure';
 
-    constructor(private _documentEndpoint: string, private _masterKey: string, private _isEmulator: boolean, private _procedure: ProcedureMeta) {
+    constructor(private _endpoint: string, private _masterKey: string, private _isEmulator: boolean, private _collection: DocDBCollectionTreeItem, public procedure: ProcedureMeta) {
     }
 
     public get id(): string {
-        return this._procedure.id;
+        return this.procedure.id;
     }
 
     public get label(): string {
-        return this._procedure.id;
+        return this.procedure.id;
     }
 
     public get link(): string {
-        return this._procedure._self;
+        return this.procedure._self;
+    }
+
+    public async update(newProcBody: string): Promise<string> {
+        const client: DocumentClient = this._collection.getDocumentClient();
+        this.procedure = await new Promise<ProcedureMeta>((resolve, reject) => client.replaceStoredProcedure(
+            this.link,
+            { body: newProcBody, id: this.procedure.id },
+            (err, updated: ProcedureMeta) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(updated);
+                }
+            })
+        );
+        return newProcBody;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -41,9 +58,9 @@ export class DocDBStoredProcedureTreeItem implements IAzureTreeItem {
 
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
         const message: string = `Are you sure you want to delete stored procedure '${this.label}'?`;
-        const result = await vscode.window.showWarningMessage(message, DialogBoxResponses.Yes, DialogBoxResponses.Cancel);
-        if (result === DialogBoxResponses.Yes) {
-            const client = getDocumentClient(this._documentEndpoint, this._masterKey, this._isEmulator);
+        const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+        if (result === DialogResponses.deleteResponse) {
+            const client = getDocumentClient(this._endpoint, this._masterKey, this._isEmulator);
             await new Promise((resolve, reject) => {
                 client.deleteStoredProcedure(this.link, function (err) {
                     err ? reject(err) : resolve();

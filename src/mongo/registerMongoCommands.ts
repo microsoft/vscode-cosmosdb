@@ -46,7 +46,8 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(MongoCollectionTreeItem.contextValue);
         }
-        await node.createChild();
+        let childNode = await node.createChild();
+        await vscode.commands.executeCommand("cosmosDB.openDocument", childNode);
     });
     actionHandler.registerCommand('cosmosDB.connectMongoDB', async (node?: IAzureParentNode<MongoDatabaseTreeItem>) => {
         if (!node) {

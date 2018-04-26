@@ -10,6 +10,7 @@ import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
 import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
 import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
+import { commands } from "vscode";
 import { CosmosEditorManager } from "../CosmosEditorManager";
 import { DocDBStoredProcedureNodeEditor } from "./editors/DocDBStoredProcedureNodeEditor";
 
@@ -37,7 +38,9 @@ export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: A
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(DocDBDocumentsTreeItem.contextValue);
         }
-        await node.createChild();
+        let childNode = await node.createChild();
+        await commands.executeCommand("cosmosDB.openDocument", childNode);
+
     });
     actionHandler.registerCommand('cosmosDB.deleteDocDBDatabase', async (node?: IAzureNode) => {
         if (!node) {

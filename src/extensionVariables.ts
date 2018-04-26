@@ -13,5 +13,9 @@ export namespace ext {
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';
+
+        export namespace vsCode {
+            export const proxyStrictSSL = "http.proxyStrictSSL";
+        }
     }
 }

@@ -7,6 +7,8 @@ import { IAzureNode } from "vscode-azureextensionui";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
+// tslint:disable:no-var-requires
+const EJSON = require("mongodb-extended-json");
 
 export class MongoDocumentNodeEditor implements ICosmosEditor<IMongoDocument> {
     private _documentNode: IAzureNode<MongoDocumentTreeItem>;
@@ -31,10 +33,10 @@ export class MongoDocumentNodeEditor implements ICosmosEditor<IMongoDocument> {
     }
 
     public convertFromString(data: string): IMongoDocument {
-        return JSON.parse(data);
+        return EJSON.parse(data);
     }
 
     public convertToString(data: IMongoDocument): string {
-        return JSON.stringify(data, null, 2);
+        return EJSON.stringify(data, null, 2);
     }
 }

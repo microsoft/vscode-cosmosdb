@@ -821,6 +821,7 @@
 		"fs-extra": "^4.0.2",
 		"gremlin": "^2.6.0",
 		"mongodb": "^2.2.25",
+		"mongodb-extended-json": "^1.10.0",
 		"ms-rest": "^2.2.1",
 		"request-light": "^0.2.0",
 		"socket.io": "^1.7.3",

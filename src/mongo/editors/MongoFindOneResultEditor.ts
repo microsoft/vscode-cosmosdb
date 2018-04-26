@@ -7,6 +7,8 @@ import { IAzureParentNode, IAzureNode, AzureTreeDataProvider } from "vscode-azur
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
+// tslint:disable:no-var-requires
+const EJSON = require("mongodb-extended-json");
 
 export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
     private _databaseNode: IAzureParentNode<MongoDatabaseTreeItem>;
@@ -45,11 +47,11 @@ export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
     }
 
     public convertFromString(data: string): IMongoDocument {
-        return JSON.parse(data);
+        return EJSON.parse(data);
     }
 
     public convertToString(data: IMongoDocument): string {
-        return JSON.stringify(data, null, 2);
+        return EJSON.stringify(data, null, 2);
     }
 
 }

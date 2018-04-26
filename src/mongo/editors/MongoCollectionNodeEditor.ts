@@ -8,6 +8,8 @@ import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTree
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
+// tslint:disable:no-var-requires
+const EJSON = require("mongodb-extended-json");
 
 export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]> {
     private _collectionNode: IAzureParentNode<MongoCollectionTreeItem>;
@@ -45,11 +47,11 @@ export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]
     }
 
     public convertFromString(data: string): IMongoDocument[] {
-        return JSON.parse(data);
+        return EJSON.parse(data);
     }
 
     public convertToString(data: IMongoDocument[]): string {
-        return JSON.stringify(data, null, 2);
+        return EJSON.stringify(data, null, 2);
     }
 
 }

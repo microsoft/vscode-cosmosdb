@@ -8,7 +8,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { Collection, ObjectID, DeleteWriteOpResultObject, UpdateWriteOpResult } from 'mongodb';
 import { IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
-import { documentDefaultFields } from '../../constants';
+import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 
 export interface IMongoDocument {
     _id: string | ObjectID;
@@ -23,11 +23,13 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     public readonly contextValue: string = MongoDocumentTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openDocument';
     public document: IMongoDocument;
+    public label;
 
     private _collection: Collection;
 
     constructor(document: IMongoDocument, collection: Collection) {
         this.document = document;
+        this.label = getDocumentTreeItemLabel(this.document);
         this._collection = collection;
     }
 
@@ -35,11 +37,6 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
         return this.document._id.toString();
     }
 
-    get label(): string {
-        const presentFields = documentDefaultFields.filter(element => this.document.hasOwnProperty(element));
-        const canonicalField = presentFields.find((element) => this.document[element] && this.document[element].toString() && !this.document[element].toString().startsWith("[object"));
-        return this.document[canonicalField].toString();
-    }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
@@ -63,6 +60,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
 
     public async update(newDocument: IMongoDocument): Promise<IMongoDocument> {
         this.document = await MongoDocumentTreeItem.update(this._collection, newDocument);
+        this.label = getDocumentTreeItemLabel(this.document);
         return this.document;
     }
 

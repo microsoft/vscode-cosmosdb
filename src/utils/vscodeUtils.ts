@@ -9,6 +9,9 @@ import * as vscode from 'vscode';
 import { IAzureNode, IAzureTreeItem } from 'vscode-azureextensionui';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
+import { IMongoDocument } from '../mongo/tree/MongoDocumentTreeItem';
+import { RetrievedDocument } from 'documentdb';
+import { documentDefaultFields } from '../constants';
 
 const outputChannel = vscode.window.createOutputChannel("Azure CosmosDB");
 
@@ -100,4 +103,23 @@ export function getNodeEditorLabel(node: IAzureNode): string {
 
 function isAccountTreeItem(treeItem: IAzureTreeItem): boolean {
     return (treeItem instanceof MongoAccountTreeItem) || (treeItem instanceof DocDBAccountTreeItemBase);
+}
+
+export function getDocumentTreeItemLabel(document: IMongoDocument | RetrievedDocument): string {
+    for (let field of documentDefaultFields) {
+        if (document.hasOwnProperty(field)) {
+            if (document[field]) { //ignore if false-y value: null, undefined, "".
+                if (typeof document[field] === "string") {
+                    return document[field];
+                } else { // A simple instanceOf check doesn't seem to work. I run into this issue detailed here :
+                    //https://libertyseeds.ca/2015/01/03/Mongo-ObjectID-fails-instanceof-type-test-in-nodeunit/
+                    const result = document[field].toString();
+                    if (!result.startsWith("[object ")) {
+                        return result;
+                    }
+                }
+            }
+        }
+    }
+    return document["_id"].toString();
 }

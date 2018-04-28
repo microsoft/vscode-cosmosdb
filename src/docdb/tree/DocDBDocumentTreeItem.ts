@@ -9,6 +9,7 @@ import { IAzureNode, IAzureTreeItem, UserCancelledError, DialogResponses } from 
 import { RetrievedDocument, DocumentClient } from 'documentdb';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { emptyPartitionKeyValue } from '../../constants';
+import { documentDefaultFields } from '../../constants';
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) document
@@ -34,7 +35,9 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     }
 
     public get label(): string {
-        return this.document.id;
+        const presentFields = documentDefaultFields.filter(element => this._document.hasOwnProperty(element));
+        const canonicalField = presentFields.find((element) => this._document[element] && this._document[element].toString() && !this._document[element].toString().startsWith("[object"));
+        return this._document[canonicalField].toString();
     }
 
     public get link(): string {

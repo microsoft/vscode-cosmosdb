@@ -8,6 +8,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { Collection, ObjectID, DeleteWriteOpResultObject, UpdateWriteOpResult } from 'mongodb';
 import { IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
+import { documentDefaultFields } from '../../constants';
 
 export interface IMongoDocument {
     _id: string | ObjectID;
@@ -35,7 +36,9 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     }
 
     get label(): string {
-        return this.document._id.toString();
+        const presentFields = documentDefaultFields.filter(element => this.document.hasOwnProperty(element));
+        const canonicalField = presentFields.find((element) => this.document[element] && this.document[element].toString() && !this.document[element].toString().startsWith("[object"));
+        return this.document[canonicalField].toString();
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {

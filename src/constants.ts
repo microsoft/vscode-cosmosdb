@@ -34,3 +34,5 @@ export const defaultStoredProcedure =
 };` ;
 
 export const emptyPartitionKeyValue = {};
+
+export const documentDefaultFields = ["name", "Name", "ID", "UUID", "id", "_id"];

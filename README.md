@@ -102,9 +102,10 @@ To select which subscriptions show up in the extension's explorer, click on the 
 - Graphs are not currently supported with the emulator
 
 # Contributing
-There are a couple of ways you can contribute to this repo:
+There are several ways you can contribute to our [repo](https://github.com/Microsoft/vscode-cosmosdb):
 
-- **Ideas, feature requests and bugs**: We are open to all ideas and we want to get rid of bugs! Use the Issues section to either report a new issue, provide your ideas or contribute to existing threads.
+- **Ideas, feature requests and bugs**: We are open to all ideas and we want to get rid of bugs! Use the [Issues](https://github.com/Microsoft/vscode-cosmosdb/issues) section to report a new issue, provide your ideas or contribute to existing threads.
+
 - **Documentation**: Found a typo or strangely worded sentences? Submit a PR!
 - **Code**: Contribute bug fixes, features or design changes:
   - Clone the repository locally and open in VS Code.

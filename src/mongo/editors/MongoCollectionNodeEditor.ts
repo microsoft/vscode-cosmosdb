@@ -7,7 +7,7 @@ import { IAzureParentNode, IAzureNode } from "vscode-azureextensionui";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
-import { getNodeEditorLabel } from '../../utils/vscodeUtils';
+import { getNodeEditorLabel, getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 // tslint:disable:no-var-requires
 const EJSON = require("mongodb-extended-json");
 
@@ -38,6 +38,8 @@ export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]
             const documentNode = documentNodes.find((node) => node.treeItem.document._id.toString() === updatedDoc._id.toString());
             if (documentNode) {
                 documentNode.treeItem.document = updatedDoc;
+                documentNode.treeItem.label = getDocumentTreeItemLabel(documentNode.treeItem.document);
+                documentNode.refresh();
             }
         }
     }

@@ -108,12 +108,15 @@ function isAccountTreeItem(treeItem: IAzureTreeItem): boolean {
 export function getDocumentTreeItemLabel(document: IMongoDocument | RetrievedDocument): string {
     for (let field of documentDefaultFields) {
         if (document.hasOwnProperty(field)) {
-            if (document[field]) { //ignore if false-y value: null, undefined, "".
-                if (typeof document[field] === "string") {
-                    return document[field];
+            let value = document[field];
+            if (value) { //ignore if false-y value: null, undefined, "".
+                if (typeof value === "string") {
+                    return value;
+                } else if (typeof value === "number") {
+                    return value.toString();
                 } else { // A simple instanceOf check doesn't seem to work. I run into this issue detailed here :
                     //https://libertyseeds.ca/2015/01/03/Mongo-ObjectID-fails-instanceof-type-test-in-nodeunit/
-                    const result = document[field].toString();
+                    const result = value.toString();
                     if (!result.startsWith("[object ")) {
                         return result;
                     }

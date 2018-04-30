@@ -23,13 +23,13 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     public readonly contextValue: string = MongoDocumentTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openDocument';
     public document: IMongoDocument;
-    public label;
 
+    private _label;
     private _collection: Collection;
 
     constructor(document: IMongoDocument, collection: Collection) {
         this.document = document;
-        this.label = getDocumentTreeItemLabel(this.document);
+        this._label = getDocumentTreeItemLabel(this.document);
         this._collection = collection;
     }
 
@@ -37,6 +37,9 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
         return this.document._id.toString();
     }
 
+    get label(): string {
+        return this._label;
+    }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
@@ -46,7 +49,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     }
 
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
-        const message: string = `Are you sure you want to delete document '${this.label}'?`;
+        const message: string = `Are you sure you want to delete document '${this._label}'?`;
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const result: DeleteWriteOpResultObject = await this._collection.deleteOne({ "_id": this.document._id });
@@ -60,7 +63,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
 
     public async update(newDocument: IMongoDocument): Promise<IMongoDocument> {
         this.document = await MongoDocumentTreeItem.update(this._collection, newDocument);
-        this.label = getDocumentTreeItemLabel(this.document);
+        this._label = getDocumentTreeItemLabel(this.document);
         return this.document;
     }
 

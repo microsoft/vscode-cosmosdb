@@ -11,7 +11,7 @@ import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 import { IMongoDocument } from '../mongo/tree/MongoDocumentTreeItem';
 import { RetrievedDocument } from 'documentdb';
-import { documentDefaultFields } from '../constants';
+import { documentLabelFields } from '../constants';
 
 const outputChannel = vscode.window.createOutputChannel("Azure CosmosDB");
 
@@ -106,7 +106,7 @@ function isAccountTreeItem(treeItem: IAzureTreeItem): boolean {
 }
 
 export function getDocumentTreeItemLabel(document: IMongoDocument | RetrievedDocument): string {
-    for (let field of documentDefaultFields) {
+    for (let field of documentLabelFields) {
         if (document.hasOwnProperty(field)) {
             let value = document[field];
             if (value) { //ignore if false-y value: null, undefined, "".

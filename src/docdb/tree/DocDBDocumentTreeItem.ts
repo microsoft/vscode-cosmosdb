@@ -17,7 +17,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     public readonly contextValue: string = DocDBDocumentTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openDocument';
 
-    public readonly partitionKeyValue: string | undefined;
+    public readonly partitionKeyValue: string;
 
     private _document: RetrievedDocument;
     private _collection: DocDBCollectionTreeItem;
@@ -25,7 +25,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     constructor(collection: DocDBCollectionTreeItem, document: RetrievedDocument) {
         this._collection = collection;
         this._document = document;
-        this.partitionKeyValue = this.getPartitionKeyValue();
+        this.partitionKeyValue = this.getPartitionKeyValue() || "{}";
     }
 
     public get id(): string {

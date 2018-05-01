@@ -178,8 +178,10 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		const position = new vscode.Position(node._symbol.line - 1, node._symbol.charPositionInLine); // Symbol lines are 1 indexed. Position lines are 0 indexed
 		const text = node.text;
 		const badCommand = this.commands.find((command) => command.range && command.range.contains(position));
-		badCommand.errors = badCommand.errors || [];
-		badCommand.errors.push({ position: position, text: text });
+		if (badCommand) {
+			badCommand.errors = badCommand.errors || [];
+			badCommand.errors.push({ position: position, text: text });
+		}
 		return this.defaultResult(node);
 	}
 

@@ -188,7 +188,7 @@
 				"title": "Create Document"
 			},
 			{
-				"category": "DocumentDB",
+				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.createDocDBStoredProcedure",
 				"title": "Create Stored Procedure"
 			},
@@ -238,6 +238,16 @@
 				"title": "Delete Collection"
 			},
 			{
+				"category": "SQL (DocumentDB)",
+				"command": "cosmosDB.deleteDocDBDocument",
+				"title": "Delete Document"
+			},
+			{
+				"category": "SQL (DocumentDB)",
+				"command": "cosmosDB.deleteDocDBStoredProcedure",
+				"title": "Delete Stored Procedure"
+			},
+			{
 				"category": "Graph",
 				"command": "cosmosDB.deleteGraphDatabase",
 				"title": "Delete Database"
@@ -251,16 +261,6 @@
 				"category": "Graph",
 				"command": "cosmosDB.openGraphExplorer",
 				"title": "Open Graph Explorer"
-			},
-			{
-				"category": "SQL (DocumentDB)",
-				"command": "cosmosDB.deleteDocDBDocument",
-				"title": "Delete Document"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.deleteStoredProcedure",
-				"title": "Delete Stored Procedure"
 			},
 			{
 				"category": "Cosmos DB",
@@ -517,7 +517,7 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocument"
 				},
 				{
-					"command": "cosmosDB.deleteStoredProcedure",
+					"command": "cosmosDB.deleteDocDBStoredProcedure",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProcedure"
 				},
 				{
@@ -640,10 +640,6 @@
 				},
 				{
 					"command": "cosmosDB.loadMore",
-					"when": "never"
-				},
-				{
-					"command": "cosmosDB.deleteStoredProcedure",
 					"when": "never"
 				},
 				{

@@ -25,7 +25,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     constructor(collection: DocDBCollectionTreeItem, document: RetrievedDocument) {
         this._collection = collection;
         this._document = document;
-        this.partitionKeyValue = this.getPartitionKeyValue() || "{}";
+        this.partitionKeyValue = this.getPartitionKeyValue();
     }
 
     public get id(): string {
@@ -56,9 +56,14 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const client = this._collection.getDocumentClient();
-            const options = { partitionKey: this.partitionKeyValue }
+            const options = { partitionKey: this.partitionKeyValue || {} }
             await new Promise((resolve, reject) => {
-                client.deleteDocument(this.link, options, function (err) {
+                // Disabling type check in the next line. This helps ensure documents having no partition key value
+                // can still pass an empty object. It looks like a disparity between the type settings  out lined
+                // https://github.com/DefinitelyTyped/DefinitelyTyped/blob/01e0ffdbab16b15c702d5b8c87bb122cc6215a59/types/documentdb/index.d.ts#L72
+                // and the workaround outlined at https://github.com/Azure/azure-documentdb-node/issues/222#issuecomment-364286027
+                // tslint:disable-next-line:no-any
+                client.deleteDocument(this.link, <any>options, function (err) {
                     err ? reject(err) : resolve();
                 });
             });

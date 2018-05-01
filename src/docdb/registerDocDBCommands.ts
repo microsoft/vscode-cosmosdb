@@ -32,7 +32,9 @@ export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: A
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(DocDBDocumentsTreeItem.contextValue);
         }
-        await node.createChild();
+        let childNode = await node.createChild();
+        await commands.executeCommand("cosmosDB.openDocument", childNode);
+
     });
     actionHandler.registerCommand('cosmosDB.createDocDBStoredProcedure', async (node?: IAzureParentNode) => {
         if (!node) {

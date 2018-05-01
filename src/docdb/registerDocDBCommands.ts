@@ -68,7 +68,7 @@ export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: A
         }
         await node.deleteNode();
     });
-    actionHandler.registerCommand('cosmosDB.deleteStoredProcedure', async (node?: IAzureNode) => {
+    actionHandler.registerCommand('cosmosDB.deleteDocDBStoredProcedure', async (node?: IAzureNode) => {
         if (!node) {
             node = await tree.showNodePicker(DocDBStoredProcedureTreeItem.contextValue);
         }

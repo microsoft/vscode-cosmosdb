@@ -41,7 +41,7 @@ export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: A
             node = <IAzureParentNode>await tree.showNodePicker(DocDBDocumentsTreeItem.contextValue);
         }
         let childNode = await node.createChild();
-        await commands.executeCommand("cosmosDB.openDocument", childNode);
+        await commands.executeCommand("cosmosDB.openStoredProcedure", childNode);
 
     });
     actionHandler.registerCommand('cosmosDB.deleteDocDBDatabase', async (node?: IAzureNode) => {

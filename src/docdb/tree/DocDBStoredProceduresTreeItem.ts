@@ -38,7 +38,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
     public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
         const client = this.getDocumentClient();
         let spID = await vscode.window.showInputBox({
-            prompt: "Enter a unique stored Procedure ID or leave blank for a generated ID",
+            prompt: "Enter a unique stored Procedure ID",
             ignoreFocusOut: true
         });
 

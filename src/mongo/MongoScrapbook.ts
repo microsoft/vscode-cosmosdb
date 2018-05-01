@@ -179,6 +179,7 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		const text = node.text;
 		const badCommand = this.commands.find((command) => command.range && command.range.contains(position));
 		if (badCommand) {
+			// Need a place to hang errors that occur when no command is actually recognized
 			badCommand.errors = badCommand.errors || [];
 			badCommand.errors.push({ position: position, text: text });
 		}

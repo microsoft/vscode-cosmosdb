@@ -32,14 +32,16 @@ export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: A
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(DocDBDocumentsTreeItem.contextValue);
         }
-        await node.createChild();
+        let childNode = await node.createChild();
+        await commands.executeCommand("cosmosDB.openDocument", childNode);
+
     });
     actionHandler.registerCommand('cosmosDB.createDocDBStoredProcedure', async (node?: IAzureParentNode) => {
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(DocDBDocumentsTreeItem.contextValue);
         }
         let childNode = await node.createChild();
-        await commands.executeCommand("cosmosDB.openDocument", childNode);
+        await commands.executeCommand("cosmosDB.openStoredProcedure", childNode);
 
     });
     actionHandler.registerCommand('cosmosDB.deleteDocDBDatabase', async (node?: IAzureNode) => {
@@ -66,7 +68,7 @@ export function registerDocDBCommands(actionHandler: AzureActionHandler, tree: A
         }
         await node.deleteNode();
     });
-    actionHandler.registerCommand('cosmosDB.deleteStoredProcedure', async (node?: IAzureNode) => {
+    actionHandler.registerCommand('cosmosDB.deleteDocDBStoredProcedure', async (node?: IAzureNode) => {
         if (!node) {
             node = await tree.showNodePicker(DocDBStoredProcedureTreeItem.contextValue);
         }

@@ -31,4 +31,6 @@ export const defaultStoredProcedure =
         });
 
     if (!isAccepted) throw new Error('The query was not accepted by the server.');
-};`
+};` ;
+
+export const emptyPartitionKeyValue = {};

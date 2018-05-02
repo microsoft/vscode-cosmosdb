@@ -59,7 +59,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
             const options = { partitionKey: this.partitionKeyValue };
             await new Promise((resolve, reject) => {
                 // Disabling type check in the next line. This helps ensure documents having no partition key value
-                // can still pass an empty object when required. It looks like a disparity between the type settings out lined here
+                // can still pass an empty object when required. It looks like a disparity between the type settings outlined here
                 // https://github.com/DefinitelyTyped/DefinitelyTyped/blob/01e0ffdbab16b15c702d5b8c87bb122cc6215a59/types/documentdb/index.d.ts#L72
                 // vs. the workaround outlined at https://github.com/Azure/azure-documentdb-node/issues/222#issuecomment-364286027
                 // tslint:disable-next-line:no-any

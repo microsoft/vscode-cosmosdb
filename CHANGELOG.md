@@ -2,6 +2,27 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.7.0 - 2018-05-02
+
+### Added
+- Mongo
+  - Codelens support for scrapbook
+  - Support for ObjectIDs, ISODate, and extend JSON data types in document views
+
+- SQL
+  - View, open, edit and update Stored Procedures
+
+- Miscellaneous
+  - Error messages are now modal
+  - Open newly created docs in editor
+
+### Fixed
+- [Errors in one command in the scrapbook no longer stop functionality for other commands](https://github.com/Microsoft/vscode-cosmosdb/pull/531)
+- [Better error messages for connection strings](https://github.com/Microsoft/vscode-cosmosdb/pull/600)
+- [Don't throw errors on dropping non-existent collections](https://github.com/Microsoft/vscode-cosmosdb/pull/541)
+- [Errors no longer written to output in the middle of writing a scrapbook command](https://github.com/Microsoft/vscode-cosmosdb/issues/516)
+
+
 ## 0.6.0 - 2018-04-09
 
 ### Added

@@ -16,8 +16,8 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 
 - Create a Cosmos DB account by clicking the `+` button in the title
 - View Azure Cosmos DB accounts and open directly in the portal
-- View/Create/Delete databases, collections, graphs, and documents
-- Click on a document to open in the editor
+- View/Create/Delete databases, collections, graphs, stored procedures, and documents
+- Click on a document or stored procedure to open in the editor
 - Click on a graph to visualize data
 - Query graph using [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support)
 - Edit a document and persist changes to the cloud
@@ -36,6 +36,8 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 - Enter your commands and/or comments, eg: `db.<collectionName>.find()`
 - IntelliSense (auto-completions) will be provided
 - Place the cursor inside the command to execute and press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to see the results
+- To run all commands, press `CMD+:` or `Ctrl+:`
+- With codelens, you can perform the above actions without having to leave the editor pane
 - Save and re-use later
 
 ![Mongo Intellisense](resources/intellisense.gif)

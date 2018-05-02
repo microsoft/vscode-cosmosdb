@@ -79,15 +79,13 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
             throw new Error(`The "_self" and "_etag" fields are required to update a document`);
         }
         else {
-            let options = { accessCondition: { type: 'IfMatch', condition: newData._etag } };
-            if (this.partitionKeyValue) { //empty object is truth-y
-                options["partitionKey"] = this.partitionKeyValue;
-            }
+            let options = { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this.partitionKeyValue };
             this._document = await new Promise<RetrievedDocument>((resolve, reject) => {
                 client.replaceDocument(
                     _self,
                     newData,
-                    options,
+                    //tslint:disable-next-line:no-any
+                    <any>options,
                     (err, updated: RetrievedDocument) => {
                         if (err) {
                             reject(err);
@@ -103,7 +101,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     private getPartitionKeyValue(): string | undefined | Object {
         const partitionKey = this._collection.partitionKey;
         if (!partitionKey) { //Fixed collections -> no partitionKeyValue
-            return undefined;
+            return 0;
         }
         const fields = partitionKey.paths[0].split('/');
         if (fields[0] === '') {

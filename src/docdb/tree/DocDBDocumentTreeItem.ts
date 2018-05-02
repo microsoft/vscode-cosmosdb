@@ -8,6 +8,7 @@ import * as path from 'path';
 import { IAzureNode, IAzureTreeItem, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
 import { RetrievedDocument, DocumentClient } from 'documentdb';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import { emptyPartitionKeyValue } from '../../constants';
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) document
@@ -17,7 +18,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     public readonly contextValue: string = DocDBDocumentTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openDocument';
 
-    public readonly partitionKeyValue: string | undefined | Object;
+    private readonly partitionKeyValue: string | undefined | Object;
 
     private _document: RetrievedDocument;
     private _collection: DocDBCollectionTreeItem;
@@ -101,7 +102,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     private getPartitionKeyValue(): string | undefined | Object {
         const partitionKey = this._collection.partitionKey;
         if (!partitionKey) { //Fixed collections -> no partitionKeyValue
-            return 0;
+            return undefined;
         }
         const fields = partitionKey.paths[0].split('/');
         if (fields[0] === '') {
@@ -111,7 +112,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
         for (let field of fields) {
             value = value ? value[field] : this.document[field];
             if (!value) { //Partition Key exists, but this document doesn't have a value
-                return {};
+                return emptyPartitionKeyValue;
             }
         }
         return value;

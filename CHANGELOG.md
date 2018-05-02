@@ -21,6 +21,7 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 - [Better error messages for connection strings](https://github.com/Microsoft/vscode-cosmosdb/pull/600)
 - [Don't throw errors on dropping non-existent collections](https://github.com/Microsoft/vscode-cosmosdb/pull/541)
 - [Errors no longer written to output in the middle of writing a scrapbook command](https://github.com/Microsoft/vscode-cosmosdb/issues/516)
+- [Additional bugs fixed](https://github.com/Microsoft/vscode-cosmosdb/milestone/12?closed=1)
 
 
 ## 0.6.0 - 2018-04-09

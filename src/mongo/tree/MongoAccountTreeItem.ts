@@ -46,6 +46,10 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
         try {
             let databases: IDatabaseInfo[];
 
+            if (!this.connectionString) {
+                throw new Error('Missing connection string');
+            }
+
             db = await MongoClient.connect(this.connectionString);
             let databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);
             if (databaseInConnectionString && !this.isEmulator) { // emulator violates the connection string format

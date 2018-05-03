@@ -20,6 +20,9 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 - Miscellaneous
   - New "Report an Issue" button on error dialogs
 
+### Changed
+- Moved Azure CosmosDB Explorer to new Azure view container instead of file explorer
+
 ### Fixed
 
 - [Allow access to multi-tenant mongo server](https://github.com/Microsoft/vscode-cosmosdb/issues/473)

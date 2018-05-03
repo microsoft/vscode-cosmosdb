@@ -6,6 +6,10 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 
 ![Cosmos DB Extension](resources/features.png)
 
+# We've Moved!
+
+You will now find us by clicking in the new Azure view container instead of the file explorer.
+
 # Prerequisites
 
 - Some less-common commands in the Mongo [scrapbook](#mongo-scrapbooks) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
@@ -36,8 +40,7 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 - Click on "Execute" above a command to execute it, or press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to execute the line with the cursor.
 - To run all commands, click on "Execute All", or press `CMD+:` or `Ctrl+:`
 - Save and re-use later
-
-![Mongo Intellisense](resources/intellisense.gif)
+![Mongo Scrapbook](resources/Scrapbook.gif)
 
 ## Use [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support) to query graphs
 

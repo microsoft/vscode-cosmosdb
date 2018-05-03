@@ -17,6 +17,9 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
   - Error messages are now modal
   - Open newly created docs in editor
 
+### Changed
+- Moved Azure CosmosDB Explorer to new Azure view container instead of file explorer
+
 ### Fixed
 - [Errors in one command in the scrapbook no longer stop functionality for other commands](https://github.com/Microsoft/vscode-cosmosdb/pull/531)
 - [Better error messages for connection strings](https://github.com/Microsoft/vscode-cosmosdb/pull/600)
@@ -42,9 +45,6 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 
 - Miscellaneous
   - New "Report an Issue" button on error dialogs
-
-### Changed
-- Moved Azure CosmosDB Explorer to new Azure view container instead of file explorer
 
 ### Fixed
 

@@ -2,7 +2,7 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
-## 0.7.0 - 2018-05-02
+## 0.7.0 - 2018-05-04
 
 ### Added
 - Mongo

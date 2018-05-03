@@ -6,7 +6,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { MongoClient, Db } from 'mongodb';
-import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, parseError } from 'vscode-azureextensionui';
+import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { MongoDatabaseTreeItem, validateMongoCollectionName } from './MongoDatabaseTreeItem';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './MongoDocumentTreeItem';
@@ -70,7 +70,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
             return [{
                 id: 'cosmosMongoError',
                 contextValue: 'cosmosMongoError',
-                label: parseError(error).message,
+                label: error.message,
             }];
         } finally {
             if (db) {

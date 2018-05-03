@@ -31,13 +31,12 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 
 - View your MongoDB database account by [signing in to Azure](#managing-azure-subscriptions) or attaching with a connection string
 - Optionally configure the setting `mongo.shell.path` if your mongo executable is not already on your system's PATH (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
-- Right-click on a database and select "Connect"
 - Click on "New Mongo Scrapbook" in the tree title bar
+- Use the CodeLens to connect to a database
 - Enter your commands and/or comments, eg: `db.<collectionName>.find()`
 - IntelliSense (auto-completions) will be provided
-- Place the cursor inside the command to execute and press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to see the results
-- To run all commands, press `CMD+:` or `Ctrl+:`
-- With codelens, you can perform the above actions without having to leave the editor pane
+- Click on "Execute" above a command to execute it, or press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to execute the line with the cursor.
+- To run all commands, click on "Execute All", or press `CMD+:` or `Ctrl+:`
 - Save and re-use later
 
 ![Mongo Intellisense](resources/intellisense.gif)

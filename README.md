@@ -16,8 +16,8 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 
 - Create a Cosmos DB account by clicking the `+` button in the title
 - View Azure Cosmos DB accounts and open directly in the portal
-- View/Create/Delete databases, collections, graphs, and documents
-- Click on a document to open in the editor
+- View/Create/Delete databases, collections, graphs, stored procedures, and documents
+- Click on a document or stored procedure to open in the editor
 - Click on a graph to visualize data
 - Query graph using [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support)
 - Edit a document and persist changes to the cloud
@@ -31,11 +31,12 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 
 - View your MongoDB database account by [signing in to Azure](#managing-azure-subscriptions) or attaching with a connection string
 - Optionally configure the setting `mongo.shell.path` if your mongo executable is not already on your system's PATH (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
-- Right-click on a database and select "Connect"
 - Click on "New Mongo Scrapbook" in the tree title bar
+- Use the CodeLens to connect to a database
 - Enter your commands and/or comments, eg: `db.<collectionName>.find()`
 - IntelliSense (auto-completions) will be provided
-- Place the cursor inside the command to execute and press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to see the results
+- Click on "Execute" above a command to execute it, or press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to execute the line with the cursor.
+- To run all commands, click on "Execute All", or press `CMD+:` or `Ctrl+:`
 - Save and re-use later
 
 ![Mongo Intellisense](resources/intellisense.gif)

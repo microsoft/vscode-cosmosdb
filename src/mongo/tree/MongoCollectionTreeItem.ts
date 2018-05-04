@@ -183,6 +183,8 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		} else {
 			return Promise.reject(new Error("Too many arguments passed to findOne."));
 		}
+		// findOne is the only command in this file requiring EJSON support.
+		// Hence that's the only function which uses EJSON.stringify rather than this.stringify.
 		return EJSON.stringify(result, null, '\t');
 	}
 

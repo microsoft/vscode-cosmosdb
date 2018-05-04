@@ -21,7 +21,6 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 - Moved Azure CosmosDB Explorer to new Azure view container instead of file explorer
 
 ### Fixed
-- [Errors in one command in the scrapbook no longer stop functionality for other commands](https://github.com/Microsoft/vscode-cosmosdb/pull/531)
 - [Better error messages for connection strings](https://github.com/Microsoft/vscode-cosmosdb/pull/600)
 - [Don't throw errors on dropping non-existent collections](https://github.com/Microsoft/vscode-cosmosdb/pull/541)
 - [Errors no longer written to output in the middle of writing a scrapbook command](https://github.com/Microsoft/vscode-cosmosdb/issues/516)

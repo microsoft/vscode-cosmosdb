@@ -2,12 +2,12 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
-## 0.7.0 - 2018-05-02
+## 0.7.0 - 2018-05-04
 
 ### Added
 - Mongo
   - CodeLens support for scrapbook
-  - Execute all comments in a scrapbook, allowing you to use scrapbooks as scripts
+  - Execute all commands in a scrapbook, allowing you to use scrapbooks as scripts
   - Support for ObjectIDs, ISODate, and extended JSON data types in document views
 
 - SQL
@@ -16,6 +16,9 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 - Miscellaneous
   - Error messages are now modal
   - Open newly created docs in editor
+
+### Changed
+- Moved Azure CosmosDB Explorer to new Azure view container instead of file explorer
 
 ### Fixed
 - [Errors in one command in the scrapbook no longer stop functionality for other commands](https://github.com/Microsoft/vscode-cosmosdb/pull/531)

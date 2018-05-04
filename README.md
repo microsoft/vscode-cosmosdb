@@ -6,6 +6,10 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 
 ![Cosmos DB Extension](resources/features.png)
 
+# We've Moved!
+
+You will now find us by clicking in the new Azure view container instead of the file explorer.
+
 # Prerequisites
 
 - Some less-common commands in the Mongo [scrapbook](#mongo-scrapbooks) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
@@ -23,8 +27,6 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 - Edit a document and persist changes to the cloud
 - Attach a Mongo server by clicking the plug icon in the title
 
-*Support for Table accounts in CosmosDB is coming soon!
-
 ![Browse CosmosDB and MongoDB databases](resources/Browse.png)
 
 ## Mongo "Scrapbooks" (Run Mongo Commands with Rich Intellisense)
@@ -32,14 +34,13 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 - View your MongoDB database account by [signing in to Azure](#managing-azure-subscriptions) or attaching with a connection string
 - Optionally configure the setting `mongo.shell.path` if your mongo executable is not already on your system's PATH (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
 - Click on "New Mongo Scrapbook" in the tree title bar
-- Use the CodeLens to connect to a database
+- Click on "Connect to a database" to indicate which database to run the commands against
 - Enter your commands and/or comments, eg: `db.<collectionName>.find()`
 - IntelliSense (auto-completions) will be provided
 - Click on "Execute" above a command to execute it, or press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to execute the line with the cursor.
 - To run all commands, click on "Execute All", or press `CMD+:` or `Ctrl+:`
 - Save and re-use later
-
-![Mongo Intellisense](resources/intellisense.gif)
+![Mongo Scrapbook](resources/Scrapbook.gif)
 
 ## Use [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support) to query graphs
 
@@ -101,6 +102,7 @@ To select which subscriptions show up in the extension's explorer, click on the 
 
 - Azure no longer supports gremlin queries on pre-GA graph accounts. If you see the error "Could not find a valid gremlin endpoint for *graph*", then choose "Open Portal" on the graph node and check the "Gremlin Endpoint" in the Overview tab. If it does not take the form of '...[graph-name].***gremlin***.cosmosdb.azure.com...', then you will need to create a new graph account using the Azure portal or the current version of the extension.
 - Graphs are not currently supported with the emulator
+- Viewing/editing tables is not currently supported
 
 # Contributing
 There are several ways you can contribute to our [repo](https://github.com/Microsoft/vscode-cosmosdb):

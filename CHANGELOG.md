@@ -7,7 +7,7 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 ### Added
 - Mongo
   - CodeLens support for scrapbook
-  - Execute all comments in a scrapbook, allowing you to use scrapbooks as scripts
+  - Execute all commands in a scrapbook, allowing you to use scrapbooks as scripts
   - Support for ObjectIDs, ISODate, and extended JSON data types in document views
 
 - SQL

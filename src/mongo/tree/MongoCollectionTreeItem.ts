@@ -12,6 +12,8 @@ import { Collection, Cursor, ObjectID, InsertOneWriteOpResult, BulkWriteOpResult
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
 import { DefaultBatchSize } from '../../constants';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
+// tslint:disable:no-var-requires
+const EJSON = require("mongodb-extended-json");
 
 export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	public static contextValue: string = "MongoCollection";
@@ -181,7 +183,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		} else {
 			return Promise.reject(new Error("Too many arguments passed to findOne."));
 		}
-		return this.stringify(result);
+		return EJSON.stringify(result, null, '\t');
 	}
 
 	private insert(document: Object): Thenable<string> {

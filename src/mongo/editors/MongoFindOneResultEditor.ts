@@ -19,7 +19,7 @@ export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
     constructor(databaseNode: IAzureParentNode<MongoDatabaseTreeItem>, collectionName: string, data: string, tree: AzureTreeDataProvider) {
         this._databaseNode = databaseNode;
         this._collectionName = collectionName;
-        this._originalDocument = JSON.parse(data);
+        this._originalDocument = EJSON.parse(data);
         this._tree = tree;
     }
 

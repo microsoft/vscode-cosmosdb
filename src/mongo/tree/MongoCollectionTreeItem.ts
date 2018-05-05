@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import * as vm from 'vm';
 import * as path from 'path';
 import * as _ from 'underscore';
 import * as util from '../../utils/vscodeUtils';
@@ -12,6 +11,8 @@ import { Collection, Cursor, ObjectID, InsertOneWriteOpResult, BulkWriteOpResult
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
 import { DefaultBatchSize } from '../../constants';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
+// tslint:disable:no-var-requires
+const EJSON = require("mongodb-extended-json");
 
 export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	public static contextValue: string = "MongoCollection";
@@ -181,7 +182,9 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		} else {
 			return Promise.reject(new Error("Too many arguments passed to findOne."));
 		}
-		return this.stringify(result);
+		// findOne is the only command in this file whose output requires EJSON support.
+		// Hence that's the only function which uses EJSON.stringify rather than this.stringify.
+		return EJSON.stringify(result, null, '\t');
 	}
 
 	private insert(document: Object): Thenable<string> {
@@ -269,12 +272,7 @@ function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
 // tslint:disable-next-line:no-any
 function parseJSContent(content: string): any {
 	try {
-		const sandbox = {};
-		// tslint:disable-next-line:insecure-random
-		const key = 'parse' + Math.floor(Math.random() * 1000000);
-		sandbox[key] = {};
-		vm.runInNewContext(key + '=' + content, sandbox);
-		return sandbox[key];
+		return EJSON.parse(content);
 	} catch (error) {
 		throw error.message;
 	}

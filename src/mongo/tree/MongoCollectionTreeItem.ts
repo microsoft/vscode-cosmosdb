@@ -183,7 +183,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		} else {
 			return Promise.reject(new Error("Too many arguments passed to findOne."));
 		}
-		// findOne is the only command in this file requiring EJSON support.
+		// findOne is the only command in this file whose output requires EJSON support.
 		// Hence that's the only function which uses EJSON.stringify rather than this.stringify.
 		return EJSON.stringify(result, null, '\t');
 	}
@@ -273,12 +273,7 @@ function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
 // tslint:disable-next-line:no-any
 function parseJSContent(content: string): any {
 	try {
-		const sandbox = {};
-		// tslint:disable-next-line:insecure-random
-		const key = 'parse' + Math.floor(Math.random() * 1000000);
-		sandbox[key] = {};
-		vm.runInNewContext(key + '=' + content, sandbox);
-		return sandbox[key];
+		return EJSON.parse(content);
 	} catch (error) {
 		throw error.message;
 	}

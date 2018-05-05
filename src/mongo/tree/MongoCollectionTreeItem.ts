@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import * as vm from 'vm';
 import * as path from 'path';
 import * as _ from 'underscore';
 import * as util from '../../utils/vscodeUtils';

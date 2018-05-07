@@ -241,8 +241,8 @@ export class GraphViewServer extends EventEmitter {
     let idLists: string[] = [];
     let currentIdList = "";
 
-    for (let i = 0; i < vertices.length; ++i) {
-      let vertexId = `"${vertices[i].id}"`;
+    for (let vertex of vertices) {
+      let vertexId = `"${vertex.id}"`;
       if (currentIdList.length && currentIdList.length + vertexId.length > maxIdListLength) {
         // Start a new id list
         idLists.push(currentIdList);
@@ -257,8 +257,7 @@ export class GraphViewServer extends EventEmitter {
     // Build queries from each list of IDs
     // tslint:disable-next-line:no-any
     let promises: Promise<any[]>[] = [];
-    for (let i = 0; i < idLists.length; ++i) {
-      let idList = idLists[i];
+    for (let idList of idLists) {
       let query = `g.V(${idList}).outE().dedup()`;
       var promise = this.executeQuery(queryId, query);
       promises.push(promise);

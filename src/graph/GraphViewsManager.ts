@@ -33,10 +33,10 @@ export class GraphViewsManager implements IServerProvider {
     config: GraphConfiguration
   ): Promise<void> {
     try {
-      var id = await this.getOrCreateServer(config);
+      let id = await this.getOrCreateServer(config);
 
       // Add server ID to the URL so that GraphViewDocumentContentProvider knows which port to use in the HTML
-      var serverUri = previewBaseUri + id.toString();
+      let serverUri = previewBaseUri + id.toString();
       await vscode.commands.executeCommand('vscode.previewHtml', vscode.Uri.parse(serverUri), vscode.ViewColumn.One, tabTitle);
     } catch (error) {
       vscode.window.showErrorMessage(error.message || error);
@@ -48,8 +48,8 @@ export class GraphViewsManager implements IServerProvider {
   }
 
   private async getOrCreateServer(config: GraphConfiguration): Promise<number> {
-    var existingServer: GraphViewServer = null;
-    var existingId: number;
+    let existingServer: GraphViewServer = null;
+    let existingId: number;
     this._servers.forEach((server, key) => {
       if (areConfigsEqual(server.configuration, config)) {
         existingServer = server;
@@ -60,11 +60,11 @@ export class GraphViewsManager implements IServerProvider {
       return existingId;
     }
 
-    var server = new GraphViewServer(config);
+    let server = new GraphViewServer(config);
     await server.start();
 
     this._lastServerId += 1;
-    var id = this._lastServerId;
+    let id = this._lastServerId;
     this._servers.set(id, server);
     return id;
   }
@@ -77,15 +77,15 @@ class GraphViewDocumentContentProvider implements vscode.TextDocumentContentProv
 
   public provideTextDocumentContent(uri: vscode.Uri, _token: vscode.CancellationToken): vscode.ProviderResult<string> {
     // Figure out which client to attach this to
-    var serverId = parseInt(uri.path.slice(1) /* remove '/' from beginning */, 10);
+    let serverId = parseInt(uri.path.slice(1) /* remove '/' from beginning */, 10);
     console.assert(serverId > 0);
-    var server = this._serverProvider.findServerById(serverId);
+    let server = this._serverProvider.findServerById(serverId);
     if (server) {
-      var outPath = path.join(path.dirname(module.filename), "../..");
-      var clientHtmlPath = path.join(outPath, "../resources/graphClient/graphClient.html");
+      let outPath = path.join(path.dirname(module.filename), "../..");
+      let clientHtmlPath = path.join(outPath, "../resources/graphClient/graphClient.html");
       console.assert(fs.existsSync(clientHtmlPath), `Couldn't find ${clientHtmlPath}`);
 
-      var html = `
+      let html = `
     <!DOCTYPE html>
     <html>
       <style>

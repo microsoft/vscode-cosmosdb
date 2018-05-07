@@ -229,7 +229,7 @@
         ],
         "linebreak-style": false, //changed
         "newline-before-return": false, // changed
-        // TODO: "no-consecutive-blank-lines": true,
+        "no-consecutive-blank-lines": true,
         "no-empty-line-after-opening-brace": false,
         // TODO: "no-single-line-block-comment": true,
         "no-trailing-whitespace": true,

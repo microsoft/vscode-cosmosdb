@@ -93,7 +93,7 @@ export class GraphViewServer extends EventEmitter {
 
     // how know resolve/reject?
     return new Promise((resolve, _reject) => {
-      this._httpServer = http.createServer()
+      this._httpServer = http.createServer();
       this._httpServer.listen(
         0, // dynamnically pick an unused port
         () => {
@@ -229,7 +229,7 @@ export class GraphViewServer extends EventEmitter {
 
     // Enforce max limit on edges
     let limitedEdges = edges.slice(0, this.maxEdges);
-    return { limitedEdges, countUniqueEdges }
+    return { limitedEdges, countUniqueEdges };
   }
 
   private async queryEdges(queryId: number, vertices: { id: string }[]): Promise<GraphEdge[]> {
@@ -339,7 +339,7 @@ export class GraphViewServer extends EventEmitter {
       if (firstValidError) {
         throw firstValidError;
       } else {
-        throw new Error(`Could not find a valid gremlin endpoint for ${this.configuration.graphName}.\r\n\r\nTried ${this.configuration.possibleGremlinEndpoints.map(e => e.host).join(", ")}`)
+        throw new Error(`Could not find a valid gremlin endpoint for ${this.configuration.graphName}.\r\n\r\nTried ${this.configuration.possibleGremlinEndpoints.map(e => e.host).join(", ")}`);
       }
     }
   }

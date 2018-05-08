@@ -24,5 +24,5 @@ export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
      * The defaultExperience to use
      * This will be defined after `CosmosDBAccountApiStep.prompt` occurs.
      */
-    defaultExperience?: Experience,
+    defaultExperience?: Experience;
 }

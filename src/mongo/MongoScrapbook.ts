@@ -23,7 +23,7 @@ const output = vscodeUtil.getOutputChannel();
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
 
 export async function executeAllCommandsFromActiveEditor(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext): Promise<void> {
-	output.appendLine("Running all commands in scrapbook...")
+	output.appendLine("Running all commands in scrapbook...");
 	let commands = getAllCommandsFromActiveEditor();
 	await executeCommands(vscode.window.activeTextEditor, database, extensionPath, editorManager, tree, context, commands);
 }
@@ -88,7 +88,7 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: IAzureP
 			const result = await database.treeItem.executeCommand(command, context);
 			if (command.name === 'findOne') {
 				if (result === "null") {
-					throw new Error(`Could not find any documents`)
+					throw new Error(`Could not find any documents`);
 				}
 				await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result, tree), 'cosmos-result.json', { showInNextColumn: true });
 			} else {

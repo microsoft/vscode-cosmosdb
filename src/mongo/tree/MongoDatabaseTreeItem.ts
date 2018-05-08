@@ -128,7 +128,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 
 	private async getShell(): Promise<Shell> {
 		const settingKey: string = ext.settingsKeys.mongoShellPath;
-		let shellPath: string | undefined = vscode.workspace.getConfiguration().get(settingKey)
+		let shellPath: string | undefined = vscode.workspace.getConfiguration().get(settingKey);
 		if (!shellPath) {
 			if (await cpUtils.commandSucceeds('mongo', '--version')) {
 				// If the user already has mongo in their system path, just use that
@@ -166,7 +166,7 @@ export function validateMongoCollectionName(collectionName: string): string | un
 	if (!collectionName) {
 		return "Collection name cannot be empty";
 	}
-	const systemPrefix = "system."
+	const systemPrefix = "system.";
 	if (collectionName.startsWith(systemPrefix)) {
 		return `"${systemPrefix}" prefix is reserved for internal use`;
 	}
@@ -184,7 +184,7 @@ function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
 		},
 		(_progress) => {
 			return promise;
-		})
+		});
 }
 
 function stripQuotes(term: string): string {

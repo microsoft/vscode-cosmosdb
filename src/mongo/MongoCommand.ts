@@ -17,5 +17,5 @@ export interface MongoCommand {
 
 interface errorDescription {
     position: vscode.Position;
-    text: string
+    text: string;
 }

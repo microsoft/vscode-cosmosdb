@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as fse from 'fs-extra';
-import * as os from 'os'
+import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { UserCancelledError, AzureTreeDataProvider, IAzureParentNode, IAzureNode, IActionContext, DialogResponses } from 'vscode-azureextensionui';
@@ -127,7 +127,7 @@ export class CosmosEditorManager {
                     } else if (editorNode.treeItem instanceof DocDBStoredProcedureTreeItem) {
                         editor = new DocDBStoredProcedureNodeEditor(<IAzureNode<DocDBStoredProcedureTreeItem>>editorNode);
                     } else {
-                        throw new Error("Unexpected type of Editor treeItem")
+                        throw new Error("Unexpected type of Editor treeItem");
                     }
                     this.fileMap[editorFilePath] = editor;
                 } else {

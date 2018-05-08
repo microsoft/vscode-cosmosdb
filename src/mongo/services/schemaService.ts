@@ -27,7 +27,7 @@ export default class SchemaService {
 					}, {
 						uri: this.aggregateCollectionSchema(collection.collectionName),
 						fileMatch: [this.aggregateDocumentUri(collection.collectionName)]
-					}])
+					}]);
 				}
 				return schemas;
 			});
@@ -72,14 +72,14 @@ export default class SchemaService {
 	}
 
 	private _resolveQueryCollectionSchema(collectionName: string, schemaUri: string): Thenable<string> {
-		const collection = this._db.collection(collectionName)
+		const collection = this._db.collection(collectionName);
 		const cursor = collection.find();
 		return new Promise((resolve, _reject) => {
 			this.readNext([], cursor, 10, (result) => {
 				const schema: JSONSchema = {
 					type: 'object',
 					properties: {}
-				}
+				};
 				for (const document of result) {
 					this.setSchemaForDocument(null, document, schema);
 				}
@@ -87,21 +87,21 @@ export default class SchemaService {
 				this.setLogicalOperatorProperties(schema, schemaUri);
 				resolve(JSON.stringify(schema));
 			});
-		})
+		});
 	}
 
 	private _resolveAggregateCollectionSchema(collectionName: string): Thenable<string> {
-		const collection = this._db.collection(collectionName)
+		const collection = this._db.collection(collectionName);
 		const cursor = collection.find();
 		return new Promise((resolve, _reject) => {
 			this.readNext([], cursor, 10, (_result) => {
 				const schema: JSONSchema = {
 					type: 'array',
 					items: this.getAggregateStagePropertiesSchema(this.queryCollectionSchema(collectionName)),
-				}
+				};
 				resolve(JSON.stringify(schema));
 			});
-		})
+		});
 	}
 
 	private setSchemaForDocument(parent: string, document: any, schema: JSONSchema): void {
@@ -119,12 +119,12 @@ export default class SchemaService {
 
 	private setSchemaForDocumentProperty(parent: string, property: string, document: any, schema: JSONSchema): void {
 		const scopedProperty = parent ? `${parent}.${property}` : property;
-		const value = document[property]
+		const value = document[property];
 		const type = Array.isArray(value) ? 'array' : typeof value;
 
 		const propertySchema: JSONSchema = {
 			type: [type, 'object']
-		}
+		};
 		this.setOperatorProperties(type, propertySchema);
 		schema.properties[scopedProperty] = propertySchema;
 
@@ -207,7 +207,7 @@ Use the $where operator to pass either a string containing a JavaScript expressi
 
 		const expressionSchema = {
 			properties: <any>{}
-		}
+		};
 		// Comparison operators
 		expressionSchema.properties.$eq = {
 			type: type,
@@ -287,7 +287,7 @@ Use the $where operator to pass either a string containing a JavaScript expressi
 					}
 				}
 			}
-		}
+		};
 		expressionSchema.properties.$geoWithin = {
 			type: 'object',
 			description: 'Selects geometries within a bounding GeoJSON geometry. The 2dsphere and 2d indexes support $geoWithin',
@@ -613,8 +613,8 @@ Use the $where operator to pass either a string containing a JavaScript expressi
 			cursor.next().then(doc => {
 				result.push(doc);
 				this.readNext(result, cursor, batchSize, callback);
-			})
-		})
+			});
+		});
 	}
 
 }

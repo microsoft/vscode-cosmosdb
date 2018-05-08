@@ -38,7 +38,7 @@ interface GraphVertex {
         value: string;
       }
     ]
-  }
+  };
 }
 
 interface VertexSettingsGroup {

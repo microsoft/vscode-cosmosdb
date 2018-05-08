@@ -118,7 +118,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
 
     private static validatePartitionKey(key: string): string | undefined | null {
         if (/^[#?\\]*$/.test(key)) {
-            return "Cannot contain these characters - ?,#,\\, etc."
+            return "Cannot contain these characters - ?,#,\\, etc.";
         }
         return undefined;
     }
@@ -127,10 +127,10 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         try {
             const value = Number(input);
             if (value < minThroughput || value > maxThroughput) {
-                return `Value must be between ${minThroughput} and ${maxThroughput}`
+                return `Value must be between ${minThroughput} and ${maxThroughput}`;
             }
         } catch (err) {
-            return "Input must be a number"
+            return "Input must be a number";
         }
         return undefined;
     }

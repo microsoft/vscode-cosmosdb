@@ -55,7 +55,7 @@ export class GraphViewsManager implements IServerProvider {
         existingServer = server;
         existingId = key;
       }
-    })
+    });
     if (existingServer) {
       return existingId;
     }
@@ -103,6 +103,6 @@ class GraphViewDocumentContentProvider implements vscode.TextDocumentContentProv
       return html;
     }
 
-    return "This resource is no longer available."
+    return "This resource is no longer available.";
   }
 }

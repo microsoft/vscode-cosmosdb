@@ -9,7 +9,7 @@ import { GraphViewsManager } from '../GraphViewsManager';
 import { GraphConfiguration } from '../GraphConfiguration';
 import * as vscode from 'vscode';
 import { CollectionMeta } from 'documentdb';
-import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem'
+import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 
 export class GraphCollectionTreeItem implements IAzureTreeItem {
     public static contextValue: string = "cosmosDBGraph";

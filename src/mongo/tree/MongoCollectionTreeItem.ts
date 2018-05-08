@@ -190,14 +190,14 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	private insert(document: Object): Thenable<string> {
 		return this.collection.insert(document)
 			.then(({ insertedCount, insertedId, result }) => {
-				return this.stringify({ insertedCount, insertedId, result })
+				return this.stringify({ insertedCount, insertedId, result });
 			});
 	}
 
 	private insertOne(document: Object): Thenable<string> {
 		return this.collection.insertOne(document)
 			.then(({ insertedCount, insertedId, result }) => {
-				return this.stringify({ insertedCount, insertedId, result })
+				return this.stringify({ insertedCount, insertedId, result });
 			});
 	}
 
@@ -222,28 +222,28 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 		return this.collection.insertMany(args[0], insertManyOptions)
 			.then(({ insertedCount, insertedIds, result }) => {
-				return this.stringify({ insertedCount, insertedIds, result })
+				return this.stringify({ insertedCount, insertedIds, result });
 			});
 	}
 
 	private remove(args?: Object): Thenable<string> {
 		return this.collection.remove(args)
 			.then(({ ops, result }) => {
-				return this.stringify({ ops, result })
+				return this.stringify({ ops, result });
 			});
 	}
 
 	private deleteOne(args?: Object): Thenable<string> {
 		return this.collection.deleteOne(args)
 			.then(({ deletedCount, result }) => {
-				return this.stringify({ deletedCount, result })
+				return this.stringify({ deletedCount, result });
 			});
 	}
 
 	private deleteMany(args?: Object): Thenable<string> {
 		return this.collection.deleteMany(args)
 			.then(({ deletedCount, result }) => {
-				return this.stringify({ deletedCount, result })
+				return this.stringify({ deletedCount, result });
 			});
 	}
 
@@ -254,7 +254,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 	// tslint:disable-next-line:no-any
 	private stringify(result: any): string {
-		return JSON.stringify(result, null, '\t')
+		return JSON.stringify(result, null, '\t');
 	}
 }
 
@@ -266,7 +266,7 @@ function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
 		},
 		(_progress) => {
 			return promise;
-		})
+		});
 }
 
 // tslint:disable-next-line:no-any

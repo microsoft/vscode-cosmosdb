@@ -68,13 +68,13 @@ class NodeFinder extends MongoVisitor<ParseTree> {
 		if (ctx instanceof ParserRuleContext) {
 			const stop = ctx.stop ? ctx.stop.stopIndex : ctx.start.stopIndex;
 			if (stop < this.offset) {
-				return ctx
+				return ctx;
 			}
 			return null;
 		}
 		if (ctx instanceof TerminalNode) {
 			if (ctx.symbol.stopIndex < this.offset) {
-				return ctx
+				return ctx;
 			}
 			return null;
 		}

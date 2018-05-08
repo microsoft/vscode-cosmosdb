@@ -128,7 +128,7 @@ function validateDatabaseName(database: string): string | undefined | null {
         return `Database name must be between ${min} and ${max} characters.`;
     }
     if (/[/\\. "$]/.test(database)) {
-        return "Database name cannot contain these characters - `/\\. \"$`"
+        return "Database name cannot contain these characters - `/\\. \"$`";
     }
     return undefined;
 }

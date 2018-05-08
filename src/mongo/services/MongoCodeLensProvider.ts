@@ -48,7 +48,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 				range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0))
 			});
 
-			let commands = getAllCommandsFromTextDocument(document)
+			let commands = getAllCommandsFromTextDocument(document);
 			for (let cmd of commands) {
 				// run individual
 				lenses.push(<vscode.CodeLens>{

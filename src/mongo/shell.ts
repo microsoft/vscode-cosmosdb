@@ -46,7 +46,7 @@ export class Shell {
 
 		let buffers: string[] = [];
 		on(this.mongoShell.stdout, 'data', b => {
-			let data: string = b.toString()
+			let data: string = b.toString();
 			const delimitter = `${this.executionId}${os.EOL}`;
 			if (data.endsWith(delimitter)) {
 				const result = buffers.join('') + data.substring(0, data.length - delimitter.length);

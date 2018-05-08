@@ -38,7 +38,7 @@ async function validateCosmosDBAccountName(name: string, client: CosmosDBManagem
     } else if (name.match(/[^a-z0-9-]/)) {
         return "The name can only contain lowercase letters, numbers, and the '-' character.";
     } else if (await client.databaseAccounts.checkNameExists(name)) {
-        return `Account name "${name}" is not available.`
+        return `Account name "${name}" is not available.`;
     } else {
         return undefined;
     }

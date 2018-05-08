@@ -110,7 +110,7 @@ export class GraphClient {
 
   private selectById<T extends HTMLElement>(id: string): T {
     let elem = <T>d3.select(`#${id}`)[0][0];
-    console.assert(!!elem, `Could not find element with ID ${id}`)
+    console.assert(!!elem, `Could not find element with ID ${id}`);
     return elem;
   }
 
@@ -382,7 +382,7 @@ class GraphView {
     // Allow user to drag/zoom the entire SVG
     svg = svg
       .call(d3.behavior.zoom().on("zoom", function () {
-        svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")")
+        svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")");
       }))
       .append("g");
 

@@ -35,7 +35,7 @@ export async function showNewFile(data: string, extensionPath: string, fileName:
     const fullFileName: string | undefined = await getUniqueFileName(folderPath, fileName, fileExtension);
     uri = vscode.Uri.file(path.join(folderPath, fullFileName)).with({ scheme: 'untitled' });
     const textDocument = await vscode.workspace.openTextDocument(uri);
-    const editor = await vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true)
+    const editor = await vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true);
     await writeToEditor(editor, data);
 }
 

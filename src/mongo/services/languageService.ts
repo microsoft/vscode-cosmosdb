@@ -45,7 +45,7 @@ export class LanguageService {
 					this.schemaService.registerSchemas(this.db)
 						.then(schemas => {
 							this.configureSchemas(schemas);
-						})
+						});
 				});
 		});
 
@@ -77,6 +77,6 @@ export class LanguageService {
 	configureSchemas(schemas: SchemaConfiguration[]): void {
 		this.jsonLanguageService.configure({
 			schemas
-		})
+		});
 	}
 }

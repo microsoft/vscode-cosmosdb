@@ -17,9 +17,9 @@ import { getDatabaseNameFromConnectionString } from '../mongo/mongoConnectionStr
 import { API, getExperienceQuickPicks, getExperienceQuickPick, getExperience } from '../experiences';
 
 interface IPersistedAccount {
-    id: string,
-    defaultExperience: API,
-    isEmulator: boolean
+    id: string;
+    defaultExperience: API;
+    isEmulator: boolean;
 }
 
 export const AttachedAccountSuffix: string = 'Attached';
@@ -48,7 +48,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 this._attachedAccounts = await this._loadPersistedAccountsTask;
             } catch {
                 this._attachedAccounts = [];
-                throw new Error('Failed to load persisted Database Accounts. Reattach the accounts manually.')
+                throw new Error('Failed to load persisted Database Accounts. Reattach the accounts manually.');
             }
         }
 
@@ -104,7 +104,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 defaultValue = placeholder = 'mongodb://127.0.0.1:27017';
                 validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
             } else {
-                placeholder = 'AccountEndpoint=...;AccountKey=...'
+                placeholder = 'AccountEndpoint=...;AccountKey=...';
                 validateInput = AttachedAccountsTreeItem.validateDocDBConnectionString;
             }
 
@@ -152,7 +152,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                 else {
                     connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;`;
                 }
-                const label = `${defaultExperience.shortName} Emulator`
+                const label = `${defaultExperience.shortName} Emulator`;
                 let treeItem: IAzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api, label);
                 if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem || treeItem instanceof MongoAccountTreeItem) {
                     treeItem.isEmulator = true;
@@ -166,7 +166,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         const attachedAccounts: IAzureTreeItem[] = await this.getAttachedAccounts();
 
         if (attachedAccounts.find(s => s.id === treeItem.id)) {
-            vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`)
+            vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`);
         } else {
             attachedAccounts.push(treeItem);
             if (this._keytar) {

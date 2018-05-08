@@ -251,7 +251,7 @@
         ],
         "react-tsx-curly-spacing": true,
         "semicolon": [
-            true, // TODO: true,
+            true,
             "always"
         ],
         "trailing-comma": [

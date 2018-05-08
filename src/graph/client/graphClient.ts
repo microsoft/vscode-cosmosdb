@@ -208,7 +208,7 @@ export class GraphClient {
     // Copy style sheets from parent to pick up theme colors
     var head = document.getElementsByTagName("head")[0];
     var styleSheets = parent.document.getElementsByTagName("style");
-    //stylSheets doesn't have a method returning an iterator
+    // The styleSheets object doesn't have a method returning an iterator
     // tslint:disable-next-line:prefer-for-of
     for (var i = 0; i < styleSheets.length; ++i) {
       head.insertBefore(styleSheets[i].cloneNode(true), head.firstChild);

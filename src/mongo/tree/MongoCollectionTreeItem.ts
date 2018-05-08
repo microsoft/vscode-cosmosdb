@@ -28,8 +28,8 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 	constructor(collection: Collection, query?: string[]) {
 		this.collection = collection;
-		this._query = query && query.length && JSON.parse(query[0]);
-		this._projection = query && query.length > 1 && JSON.parse(query[1]);
+		this._query = query && query.length && EJSON.parse(query[0]);
+		this._projection = query && query.length > 1 && EJSON.parse(query[1]);
 	}
 
 	public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {

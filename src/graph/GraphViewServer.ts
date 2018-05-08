@@ -124,12 +124,12 @@ export class GraphViewServer extends EventEmitter {
   }
 
   private getViewSettings(): GraphViewSettings {
-    var viewSettings: GraphViewSettings = vscode.workspace.getConfiguration().get<GraphViewSettings>('cosmosDB.graph.viewSettings') || <GraphViewSettings>{};
+    let viewSettings: GraphViewSettings = vscode.workspace.getConfiguration().get<GraphViewSettings>('cosmosDB.graph.viewSettings') || <GraphViewSettings>{};
     return viewSettings;
   }
 
   private async queryAndShowResults(queryId: number, gremlinQuery: string): Promise<void> {
-    var results: GraphResults | undefined;
+    let results: GraphResults | undefined;
     const start = Date.now();
 
     try {
@@ -154,7 +154,7 @@ export class GraphViewServer extends EventEmitter {
         actionContext.properties.isDefaultQuery = gremlinQuery === "g.V()" ? "true" : "false";
 
         // Full query results - may contain vertices and/or edges and/or other things
-        var fullResults = await thisServer.executeQuery(queryId, gremlinQuery);
+        let fullResults = await thisServer.executeQuery(queryId, gremlinQuery);
         actionContext.measurements.mainQueryDuration = (Date.now() - start) / 1000;
         const edgesStart = Date.now();
 
@@ -174,7 +174,7 @@ export class GraphViewServer extends EventEmitter {
         if (results.limitedVertices.length) {
           try {
             // If it returned any vertices, we need to also query for edges
-            var edges = await thisServer.queryEdges(queryId, results.limitedVertices);
+            let edges = await thisServer.queryEdges(queryId, results.limitedVertices);
             let { countUniqueEdges, limitedEdges } = thisServer.limitEdges(limitedVertices, edges);
 
             results.countUniqueEdges = countUniqueEdges;
@@ -189,7 +189,7 @@ export class GraphViewServer extends EventEmitter {
       });
     } catch (error) {
       // If there's an error, send it to the client to display
-      var message = this.removeErrorCallStack(error.message || error.toString());
+      let message = this.removeErrorCallStack(error.message || error.toString());
       this._pageState.errorMessage = message;
       this._socket.emitToClient("showQueryError", queryId, message);
       return;
@@ -259,11 +259,11 @@ export class GraphViewServer extends EventEmitter {
     let promises: Promise<any[]>[] = [];
     for (let idList of idLists) {
       let query = `g.V(${idList}).outE().dedup()`;
-      var promise = this.executeQuery(queryId, query);
+      let promise = this.executeQuery(queryId, query);
       promises.push(promise);
     }
 
-    var results = await Promise.all(promises);
+    let results = await Promise.all(promises);
     return Array.prototype.concat(...results);
   }
 
@@ -271,7 +271,7 @@ export class GraphViewServer extends EventEmitter {
     // Remove everything after the lines start looking like this:
     //      at Microsoft.Azure.Graphs.GremlinGroovy.GremlinGroovyTraversalScript.TranslateGroovyToCsharpInner()
     try {
-      var match = message.match(/^\r?\n?\s*at \S+\(\)\s*$/m);
+      let match = message.match(/^\r?\n?\s*at \S+\(\)\s*$/m);
       if (match) {
         return message.slice(0, match.index);
       }
@@ -358,7 +358,7 @@ export class GraphViewServer extends EventEmitter {
       });
 
     // Patch up handleProtocolMessage as a temporary work-around for https://github.com/jbmusso/gremlin-javascript/issues/93
-    var originalHandleProtocolMessage = client.handleProtocolMessage;
+    let originalHandleProtocolMessage = client.handleProtocolMessage;
     client.handleProtocolMessage = function handleProtocolMessage(message) {
       if (!message.binary) {
         // originalHandleProtocolMessage isn't handling non-binary messages, so convert this one back to binary

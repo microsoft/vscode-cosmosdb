@@ -329,8 +329,8 @@ class GraphView {
     // Create edges and set their source/target
     let links: ForceLink[] = [];
     edges.forEach(e => {
-      var source = nodesById.get(e.outV);
-      var target = nodesById.get(e.inV);
+      let source = nodesById.get(e.outV);
+      let target = nodesById.get(e.inV);
 
       if (source && target) {
         links.push({ edge: e, source, target });
@@ -499,21 +499,21 @@ class GraphView {
   private positionLink(l: any) {
     const d1 = GraphView.calculateControlPoint(l.source, l.target);
 
-    var radius = vertexRadius + paddingBetweenVertexAndEdge;
+    let radius = vertexRadius + paddingBetweenVertexAndEdge;
 
     // Start
-    var dx = d1.x - l.source.x;
-    var dy = d1.y - l.source.y;
-    var angle = Math.atan2(dy, dx);
-    var tx = l.source.x + (Math.cos(angle) * radius);
-    var ty = l.source.y + (Math.sin(angle) * radius);
+    let dx = d1.x - l.source.x;
+    let dy = d1.y - l.source.y;
+    let angle = Math.atan2(dy, dx);
+    let tx = l.source.x + (Math.cos(angle) * radius);
+    let ty = l.source.y + (Math.sin(angle) * radius);
 
     // End
     dx = l.target.x - d1.x;
     dy = l.target.y - d1.y;
     angle = Math.atan2(dy, dx);
-    var ux = l.target.x - (Math.cos(angle) * radius);
-    var uy = l.target.y - (Math.sin(angle) * radius);
+    let ux = l.target.x - (Math.cos(angle) * radius);
+    let uy = l.target.y - (Math.sin(angle) * radius);
 
     return "M" + tx + "," + ty
       + "S" + d1.x + "," + d1.y

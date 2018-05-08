@@ -6,7 +6,7 @@
 import vscode = require('vscode');
 import TelemetryReporter from 'vscode-extension-telemetry';
 
-export var reporter: TelemetryReporter;
+export let reporter: TelemetryReporter;
 
 export class Reporter extends vscode.Disposable {
 

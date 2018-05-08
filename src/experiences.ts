@@ -17,7 +17,6 @@ export enum DBAccountKind {
     GlobalDocumentDB = 'GlobalDocumentDB'
 }
 
-
 export function getExperience(api: API): Experience {
     let info = experiencesMap.get(api);
     if (!info) {

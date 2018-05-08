@@ -383,13 +383,13 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 
 	private createRange(parserRuleContext: ParseTree): Range {
 		if (parserRuleContext instanceof ParserRuleContext) {
-			var startToken = parserRuleContext.start;
-			var stopToken = parserRuleContext.stop;
+			let startToken = parserRuleContext.start;
+			let stopToken = parserRuleContext.stop;
 			if (stopToken === null || startToken.type === mongoParser.mongoParser.EOF) {
 				stopToken = startToken;
 			}
 
-			var stop = stopToken.stopIndex;
+			let stop = stopToken.stopIndex;
 			return this._createRange(startToken.startIndex, stop);
 		}
 
@@ -402,12 +402,12 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 
 	private createRangeAfter(parserRuleContext: ParseTree): Range {
 		if (parserRuleContext instanceof ParserRuleContext) {
-			var stopToken = parserRuleContext.stop;
+			let stopToken = parserRuleContext.stop;
 			if (stopToken === null) {
 				stopToken = parserRuleContext.start;
 			}
 
-			var stop = stopToken.stopIndex;
+			let stop = stopToken.stopIndex;
 			return this._createRange(stop + 1, stop + 1);
 		}
 

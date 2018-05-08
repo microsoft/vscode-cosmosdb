@@ -5,7 +5,6 @@
 import { createConnection, IConnection } from 'vscode-languageserver';
 import { LanguageService } from './services/languageService'
 
-
 //
 //
 //
@@ -18,8 +17,6 @@ import { LanguageService } from './services/languageService'
 //
 //
 //
-
-
 
 // Create a connection for the server
 let connection: IConnection = createConnection();

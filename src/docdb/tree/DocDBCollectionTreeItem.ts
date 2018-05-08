@@ -74,7 +74,6 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
         }
     }
 
-
     public async loadMoreChildren(_node: IAzureNode<IAzureTreeItem>, _clearCache: boolean): Promise<IAzureTreeItem[]> {
         return [this._documentsTreeItem, this._storedProceduresTreeItem];
     }

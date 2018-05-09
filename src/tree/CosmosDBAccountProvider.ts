@@ -74,7 +74,17 @@ export class CosmosDBAccountProvider implements IChildProvider {
     private async initChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<IAzureTreeItem> {
         const defaultExperience = <API>databaseAccount.tags.defaultExperience;
         const resourceGroup: string = azureUtils.getResourceGroupFromId(databaseAccount.id);
-        const label: string = `${databaseAccount.name} (${getExperience(defaultExperience).shortName})`;
+        let accountKind;
+        try {
+            accountKind = getExperience(defaultExperience).shortName;
+        } catch (err) {
+            if (err instanceof RangeError) {
+                accountKind = defaultExperience;
+            } else {
+                throw err;
+            }
+        }
+        const label: string = `${databaseAccount.name} (${accountKind})`;
         const isEmulator: boolean = false;
         if (defaultExperience === "MongoDB") {
             const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, databaseAccount.name);

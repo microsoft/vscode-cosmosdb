@@ -227,8 +227,8 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
                     // Default to Mongo if the value is a string for the sake of backwards compatiblity
                     // (Mongo was originally the only account type that could be attached)
                     id = account;
-                    label = `${account} (${getExperience(api).shortName})`;
                     api = API.MongoDB;
+                    label = `${account} (${getExperience(api).shortName})`;
                     isEmulator = false;
                 } else {
                     id = (<IPersistedAccount>account).id;

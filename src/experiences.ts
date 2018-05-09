@@ -21,9 +21,8 @@ export enum DBAccountKind {
 export function getExperience(api: API): Experience {
     let info = experiencesMap.get(api);
     if (!info) {
-        throw new RangeError("Unexpected Experience value");
+        info = { api: api, shortName: api, longName: api, kind: DBAccountKind.GlobalDocumentDB };
     }
-
     return info;
 }
 

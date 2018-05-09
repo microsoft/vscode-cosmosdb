@@ -2,6 +2,10 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.7.1 - 2018-05-09
+### Fixed
+[Bug fixed](https://github.com/Microsoft/vscode-cosmosdb/issues/623)
+
 ## 0.7.0 - 2018-05-02
 
 ### Added

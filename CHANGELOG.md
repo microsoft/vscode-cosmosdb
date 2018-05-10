@@ -2,6 +2,12 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.7.1 - 2018-05-10
+
+### [Fixed](https://github.com/Microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A%220.7.1%22+is%3Aclosed+label%3Abug)
+
+- Fixed error "Unexpected Experience Value" when retrieving database accounts
+
 ## 0.7.0 - 2018-05-04
 
 ### Added

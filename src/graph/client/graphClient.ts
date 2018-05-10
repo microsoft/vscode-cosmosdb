@@ -206,8 +206,10 @@ export class GraphClient {
 
   public copyParentStyleSheets() {
     // Copy style sheets from parent to pick up theme colors
-    let head = document.getElementsByTagName("head")[0];
-    let styleSheets = parent.document.getElementsByTagName("style");
+    const head = document.getElementsByTagName("head")[0];
+    const styleSheets = parent.document.getElementsByTagName("style");
+    // The styleSheets object doesn't have a method returning an iterator
+    // tslint:disable-next-line:prefer-for-of
     for (let i = 0; i < styleSheets.length; ++i) {
       head.insertBefore(styleSheets[i].cloneNode(true), head.firstChild);
     }
@@ -462,8 +464,8 @@ class GraphView {
   private generateDefaultColors(vertices: GraphVertex[]): void {
     // Keep previous entries, changing colors between queries would be confusing
 
-    for (let i = 0; i < vertices.length; ++i) {
-      let label = vertices[i].label;
+    for (let vertex of vertices) {
+      let label = vertex.label;
       if (!this._defaultColorsPerLabel.get(label)) {
         let colorIndex = this._defaultColorsPerLabel.size;
         let newColor = this._colorGenerator(colorIndex);
@@ -521,13 +523,11 @@ class GraphView {
   private findVertexPropertySetting(v: GraphVertex, viewSettings: GraphViewSettings, settingProperty: keyof VertexSettingsGroup): any | undefined {
     let label = v.label;
 
-    for (let i = 0; i < viewSettings.length; ++i) {
-      let graphSettingsGroup = viewSettings[i];
+    for (let graphSettingsGroup of viewSettings) {
       let vertextSettingsGroups: VertexSettingsGroup[] = graphSettingsGroup.vertexSettings || [];
 
       // Check groups which specify a label filter first
-      for (let i = 0; i < vertextSettingsGroups.length; ++i) {
-        let group = vertextSettingsGroups[i];
+      for (let group of vertextSettingsGroups) {
         if (group.appliesToLabel && group.appliesToLabel === label) {
           // This settings group is applicable to this vertex
           let value = group[settingProperty];
@@ -562,8 +562,7 @@ class GraphView {
     let text: string;
     let propertyCandidates = this.findVertexPropertySetting(v, viewSettings, "displayProperty") || [];
     // Find the first specified property that exists and has a non-empty value
-    for (let i = 0; i < propertyCandidates.length; ++i) {
-      let candidate = propertyCandidates[i];
+    for (let candidate of propertyCandidates) {
       if (candidate === "id") {
         text = v.id;
       } else if (candidate === "label" && v.label) {

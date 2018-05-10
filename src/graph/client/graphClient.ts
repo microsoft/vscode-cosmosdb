@@ -206,11 +206,11 @@ export class GraphClient {
 
   public copyParentStyleSheets() {
     // Copy style sheets from parent to pick up theme colors
-    var head = document.getElementsByTagName("head")[0];
-    var styleSheets = parent.document.getElementsByTagName("style");
+    const head = document.getElementsByTagName("head")[0];
+    const styleSheets = parent.document.getElementsByTagName("style");
     // The styleSheets object doesn't have a method returning an iterator
     // tslint:disable-next-line:prefer-for-of
-    for (var i = 0; i < styleSheets.length; ++i) {
+    for (let i = 0; i < styleSheets.length; ++i) {
       head.insertBefore(styleSheets[i].cloneNode(true), head.firstChild);
     }
   }

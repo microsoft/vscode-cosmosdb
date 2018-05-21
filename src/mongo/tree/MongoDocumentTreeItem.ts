@@ -37,12 +37,12 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
         return this.document._id.toString();
     }
 
-    get label(): string {
-        return this._label;
+    public async refreshLabel(): Promise<void> {
+        this._label = getDocumentTreeItemLabel(this.document);
     }
 
-    set label(updatedLabel: string) {
-        this._label = updatedLabel;
+    get label(): string {
+        return this._label;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {

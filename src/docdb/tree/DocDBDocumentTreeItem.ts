@@ -35,6 +35,10 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
         return this.document.id;
     }
 
+    public async refreshLabel() {
+        this._label = getDocumentTreeItemLabel(this._document);
+    }
+
     public get link(): string {
         return this.document._self;
     }
@@ -55,7 +59,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     }
 
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
-        const message: string = `Are you sure you want to delete document '${this._label}'?`;
+        const message: string = `Are you sure you want to delete document '${this.label}'?`;
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const client = this._collection.getDocumentClient();

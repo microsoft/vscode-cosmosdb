@@ -41,6 +41,10 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
         return this._label;
     }
 
+    set label(updatedLabel: string) {
+        this._label = updatedLabel;
+    }
+
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
             light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Document.svg'),

@@ -30,22 +30,19 @@ export class CosmosDBAccountProvider implements IChildProvider {
     public async loadMoreChildren(node: IAzureNode): Promise<IAzureTreeItem[]> {
         const client = new CosmosDBManagementClient(node.credentials, node.subscriptionId);
         const accounts: DatabaseAccountsListResult = await client.databaseAccounts.list();
-        let validAccounts = await Promise.all(
+        let accountTreeItems = [];
+        await Promise.all(
             accounts.map(async (databaseAccount: DatabaseAccount) => {
                 try {
-                    let result = await this.initChild(client, databaseAccount);
-                    return result;
+                    let account = await this.initChild(client, databaseAccount);
+                    accountTreeItems.push(account);
                 } catch (e) {
-                    const output = util.getOutputChannel();
-                    output.appendLine(e);
-                    output.show();
-                    vscode.window.showInformationMessage(`Failed to pick laod invalid account. See output window for more details.`);
-                    return null;
+                    accountTreeItems.push(<IAzureTreeItem>{ id: e.toString(), label: e.toString() });
                 }
 
             })
         );
-        return validAccounts.filter((element) => !!element);
+        return accountTreeItems;
     }
 
     public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void, actionContext?: IActionContext): Promise<IAzureTreeItem> {

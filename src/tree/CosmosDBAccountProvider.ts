@@ -103,10 +103,9 @@ export class CosmosDBAccountProvider implements IChildProvider {
                     return new GraphAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, gremlinEndpoint, keyResult.primaryMasterKey, isEmulator);
                 }
                 case "DocumentDB":
+                default:
                     // Default to DocumentDB, the base type for all Cosmos DB Accounts
                     return new DocDBAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator);
-                default:
-                    throw new Error("Sample Error");
 
             }
         }

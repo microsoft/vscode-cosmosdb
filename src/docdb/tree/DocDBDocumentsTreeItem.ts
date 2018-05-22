@@ -5,7 +5,7 @@
 
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DocumentClient, QueryIterator, FeedOptions, RetrievedDocument } from 'documentdb';
+import { DocumentClient, QueryIterator, FeedOptions, RetrievedDocument, DocumentOptions } from 'documentdb';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import { IAzureTreeItem, UserCancelledError, IAzureNode } from 'vscode-azureextensionui';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
@@ -61,9 +61,20 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
 
         if (docID || docID === "") {
             docID = docID.trim();
+            let body = { 'id': docID };
+            const partitionKey: string | undefined = this._collection.partitionKey && this._collection.partitionKey.paths[0];
+            if (partitionKey) {
+                const partitionKeyValue: string = await vscode.window.showInputBox({
+                    prompt: `The partition key is ${partitionKey}. Enter a value for the partition key`,
+                    ignoreFocusOut: true
+                });
+                // Cannot pass a partition key value during document creation.
+                // Need to have the partitionKey value as part of the document contents
+                Object.assign(body, this.createPartitionPathObject(partitionKey, partitionKeyValue));
+            }
             showCreatingNode(docID);
             const document: RetrievedDocument = await new Promise<RetrievedDocument>((resolve, reject) => {
-                client.createDocument(this.link, { 'id': docID }, (err, result: RetrievedDocument) => {
+                client.createDocument(this.link, body, (err, result: RetrievedDocument) => {
                     if (err) {
                         reject(err);
                     } else {
@@ -76,5 +87,21 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
         }
 
         throw new UserCancelledError();
+    }
+
+    // Create a nested Object given the partition key path and value
+    private createPartitionPathObject(partitionKey, partitionKeyValue): Object {
+        //remove leading slash
+        partitionKey = partitionKey.slice(1);
+        let path = partitionKey.split('/');
+        let PartitionPath: Object = {};
+        let interim: Object = PartitionPath;
+        let i: number;
+        for (i = 0; i < path.length - 1; i++) {
+            interim[path[i]] = {};
+            interim = interim[path[i]];
+        }
+        interim[path[i]] = partitionKeyValue;
+        return PartitionPath;
     }
 }

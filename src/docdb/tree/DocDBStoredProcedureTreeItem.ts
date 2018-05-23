@@ -9,6 +9,7 @@ import { IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 
 import { ProcedureMeta, DocumentClient } from 'documentdb';
 import { getDocumentClient } from '../getDocumentClient';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) stored procedure
@@ -18,7 +19,7 @@ export class DocDBStoredProcedureTreeItem implements IAzureTreeItem {
     public readonly contextValue: string = DocDBStoredProcedureTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openStoredProcedure';
 
-    constructor(private _endpoint: string, private _masterKey: string, private _isEmulator: boolean, private _collection: DocDBCollectionTreeItem, public procedure: ProcedureMeta) {
+    constructor(private _endpoint: string, private _masterKey: string, private _isEmulator: boolean, private _collection: DocDBCollectionTreeItem | GraphCollectionTreeItem, public procedure: ProcedureMeta) {
     }
 
     public get id(): string {

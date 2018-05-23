@@ -11,6 +11,7 @@ import { IAzureTreeItem, UserCancelledError, IAzureNode } from 'vscode-azureexte
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 import { defaultStoredProcedure } from '../../constants';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 
 /**
  * This class represents the DocumentDB "Stored Procedures" node in the tree
@@ -20,7 +21,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
     public readonly contextValue: string = DocDBStoredProceduresTreeItem.contextValue;
     public readonly childTypeLabel: string = "Stored Procedure";
 
-    constructor(endpoint: string, masterKey: string, private _collection: DocDBCollectionTreeItem, isEmulator: boolean) {
+    constructor(endpoint: string, masterKey: string, private _collection: DocDBCollectionTreeItem | GraphCollectionTreeItem, isEmulator: boolean) {
         super(endpoint, masterKey, isEmulator);
     }
 

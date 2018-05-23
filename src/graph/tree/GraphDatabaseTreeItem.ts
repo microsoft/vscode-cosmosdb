@@ -19,7 +19,7 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
     }
 
     public initChild(collection: CollectionMeta): IAzureTreeItem {
-        return new GraphCollectionTreeItem(this, collection);
+        return new GraphCollectionTreeItem(this, collection, this.documentEndpoint, this.masterKey, this.isEmulator);
     }
 
     // Gremlin endpoint, if definitely known

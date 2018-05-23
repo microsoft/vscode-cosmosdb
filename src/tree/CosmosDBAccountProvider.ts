@@ -14,7 +14,7 @@ import { DatabaseAccountsListResult, DatabaseAccount, DatabaseAccountListKeysRes
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
-import * as util from '../utils/vscodeUtils';
+import * as vscodeUtils from '../utils/vscodeUtils';
 import * as vscode from 'vscode';
 import { CosmosDBAccountApiStep } from './CosmosDBAccountWizard/CosmosDBAccountApiStep';
 import { API, getExperience } from '../experiences';
@@ -76,7 +76,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
             showCreatingNode(wizardContext.accountName);
             progress.report({ message: `Cosmos DB: Creating account '${wizardContext.accountName}'` });
-            await wizard.execute(actionContext, util.getOutputChannel());
+            await wizard.execute(actionContext, vscodeUtils.getOutputChannel());
         });
         return await this.initChild(client, wizardContext.databaseAccount);
     }

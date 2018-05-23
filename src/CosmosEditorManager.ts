@@ -8,7 +8,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { UserCancelledError, AzureTreeDataProvider, IAzureParentNode, IAzureNode, IActionContext, DialogResponses } from 'vscode-azureextensionui';
-import * as util from './utils/vscodeUtils';
+import * as vscodeUtils from './utils/vscodeUtils';
 import { MessageItem, ViewColumn } from 'vscode';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
@@ -91,7 +91,7 @@ export class CosmosEditorManager {
     private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument): Promise<void> {
         const newContent = editor.convertFromString(doc.getText());
         const updatedContent: {} = await editor.update(newContent);
-        const output = util.getOutputChannel();
+        const output = vscodeUtils.getOutputChannel();
         const timestamp = (new Date()).toLocaleTimeString();
         output.appendLine(`${timestamp}: Updated entity "${editor.label}"`);
         output.show();
@@ -100,7 +100,7 @@ export class CosmosEditorManager {
 
     private async updateEditor(data: {}, textEditor: vscode.TextEditor, editor: ICosmosEditor): Promise<void> {
         const updatedText = editor.convertToString(data);
-        await util.writeToEditor(textEditor, updatedText);
+        await vscodeUtils.writeToEditor(textEditor, updatedText);
         this.ignoreSave = true;
         try {
             await textEditor.document.save();

@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { IAzureNode, DialogResponses } from 'vscode-azureextensionui';
 import { azureUtils } from '../utils/azureUtils';
-import * as util from '../utils/vscodeUtils';
+import * as vscodeUtils from '../utils/vscodeUtils';
 import { UserCancelledError } from 'vscode-azureextensionui';
 
 export async function deleteCosmosDBAccount(node: IAzureNode): Promise<void> {
@@ -17,7 +17,7 @@ export async function deleteCosmosDBAccount(node: IAzureNode): Promise<void> {
         const docDBClient = new CosmosDBManagementClient(node.credentials, node.subscriptionId);
         const resourceGroup: string = azureUtils.getResourceGroupFromId(node.treeItem.id);
         const accountName: string = azureUtils.getAccountNameFromId(node.treeItem.id);
-        const output = util.getOutputChannel();
+        const output = vscodeUtils.getOutputChannel();
         output.appendLine(`Deleting account "${accountName}"...`);
         output.show();
         await docDBClient.databaseAccounts.deleteMethod(resourceGroup, accountName);

@@ -69,7 +69,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
                     ignoreFocusOut: true
                 });
                 if (partitionKeyValue) {
-                    // We cannot pass a partition key value during document creation.
+                    // Unlike delete/replace, createDocument does not accept a partition key value via an options parameter.
                     // We need to present the partitionKey value as part of the document contents
                     Object.assign(body, this.createPartitionPathObject(partitionKey, partitionKeyValue));
                 }

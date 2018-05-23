@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { azureUtils } from '../utils/azureUtils';
-import { IAzureTreeItem, IAzureNode, IChildProvider, ResourceGroupListStep, LocationListStep, AzureWizard, IActionContext } from 'vscode-azureextensionui';
+import { IAzureTreeItem, IAzureNode, IChildProvider, ResourceGroupListStep, LocationListStep, AzureWizard, IActionContext, parseError } from 'vscode-azureextensionui';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
@@ -37,7 +37,8 @@ export class CosmosDBAccountProvider implements IChildProvider {
                     let account = await this.initChild(client, databaseAccount);
                     accountTreeItems.push(account);
                 } catch (e) {
-                    accountTreeItems.push(<IAzureTreeItem>{ id: e.toString(), label: e.toString() });
+                    const err = parseError(e);
+                    accountTreeItems.push(<IAzureTreeItem>{ id: err.toString(), label: err.toString() });
                 }
 
             })

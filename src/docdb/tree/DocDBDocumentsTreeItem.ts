@@ -65,12 +65,14 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
             const partitionKey: string | undefined = this._collection.partitionKey && this._collection.partitionKey.paths[0];
             if (partitionKey) {
                 const partitionKeyValue: string = await vscode.window.showInputBox({
-                    prompt: `The partition key is ${partitionKey}. Enter a value for the partition key`,
+                    prompt: `Enter a value for the partition key ("${partitionKey}")`,
                     ignoreFocusOut: true
                 });
-                // We cannot pass a partition key value during document creation.
-                // We need to present the partitionKey value as part of the document contents
-                Object.assign(body, this.createPartitionPathObject(partitionKey, partitionKeyValue));
+                if (partitionKeyValue) {
+                    // We cannot pass a partition key value during document creation.
+                    // We need to present the partitionKey value as part of the document contents
+                    Object.assign(body, this.createPartitionPathObject(partitionKey, partitionKeyValue));
+                }
             }
             showCreatingNode(docID);
             const document: RetrievedDocument = await new Promise<RetrievedDocument>((resolve, reject) => {
@@ -90,9 +92,11 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
     }
 
     // Create a nested Object given the partition key path and value
-    private createPartitionPathObject(partitionKey, partitionKeyValue): Object {
+    private createPartitionPathObject(partitionKey: string, partitionKeyValue: string): Object {
         //remove leading slash
-        partitionKey = partitionKey.slice(1);
+        if (partitionKey[0] === '/') {
+            partitionKey = partitionKey.slice(1);
+        }
         let path = partitionKey.split('/');
         let PartitionPath: Object = {};
         let interim: Object = PartitionPath;

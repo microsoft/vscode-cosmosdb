@@ -5,7 +5,7 @@
 
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DocumentClient, QueryIterator, FeedOptions, RetrievedDocument, DocumentOptions } from 'documentdb';
+import { DocumentClient, QueryIterator, FeedOptions, RetrievedDocument } from 'documentdb';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import { IAzureTreeItem, UserCancelledError, IAzureNode } from 'vscode-azureextensionui';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
@@ -68,8 +68,8 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
                     prompt: `The partition key is ${partitionKey}. Enter a value for the partition key`,
                     ignoreFocusOut: true
                 });
-                // Cannot pass a partition key value during document creation.
-                // Need to have the partitionKey value as part of the document contents
+                // We cannot pass a partition key value during document creation.
+                // We need to present the partitionKey value as part of the document contents
                 Object.assign(body, this.createPartitionPathObject(partitionKey, partitionKeyValue));
             }
             showCreatingNode(docID);

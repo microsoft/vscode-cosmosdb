@@ -38,7 +38,8 @@ export class CosmosDBAccountProvider implements IChildProvider {
                     accountTreeItems.push(account);
                 } catch (e) {
                     const err = parseError(e);
-                    accountTreeItems.push(<IAzureTreeItem>{ id: err.toString(), label: err.toString() });
+                    //tslint:disable-next-line:no-non-null-assertion
+                    accountTreeItems.push(<IAzureTreeItem>{ label: databaseAccount!.name, description: "Invalid: " + err.message });
                 }
 
             })

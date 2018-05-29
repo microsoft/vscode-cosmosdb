@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { azureUtils } from '../utils/azureUtils';
-import { IAzureTreeItem, IAzureNode, IChildProvider, ResourceGroupListStep, LocationListStep, AzureWizard, IActionContext } from 'vscode-azureextensionui';
+import { IAzureTreeItem, IAzureNode, IChildProvider, ResourceGroupListStep, LocationListStep, AzureWizard, IActionContext, parseError } from 'vscode-azureextensionui';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
@@ -14,7 +14,7 @@ import { DatabaseAccountsListResult, DatabaseAccount, DatabaseAccountListKeysRes
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
-import * as vscodeUtil from '../utils/vscodeUtils';
+import * as vscodeUtils from '../utils/vscodeUtils';
 import * as vscode from 'vscode';
 import { CosmosDBAccountApiStep } from './CosmosDBAccountWizard/CosmosDBAccountApiStep';
 import { API, getExperience } from '../experiences';
@@ -30,10 +30,21 @@ export class CosmosDBAccountProvider implements IChildProvider {
     public async loadMoreChildren(node: IAzureNode): Promise<IAzureTreeItem[]> {
         const client = new CosmosDBManagementClient(node.credentials, node.subscriptionId);
         const accounts: DatabaseAccountsListResult = await client.databaseAccounts.list();
+        let accountTreeItems = [];
+        await Promise.all(
+            accounts.map(async (databaseAccount: DatabaseAccount) => {
+                try {
+                    let account = await this.initChild(client, databaseAccount);
+                    accountTreeItems.push(account);
+                } catch (e) {
+                    const err = parseError(e);
+                    //tslint:disable-next-line:no-non-null-assertion
+                    accountTreeItems.push(<IAzureTreeItem>{ label: databaseAccount!.name, description: "Invalid: " + err.message });
+                }
 
-        return await Promise.all(accounts.map(async (databaseAccount: DatabaseAccount) => {
-            return await this.initChild(client, databaseAccount);
-        }));
+            })
+        );
+        return accountTreeItems;
     }
 
     public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void, actionContext?: IActionContext): Promise<IAzureTreeItem> {
@@ -66,7 +77,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
             showCreatingNode(wizardContext.accountName);
             progress.report({ message: `Cosmos DB: Creating account '${wizardContext.accountName}'` });
-            await wizard.execute(actionContext, vscodeUtil.getOutputChannel());
+            await wizard.execute(actionContext, vscodeUtils.getOutputChannel());
         });
         return await this.initChild(client, wizardContext.databaseAccount);
     }
@@ -94,6 +105,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
                 default:
                     // Default to DocumentDB, the base type for all Cosmos DB Accounts
                     return new DocDBAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator);
+
             }
         }
     }

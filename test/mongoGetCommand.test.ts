@@ -8,25 +8,45 @@ import * as assert from 'assert';
 import { Position } from 'vscode';
 import { getCommandFromText } from '../src/mongo/MongoScrapbook';
 
-function testParseExpectError(text: string, expected: { collection: string, name: string, args: object[] }) {
-    let caughtError = false;
-    try {
-        testParse(text, expected);
-    } catch (error) {
-        caughtError = true;
+function testParse(text: string, expected: { collection: string, name: string, args: object[] }, errors?: { firstErrorText?: string }) {
+    function testCore(text) {
+        let command = getCommandFromText(text, new Position(0, 0));
+
+        assert.equal(command.collection, expected.collection, "Parsed collection name is not correct");
+        assert.equal(command.name, expected.name, "Parsed command name is not correct");
+
+        let actualArgs = (command.arguments || []).map(arg => JSON.parse(arg));
+        assert.deepEqual(actualArgs, expected.args, "Parsed arguments are not correct");
+
+        if (errors && errors.firstErrorText) {
+            assert.equal((command.errors || []).length > 0, true, "Expected at least one error");
+            assert.equal(command.errors[0].text, errors.firstErrorText, "First error text was incorrect")
+        } else {
+            assert.equal((command.errors || []).length, 0, "Expected no errors");
+        }
     }
 
-    assert.equal(caughtError, true, "Parse should have thrown an exception but didn't");
-}
+    testCore(text);
 
-function testParse(text: string, expected: { collection: string, name: string, args: object[] }) {
-    let command = getCommandFromText(text, new Position(0, 0));
+    // Test again with LF changed to CR/LF
+    let crlfText = text.replace(/\n/g, '\r\n');
+    testCore(crlfText);
 
-    assert.equal(command.collection, expected.collection, "Parsed collection name is not correct");
-    assert.equal(command.name, expected.name, "Parsed command name is not correct");
+    // Test again with LF changed to multiple CR/LF
+    let crlf2Text = text.replace(/\n/g, '\r\n\r\n');
+    testCore(crlf2Text);
 
-    let actualArgs = (command.arguments || []).map(arg => JSON.parse(arg));
-    assert.deepEqual(actualArgs, expected.args, "Parsed arguments are not correct");
+    // Test again with LF changed to CR
+    let lfText = text.replace(/\n/g, '\r');
+    testCore(lfText);
+
+    // Test again with LF changed to tab
+    let tabText = text.replace(/\n/g, '\t');
+    testCore(tabText);
+
+    // Test again with LF changed to space
+    let spaceText = text.replace(/\n/g, ' ');
+    testCore(spaceText);
 }
 
 suite("scrapbook parsing Tests", () => {
@@ -146,18 +166,19 @@ suite("scrapbook parsing Tests", () => {
     });
 
     test("expect error: missing comma in arguments", () => {
-        testParseExpectError(
+        testParse(
             `db.heroes.find({ "id": 2 } { "saying": 1 })`,
             {
                 collection: "heroes", name: "find", args: [
                     {
                         id: 2
-                    },
-                    {
-                        saying: 1
                     }
                 ]
-            });
+            },
+            {
+                firstErrorText: "{"
+            }
+        );
     });
 
     // https://github.com/Microsoft/vscode-cosmosdb/issues/467
@@ -191,6 +212,69 @@ suite("scrapbook parsing Tests", () => {
     //             ]
     //         });
     // });
+
+
+    test("multi-line insert from #214", () => {
+        testParse(
+            `db.heroes.insert({\n"id": 2,\r\n"name": "Batman",\r\n\r\n"saying": "I'm Batman"\r})`,
+            {
+                collection: "heroes", name: "insert", args: [
+                    {
+                        id: 2,
+                        name: "Batman",
+                        saying: "I'm Batman"
+                    }
+                ]
+            });
+    });
+
+    test("Array followed by } on separate line, from #73", () => {
+        testParse(
+            `db.createUser({
+                "user": "buddhi",
+                "pwd": "123",
+                "roles": ["readWrite", "dbAdmin"]
+                }
+            )`,
+            {
+                collection: undefined,
+                name: "createUser",
+                args: [
+                    {
+                        user: "buddhi",
+                        pwd: "123",
+                        roles: ["readWrite", "dbAdmin"]
+                    }
+                ]
+            });
+    });
+
+    test("Multiple line arrays, from #489", () => {
+        testParse(`
+            db.c2.insertMany([
+                {"name": "Stephen", "age": 38, "male": true},
+                {"name": "Stephen", "age": 38, "male": true}
+                ])
+            `,
+            {
+                collection: "c2",
+                name: "insertMany",
+                args: [
+                    [
+                        {
+                            name: "Stephen",
+                            age: 38,
+                            male: true
+                        },
+                        {
+                            name: "Stephen",
+                            age: 38,
+                            male: true
+                        }
+                    ]
+                ]
+            });
+    });
 
     test("test function call that has 2 arguments", () => {
         let arg0 = `{"Age": 31}`;

@@ -260,3 +260,6 @@ package-lock.json
 
 # Artifacts from running vscode extension tests
 .vscode-test
+
+# Artifacts from ANTLR4 extension
+grammar/.antlr

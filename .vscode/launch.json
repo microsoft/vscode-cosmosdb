@@ -55,6 +55,23 @@
 			"outFiles": [
 				"${workspaceRoot}/out/src"
 			]
+		},
+		{
+			// Instructions:
+			// 1) Point 'input' to a debugging input file:
+			// 2) Save the mongo.g4 file to cause debugging info to be generated
+			// 3) Launch this configuration
+			// 4) See Debug Console output
+			// 5) In mongo.g4 file, in the editor context menu, you should see options for generating graphs
+			"name": "Debug Mongo grammar",
+			"type": "antlr-debug",
+			"request": "launch",
+			// This doesn't seem to work: "input": "${workspaceFolder}/${command:AskForTestInput}",
+			"input": "c:/temp/debugger-input.mongo",
+			"grammar": "grammar/mongo.g4",
+			"startRule": "mongoCommands",
+			"printParseTree": true,
+			"visualParseTree": true
 		}
 	]
 }

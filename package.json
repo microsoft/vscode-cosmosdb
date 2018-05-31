@@ -793,7 +793,7 @@
 		"lint-fix": "tslint --project tsconfig.json -t verbose --fix",
 		"postinstall": "node ./node_modules/vscode/bin/install",
 		"test": "node ./node_modules/vscode/bin/test",
-		"antlr4ts": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src/mongo/grammar"
+		"update-grammar": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src/mongo/grammar"
 	},
 	"devDependencies": {
 		"@types/copy-paste": "^1.1.30",
@@ -817,7 +817,7 @@
 		"vsce": "^1.37.5"
 	},
 	"dependencies": {
-		"antlr4ts": "^0.4.0-alpha.4",
+		"antlr4ts": "^0.4.1-alpha.0",
 		"azure-arm-cosmosdb": "^1.1.2",
 		"azure-arm-resource": "^3.0.0-preview",
 		"azure-graph": "^2.2.0",

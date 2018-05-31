@@ -1,6 +1,6 @@
 grammar mongo;
 
-@header{
+@header {
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -15,141 +15,90 @@ grammar mongo;
 	}
 }
 
-mongoCommands
-	: commands EOF
-	;
+mongoCommands: commands EOF;
 
-commands: (command | emptyCommand | comment )+;
+commands: ( command | emptyCommand | comment)+;
 
-command: DB DOT (functionCall | (collection DOT functionCall)) SEMICOLON?;
+command:
+	DB DOT (functionCall | (collection DOT functionCall)) SEMICOLON?;
 
-emptyCommand
-	: SEMICOLON
-	;
+emptyCommand: SEMICOLON;
 
-collection
-	: STRING_LITERAL;
+collection: STRING_LITERAL;
 
-functionCall
-	: FUNCTION_NAME = STRING_LITERAL arguments
-	;
+functionCall: FUNCTION_NAME = STRING_LITERAL arguments;
 
-arguments
-	: OPEN_PARENTHESIS = '(' ( argument (',' argument)* )? CLOSED_PARENTHESIS = ')'
-	;
+arguments:
+	OPEN_PARENTHESIS = '(' (argument ( ',' argument)*)? CLOSED_PARENTHESIS = ')';
 
-argument
-	: literal
+argument: literal | objectLiteral | arrayLiteral;
+
+objectLiteral: '{' propertyNameAndValueList? ','? '}';
+
+arrayLiteral: '[' elementList? ']';
+
+elementList: propertyValue ( ',' propertyValue)*;
+
+propertyNameAndValueList:
+	propertyAssignment (',' propertyAssignment)*;
+
+propertyAssignment: propertyName ':' propertyValue;
+
+propertyValue:
+	literal
 	| objectLiteral
 	| arrayLiteral
-	;
+	| functionCall;
 
-objectLiteral
-	: '{' propertyNameAndValueList? ','? '}'
-	;
+literal: (NullLiteral | BooleanLiteral | StringLiteral)
+	| NumericLiteral;
 
-arrayLiteral
-	: '[' elementList? ']'
-	;
+propertyName: StringLiteral;
 
-elementList
-	: propertyValue ( ',' propertyValue )*
-	;
+comment: SingleLineComment | MultiLineComment;
 
-propertyNameAndValueList
-	: propertyAssignment ( ',' propertyAssignment )*
-	;
+SingleLineComment:
+	'//' ~[\r\n\u2028\u2029]* -> channel(HIDDEN);
 
-propertyAssignment
-	: propertyName ':' propertyValue
-	;
+MultiLineComment: '/*' .*? '*/' -> channel(HIDDEN);
 
-propertyValue
-	: literal
-	| objectLiteral
-	| arrayLiteral
-	| functionCall
-	;
+StringLiteral:
+	SINGLE_QUOTED_STRING_LITERAL
+	| DOUBLE_QUOTED_STRING_LITERAL;
 
-literal
-	: (NullLiteral
-	| BooleanLiteral
-	| StringLiteral
-	)
-	| NumericLiteral
-	;
+NullLiteral: 'null';
 
-propertyName
-	: StringLiteral
-	;
+BooleanLiteral: 'true' | 'false';
 
-comment
-	: SingleLineComment
-	| MultiLineComment
-	;
+NumericLiteral: '-'? DecimalLiteral;
 
-SingleLineComment
-	: '//' ~[\r\n\u2028\u2029]* -> channel(HIDDEN)
- 	;
-
-MultiLineComment
-	: '/*' .*? '*/' -> channel(HIDDEN)
-	;
-
-StringLiteral
-	: SINGLE_QUOTED_STRING_LITERAL
-	| DOUBLE_QUOTED_STRING_LITERAL
-	;
-
-NullLiteral
-	: 'null'
-	;
-
-BooleanLiteral
-	: 'true'
-	| 'false'
-	;
-
-NumericLiteral
-	: '-'?DecimalLiteral
-	;
-
-DecimalLiteral
-	: DecimalIntegerLiteral '.' DecimalDigit* ExponentPart?
+DecimalLiteral:
+	DecimalIntegerLiteral '.' DecimalDigit* ExponentPart?
 	| '.' DecimalDigit+ ExponentPart?
-	| DecimalIntegerLiteral ExponentPart?
-	;
+	| DecimalIntegerLiteral ExponentPart?;
 
-LineTerminator
-	: [\r\n\u2028\u2029] -> channel(HIDDEN)
-	;
+LineTerminator: [\r\n\u2028\u2029] -> channel(HIDDEN);
 
 SEMICOLON: ';';
 DOT: '.';
 DB: 'db';
 
-// Don't declare LR/CRLF tokens - they'll interfere with matching against LineTerminator
-// LF: '\n';
+// Don't declare LR/CRLF tokens - they'll interfere with matching against LineTerminator LF: '\n';
 // CRLF: '\r\n';
 
-STRING_LITERAL: ((~[",\\ \t\n\r:.;(){}\-]) | STRING_ESCAPE )+ {!this.isExternalIdentifierText(this.text)}?;
-DOUBLE_QUOTED_STRING_LITERAL: '"' ((~["\\]) | STRING_ESCAPE)* '"';
-SINGLE_QUOTED_STRING_LITERAL: '\'' ((~['\\]) | STRING_ESCAPE)* '\'';
+STRING_LITERAL: ((~[",\\ \t\n\r:.;(){}\-]) | STRING_ESCAPE)+ {!this.isExternalIdentifierText(this.text)
+		}?;
+DOUBLE_QUOTED_STRING_LITERAL:
+	'"' ((~["\\]) | STRING_ESCAPE)* '"';
+SINGLE_QUOTED_STRING_LITERAL:
+	'\'' ((~['\\]) | STRING_ESCAPE)* '\'';
 
-fragment
-STRING_ESCAPE: '\\' [\\"\\'];
+fragment STRING_ESCAPE: '\\' [\\"\\'];
 
-fragment DecimalIntegerLiteral
-	: '0'
-	| [1-9] DecimalDigit*
-	;
+fragment DecimalIntegerLiteral: '0' | [1-9] DecimalDigit*;
 
-fragment ExponentPart
-	: [eE] [+-]? DecimalDigit+
-	;
+fragment ExponentPart: [eE] [+-]? DecimalDigit+;
 
-fragment DecimalDigit
-	: [0-9]
-	;
+fragment DecimalDigit: [0-9];
 
 WHITESPACE: [ \t] -> skip;

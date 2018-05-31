@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureActionHandler, IAzureParentNode, AzureTreeDataProvider, IAzureNode, IActionContext, callWithTelemetryAndErrorHandling } from "vscode-azureextensionui";
+import { AzureActionHandler, IAzureParentNode, AzureTreeDataProvider, IAzureNode, IActionContext, callWithTelemetryAndErrorHandling, callWithUnxpectedErrorTelemetry } from "vscode-azureextensionui";
 import * as vscode from 'vscode';
 import { MongoCollectionTreeItem } from "./tree/MongoCollectionTreeItem";
 import { MongoDatabaseTreeItem } from "./tree/MongoDatabaseTreeItem";
@@ -16,15 +16,30 @@ import { CosmosEditorManager } from "../CosmosEditorManager";
 import { reporter } from "../utils/telemetry";
 import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
 import { ext } from "../extensionVariables";
-import { executeCommandFromText, executeCommandFromActiveEditor, executeAllCommandsFromActiveEditor } from "./MongoScrapbook";
+import { executeCommandFromText, executeCommandFromActiveEditor, executeAllCommandsFromActiveEditor, getAllErrorsFromActiveEditor } from "./MongoScrapbook";
 
 const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
+let diagnosticsCollection: vscode.DiagnosticCollection;
 
 export function registerMongoCommands(context: vscode.ExtensionContext, actionHandler: AzureActionHandler, tree: AzureTreeDataProvider, editorManager: CosmosEditorManager): void {
     let languageClient: MongoDBLanguageClient = new MongoDBLanguageClient(context);
 
     const codeLensProvider = new MongoCodeLensProvider();
     context.subscriptions.push(vscode.languages.registerCodeLensProvider('mongo', codeLensProvider));
+
+    diagnosticsCollection = vscode.languages.createDiagnosticCollection('cosmosDB.mongo');
+    context.subscriptions.push(diagnosticsCollection);
+
+    updateErrorsInActiveDocument(context);
+
+    vscode.workspace.onDidOpenTextDocument(() => updateErrorsInActiveDocument(context), undefined, context.subscriptions);
+    vscode.workspace.onDidChangeTextDocument(() => updateErrorsInActiveDocument(context), undefined, context.subscriptions);
+    vscode.workspace.onDidCloseTextDocument(
+        (document: vscode.TextDocument) => {
+            diagnosticsCollection.set(document.uri, []);
+        },
+        undefined,
+        context.subscriptions);
 
     const loadPersistedMongoDBTask: Promise<void> = loadPersistedMongoDB(context, tree, languageClient, codeLensProvider);
 
@@ -147,4 +162,24 @@ function setConnectedNode(node: IAzureNode | undefined, codeLensProvider: MongoC
     ext.connectedMongoDB = node;
     let dbName = node && node.treeItem.label;
     codeLensProvider.setConnectedDatabase(dbName);
+}
+
+function updateErrorsInActiveDocument(context: vscode.ExtensionContext): void {
+    callWithUnxpectedErrorTelemetry(
+        "updateErrorsInActiveDocument",
+        reporter,
+        undefined,
+        () => {
+            let activeEditor: vscode.TextEditor = vscode.window.activeTextEditor;
+            if (activeEditor) {
+                let document = activeEditor.document;
+                if (document && document.languageId === 'mongo') {
+                    let errors = getAllErrorsFromActiveEditor();
+                    diagnosticsCollection.set(document.uri, errors);
+                }
+
+            }
+        },
+        context
+    );
 }

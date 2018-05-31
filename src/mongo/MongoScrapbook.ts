@@ -22,6 +22,19 @@ import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 const output = vscodeUtil.getOutputChannel();
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
 
+export function getAllErrorsFromActiveEditor(): vscode.Diagnostic[] {
+	let commands = getAllCommandsFromActiveEditor();
+	let errors: vscode.Diagnostic[] = [];
+	for (let command of commands) {
+		for (let error of (command.errors || [])) {
+			let diagnostic = new vscode.Diagnostic(error.range, error.message);
+			errors.push(diagnostic);
+		}
+	}
+
+	return errors;
+}
+
 export async function executeAllCommandsFromActiveEditor(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext): Promise<void> {
 	output.appendLine("Running all commands in scrapbook...");
 	let commands = getAllCommandsFromActiveEditor();
@@ -80,7 +93,7 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: IAzureP
 		if (command.errors && command.errors.length > 0) {
 			//Currently, we take the first error pushed. Tests correlate that the parser visits errors in left-to-right, top-to-bottom.
 			const err = command.errors[0];
-			throw new Error(`Error near line ${err.position.line}, column ${err.position.character}, text '${err.text}'. Please check syntax.`);
+			throw new Error(`Error near line ${err.range.start.line}, column ${err.range.start.character}: '${err.message}'. Please check syntax.`);
 		}
 		if (command.name === 'find') {
 			await editorManager.showDocument(new MongoFindResultEditor(database, command, tree), 'cosmos-result.json', { showInNextColumn: true });
@@ -181,7 +194,9 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		if (badCommand) {
 			// Need a place to hang errors that occur when no command is actually recognized
 			badCommand.errors = badCommand.errors || [];
-			badCommand.errors.push({ position: position, text: text });
+			let message: string = text;
+			let range = new vscode.Range(position, position);
+			badCommand.errors.push({ range, message });
 		}
 		return this.defaultResult(node);
 	}

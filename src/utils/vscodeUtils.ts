@@ -110,7 +110,7 @@ export function getDocumentTreeItemLabel(document: IMongoDocument | RetrievedDoc
         if (document.hasOwnProperty(field)) {
             let value = document[field];
             if (value || value === 0) { //ignore if false-y value: null, undefined, "".
-                if (value != 'undefined' && typeof value !== 'object')) {
+                if (value != 'undefined' && typeof value !== 'object') {
                     return String(value);
                 }
             }

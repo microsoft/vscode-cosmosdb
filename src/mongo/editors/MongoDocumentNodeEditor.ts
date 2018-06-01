@@ -26,7 +26,7 @@ export class MongoDocumentNodeEditor implements ICosmosEditor<IMongoDocument> {
 
     public async update(document: IMongoDocument): Promise<IMongoDocument> {
         const updatedDoc = await this._documentNode.treeItem.update(document);
-        this._documentNode.refresh();
+        await this._documentNode.refresh();
         return updatedDoc;
     }
 

@@ -35,7 +35,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
         return this.document.id;
     }
 
-    public async refreshLabel() {
+    public async refreshLabel(): Promise<void> {
         this._label = getDocumentTreeItemLabel(this._document);
     }
 
@@ -101,7 +101,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
                         }
                     });
             });
-            this._label = getDocumentTreeItemLabel(this._document);
+            await this.refreshLabel();
             return this.document;
         }
     }

@@ -109,20 +109,12 @@ export function getDocumentTreeItemLabel(document: IMongoDocument | RetrievedDoc
     for (let field of documentLabelFields) {
         if (document.hasOwnProperty(field)) {
             let value = document[field];
-            if (value) { //ignore if false-y value: null, undefined, "".
-                if (typeof value === "string") {
-                    return value;
-                } else if (typeof value === "number") {
-                    return value.toString();
-                } else { // A simple instanceOf check doesn't seem to work. I run into this issue detailed here :
-                    //https://libertyseeds.ca/2015/01/03/Mongo-ObjectID-fails-instanceof-type-test-in-nodeunit/
-                    const result = value.toString();
-                    if (!result.startsWith("[object ")) {
-                        return result;
-                    }
+            if (value || value === 0) { //ignore if false-y value: null, undefined, "".
+                if (value != 'undefined' && typeof value !== 'object')) {
+                    return String(value);
                 }
             }
         }
     }
-    return document["_id"].toString();
+    return String(document["_id"]);
 }

@@ -67,7 +67,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
 
     public async update(newDocument: IMongoDocument): Promise<IMongoDocument> {
         this.document = await MongoDocumentTreeItem.update(this._collection, newDocument);
-        this._label = getDocumentTreeItemLabel(this.document);
+        await this.refreshLabel();
         return this.document;
     }
 

@@ -38,10 +38,11 @@ export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
         if (node) {
             result = await (<IAzureNode<MongoDocumentTreeItem>>node).treeItem.update(newDocument);
             node.refresh();
+        } else {
+            // If the node isn't cached already, just update it to Mongo directly (without worrying about updating the tree)
+            const db = await this._databaseNode.treeItem.getDb();
+            result = await MongoDocumentTreeItem.update(db.collection(this._collectionName), newDocument);
         }
-        // If the node isn't cached already, just update it to Mongo directly (without worrying about updating the tree)
-        const db = await this._databaseNode.treeItem.getDb();
-        result = await MongoDocumentTreeItem.update(db.collection(this._collectionName), newDocument);
         return result;
     }
 

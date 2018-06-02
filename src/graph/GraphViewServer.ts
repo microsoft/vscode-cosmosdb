@@ -436,6 +436,7 @@ export class GraphViewServer extends EventEmitter {
   private handleQueryMessage(queryId: number, gremlin: string) {
     this.log(`Query requested: queryId=${queryId}, gremlin="${gremlin}"`);
 
+    //tslint:disable-next-line:no-floating-promises
     this.queryAndShowResults(queryId, gremlin);
   }
 

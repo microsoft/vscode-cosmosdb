@@ -550,7 +550,7 @@ class GraphView {
 
   private getVertexColor(v: GraphVertex, viewSettings: GraphViewSettings): string {
     let color = this.findVertexPropertySetting(v, viewSettings, "color");
-    if (color && color != AutoColor) {
+    if (color && color !== AutoColor) {
       return color;
     }
 

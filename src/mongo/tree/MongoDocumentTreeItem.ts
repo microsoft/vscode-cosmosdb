@@ -50,7 +50,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const result: DeleteWriteOpResultObject = await this._collection.deleteOne({ "_id": this.document._id });
-            if (result.deletedCount != 1) {
+            if (result.deletedCount !== 1) {
                 throw new Error(`Failed to delete document with _id '${this.document._id}'.`);
             }
         } else {
@@ -69,7 +69,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
         }
         const filter: object = { _id: new ObjectID(newDocument._id) };
         const result: UpdateWriteOpResult = await collection.updateOne(filter, _.omit(newDocument, '_id'));
-        if (result.modifiedCount != 1) {
+        if (result.modifiedCount !== 1) {
             throw new Error(`Failed to update document with _id '${newDocument._id}'.`);
         }
         return newDocument;

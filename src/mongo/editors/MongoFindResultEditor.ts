@@ -46,7 +46,7 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
         const updatedDocs = await this._collectionTreeItem.update(documents);
         const cachedCollectionNode = await this._tree.findNode(this.id);
         if (cachedCollectionNode) {
-            MongoCollectionNodeEditor.updateCachedDocNodes(updatedDocs, <IAzureParentNode<MongoCollectionTreeItem>>cachedCollectionNode);
+            await MongoCollectionNodeEditor.updateCachedDocNodes(updatedDocs, <IAzureParentNode<MongoCollectionTreeItem>>cachedCollectionNode);
         }
         return updatedDocs;
     }

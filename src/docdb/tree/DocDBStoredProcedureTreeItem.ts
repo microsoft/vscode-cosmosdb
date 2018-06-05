@@ -8,8 +8,6 @@ import * as vscode from "vscode";
 import { IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
 import { ProcedureMeta, DocumentClient } from 'documentdb';
 import { getDocumentClient } from '../getDocumentClient';
-import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
-import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) stored procedure
@@ -19,7 +17,7 @@ export class DocDBStoredProcedureTreeItem implements IAzureTreeItem {
     public readonly contextValue: string = DocDBStoredProcedureTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openStoredProcedure';
 
-    constructor(private _endpoint: string, private _masterKey: string, private _isEmulator: boolean, private _collection: DocDBCollectionTreeItem | GraphCollectionTreeItem, public procedure: ProcedureMeta) {
+    constructor(private _endpoint: string, private _masterKey: string, private _isEmulator: boolean, private _client: DocumentClient, public procedure: ProcedureMeta) {
     }
 
     public get id(): string {
@@ -35,8 +33,7 @@ export class DocDBStoredProcedureTreeItem implements IAzureTreeItem {
     }
 
     public async update(newProcBody: string): Promise<string> {
-        const client: DocumentClient = this._collection.getDocumentClient();
-        this.procedure = await new Promise<ProcedureMeta>((resolve, reject) => client.replaceStoredProcedure(
+        this.procedure = await new Promise<ProcedureMeta>((resolve, reject) => this._client.replaceStoredProcedure(
             this.link,
             { body: newProcBody, id: this.procedure.id },
             (err, updated: ProcedureMeta) => {

@@ -181,7 +181,7 @@ function setUpErrorReporting(handler: AzureActionHandler, reporter: TelemetryRep
         'vscode.workspace.onDidChangeTextDocument',
         vscode.workspace.onDidChangeTextDocument,
         async function (this: IActionContext, event: vscode.TextDocumentChangeEvent) {
-            // Always suppress success telemetry - even happens on every keystroke
+            // Always suppress success telemetry - event happens on every keystroke
             this.suppressTelemetry = true;
 
             updateErrorsInScrapbook(this, event.document);

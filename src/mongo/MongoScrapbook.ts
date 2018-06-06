@@ -22,8 +22,8 @@ import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 const output = vscodeUtil.getOutputChannel();
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
 
-export function getAllErrorsFromActiveEditor(): vscode.Diagnostic[] {
-	let commands = getAllCommandsFromActiveEditor();
+export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vscode.Diagnostic[] {
+	let commands = getAllCommandsFromTextDocument(document);
 	let errors: vscode.Diagnostic[] = [];
 	for (let command of commands) {
 		for (let error of (command.errors || [])) {

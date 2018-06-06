@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureActionHandler, IAzureParentNode, AzureTreeDataProvider, IAzureNode, IActionContext, callWithTelemetryAndErrorHandling, callWithUnxpectedErrorTelemetry } from "vscode-azureextensionui";
+import * as vscodeUtils from "../utils/vscodeUtils";
+import { AzureActionHandler, IAzureParentNode, AzureTreeDataProvider, IAzureNode, IActionContext, callWithTelemetryAndErrorHandling } from "vscode-azureextensionui";
 import * as vscode from 'vscode';
 import { MongoCollectionTreeItem } from "./tree/MongoCollectionTreeItem";
 import { MongoDatabaseTreeItem } from "./tree/MongoDatabaseTreeItem";
@@ -16,7 +17,8 @@ import { CosmosEditorManager } from "../CosmosEditorManager";
 import { reporter } from "../utils/telemetry";
 import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
 import { ext } from "../extensionVariables";
-import { executeCommandFromText, executeCommandFromActiveEditor, executeAllCommandsFromActiveEditor, getAllErrorsFromActiveEditor } from "./MongoScrapbook";
+import { executeCommandFromText, executeCommandFromActiveEditor, executeAllCommandsFromActiveEditor, getAllErrorsFromTextDocument } from "./MongoScrapbook";
+import TelemetryReporter from "../../../vscode-azuretools/ui/node_modules/vscode-extension-telemetry";
 
 const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 let diagnosticsCollection: vscode.DiagnosticCollection;
@@ -30,16 +32,10 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
     diagnosticsCollection = vscode.languages.createDiagnosticCollection('cosmosDB.mongo');
     context.subscriptions.push(diagnosticsCollection);
 
-    updateErrorsInActiveDocument(context);
+    let output = vscodeUtils.getOutputChannel();
+    let handler = new AzureActionHandler(context, output, reporter);
 
-    vscode.workspace.onDidOpenTextDocument(() => updateErrorsInActiveDocument(context), undefined, context.subscriptions);
-    vscode.workspace.onDidChangeTextDocument(() => updateErrorsInActiveDocument(context), undefined, context.subscriptions);
-    vscode.workspace.onDidCloseTextDocument(
-        (document: vscode.TextDocument) => {
-            diagnosticsCollection.set(document.uri, []);
-        },
-        undefined,
-        context.subscriptions);
+    setUpErrorReporting(handler, reporter, output);
 
     const loadPersistedMongoDBTask: Promise<void> = loadPersistedMongoDB(context, tree, languageClient, codeLensProvider);
 
@@ -164,22 +160,54 @@ function setConnectedNode(node: IAzureNode | undefined, codeLensProvider: MongoC
     codeLensProvider.setConnectedDatabase(dbName);
 }
 
-function updateErrorsInActiveDocument(context: vscode.ExtensionContext): void {
-    callWithUnxpectedErrorTelemetry(
-        "updateErrorsInActiveDocument",
+function setUpErrorReporting(handler: AzureActionHandler, reporter: TelemetryReporter, output: vscode.OutputChannel) {
+    // Update errors immediately in case a scrapbook is already open
+    callWithTelemetryAndErrorHandling(
+        "initialUpdateErrorsInActiveDocument",
         reporter,
-        undefined,
-        () => {
-            let activeEditor: vscode.TextEditor = vscode.window.activeTextEditor;
-            if (activeEditor) {
-                let document = activeEditor.document;
-                if (document && document.languageId === 'mongo') {
-                    let errors = getAllErrorsFromActiveEditor();
-                    diagnosticsCollection.set(document.uri, errors);
-                }
+        output,
+        async function (this: IActionContext): Promise<void> {
+            updateErrorsInScrapbook(this, vscode.window.activeTextEditor && vscode.window.activeTextEditor.document);
+        });
 
+    // Update errors when document opened/changed
+    handler.registerEvent(
+        'vscode.workspace.onDidOpenTextDocument',
+        vscode.workspace.onDidOpenTextDocument,
+        async function (this: IActionContext, document: vscode.TextDocument) {
+            updateErrorsInScrapbook(this, document);
+        });
+    handler.registerEvent(
+        'vscode.workspace.onDidChangeTextDocument',
+        vscode.workspace.onDidChangeTextDocument,
+        async function (this: IActionContext, event: vscode.TextDocumentChangeEvent) {
+            // Always suppress success telemetry - even happens on every keystroke
+            this.suppressTelemetry = true;
+
+            updateErrorsInScrapbook(this, event.document);
+        });
+    handler.registerEvent(
+        'vscode.workspace.onDidCloseTextDocument',
+        vscode.workspace.onDidCloseTextDocument,
+        async function (this: IActionContext, document: vscode.TextDocument) {
+            // Remove errors when closed
+            if (isScrapbook(document)) {
+                diagnosticsCollection.set(document.uri, []);
+            } else {
+                this.suppressTelemetry = true;
             }
-        },
-        context
-    );
+        });
+}
+
+function isScrapbook(document: vscode.TextDocument): boolean {
+    return document && document.languageId === 'mongo';
+}
+
+function updateErrorsInScrapbook(context: IActionContext, document: vscode.TextDocument): void {
+    if (isScrapbook(document)) {
+        let errors = getAllErrorsFromTextDocument(document);
+        diagnosticsCollection.set(document.uri, errors);
+    } else {
+        context.suppressTelemetry = true;
+    }
 }

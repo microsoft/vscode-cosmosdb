@@ -18,7 +18,7 @@ import { reporter } from "../utils/telemetry";
 import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
 import { ext } from "../extensionVariables";
 import { executeCommandFromText, executeCommandFromActiveEditor, executeAllCommandsFromActiveEditor, getAllErrorsFromTextDocument } from "./MongoScrapbook";
-import TelemetryReporter from "../../../vscode-azuretools/ui/node_modules/vscode-extension-telemetry";
+import TelemetryReporter from "vscode-extension-telemetry";
 
 const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 let diagnosticsCollection: vscode.DiagnosticCollection;

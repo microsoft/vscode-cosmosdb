@@ -16,6 +16,6 @@ export interface MongoCommand {
 }
 
 interface errorDescription {
-    position: vscode.Position;
-    text: string;
+    range: vscode.Range;
+    message: string;
 }

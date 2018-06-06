@@ -792,8 +792,9 @@
 		"lint": "tslint --project tsconfig.json -t verbose",
 		"lint-fix": "tslint --project tsconfig.json -t verbose --fix",
 		"postinstall": "node ./node_modules/vscode/bin/install",
-		"test": "node ./node_modules/vscode/bin/test",
-		"update-grammar": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src/mongo/grammar"
+		"test": "npm run build && node ./node_modules/vscode/bin/test",
+		"update-grammar": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src/mongo/grammar",
+		"all": "npm i && npm run lint && npm test"
 	},
 	"devDependencies": {
 		"@types/copy-paste": "^1.1.30",

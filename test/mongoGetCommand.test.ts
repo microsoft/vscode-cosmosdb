@@ -20,7 +20,7 @@ function testParse(text: string, expected: { collection: string, name: string, a
 
         if (errors && errors.firstErrorText) {
             assert.equal((command.errors || []).length > 0, true, "Expected at least one error");
-            assert.equal(command.errors[0].text, errors.firstErrorText, "First error text was incorrect")
+            assert.equal(command.errors[0].message, errors.firstErrorText, "First error text was incorrect")
         } else {
             assert.equal((command.errors || []).length, 0, "Expected no errors");
         }
@@ -304,9 +304,9 @@ suite("scrapbook parsing Tests", () => {
         let text = `db.test1.insertMany(${arg0}   ${arg1})`;
         let command = getCommandFromText(text, new Position(0, 0));
         const err = command.errors[0];
-        assert.deepEqual(err.text, "{");
-        assert.deepEqual(err.position.line, 0);
-        assert.deepEqual(err.position.character, 61);
+        assert.deepEqual(err.message, "{");
+        assert.deepEqual(err.range.start.line, 0);
+        assert.deepEqual(err.range.start.character, 61);
     });
     test("test function call with erroneous syntax: missing comma, parameters separated with newline", () => {
         let arg0 = `{"name": {"First" : "a", "Last":"b"} }`;
@@ -314,26 +314,26 @@ suite("scrapbook parsing Tests", () => {
         let text = `db.test1.insertMany(${arg0} \n  ${arg1})`;
         let command = getCommandFromText(text, new Position(0, 0));
         const err = command.errors[0];
-        assert.deepEqual(err.text, "{");
-        assert.deepEqual(err.position.line, 1);
-        assert.deepEqual(err.position.character, 2);
+        assert.deepEqual(err.message, "{");
+        assert.deepEqual(err.range.start.line, 1);
+        assert.deepEqual(err.range.start.character, 2);
     });
     test("test function call with erroneous syntax: missing double quote", () => {
         let arg0 = `{name": {"First" : "a", "Last":"b"} }`;
         let text = `db.test1.insertMany(${arg0})`;
         let command = getCommandFromText(text, new Position(0, 0));
         const err = command.errors[0];
-        assert.deepEqual(err.text, "name");
-        assert.deepEqual(err.position.line, 0);
-        assert.deepEqual(err.position.character, 21);
+        assert.deepEqual(err.message, "name");
+        assert.deepEqual(err.range.start.line, 0);
+        assert.deepEqual(err.range.start.character, 21);
     });
     test("test function call with erroneous syntax: missing opening brace", () => {
         let arg0 = `"name": {"First" : "a", "Last":"b"} }`;
         let text = `db.test1.insertMany(${arg0})`;
         let command = getCommandFromText(text, new Position(0, 0));
         const err = command.errors[0];
-        assert.deepEqual(err.text, ":");
-        assert.deepEqual(err.position.line, 0);
-        assert.deepEqual(err.position.character, 26);
+        assert.deepEqual(err.message, ":");
+        assert.deepEqual(err.range.start.line, 0);
+        assert.deepEqual(err.range.start.character, 26);
     });
 });

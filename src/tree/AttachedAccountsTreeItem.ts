@@ -23,6 +23,7 @@ interface IPersistedAccount {
 }
 
 export const AttachedAccountSuffix: string = 'Attached';
+export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start with "mongodb://" or "mongodb+srv://"';
 
 export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = 'cosmosDBAttachedAccounts';
@@ -306,12 +307,11 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         await this._globalState.update(this._serviceName, JSON.stringify(value));
     }
 
-    private static validateMongoConnectionString(value: string): string | undefined {
-        if (!value || !value.startsWith('mongodb://')) {
-            return 'Connection string must start with "mongodb://"';
-        } else {
+    static validateMongoConnectionString(value: string): string | undefined {
+        if (value && value.match(/^mongodb(\+srv)?:\/\//)) {
             return undefined;
         }
+        return MONGO_CONNECTION_EXPECTED;
     }
 
     private static validateDocDBConnectionString(value: string): string | undefined {

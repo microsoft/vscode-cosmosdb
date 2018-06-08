@@ -67,7 +67,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
         if (!newDocument["_id"]) {
             throw new Error(`The "_id" field is required to update a document.`);
         }
-        const filter: object = { _id: new ObjectID(newDocument._id) };
+        const filter: object = { _id: newDocument._id };
         const result: UpdateWriteOpResult = await collection.updateOne(filter, _.omit(newDocument, '_id'));
         if (result.modifiedCount != 1) {
             throw new Error(`Failed to update document with _id '${newDocument._id}'.`);

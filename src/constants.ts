@@ -35,4 +35,4 @@ export const defaultStoredProcedure =
 
 export const emptyPartitionKeyValue = {};
 
-export const documentLabelFields = ["name", "Name", "ID", "UUID", "id", "_id"];
+export const documentLabelFields = ["name", "Name", "ID", "UUID", "Id", "id", "_id", "uuid"];

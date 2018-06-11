@@ -80,7 +80,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
             });
 
             if (partitionKey) {
-                if (partitionKey[0] != '/') {
+                if (partitionKey[0] !== '/') {
                     partitionKey = '/' + partitionKey;
                 }
                 const throughput: number = Number(await vscode.window.showInputBox({

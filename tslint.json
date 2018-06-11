@@ -86,7 +86,7 @@
         "radix": true,
         "react-this-binding-issue": true,
         "react-unused-props-and-state": true,
-        // TODO: "restrict-plus-operands": true,
+        "restrict-plus-operands": true,
         "strict-boolean-expressions": [
             false, // TODO: true,
             "allow-string", // changed
@@ -95,7 +95,7 @@
         ],
         // TODO: "switch-default": true,
         "triple-equals": [
-            false, // TODO: true,
+            true,
             "allow-null-check"
         ],
         "use-isnan": true,
@@ -162,7 +162,7 @@
         "no-suspicious-comment": true,
         "no-typeof-undefined": true,
         "no-unnecessary-field-initialization": true,
-        // TODO: "no-unnecessary-local-variable": true,
+        "no-unnecessary-local-variable": false, //changed
         "no-unnecessary-qualifier": true,
         "no-unsupported-browser-code": true,
         "no-useless-files": true,

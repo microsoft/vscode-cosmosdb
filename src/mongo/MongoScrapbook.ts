@@ -187,6 +187,8 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		return super.visitArgument(ctx);
 	}
 
+	//visitObjectLiteral(ctx: mongoParser.ObjectLiteralContext): MongoCommand[] {}
+
 	visitErrorNode(node: ErrorNode): MongoCommand[] {
 		const position = new vscode.Position(node._symbol.line - 1, node._symbol.charPositionInLine); // Symbol lines are 1 indexed. Position lines are 0 indexed
 		const text = node.text;

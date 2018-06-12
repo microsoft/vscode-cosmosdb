@@ -336,4 +336,19 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(err.range.start.line, 0);
         assert.deepEqual(err.range.start.character, 26);
     });
+    test("test function call with single quotes", () => {
+        let arg0 = `{'name': 'First'}`;
+        let text = `db.test1.insertMany(${arg0})`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        const argument = command.argumentObjects[0];
+        assert.deepEqual(argument, { name: "First" });
+    });
+    test("test function call with no quotes", () => {
+        let arg0 = `{name: 'First'}`;
+        let text = `db.test1.insertMany(${arg0})`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        const argument = command.argumentObjects[0];
+        assert.deepEqual(argument, { name: "First" });
+    });
+
 });

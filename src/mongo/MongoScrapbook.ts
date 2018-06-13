@@ -16,7 +16,7 @@ import { IAzureParentNode, AzureTreeDataProvider, IActionContext } from 'vscode-
 import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
 import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 import { MongoCommand } from './MongoCommand';
-import { MongoDatabaseTreeItem } from './tree/MongoDatabaseTreeItem';
+import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 
@@ -151,8 +151,6 @@ function findCommandAtPosition(commands: MongoCommand[], position?: vscode.Posit
 class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 
 	private commands: MongoCommand[] = [];
-	private currentObjectState = {};
-	private currentObjectField: string;
 
 	visitCommand(ctx: mongoParser.CommandContext): MongoCommand[] {
 		this.commands.push({
@@ -186,7 +184,7 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 				}
 				lastCommand.arguments.push(ctx.text);
 				lastCommand.argumentObjects = lastCommand.argumentObjects || [];
-				lastCommand.argumentObjects.push(this.ParseArgumentContext(ctx));
+				lastCommand.argumentObjects.push(this.parseContext(ctx));
 			}
 		}
 		return super.visitArgument(ctx);
@@ -210,23 +208,32 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		return this.commands;
 	}
 
-	private ParseArgumentContext(ctx: ParserRuleContext): Object {
+	private parseContext(ctx: ParserRuleContext): Object {
 		let retVal: Object = {};
 		//Argument is guaranteed to have exactly one child, given its definition in mongo.g4
 		let child: ParseTree = ctx.children[0];
-		if (child instanceof mongoParser.ObjectLiteralContext) {
-			let propertyNameAndValue = child.children.find((node) => node instanceof mongoParser.PropertyNameAndValueListContext);
+		if (child instanceof mongoParser.LiteralContext) {
+			retVal = stripQuotes(child.text);
+		}
+		else if (child instanceof mongoParser.ObjectLiteralContext) {
+			let propertyNameAndValue = <mongoParser.PropertyNameAndValueListContext>child.children.find((node) => node instanceof mongoParser.PropertyNameAndValueListContext);
 			if (!propertyNameAndValue) { // Argument is {}
 				return {};
+			}
+			else {
+				//tslint:disable:no-non-null-assertion
+				let propertyAssignments = <mongoParser.PropertyAssignmentContext[]>propertyNameAndValue.children!.filter((node) => node instanceof mongoParser.PropertyAssignmentContext);
+				for (let propertyAssignment of propertyAssignments) {
+					const propertyName = <mongoParser.PropertyNameContext>propertyAssignment.children[0];
+					const propertyValue = <mongoParser.PropertyValueContext>propertyAssignment.children[2];
+					retVal[stripQuotes(propertyName.text)] = this.parseContext(propertyValue);
+				}
 			}
 		}
 		else if (child instanceof mongoParser.ArrayLiteralContext) {
 			let elementList = <mongoParser.ElementListContext>child.children[0];
 			let propertyValues = elementList.children.filter((node) => node instanceof mongoParser.PropertyValueContext);
-			retVal = propertyValues.map(this.ParseArgumentContext);
-		}
-		else if (child instanceof mongoParser.LiteralContext) {
-			retVal = child.text;
+			retVal = propertyValues.map(this.parseContext);
 		}
 		return retVal;
 	}

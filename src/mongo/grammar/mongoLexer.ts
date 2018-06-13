@@ -114,7 +114,8 @@ export class mongoLexer extends Lexer {
 	private STRING_LITERAL_sempred(_localctx: RuleContext, predIndex: number): boolean {
 		switch (predIndex) {
 		case 0:
-			return !this.isExternalIdentifierText(this.text);
+			return !this.isExternalIdentifierText(this.text)
+				;
 		}
 		return true;
 	}

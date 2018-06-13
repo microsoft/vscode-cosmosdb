@@ -33,7 +33,7 @@ arguments:
 
 argument: literal | objectLiteral | arrayLiteral;
 
-objectLiteral: '{' propertyNameAndValueList? ','? '}';
+objectLiteral: '{' propertyNameAndValueList? '}';
 
 arrayLiteral: '[' elementList? ']';
 

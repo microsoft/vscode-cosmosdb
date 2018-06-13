@@ -18,6 +18,7 @@ import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 import { MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem } from './tree/MongoDatabaseTreeItem';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
+import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 
 const output = vscodeUtil.getOutputChannel();
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
@@ -150,6 +151,8 @@ function findCommandAtPosition(commands: MongoCommand[], position?: vscode.Posit
 class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 
 	private commands: MongoCommand[] = [];
+	private currentObjectState = {};
+	private currentObjectField: string;
 
 	visitCommand(ctx: mongoParser.CommandContext): MongoCommand[] {
 		this.commands.push({
@@ -182,12 +185,12 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 					lastCommand.arguments = [];
 				}
 				lastCommand.arguments.push(ctx.text);
+				lastCommand.argumentObjects = lastCommand.argumentObjects || [];
+				lastCommand.argumentObjects.push(this.ParseArgumentContext(ctx));
 			}
 		}
 		return super.visitArgument(ctx);
 	}
-
-	//visitObjectLiteral(ctx: mongoParser.ObjectLiteralContext): MongoCommand[] {}
 
 	visitErrorNode(node: ErrorNode): MongoCommand[] {
 		const position = new vscode.Position(node._symbol.line - 1, node._symbol.charPositionInLine); // Symbol lines are 1 indexed. Position lines are 0 indexed
@@ -205,5 +208,26 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 
 	protected defaultResult(_node: ParseTree): MongoCommand[] {
 		return this.commands;
+	}
+
+	private ParseArgumentContext(ctx: ParserRuleContext): Object {
+		let retVal: Object = {};
+		//Argument is guaranteed to have exactly one child, given its definition in mongo.g4
+		let child: ParseTree = ctx.children[0];
+		if (child instanceof mongoParser.ObjectLiteralContext) {
+			let propertyNameAndValue = child.children.find((node) => node instanceof mongoParser.PropertyNameAndValueListContext);
+			if (!propertyNameAndValue) { // Argument is {}
+				return {};
+			}
+		}
+		else if (child instanceof mongoParser.ArrayLiteralContext) {
+			let elementList = <mongoParser.ElementListContext>child.children[0];
+			let propertyValues = elementList.children.filter((node) => node instanceof mongoParser.PropertyValueContext);
+			retVal = propertyValues.map(this.ParseArgumentContext);
+		}
+		else if (child instanceof mongoParser.LiteralContext) {
+			retVal = child.text;
+		}
+		return retVal;
 	}
 }

@@ -26,7 +26,7 @@ let diagnosticsCollection: vscode.DiagnosticCollection;
 export function registerMongoCommands(context: vscode.ExtensionContext, actionHandler: AzureActionHandler, tree: AzureTreeDataProvider, editorManager: CosmosEditorManager): void {
     let languageClient: MongoDBLanguageClient = new MongoDBLanguageClient(context);
 
-    const codeLensProvider = new MongoCodeLensProvider();
+    const codeLensProvider = new MongoCodeLensProvider(reporter, vscodeUtil.getOutputChannel());
     context.subscriptions.push(vscode.languages.registerCodeLensProvider('mongo', codeLensProvider));
 
     diagnosticsCollection = vscode.languages.createDiagnosticCollection('cosmosDB.mongo');
@@ -126,7 +126,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
 
 async function loadPersistedMongoDB(context: vscode.ExtensionContext, tree: AzureTreeDataProvider, languageClient: MongoDBLanguageClient, codeLensProvider: MongoCodeLensProvider): Promise<void> {
     // NOTE: We want to make sure this function never throws or returns a rejected promise because it gets awaited multiple times
-    await callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', reporter, undefined, async function (this: IActionContext): Promise<void> {
+    await callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', reporter, vscodeUtil.getOutputChannel(), async function (this: IActionContext): Promise<void> {
         this.suppressErrorDisplay = true;
         this.properties.isActivationEvent = 'true';
 

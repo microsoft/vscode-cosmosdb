@@ -231,9 +231,9 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			}
 		}
 		else if (child instanceof mongoParser.ArrayLiteralContext) {
-			let elementList = <mongoParser.ElementListContext>child.children[0];
+			let elementList = <mongoParser.ElementListContext>child.children.find((context) => context instanceof mongoParser.ElementListContext);
 			let propertyValues = elementList.children.filter((node) => node instanceof mongoParser.PropertyValueContext);
-			retVal = propertyValues.map(this.parseContext);
+			retVal = propertyValues.map(this.parseContext.bind(this));
 		}
 		return retVal;
 	}

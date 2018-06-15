@@ -18,7 +18,6 @@ import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 import { MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
-import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 
 const output = vscodeUtil.getOutputChannel();
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
@@ -211,10 +210,10 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 
 	private parseContext(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
 		let parsedObject: Object = {};
-		if (!ctx || ctx.childCount === 0) {
+		if (!ctx || ctx.childCount === 0) { //Base case and malformed statements
 			return parsedObject;
 		}
-		// Argument and propertyValue tokens should have exactly one child, from their definitions in mongo.g4
+		// In a well formed expression, Argument and propertyValue tokens should have exactly one child, from their definitions in mongo.g4
 		// The only difference in types of children between PropertyValue and argument tokens is the functionCallContext that isn't handled at the moment.
 		let child: ParseTree = ctx.children[0];
 		if (child instanceof mongoParser.LiteralContext) {

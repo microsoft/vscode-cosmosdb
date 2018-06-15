@@ -209,14 +209,18 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		return this.commands;
 	}
 
-	private parseContext(ctx: ParserRuleContext): Object {
+	private parseContext(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
 		let parsedObject: Object = {};
-		//Argument is guaranteed to have exactly one child, given its definition in mongo.g4
+		if (!ctx || ctx.childCount === 0) {
+			return parsedObject;
+		}
+		// Argument and propertyValue tokens should have exactly one child, from their definitions in mongo.g4
+		// The only difference in types of children between PropertyValue and argument tokens is the functionCallContext that isn't handled at the moment.
 		let child: ParseTree = ctx.children[0];
 		if (child instanceof mongoParser.LiteralContext) {
 			let unquoted = stripQuotes(child.text); // LiteralContext tokens encode numbers, booleans and undefined as "\"123\"", "\"true\"", "\"undefined\"", etc.
 			try {
-				parsedObject = JSON.parse(unquoted); // to resolve (string)"true" to true, (string)"9" to (number)9
+				parsedObject = JSON.parse(unquoted); // to resolve the string "true" to true, the string "9" to (number)9
 			} catch {
 				parsedObject = unquoted;
 			}
@@ -241,6 +245,9 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			let propertyValues = elementList.children.filter((node) => node instanceof mongoParser.PropertyValueContext);
 			parsedObject = propertyValues.map(this.parseContext.bind(this));
 		}
+		// tslint:disable-next-line:no-suspicious-comment
+		//TODO: else if(child instanceof mongoParser.FunctionCallContext)
+
 		return parsedObject;
 	}
 }

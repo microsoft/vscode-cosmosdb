@@ -182,9 +182,10 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 				if (!lastCommand.arguments) {
 					lastCommand.arguments = [];
 				}
-				lastCommand.arguments.push(ctx.text);
 				lastCommand.argumentObjects = lastCommand.argumentObjects || [];
-				lastCommand.argumentObjects.push(this.parseContext(ctx));
+				const argAsObject = this.parseContext(ctx);
+				lastCommand.argumentObjects.push(argAsObject);
+				lastCommand.arguments.push(JSON.stringify(argAsObject));
 			}
 		}
 		return super.visitArgument(ctx);
@@ -209,11 +210,16 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 	}
 
 	private parseContext(ctx: ParserRuleContext): Object {
-		let retVal: Object = {};
+		let parsedObject: Object = {};
 		//Argument is guaranteed to have exactly one child, given its definition in mongo.g4
 		let child: ParseTree = ctx.children[0];
 		if (child instanceof mongoParser.LiteralContext) {
-			retVal = stripQuotes(child.text);
+			let unquoted = stripQuotes(child.text); // LiteralContext tokens encode numbers, booleans and undefined as "\"123\"", "\"true\"", "\"undefined\"", etc.
+			try {
+				parsedObject = JSON.parse(unquoted); // to resolve (string)"true" to true, (string)"9" to (number)9
+			} catch {
+				parsedObject = unquoted;
+			}
 		}
 		else if (child instanceof mongoParser.ObjectLiteralContext) {
 			let propertyNameAndValue = <mongoParser.PropertyNameAndValueListContext>child.children.find((node) => node instanceof mongoParser.PropertyNameAndValueListContext);
@@ -226,15 +232,15 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 				for (let propertyAssignment of propertyAssignments) {
 					const propertyName = <mongoParser.PropertyNameContext>propertyAssignment.children[0];
 					const propertyValue = <mongoParser.PropertyValueContext>propertyAssignment.children[2];
-					retVal[stripQuotes(propertyName.text)] = this.parseContext(propertyValue);
+					parsedObject[stripQuotes(propertyName.text)] = this.parseContext(propertyValue);
 				}
 			}
 		}
 		else if (child instanceof mongoParser.ArrayLiteralContext) {
 			let elementList = <mongoParser.ElementListContext>child.children.find((context) => context instanceof mongoParser.ElementListContext);
 			let propertyValues = elementList.children.filter((node) => node instanceof mongoParser.PropertyValueContext);
-			retVal = propertyValues.map(this.parseContext.bind(this));
+			parsedObject = propertyValues.map(this.parseContext.bind(this));
 		}
-		return retVal;
+		return parsedObject;
 	}
 }

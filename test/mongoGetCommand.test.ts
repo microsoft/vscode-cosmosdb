@@ -343,6 +343,20 @@ suite("scrapbook parsing Tests", () => {
         const argument = command.argumentObjects[0];
         assert.deepEqual(argument, { name: "First" });
     });
+    test("test function call with numbers", () => {
+        let arg0 = `{'name': 1010101}`;
+        let text = `db.test1.insertMany(${arg0})`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        const argument = command.argumentObjects[0];
+        assert.deepEqual(argument, { name: 1010101 });
+    });
+    test("test function call boolean", () => {
+        let arg0 = `{'name': false}`;
+        let text = `db.test1.insertMany(${arg0})`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        const argument = command.argumentObjects[0];
+        assert.deepEqual(argument, { name: false });
+    });
     /* This test will fail. Unquoted strings need to be fixed.
     test("test function call with no quotes", () => {
         let arg0 = `{name: 'First'}`;

@@ -57,9 +57,10 @@
 			]
 		},
 		{
-			// Instructions:
-			// 1) Point 'input' to a debugging input file:
-			// 2) Save the mongo.g4 file to cause debugging info to be generated
+			// INSTRUCTIONS
+			// 1) Point 'input' to a debugging input file and set "input" below to the file's path
+			// 2) *** IMPORTANT*** Make a whitespace change in mongo.g4 and then save it. This forces debugging info to be generated.
+			//     If this works, you'll see a warning in the Output window.
 			// 3) Launch this configuration
 			// 4) See Debug Console output
 			// 5) In mongo.g4 file, in the editor context menu, you should see options for generating graphs

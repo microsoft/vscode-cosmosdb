@@ -5,7 +5,7 @@ Note: The file `JavaScript.tmLanguage.json` is derived from [TypeScriptReact.tmL
 2. Re-comment imports in mongoParser.ts that are not used and cause compile errors
 
 # Debugging the grammar
-See instructions in launch.json
+See instructions in launch.json.  Be sure to explicitly save the mongo.g4 file to generate the debug info before trying to launch.
 
 ---
 ## *The following is out of date:*

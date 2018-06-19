@@ -155,7 +155,9 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		this.commands.push({
 			range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine),
 			text: ctx.text,
-			name: ''
+			name: '',
+			arguments: [],
+			argumentObjects: []
 		});
 		return super.visitCommand(ctx);
 	}
@@ -178,10 +180,6 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			let functionCallContext = argumentsContext.parent;
 			if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
 				const lastCommand = this.commands[this.commands.length - 1];
-				if (!lastCommand.arguments) {
-					lastCommand.arguments = [];
-				}
-				lastCommand.argumentObjects = lastCommand.argumentObjects || [];
 				const argAsObject = this.parseContext(ctx);
 				lastCommand.argumentObjects.push(argAsObject);
 				lastCommand.arguments.push(JSON.stringify(argAsObject));
@@ -217,11 +215,12 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		// The only difference in types of children between PropertyValue and argument tokens is the functionCallContext that isn't handled at the moment.
 		let child: ParseTree = ctx.children[0];
 		if (child instanceof mongoParser.LiteralContext) {
-			let unquoted = stripQuotes(child.text); // LiteralContext tokens encode numbers, booleans and undefined as "\"123\"", "\"true\"", "\"undefined\"", etc.
-			try {
-				parsedObject = JSON.parse(unquoted); // to resolve the string "true" to true, the string "9" to (number)9
-			} catch {
-				parsedObject = unquoted;
+			let text = child.text;
+			let tokenType = child.start.type;
+			if (tokenType === mongoParser.mongoParser.StringLiteral) {
+				parsedObject = stripQuotes(text);
+			} else if (this._parserNonStringTokenTypes.indexOf(tokenType) > -1) {
+				parsedObject = JSON.parse(text);
 			}
 		}
 		else if (child instanceof mongoParser.ObjectLiteralContext) {
@@ -243,10 +242,14 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			let elementList = <mongoParser.ElementListContext>child.children.find((context) => context instanceof mongoParser.ElementListContext);
 			let propertyValues = elementList.children.filter((node) => node instanceof mongoParser.PropertyValueContext);
 			parsedObject = propertyValues.map(this.parseContext.bind(this));
+		} else {
+			console.assert("Unrecognized child type in parse tree.");
 		}
 		// tslint:disable-next-line:no-suspicious-comment
 		//TODO: else if(child instanceof mongoParser.FunctionCallContext)
 
 		return parsedObject;
 	}
+	private _parserNonStringTokenTypes = [mongoParser.mongoParser.NullLiteral, mongoParser.mongoParser.BooleanLiteral, mongoParser.mongoParser.NumericLiteral];
+
 }

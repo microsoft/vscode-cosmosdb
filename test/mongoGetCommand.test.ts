@@ -357,6 +357,20 @@ suite("scrapbook parsing Tests", () => {
         const argument = command.argumentObjects[0];
         assert.deepEqual(argument, { name: false });
     });
+    test("test function call token inside quotes", () => {
+        let arg0 = `{'name': 'false'}`;
+        let text = `db.test1.insertMany(${arg0})`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        const argument = command.argumentObjects[0];
+        assert.deepEqual(argument, { name: "false" });
+    });
+    test("test function call with an empty string property value", () => {
+        let arg0 = `{'name': ''}`;
+        let text = `db.test1.insertMany(${arg0})`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        const argument = command.argumentObjects[0];
+        assert.deepEqual(argument, { name: "" });
+    });
     /* This test will fail. Unquoted strings need to be fixed.
     test("test function call with no quotes", () => {
         let arg0 = `{name: 'First'}`;

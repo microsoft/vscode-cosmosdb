@@ -18,6 +18,7 @@ import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 import { MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
+import { randomUtils } from '../utils/randomUtils';
 
 const output = vscodeUtil.getOutputChannel();
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
@@ -224,13 +225,13 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			}
 		}
 		else if (child instanceof mongoParser.ObjectLiteralContext) {
-			let propertyNameAndValue = <mongoParser.PropertyNameAndValueListContext>child.children.find((node) => node instanceof mongoParser.PropertyNameAndValueListContext);
+			let propertyNameAndValue = randomUtils.findType(child.children, mongoParser.PropertyNameAndValueListContext);
 			if (!propertyNameAndValue) { // Argument is {}
 				return {};
 			}
 			else {
 				//tslint:disable:no-non-null-assertion
-				let propertyAssignments = <mongoParser.PropertyAssignmentContext[]>propertyNameAndValue.children!.filter((node) => node instanceof mongoParser.PropertyAssignmentContext);
+				let propertyAssignments = randomUtils.filterType(propertyNameAndValue.children, mongoParser.PropertyAssignmentContext);
 				for (let propertyAssignment of propertyAssignments) {
 					const propertyName = <mongoParser.PropertyNameContext>propertyAssignment.children[0];
 					const propertyValue = <mongoParser.PropertyValueContext>propertyAssignment.children[2];
@@ -239,8 +240,8 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			}
 		}
 		else if (child instanceof mongoParser.ArrayLiteralContext) {
-			let elementList = <mongoParser.ElementListContext>child.children.find((context) => context instanceof mongoParser.ElementListContext);
-			let propertyValues = elementList.children.filter((node) => node instanceof mongoParser.PropertyValueContext);
+			let elementList = randomUtils.findType(child.children, mongoParser.ElementListContext);
+			let propertyValues = randomUtils.filterType(elementList.children, mongoParser.PropertyValueContext);
 			parsedObject = propertyValues.map(this.parseContext.bind(this));
 		} else {
 			console.assert("Unrecognized child type in parse tree.");

@@ -9,6 +9,7 @@ import { IAzureNode, IAzureTreeItem, UserCancelledError, DialogResponses } from 
 import { RetrievedDocument, DocumentClient } from 'documentdb';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { emptyPartitionKeyValue } from '../../constants';
+import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) document
@@ -18,23 +19,24 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     public readonly contextValue: string = DocDBDocumentTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openDocument';
 
-    private readonly partitionKeyValue: string | undefined | Object;
-
+    private readonly _partitionKeyValue: string | undefined | Object;
+    private _label: string;
     private _document: RetrievedDocument;
     private _collection: DocDBCollectionTreeItem;
 
     constructor(collection: DocDBCollectionTreeItem, document: RetrievedDocument) {
         this._collection = collection;
         this._document = document;
-        this.partitionKeyValue = this.getPartitionKeyValue();
+        this._partitionKeyValue = this.getPartitionKeyValue();
+        this._label = getDocumentTreeItemLabel(this._document);
     }
 
     public get id(): string {
         return this.document.id;
     }
 
-    public get label(): string {
-        return this.document.id;
+    public async refreshLabel(): Promise<void> {
+        this._label = getDocumentTreeItemLabel(this._document);
     }
 
     public get link(): string {
@@ -43,6 +45,10 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
 
     get document(): RetrievedDocument {
         return this._document;
+    }
+
+    get label(): string {
+        return this._label;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -57,7 +63,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const client = this._collection.getDocumentClient();
-            const options = { partitionKey: this.partitionKeyValue };
+            const options = { partitionKey: this._partitionKeyValue };
             await new Promise((resolve, reject) => {
                 // Disabling type check in the next line. This helps ensure documents having no partition key value
                 // can still pass an empty object when required. It looks like a disparity between the type settings outlined here
@@ -80,7 +86,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
             throw new Error(`The "_self" and "_etag" fields are required to update a document`);
         }
         else {
-            let options = { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this.partitionKeyValue };
+            let options = { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this._partitionKeyValue };
             this._document = await new Promise<RetrievedDocument>((resolve, reject) => {
                 client.replaceDocument(
                     _self,
@@ -95,6 +101,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
                         }
                     });
             });
+            await this.refreshLabel();
             return this.document;
         }
     }

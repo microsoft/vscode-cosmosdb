@@ -38,6 +38,7 @@ export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]
             const documentNode = documentNodes.find((node) => node.treeItem.document._id.toString() === updatedDoc._id.toString());
             if (documentNode) {
                 documentNode.treeItem.document = updatedDoc;
+                await documentNode.refresh();
             }
         }
     }

@@ -140,7 +140,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         if (defaultExperiencePick) {
             const defaultExperience = defaultExperiencePick.data;
             let port: number;
-            const IP = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.IP");
+            const IP = vscode.workspace.getConfiguration().get<string>("cosmosDB.emulator.IP");
             if (defaultExperience.api === API.MongoDB) {
                 port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.mongoPort");
             }

@@ -18,7 +18,7 @@ import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 import { MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
-import { randomUtils } from '../utils/randomUtils';
+import { filterType, findType } from '../utils/array';
 
 const output = vscodeUtil.getOutputChannel();
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
@@ -218,20 +218,23 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		if (child instanceof mongoParser.LiteralContext) {
 			let text = child.text;
 			let tokenType = child.start.type;
+			const nonStringLiterals = [mongoParser.mongoParser.NullLiteral, mongoParser.mongoParser.BooleanLiteral, mongoParser.mongoParser.NumericLiteral];
 			if (tokenType === mongoParser.mongoParser.StringLiteral) {
 				parsedObject = stripQuotes(text);
-			} else if (this._parserNonStringTokenTypes.indexOf(tokenType) > -1) {
+			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 				parsedObject = JSON.parse(text);
+			} else {
+				throw new Error(`Can not identify token. Token text: ${text}`);
 			}
 		}
 		else if (child instanceof mongoParser.ObjectLiteralContext) {
-			let propertyNameAndValue = randomUtils.findType(child.children, mongoParser.PropertyNameAndValueListContext);
+			let propertyNameAndValue = findType(child.children, mongoParser.PropertyNameAndValueListContext);
 			if (!propertyNameAndValue) { // Argument is {}
 				return {};
 			}
 			else {
 				//tslint:disable:no-non-null-assertion
-				let propertyAssignments = randomUtils.filterType(propertyNameAndValue.children, mongoParser.PropertyAssignmentContext);
+				let propertyAssignments = filterType(propertyNameAndValue.children, mongoParser.PropertyAssignmentContext);
 				for (let propertyAssignment of propertyAssignments) {
 					const propertyName = <mongoParser.PropertyNameContext>propertyAssignment.children[0];
 					const propertyValue = <mongoParser.PropertyValueContext>propertyAssignment.children[2];
@@ -240,8 +243,8 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			}
 		}
 		else if (child instanceof mongoParser.ArrayLiteralContext) {
-			let elementList = randomUtils.findType(child.children, mongoParser.ElementListContext);
-			let propertyValues = randomUtils.filterType(elementList.children, mongoParser.PropertyValueContext);
+			let elementList = findType(child.children, mongoParser.ElementListContext);
+			let propertyValues = filterType(elementList.children, mongoParser.PropertyValueContext);
 			parsedObject = propertyValues.map(this.parseContext.bind(this));
 		} else {
 			console.assert("Unrecognized child type in parse tree.");
@@ -251,6 +254,5 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 
 		return parsedObject;
 	}
-	private _parserNonStringTokenTypes = [mongoParser.mongoParser.NullLiteral, mongoParser.mongoParser.BooleanLiteral, mongoParser.mongoParser.NumericLiteral];
 
 }

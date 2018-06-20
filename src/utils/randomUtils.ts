@@ -3,15 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as crypto from "crypto";
+
 export namespace randomUtils {
-    // tslint:disable-next-line:no-any
-    export function filterType<T>(arr: Object[], genericConstructor: { new(...args: any[]): T }): T[] {
-        return <T[]>arr.filter(element => element instanceof genericConstructor);
+    export function getRandomHexString(length: number): string {
+        const buffer: Buffer = crypto.randomBytes(Math.ceil(length / 2));
+        return buffer.toString('hex').slice(0, length);
     }
-
-    // tslint:disable-next-line:no-any
-    export function findType<T>(arr: Object[], genericConstructor: { new(...args: any[]): T }): T {
-        return <T>arr.find(element => element instanceof genericConstructor);
-    }
-
 }

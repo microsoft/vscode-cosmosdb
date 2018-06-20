@@ -181,7 +181,7 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			let functionCallContext = argumentsContext.parent;
 			if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
 				const lastCommand = this.commands[this.commands.length - 1];
-				const argAsObject = this.parseContext(ctx);
+				const argAsObject = this.contextToObject(ctx);
 				lastCommand.argumentObjects.push(argAsObject);
 				lastCommand.arguments.push(JSON.stringify(argAsObject));
 			}
@@ -207,7 +207,7 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		return this.commands;
 	}
 
-	private parseContext(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
+	private contextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
 		let parsedObject: Object = {};
 		if (!ctx || ctx.childCount === 0) { //Base case and malformed statements
 			return parsedObject;
@@ -238,14 +238,14 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 				for (let propertyAssignment of propertyAssignments) {
 					const propertyName = <mongoParser.PropertyNameContext>propertyAssignment.children[0];
 					const propertyValue = <mongoParser.PropertyValueContext>propertyAssignment.children[2];
-					parsedObject[stripQuotes(propertyName.text)] = this.parseContext(propertyValue);
+					parsedObject[stripQuotes(propertyName.text)] = this.contextToObject(propertyValue);
 				}
 			}
 		}
 		else if (child instanceof mongoParser.ArrayLiteralContext) {
 			let elementList = findType(child.children, mongoParser.ElementListContext);
-			let propertyValues = filterType(elementList.children, mongoParser.PropertyValueContext);
-			parsedObject = propertyValues.map(this.parseContext.bind(this));
+			let elementItems = filterType(elementList.children, mongoParser.PropertyValueContext);
+			parsedObject = elementItems.map(this.contextToObject.bind(this));
 		} else if (child instanceof mongoParser.FunctionCallContext) {
 			throw new Error("We currently don't support function calls inside arguments.");
 		} else {

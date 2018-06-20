@@ -73,7 +73,7 @@ BooleanLiteral: 'true' | 'false';
 NumericLiteral: '-'? DecimalLiteral;
 
 DecimalLiteral:
-	DecimalIntegerLiteral '.' DecimalDigit* ExponentPart?
+	DecimalIntegerLiteral '.' DecimalDigit+ ExponentPart?
 	| '.' DecimalDigit+ ExponentPart?
 	| DecimalIntegerLiteral ExponentPart?;
 

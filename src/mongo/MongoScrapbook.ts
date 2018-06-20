@@ -246,11 +246,11 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			let elementList = findType(child.children, mongoParser.ElementListContext);
 			let propertyValues = filterType(elementList.children, mongoParser.PropertyValueContext);
 			parsedObject = propertyValues.map(this.parseContext.bind(this));
+		} else if (child instanceof mongoParser.FunctionCallContext) {
+			throw new Error("We currently don't support function calls inside arguments.");
 		} else {
-			console.assert("Unrecognized child type in parse tree.");
+			console.assert(false, "Unrecognized child type in parse tree.");
 		}
-		// tslint:disable-next-line:no-suspicious-comment
-		//TODO: else if(child instanceof mongoParser.FunctionCallContext)
 
 		return parsedObject;
 	}

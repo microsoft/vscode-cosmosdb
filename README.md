@@ -2,7 +2,7 @@
 # Cosmos DB Support for VS Code (Preview)
 [![Build Status](https://travis-ci.org/Microsoft/vscode-cosmosdb.svg?branch=master)](https://travis-ci.org/Microsoft/vscode-cosmosdb) [![Release Status](https://img.shields.io/github/tag/Microsoft/vscode-cosmosdb.svg?label=prerelease&colorB=0E7FC0)](https://github.com/Microsoft/vscode-cosmosdb/releases)
 
-Browse and query your MongoDB databases both locally and in the cloud using [_scrapbooks_](#mongo-scrapbooks) with rich Intellisense then connect to Azure to manage your Cosmos DB databases with support for MongoDB, Graph (Gremlin), and SQL (previously known as DocumentDB).
+Browse and query your MongoDB databases both locally and in the cloud using [_scrapbooks_](#mongo-%22scrapbooks%22---run-mongo-commands-with-rich-intellisense) with rich Intellisense then connect to Azure to manage your Cosmos DB databases with support for MongoDB, Graph (Gremlin), and SQL (previously known as DocumentDB).
 
 ![Cosmos DB Extension](resources/features.png)
 
@@ -12,7 +12,7 @@ You will now find us by clicking in the new Azure view container instead of the 
 
 # Prerequisites
 
-- Some less-common commands in the Mongo [scrapbook](#mongo-scrapbooks) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
+- Some less-common commands in the Mongo [scrapbook](#mongo-%22scrapbooks%22---run-mongo-commands-with-rich-intellisense) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
 
 # Features
 
@@ -29,7 +29,7 @@ You will now find us by clicking in the new Azure view container instead of the 
 
 ![Browse CosmosDB and MongoDB databases](resources/Browse.png)
 
-## Mongo "Scrapbooks" (Run Mongo Commands with Rich Intellisense)
+## Mongo "Scrapbooks" - Run Mongo Commands with Rich Intellisense
 
 - View your MongoDB database account by [signing in to Azure](#managing-azure-subscriptions) or attaching with a connection string
 - Optionally configure the setting `mongo.shell.path` if your mongo executable is not already on your system's PATH (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))

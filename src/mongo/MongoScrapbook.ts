@@ -224,7 +224,7 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 				parsedObject = JSON.parse(text);
 			} else {
-				throw new Error(`Can not identify token. Token text: ${text}`);
+				throw new Error(`Cannot identify the token. Token text: ${text}`);
 			}
 		}
 		else if (child instanceof mongoParser.ObjectLiteralContext) {

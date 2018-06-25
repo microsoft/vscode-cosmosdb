@@ -29,7 +29,8 @@ You will now find us by clicking in the new Azure view container instead of the 
 
 ![Browse CosmosDB and MongoDB databases](resources/Browse.png)
 
-## Mongo "Scrapbooks" (Run Mongo Commands with Rich Intellisense)
+## Mongo Scrapbooks
+### Run Mongo Commands with Rich Intellisense
 
 - View your MongoDB database account by [signing in to Azure](#managing-azure-subscriptions) or attaching with a connection string
 - Optionally configure the setting `mongo.shell.path` if your mongo executable is not already on your system's PATH (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))

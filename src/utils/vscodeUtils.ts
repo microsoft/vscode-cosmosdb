@@ -28,6 +28,7 @@ export function dispose<T extends IDisposable>(disposables: T[]): T[] {
     return [];
 }
 
+// tslint:disable-next-line:no-shadowed-variable
 export function toDisposable(dispose: () => void): IDisposable {
     return { dispose };
 }

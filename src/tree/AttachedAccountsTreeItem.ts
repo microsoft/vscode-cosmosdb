@@ -262,18 +262,18 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             label = label || `${id} (${getExperience(api).shortName})`;
             treeItem = new MongoAccountTreeItem(id, label, connectionString, isEmulator);
         } else {
-            const [endpoint, masterKey, id] = AttachedAccountsTreeItem.parseDocDBConnectionString(connectionString);
+            const [endpoint, masterKey, parsedId] = AttachedAccountsTreeItem.parseDocDBConnectionString(connectionString);
 
-            label = label || `${id} (${getExperience(api).shortName})`;
+            label = label || `${parsedId} (${getExperience(api).shortName})`;
             switch (api) {
                 case API.Table:
-                    treeItem = new TableAccountTreeItem(id, label, endpoint, masterKey, isEmulator);
+                    treeItem = new TableAccountTreeItem(parsedId, label, endpoint, masterKey, isEmulator);
                     break;
                 case API.Graph:
-                    treeItem = new GraphAccountTreeItem(id, label, endpoint, undefined, masterKey, isEmulator);
+                    treeItem = new GraphAccountTreeItem(parsedId, label, endpoint, undefined, masterKey, isEmulator);
                     break;
                 case API.DocumentDB:
-                    treeItem = new DocDBAccountTreeItem(id, label, endpoint, masterKey, isEmulator);
+                    treeItem = new DocDBAccountTreeItem(parsedId, label, endpoint, masterKey, isEmulator);
                     break;
                 default:
                     throw new Error(`Unexpected defaultExperience "${api}".`);

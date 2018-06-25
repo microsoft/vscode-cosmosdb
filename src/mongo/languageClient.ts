@@ -9,6 +9,7 @@ import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } f
 
 const localize = nls.loadMessageBundle();
 
+// tslint:disable-next-line:no-default-export // Grandfathered in
 export default class MongoDBLanguageClient {
 
 	public client: LanguageClient;

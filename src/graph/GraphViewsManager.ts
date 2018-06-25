@@ -50,9 +50,9 @@ export class GraphViewsManager implements IServerProvider {
   private async getOrCreateServer(config: GraphConfiguration): Promise<number> {
     let existingServer: GraphViewServer = null;
     let existingId: number;
-    this._servers.forEach((server, key) => {
-      if (areConfigsEqual(server.configuration, config)) {
-        existingServer = server;
+    this._servers.forEach((svr, key) => {
+      if (areConfigsEqual(svr.configuration, config)) {
+        existingServer = svr;
         existingId = key;
       }
     });

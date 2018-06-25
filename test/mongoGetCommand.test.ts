@@ -49,6 +49,20 @@ function testParse(text: string, expected: { collection: string, name: string, a
     testCore(spaceText);
 }
 
+/*
+function wrapInQuotes(word: string, numQuotes: number) { //0 to do nothing, 1 for single quotes, 2 for double quotes
+    let result: string;
+    if (numQuotes === 1) {
+        result = `'${word}'`;
+    } else if (numQuotes === 2) {
+        result = `"${word}"`;
+    } else {
+        result = word;
+    }
+    return result;
+}
+*/
+
 suite("scrapbook parsing Tests", () => {
     test("find", () => {
         let text = "db.find()";

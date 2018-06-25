@@ -388,13 +388,13 @@ suite("scrapbook parsing Tests", () => {
     test("test incomplete function call - replicate user typing - missing propertyValue", () => {
         let text = `db.test1.find({"name": {"First" : } })`;
         let command = getCommandFromText(text, new Position(0, 0));
-        assert.deepEqual(command.argumentObjects, { name: { First: {} } });
+        assert.deepEqual(command.argumentObjects, [{ name: { First: {} } }]);
     });
 
     test("test incomplete function call - replicate user typing - missing colon & propertyValue", () => {
         let text = `db.test1.find({"name": {"First"  } })`;
         let command = getCommandFromText(text, new Position(0, 0));
-        assert.deepEqual(command.argumentObjects, { name: { First: {} } });
+        assert.deepEqual(command.argumentObjects, [{ name: { First: {} } }]);
     });
 
     //This test will fail. See https://github.com/Microsoft/vscode-cosmosdb/issues/689

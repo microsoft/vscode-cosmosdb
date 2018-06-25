@@ -340,37 +340,43 @@ suite("scrapbook parsing Tests", () => {
         let arg0 = `{'name': 'First'}`;
         let text = `db.test1.insertMany(${arg0})`;
         let command = getCommandFromText(text, new Position(0, 0));
-        const argument = command.argumentObjects[0];
-        assert.deepEqual(argument, { name: "First" });
+        assert.deepEqual(command.argumentObjects, [{ name: "First" }]);
     });
     test("test function call with numbers", () => {
         let arg0 = `{'name': 1010101}`;
         let text = `db.test1.insertMany(${arg0})`;
         let command = getCommandFromText(text, new Position(0, 0));
-        const argument = command.argumentObjects[0];
-        assert.deepEqual(argument, { name: 1010101 });
+        assert.deepEqual(command.argumentObjects, [{ name: 1010101 }]);
     });
     test("test function call boolean", () => {
         let arg0 = `{'name': false}`;
         let text = `db.test1.insertMany(${arg0})`;
         let command = getCommandFromText(text, new Position(0, 0));
-        const argument = command.argumentObjects[0];
-        assert.deepEqual(argument, { name: false });
+        assert.deepEqual(command.argumentObjects, [{ name: false }]);
     });
     test("test function call token inside quotes", () => {
         let arg0 = `{'name': 'false'}`;
         let text = `db.test1.insertMany(${arg0})`;
         let command = getCommandFromText(text, new Position(0, 0));
-        const argument = command.argumentObjects[0];
-        assert.deepEqual(argument, { name: "false" });
+        assert.deepEqual(command.argumentObjects, [{ name: "false" }]);
     });
     test("test function call with an empty string property value", () => {
         let arg0 = `{'name': ''}`;
         let text = `db.test1.insertMany(${arg0})`;
         let command = getCommandFromText(text, new Position(0, 0));
-        const argument = command.argumentObjects[0];
-        assert.deepEqual(argument, { name: "" });
+        assert.deepEqual(command.argumentObjects, [{ name: "" }]);
     });
+    // Single quotes - arrays and multiple arguments
+    test("test function call with array and multiple arguments", () => {
+        let text = `db.test1.find({'roles': ['readWrite', 'dbAdmin']}, {'resources': ['secondary', 'primary']})`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, [{ roles: ["readWrite", "dbAdmin"] }, { resources: ["secondary", "primary"] }]);
+    });
+    // Single quotes - nested objects
+    // Single quotes - error cases
+    // Single quotes - intermediate states to replicate typing into the console
+
+
     /* This test will fail. Unquoted strings need to be fixed.
     test("test function call with no quotes", () => {
         let arg0 = `{name: 'First'}`;

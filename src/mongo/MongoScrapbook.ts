@@ -224,7 +224,7 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 				parsedObject = JSON.parse(text);
 			} else {
-				throw new Error(`Cannot identify the token. Token text: ${text}`);
+				throw new Error(`Unrecognized token. Token text: ${text}`);
 			}
 		}
 		else if (child instanceof mongoParser.ObjectLiteralContext) {
@@ -247,7 +247,7 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			let elementItems = filterType(elementList.children, mongoParser.PropertyValueContext);
 			parsedObject = elementItems.map(this.contextToObject.bind(this));
 		} else if (child instanceof mongoParser.FunctionCallContext) {
-			throw new Error("We currently don't support function calls inside arguments.");
+			return {};
 		} else {
 			console.assert(false, "Unrecognized child type in parse tree.");
 		}

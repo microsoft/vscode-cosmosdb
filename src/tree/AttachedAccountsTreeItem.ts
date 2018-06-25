@@ -25,6 +25,8 @@ interface IPersistedAccount {
 export const AttachedAccountSuffix: string = 'Attached';
 export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start with "mongodb://" or "mongodb+srv://"';
 
+const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
+
 export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = 'cosmosDBAttachedAccounts';
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
@@ -94,6 +96,16 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         }
     }
 
+    private async canConnectToLocalMongoDB(): Promise<boolean> {
+        try {
+            let db = await MongoClient.connect(localMongoConnectionString);
+            db.close();
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
     public async attachNewAccount(): Promise<void> {
         const defaultExperiencePick = await vscode.window.showQuickPick(getExperienceQuickPicks(), { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
         if (defaultExperiencePick) {
@@ -102,7 +114,10 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             let defaultValue: string;
             let validateInput: (value: string) => string | undefined | null;
             if (defaultExperience.api === API.MongoDB) {
-                defaultValue = placeholder = 'mongodb://127.0.0.1:27017';
+                placeholder = 'mongodb://host:port';
+                if (await this.canConnectToLocalMongoDB()) {
+                    defaultValue = placeholder = localMongoConnectionString;
+                }
                 validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
             } else {
                 placeholder = 'AccountEndpoint=...;AccountKey=...';

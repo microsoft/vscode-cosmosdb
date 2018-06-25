@@ -166,7 +166,7 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 	}
 
 	visitFunctionCall(ctx: mongoParser.FunctionCallContext): MongoCommand[] {
-		if (ctx.parent instanceof mongoParser.CommandContext) {
+		if (ctx.parent instanceof mongoParser.CommandContext && ctx.text && ctx._FUNCTION_NAME) {
 			this.commands[this.commands.length - 1].name = (ctx._FUNCTION_NAME && ctx._FUNCTION_NAME.text) || "";
 		}
 		return super.visitFunctionCall(ctx);

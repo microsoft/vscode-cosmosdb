@@ -133,8 +133,10 @@ export class GraphViewServer extends EventEmitter {
     const start = Date.now();
 
     try {
+      // tslint:disable-next-line:no-var-self
       const thisServer: GraphViewServer = this;
       await callWithTelemetryAndErrorHandling("cosmosDB.gremlinQuery", reporter, undefined, async function (this: IActionContext): Promise<void> {
+        // tslint:disable-next-line:no-var-self
         const actionContext: IActionContext = this;
         actionContext.rethrowError = true;
         actionContext.suppressErrorDisplay = true;
@@ -433,11 +435,11 @@ export class GraphViewServer extends EventEmitter {
     this._pageState.view = view;
   }
 
-  private handleQueryMessage(queryId: number, gremlin: string) {
-    this.log(`Query requested: queryId=${queryId}, gremlin="${gremlin}"`);
+  private handleQueryMessage(queryId: number, gremlinQuery: string) {
+    this.log(`Query requested: queryId=${queryId}, gremlin="${gremlinQuery}"`);
 
     //tslint:disable-next-line:no-floating-promises
-    this.queryAndShowResults(queryId, gremlin);
+    this.queryAndShowResults(queryId, gremlinQuery);
   }
 
   private handleGetTitleMessage() {
@@ -455,7 +457,7 @@ export class GraphViewServer extends EventEmitter {
     this._socket.onClientMessage('getTitle', () => this.handleGetTitleMessage());
 
     // Handle query event from client
-    this._socket.onClientMessage('query', (queryId: number, gremlin: string) => this.handleQueryMessage(queryId, gremlin));
+    this._socket.onClientMessage('query', (queryId: number, gremlinQuery: string) => this.handleQueryMessage(queryId, gremlinQuery));
 
     // Handle state event from client
     this._socket.onClientMessage('getPageState', () => this.handleGetPageState());

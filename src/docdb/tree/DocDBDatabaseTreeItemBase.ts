@@ -55,6 +55,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         if (result === DialogResponses.deleteResponse) {
             const client = this.getDocumentClient();
             await new Promise((resolve, reject) => {
+                // tslint:disable-next-line:no-function-expression // Grandfathered in
                 client.deleteDatabase(this.link, function (err) {
                     err ? reject(err) : resolve();
                 });

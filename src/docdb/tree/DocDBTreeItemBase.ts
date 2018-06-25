@@ -56,8 +56,8 @@ export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
         let count: number = 0;
         while (count < this._batchSize) {
             const resource: T | undefined = await new Promise<T | undefined>((resolve, reject) => {
-                this._iterator.nextItem((error: QueryError, resource: T | undefined) => {
-                    error ? reject(error) : resolve(resource);
+                this._iterator.nextItem((error: QueryError, rsrc: T | undefined) => {
+                    error ? reject(error) : resolve(rsrc);
                 });
             });
             if (resource === undefined) {

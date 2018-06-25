@@ -9,6 +9,7 @@ import { JSONSchema } from 'vscode-json-languageservice/lib/umd/jsonSchema';
 // tslint:disable:no-reserved-keywords // Grandfathered in ("arguments" and "type")
 // tslint:disable:no-any
 
+// tslint:disable-next-line:no-default-export // Grandfathered in
 export default class SchemaService {
 
 	private _db: Db;
@@ -56,16 +57,16 @@ export default class SchemaService {
 		}
 		if (uri.startsWith('mongo://query/')) {
 			return this._resolveQueryCollectionSchema(uri.substring('mongo://query/'.length, uri.length - '.schema'.length), uri)
-				.then(schema => {
-					this._schemasCache.set(uri, schema);
-					return schema;
+				.then(sch => {
+					this._schemasCache.set(uri, sch);
+					return sch;
 				});
 		}
 		if (uri.startsWith('mongo://aggregate/')) {
 			return this._resolveAggregateCollectionSchema(uri.substring('mongo://aggregate/'.length, uri.length - '.schema'.length))
-				.then(schema => {
-					this._schemasCache.set(uri, schema);
-					return schema;
+				.then(sch => {
+					this._schemasCache.set(uri, sch);
+					return sch;
 				});
 		}
 		return Promise.resolve('');

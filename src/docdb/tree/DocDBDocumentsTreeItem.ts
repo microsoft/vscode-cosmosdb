@@ -97,15 +97,15 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
         if (partitionKey[0] === '/') {
             partitionKey = partitionKey.slice(1);
         }
-        let path = partitionKey.split('/');
+        let keyPath = partitionKey.split('/');
         let PartitionPath: Object = {};
         let interim: Object = PartitionPath;
         let i: number;
-        for (i = 0; i < path.length - 1; i++) {
-            interim[path[i]] = {};
-            interim = interim[path[i]];
+        for (i = 0; i < keyPath.length - 1; i++) {
+            interim[keyPath[i]] = {};
+            interim = interim[keyPath[i]];
         }
-        interim[path[i]] = partitionKeyValue;
+        interim[keyPath[i]] = partitionKeyValue;
         return PartitionPath;
     }
 }

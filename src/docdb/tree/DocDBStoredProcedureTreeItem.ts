@@ -60,6 +60,7 @@ export class DocDBStoredProcedureTreeItem implements IAzureTreeItem {
         if (result === DialogResponses.deleteResponse) {
             const client = getDocumentClient(this._endpoint, this._masterKey, this._isEmulator);
             await new Promise((resolve, reject) => {
+                // tslint:disable-next-line:no-function-expression // Grandfathered in
                 client.deleteStoredProcedure(this.link, function (err) {
                     err ? reject(err) : resolve();
                 });

@@ -187,7 +187,7 @@ function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
 		});
 }
 
-function stripQuotes(term: string): string {
+export function stripQuotes(term: string): string {
 	if ((term.startsWith('\'') && term.endsWith('\''))
 		|| (term.startsWith('"') && term.endsWith('"'))) {
 		return term.substring(1, term.length - 1);

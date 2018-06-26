@@ -26,6 +26,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 	}
 
 	public provideCodeLenses(document: vscode.TextDocument, _token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeLens[]> {
+		// tslint:disable-next-line:no-var-self
 		const me: MongoCodeLensProvider = this;
 
 		return callWithTelemetryAndErrorHandling("mongo.provideCodeLenses", this._reporter, this._output, function (this: IActionContext) {

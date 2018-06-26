@@ -160,11 +160,11 @@ function setConnectedNode(node: IAzureNode | undefined, codeLensProvider: MongoC
     codeLensProvider.setConnectedDatabase(dbName);
 }
 
-function setUpErrorReporting(handler: AzureActionHandler, reporter: TelemetryReporter, output: vscode.OutputChannel) {
+function setUpErrorReporting(handler: AzureActionHandler, telemetryReporter: TelemetryReporter, output: vscode.OutputChannel) {
     // Update errors immediately in case a scrapbook is already open
     callWithTelemetryAndErrorHandling(
         "initialUpdateErrorsInActiveDocument",
-        reporter,
+        telemetryReporter,
         output,
         async function (this: IActionContext): Promise<void> {
             updateErrorsInScrapbook(this, vscode.window.activeTextEditor && vscode.window.activeTextEditor.document);

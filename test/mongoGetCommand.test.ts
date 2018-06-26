@@ -70,6 +70,20 @@ function testParse(
     testCore(spaceText);
 }
 
+/*
+function wrapInQuotes(word: string, numQuotes: number) { //0 to do nothing, 1 for single quotes, 2 for double quotes
+    let result: string;
+    if (numQuotes === 1) {
+        result = `'${word}'`;
+    } else if (numQuotes === 2) {
+        result = `"${word}"`;
+    } else {
+        result = word;
+    }
+    return result;
+}
+*/
+
 suite("scrapbook parsing Tests", () => {
     test("find", () => {
         let text = "db.find()";
@@ -232,6 +246,21 @@ suite("scrapbook parsing Tests", () => {
         );
     });
 
+    //https://github.com/Microsoft/vscode-cosmosdb/issues/467
+    test("single quoted property names", () => {
+        testParse(
+            `db.heroes.find({ 'id': 2 }, { 'saying': 1 })`,
+            {
+                collection: "heroes", name: "find", args: [
+                    {
+                        id: 2
+                    },
+                    {
+                        saying: 1
+                    }
+                ]
+            });
+    });
     test("expect error: missing function name", () => {
         // From https://github.com/Microsoft/vscode-cosmosdb/issues/659
         testParse(
@@ -281,22 +310,6 @@ suite("scrapbook parsing Tests", () => {
         expectSingleCommand(`db..(1, "a");`);
         expectSingleCommand(`..c1(1, "a");`);
     });
-
-    // https://github.com/Microsoft/vscode-cosmosdb/issues/467
-    // test("single quoted property names", () => {
-    //     testParse(
-    //         `db.heroes.find({ 'id': 2 }, { 'saying': 1 })`,
-    //         {
-    //             collection: "heroes", name: "find", args: [
-    //                 {
-    //                     id: 2
-    //                 },
-    //                 {
-    //                     saying: 1
-    //                 }
-    //             ]
-    //         });
-    // });
 
     // https://github.com/Microsoft/vscode-cosmosdb/issues/466
     // test("Unquoted property names", () => {
@@ -420,8 +433,7 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(err.range.start.character, 2);
     });
     test("test function call with erroneous syntax: missing double quote", () => {
-        let arg0 = `{name": {"First" : "a", "Last":"b"} }`;
-        let text = `db.test1.insertMany(${arg0})`;
+        let text = `db.test1.insertMany({name": {"First" : "a", "Last":"b"} })`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         const err = command.errors[0];
         assert.deepEqual(err.message, "token recognition error at: '\"} })'");
@@ -429,8 +441,7 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(err.range.start.character, 53);
     });
     test("test function call with erroneous syntax: missing opening brace", () => {
-        let arg0 = `"name": {"First" : "a", "Last":"b"} }`;
-        let text = `db.test1.insertMany(${arg0})`;
+        let text = `db.test1.insertMany("name": {"First" : "a", "Last":"b"} })`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         const err = command.errors[0];
         assert.deepEqual(err.message, ":");
@@ -506,5 +517,102 @@ suite("scrapbook parsing Tests", () => {
                 ]
             });
     });
+    test("test function call with single quotes", () => {
+        let text = `db.test1.insertMany({'name': 'First'})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, [{ name: "First" }]);
+    });
+    test("test function call with numbers", () => {
+        let text = `db.test1.insertMany({'name': 1010101})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, [{ name: 1010101 }]);
+    });
+    test("test function call boolean", () => {
+        let text = `db.test1.insertMany({'name': false})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, [{ name: false }]);
+    });
+    test("test function call token inside quotes", () => {
+        let text = `db.test1.insertMany({'name': 'false'})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, [{ name: "false" }]);
+    });
+    test("test function call with an empty string property value", () => {
+        let text = `db.test1.insertMany({'name': ''})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, [{ name: "" }]);
+    });
+    test("test function call with array and multiple arguments", () => {
+        let text = `db.test1.find({'roles': ['readWrite', 'dbAdmin']}, {'resources': ['secondary', 'primary']})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, [{ roles: ["readWrite", "dbAdmin"] }, { resources: ["secondary", "primary"] }]);
+    });
+    test("test function call with nested objects", () => {
+        let text = `db.test1.find({'roles': [{'optional': 'yes'}]}, {'resources': ['secondary', 'primary']})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, [{ roles: [{ optional: "yes" }] }, { resources: ["secondary", "primary"] }]);
+    });
+
+    // Single quotes - intermediate states to replicate typing into the console
+    test("test incomplete function call - replicate user typing - missing propertyValue", () => {
+        let text = `db.test1.find({"name": {"First" : } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, [{ name: { First: {} } }]);
+    });
+
+    test("test incomplete function call - replicate user typing - missing colon & propertyValue", () => {
+        let text = `db.test1.find({"name": {"First"  } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, [{ name: { First: {} } }]);
+    });
+
+    test("test incomplete function call - replicate user typing - empty array as argument", () => {
+        let text = `db.heroes.aggregate([\n])`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, [[]]);
+    });
+
+    test("test quotes inside a string - 1", () => {
+        let text = `db.test1.find("That's all")`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, ["That's all"]);
+    });
+
+    test("test quotes inside a string - 2", () => {
+        let text = `db.test1.find('That"s all')`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, ["That\"s all"]);
+    });
+
+    test("test quotes inside a string - 3", () => {
+        let text = `db.test1.find("Hello \\"there\\"")`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, ['Hello \\"there\\"']);
+    });
+
+    test("test quotes inside a string - 4", () => {
+        let text = `db.test1.find('Hello \\'there\\'')`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, ["Hello \\'there\\'"]);
+    });
+
+    //This test will fail. See https://github.com/Microsoft/vscode-cosmosdb/issues/689
+    // test("test incomplete function call - replicate user typing - no function call yet", () => {
+    //     let text = `db.test1.`;
+    //     let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+    //     assert.deepEqual(command.argumentObjects, undefined);
+    //     assert.deepEqual(command.collection, "test1");
+    // });
+
+    /* This test will fail. Unquoted strings need to be fixed.
+    test("test function call with no quotes", () => {
+        let arg0 = `{name: 'First'}`;
+        let text = `db.test1.insertMany(${arg0})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        const argument = command.argumentObjects[0];
+        assert.deepEqual(argument, { name: "First" });
+    });
+    */
+
 });
 

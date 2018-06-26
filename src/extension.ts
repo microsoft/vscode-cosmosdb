@@ -27,6 +27,7 @@ import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase'
 import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
+import { ext } from './extensionVariables';
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(new Reporter(context));
@@ -116,6 +117,15 @@ export function activate(context: vscode.ExtensionContext) {
 	actionHandler.registerCommand('cosmosDB.loadMore', (node?: IAzureNode) => tree.loadMore(node));
 	actionHandler.registerEvent('cosmosDB.CosmosEditorManager.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument, async function
 		(this: IActionContext, doc: vscode.TextDocument): Promise<void> { await editorManager.onDidSaveTextDocument(this, doc, tree); });
+	// tslint:disable-next-line:no-function-expression
+	actionHandler.registerEvent('cosmosDB.onDidChangeConfiguration', vscode.workspace.onDidChangeConfiguration, async function
+		(this: IActionContext, event: vscode.ConfigurationChangeEvent): Promise<void> {
+		this.properties.isActivationEvent = "true";
+		this.suppressErrorDisplay = true;
+		if (event.affectsConfiguration(ext.settingsKeys.documentLabelFields)) {
+			await vscode.commands.executeCommand("cosmosDB.refresh");
+		}
+	});
 }
 
 async function getAttachedNode(tree: AzureTreeDataProvider): Promise<IAzureParentNode<AttachedAccountsTreeItem>> {

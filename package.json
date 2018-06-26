@@ -695,6 +695,21 @@
 					"default": true,
 					"description": "Show or hide the Cosmos DB Explorer"
 				},
+				"cosmosDB.documentLabelFields": {
+					"type": "array",
+					"default": [
+						"name",
+						"Name",
+						"NAME",
+						"ID",
+						"UUID",
+						"Id",
+						"id",
+						"_id",
+						"uuid"
+					],
+					"description": "The field values to display as labels in the treeview for Cosmos DB and MongoDB documents, in priority order"
+				},
 				"cosmosDB.showSavePrompt": {
 					"type": "boolean",
 					"default": true,

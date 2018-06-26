@@ -2,7 +2,6 @@
     "recommendations": [
         "eg2.tslint",
         "ms-vscode.azure-account",
-        "DavidAnson.vscode-markdownlint",
         "mike-lischke.vscode-antlr4"
     ]
 }

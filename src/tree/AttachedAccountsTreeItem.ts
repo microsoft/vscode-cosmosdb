@@ -25,6 +25,8 @@ interface IPersistedAccount {
 export const AttachedAccountSuffix: string = 'Attached';
 export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start with "mongodb://" or "mongodb+srv://"';
 
+const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
+
 export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = 'cosmosDBAttachedAccounts';
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
@@ -94,6 +96,16 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         }
     }
 
+    private async canConnectToLocalMongoDB(): Promise<boolean> {
+        try {
+            let db = await MongoClient.connect(localMongoConnectionString);
+            db.close();
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
     public async attachNewAccount(): Promise<void> {
         const defaultExperiencePick = await vscode.window.showQuickPick(getExperienceQuickPicks(), { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
         if (defaultExperiencePick) {
@@ -102,7 +114,10 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             let defaultValue: string;
             let validateInput: (value: string) => string | undefined | null;
             if (defaultExperience.api === API.MongoDB) {
-                defaultValue = placeholder = 'mongodb://127.0.0.1:27017';
+                placeholder = 'mongodb://host:port';
+                if (await this.canConnectToLocalMongoDB()) {
+                    defaultValue = placeholder = localMongoConnectionString;
+                }
                 validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
             } else {
                 placeholder = 'AccountEndpoint=...;AccountKey=...';
@@ -262,18 +277,18 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             label = label || `${id} (${getExperience(api).shortName})`;
             treeItem = new MongoAccountTreeItem(id, label, connectionString, isEmulator);
         } else {
-            const [endpoint, masterKey, id] = AttachedAccountsTreeItem.parseDocDBConnectionString(connectionString);
+            const [endpoint, masterKey, parsedId] = AttachedAccountsTreeItem.parseDocDBConnectionString(connectionString);
 
-            label = label || `${id} (${getExperience(api).shortName})`;
+            label = label || `${parsedId} (${getExperience(api).shortName})`;
             switch (api) {
                 case API.Table:
-                    treeItem = new TableAccountTreeItem(id, label, endpoint, masterKey, isEmulator);
+                    treeItem = new TableAccountTreeItem(parsedId, label, endpoint, masterKey, isEmulator);
                     break;
                 case API.Graph:
-                    treeItem = new GraphAccountTreeItem(id, label, endpoint, undefined, masterKey, isEmulator);
+                    treeItem = new GraphAccountTreeItem(parsedId, label, endpoint, undefined, masterKey, isEmulator);
                     break;
                 case API.DocumentDB:
-                    treeItem = new DocDBAccountTreeItem(id, label, endpoint, masterKey, isEmulator);
+                    treeItem = new DocDBAccountTreeItem(parsedId, label, endpoint, masterKey, isEmulator);
                     break;
                 default:
                     throw new Error(`Unexpected defaultExperience "${api}".`);

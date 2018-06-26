@@ -9,6 +9,9 @@ import * as vscode from 'vscode';
 import { IAzureNode, IAzureTreeItem } from 'vscode-azureextensionui';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
+import { IMongoDocument } from '../mongo/tree/MongoDocumentTreeItem';
+import { RetrievedDocument } from 'documentdb';
+import { documentLabelFields } from '../constants';
 
 const outputChannel = vscode.window.createOutputChannel("Azure CosmosDB");
 
@@ -25,6 +28,7 @@ export function dispose<T extends IDisposable>(disposables: T[]): T[] {
     return [];
 }
 
+// tslint:disable-next-line:no-shadowed-variable
 export function toDisposable(dispose: () => void): IDisposable {
     return { dispose };
 }
@@ -100,4 +104,16 @@ export function getNodeEditorLabel(node: IAzureNode): string {
 
 function isAccountTreeItem(treeItem: IAzureTreeItem): boolean {
     return (treeItem instanceof MongoAccountTreeItem) || (treeItem instanceof DocDBAccountTreeItemBase);
+}
+
+export function getDocumentTreeItemLabel(document: IMongoDocument | RetrievedDocument): string {
+    for (let field of documentLabelFields) {
+        if (document.hasOwnProperty(field)) {
+            let value = document[field];
+            if (value !== undefined && typeof value !== 'object') {
+                return String(value);
+            }
+        }
+    }
+    return String(document["_id"]);
 }

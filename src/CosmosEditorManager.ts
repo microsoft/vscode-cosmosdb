@@ -80,7 +80,7 @@ export class CosmosEditorManager {
     }
 
     public async updateMatchingNode(documentUri: vscode.Uri, tree?: AzureTreeDataProvider): Promise<void> {
-        let filePath: string = Object.keys(this.fileMap).find((filePath) => path.relative(documentUri.fsPath, filePath) === '');
+        let filePath: string = Object.keys(this.fileMap).find((fp) => path.relative(documentUri.fsPath, fp) === '');
         if (!filePath) {
             filePath = await this.loadPersistedEditor(documentUri, tree);
         }
@@ -142,7 +142,7 @@ export class CosmosEditorManager {
 
     public async onDidSaveTextDocument(context: IActionContext, doc: vscode.TextDocument, tree: AzureTreeDataProvider): Promise<void> {
         context.suppressTelemetry = true;
-        let filePath = Object.keys(this.fileMap).find((filePath) => path.relative(doc.uri.fsPath, filePath) === '');
+        let filePath = Object.keys(this.fileMap).find((fp) => path.relative(doc.uri.fsPath, fp) === '');
         if (!filePath) {
             filePath = await this.loadPersistedEditor(doc.uri, tree);
         }

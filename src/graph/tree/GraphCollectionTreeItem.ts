@@ -5,23 +5,28 @@
 
 import * as path from 'path';
 import { IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
-import { GraphViewsManager } from '../GraphViewsManager';
-import { GraphConfiguration } from '../GraphConfiguration';
 import * as vscode from 'vscode';
-import { CollectionMeta } from 'documentdb';
+import { CollectionMeta, DocumentClient } from 'documentdb';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
+import { GraphTreeItem } from './GraphTreeItem';
+import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
+import { getDocumentClient } from '../../docdb/getDocumentClient';
 
 export class GraphCollectionTreeItem implements IAzureTreeItem {
     public static contextValue: string = "cosmosDBGraph";
     public readonly contextValue: string = GraphCollectionTreeItem.contextValue;
-    public readonly commandId: string = 'cosmosDB.openGraphExplorer';
+
+    private readonly _graphTreeItem: GraphTreeItem;
+    private readonly _storedProceduresTreeItem: DocDBStoredProceduresTreeItem;
 
     private readonly _database: GraphDatabaseTreeItem;
     private readonly _collection: CollectionMeta;
 
-    constructor(database: GraphDatabaseTreeItem, collection: CollectionMeta) {
+    constructor(database: GraphDatabaseTreeItem, collection: CollectionMeta, private _documentEndpoint: string, private _masterKey: string, private _isEmulator: boolean) {
         this._database = database;
         this._collection = collection;
+        this._graphTreeItem = new GraphTreeItem(this._database, this._collection);
+        this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator);
     }
 
     public get id(): string {
@@ -43,12 +48,25 @@ export class GraphCollectionTreeItem implements IAzureTreeItem {
         };
     }
 
+    public getDocumentClient(): DocumentClient {
+        return getDocumentClient(this._documentEndpoint, this._masterKey, this._isEmulator);
+    }
+
+    public async loadMoreChildren(_node: IAzureNode<IAzureTreeItem>, _clearCache: boolean): Promise<IAzureTreeItem[]> {
+        return [this._graphTreeItem, this._storedProceduresTreeItem];
+    }
+
+    public hasMoreChildren(): boolean {
+        return false;
+    }
+
     public async deleteTreeItem(_node: IAzureNode): Promise<void> {
         const message: string = `Are you sure you want to delete graph '${this.label}' and its contents?`;
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const client = this._database.getDocumentClient();
             await new Promise((resolve, reject) => {
+                // tslint:disable-next-line:no-function-expression // Grandfathered in
                 client.deleteCollection(this.link, function (err) {
                     err ? reject(err) : resolve();
                 });
@@ -56,16 +74,5 @@ export class GraphCollectionTreeItem implements IAzureTreeItem {
         } else {
             throw new UserCancelledError();
         }
-    }
-
-    public async showExplorer(graphViewsManager: GraphViewsManager): Promise<void> {
-        await graphViewsManager.showGraphViewer(this.label, <GraphConfiguration>{
-            documentEndpoint: this._database.documentEndpoint,
-            gremlinEndpoint: this._database.gremlinEndpoint,
-            possibleGremlinEndpoints: this._database.possibleGremlinEndpoints,
-            databaseName: this._database.label,
-            graphName: this.label,
-            key: this._database.masterKey
-        });
     }
 }

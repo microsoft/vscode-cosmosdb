@@ -636,6 +636,10 @@
 				{
 					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+				},
+				{
+					"command": "cosmosDB.refresh",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccounts"
 				}
 			],
 			"commandPalette": [
@@ -798,6 +802,7 @@
 	},
 	"devDependencies": {
 		"@types/copy-paste": "^1.1.30",
+		"@types/d3": "5.0.0",
 		"@types/documentdb": "^1.10.2",
 		"@types/fs-extra": "^4.0.3",
 		"@types/keytar": "4.0.1",
@@ -806,7 +811,6 @@
 		"@types/node": "^6.0.40",
 		"@types/socket.io": "^1.4.32",
 		"@types/socket.io-client": "^1.4.32",
-		"@types/d3": "5.0.0",
 		"antlr4ts-cli": "^0.4.0-alpha.4",
 		"azure-storage": "^2.8.1",
 		"gulp": "^3.9.1",
@@ -814,8 +818,8 @@
 		"tslint": "^5.7.0",
 		"tslint-microsoft-contrib": "5.0.1",
 		"typescript": "^2.0.3",
-		"vscode": "^1.0.0",
-		"vsce": "^1.37.5"
+		"vsce": "^1.37.5",
+		"vscode": "^1.1.18"
 	},
 	"dependencies": {
 		"antlr4ts": "^0.4.1-alpha.0",
@@ -830,11 +834,11 @@
 		"mongodb": "^2.2.25",
 		"mongodb-extended-json": "^1.10.0",
 		"ms-rest": "^2.2.1",
-		"request-light": "^0.2.0",
+		"request-light": "^0.2.3",
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "~0.13.0",
+		"vscode-azureextensionui": "~0.15.0",
 		"vscode-extension-telemetry": "^0.0.15",
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.0.0",

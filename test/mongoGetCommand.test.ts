@@ -8,7 +8,7 @@ import * as assert from 'assert';
 import { Position } from 'vscode';
 import { getCommandFromText } from '../src/mongo/MongoScrapbook';
 
-function testParse(text: string, expected: { collection: string, name: string, args: object[] }, errors?: { firstErrorText?: string }) {
+function testParse(text: string, expected: { collection: string, name: string, args: any[] }, errors?: { firstErrorText?: string }) {
     function testCore(text) {
         let command = getCommandFromText(text, new Position(0, 0));
 
@@ -209,6 +209,52 @@ suite("scrapbook parsing Tests", () => {
                     }
                 ]
             });
+    });
+    test("expect error: missing function name", () => {
+        // From https://github.com/Microsoft/vscode-cosmosdb/issues/659
+        testParse(
+            `db.c1.`,
+            {
+                collection: "c1",
+                name: "",
+                args: []
+            },
+            {
+                // There should be errors, but that's covered by https://github.com/Microsoft/vscode-cosmosdb/issues/653
+            }
+        );
+
+        testParse(
+            `db.c1.;`,
+            {
+                collection: "c1",
+                name: "",
+                args: []
+            },
+            {
+                // There should be errors, but that's covered by https://github.com/Microsoft/vscode-cosmosdb/issues/653
+            }
+        );
+
+        testParse(
+            `db.c1.(1, "a");`,
+            {
+                collection: "c1",
+                name: "<missing STRING_LITERAL>",
+                args: [
+                    1,
+                    'a'
+                ]
+            },
+            {
+                firstErrorText: "<missing STRING_LITERAL>"
+            }
+        );
+
+        // Just make sure doesn't throw
+        getCommandFromText(`db..(1, "a");`);
+        getCommandFromText(`..(1, "a");`);
+        getCommandFromText(`..c1(1, "a");`);
     });
 
     // https://github.com/Microsoft/vscode-cosmosdb/issues/466

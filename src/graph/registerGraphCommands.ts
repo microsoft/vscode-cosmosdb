@@ -9,6 +9,7 @@ import { GraphAccountTreeItem } from "./tree/GraphAccountTreeItem";
 import { GraphDatabaseTreeItem } from "./tree/GraphDatabaseTreeItem";
 import { GraphCollectionTreeItem } from "./tree/GraphCollectionTreeItem";
 import { GraphViewsManager } from "./GraphViewsManager";
+import { GraphTreeItem } from "./tree/GraphTreeItem";
 
 export function registerGraphCommands(context: vscode.ExtensionContext, actionHandler: AzureActionHandler, tree: AzureTreeDataProvider): void {
     let graphViewsManager = new GraphViewsManager(context);
@@ -37,9 +38,9 @@ export function registerGraphCommands(context: vscode.ExtensionContext, actionHa
         }
         await node.deleteNode();
     });
-    actionHandler.registerCommand('cosmosDB.openGraphExplorer', async (node: IAzureNode<GraphCollectionTreeItem>) => {
+    actionHandler.registerCommand('cosmosDB.openGraphExplorer', async (node: IAzureNode<GraphTreeItem>) => {
         if (!node) {
-            node = <IAzureNode<GraphCollectionTreeItem>>await tree.showNodePicker(GraphCollectionTreeItem.contextValue);
+            node = <IAzureNode<GraphTreeItem>>await tree.showNodePicker(GraphCollectionTreeItem.contextValue);
         }
         await node.treeItem.showExplorer(graphViewsManager);
     });

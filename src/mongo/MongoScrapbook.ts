@@ -122,13 +122,13 @@ export function getCommandFromTextAtLocation(content: string, position?: vscode.
 export function getAllCommandsFromText(content: string): MongoCommand[] {
 	const lexer = new mongoLexer(new InputStream(content));
 	let lexerListener = new LexerErrorListener();
-	lexer.removeErrorListeners();
+	lexer.removeErrorListeners(); // Default listener outputs to the console
 	lexer.addErrorListener(lexerListener);
 	let tokens: CommonTokenStream = new CommonTokenStream(lexer);
 
 	const parser = new mongoParser.mongoParser(tokens);
 	let parserListener = new ParserErrorListener();
-	parser.removeErrorListeners();
+	parser.removeErrorListeners(); // Default listener outputs to the console
 	parser.addErrorListener(parserListener);
 
 	let commandsContext: mongoParser.MongoCommandsContext = parser.mongoCommands();

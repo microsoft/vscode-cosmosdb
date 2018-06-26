@@ -20,18 +20,17 @@ export class ParserErrorListener implements ANTLRErrorListener<Token> {
     public syntaxError(
         // tslint:disable-next-line:no-any
         _recognizer: Recognizer<Token, any>,
-        offendingSymbol: Token | undefined,
+        _offendingSymbol: Token | undefined,
         line: number,
         charPositionInLine: number,
-        _msg: string,
+        msg: string,
         e: RecognitionException | undefined): void {
 
         const position = new vscode.Position(line - 1, charPositionInLine); // Symbol lines are 1-indexed. Position lines are 0-indexed
-        const text = offendingSymbol.text; // Temporary just use the symbol text for the message, to make changing tests easier as a separate PR
         let range = new vscode.Range(position, position);
 
         let error: errorDescription = {
-            message: text,
+            message: msg,
             range: range,
             exception: e
         };

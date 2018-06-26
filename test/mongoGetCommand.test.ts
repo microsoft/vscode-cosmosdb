@@ -397,6 +397,12 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(command.argumentObjects, [{ name: { First: {} } }]);
     });
 
+    test("test incomplete function call - replicate user typing - empty array as argument", () => {
+        let text = `db.heroes.aggregate([\n])`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, [[]]);
+    });
+
     test("test quotes inside a string - 1", () => {
         let text = `db.test1.find("That's all")`;
         let command = getCommandFromText(text, new Position(0, 0));

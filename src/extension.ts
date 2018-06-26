@@ -116,7 +116,9 @@ export function activate(context: vscode.ExtensionContext) {
 	actionHandler.registerCommand('cosmosDB.update', (filePath: vscode.Uri) => editorManager.updateMatchingNode(filePath, tree));
 	actionHandler.registerCommand('cosmosDB.loadMore', (node?: IAzureNode) => tree.loadMore(node));
 	actionHandler.registerEvent('cosmosDB.CosmosEditorManager.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument, async function
-		(this: IActionContext, doc: vscode.TextDocument): Promise<void> { await editorManager.onDidSaveTextDocument(this, doc, tree); });
+		(this: IActionContext, doc: vscode.TextDocument): Promise<void> {
+		await editorManager.onDidSaveTextDocument(this, doc, tree);
+	});
 	// tslint:disable-next-line:no-function-expression
 	actionHandler.registerEvent('cosmosDB.onDidChangeConfiguration', vscode.workspace.onDidChangeConfiguration, async function
 		(this: IActionContext, event: vscode.ConfigurationChangeEvent): Promise<void> {

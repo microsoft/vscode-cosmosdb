@@ -191,7 +191,7 @@ suite("scrapbook parsing Tests", () => {
                 args: []
             },
             {
-                // There should be errors, but that's covered by https://github.com/Microsoft/vscode-cosmosdb/issues/653
+            // There should be errors, but that's covered by https://github.com/Microsoft/vscode-cosmosdb/issues/653
             }
         );
 
@@ -203,7 +203,7 @@ suite("scrapbook parsing Tests", () => {
                 args: []
             },
             {
-                // There should be errors, but that's covered by https://github.com/Microsoft/vscode-cosmosdb/issues/653
+            // There should be errors, but that's covered by https://github.com/Microsoft/vscode-cosmosdb/issues/653
             }
         );
 
@@ -383,7 +383,6 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(err.range.start.line, 0);
         assert.deepEqual(err.range.start.character, 26);
     });
-    //This test will fail. See https://github.com/Microsoft/vscode-cosmosdb/issues/689
     test("test incomplete function call - replicate user typing - no function call yet", () => {
         let text = `db.test1.`;
         let command = getCommandFromText(text, new Position(0, 0));

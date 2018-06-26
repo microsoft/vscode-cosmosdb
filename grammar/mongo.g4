@@ -73,7 +73,7 @@ BooleanLiteral: 'true' | 'false';
 NumericLiteral: '-'? DecimalLiteral;
 
 DecimalLiteral:
-	DecimalIntegerLiteral '.' DecimalDigit* ExponentPart?
+	DecimalIntegerLiteral '.' DecimalDigit+ ExponentPart?
 	| '.' DecimalDigit+ ExponentPart?
 	| DecimalIntegerLiteral ExponentPart?;
 
@@ -86,7 +86,7 @@ DB: 'db';
 // Don't declare LR/CRLF tokens - they'll interfere with matching against LineTerminator LF: '\n';
 // CRLF: '\r\n';
 
-STRING_LITERAL: ((~[",\\ \t\n\r:.;(){}\-]) | STRING_ESCAPE)+ {!this.isExternalIdentifierText(this.text)
+STRING_LITERAL: ((~["',\\ \t\n\r:.;(){}\-]) | STRING_ESCAPE)+ {!this.isExternalIdentifierText(this.text)
 		}?;
 DOUBLE_QUOTED_STRING_LITERAL:
 	'"' ((~["\\]) | STRING_ESCAPE)* '"';

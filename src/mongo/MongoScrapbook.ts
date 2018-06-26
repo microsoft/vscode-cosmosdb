@@ -16,8 +16,9 @@ import { IAzureParentNode, AzureTreeDataProvider, IActionContext } from 'vscode-
 import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
 import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 import { MongoCommand } from './MongoCommand';
-import { MongoDatabaseTreeItem } from './tree/MongoDatabaseTreeItem';
+import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
+import { filterType, findType } from '../utils/array';
 
 const output = vscodeUtil.getOutputChannel();
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
@@ -155,7 +156,9 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 		this.commands.push({
 			range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine),
 			text: ctx.text,
-			name: ''
+			name: '',
+			arguments: [],
+			argumentObjects: []
 		});
 		return super.visitCommand(ctx);
 	}
@@ -178,10 +181,9 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			let functionCallContext = argumentsContext.parent;
 			if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
 				const lastCommand = this.commands[this.commands.length - 1];
-				if (!lastCommand.arguments) {
-					lastCommand.arguments = [];
-				}
-				lastCommand.arguments.push(ctx.text);
+				const argAsObject = this.contextToObject(ctx);
+				lastCommand.argumentObjects.push(argAsObject);
+				lastCommand.arguments.push(JSON.stringify(argAsObject));
 			}
 		}
 		return super.visitArgument(ctx);
@@ -204,4 +206,57 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 	protected defaultResult(_node: ParseTree): MongoCommand[] {
 		return this.commands;
 	}
+
+	private contextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
+		let parsedObject: Object = {};
+		if (!ctx || ctx.childCount === 0) { //Base case and malformed statements
+			return parsedObject;
+		}
+		// In a well formed expression, Argument and propertyValue tokens should have exactly one child, from their definitions in mongo.g4
+		// The only difference in types of children between PropertyValue and argument tokens is the functionCallContext that isn't handled at the moment.
+		let child: ParseTree = ctx.children[0];
+		if (child instanceof mongoParser.LiteralContext) {
+			let text = child.text;
+			let tokenType = child.start.type;
+			const nonStringLiterals = [mongoParser.mongoParser.NullLiteral, mongoParser.mongoParser.BooleanLiteral, mongoParser.mongoParser.NumericLiteral];
+			if (tokenType === mongoParser.mongoParser.StringLiteral) {
+				parsedObject = stripQuotes(text);
+			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
+				parsedObject = JSON.parse(text);
+			} else {
+				throw new Error(`Unrecognized token. Token text: ${text}`);
+			}
+		}
+		else if (child instanceof mongoParser.ObjectLiteralContext) {
+			let propertyNameAndValue = findType(child.children, mongoParser.PropertyNameAndValueListContext);
+			if (!propertyNameAndValue) { // Argument is {}
+				return {};
+			}
+			else {
+				//tslint:disable:no-non-null-assertion
+				let propertyAssignments = filterType(propertyNameAndValue.children, mongoParser.PropertyAssignmentContext);
+				for (let propertyAssignment of propertyAssignments) {
+					const propertyName = <mongoParser.PropertyNameContext>propertyAssignment.children[0];
+					const propertyValue = <mongoParser.PropertyValueContext>propertyAssignment.children[2];
+					parsedObject[stripQuotes(propertyName.text)] = this.contextToObject(propertyValue);
+				}
+			}
+		}
+		else if (child instanceof mongoParser.ArrayLiteralContext) {
+			let elementList = findType(child.children, mongoParser.ElementListContext);
+			if (elementList) {
+				let elementItems = filterType(elementList.children, mongoParser.PropertyValueContext);
+				parsedObject = elementItems.map(this.contextToObject.bind(this));
+			} else {
+				parsedObject = [];
+			}
+		} else if (child instanceof mongoParser.FunctionCallContext) {
+			return {};
+		} else {
+			console.assert(false, "Unrecognized child type in parse tree.");
+		}
+
+		return parsedObject;
+	}
+
 }

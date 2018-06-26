@@ -397,6 +397,30 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(command.argumentObjects, [{ name: { First: {} } }]);
     });
 
+    test("test quotes inside a string - 1", () => {
+        let text = `db.test1.find("That's all")`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, ["That's all"]);
+    });
+
+    test("test quotes inside a string - 2", () => {
+        let text = `db.test1.find('That"s all')`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, ["That\"s all"]);
+    });
+
+    test("test quotes inside a string - 3", () => {
+        let text = `db.test1.find("Hello \\"there\\"")`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, ['Hello \\"there\\"']);
+    });
+
+    test("test quotes inside a string - 4", () => {
+        let text = `db.test1.find('Hello \\'there\\'')`;
+        let command = getCommandFromText(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, ["Hello \\'there\\'"]);
+    });
+
     //This test will fail. See https://github.com/Microsoft/vscode-cosmosdb/issues/689
     // test("test incomplete function call - replicate user typing - no function call yet", () => {
     //     let text = `db.test1.`;

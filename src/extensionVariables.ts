@@ -13,6 +13,7 @@ export namespace ext {
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';
+        export const documentLabelFields = 'cosmosDB.documentLabelFields';
 
         export namespace vsCode {
             export const proxyStrictSSL = "http.proxyStrictSSL";

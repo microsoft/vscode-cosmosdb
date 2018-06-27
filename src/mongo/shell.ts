@@ -5,7 +5,7 @@
 import * as cp from 'child_process';
 import * as os from 'os';
 import { IDisposable, toDisposable } from '../utils/vscodeUtils';
-import { EventEmitter, window } from 'vscode';
+import { EventEmitter } from 'vscode';
 import { ext } from '../extensionVariables';
 
 type CommandResult = {

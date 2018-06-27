@@ -287,7 +287,7 @@ suite("scrapbook parsing Tests", () => {
             `db.c1.(1, "a");`,
             {
                 collection: "c1",
-                name: "<missing STRING_LITERAL>",
+                name: "<missing IDENTIFIER>",
                 args: [
                     1,
                     'a'
@@ -302,7 +302,7 @@ suite("scrapbook parsing Tests", () => {
                 collection: undefined,
                 name: undefined,
                 args: undefined,
-                firstErrorText: "mismatched input '.' expecting <EOF>"
+                firstErrorText: "<missing IDENTIFIER>"
             }
         );
 

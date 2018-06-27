@@ -51,7 +51,7 @@ export class mongoParser extends Parser {
 	public static readonly SEMICOLON = 17;
 	public static readonly DOT = 18;
 	public static readonly DB = 19;
-	public static readonly STRING_LITERAL = 20;
+	public static readonly IDENTIFIER = 20;
 	public static readonly DOUBLE_QUOTED_STRING_LITERAL = 21;
 	public static readonly SINGLE_QUOTED_STRING_LITERAL = 22;
 	public static readonly WHITESPACE = 23;
@@ -88,7 +88,7 @@ export class mongoParser extends Parser {
 		undefined, undefined, undefined, undefined, undefined, undefined, undefined,
 		undefined, undefined, "SingleLineComment", "MultiLineComment", "StringLiteral",
 		"NullLiteral", "BooleanLiteral", "NumericLiteral", "DecimalLiteral", "LineTerminator",
-		"SEMICOLON", "DOT", "DB", "STRING_LITERAL", "DOUBLE_QUOTED_STRING_LITERAL",
+		"SEMICOLON", "DOT", "DB", "IDENTIFIER", "DOUBLE_QUOTED_STRING_LITERAL",
 		"SINGLE_QUOTED_STRING_LITERAL", "WHITESPACE"
 	];
 	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoParser._LITERAL_NAMES, mongoParser._SYMBOLIC_NAMES, []);
@@ -290,8 +290,8 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-				this.state = 59;
-				this.match(mongoParser.STRING_LITERAL);
+				this.state = 58;
+				this.match(mongoParser.IDENTIFIER);
 			}
 		}
 		catch (re) {
@@ -315,8 +315,8 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-				this.state = 61;
-				_localctx._FUNCTION_NAME = this.match(mongoParser.STRING_LITERAL);
+				this.state = 60;
+				_localctx._FUNCTION_NAME = this.match(mongoParser.IDENTIFIER);
 				this.state = 62;
 				this.arguments();
 			}
@@ -500,7 +500,7 @@ export class mongoParser extends Parser {
 				this.state = 93;
 				this._errHandler.sync(this);
 				_la = this._input.LA(1);
-				if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__3) | (1 << mongoParser.T__5) | (1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.NumericLiteral) | (1 << mongoParser.STRING_LITERAL))) !== 0)) {
+				if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__3) | (1 << mongoParser.T__5) | (1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.NumericLiteral) | (1 << mongoParser.IDENTIFIER))) !== 0)) {
 					{
 						this.state = 92;
 						this.elementList();
@@ -672,7 +672,7 @@ export class mongoParser extends Parser {
 						this.arrayLiteral();
 					}
 					break;
-				case mongoParser.STRING_LITERAL:
+				case mongoParser.IDENTIFIER:
 					this.enterOuterAlt(_localctx, 4);
 					{
 						this.state = 120;
@@ -1017,7 +1017,7 @@ export class EmptyCommandContext extends ParserRuleContext {
 
 
 export class CollectionContext extends ParserRuleContext {
-	public STRING_LITERAL(): TerminalNode { return this.getToken(mongoParser.STRING_LITERAL, 0); }
+	public IDENTIFIER(): TerminalNode { return this.getToken(mongoParser.IDENTIFIER, 0); }
 	constructor(parent: ParserRuleContext, invokingState: number);
 	constructor(parent: ParserRuleContext, invokingState: number) {
 		super(parent, invokingState);
@@ -1045,7 +1045,7 @@ export class FunctionCallContext extends ParserRuleContext {
 	public arguments(): ArgumentsContext {
 		return this.getRuleContext(0, ArgumentsContext);
 	}
-	public STRING_LITERAL(): TerminalNode { return this.getToken(mongoParser.STRING_LITERAL, 0); }
+	public IDENTIFIER(): TerminalNode { return this.getToken(mongoParser.IDENTIFIER, 0); }
 	constructor(parent: ParserRuleContext, invokingState: number);
 	constructor(parent: ParserRuleContext, invokingState: number) {
 		super(parent, invokingState);

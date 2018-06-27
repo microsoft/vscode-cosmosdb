@@ -69,7 +69,7 @@ export class Shell {
 				buffers = [];
 				this.fireOnResult({ stringResult: result });
 			} else {
-				buffers.push(data); // asdf was buffer
+				buffers.push(data);
 			}
 		});
 

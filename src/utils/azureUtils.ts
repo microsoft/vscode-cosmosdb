@@ -7,7 +7,7 @@ export namespace azureUtils {
     export function getResourceGroupFromId(id: string): string {
         const matches: RegExpMatchArray | null = id.match(/\/subscriptions\/(.*)\/resourceGroups\/(.*)\/providers\/(.*)\/(.*)/);
 
-        if (matches === null || matches.length < 3) {
+        if (!matches || matches.length < 3) {
             throw new Error('Invalid Azure Resource Id');
         }
 
@@ -16,7 +16,7 @@ export namespace azureUtils {
     export function getAccountNameFromId(id: string): string {
         const matches: RegExpMatchArray | null = id.match(/\/subscriptions\/(.*)\/resourceGroups\/(.*)\/providers\/(.*)\/databaseAccounts\/(.*)/);
 
-        if (matches === null || matches.length < 5) {
+        if (!matches || matches.length < 5) {
             throw new Error('Invalid Azure Resource Id');
         }
 

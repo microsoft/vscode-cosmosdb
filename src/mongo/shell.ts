@@ -23,12 +23,12 @@ export class Shell {
 	private onResult: EventEmitter<CommandResult> = new EventEmitter<CommandResult>();
 
 	public static create(execPath: string, connectionString: string): Promise<Shell> {
-		return new Promise((c, e) => {
+		return new Promise((resolve, reject) => {
 			try {
 				const shellProcess = cp.spawn(execPath, ['--quiet', connectionString]);
-				return c(new Shell(execPath, shellProcess));
+				return resolve(new Shell(execPath, shellProcess));
 			} catch (error) {
-				e(`Error while creating mongo shell with path '${execPath}': ${error}`);
+				reject(`Error while creating mongo shell with path '${execPath}': ${error}`);
 			}
 		});
 	}

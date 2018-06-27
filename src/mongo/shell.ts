@@ -94,6 +94,9 @@ export class Shell {
 		try {
 			this.mongoShell.stdin.write(script, 'utf8');
 			this.mongoShell.stdin.write(os.EOL);
+
+			// Write out a unique number into stdin as a sentinel. We will know we've seen the end of the
+			//   result data when we get this number back out at the end of the data.
 			this.mongoShell.stdin.write(executionId, 'utf8');
 			this.mongoShell.stdin.write(os.EOL);
 		} catch (error) {

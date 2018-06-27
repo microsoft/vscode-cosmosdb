@@ -24,9 +24,9 @@ command:
 
 emptyCommand: SEMICOLON;
 
-collection: STRING_LITERAL;
+collection: IDENTIFIER;
 
-functionCall: FUNCTION_NAME = STRING_LITERAL arguments;
+functionCall: FUNCTION_NAME = IDENTIFIER arguments;
 
 arguments:
 	OPEN_PARENTHESIS = '(' (argument ( ',' argument)*)? CLOSED_PARENTHESIS = ')';
@@ -86,7 +86,7 @@ DB: 'db';
 // Don't declare LR/CRLF tokens - they'll interfere with matching against LineTerminator LF: '\n';
 // CRLF: '\r\n';
 
-STRING_LITERAL: ((~["',\\ \t\n\r:.;(){}\-]) | STRING_ESCAPE)+ {!this.isExternalIdentifierText(this.text)
+IDENTIFIER: ((~["',\\ \t\n\r:.;(){}\-]) | STRING_ESCAPE)+ {!this.isExternalIdentifierText(this.text)
 		}?;
 DOUBLE_QUOTED_STRING_LITERAL:
 	'"' ((~["\\]) | STRING_ESCAPE)* '"';

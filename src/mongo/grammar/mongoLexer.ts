@@ -43,7 +43,7 @@ export class mongoLexer extends Lexer {
 	public static readonly SEMICOLON=17;
 	public static readonly DOT=18;
 	public static readonly DB=19;
-	public static readonly STRING_LITERAL=20;
+	public static readonly IDENTIFIER=20;
 	public static readonly DOUBLE_QUOTED_STRING_LITERAL=21;
 	public static readonly SINGLE_QUOTED_STRING_LITERAL=22;
 	public static readonly WHITESPACE=23;
@@ -55,7 +55,7 @@ export class mongoLexer extends Lexer {
 		"T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6", "T__7", "SingleLineComment", 
 		"MultiLineComment", "StringLiteral", "NullLiteral", "BooleanLiteral", 
 		"NumericLiteral", "DecimalLiteral", "LineTerminator", "SEMICOLON", "DOT", 
-		"DB", "STRING_LITERAL", "DOUBLE_QUOTED_STRING_LITERAL", "SINGLE_QUOTED_STRING_LITERAL", 
+		"DB", "IDENTIFIER", "DOUBLE_QUOTED_STRING_LITERAL", "SINGLE_QUOTED_STRING_LITERAL", 
 		"STRING_ESCAPE", "DecimalIntegerLiteral", "ExponentPart", "DecimalDigit", 
 		"WHITESPACE"
 	];
@@ -69,7 +69,7 @@ export class mongoLexer extends Lexer {
 		undefined, undefined, undefined, undefined, undefined, undefined, undefined, 
 		undefined, undefined, "SingleLineComment", "MultiLineComment", "StringLiteral", 
 		"NullLiteral", "BooleanLiteral", "NumericLiteral", "DecimalLiteral", "LineTerminator", 
-		"SEMICOLON", "DOT", "DB", "STRING_LITERAL", "DOUBLE_QUOTED_STRING_LITERAL", 
+		"SEMICOLON", "DOT", "DB", "IDENTIFIER", "DOUBLE_QUOTED_STRING_LITERAL", 
 		"SINGLE_QUOTED_STRING_LITERAL", "WHITESPACE"
 	];
 	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoLexer._LITERAL_NAMES, mongoLexer._SYMBOLIC_NAMES, []);
@@ -107,11 +107,11 @@ export class mongoLexer extends Lexer {
 	public sempred(_localctx: RuleContext, ruleIndex: number, predIndex: number): boolean {
 		switch (ruleIndex) {
 		case 19:
-			return this.STRING_LITERAL_sempred(_localctx, predIndex);
+			return this.IDENTIFIER_sempred(_localctx, predIndex);
 		}
 		return true;
 	}
-	private STRING_LITERAL_sempred(_localctx: RuleContext, predIndex: number): boolean {
+	private IDENTIFIER_sempred(_localctx: RuleContext, predIndex: number): boolean {
 		switch (predIndex) {
 		case 0:
 			return !this.isExternalIdentifierText(this.text)

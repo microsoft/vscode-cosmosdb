@@ -240,14 +240,14 @@ suite("scrapbook parsing Tests", () => {
             `db.c1.(1, "a");`,
             {
                 collection: "c1",
-                name: "<missing STRING_LITERAL>",
+                name: "<missing IDENTIFIER>",
                 args: [
                     1,
                     'a'
                 ]
             },
             {
-                firstErrorText: "<missing STRING_LITERAL>"
+                firstErrorText: "<missing IDENTIFIER>"
             }
         );
 

@@ -53,7 +53,7 @@ propertyValue:
 literal: (NullLiteral | BooleanLiteral | StringLiteral)
 	| NumericLiteral;
 
-propertyName: StringLiteral;
+propertyName: StringLiteral | IDENTIFIER;
 
 comment: SingleLineComment | MultiLineComment;
 

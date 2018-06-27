@@ -33,7 +33,7 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
 
     public async getData(): Promise<IMongoDocument[]> {
         const dbTreeItem: MongoDatabaseTreeItem = this._databaseNode.treeItem;
-        const db = await dbTreeItem.getDb();
+        const db = await dbTreeItem.connectToDb();
         const collection: Collection = db.collection(this._command.collection);
         // NOTE: Intentionally creating a _new_ tree item rather than searching for a cached node in the tree because
         // the executed 'find' command could have a filter or projection that is not handled by a cached tree node

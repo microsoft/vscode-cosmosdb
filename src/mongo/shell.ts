@@ -8,12 +8,19 @@ import { IDisposable, toDisposable } from '../utils/vscodeUtils';
 import { EventEmitter, window } from 'vscode';
 import { ext } from '../extensionVariables';
 
+type CommandResult = {
+	stringResult?: string;
+	exitCode?: number;
+	code?: string;
+	message?: string;
+};
+
 export class Shell {
 
 	private executionId: number = 0;
 	private disposables: IDisposable[] = [];
 
-	private onResult: EventEmitter<{ exitCode, result, stderr, code?: string, message?: string }> = new EventEmitter<{ exitCode, result, stderr, code?: string, message?: string }>();
+	private onResult: EventEmitter<CommandResult> = new EventEmitter<CommandResult>();
 
 	public static create(execPath: string, connectionString: string): Promise<Shell> {
 		return new Promise((c, e) => {
@@ -30,6 +37,10 @@ export class Shell {
 		this.initialize();
 	}
 
+	private fireOnResult(result: CommandResult): void {
+		this.onResult.fire(result);
+	}
+
 	private initialize() {
 		const once = (ee: NodeJS.EventEmitter, name: string, fn: Function) => {
 			ee.once(name, fn);
@@ -41,28 +52,33 @@ export class Shell {
 			this.disposables.push(toDisposable(() => ee.removeListener(name, fn)));
 		};
 
-		once(this.mongoShell, 'error', result => this.onResult.fire(result));
-		once(this.mongoShell, 'exit', result => this.onResult.fire(result));
+		// tslint:disable-next-line:no-any
+		once(this.mongoShell, 'error', (error: any) => {
+			this.fireOnResult(error);
+		});
+		once(this.mongoShell, 'exit', (exitCode: number) => {
+			this.fireOnResult({ stringResult: "", exitCode });
+		});
 
 		let buffers: string[] = [];
-		on(this.mongoShell.stdout, 'data', b => {
+		on(this.mongoShell.stdout, 'data', (b: Buffer) => {
 			let data: string = b.toString();
-			const delimitter = `${this.executionId}${os.EOL}`;
-			if (data.endsWith(delimitter)) {
-				const result = buffers.join('') + data.substring(0, data.length - delimitter.length);
+			const delimiter = `${this.executionId}${os.EOL}`;
+			if (data.endsWith(delimiter)) {
+				const result: string = buffers.join('') + data.substring(0, data.length - delimiter.length);
 				buffers = [];
-				this.onResult.fire({
-					exitCode: void 0,
-					result,
-					stderr: void 0
-				});
+				this.fireOnResult({ stringResult: result });
 			} else {
-				buffers.push(b);
+				buffers.push(data); // asdf was buffer
 			}
 		});
 
-		on(this.mongoShell.stderr, 'data', result => this.onResult.fire(result));
-		once(this.mongoShell.stderr, 'close', result => this.onResult.fire(result));
+		on(this.mongoShell.stderr, 'data', (stderrOutput: Buffer) => {
+			this.fireOnResult(new Error(stderrOutput.toString()));
+		});
+		once(this.mongoShell.stderr, 'close', () => {
+			// Do nothing
+		});
 	}
 
 	async useDatabase(database: string): Promise<string> {
@@ -72,6 +88,8 @@ export class Shell {
 	async exec(script: string): Promise<string> {
 		script = this.convertToSingleLine(script);
 		const executionId = this._generateExecutionSequenceId();
+		// tslint:disable-next-line:no-any
+		let writeError: any;
 
 		try {
 			this.mongoShell.stdin.write(script, 'utf8');
@@ -79,36 +97,50 @@ export class Shell {
 			this.mongoShell.stdin.write(executionId, 'utf8');
 			this.mongoShell.stdin.write(os.EOL);
 		} catch (error) {
-			window.showErrorMessage(error.toString());
+			// Generally if writing to the process' stdin fails it has already exited
+			// with an error, and we will get notification via its stdout. So hold on to
+			// this and only return it if we don't see any other notifications after timeout.
+			writeError = error;
 		}
 
-		return await new Promise<string>((c, e) => {
+		return await new Promise<string>((resolve, reject) => {
 			let executed = false;
-			const handler = setTimeout(
+			const timeoutHandler = setTimeout(
 				() => {
 					if (!executed) {
-						e(`Timed out executing MongoDB command "${script}"`);
+						if (writeError) {
+							reject(writeError);
+						} else {
+							reject(`Timed out executing MongoDB command "${script}"`);
+						}
 					}
 				},
 				5000);
-			const disposable = this.onResult.event(result => {
+
+			// Handle results
+			const disposable = this.onResult.event((result: CommandResult) => {
+				// We will only process the first time onResult is fired
 				disposable.dispose();
 
-				if (result && result.code) {
-					if (result.code === 'ENOENT') {
-						result.message = `Could not find Mongo shell. Make sure it is on your path or you have set the '${ext.settingsKeys.mongoShellPath}' VS Code setting to point to the Mongo shell executable file. Attempted command: "${this.execPath}"`;
-					}
-
-					e(result);
-				} else {
-					let lines = (<string>result.result).split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');
+				if (result.stringResult) {
+					let lines = result.stringResult.split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');
 					lines = lines[lines.length - 1] === 'Type "it" for more' ? lines.splice(lines.length - 1, 1) : lines;
 					executed = true;
-					c(lines.join(os.EOL));
+					resolve(lines.join(os.EOL));
+				} else {
+					if (result.code === 'ENOENT') {
+						result.message = `Could not find Mongo shell. Make sure it is on your path or you have set the '${ext.settingsKeys.mongoShellPath}' VS Code setting to point to the Mongo shell executable file. Attempted command: "${this.execPath}"`;
+					} else if (result.exitCode) {
+						result.message = result.message || `Mongo shell exited with code ${result.exitCode}`;
+					}
+
+					result.message = result.message || "An error occurred executing the Mongo shell command";
+
+					reject(result);
 				}
 
-				if (handler) {
-					clearTimeout(handler);
+				if (timeoutHandler) {
+					clearTimeout(timeoutHandler);
 				}
 			});
 		});

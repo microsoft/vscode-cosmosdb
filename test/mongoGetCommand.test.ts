@@ -208,7 +208,7 @@ suite("scrapbook parsing Tests", () => {
                 collection: "heros",
                 name: "find",
                 args: [],
-                firstErrorText: "hello"
+                firstErrorText: "mismatched input 'hello' expecting <EOF>"
             }
         )
     });
@@ -220,14 +220,14 @@ suite("scrapbook parsing Tests", () => {
         )
     });
 
-    test("no command found, errors (will be tacked on to a blank command", () => {
+    test("no command found, errors (will be tacked on to a blank command)", () => {
         testParse(
             "hello there",
             {
                 collection: undefined,
                 name: undefined,
                 args: undefined,
-                firstErrorText: "hello"
+                firstErrorText: "mismatched input 'hello' expecting <EOF>"
             }
         )
     });
@@ -241,7 +241,7 @@ suite("scrapbook parsing Tests", () => {
                         id: 2
                     }
                 ],
-                firstErrorText: "{"
+                firstErrorText: "mismatched input '{' expecting {',', ')'}"
             }
         );
     });
@@ -269,7 +269,7 @@ suite("scrapbook parsing Tests", () => {
                 collection: "c1",
                 name: "",
                 args: [],
-                firstErrorText: "<EOF>"
+                firstErrorText: "mismatched input '<EOF>' expecting STRING_LITERAL"
             }
         );
 
@@ -279,7 +279,7 @@ suite("scrapbook parsing Tests", () => {
                 collection: "c1",
                 name: "",
                 args: [],
-                firstErrorText: ";"
+                firstErrorText: "mismatched input ';' expecting STRING_LITERAL"
             }
         );
 
@@ -292,7 +292,7 @@ suite("scrapbook parsing Tests", () => {
                     1,
                     'a'
                 ],
-                firstErrorText: "("
+                firstErrorText: "missing STRING_LITERAL at '('"
             }
         );
 
@@ -302,7 +302,7 @@ suite("scrapbook parsing Tests", () => {
                 collection: undefined,
                 name: undefined,
                 args: undefined,
-                firstErrorText: "."
+                firstErrorText: "mismatched input '.' expecting <EOF>"
             }
         );
 
@@ -418,7 +418,7 @@ suite("scrapbook parsing Tests", () => {
         let text = `db.test1.insertMany(${arg0}   ${arg1})`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         const err = command.errors[0];
-        assert.deepEqual(err.message, "{");
+        assert.deepEqual(err.message, "mismatched input '{' expecting {',', ')'}");
         assert.deepEqual(err.range.start.line, 0);
         assert.deepEqual(err.range.start.character, 61);
     });
@@ -428,7 +428,7 @@ suite("scrapbook parsing Tests", () => {
         let text = `db.test1.insertMany(${arg0} \n  ${arg1})`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         const err = command.errors[0];
-        assert.deepEqual(err.message, "{");
+        assert.deepEqual(err.message, "mismatched input '{' expecting {',', ')'}");
         assert.deepEqual(err.range.start.line, 1);
         assert.deepEqual(err.range.start.character, 2);
     });
@@ -444,7 +444,7 @@ suite("scrapbook parsing Tests", () => {
         let text = `db.test1.insertMany("name": {"First" : "a", "Last":"b"} })`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         const err = command.errors[0];
-        assert.deepEqual(err.message, ":");
+        assert.deepEqual(err.message, "mismatched input ':' expecting {',', ')'}");
         assert.deepEqual(err.range.start.line, 0);
         assert.deepEqual(err.range.start.character, 26);
     });
@@ -454,7 +454,7 @@ suite("scrapbook parsing Tests", () => {
             collection: "timesheets",
             name: "find",
             args: [],
-            firstErrorText: "."
+            firstErrorText: "mismatched input '.' expecting <EOF>"
         });
     });
 

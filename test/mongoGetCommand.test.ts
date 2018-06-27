@@ -382,9 +382,9 @@ suite("scrapbook parsing Tests", () => {
         let text = `db.test1.insertMany({name": {"First" : "a", "Last":"b"} })`;
         let command = getCommandFromText(text, new Position(0, 0));
         const err = command.errors[0];
-        assert.deepEqual(err.message, "name");
+        assert.deepEqual(err.message, "<missing \':\'>");
         assert.deepEqual(err.range.start.line, 0);
-        assert.deepEqual(err.range.start.character, 21);
+        assert.deepEqual(err.range.start.character, 25);
     });
     test("test function call with erroneous syntax: missing opening brace", () => {
         let text = `db.test1.insertMany("name": {"First" : "a", "Last":"b"} })`;

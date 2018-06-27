@@ -72,7 +72,7 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 	}
 
 	protected aggregateResult(aggregate: T, nextResult: T): T {
-		return nextResult === null ? aggregate : nextResult;
+		return !nextResult ? aggregate : nextResult;
 	}
 
 	shouldVisitNextChild(_node, _currentResult: T): boolean {

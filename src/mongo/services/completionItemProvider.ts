@@ -385,7 +385,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 		if (parserRuleContext instanceof ParserRuleContext) {
 			let startToken = parserRuleContext.start;
 			let stopToken = parserRuleContext.stop;
-			if (stopToken === null || startToken.type === mongoParser.mongoParser.EOF) {
+			if (!stopToken || startToken.type === mongoParser.mongoParser.EOF) {
 				stopToken = startToken;
 			}
 
@@ -403,7 +403,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 	private createRangeAfter(parserRuleContext: ParseTree): Range {
 		if (parserRuleContext instanceof ParserRuleContext) {
 			let stopToken = parserRuleContext.stop;
-			if (stopToken === null) {
+			if (!stopToken) {
 				stopToken = parserRuleContext.start;
 			}
 

@@ -17,8 +17,8 @@ import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
 import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 import { MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
-import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { filterType, findType } from '../utils/array';
+import { LexerErrorListener, ParserErrorListener } from './errorListeners';
 
 const output = vscodeUtil.getOutputChannel();
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
@@ -52,7 +52,7 @@ export async function executeCommandFromActiveEditor(database: IAzureParentNode<
 
 export async function executeCommandFromText(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext, commandText: string): Promise<void> {
 	const activeEditor = vscode.window.activeTextEditor;
-	const command = getCommandFromText(commandText, new vscode.Position(0, 0));
+	const command = getCommandFromTextAtLocation(commandText, new vscode.Position(0, 0));
 	return await executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
 }
 
@@ -68,7 +68,7 @@ function getAllCommandsFromActiveEditor(): MongoCommand[] {
 }
 
 export function getAllCommandsFromTextDocument(document: vscode.TextDocument): MongoCommand[] {
-	return getAllCommands(document.getText());
+	return getAllCommandsFromText(document.getText());
 }
 
 async function executeCommands(activeEditor: vscode.TextEditor, database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext, commands: MongoCommand[]): Promise<void> {
@@ -114,18 +114,45 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: IAzureP
 	}
 }
 
-export function getCommandFromText(content: string, position?: vscode.Position): MongoCommand {
-	let commands = getAllCommands(content);
+export function getCommandFromTextAtLocation(content: string, position?: vscode.Position): MongoCommand {
+	let commands = getAllCommandsFromText(content);
 	return findCommandAtPosition(commands, position);
 }
 
-function getAllCommands(content: string): MongoCommand[] {
+export function getAllCommandsFromText(content: string): MongoCommand[] {
 	const lexer = new mongoLexer(new InputStream(content));
+	let lexerListener = new LexerErrorListener();
 	lexer.removeErrorListeners();
-	const parser = new mongoParser.mongoParser(new CommonTokenStream(lexer));
-	parser.removeErrorListeners();
+	lexer.addErrorListener(lexerListener);
+	let tokens: CommonTokenStream = new CommonTokenStream(lexer);
 
-	const commands = new MongoScriptDocumentVisitor().visit(parser.commands());
+	const parser = new mongoParser.mongoParser(tokens);
+	let parserListener = new ParserErrorListener();
+	parser.removeErrorListeners();
+	parser.addErrorListener(parserListener);
+
+	let commandsContext: mongoParser.MongoCommandsContext = parser.mongoCommands();
+	const commands = new FindMongoCommandsVisitor().visit(commandsContext);
+
+	// Match errors with commands based on location
+	for (let err of lexerListener.errors.concat(parserListener.errors)) {
+		let associatedCommand = findCommandAtPosition(commands, err.range.start);
+		if (associatedCommand) {
+			associatedCommand.errors = associatedCommand.errors || [];
+			associatedCommand.errors.push(err);
+		} else {
+			// Create a new command to hook this up to
+			let emptyCommand: MongoCommand = {
+				collection: undefined,
+				name: undefined,
+				range: err.range,
+				text: ""
+			};
+			emptyCommand.errors = [err];
+			commands.push(emptyCommand);
+		}
+	}
+
 	return commands;
 }
 
@@ -148,8 +175,7 @@ function findCommandAtPosition(commands: MongoCommand[], position?: vscode.Posit
 	return lastCommandOnSameLine || lastCommandBeforePosition || commands[commands.length - 1];
 }
 
-class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
-
+class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 	private commands: MongoCommand[] = [];
 
 	visitCommand(ctx: mongoParser.CommandContext): MongoCommand[] {
@@ -187,20 +213,6 @@ class MongoScriptDocumentVisitor extends MongoVisitor<MongoCommand[]> {
 			}
 		}
 		return super.visitArgument(ctx);
-	}
-
-	visitErrorNode(node: ErrorNode): MongoCommand[] {
-		const position = new vscode.Position(node._symbol.line - 1, node._symbol.charPositionInLine); // Symbol lines are 1 indexed. Position lines are 0 indexed
-		const text = node.text;
-		const badCommand = this.commands.find((command) => command.range && command.range.contains(position));
-		if (badCommand) {
-			// Need a place to hang errors that occur when no command is actually recognized
-			badCommand.errors = badCommand.errors || [];
-			let message: string = text;
-			let range = new vscode.Range(position, position);
-			badCommand.errors.push({ range, message });
-		}
-		return this.defaultResult(node);
 	}
 
 	protected defaultResult(_node: ParseTree): MongoCommand[] {

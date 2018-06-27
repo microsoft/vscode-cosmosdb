@@ -17,7 +17,7 @@ grammar mongo;
 
 mongoCommands: commands EOF;
 
-commands: ( command | emptyCommand | comment)+;
+commands: ( command | emptyCommand | comment)*;
 
 command:
 	DB DOT (functionCall | (collection DOT functionCall)) SEMICOLON?;

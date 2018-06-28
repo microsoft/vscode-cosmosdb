@@ -477,6 +477,30 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(command.collection, "test1.beep");
     });
 
+    test("test aggregate query", () => {
+        for (let i in [0, 1, 2]) {
+            let text = `db.orders.aggregate([
+                { ${wrapInQuotes("$match", +i)}: { ${wrapInQuotes("status", +i)} : "A" } },
+                { ${wrapInQuotes("$group", +i)}: { ${wrapInQuotes("_id", +i)}: "$cust_id", ${wrapInQuotes("total", +i)}: { ${wrapInQuotes("$sum", +i)}: "$amount" } } },
+                { ${wrapInQuotes("$sort", +i)}: { ${wrapInQuotes("total", +i)}: -1 } }
+                ],
+                {
+                    ${wrapInQuotes("cursor", +i)}: { ${wrapInQuotes("batchSize", +i)}: 0 }
+                })`;
+            let command = getCommandFromText(text, new Position(0, 0));
+            assert.deepEqual(command.collection, "orders");
+            assert.deepEqual(command.argumentObjects, [[
+                { "$match": { "status": "A" } },
+                { "$group": { "_id": "$cust_id", "total": { "$sum": "$amount" } } },
+                { "$sort": { "total": -1 } }
+            ],
+            {
+                "cursor": { "batchSize": 0 }
+            }]);
+        }
+    });
+
+
     test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/688", () => {
         for (let i in [0, 1, 2]) {
             let text = `db.hdr.aggregate([

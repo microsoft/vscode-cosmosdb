@@ -17,7 +17,7 @@ type CommandResult = {
 
 export class Shell {
 
-	private executionId: number = 0;
+	private executionId: number = 1234;
 	private disposables: IDisposable[] = [];
 
 	private onResult: EventEmitter<CommandResult> = new EventEmitter<CommandResult>();
@@ -57,27 +57,30 @@ export class Shell {
 			this.fireOnResult(error);
 		});
 		once(this.mongoShell, 'exit', (exitCode: number) => {
-			this.fireOnResult({ stringResult: "", exitCode });
+			console.error("outputdata:" + outputData);
+			console.error("stderr:" + stderrData);
+			this.fireOnResult({ stringResult: undefined, exitCode });
 		});
 
-		let buffers: string[] = [];
-		on(this.mongoShell.stdout, 'data', (b: Buffer) => {
-			let data: string = b.toString();
+		let outputData: string = "";
+		let stderrData: string = "";
+		on(this.mongoShell.stdout, 'data', (buffer: Buffer) => {
+			let data: string = buffer.toString();
 			const delimiter = `${this.executionId}${os.EOL}`;
 			if (data.endsWith(delimiter)) {
-				const result: string = buffers.join('') + data.substring(0, data.length - delimiter.length);
-				buffers = [];
+				const result: string = outputData + data.substring(0, data.length - delimiter.length);
+				outputData = "";
 				this.fireOnResult({ stringResult: result });
 			} else {
-				buffers.push(data);
+				outputData += data;
 			}
 		});
 
-		on(this.mongoShell.stderr, 'data', (stderrOutput: Buffer) => {
-			this.fireOnResult(new Error(stderrOutput.toString()));
+		on(this.mongoShell.stderr, 'data', (buffer: Buffer) => {
+			stderrData += buffer.toString();
 		});
-		once(this.mongoShell.stderr, 'close', () => {
-			// Do nothing
+		once(this.mongoShell.stderr, 'end', () => {
+			this.fireOnResult(new Error(stderrData));
 		});
 	}
 
@@ -129,7 +132,8 @@ export class Shell {
 					let lines = result.stringResult.split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');
 					lines = lines[lines.length - 1] === 'Type "it" for more' ? lines.splice(lines.length - 1, 1) : lines;
 					executed = true;
-					resolve(lines.join(os.EOL));
+					let text = lines.join(os.EOL);
+					resolve(text);
 				} else {
 					if (result.code === 'ENOENT') {
 						result.message = `Could not find Mongo shell. Make sure it is on your path or you have set the '${ext.settingsKeys.mongoShellPath}' VS Code setting to point to the Mongo shell executable file. Attempted command: "${this.execPath}"`;
@@ -138,6 +142,7 @@ export class Shell {
 					}
 
 					result.message = result.message || "An error occurred executing the Mongo shell command";
+					result.message = result.message.trim();
 
 					reject(result);
 				}

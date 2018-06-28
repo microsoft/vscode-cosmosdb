@@ -135,7 +135,13 @@ export function getAllCommandsFromText(content: string): MongoCommand[] {
 	const commands = new FindMongoCommandsVisitor().visit(commandsContext);
 
 	// Match errors with commands based on location
-	for (let err of lexerListener.errors.concat(parserListener.errors)) {
+	let errors = lexerListener.errors.concat(parserListener.errors);
+	errors.sort((a, b) => {
+		let linediff = a.range.start.line - b.range.start.line;
+		let chardiff = a.range.start.character - b.range.start.character;
+		return linediff || chardiff;
+	});
+	for (let err of errors) {
 		let associatedCommand = findCommandAtPosition(commands, err.range.start);
 		if (associatedCommand) {
 			associatedCommand.errors = associatedCommand.errors || [];

@@ -276,7 +276,7 @@ suite("scrapbook parsing Tests", () => {
                 collection: "c1",
                 name: "",
                 args: [],
-                firstErrorText: "mismatched input '<EOF>' expecting STRING_LITERAL"
+                firstErrorText: "mismatched input '<EOF>' expecting IDENTIFIER"
             }
         );
 
@@ -286,7 +286,7 @@ suite("scrapbook parsing Tests", () => {
                 collection: "c1",
                 name: "",
                 args: [],
-                firstErrorText: "mismatched input ';' expecting STRING_LITERAL"
+                firstErrorText: "mismatched input ';' expecting IDENTIFIER"
             }
         );
 
@@ -299,7 +299,7 @@ suite("scrapbook parsing Tests", () => {
                     1,
                     'a'
                 ],
-                firstErrorText: "missing STRING_LITERAL at '('"
+                firstErrorText: "missing IDENTIFIER at '('"
             }
         );
 
@@ -309,7 +309,7 @@ suite("scrapbook parsing Tests", () => {
                 collection: undefined,
                 name: undefined,
                 args: undefined,
-                firstErrorText: "<missing IDENTIFIER>"
+                firstErrorText: "mismatched input '.' expecting <EOF>"
             }
         );
 
@@ -426,7 +426,7 @@ suite("scrapbook parsing Tests", () => {
         let text = `db.test1.insertMany({name": {"First" : "a", "Last":"b"} })`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         const err = command.errors[0];
-        assert.deepEqual(err.message, "<missing \':\'>");
+        assert.deepEqual(err.message, "missing \':\' at '\": {\"'");
         assert.deepEqual(err.range.start.line, 0);
         assert.deepEqual(err.range.start.character, 25);
     });
@@ -610,7 +610,7 @@ suite("scrapbook parsing Tests", () => {
                 {
                     ${wrapInQuotes("cursor", +i)}: { ${wrapInQuotes("batchSize", +i)}: 0 }
                 })`;
-            let command = getCommandFromText(text, new Position(0, 0));
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
             assert.deepEqual(command.collection, "orders");
             assert.deepEqual(command.argumentObjects, [[
                 { "$match": { "status": "A" } },

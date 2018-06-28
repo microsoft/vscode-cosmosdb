@@ -251,6 +251,17 @@ suite("scrapbook parsing Tests", () => {
                 firstErrorText: "mismatched input '{' expecting {',', ')'}"
             }
         );
+
+        testParse(
+            `db.c.find({"a":[1,2,3]"b":1});`,
+            {
+                collection: 'c',
+                name: 'find',
+                args: [{ "a": [1, 2, 3] }],
+                firstErrorText: "mismatched input '\"b\"' expecting {',', '}'}"
+            }
+        );
+
     });
 
     //https://github.com/Microsoft/vscode-cosmosdb/issues/467

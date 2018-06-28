@@ -163,7 +163,8 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
             }
             if (port) {
                 if (defaultExperience.api === API.MongoDB) {
-                    connectionString = `mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@localhost:${port}?ssl=true`;
+                    // Mongo shell doesn't parse passwords with slashes, so we need to URI encode it
+                    connectionString = `mongodb://localhost:${encodeURIComponent('C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==')}@localhost:${port}/?ssl=true`;
                 }
                 else {
                     connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;`;

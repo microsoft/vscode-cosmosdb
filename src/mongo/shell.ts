@@ -15,10 +15,16 @@ export class Shell {
 
 	private onResult: EventEmitter<{ exitCode, result, stderr, code?: string, message?: string }> = new EventEmitter<{ exitCode, result, stderr, code?: string, message?: string }>();
 
-	public static create(execPath: string, connectionString: string): Promise<Shell> {
+	public static create(execPath: string, connectionString: string, isEmulator: boolean): Promise<Shell> {
 		return new Promise((c, e) => {
 			try {
-				const shellProcess = cp.spawn(execPath, ['--quiet', connectionString]);
+				let args = ['--quiet', connectionString];
+				if (isEmulator) {
+					// Without this the connection will fail due to the self-signed DocDB certificate
+					args.push("--ssl");
+					args.push("--sslAllowInvalidCertificates");
+				}
+				const shellProcess = cp.spawn(execPath, args);
 				return c(new Shell(execPath, shellProcess));
 			} catch (error) {
 				e(`Error while creating mongo shell with path '${execPath}': ${error}`);

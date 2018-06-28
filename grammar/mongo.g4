@@ -24,7 +24,7 @@ command:
 
 emptyCommand: SEMICOLON;
 
-collection: IDENTIFIER;
+collection: IDENTIFIER (DOT IDENTIFIER)*;
 
 functionCall: FUNCTION_NAME = IDENTIFIER arguments;
 
@@ -86,7 +86,7 @@ DB: 'db';
 // Don't declare LR/CRLF tokens - they'll interfere with matching against LineTerminator LF: '\n';
 // CRLF: '\r\n';
 
-IDENTIFIER: ((~["',\\ \t\n\r:.;(){}\-]) | STRING_ESCAPE)+ {!this.isExternalIdentifierText(this.text)
+IDENTIFIER: ((~[[\]"',\\ \t\n\r:.;(){}\-]) | STRING_ESCAPE)+ {!this.isExternalIdentifierText(this.text)
 		}?;
 DOUBLE_QUOTED_STRING_LITERAL:
 	'"' ((~["\\]) | STRING_ESCAPE)* '"';

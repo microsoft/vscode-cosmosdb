@@ -106,8 +106,8 @@ suite("scrapbook parsing Tests", () => {
 
     test("second of two commands, Mac/Linux", () => {
         let line1 = "db.find()";
-        for (let i in [0, 1, 2]) {
-            let line2 = `db.insertOne({${wrapInQuotes("a", +i)}:'b'})`;
+        for (let q = 0; q <= 2; q++) {
+            let line2 = `db.insertOne({${wrapInQuotes("a", q)}:'b'})`;
             let text = `${line1}\n${line2}`;
             let command = getCommandFromTextAtLocation(text, new Position(2, 0));
             assert.equal(command.text, line2);
@@ -116,8 +116,8 @@ suite("scrapbook parsing Tests", () => {
 
     test("second of two commands, Mac/Linux, semicolon", () => {
         let line1 = "db.find();";
-        for (let i in [0, 1, 2]) {
-            let line2 = `db.insertOne({${wrapInQuotes("a", +i)}:'b'})`;
+        for (let q = 0; q <= 2; q++) {
+            let line2 = `db.insertOne({${wrapInQuotes("a", q)}:'b'})`;
             let text = `${line1}\n${line2}`;
             let command = getCommandFromTextAtLocation(text, new Position(2, 0));
             assert.equal(command.text, line2);
@@ -150,8 +150,8 @@ suite("scrapbook parsing Tests", () => {
 
     test("first of two commands, Windows, on blank line before second command", () => {
         let line1 = "db.find()";
-        for (let i in [0, 1, 2]) {
-            let line2 = `db.insertOne({${wrapInQuotes("a", +i)}:1})`;
+        for (let q = 0; q <= 2; q++) {
+            let line2 = `db.insertOne({${wrapInQuotes("a", q)}:1})`;
             let text = `${line1}\r\n\r\n\r\n${line2}`;
             let command = getCommandFromTextAtLocation(text, new Position(2, 0));
             assert.equal(command.text, line1);
@@ -177,9 +177,9 @@ suite("scrapbook parsing Tests", () => {
     });
 
     test("multi-line insert from #214", () => {
-        for (let i in [0, 1, 2]) {
+        for (let q = 0; q <= 2; q++) {
             testParse(
-                `db.heroes.insert({\n${wrapInQuotes("id", +i)}: 2,\r\n${wrapInQuotes("name", +i)}: "Batman",\r\n\r\n${wrapInQuotes("saying", +i)}: "I'm Batman"\r})`,
+                `db.heroes.insert({\n${wrapInQuotes("id", q)}: 2,\r\n${wrapInQuotes("name", q)}: "Batman",\r\n\r\n${wrapInQuotes("saying", q)}: "I'm Batman"\r})`,
                 {
                     collection: "heroes", name: "insert", args: [
                         {
@@ -519,8 +519,8 @@ suite("scrapbook parsing Tests", () => {
             });
     });
     test("test function call with and without quotes", () => {
-        for (let i in [0, 1, 2]) {
-            let text = `db.test1.insertMany({${wrapInQuotes("name", +i)}: 'First' })`;
+        for (let q = 0; q <= 2; q++) {
+            let text = `db.test1.insertMany({${wrapInQuotes("name", q)}: 'First' })`;
             let command = getCommandFromTextAtLocation(text, new Position(0, 0));
             assert.deepEqual(command.argumentObjects, [{ name: "First" }]);
         }
@@ -612,14 +612,14 @@ suite("scrapbook parsing Tests", () => {
     });
 
     test("test aggregate query", () => {
-        for (let i in [0, 1, 2]) {
+        for (let q = 0; q <= 2; q++) {
             let text = `db.orders.aggregate([
-                { ${wrapInQuotes("$match", +i)}: { ${wrapInQuotes("status", +i)} : "A" } },
-                { ${wrapInQuotes("$group", +i)}: { ${wrapInQuotes("_id", +i)}: "$cust_id", ${wrapInQuotes("total", +i)}: { ${wrapInQuotes("$sum", +i)}: "$amount" } } },
-                { ${wrapInQuotes("$sort", +i)}: { ${wrapInQuotes("total", +i)}: -1 } }
+                { ${wrapInQuotes("$match", q)}: { ${wrapInQuotes("status", q)} : "A" } },
+                { ${wrapInQuotes("$group", q)}: { ${wrapInQuotes("_id", q)}: "$cust_id", ${wrapInQuotes("total", q)}: { ${wrapInQuotes("$sum", q)}: "$amount" } } },
+                { ${wrapInQuotes("$sort", q)}: { ${wrapInQuotes("total", q)}: -1 } }
                 ],
                 {
-                    ${wrapInQuotes("cursor", +i)}: { ${wrapInQuotes("batchSize", +i)}: 0 }
+                    ${wrapInQuotes("cursor", q)}: { ${wrapInQuotes("batchSize", q)}: 0 }
                 })`;
             let command = getCommandFromTextAtLocation(text, new Position(0, 0));
             assert.deepEqual(command.collection, "orders");
@@ -636,9 +636,9 @@ suite("scrapbook parsing Tests", () => {
 
 
     test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/688", () => {
-        for (let i in [0, 1, 2]) {
+        for (let q = 0; q <= 2; q++) {
             let text = `db.hdr.aggregate([
-                { ${wrapInQuotes("$match", +i)}: { "CURRENCY_ID": "USD" } },
+                { ${wrapInQuotes("$match", q)}: { "CURRENCY_ID": "USD" } },
               ])`; //Note the trailing comma. There should be 1 argument object returned, an array, that has 2 elements
             //one expected, and another empty object.
             let command = getCommandFromTextAtLocation(text, new Position(0, 0));
@@ -648,8 +648,8 @@ suite("scrapbook parsing Tests", () => {
     });
 
     test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/703", () => {
-        for (let i in [0, 1, 2]) {
-            let text = `db.Users.find({ ${wrapInQuotes("user", +i)}: { ${wrapInQuotes("$in", +i)}: [ "A80", "HPA" ] } },{ ${wrapInQuotes("_id", +i)}: false });`;
+        for (let q = 0; q <= 2; q++) {
+            let text = `db.Users.find({ ${wrapInQuotes("user", q)}: { ${wrapInQuotes("$in", q)}: [ "A80", "HPA" ] } },{ ${wrapInQuotes("_id", q)}: false });`;
             let command = getCommandFromTextAtLocation(text, new Position(0, 0));
             assert.deepEqual(command.collection, "Users");
             assert.deepEqual(command.argumentObjects, [{ user: { "$in": ["A80", "HPA"] } }, { _id: false }]);
@@ -657,14 +657,14 @@ suite("scrapbook parsing Tests", () => {
     });
 
     test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/691", () => {
-        for (let i in [0, 1, 2]) {
+        for (let q = 0; q <= 2; q++) {
             let text = `db.users.aggregate([
-                { ${wrapInQuotes("$match", +i)}: {${wrapInQuotes("_id", +i)}: {"$oid" :"5b23d2ba92b52cf794bdeb9c")}}},
-                { ${wrapInQuotes("$project", +i)}: {
-                    ${wrapInQuotes("scores", +i)}: {${wrapInQuotes("$filter", +i)}: {
-                        ${wrapInQuotes("input", +i)}: '$scores',
-                        ${wrapInQuotes("as", +i)}: 'score',
-                        ${wrapInQuotes("cond", +i)}: {${wrapInQuotes("$gt", +i)}: ['$$score', 3]}
+                { ${wrapInQuotes("$match", q)}: {${wrapInQuotes("_id", q)}: {"$oid" :"5b23d2ba92b52cf794bdeb9c")}}},
+                { ${wrapInQuotes("$project", q)}: {
+                    ${wrapInQuotes("scores", q)}: {${wrapInQuotes("$filter", q)}: {
+                        ${wrapInQuotes("input", q)}: '$scores',
+                        ${wrapInQuotes("as", q)}: 'score',
+                        ${wrapInQuotes("cond", q)}: {${wrapInQuotes("$gt", q)}: ['$$score', 3]}
                     }}
                 }}
             ])`;

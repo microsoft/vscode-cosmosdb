@@ -3,6 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+//let matches = connectionString.match(/[a-zA-Z]+:\/\/(?:[^:]+:[^@]+@)?[^/]+(\/([^/?]+))/);
+let connectionStringRegex = new RegExp(
+    // mongodb{,-svr}://
+    '^[a-zA-Z+]+:\/\/' +
+    // optional username/password
+    '([^:]+:[^@]+@)?' +
+    // hosts
+    '[^/]+' +
+    // optional database name
+    '(?:\/([^/?]+))?'
+);
+
 export function getDatabaseNameFromConnectionString(connectionString: string): string | undefined {
     //  Connection strings follow the following format (https://docs.mongodb.com/manual/reference/connection-string/):
     // mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
@@ -12,7 +24,7 @@ export function getDatabaseNameFromConnectionString(connectionString: string): s
     //   mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/
 
     try {
-        let matches = connectionString.match(/[a-zA-Z]+:\/\/[^/]+(\/([^/?]+))/);
+        let matches = connectionString.match(connectionStringRegex);
         if (matches) {
             let [, , database] = matches;
             return database;

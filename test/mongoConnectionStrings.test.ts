@@ -21,6 +21,12 @@ suite(`mongoCollectionStrings`, () => {
         testDatabaseFromConnectionString(`mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/our-mongo?ssl=true&replicaSet=globaldb`, "our-mongo");
         testDatabaseFromConnectionString(`mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`, undefined);
 
+        // The emulator password has slashes in it, which can cause parsing issues
+        testDatabaseFromConnectionString(`mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@localhost:10255?ssl=true`, undefined);
+        testDatabaseFromConnectionString(`mongodb://my-mongo:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`, undefined);
+        testDatabaseFromConnectionString(`mongodb://my-mongo:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@your-mongo.documents.azure.com:10255/our-mongo?ssl=true&replicaSet=globaldb`, "our-mongo");
+        testDatabaseFromConnectionString(`mongodb://my-mongo:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`, undefined);
+
         testDatabaseFromConnectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118`, undefined);
         testDatabaseFromConnectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118/`, undefined);
         testDatabaseFromConnectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118/dbname`, `dbname`);
@@ -47,6 +53,7 @@ suite(`mongoCollectionStrings`, () => {
         testDatabaseFromConnectionString(`mongodb://sysop:moon@localhost/records`, "records");
         testDatabaseFromConnectionString(`mongodb://%2Ftmp%2Fmongodb-27017.sock/db`, "db");
         testDatabaseFromConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc`, "abc");
+        testDatabaseFromConnectionString(`mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc`, "abc");
 
         // special characters
         testDatabaseFromConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc.def`, "abc.def");

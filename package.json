@@ -725,6 +725,11 @@
 					"default": 8081,
 					"description": "Port to use when connecting to a CosmosDB Emulator instance"
 				},
+				"cosmosDB.emulator.IP": {
+					"type": "string",
+					"default": "localhost",
+					"description": "IP address where emulator is running, typically localhost unless running in a Docker container"
+				},
 				"cosmosDB.graph.maxVertices": {
 					"type": "integer",
 					"default": 300,

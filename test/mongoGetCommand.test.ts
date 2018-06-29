@@ -686,6 +686,15 @@ suite("scrapbook parsing Tests", () => {
         }
     });
 
+    test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/717", () => {
+        for (let q = 0; q <= 2; q++) {
+            let text = `db.Users.find({${wrapInQuotes("age", q)} : { ${wrapInQuotes("$in", q)} : [19, 20, 22, 25]}});`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            assert.deepEqual(command.collection, "Users");
+            assert.deepEqual(command.argumentObjects, [{ "age": { "$in": [19, 20, 22, 25] } }]);
+        }
+    });
+
 
     //This test will fail. See https://github.com/Microsoft/vscode-cosmosdb/issues/689
     // test("test incomplete function call - replicate user typing - no function call yet", () => {

@@ -696,13 +696,12 @@ suite("scrapbook parsing Tests", () => {
     });
 
 
-    //This test will fail. See https://github.com/Microsoft/vscode-cosmosdb/issues/689
-    // test("test incomplete function call - replicate user typing - no function call yet", () => {
-    //     let text = `db.test1.`;
-    //     let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-    //     assert.deepEqual(command.argumentObjects, undefined);
-    //     assert.deepEqual(command.collection, "test1");
-    // });
+    test("test incomplete function call - replicate user typing - no function call yet", () => {
+        let text = `db.test1.`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, []);
+        assert.deepEqual(command.collection, "test1");
+    });
 
 
 });

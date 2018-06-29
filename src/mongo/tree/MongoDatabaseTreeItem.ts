@@ -52,7 +52,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	}
 
 	public async loadMoreChildren(_node: IAzureNode, _clearCache: boolean): Promise<IAzureTreeItem[]> {
-		const db: Db = await this.getDb();
+		const db: Db = await this.connectToDb();
 		const collections: Collection[] = await db.collections();
 		return collections.map(collection => new MongoCollectionTreeItem(collection));
 	}
@@ -77,42 +77,44 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		const message: string = `Are you sure you want to delete database '${this.label}'?`;
 		const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
 		if (result === DialogResponses.deleteResponse) {
-			const db = await this.getDb();
+			const db = await this.connectToDb();
 			await db.dropDatabase();
 		} else {
 			throw new UserCancelledError();
 		}
 	}
 
-	public async getDb(): Promise<Db> {
+	public async connectToDb(): Promise<Db> {
 		const accountConnection = await MongoClient.connect(this.connectionString);
 		return accountConnection.db(this.databaseName);
 	}
 
-	executeCommand(command: MongoCommand, context: IActionContext): Thenable<string> {
+	public executeCommand(command: MongoCommand, context: IActionContext): Thenable<string> {
 		if (command.collection) {
-			return this.getDb()
+			return this.connectToDb()
 				.then(db => {
 					const collection = db.collection(command.collection);
 					if (collection) {
-						const result = new MongoCollectionTreeItem(collection, command.arguments).executeCommand(command.name, command.arguments);
-						if (result) {
-							return result;
+						const resultPromise = new MongoCollectionTreeItem(collection, command.arguments).tryExecuteCommandDirectly(command.name, command.arguments);
+						if (resultPromise) {
+							return resultPromise;
 						}
 					}
-					return reportProgress(this.executeCommandInShell(command, context), 'Executing command');
+
+					// We'll need to run it in the shell instead
+					return reportProgress(this.executeCommandInShell(command, context), 'Executing command in Mongo shell');
 				});
 		}
 
 		if (command.name === 'createCollection') {
 			return reportProgress(this.createCollection(stripQuotes(command.arguments.join(','))).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
 		} else {
-			return reportProgress(this.executeCommandInShell(command, context), 'Executing command');
+			return reportProgress(this.executeCommandInShell(command, context), 'Executing command in Mongo shell');
 		}
 	}
 
-	async createCollection(collectionName: string): Promise<MongoCollectionTreeItem> {
-		const db: Db = await this.getDb();
+	public async createCollection(collectionName: string): Promise<MongoCollectionTreeItem> {
+		const db: Db = await this.connectToDb();
 		const newCollection: Collection = db.collection(collectionName);
 		// db.createCollection() doesn't create empty collections for some reason
 		// However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
@@ -121,7 +123,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		return new MongoCollectionTreeItem(newCollection);
 	}
 
-	executeCommandInShell(command: MongoCommand, context: IActionContext): Thenable<string> {
+	private executeCommandInShell(command: MongoCommand, context: IActionContext): Thenable<string> {
 		context.properties["executeInShell"] = "true";
 		return this.getShell().then(shell => shell.exec(command.text));
 	}

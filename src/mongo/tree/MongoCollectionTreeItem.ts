@@ -102,8 +102,11 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		return new MongoDocumentTreeItem(newDocument, this.collection);
 	}
 
+	/**
+	 * Tries to execute the command directly via an SDK call if possible, otherwise returns undefined instead of a Promise
+	 */
 	//tslint:disable:cyclomatic-complexity
-	executeCommand(name: string, args?: string[]): Thenable<string> {
+	public tryExecuteCommandDirectly(name: string, args?: string[]): Thenable<string> | undefined {
 		try {
 			if (name === 'findOne') {
 				return reportProgress(this.findOne(args ? args.map(parseJSContent) : undefined), 'Finding');
@@ -140,7 +143,8 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 				if (name === 'count') {
 					return reportProgress(this.count(argument ? parseJSContent(argument) : undefined), 'Counting');
 				}
-				return null;
+
+				return undefined;
 			}
 		} catch (error) {
 			return Promise.resolve(error);

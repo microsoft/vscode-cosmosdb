@@ -5,29 +5,40 @@
 import * as cp from 'child_process';
 import * as os from 'os';
 import { IDisposable, toDisposable } from '../utils/vscodeUtils';
-import { EventEmitter, window } from 'vscode';
+import { EventEmitter } from 'vscode';
 import { ext } from '../extensionVariables';
+
+type CommandResult = {
+	stringResult?: string;
+	exitCode?: number;
+	code?: string;
+	message?: string;
+};
 
 export class Shell {
 
-	private executionId: number = 0;
+	private executionId: number = 1234;
 	private disposables: IDisposable[] = [];
 
-	private onResult: EventEmitter<{ exitCode, result, stderr, code?: string, message?: string }> = new EventEmitter<{ exitCode, result, stderr, code?: string, message?: string }>();
+	private onResult: EventEmitter<CommandResult> = new EventEmitter<CommandResult>();
 
 	public static create(execPath: string, connectionString: string): Promise<Shell> {
-		return new Promise((c, e) => {
+		return new Promise((resolve, reject) => {
 			try {
 				const shellProcess = cp.spawn(execPath, ['--quiet', connectionString]);
-				return c(new Shell(execPath, shellProcess));
+				return resolve(new Shell(execPath, shellProcess));
 			} catch (error) {
-				e(`Error while creating mongo shell with path '${execPath}': ${error}`);
+				reject(`Error while creating mongo shell with path '${execPath}': ${error}`);
 			}
 		});
 	}
 
 	constructor(private execPath: string, private mongoShell: cp.ChildProcess) {
 		this.initialize();
+	}
+
+	private fireOnResult(result: CommandResult): void {
+		this.onResult.fire(result);
 	}
 
 	private initialize() {
@@ -41,28 +52,36 @@ export class Shell {
 			this.disposables.push(toDisposable(() => ee.removeListener(name, fn)));
 		};
 
-		once(this.mongoShell, 'error', result => this.onResult.fire(result));
-		once(this.mongoShell, 'exit', result => this.onResult.fire(result));
+		// tslint:disable-next-line:no-any
+		once(this.mongoShell, 'error', (error: any) => {
+			this.fireOnResult(error);
+		});
+		once(this.mongoShell, 'exit', (exitCode: number) => {
+			console.error("outputdata:" + outputData);
+			console.error("stderr:" + stderrData);
+			this.fireOnResult({ stringResult: undefined, exitCode });
+		});
 
-		let buffers: string[] = [];
-		on(this.mongoShell.stdout, 'data', b => {
-			let data: string = b.toString();
-			const delimitter = `${this.executionId}${os.EOL}`;
-			if (data.endsWith(delimitter)) {
-				const result = buffers.join('') + data.substring(0, data.length - delimitter.length);
-				buffers = [];
-				this.onResult.fire({
-					exitCode: void 0,
-					result,
-					stderr: void 0
-				});
+		let outputData: string = "";
+		let stderrData: string = "";
+		on(this.mongoShell.stdout, 'data', (buffer: Buffer) => {
+			let data: string = buffer.toString();
+			const delimiter = `${this.executionId}${os.EOL}`;
+			if (data.endsWith(delimiter)) {
+				const result: string = outputData + data.substring(0, data.length - delimiter.length);
+				outputData = "";
+				this.fireOnResult({ stringResult: result });
 			} else {
-				buffers.push(b);
+				outputData += data;
 			}
 		});
 
-		on(this.mongoShell.stderr, 'data', result => this.onResult.fire(result));
-		once(this.mongoShell.stderr, 'close', result => this.onResult.fire(result));
+		on(this.mongoShell.stderr, 'data', (buffer: Buffer) => {
+			stderrData += buffer.toString();
+		});
+		once(this.mongoShell.stderr, 'end', () => {
+			this.fireOnResult(new Error(stderrData));
+		});
 	}
 
 	async useDatabase(database: string): Promise<string> {
@@ -72,43 +91,64 @@ export class Shell {
 	async exec(script: string): Promise<string> {
 		script = this.convertToSingleLine(script);
 		const executionId = this._generateExecutionSequenceId();
+		// tslint:disable-next-line:no-any
+		let writeError: any;
 
 		try {
 			this.mongoShell.stdin.write(script, 'utf8');
 			this.mongoShell.stdin.write(os.EOL);
+
+			// Write out a unique number into stdin as a sentinel. We will know we've seen the end of the
+			//   result data when we get this number back out at the end of the data.
 			this.mongoShell.stdin.write(executionId, 'utf8');
 			this.mongoShell.stdin.write(os.EOL);
 		} catch (error) {
-			window.showErrorMessage(error.toString());
+			// Generally if writing to the process' stdin fails it has already exited
+			// with an error, and we will get notification via its stdout. So hold on to
+			// this and only return it if we don't see any other notifications after timeout.
+			writeError = error;
 		}
 
-		return await new Promise<string>((c, e) => {
+		return await new Promise<string>((resolve, reject) => {
 			let executed = false;
-			const handler = setTimeout(
+			const timeoutHandler = setTimeout(
 				() => {
 					if (!executed) {
-						e(`Timed out executing MongoDB command "${script}"`);
+						if (writeError) {
+							reject(writeError);
+						} else {
+							reject(`Timed out executing MongoDB command "${script}"`);
+						}
 					}
 				},
 				5000);
-			const disposable = this.onResult.event(result => {
+
+			// Handle results
+			const disposable = this.onResult.event((result: CommandResult) => {
+				// We will only process the first time onResult is fired
 				disposable.dispose();
 
-				if (result && result.code) {
-					if (result.code === 'ENOENT') {
-						result.message = `Could not find Mongo shell. Make sure it is on your path or you have set the '${ext.settingsKeys.mongoShellPath}' VS Code setting to point to the Mongo shell executable file. Attempted command: "${this.execPath}"`;
-					}
-
-					e(result);
-				} else {
-					let lines = (<string>result.result).split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');
+				if (result.stringResult) {
+					let lines = result.stringResult.split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');
 					lines = lines[lines.length - 1] === 'Type "it" for more' ? lines.splice(lines.length - 1, 1) : lines;
 					executed = true;
-					c(lines.join(os.EOL));
+					let text = lines.join(os.EOL);
+					resolve(text);
+				} else {
+					if (result.code === 'ENOENT') {
+						result.message = `Could not find Mongo shell. Make sure it is on your path or you have set the '${ext.settingsKeys.mongoShellPath}' VS Code setting to point to the Mongo shell executable file. Attempted command: "${this.execPath}"`;
+					} else if (result.exitCode) {
+						result.message = result.message || `Mongo shell exited with code ${result.exitCode}`;
+					}
+
+					result.message = result.message || "An error occurred executing the Mongo shell command";
+					result.message = result.message.trim();
+
+					reject(result);
 				}
 
-				if (handler) {
-					clearTimeout(handler);
+				if (timeoutHandler) {
+					clearTimeout(timeoutHandler);
 				}
 			});
 		});

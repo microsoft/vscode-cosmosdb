@@ -143,7 +143,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 				return null;
 			}
 		} catch (error) {
-			return Promise.resolve(error);
+			return Promise.reject(error);
 		}
 	}
 

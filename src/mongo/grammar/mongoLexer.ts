@@ -43,7 +43,7 @@ export class mongoLexer extends Lexer {
 	public static readonly SEMICOLON=17;
 	public static readonly DOT=18;
 	public static readonly DB=19;
-	public static readonly STRING_LITERAL=20;
+	public static readonly IDENTIFIER=20;
 	public static readonly DOUBLE_QUOTED_STRING_LITERAL=21;
 	public static readonly SINGLE_QUOTED_STRING_LITERAL=22;
 	public static readonly WHITESPACE=23;
@@ -55,7 +55,7 @@ export class mongoLexer extends Lexer {
 		"T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6", "T__7", "SingleLineComment", 
 		"MultiLineComment", "StringLiteral", "NullLiteral", "BooleanLiteral", 
 		"NumericLiteral", "DecimalLiteral", "LineTerminator", "SEMICOLON", "DOT", 
-		"DB", "STRING_LITERAL", "DOUBLE_QUOTED_STRING_LITERAL", "SINGLE_QUOTED_STRING_LITERAL", 
+		"DB", "IDENTIFIER", "DOUBLE_QUOTED_STRING_LITERAL", "SINGLE_QUOTED_STRING_LITERAL", 
 		"STRING_ESCAPE", "DecimalIntegerLiteral", "ExponentPart", "DecimalDigit", 
 		"WHITESPACE"
 	];
@@ -69,7 +69,7 @@ export class mongoLexer extends Lexer {
 		undefined, undefined, undefined, undefined, undefined, undefined, undefined, 
 		undefined, undefined, "SingleLineComment", "MultiLineComment", "StringLiteral", 
 		"NullLiteral", "BooleanLiteral", "NumericLiteral", "DecimalLiteral", "LineTerminator", 
-		"SEMICOLON", "DOT", "DB", "STRING_LITERAL", "DOUBLE_QUOTED_STRING_LITERAL", 
+		"SEMICOLON", "DOT", "DB", "IDENTIFIER", "DOUBLE_QUOTED_STRING_LITERAL", 
 		"SINGLE_QUOTED_STRING_LITERAL", "WHITESPACE"
 	];
 	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoLexer._LITERAL_NAMES, mongoLexer._SYMBOLIC_NAMES, []);
@@ -107,11 +107,11 @@ export class mongoLexer extends Lexer {
 	public sempred(_localctx: RuleContext, ruleIndex: number, predIndex: number): boolean {
 		switch (ruleIndex) {
 		case 19:
-			return this.STRING_LITERAL_sempred(_localctx, predIndex);
+			return this.IDENTIFIER_sempred(_localctx, predIndex);
 		}
 		return true;
 	}
-	private STRING_LITERAL_sempred(_localctx: RuleContext, predIndex: number): boolean {
+	private IDENTIFIER_sempred(_localctx: RuleContext, predIndex: number): boolean {
 		switch (predIndex) {
 		case 0:
 			return !this.isExternalIdentifierText(this.text)
@@ -149,7 +149,7 @@ export class mongoLexer extends Lexer {
 		"\r\x19\x02\x0E\x1B\x02\x0F\x1D\x02\x10\x1F\x02\x11!\x02\x12#\x02\x13%"+
 		"\x02\x14\'\x02\x15)\x02\x16+\x02\x17-\x02\x18/\x02\x021\x02\x023\x02\x02"+
 		"5\x02\x027\x02\x19\x03\x02\f\x05\x02\f\f\x0F\x0F\u202A\u202B\f\x02\v\f"+
-		"\x0F\x0F\"\"$$)+.0<=^^}}\x7F\x7F\x04\x02$$^^\x04\x02))^^\x05\x02$$))^"+
+		"\x0F\x0F\"\"$$)+.0<=]_}}\x7F\x7F\x04\x02$$^^\x04\x02))^^\x05\x02$$))^"+
 		"^\x03\x023;\x04\x02GGgg\x04\x02--//\x03\x022;\x04\x02\v\v\"\"\xE8\x02"+
 		"\x03\x03\x02\x02\x02\x02\x05\x03\x02\x02\x02\x02\x07\x03\x02\x02\x02\x02"+
 		"\t\x03\x02\x02\x02\x02\v\x03\x02\x02\x02\x02\r\x03\x02\x02\x02\x02\x0F"+

@@ -70,7 +70,7 @@ function testParse(
     testCore(spaceText);
 }
 
-/*
+
 function wrapInQuotes(word: string, numQuotes: number) { //0 to do nothing, 1 for single quotes, 2 for double quotes
     let result: string;
     if (numQuotes === 1) {
@@ -82,7 +82,6 @@ function wrapInQuotes(word: string, numQuotes: number) { //0 to do nothing, 1 fo
     }
     return result;
 }
-*/
 
 suite("scrapbook parsing Tests", () => {
     test("find", () => {
@@ -107,18 +106,22 @@ suite("scrapbook parsing Tests", () => {
 
     test("second of two commands, Mac/Linux", () => {
         let line1 = "db.find()";
-        let line2 = "db.insertOne({'a':'b'})";
-        let text = `${line1}\n${line2}`;
-        let command = getCommandFromTextAtLocation(text, new Position(2, 0));
-        assert.equal(command.text, line2);
+        for (let q = 0; q <= 2; q++) {
+            let line2 = `db.insertOne({${wrapInQuotes("a", q)}:'b'})`;
+            let text = `${line1}\n${line2}`;
+            let command = getCommandFromTextAtLocation(text, new Position(2, 0));
+            assert.equal(command.text, line2);
+        }
     });
 
     test("second of two commands, Mac/Linux, semicolon", () => {
         let line1 = "db.find();";
-        let line2 = "db.insertOne({'a':'b'})";
-        let text = `${line1}\n${line2}`;
-        let command = getCommandFromTextAtLocation(text, new Position(2, 0));
-        assert.equal(command.text, line2);
+        for (let q = 0; q <= 2; q++) {
+            let line2 = `db.insertOne({${wrapInQuotes("a", q)}:'b'})`;
+            let text = `${line1}\n${line2}`;
+            let command = getCommandFromTextAtLocation(text, new Position(2, 0));
+            assert.equal(command.text, line2);
+        }
     });
 
     test("first of two commands, Windows", () => {
@@ -147,10 +150,12 @@ suite("scrapbook parsing Tests", () => {
 
     test("first of two commands, Windows, on blank line before second command", () => {
         let line1 = "db.find()";
-        let line2 = "db.insertOne({'a': 'b'})";
-        let text = `${line1}\r\n\r\n\r\n${line2}`;
-        let command = getCommandFromTextAtLocation(text, new Position(2, 0));
-        assert.equal(command.text, line1);
+        for (let q = 0; q <= 2; q++) {
+            let line2 = `db.insertOne({${wrapInQuotes("a", q)}:1})`;
+            let text = `${line1}\r\n\r\n\r\n${line2}`;
+            let command = getCommandFromTextAtLocation(text, new Position(2, 0));
+            assert.equal(command.text, line1);
+        }
     });
 
     test("drop", () => {
@@ -172,17 +177,19 @@ suite("scrapbook parsing Tests", () => {
     });
 
     test("multi-line insert from #214", () => {
-        testParse(
-            `db.heroes.insert({\n"id": 2,\r\n"name": "Batman",\r\n\r\n"saying": "I'm Batman"\r})`,
-            {
-                collection: "heroes", name: "insert", args: [
-                    {
-                        id: 2,
-                        name: "Batman",
-                        saying: "I'm Batman"
-                    }
-                ]
-            });
+        for (let q = 0; q <= 2; q++) {
+            testParse(
+                `db.heroes.insert({\n${wrapInQuotes("id", q)}: 2,\r\n${wrapInQuotes("name", q)}: "Batman",\r\n\r\n${wrapInQuotes("saying", q)}: "I'm Batman"\r})`,
+                {
+                    collection: "heroes", name: "insert", args: [
+                        {
+                            id: 2,
+                            name: "Batman",
+                            saying: "I'm Batman"
+                        }
+                    ]
+                });
+        }
     });
 
     test("find/project from #214", () => {
@@ -244,6 +251,17 @@ suite("scrapbook parsing Tests", () => {
                 firstErrorText: "mismatched input '{' expecting {',', ')'}"
             }
         );
+
+        testParse(
+            `db.c.find({"a":[1,2,3]"b":1});`,
+            {
+                collection: 'c',
+                name: 'find',
+                args: [{ "a": [1, 2, 3] }],
+                firstErrorText: "mismatched input '\"b\"' expecting {',', '}'}"
+            }
+        );
+
     });
 
     //https://github.com/Microsoft/vscode-cosmosdb/issues/467
@@ -269,7 +287,7 @@ suite("scrapbook parsing Tests", () => {
                 collection: "c1",
                 name: "",
                 args: [],
-                firstErrorText: "mismatched input '<EOF>' expecting STRING_LITERAL"
+                firstErrorText: "mismatched input '<EOF>' expecting IDENTIFIER"
             }
         );
 
@@ -279,7 +297,7 @@ suite("scrapbook parsing Tests", () => {
                 collection: "c1",
                 name: "",
                 args: [],
-                firstErrorText: "mismatched input ';' expecting STRING_LITERAL"
+                firstErrorText: "mismatched input ';' expecting IDENTIFIER"
             }
         );
 
@@ -287,12 +305,12 @@ suite("scrapbook parsing Tests", () => {
             `db.c1.(1, "a");`,
             {
                 collection: "c1",
-                name: "<missing STRING_LITERAL>",
+                name: "<missing IDENTIFIER>",
                 args: [
                     1,
                     'a'
                 ],
-                firstErrorText: "missing STRING_LITERAL at '('"
+                firstErrorText: "missing IDENTIFIER at '('"
             }
         );
 
@@ -310,23 +328,6 @@ suite("scrapbook parsing Tests", () => {
         expectSingleCommand(`db..(1, "a");`);
         expectSingleCommand(`..c1(1, "a");`);
     });
-
-    // https://github.com/Microsoft/vscode-cosmosdb/issues/466
-    // test("Unquoted property names", () => {
-    //     testParse(
-    //         `db.heroes.find({ id: 2 }, { saying: 1 })`,
-    //         {
-    //             collection: "heroes", name: "find", args: [
-    //                 {
-    //                     id: 2
-    //                 },
-    //                 {
-    //                     saying: 1
-    //                 }
-    //             ]
-    //         });
-    // });
-
 
     test("multi-line insert from #214", () => {
         testParse(
@@ -436,9 +437,9 @@ suite("scrapbook parsing Tests", () => {
         let text = `db.test1.insertMany({name": {"First" : "a", "Last":"b"} })`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         const err = command.errors[0];
-        assert.deepEqual(err.message, "token recognition error at: '\"} })'");
+        assert.deepEqual(err.message, "missing \':\' at '\": {\"'");
         assert.deepEqual(err.range.start.line, 0);
-        assert.deepEqual(err.range.start.character, 53);
+        assert.deepEqual(err.range.start.character, 25);
     });
     test("test function call with erroneous syntax: missing opening brace", () => {
         let text = `db.test1.insertMany("name": {"First" : "a", "Last":"b"} })`;
@@ -517,10 +518,12 @@ suite("scrapbook parsing Tests", () => {
                 ]
             });
     });
-    test("test function call with single quotes", () => {
-        let text = `db.test1.insertMany({'name': 'First'})`;
-        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-        assert.deepEqual(command.argumentObjects, [{ name: "First" }]);
+    test("test function call with and without quotes", () => {
+        for (let q = 0; q <= 2; q++) {
+            let text = `db.test1.insertMany({${wrapInQuotes("name", q)}: 'First' })`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            assert.deepEqual(command.argumentObjects, [{ name: "First" }]);
+        }
     });
     test("test function call with numbers", () => {
         let text = `db.test1.insertMany({'name': 1010101})`;
@@ -596,6 +599,103 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(command.argumentObjects, ["Hello \\'there\\'"]);
     });
 
+    test("test nested property names (has dots in the name)", () => {
+        let text = `db.test1.find({"name.FirstName": 1})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.argumentObjects, [{ "name.FirstName": 1 }]);
+    });
+
+    test("test managed namespace collection names (has dots in the name)", () => {
+        let text = `db.test1.beep.find({})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.collection, "test1.beep");
+    });
+
+    test("test aggregate query", () => {
+        for (let q = 0; q <= 2; q++) {
+            let text = `db.orders.aggregate([
+                { ${wrapInQuotes("$match", q)}: { ${wrapInQuotes("status", q)} : "A" } },
+                { ${wrapInQuotes("$group", q)}: { ${wrapInQuotes("_id", q)}: "$cust_id", ${wrapInQuotes("total", q)}: { ${wrapInQuotes("$sum", q)}: "$amount" } } },
+                { ${wrapInQuotes("$sort", q)}: { ${wrapInQuotes("total", q)}: -1 } }
+                ],
+                {
+                    ${wrapInQuotes("cursor", q)}: { ${wrapInQuotes("batchSize", q)}: 0 }
+                })`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            assert.deepEqual(command.collection, "orders");
+            assert.deepEqual(command.argumentObjects, [[
+                { "$match": { "status": "A" } },
+                { "$group": { "_id": "$cust_id", "total": { "$sum": "$amount" } } },
+                { "$sort": { "total": -1 } }
+            ],
+            {
+                "cursor": { "batchSize": 0 }
+            }]);
+        }
+    });
+
+
+    test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/688", () => {
+        for (let q = 0; q <= 2; q++) {
+            let text = `db.hdr.aggregate([
+                { ${wrapInQuotes("$match", q)}: { "CURRENCY_ID": "USD" } },
+              ])`; //Note the trailing comma. There should be 1 argument object returned, an array, that has 2 elements
+            //one expected, and another empty object.
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            assert.deepEqual(command.collection, "hdr");
+            assert.deepEqual(command.argumentObjects, [[{ $match: { "CURRENCY_ID": "USD" } }, {}]]);
+        }
+    });
+
+    test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/703", () => {
+        for (let q = 0; q <= 2; q++) {
+            let text = `db.Users.find({ ${wrapInQuotes("user", q)}: { ${wrapInQuotes("$in", q)}: [ "A80", "HPA" ] } },{ ${wrapInQuotes("_id", q)}: false });`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            assert.deepEqual(command.collection, "Users");
+            assert.deepEqual(command.argumentObjects, [{ user: { "$in": ["A80", "HPA"] } }, { _id: false }]);
+        }
+    });
+
+    test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/691", () => {
+        for (let q = 0; q <= 2; q++) {
+            let text = `db.users.aggregate([
+                { ${wrapInQuotes("$match", q)}: {${wrapInQuotes("_id", q)}: {"$oid" :"5b23d2ba92b52cf794bdeb9c")}}},
+                { ${wrapInQuotes("$project", q)}: {
+                    ${wrapInQuotes("scores", q)}: {${wrapInQuotes("$filter", q)}: {
+                        ${wrapInQuotes("input", q)}: '$scores',
+                        ${wrapInQuotes("as", q)}: 'score',
+                        ${wrapInQuotes("cond", q)}: {${wrapInQuotes("$gt", q)}: ['$$score', 3]}
+                    }}
+                }}
+            ])`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            assert.deepEqual(command.collection, "users");
+            assert.deepEqual(command.argumentObjects[0][0], { $match: { _id: { "$oid": "5b23d2ba92b52cf794bdeb9c" } } });
+            assert.deepEqual(command.argumentObjects[0][1],
+                {
+                    $project: {
+                        scores: {
+                            $filter: {
+                                input: '$scores',
+                                as: 'score',
+                                cond: { $gt: ['$$score', 3] }
+                            }
+                        }
+                    }
+                });
+        }
+    });
+
+    test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/717", () => {
+        for (let q = 0; q <= 2; q++) {
+            let text = `db.Users.find({${wrapInQuotes("age", q)} : { ${wrapInQuotes("$in", q)} : [19, 20, 22, 25]}});`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            assert.deepEqual(command.collection, "Users");
+            assert.deepEqual(command.argumentObjects, [{ "age": { "$in": [19, 20, 22, 25] } }]);
+        }
+    });
+
+
     //This test will fail. See https://github.com/Microsoft/vscode-cosmosdb/issues/689
     // test("test incomplete function call - replicate user typing - no function call yet", () => {
     //     let text = `db.test1.`;
@@ -604,15 +704,6 @@ suite("scrapbook parsing Tests", () => {
     //     assert.deepEqual(command.collection, "test1");
     // });
 
-    /* This test will fail. Unquoted strings need to be fixed.
-    test("test function call with no quotes", () => {
-        let arg0 = `{name: 'First'}`;
-        let text = `db.test1.insertMany(${arg0})`;
-        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-        const argument = command.argumentObjects[0];
-        assert.deepEqual(argument, { name: "First" });
-    });
-    */
 
 });
 

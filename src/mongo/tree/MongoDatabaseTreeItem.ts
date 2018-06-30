@@ -18,13 +18,15 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public readonly contextValue: string = MongoDatabaseTreeItem.contextValue;
 	public readonly childTypeLabel: string = "Collection";
 	public readonly connectionString: string;
+	public readonly isEmulator: boolean;
 	public readonly databaseName: string;
 
 	private _parentId: string;
 
-	constructor(databaseName: string, connectionString: string, parentId: string) {
+	constructor(databaseName: string, connectionString: string, isEmulator: boolean, parentId: string) {
 		this.databaseName = databaseName;
 		this.connectionString = connectionString;
+		this.isEmulator = isEmulator;
 		this._parentId = parentId;
 	}
 
@@ -100,14 +102,14 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 							return result;
 						}
 					}
-					return reportProgress(this.executeCommandInShell(command, context), 'Executing command');
+					return withProgress(this.executeCommandInShell(command, context), 'Executing command');
 				});
 		}
 
 		if (command.name === 'createCollection') {
-			return reportProgress(this.createCollection(stripQuotes(command.arguments.join(','))).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
+			return withProgress(this.createCollection(stripQuotes(command.arguments.join(','))).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
 		} else {
-			return reportProgress(this.executeCommandInShell(command, context), 'Executing command');
+			return withProgress(this.executeCommandInShell(command, context), 'Executing command');
 		}
 	}
 
@@ -152,7 +154,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	}
 
 	private async createShell(shellPath: string): Promise<Shell> {
-		return <Promise<null>>Shell.create(shellPath, this.connectionString)
+		return <Promise<null>>Shell.create(shellPath, this.connectionString, this.isEmulator)
 			.then(
 				shell => {
 					return shell.useDatabase(this.databaseName).then(() => shell);
@@ -176,7 +178,7 @@ export function validateMongoCollectionName(collectionName: string): string | un
 	return undefined;
 }
 
-function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
+function withProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
 	return vscode.window.withProgress<T>(
 		{
 			location: vscode.ProgressLocation.Window,

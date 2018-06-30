@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscodeUtils from "../utils/vscodeUtils";
-import { AzureActionHandler, IAzureParentNode, AzureTreeDataProvider, IAzureNode, IActionContext, callWithTelemetryAndErrorHandling } from "vscode-azureextensionui";
+import { IAzureParentNode, AzureTreeDataProvider, IAzureNode, IActionContext, callWithTelemetryAndErrorHandling, registerCommand, registerEvent } from "vscode-azureextensionui";
 import * as vscode from 'vscode';
 import { MongoCollectionTreeItem } from "./tree/MongoCollectionTreeItem";
 import { MongoDatabaseTreeItem } from "./tree/MongoDatabaseTreeItem";
@@ -14,53 +13,48 @@ import * as vscodeUtil from '../utils/vscodeUtils';
 import { MongoDocumentTreeItem } from "./tree/MongoDocumentTreeItem";
 import { MongoCollectionNodeEditor } from "./editors/MongoCollectionNodeEditor";
 import { CosmosEditorManager } from "../CosmosEditorManager";
-import { reporter } from "../utils/telemetry";
 import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
 import { ext } from "../extensionVariables";
 import { executeCommandFromText, executeCommandFromActiveEditor, executeAllCommandsFromActiveEditor, getAllErrorsFromTextDocument } from "./MongoScrapbook";
-import TelemetryReporter from "vscode-extension-telemetry";
 
 const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 let diagnosticsCollection: vscode.DiagnosticCollection;
 
-export function registerMongoCommands(context: vscode.ExtensionContext, actionHandler: AzureActionHandler, tree: AzureTreeDataProvider, editorManager: CosmosEditorManager): void {
+export function registerMongoCommands(context: vscode.ExtensionContext, tree: AzureTreeDataProvider, editorManager: CosmosEditorManager): void {
     let languageClient: MongoDBLanguageClient = new MongoDBLanguageClient(context);
 
-    const codeLensProvider = new MongoCodeLensProvider(reporter, vscodeUtil.getOutputChannel());
+    const codeLensProvider = new MongoCodeLensProvider();
     context.subscriptions.push(vscode.languages.registerCodeLensProvider('mongo', codeLensProvider));
 
     diagnosticsCollection = vscode.languages.createDiagnosticCollection('cosmosDB.mongo');
     context.subscriptions.push(diagnosticsCollection);
 
-    let output = vscodeUtils.getOutputChannel();
-    let handler = new AzureActionHandler(context, output, reporter);
-
-    setUpErrorReporting(handler, reporter, output);
+    setUpErrorReporting();
 
     const loadPersistedMongoDBTask: Promise<void> = loadPersistedMongoDB(context, tree, languageClient, codeLensProvider);
 
-    actionHandler.registerCommand('cosmosDB.createMongoDatabase', async (node?: IAzureParentNode) => {
+    registerCommand('cosmosDB.createMongoDatabase', async (node?: IAzureParentNode) => {
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(MongoAccountTreeItem.contextValue);
         }
         const childNode = await node.createChild();
         await vscode.commands.executeCommand('cosmosDB.connectMongoDB', childNode);
     });
-    actionHandler.registerCommand('cosmosDB.createMongoCollection', async (node?: IAzureParentNode) => {
+    registerCommand('cosmosDB.createMongoCollection', async (node?: IAzureParentNode) => {
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(MongoDatabaseTreeItem.contextValue);
         }
         const childNode = await node.createChild();
         await vscode.commands.executeCommand('cosmosDB.connectMongoDB', childNode.parent);
     });
-    actionHandler.registerCommand('cosmosDB.createMongoDocument', async (node?: IAzureParentNode) => {
+    registerCommand('cosmosDB.createMongoDocument', async (node?: IAzureParentNode) => {
         if (!node) {
             node = <IAzureParentNode>await tree.showNodePicker(MongoCollectionTreeItem.contextValue);
         }
         let childNode = await node.createChild();
         await vscode.commands.executeCommand("cosmosDB.openDocument", childNode);
     });
-    actionHandler.registerCommand('cosmosDB.connectMongoDB', async (node?: IAzureParentNode<MongoDatabaseTreeItem>) => {
+    registerCommand('cosmosDB.connectMongoDB', async (node?: IAzureParentNode<MongoDatabaseTreeItem>) => {
         if (!node) {
             node = <IAzureParentNode<MongoDatabaseTreeItem>>await tree.showNodePicker(MongoDatabaseTreeItem.contextValue);
         }
@@ -79,7 +73,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
             }
         }
     });
-    actionHandler.registerCommand('cosmosDB.deleteMongoDB', async (node?: IAzureNode<MongoDatabaseTreeItem>) => {
+    registerCommand('cosmosDB.deleteMongoDB', async (node?: IAzureNode<MongoDatabaseTreeItem>) => {
         if (!node) {
             node = <IAzureNode<MongoDatabaseTreeItem>>await tree.showNodePicker(MongoDatabaseTreeItem.contextValue);
         }
@@ -90,27 +84,27 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
             languageClient.disconnect();
         }
     });
-    actionHandler.registerCommand('cosmosDB.deleteMongoCollection', async (node?: IAzureNode) => {
+    registerCommand('cosmosDB.deleteMongoCollection', async (node?: IAzureNode) => {
         if (!node) {
             node = await tree.showNodePicker(MongoCollectionTreeItem.contextValue);
         }
         await node.deleteNode();
     });
-    actionHandler.registerCommand('cosmosDB.deleteMongoDocument', async (node?: IAzureNode) => {
+    registerCommand('cosmosDB.deleteMongoDocument', async (node?: IAzureNode) => {
         if (!node) {
             node = await tree.showNodePicker(MongoDocumentTreeItem.contextValue);
         }
         await node.deleteNode();
     });
-    actionHandler.registerCommand('cosmosDB.openCollection', async (node?: IAzureParentNode<MongoCollectionTreeItem>) => {
+    registerCommand('cosmosDB.openCollection', async (node?: IAzureParentNode<MongoCollectionTreeItem>) => {
         if (!node) {
             node = <IAzureParentNode<MongoCollectionTreeItem>>await tree.showNodePicker(MongoCollectionTreeItem.contextValue);
         }
         await editorManager.showDocument(new MongoCollectionNodeEditor(node), 'cosmos-collection.json');
     });
-    actionHandler.registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
-    actionHandler.registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
-    actionHandler.registerCommand('cosmosDB.executeMongoCommand', async function (this: IActionContext, commandText: object) {
+    registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
+    registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));
+    registerCommand('cosmosDB.executeMongoCommand', async function (this: IActionContext, commandText: object) {
         await loadPersistedMongoDBTask;
         if (typeof commandText === "string") {
             await executeCommandFromText(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this, <string>commandText);
@@ -118,7 +112,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
             await executeCommandFromActiveEditor(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this);
         }
     });
-    actionHandler.registerCommand('cosmosDB.executeAllMongoCommands', async function (this: IActionContext) {
+    registerCommand('cosmosDB.executeAllMongoCommands', async function (this: IActionContext) {
         await loadPersistedMongoDBTask;
         await executeAllCommandsFromActiveEditor(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this);
     });
@@ -126,7 +120,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, actionHa
 
 async function loadPersistedMongoDB(context: vscode.ExtensionContext, tree: AzureTreeDataProvider, languageClient: MongoDBLanguageClient, codeLensProvider: MongoCodeLensProvider): Promise<void> {
     // NOTE: We want to make sure this function never throws or returns a rejected promise because it gets awaited multiple times
-    await callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', reporter, vscodeUtil.getOutputChannel(), async function (this: IActionContext): Promise<void> {
+    await callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', async function (this: IActionContext): Promise<void> {
         this.suppressErrorDisplay = true;
         this.properties.isActivationEvent = 'true';
 
@@ -160,24 +154,22 @@ function setConnectedNode(node: IAzureNode | undefined, codeLensProvider: MongoC
     codeLensProvider.setConnectedDatabase(dbName);
 }
 
-function setUpErrorReporting(handler: AzureActionHandler, telemetryReporter: TelemetryReporter, output: vscode.OutputChannel) {
+function setUpErrorReporting() {
     // Update errors immediately in case a scrapbook is already open
     callWithTelemetryAndErrorHandling(
         "initialUpdateErrorsInActiveDocument",
-        telemetryReporter,
-        output,
         async function (this: IActionContext): Promise<void> {
             updateErrorsInScrapbook(this, vscode.window.activeTextEditor && vscode.window.activeTextEditor.document);
         });
 
     // Update errors when document opened/changed
-    handler.registerEvent(
+    registerEvent(
         'vscode.workspace.onDidOpenTextDocument',
         vscode.workspace.onDidOpenTextDocument,
         async function (this: IActionContext, document: vscode.TextDocument) {
             updateErrorsInScrapbook(this, document);
         });
-    handler.registerEvent(
+    registerEvent(
         'vscode.workspace.onDidChangeTextDocument',
         vscode.workspace.onDidChangeTextDocument,
         async function (this: IActionContext, event: vscode.TextDocumentChangeEvent) {
@@ -186,7 +178,7 @@ function setUpErrorReporting(handler: AzureActionHandler, telemetryReporter: Tel
 
             updateErrorsInScrapbook(this, event.document);
         });
-    handler.registerEvent(
+    registerEvent(
         'vscode.workspace.onDidCloseTextDocument',
         vscode.workspace.onDidCloseTextDocument,
         async function (this: IActionContext, document: vscode.TextDocument) {

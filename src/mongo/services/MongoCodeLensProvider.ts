@@ -6,7 +6,6 @@
 import * as vscode from "vscode";
 import { getAllCommandsFromTextDocument } from "../MongoScrapbook";
 import { callWithTelemetryAndErrorHandling, IActionContext } from "vscode-azureextensionui";
-import TelemetryReporter from "vscode-extension-telemetry";
 
 export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 	private _onDidChangeEmitter = new vscode.EventEmitter<void>();
@@ -14,10 +13,6 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 	private _connectedDatabaseInitialized: boolean;
 
 	public onDidChangeCodeLenses = this._onDidChangeEmitter.event;
-
-	public constructor(private _reporter: TelemetryReporter, private _output: vscode.OutputChannel) {
-		// Empty
-	}
 
 	public setConnectedDatabase(database: string | undefined) {
 		this._connectedDatabase = database;
@@ -29,7 +24,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 		// tslint:disable-next-line:no-var-self
 		const me: MongoCodeLensProvider = this;
 
-		return callWithTelemetryAndErrorHandling("mongo.provideCodeLenses", this._reporter, this._output, function (this: IActionContext) {
+		return callWithTelemetryAndErrorHandling("mongo.provideCodeLenses", function (this: IActionContext) {
 			// Suppress except for errors - this can fire on every keystroke
 			this.suppressTelemetry = true;
 

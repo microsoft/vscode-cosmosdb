@@ -3,17 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from 'vscode';
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { Capability } from 'azure-arm-cosmosdb/lib/models';
 import { AzureWizardExecuteStep } from 'vscode-azureextensionui';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 import { API } from '../../experiences';
+import { ext } from '../../extensionVariables';
 
 export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBWizardContext> {
-    public async execute(wizardContext: ICosmosDBWizardContext, outputChannel: vscode.OutputChannel): Promise<ICosmosDBWizardContext> {
+    public async execute(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {
         const client = new CosmosDBManagementClient(wizardContext.credentials, wizardContext.subscriptionId);
-        outputChannel.appendLine(`Creating Cosmos DB account "${wizardContext.accountName}" with API "${wizardContext.defaultExperience.shortName}"...`);
+        ext.outputChannel.appendLine(`Creating Cosmos DB account "${wizardContext.accountName}" with API "${wizardContext.defaultExperience.shortName}"...`);
         let options = {
             location: wizardContext.location.name,
             locations: [{ locationName: wizardContext.location.name }],
@@ -28,7 +28,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
 
         // createOrUpdate always returns an empty object - so we have to get the DatabaseAccount separately
         wizardContext.databaseAccount = await client.databaseAccounts.get(wizardContext.resourceGroup.name, wizardContext.accountName);
-        outputChannel.appendLine(`Successfully created Cosmos DB account "${wizardContext.accountName}".`);
+        ext.outputChannel.appendLine(`Successfully created Cosmos DB account "${wizardContext.accountName}".`);
 
         return wizardContext;
     }

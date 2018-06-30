@@ -19,8 +19,8 @@ import { MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
 import { filterType, findType } from '../utils/array';
 import { LexerErrorListener, ParserErrorListener } from './errorListeners';
+import { ext } from '../extensionVariables';
 
-const output = vscodeUtil.getOutputChannel();
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
 
 export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vscode.Diagnostic[] {
@@ -37,7 +37,7 @@ export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vsc
 }
 
 export async function executeAllCommandsFromActiveEditor(database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext): Promise<void> {
-	output.appendLine("Running all commands in scrapbook...");
+	ext.outputChannel.appendLine("Running all commands in scrapbook...");
 	let commands = getAllCommandsFromActiveEditor();
 	await executeCommands(vscode.window.activeTextEditor, database, extensionPath, editorManager, tree, context, commands);
 }
@@ -79,7 +79,7 @@ async function executeCommands(activeEditor: vscode.TextEditor, database: IAzure
 
 async function executeCommand(activeEditor: vscode.TextEditor, database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext, command: MongoCommand): Promise<void> {
 	if (command) {
-		output.appendLine(command.text);
+		ext.outputChannel.appendLine(command.text);
 
 		try {
 			context.properties["command"] = command.name;

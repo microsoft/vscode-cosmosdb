@@ -13,12 +13,6 @@ import { IMongoDocument } from '../mongo/tree/MongoDocumentTreeItem';
 import { RetrievedDocument } from 'documentdb';
 import { ext } from '../extensionVariables';
 
-const outputChannel = vscode.window.createOutputChannel("Azure CosmosDB");
-
-export function getOutputChannel(): vscode.OutputChannel {
-    return outputChannel;
-}
-
 export interface IDisposable {
     dispose(): void;
 }

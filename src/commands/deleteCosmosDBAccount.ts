@@ -7,8 +7,8 @@ import * as vscode from 'vscode';
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { IAzureNode, DialogResponses } from 'vscode-azureextensionui';
 import { azureUtils } from '../utils/azureUtils';
-import * as vscodeUtils from '../utils/vscodeUtils';
 import { UserCancelledError } from 'vscode-azureextensionui';
+import { ext } from '../extensionVariables';
 
 export async function deleteCosmosDBAccount(node: IAzureNode): Promise<void> {
     const message: string = `Are you sure you want to delete account '${node.treeItem.label}' and its contents?`;
@@ -17,12 +17,11 @@ export async function deleteCosmosDBAccount(node: IAzureNode): Promise<void> {
         const docDBClient = new CosmosDBManagementClient(node.credentials, node.subscriptionId);
         const resourceGroup: string = azureUtils.getResourceGroupFromId(node.treeItem.id);
         const accountName: string = azureUtils.getAccountNameFromId(node.treeItem.id);
-        const output = vscodeUtils.getOutputChannel();
-        output.appendLine(`Deleting account "${accountName}"...`);
-        output.show();
+        ext.outputChannel.appendLine(`Deleting account "${accountName}"...`);
+        ext.outputChannel.show();
         await docDBClient.databaseAccounts.deleteMethod(resourceGroup, accountName);
-        output.appendLine(`Successfully deleted account "${accountName}"`);
-        output.show();
+        ext.outputChannel.appendLine(`Successfully deleted account "${accountName}"`);
+        ext.outputChannel.show();
     } else {
         throw new UserCancelledError();
     }

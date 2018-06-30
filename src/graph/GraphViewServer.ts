@@ -13,7 +13,6 @@ import { removeDuplicatesById } from "../utils/array";
 import { GraphViewServerSocket } from "./GraphViewServerSocket";
 import { IGremlinEndpoint } from "./gremlinEndpoints";
 import { IActionContext, callWithTelemetryAndErrorHandling } from 'vscode-azureextensionui';
-import { reporter } from '../utils/telemetry';
 
 class GremlinParseError extends Error {
   constructor(err: Error) {
@@ -135,7 +134,7 @@ export class GraphViewServer extends EventEmitter {
     try {
       // tslint:disable-next-line:no-var-self
       const thisServer: GraphViewServer = this;
-      await callWithTelemetryAndErrorHandling("cosmosDB.gremlinQuery", reporter, undefined, async function (this: IActionContext): Promise<void> {
+      await callWithTelemetryAndErrorHandling("cosmosDB.gremlinQuery", async function (this: IActionContext): Promise<void> {
         // tslint:disable-next-line:no-var-self
         const actionContext: IActionContext = this;
         actionContext.rethrowError = true;
@@ -167,7 +166,7 @@ export class GraphViewServer extends EventEmitter {
           countUniqueVertices: countUniqueVertices,
           limitedVertices: limitedVertices,
           countUniqueEdges: 0, // Fill in later
-          limitedEdges: []     // Fill in later
+          limitedEdges: []   // Fill in later
         };
         actionContext.measurements.countUniqueVertices = countUniqueVertices;
         actionContext.measurements.limitedVertices = limitedVertices.length;
@@ -271,7 +270,7 @@ export class GraphViewServer extends EventEmitter {
 
   private removeErrorCallStack(message: string): string {
     // Remove everything after the lines start looking like this:
-    //      at Microsoft.Azure.Graphs.GremlinGroovy.GremlinGroovyTraversalScript.TranslateGroovyToCsharpInner()
+    //    at Microsoft.Azure.Graphs.GremlinGroovy.GremlinGroovyTraversalScript.TranslateGroovyToCsharpInner()
     try {
       let match = message.match(/^\r?\n?\s*at \S+\(\)\s*$/m);
       if (match) {

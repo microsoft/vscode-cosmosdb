@@ -18,6 +18,7 @@ import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoCollectionNodeEditor } from './mongo/editors/MongoCollectionNodeEditor';
 import { DocDBStoredProcedureTreeItem } from './docdb/tree/DocDBStoredProcedureTreeItem';
 import { DocDBStoredProcedureNodeEditor } from './docdb/editors/DocDBStoredProcedureNodeEditor';
+import { ext } from './extensionVariables';
 
 export interface ICosmosEditor<T = {}> {
     label: string;
@@ -91,10 +92,9 @@ export class CosmosEditorManager {
     private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument): Promise<void> {
         const newContent = editor.convertFromString(doc.getText());
         const updatedContent: {} = await editor.update(newContent);
-        const output = vscodeUtils.getOutputChannel();
         const timestamp = (new Date()).toLocaleTimeString();
-        output.appendLine(`${timestamp}: Updated entity "${editor.label}"`);
-        output.show();
+        ext.outputChannel.appendLine(`${timestamp}: Updated entity "${editor.label}"`);
+        ext.outputChannel.show();
         await this.updateEditor(updatedContent, vscode.window.activeTextEditor, editor);
     }
 

@@ -6,11 +6,11 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as _ from 'underscore';
-import * as vscodeUtils from '../../utils/vscodeUtils';
 import { Collection, Cursor, InsertOneWriteOpResult, BulkWriteOpResultObject, CollectionInsertManyOptions } from 'mongodb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
 import { DefaultBatchSize } from '../../constants';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
+import { ext } from '../../extensionVariables';
 // tslint:disable:no-var-requires
 const EJSON = require("mongodb-extended-json");
 
@@ -46,8 +46,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		});
 
 		const result: BulkWriteOpResultObject = await this.collection.bulkWrite(operations);
-		const output = vscodeUtils.getOutputChannel();
-		output.appendLine(`Successfully updated ${result.modifiedCount} document(s), inserted ${result.insertedCount} document(s)`);
+		ext.outputChannel.appendLine(`Successfully updated ${result.modifiedCount} document(s), inserted ${result.insertedCount} document(s)`);
 		return documents;
 	}
 

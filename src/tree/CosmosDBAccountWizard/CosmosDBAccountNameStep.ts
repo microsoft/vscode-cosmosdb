@@ -4,18 +4,19 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
-import { IAzureUserInput, AzureNameStep, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
+import { AzureNameStep, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 import { validOnTimeoutOrException } from "../../utils/inputValidation";
+import { ext } from '../../extensionVariables';
 
 export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContext> {
     protected async isRelatedNameAvailable(wizardContext: ICosmosDBWizardContext, name: string): Promise<boolean> {
         return await ResourceGroupListStep.isNameAvailable(wizardContext, name);
     }
 
-    public async prompt(wizardContext: ICosmosDBWizardContext, ui: IAzureUserInput): Promise<ICosmosDBWizardContext> {
+    public async prompt(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {
         const client = new CosmosDBManagementClient(wizardContext.credentials, wizardContext.subscriptionId);
-        wizardContext.accountName = (await ui.showInputBox({
+        wizardContext.accountName = (await ext.ui.showInputBox({
             placeHolder: "Account name",
             prompt: "Provide a Cosmos DB account name",
             validateInput: (name: string) => validOnTimeoutOrException(() => validateCosmosDBAccountName(name, client))

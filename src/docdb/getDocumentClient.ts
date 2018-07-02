@@ -18,7 +18,7 @@ export function getDocumentClient(documentEndpoint: string, masterKey: string, i
     connectionPolicy.DisableSSLVerification = !strictSSL;
     const client = new DocumentClient(documentEndpoint, { masterKey: masterKey }, connectionPolicy);
 
-    // User agent isn't formally exposed on the client (https://github.com/Azure/azure-documentdb-node/issues/244) but neverless can be accessed via defaultHeaders
+    // User agent isn't formally exposed on the client (https://github.com/Azure/azure-documentdb-node/issues/244) but nevertheless can be accessed via defaultHeaders
     // tslint:disable-next-line:no-any
     let defaultHeaders = (<{ defaultHeaders: { "User-Agent"?: string } }><any>client).defaultHeaders;
     if (defaultHeaders) {

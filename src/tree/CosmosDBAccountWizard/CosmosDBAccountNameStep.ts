@@ -8,6 +8,7 @@ import { AzureNameStep, ResourceGroupListStep, resourceGroupNamingRules } from '
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 import { validOnTimeoutOrException } from "../../utils/inputValidation";
 import { ext } from '../../extensionVariables';
+import { getCosmosDBManagementClient } from '../../docdb/getCosmosDBManagementClient';
 
 export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContext> {
     protected async isRelatedNameAvailable(wizardContext: ICosmosDBWizardContext, name: string): Promise<boolean> {
@@ -15,7 +16,7 @@ export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContex
     }
 
     public async prompt(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {
-        const client = new CosmosDBManagementClient(wizardContext.credentials, wizardContext.subscriptionId);
+        const client = getCosmosDBManagementClient(wizardContext.credentials, wizardContext.subscriptionId);
         wizardContext.accountName = (await ext.ui.showInputBox({
             placeHolder: "Account name",
             prompt: "Provide a Cosmos DB account name",

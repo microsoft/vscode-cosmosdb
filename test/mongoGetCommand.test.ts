@@ -701,5 +701,13 @@ suite("scrapbook parsing Tests", () => {
         }
     });
 
+    test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/737", () => {
+        let text = `db.c1.insert({},f)`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.collection, "c1");
+        assert.deepEqual(command.argumentObjects, [{}, {}]);
+        assert.deepEqual(command.errors[0].message, "mismatched input 'f' expecting {'{', '[', StringLiteral, 'null', BooleanLiteral, NumericLiteral}")
+    });
+
 });
 

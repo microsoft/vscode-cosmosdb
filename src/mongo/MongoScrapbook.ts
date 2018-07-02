@@ -20,6 +20,7 @@ import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem
 import { filterType, findType } from '../utils/array';
 import { LexerErrorListener, ParserErrorListener } from './errorListeners';
 import { ext } from '../extensionVariables';
+import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
 
@@ -268,7 +269,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			} else {
 				parsedObject = [];
 			}
-		} else if (child instanceof mongoParser.FunctionCallContext) {
+		} else if (child instanceof mongoParser.FunctionCallContext || child instanceof ErrorNode) {
 			return {};
 		} else {
 			// tslint:disable-next-line:no-any

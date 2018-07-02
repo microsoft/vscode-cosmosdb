@@ -210,8 +210,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		const docsLink: string = "Please see mongo shell documentation. https://docs.mongodb.com/manual/reference/method/db.collection.insertMany/#db.collection.insertMany.";
 		if (!args || args.length === 0) {
 			return Promise.reject(new Error("Too few arguments passed to insertMany. " + docsLink));
-		}
-		if (args.length > 2) {
+		} else if (args.length > 2) {
 			return Promise.reject(new Error("Too many arguments passed to insertMany. " + docsLink));
 		} else if (args.length === 2) {
 			if (args[1] && args[1].ordered) {

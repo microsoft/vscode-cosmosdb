@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { TextDocumentPositionParams, TextDocuments, IConnection, InitializeParams, InitializeResult, CompletionItem } from 'vscode-languageserver';
-import { MongoClient, Db } from 'mongodb';
+import { Db } from 'mongodb';
 import { MongoScriptDocumentManager } from './mongoScript';
 import SchemaService from './schemaService';
 import { getLanguageService, LanguageService as JsonLanguageService, SchemaConfiguration } from 'vscode-json-languageservice';

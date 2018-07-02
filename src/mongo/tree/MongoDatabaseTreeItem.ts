@@ -6,7 +6,7 @@
 import * as vscode from 'vscode';
 import * as cpUtils from '../../utils/cp';
 import * as path from 'path';
-import { MongoClient, Db, Collection } from 'mongodb';
+import { Db, Collection } from 'mongodb';
 import { Shell } from '../shell';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, IActionContext, DialogResponses } from 'vscode-azureextensionui';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';

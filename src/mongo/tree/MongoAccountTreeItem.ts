@@ -5,14 +5,13 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { MongoClient, Db, MongoClientOptions } from 'mongodb';
+import { Db } from 'mongodb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { MongoDatabaseTreeItem, validateMongoCollectionName } from './MongoDatabaseTreeItem';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
-import { appendExtensionUserAgent } from "vscode-azureextensionui";
 import { connectToMongoClient } from '../connectToMongoClient';
 
 export class MongoAccountTreeItem implements IAzureParentTreeItem {

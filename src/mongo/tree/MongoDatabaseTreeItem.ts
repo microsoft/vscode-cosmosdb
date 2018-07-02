@@ -12,6 +12,7 @@ import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, I
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoCommand } from '../MongoCommand';
 import { ext } from '../../extensionVariables';
+import { connectToMongoClient } from '../connectToMongoClient';
 
 export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public static contextValue: string = "mongoDb";
@@ -87,7 +88,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	}
 
 	public async getDb(): Promise<Db> {
-		const accountConnection = await MongoClient.connect(this.connectionString);
+		const accountConnection = await connectToMongoClient(this.connectionString);
 		return accountConnection.db(this.databaseName);
 	}
 

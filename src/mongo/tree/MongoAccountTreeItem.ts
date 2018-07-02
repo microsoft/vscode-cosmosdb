@@ -5,13 +5,15 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient, Db, MongoClientOptions } from 'mongodb';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
 import { MongoDatabaseTreeItem, validateMongoCollectionName } from './MongoDatabaseTreeItem';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
+import { appendExtensionUserAgent } from "vscode-azureextensionui";
+import { connectToMongoClient } from '../connectToMongoClient';
 
 export class MongoAccountTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = "cosmosDBMongoServer";
@@ -50,7 +52,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
                 throw new Error('Missing connection string');
             }
 
-            db = await MongoClient.connect(this.connectionString);
+            db = await connectToMongoClient(this.connectionString);
             let databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);
             if (databaseInConnectionString && !this.isEmulator) { // emulator violates the connection string format
                 // If the database is in the connection string, that's all we connect to (we might not even have permissions to list databases)

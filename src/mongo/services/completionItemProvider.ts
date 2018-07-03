@@ -320,7 +320,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 			this.createFunctionCompletion('bulkWrite', range),
 			this.createFunctionCompletion('count', range),
 			this.createFunctionCompletion('copyTo', range),
-			this.createFunctionCompletion('converToCapped', range),
+			this.createFunctionCompletion('convertToCapped', range),
 			this.createFunctionCompletion('createIndex', range),
 			this.createFunctionCompletion('createIndexes', range),
 			this.createFunctionCompletion('dataSize', range),

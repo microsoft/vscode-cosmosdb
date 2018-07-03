@@ -6,13 +6,12 @@
 import * as vscode from 'vscode';
 import * as cpUtils from '../../utils/cp';
 import * as path from 'path';
-import { Db, Collection } from 'mongodb';
+import { MongoClient, Db, Collection } from 'mongodb';
 import { Shell } from '../shell';
 import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, IActionContext, DialogResponses } from 'vscode-azureextensionui';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoCommand } from '../MongoCommand';
 import { ext } from '../../extensionVariables';
-import { connectToMongoClient } from '../connectToMongoClient';
 
 export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public static contextValue: string = "mongoDb";
@@ -88,7 +87,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	}
 
 	public async getDb(): Promise<Db> {
-		const accountConnection = await connectToMongoClient(this.connectionString);
+		const accountConnection = await MongoClient.connect(this.connectionString);
 		return accountConnection.db(this.databaseName);
 	}
 

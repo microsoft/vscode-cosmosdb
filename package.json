@@ -853,7 +853,7 @@
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "~0.16.1",
+		"vscode-azureextensionui": "~0.16.0",
 		"vscode-extension-telemetry": "^0.0.15",
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.0.0",

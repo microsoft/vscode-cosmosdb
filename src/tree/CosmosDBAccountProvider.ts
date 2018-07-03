@@ -18,7 +18,6 @@ import * as vscode from 'vscode';
 import { CosmosDBAccountApiStep } from './CosmosDBAccountWizard/CosmosDBAccountApiStep';
 import { API, getExperience } from '../experiences';
 import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccountCreateStep';
-import { getCosmosDBManagementClient } from '../docdb/getCosmosDBManagementClient';
 
 export class CosmosDBAccountProvider implements IChildProvider {
     public childTypeLabel: string = 'Account';
@@ -28,7 +27,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
     }
 
     public async loadMoreChildren(node: IAzureNode): Promise<IAzureTreeItem[]> {
-        const client = getCosmosDBManagementClient(node.credentials, node.subscriptionId);
+        const client = new CosmosDBManagementClient(node.credentials, node.subscriptionId);
         const accounts: DatabaseAccountsListResult = await client.databaseAccounts.list();
         let accountTreeItems = [];
         await Promise.all(
@@ -48,7 +47,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
     }
 
     public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void, actionContext?: IActionContext): Promise<IAzureTreeItem> {
-        const client = getCosmosDBManagementClient(node.credentials, node.subscriptionId);
+        const client = new CosmosDBManagementClient(node.credentials, node.subscriptionId);
         const wizardContext: ICosmosDBWizardContext = {
             credentials: node.credentials,
             subscriptionId: node.subscriptionId,

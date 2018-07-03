@@ -2,13 +2,11 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-
 import { TextDocumentPositionParams, TextDocuments, IConnection, InitializeParams, InitializeResult, CompletionItem } from 'vscode-languageserver';
-import { Db } from 'mongodb';
+import { MongoClient, Db } from 'mongodb';
 import { MongoScriptDocumentManager } from './mongoScript';
 import SchemaService from './schemaService';
 import { getLanguageService, LanguageService as JsonLanguageService, SchemaConfiguration } from 'vscode-json-languageservice';
-import { connectToMongoClient } from '../connectToMongoClient';
 
 export class LanguageService {
 
@@ -41,7 +39,7 @@ export class LanguageService {
 		});
 
 		connection.onRequest('connect', (connectionParams) => {
-			connectToMongoClient(connectionParams.connectionString)
+			MongoClient.connect(connectionParams.connectionString)
 				.then(account => {
 					this.db = account.db(connectionParams.databaseName);
 					this.schemaService.registerSchemas(this.db)

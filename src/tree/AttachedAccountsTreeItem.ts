@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as keytarType from 'keytar';
 import { ReplSet } from "mongodb";
-import { IAzureTreeItem, IAzureNode, IAzureParentTreeItem, UserCancelledError, AzureTreeDataProvider } from 'vscode-azureextensionui';
+import { IAzureTreeItem, IAzureNode, IAzureParentTreeItem, UserCancelledError, AzureTreeDataProvider, appendExtensionUserAgent } from 'vscode-azureextensionui';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
@@ -99,7 +99,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
 
     private async canConnectToLocalMongoDB(): Promise<boolean> {
         try {
-            let db = await connectToMongoClient(localMongoConnectionString);
+            let db = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent());
             db.close();
             return true;
         } catch (error) {
@@ -211,7 +211,7 @@ export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
         let host: string;
         let port: string;
 
-        const db = await connectToMongoClient(connectionString);
+        const db = await connectToMongoClient(connectionString, appendExtensionUserAgent());
         const serverConfig = db.serverConfig;
         // Azure CosmosDB comes back as a ReplSet
         if (serverConfig instanceof ReplSet) {

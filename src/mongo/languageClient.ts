@@ -6,6 +6,7 @@ import * as path from 'path';
 import * as nls from 'vscode-nls';
 import { ExtensionContext } from 'vscode';
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
+import { appendExtensionUserAgent } from 'vscode-azureextensionui';
 
 const localize = nls.loadMessageBundle();
 
@@ -33,7 +34,7 @@ export default class MongoDBLanguageClient {
 			documentSelector: [
 				{ language: 'mongo', scheme: 'file' },
 				{ language: 'mongo', scheme: 'untitled' }
-			],
+			]
 		};
 
 		// Create the language client and start the client.
@@ -46,7 +47,7 @@ export default class MongoDBLanguageClient {
 	}
 
 	async connect(connectionString: string, databaseName: string) {
-		await this.client.sendRequest('connect', { connectionString: connectionString, databaseName: databaseName });
+		await this.client.sendRequest('connect', <IConnectionParams>{ connectionString: connectionString, databaseName: databaseName, extensionUserAgent: appendExtensionUserAgent() });
 	}
 
 	disconnect(): void {

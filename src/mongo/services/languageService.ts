@@ -3,6 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+// NOTE: This file may not take a dependencey on vscode or anything that takes a dependency on it (such as vscode-azureextensionui)
+
+import * as assert from "assert";
 import { TextDocumentPositionParams, TextDocuments, IConnection, InitializeParams, InitializeResult, CompletionItem } from 'vscode-languageserver';
 import { Db } from 'mongodb';
 import { MongoScriptDocumentManager } from './mongoScript';
@@ -40,8 +43,8 @@ export class LanguageService {
 			return this.provideCompletionItems(textDocumentPosition);
 		});
 
-		connection.onRequest('connect', (connectionParams) => {
-			connectToMongoClient(connectionParams.connectionString)
+		connection.onRequest('connect', (connectionParams: IConnectionParams) => {
+			connectToMongoClient(connectionParams.connectionString, connectionParams.extensionUserAgent)
 				.then(account => {
 					this.db = account.db(connectionParams.databaseName);
 					this.schemaService.registerSchemas(this.db)

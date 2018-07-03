@@ -2,6 +2,23 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.8.0 - 2018-07-05
+
+### Added
+
+### Fixed
+
+
+## 0.7.2 - 2018-06-08
+
+### Added
+- [Support DNS Seedlist Connection Format](https://github.com/Microsoft/vscode-cosmosdb/pull/670) for mongo connection strings (mongodb+srv://). Thanks [@plusn-nuri](https://github.com/plusn-nuri)!
+
+### Fixed
+- [Support for Extended JSON in scrapbook queries](https://github.com/Microsoft/vscode-cosmosdb/issues/621)
+- [Updating mongo documents without an ObjectID in the ID field ](https://github.com/Microsoft/vscode-cosmosdb/issues/534)
+- [Log of fixed bugs](https://github.com/Microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A0.7.2+is%3Aclosed)
+
 ## 0.7.1 - 2018-05-10
 
 ### [Fixed](https://github.com/Microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A%220.7.1%22+is%3Aclosed+label%3Abug)

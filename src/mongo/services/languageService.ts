@@ -5,7 +5,6 @@
 
 // NOTE: This file may not take a dependencey on vscode or anything that takes a dependency on it (such as vscode-azureextensionui)
 
-import * as assert from "assert";
 import { TextDocumentPositionParams, TextDocuments, IConnection, InitializeParams, InitializeResult, CompletionItem } from 'vscode-languageserver';
 import { Db } from 'mongodb';
 import { MongoScriptDocumentManager } from './mongoScript';

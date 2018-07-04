@@ -2,6 +2,29 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.8.0 - 2018-07-05
+### Added
+- Improved scrapbook experience with better error handling. We now [highlight errors on the scrapbook as you type](https://github.com/Microsoft/vscode-cosmosdb/issues/471)!
+- See your [stored procedures for graph accounts](https://github.com/Microsoft/vscode-cosmosdb/issues/422) too!
+- [Document labels](https://github.com/Microsoft/vscode-cosmosdb/issues/381) in the tree view are now more descriptive.
+
+### Fixed
+- Scrapbook: can now parse commands with [single quotes](https://github.com/Microsoft/vscode-cosmosdb/issues/467) or [no quotes](https://github.com/Microsoft/vscode-cosmosdb/issues/467). Examples from the mongo docs should now work when directly pasted.
+- Fewer timeout errors on [running commands in the emulator](https://github.com/Microsoft/vscode-cosmosdb/pull/731).
+- We correctly parse [collection names with dots](https://github.com/Microsoft/vscode-cosmosdb/issues/666)
+- Invalid database accounts will not [prevent the tree from loading](https://github.com/Microsoft/vscode-cosmosdb/issues/628)
+- [Additional bugs fixed](https://github.com/Microsoft/vscode-cosmosdb/issues?page=1&q=is%3Aissue+milestone%3A0.8.0+is%3Aclosed)
+
+## 0.7.2 - 2018-06-08
+
+### Added
+- [Support DNS Seedlist Connection Format](https://github.com/Microsoft/vscode-cosmosdb/pull/670) for mongo connection strings (mongodb+srv://). Thanks [@plusn-nuri](https://github.com/plusn-nuri)!
+
+### Fixed
+- [Support for Extended JSON in scrapbook queries](https://github.com/Microsoft/vscode-cosmosdb/issues/621)
+- [Updating mongo documents without an ObjectID in the ID field ](https://github.com/Microsoft/vscode-cosmosdb/issues/534)
+- [Log of fixed bugs](https://github.com/Microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A0.7.2+is%3Aclosed)
+
 ## 0.7.1 - 2018-05-10
 
 ### [Fixed](https://github.com/Microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A%220.7.1%22+is%3Aclosed+label%3Abug)

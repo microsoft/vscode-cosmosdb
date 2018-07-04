@@ -272,8 +272,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		} else if (child instanceof mongoParser.FunctionCallContext || child instanceof ErrorNode) {
 			return {};
 		} else {
-			// tslint:disable-next-line:no-any
-			console.assert(false, `Unrecognized child type in parse tree: ${(<any>child.constructor).name}`);
+			return {};
 		}
 
 		return parsedObject;

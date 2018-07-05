@@ -44,12 +44,12 @@ export class GraphTreeItem implements IAzureTreeItem {
     }
 
     public async showExplorer(graphViewsManager: GraphViewsManager): Promise<void> {
-        await graphViewsManager.showGraphViewer(this.label, <GraphConfiguration>{
+        await graphViewsManager.showGraphViewer(this._collection.id, <GraphConfiguration>{
             documentEndpoint: this._database.documentEndpoint,
             gremlinEndpoint: this._database.gremlinEndpoint,
             possibleGremlinEndpoints: this._database.possibleGremlinEndpoints,
             databaseName: this._database.label,
-            graphName: this.label,
+            graphName: this._collection.id,
             key: this._database.masterKey
         });
     }

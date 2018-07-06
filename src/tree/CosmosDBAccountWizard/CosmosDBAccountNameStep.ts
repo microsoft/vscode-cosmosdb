@@ -5,10 +5,10 @@
 
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { AzureNameStep, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
-import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
-import { validOnTimeoutOrException } from "../../utils/inputValidation";
-import { ext } from '../../extensionVariables';
 import { getCosmosDBManagementClient } from '../../docdb/getCosmosDBManagementClient';
+import { ext } from '../../extensionVariables';
+import { validOnTimeoutOrException } from "../../utils/inputValidation";
+import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContext> {
     protected async isRelatedNameAvailable(wizardContext: ICosmosDBWizardContext, name: string): Promise<boolean> {

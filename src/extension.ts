@@ -5,27 +5,27 @@
 
 'use strict';
 
-import * as vscode from 'vscode';
 import * as copypaste from 'copy-paste';
-import * as cpUtil from './utils/cp';
-import { AzureTreeDataProvider, IAzureNode, IAzureParentNode, IActionContext, IAzureUserInput, AzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
-import { Reporter } from './utils/telemetry';
+import * as vscode from 'vscode';
+import { AzureTreeDataProvider, AzureUserInput, IActionContext, IAzureNode, IAzureParentNode, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
 import { CosmosEditorManager } from './CosmosEditorManager';
-import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
-import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
-import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
-import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
-import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
+import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
+import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
+import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
+import { ext } from './extensionVariables';
 import { registerGraphCommands } from './graph/registerGraphCommands';
+import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
+import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
 import { registerMongoCommands } from './mongo/registerMongoCommands';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
-import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
-import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
-import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
+import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
-import { ext } from './extensionVariables';
+import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
+import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
+import * as cpUtil from './utils/cp';
+import { Reporter } from './utils/telemetry';
 
 export function activate(context: vscode.ExtensionContext) {
 	registerUIExtensionVariables(ext);

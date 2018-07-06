@@ -176,12 +176,12 @@
         "object-literal-sort-keys": false,
         "one-variable-per-declaration": true,
         "only-arrow-functions": false,
-        // TODO: "ordered-imports": true,
+        "ordered-imports": true,
         "prefer-array-literal": true,
         "prefer-const": false, // changed
         "prefer-for-of": true,
         "prefer-method-signature": true,
-        // TODO: "prefer-template": true,
+        "prefer-template": false, //changed
         "return-undefined": false,
         "typedef": [
             false, // TODO: true,
@@ -220,8 +220,8 @@
             "arguments",
             "statements"
         ],
-        // TODO: "curly": true,
-        // TODO: "eofline": true,
+        "curly": true,
+        "eofline": true,
         "import-spacing": true,
         "indent": [
             false, // TODO: true,
@@ -231,7 +231,7 @@
         "newline-before-return": false, // changed
         "no-consecutive-blank-lines": true,
         "no-empty-line-after-opening-brace": false,
-        // TODO: "no-single-line-block-comment": true,
+        "no-single-line-block-comment": true,
         "no-trailing-whitespace": true,
         "no-unnecessary-semicolons": true,
         "object-literal-key-quotes": [

@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { CollectionMeta, DocumentClient, FeedOptions, QueryIterator, RetrievedDocument } from 'documentdb';
 import * as path from 'path';
 import * as vscode from "vscode";
-import { DocumentClient, QueryIterator, CollectionMeta, RetrievedDocument, FeedOptions } from 'documentdb';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
 /**

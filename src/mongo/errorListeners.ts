@@ -5,8 +5,8 @@
 
 import * as vscode from "vscode";
 import { ANTLRErrorListener } from '../../node_modules/antlr4ts/ANTLRErrorListener';
-import { Recognizer } from '../../node_modules/antlr4ts/Recognizer';
 import { RecognitionException } from '../../node_modules/antlr4ts/RecognitionException';
+import { Recognizer } from '../../node_modules/antlr4ts/Recognizer';
 import { Token } from '../../node_modules/antlr4ts/Token';
 import { errorDescription } from './MongoCommand';
 

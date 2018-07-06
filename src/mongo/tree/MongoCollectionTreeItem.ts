@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from 'vscode';
+import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, InsertOneWriteOpResult } from 'mongodb';
 import * as path from 'path';
 import * as _ from 'underscore';
-import { Collection, Cursor, InsertOneWriteOpResult, BulkWriteOpResultObject, CollectionInsertManyOptions } from 'mongodb';
-import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
+import * as vscode from 'vscode';
+import { DialogResponses, IAzureNode, IAzureParentTreeItem, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { DefaultBatchSize } from '../../constants';
-import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 import { ext } from '../../extensionVariables';
+import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 // tslint:disable:no-var-requires
 const EJSON = require("mongodb-extended-json");
 

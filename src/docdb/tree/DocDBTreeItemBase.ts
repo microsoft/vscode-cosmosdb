@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocumentClient, QueryIterator, QueryError, FeedOptions } from 'documentdb';
-import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode } from 'vscode-azureextensionui';
-import { getDocumentClient } from "../getDocumentClient";
+import { DocumentClient, FeedOptions, QueryError, QueryIterator } from 'documentdb';
+import { IAzureNode, IAzureParentTreeItem, IAzureTreeItem } from 'vscode-azureextensionui';
 import { DefaultBatchSize } from '../../constants';
+import { getDocumentClient } from "../getDocumentClient";
 
 /**
  * This class provides common iteration logic for DocumentDB accounts, databases, and collections

@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
 import * as path from 'path';
-import { DocumentClient, QueryIterator, DatabaseMeta, FeedOptions } from 'documentdb';
-import { IAzureTreeItem, IAzureNode, UserCancelledError } from 'vscode-azureextensionui';
-import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import * as vscode from 'vscode';
+import { IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
+import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
 /**
  * This class provides common logic for DocumentDB, Graph, and Table accounts

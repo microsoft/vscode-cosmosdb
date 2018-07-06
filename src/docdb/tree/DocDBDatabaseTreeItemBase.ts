@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as path from 'path';
-import { DocumentClient, QueryIterator, DatabaseMeta, CollectionMeta, FeedOptions } from 'documentdb';
-import { IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
-import { DocDBTreeItemBase } from './DocDBTreeItemBase';
-import * as vscode from 'vscode';
+import { CollectionMeta, DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
+import * as path from 'path';
+import * as vscode from 'vscode';
+import { DialogResponses, IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
 const minThroughput: number = 1000;
 const maxThroughput: number = 100000;

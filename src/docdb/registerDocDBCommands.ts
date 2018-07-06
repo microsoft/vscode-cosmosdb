@@ -3,16 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureTreeDataProvider, IAzureParentNode, IAzureNode, registerCommand } from "vscode-azureextensionui";
-import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
-import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
-import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
-import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
-import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
-import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
 import { commands } from "vscode";
+import { AzureTreeDataProvider, IAzureNode, IAzureParentNode, registerCommand } from "vscode-azureextensionui";
 import { CosmosEditorManager } from "../CosmosEditorManager";
 import { DocDBStoredProcedureNodeEditor } from "./editors/DocDBStoredProcedureNodeEditor";
+import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
+import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
+import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
+import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
+import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
+import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
 
 export function registerDocDBCommands(tree: AzureTreeDataProvider, editorManager: CosmosEditorManager): void {
     registerCommand('cosmosDB.createDocDBDatabase', async (node?: IAzureParentNode) => {

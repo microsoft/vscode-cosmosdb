@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from 'vscode';
+import { DocumentClient, RetrievedDocument } from 'documentdb';
 import * as path from 'path';
-import { IAzureNode, IAzureTreeItem, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
-import { RetrievedDocument, DocumentClient } from 'documentdb';
-import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import * as vscode from 'vscode';
+import { DialogResponses, IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { emptyPartitionKeyValue } from '../../constants';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
+import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) document

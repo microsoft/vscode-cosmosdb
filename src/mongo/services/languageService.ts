@@ -5,12 +5,12 @@
 
 // NOTE: This file may not take a dependencey on vscode or anything that takes a dependency on it (such as vscode-azureextensionui)
 
-import { TextDocumentPositionParams, TextDocuments, IConnection, InitializeParams, InitializeResult, CompletionItem } from 'vscode-languageserver';
 import { Db } from 'mongodb';
+import { getLanguageService, LanguageService as JsonLanguageService, SchemaConfiguration } from 'vscode-json-languageservice';
+import { CompletionItem, IConnection, InitializeParams, InitializeResult, TextDocumentPositionParams, TextDocuments } from 'vscode-languageserver';
+import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoScriptDocumentManager } from './mongoScript';
 import SchemaService from './schemaService';
-import { getLanguageService, LanguageService as JsonLanguageService, SchemaConfiguration } from 'vscode-json-languageservice';
-import { connectToMongoClient } from '../connectToMongoClient';
 
 export class LanguageService {
 

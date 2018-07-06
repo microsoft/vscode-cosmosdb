@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as path from 'path';
-import { IAzureTreeItem } from 'vscode-azureextensionui';
-import { GraphViewsManager } from '../GraphViewsManager';
-import { GraphConfiguration } from '../GraphConfiguration';
-import * as vscode from 'vscode';
 import { CollectionMeta } from 'documentdb';
+import * as path from 'path';
+import * as vscode from 'vscode';
+import { IAzureTreeItem } from 'vscode-azureextensionui';
+import { GraphConfiguration } from '../GraphConfiguration';
+import { GraphViewsManager } from '../GraphViewsManager';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 
 export class GraphTreeItem implements IAzureTreeItem {

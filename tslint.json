@@ -224,7 +224,7 @@
         "eofline": true,
         "import-spacing": true,
         "indent": [
-            false, // TODO: true,
+            false, // changed
             "spaces"
         ],
         "linebreak-style": false, //changed
@@ -255,7 +255,7 @@
             "always"
         ],
         "trailing-comma": [
-            false, // TODO: true,
+            true,
             {
                 "singleline": "never",
                 "multiline": "never"

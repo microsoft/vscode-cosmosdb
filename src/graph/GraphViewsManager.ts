@@ -77,6 +77,7 @@ class GraphViewDocumentContentProvider implements vscode.TextDocumentContentProv
 
   public provideTextDocumentContent(uri: vscode.Uri, _token: vscode.CancellationToken): vscode.ProviderResult<string> {
     // Figure out which client to attach this to
+    // tslint:disable-next-line:no-single-line-block-comment
     let serverId = parseInt(uri.path.slice(1) /* remove '/' from beginning */, 10);
     console.assert(serverId > 0);
     let server = this._serverProvider.findServerById(serverId);

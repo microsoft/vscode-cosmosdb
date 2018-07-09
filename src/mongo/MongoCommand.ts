@@ -14,10 +14,10 @@ export interface MongoCommand {
     // tslint:disable-next-line:no-banned-terms
     arguments?: string[];
     argumentObjects?: Object[];
-    errors?: errorDescription[];
+    errors?: ErrorDescription[];
 }
 
-export interface errorDescription {
+export interface ErrorDescription {
     range: vscode.Range;
     message: string;
     exception?: RecognitionException;

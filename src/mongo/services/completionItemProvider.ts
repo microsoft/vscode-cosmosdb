@@ -293,7 +293,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 			this.createFunctionCompletion('setVerboseShell', range),
 			this.createFunctionCompletion('shotdownServer', range),
 			this.createFunctionCompletion('stats', range),
-			this.createFunctionCompletion('version', range),
+			this.createFunctionCompletion('version', range)
 		);
 	}
 
@@ -365,7 +365,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 			this.createFunctionCompletion('getWriteConcern', range),
 			this.createFunctionCompletion('setWriteConcern', range),
 			this.createFunctionCompletion('unsetWriteConcern', range),
-			this.createFunctionCompletion('latencyStats', range),
+			this.createFunctionCompletion('latencyStats', range)
 		);
 	}
 

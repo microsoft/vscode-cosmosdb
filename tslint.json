@@ -41,7 +41,7 @@
         "no-bitwise": true,
         "no-conditional-assignment": true,
         "no-console": [
-            false, // TODO: true,
+            true,
             "debug",
             "info",
             "log",
@@ -79,7 +79,7 @@
         // TODO: "no-unsafe-any": true,
         "no-unsafe-finally": true,
         "no-unused-expression": true,
-        // TODO: "no-use-before-declare": true,
+        "no-use-before-declare": false, //changed
         "no-with-statement": true,
         // TODO: "promise-function-async": true,
         "promise-must-complete": true,
@@ -93,7 +93,7 @@
             "allow-undefined-union", // changed
             "allow-mix" // changed
         ],
-        // TODO: "switch-default": true,
+        "switch-default": true,
         "triple-equals": [
             true,
             "allow-null-check"
@@ -110,16 +110,16 @@
         "callable-types": true,
         "chai-prefer-contains-to-index-of": true,
         "chai-vague-errors": true,
-        // TODO: "class-name": true,
+        "class-name": true,
         "comment-format": true,
         "completed-docs": [
             false, // changed
             "classes"
         ],
-        // TODO: "export-name": true,
-        // TODO: "function-name": true,
+        "export-name": false, //changed
+        "function-name": false, //changed
         "import-name": false, // changed
-        // TODO: "interface-name": true,
+        "interface-name": false, //changed
         "jsdoc-format": true,
         "max-classes-per-file": [
             true,
@@ -181,7 +181,7 @@
         "prefer-const": false, // changed
         "prefer-for-of": true,
         "prefer-method-signature": true,
-        // TODO: "prefer-template": true,
+        "prefer-template": false, //changed
         "return-undefined": false,
         "typedef": [
             false, // TODO: true,
@@ -220,18 +220,18 @@
             "arguments",
             "statements"
         ],
-        // TODO: "curly": true,
-        // TODO: "eofline": true,
+        "curly": true,
+        "eofline": true,
         "import-spacing": true,
         "indent": [
-            false, // TODO: true,
+            false, // changed
             "spaces"
         ],
         "linebreak-style": false, //changed
         "newline-before-return": false, // changed
         "no-consecutive-blank-lines": true,
         "no-empty-line-after-opening-brace": false,
-        // TODO: "no-single-line-block-comment": true,
+        "no-single-line-block-comment": true,
         "no-trailing-whitespace": true,
         "no-unnecessary-semicolons": true,
         "object-literal-key-quotes": [
@@ -255,7 +255,7 @@
             "always"
         ],
         "trailing-comma": [
-            false, // TODO: true,
+            true,
             {
                 "singleline": "never",
                 "multiline": "never"

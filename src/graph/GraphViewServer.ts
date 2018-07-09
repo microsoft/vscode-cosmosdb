@@ -97,6 +97,7 @@ export class GraphViewServer extends EventEmitter {
         0, // dynamnically pick an unused port
         () => {
           this._port = this._httpServer.address().port;
+          //tslint:disable-next-line:no-console
           console.log(`** GraphViewServer listening to port ${this._port} for ${this.configuration.gremlinEndpoint ? this.configuration.gremlinEndpoint.host : this.configuration.documentEndpoint}/${this._configuration.databaseName}/${this._configuration.graphName}`);
           resolve();
         });

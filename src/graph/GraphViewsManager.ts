@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from 'vscode';
-import * as path from "path";
 import * as fs from "fs";
-import { GraphConfiguration, areConfigsEqual } from './GraphConfiguration';
+import * as path from "path";
+import * as vscode from 'vscode';
+import { areConfigsEqual, GraphConfiguration } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
 
 const scheme = "vscode-cosmosdb-graphresults";

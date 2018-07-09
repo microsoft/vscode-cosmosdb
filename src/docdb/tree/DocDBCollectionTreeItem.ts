@@ -3,15 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CollectionMeta, DocumentClient, CollectionPartitionKey } from 'documentdb';
-import { IAzureNode, IAzureTreeItem, UserCancelledError, IAzureParentTreeItem, DialogResponses } from 'vscode-azureextensionui';
-import * as vscode from 'vscode';
-import { getDocumentClient } from "../getDocumentClient";
+import { CollectionMeta, CollectionPartitionKey, DocumentClient } from 'documentdb';
 import * as path from "path";
-import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
-import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
+import * as vscode from 'vscode';
+import { DialogResponses, IAzureNode, IAzureParentTreeItem, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { getDocumentClient } from "../getDocumentClient";
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
+import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
+import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 
 /**
  * Represents a DocumentDB collection

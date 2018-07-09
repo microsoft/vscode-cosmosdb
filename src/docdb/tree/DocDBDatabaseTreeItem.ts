@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { CollectionMeta } from 'documentdb';
 import { IAzureTreeItem } from 'vscode-azureextensionui';
+import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDatabaseTreeItemBase } from './DocDBDatabaseTreeItemBase';
 
 export class DocDBDatabaseTreeItem extends DocDBDatabaseTreeItemBase {

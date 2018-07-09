@@ -3,24 +3,24 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from 'vscode';
-import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
+import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
+import { ParseTree } from 'antlr4ts/tree/ParseTree';
+import * as vscode from 'vscode';
+import { AzureTreeDataProvider, IActionContext, IAzureParentNode } from 'vscode-azureextensionui';
+import { CosmosEditorManager } from '../CosmosEditorManager';
+import { ext } from '../extensionVariables';
+import { filterType, findType } from '../utils/array';
+import * as vscodeUtil from './../utils/vscodeUtils';
+import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
+import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
+import { LexerErrorListener, ParserErrorListener } from './errorListeners';
+import { mongoLexer } from './grammar/mongoLexer';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
-import { mongoLexer } from './grammar/mongoLexer';
-import * as vscodeUtil from './../utils/vscodeUtils';
-import { CosmosEditorManager } from '../CosmosEditorManager';
-import { IAzureParentNode, AzureTreeDataProvider, IActionContext } from 'vscode-azureextensionui';
-import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
-import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 import { MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
-import { filterType, findType } from '../utils/array';
-import { LexerErrorListener, ParserErrorListener } from './errorListeners';
-import { ext } from '../extensionVariables';
-import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
 

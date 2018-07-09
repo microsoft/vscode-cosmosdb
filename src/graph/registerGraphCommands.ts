@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureTreeDataProvider, IAzureParentNode, IAzureNode, registerCommand } from "vscode-azureextensionui";
 import * as vscode from 'vscode';
-import { GraphAccountTreeItem } from "./tree/GraphAccountTreeItem";
-import { GraphDatabaseTreeItem } from "./tree/GraphDatabaseTreeItem";
-import { GraphCollectionTreeItem } from "./tree/GraphCollectionTreeItem";
+import { AzureTreeDataProvider, IAzureNode, IAzureParentNode, registerCommand } from "vscode-azureextensionui";
 import { GraphViewsManager } from "./GraphViewsManager";
+import { GraphAccountTreeItem } from "./tree/GraphAccountTreeItem";
+import { GraphCollectionTreeItem } from "./tree/GraphCollectionTreeItem";
+import { GraphDatabaseTreeItem } from "./tree/GraphDatabaseTreeItem";
 import { GraphTreeItem } from "./tree/GraphTreeItem";
 
 export function registerGraphCommands(context: vscode.ExtensionContext, tree: AzureTreeDataProvider): void {

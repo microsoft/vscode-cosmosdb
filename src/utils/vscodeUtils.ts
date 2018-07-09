@@ -3,15 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as path from 'path';
+import { RetrievedDocument } from 'documentdb';
 import * as fse from 'fs-extra';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { IAzureNode, IAzureTreeItem } from 'vscode-azureextensionui';
-import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
-import { IMongoDocument } from '../mongo/tree/MongoDocumentTreeItem';
-import { RetrievedDocument } from 'documentdb';
 import { ext } from '../extensionVariables';
+import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
+import { IMongoDocument } from '../mongo/tree/MongoDocumentTreeItem';
 
 export interface IDisposable {
     dispose(): void;

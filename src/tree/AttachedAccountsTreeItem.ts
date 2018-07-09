@@ -3,19 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from 'vscode';
-import * as path from 'path';
 import * as keytarType from 'keytar';
 import { ReplSet } from "mongodb";
-import { IAzureTreeItem, IAzureNode, IAzureParentTreeItem, UserCancelledError, AzureTreeDataProvider, appendExtensionUserAgent } from 'vscode-azureextensionui';
-import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
-import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
+import * as path from 'path';
+import * as vscode from 'vscode';
+import { appendExtensionUserAgent, AzureTreeDataProvider, IAzureNode, IAzureParentTreeItem, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
-import { tryfetchNodeModule } from '../utils/vscodeUtils';
-import { getDatabaseNameFromConnectionString } from '../mongo/mongoConnectionStrings';
-import { API, getExperienceQuickPicks, getExperienceQuickPick, getExperience } from '../experiences';
+import { API, getExperience, getExperienceQuickPick, getExperienceQuickPicks } from '../experiences';
+import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
+import { getDatabaseNameFromConnectionString } from '../mongo/mongoConnectionStrings';
+import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
+import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
+import { tryfetchNodeModule } from '../utils/vscodeUtils';
 
 interface IPersistedAccount {
     id: string;

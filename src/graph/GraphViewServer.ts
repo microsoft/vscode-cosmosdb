@@ -4,15 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { EventEmitter } from 'events';
-import * as http from 'http';
-import * as vscode from 'vscode';
-import * as io from 'socket.io';
-import { GraphConfiguration } from './GraphConfiguration';
 import * as gremlin from "gremlin";
+import * as http from 'http';
+import * as io from 'socket.io';
+import * as vscode from 'vscode';
+import { callWithTelemetryAndErrorHandling, IActionContext } from 'vscode-azureextensionui';
 import { removeDuplicatesById } from "../utils/array";
+import { GraphConfiguration } from './GraphConfiguration';
 import { GraphViewServerSocket } from "./GraphViewServerSocket";
 import { IGremlinEndpoint } from "./gremlinEndpoints";
-import { IActionContext, callWithTelemetryAndErrorHandling } from 'vscode-azureextensionui';
 
 class GremlinParseError extends Error {
   constructor(err: Error) {

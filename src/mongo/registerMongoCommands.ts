@@ -3,19 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IAzureParentNode, AzureTreeDataProvider, IAzureNode, IActionContext, callWithTelemetryAndErrorHandling, registerCommand, registerEvent } from "vscode-azureextensionui";
 import * as vscode from 'vscode';
+import { AzureTreeDataProvider, callWithTelemetryAndErrorHandling, IActionContext, IAzureNode, IAzureParentNode, registerCommand, registerEvent } from "vscode-azureextensionui";
+import { CosmosEditorManager } from "../CosmosEditorManager";
+import { ext } from "../extensionVariables";
+import * as vscodeUtil from '../utils/vscodeUtils';
+import { MongoCollectionNodeEditor } from "./editors/MongoCollectionNodeEditor";
+import MongoDBLanguageClient from "./languageClient";
+import { executeAllCommandsFromActiveEditor, executeCommandFromActiveEditor, executeCommandFromText, getAllErrorsFromTextDocument } from "./MongoScrapbook";
+import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
+import { MongoAccountTreeItem } from "./tree/MongoAccountTreeItem";
 import { MongoCollectionTreeItem } from "./tree/MongoCollectionTreeItem";
 import { MongoDatabaseTreeItem } from "./tree/MongoDatabaseTreeItem";
-import { MongoAccountTreeItem } from "./tree/MongoAccountTreeItem";
-import MongoDBLanguageClient from "./languageClient";
-import * as vscodeUtil from '../utils/vscodeUtils';
 import { MongoDocumentTreeItem } from "./tree/MongoDocumentTreeItem";
-import { MongoCollectionNodeEditor } from "./editors/MongoCollectionNodeEditor";
-import { CosmosEditorManager } from "../CosmosEditorManager";
-import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
-import { ext } from "../extensionVariables";
-import { executeCommandFromText, executeCommandFromActiveEditor, executeAllCommandsFromActiveEditor, getAllErrorsFromTextDocument } from "./MongoScrapbook";
 
 const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 let diagnosticsCollection: vscode.DiagnosticCollection;

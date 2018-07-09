@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { DocumentClient, FeedOptions, QueryIterator, RetrievedDocument } from 'documentdb';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DocumentClient, QueryIterator, FeedOptions, RetrievedDocument } from 'documentdb';
-import { DocDBTreeItemBase } from './DocDBTreeItemBase';
-import { IAzureTreeItem, UserCancelledError, IAzureNode } from 'vscode-azureextensionui';
-import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
+import { IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
+import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
 /**
  * This class provides logic for DocumentDB collections

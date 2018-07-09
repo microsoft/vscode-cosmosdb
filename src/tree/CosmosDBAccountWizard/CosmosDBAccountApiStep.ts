@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IAzureQuickPickItem, AzureWizardPromptStep } from 'vscode-azureextensionui';
-import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
+import { AzureWizardPromptStep, IAzureQuickPickItem } from 'vscode-azureextensionui';
 import { Experience, getExperienceQuickPicks } from '../../experiences';
 import { ext } from '../../extensionVariables';
+import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountApiStep extends AzureWizardPromptStep<ICosmosDBWizardContext> {
     public async prompt(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {

@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IAzureTreeItem } from 'vscode-azureextensionui';
 import { CollectionMeta, DatabaseMeta } from 'documentdb';
+import { IAzureTreeItem } from 'vscode-azureextensionui';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
+import { getPossibleGremlinEndpoints, IGremlinEndpoint } from '../gremlinEndpoints';
 import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
-import { IGremlinEndpoint, getPossibleGremlinEndpoints } from '../gremlinEndpoints';
 
 export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
     public static contextValue: string = "cosmosDBGraphDatabase";

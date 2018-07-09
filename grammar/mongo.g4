@@ -51,6 +51,7 @@ propertyValue:
 	| functionCall;
 
 literal: (NullLiteral | BooleanLiteral | StringLiteral)
+	| RegexLiteral
 	| NumericLiteral;
 
 propertyName: StringLiteral | IDENTIFIER;
@@ -71,6 +72,10 @@ NullLiteral: 'null';
 BooleanLiteral: 'true' | 'false';
 
 NumericLiteral: '-'? DecimalLiteral;
+
+RegexLiteral: '/' (~[/])+ '/' (RegexFlag)*;
+
+RegexFlag: [gimuy];
 
 DecimalLiteral:
 	DecimalIntegerLiteral '.' DecimalDigit+ ExponentPart?

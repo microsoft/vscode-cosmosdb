@@ -59,7 +59,6 @@ function getErrorMessage(error: any) {
 }
 
 function logToUI(s: string) {
-  //tslint:disable-next-line:no-console
   console.log(s);
   // let v = htmlElements.debugLog.value;
   // v += "\r\n" + s;

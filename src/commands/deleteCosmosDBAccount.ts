@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { IAzureNode, DialogResponses } from 'vscode-azureextensionui';
-import { azureUtils } from '../utils/azureUtils';
+import { DialogResponses, IAzureNode } from 'vscode-azureextensionui';
 import { UserCancelledError } from 'vscode-azureextensionui';
-import { ext } from '../extensionVariables';
 import { getCosmosDBManagementClient } from '../docdb/getCosmosDBManagementClient';
+import { ext } from '../extensionVariables';
+import { azureUtils } from '../utils/azureUtils';
 
 export async function deleteCosmosDBAccount(node: IAzureNode): Promise<void> {
     const message: string = `Are you sure you want to delete account '${node.treeItem.label}' and its contents?`;

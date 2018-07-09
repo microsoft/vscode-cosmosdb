@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from "vscode";
 import { DocumentClient } from "documentdb";
 import * as DocDBLib from 'documentdb/lib';
-import { ext } from "../extensionVariables";
+import * as vscode from "vscode";
 import { appendExtensionUserAgent } from "vscode-azureextensionui";
+import { ext } from "../extensionVariables";
 
 export function getDocumentClient(documentEndpoint: string, masterKey: string, isEmulator: boolean): DocumentClient {
     const documentBase = DocDBLib.DocumentBase;

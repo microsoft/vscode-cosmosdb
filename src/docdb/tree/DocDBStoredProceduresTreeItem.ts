@@ -3,15 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { DocumentClient, FeedOptions, ProcedureMeta, QueryIterator } from 'documentdb';
 import * as path from 'path';
 import * as vscode from "vscode";
-import { DocumentClient, QueryIterator, FeedOptions, ProcedureMeta } from 'documentdb';
-import { DocDBTreeItemBase } from './DocDBTreeItemBase';
-import { IAzureTreeItem, UserCancelledError, IAzureNode } from 'vscode-azureextensionui';
-import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
+import { IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { defaultStoredProcedure } from '../../constants';
-import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
+import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
+import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
 /**
  * This class represents the DocumentDB "Stored Procedures" node in the tree

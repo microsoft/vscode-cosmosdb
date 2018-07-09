@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { RetrievedDocument } from "documentdb";
 import { IAzureNode } from "vscode-azureextensionui";
 import { ICosmosEditor } from "../../CosmosEditorManager";
-import { RetrievedDocument } from "documentdb";
-import { DocDBDocumentTreeItem } from "../tree/DocDBDocumentTreeItem";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
+import { DocDBDocumentTreeItem } from "../tree/DocDBDocumentTreeItem";
 
 export class DocDBDocumentNodeEditor implements ICosmosEditor<RetrievedDocument> {
     private _documentNode: IAzureNode<DocDBDocumentTreeItem>;

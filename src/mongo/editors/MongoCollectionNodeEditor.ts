@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IAzureParentNode, IAzureNode } from "vscode-azureextensionui";
-import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
+import { IAzureNode, IAzureParentNode } from "vscode-azureextensionui";
 import { ICosmosEditor } from "../../CosmosEditorManager";
-import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
+import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
+import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 // tslint:disable:no-var-requires
 const EJSON = require("mongodb-extended-json");
 

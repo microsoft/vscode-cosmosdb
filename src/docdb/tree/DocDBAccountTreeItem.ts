@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
 import { DatabaseMeta } from 'documentdb';
 import { IAzureTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
+import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
-import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 
 export class DocDBAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBDocumentServer";

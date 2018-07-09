@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { DocumentClient, ProcedureMeta } from 'documentdb';
 import * as path from 'path';
 import * as vscode from "vscode";
-import { IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
-import { ProcedureMeta, DocumentClient } from 'documentdb';
+import { DialogResponses, IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { getDocumentClient } from '../getDocumentClient';
 
 /**

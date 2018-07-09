@@ -3,16 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from 'vscode';
-import * as cpUtils from '../../utils/cp';
+import { Collection, Db } from 'mongodb';
 import * as path from 'path';
-import { Db, Collection } from 'mongodb';
-import { Shell } from '../shell';
-import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, IActionContext, DialogResponses, appendExtensionUserAgent } from 'vscode-azureextensionui';
-import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
-import { MongoCommand } from '../MongoCommand';
+import * as vscode from 'vscode';
+import { appendExtensionUserAgent, DialogResponses, IActionContext, IAzureNode, IAzureParentTreeItem, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
+import * as cpUtils from '../../utils/cp';
 import { connectToMongoClient } from '../connectToMongoClient';
+import { MongoCommand } from '../MongoCommand';
+import { Shell } from '../shell';
+import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 
 export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public static contextValue: string = "mongoDb";

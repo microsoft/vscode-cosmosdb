@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from "vscode";
-import { getAllCommandsFromTextDocument } from "../MongoScrapbook";
 import { callWithTelemetryAndErrorHandling, IActionContext } from "vscode-azureextensionui";
+import { getAllCommandsFromTextDocument } from "../MongoScrapbook";
 
 export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 	private _onDidChangeEmitter = new vscode.EventEmitter<void>();

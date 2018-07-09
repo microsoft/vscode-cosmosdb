@@ -7,18 +7,18 @@ import * as fse from 'fs-extra';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { UserCancelledError, AzureTreeDataProvider, IAzureParentNode, IAzureNode, IActionContext, DialogResponses } from 'vscode-azureextensionui';
-import * as vscodeUtils from './utils/vscodeUtils';
 import { MessageItem, ViewColumn } from 'vscode';
-import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
+import { AzureTreeDataProvider, DialogResponses, IActionContext, IAzureNode, IAzureParentNode, UserCancelledError } from 'vscode-azureextensionui';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
-import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
+import { DocDBStoredProcedureNodeEditor } from './docdb/editors/DocDBStoredProcedureNodeEditor';
+import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
+import { DocDBStoredProcedureTreeItem } from './docdb/tree/DocDBStoredProcedureTreeItem';
+import { ext } from './extensionVariables';
+import { MongoCollectionNodeEditor } from './mongo/editors/MongoCollectionNodeEditor';
 import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
-import { MongoCollectionNodeEditor } from './mongo/editors/MongoCollectionNodeEditor';
-import { DocDBStoredProcedureTreeItem } from './docdb/tree/DocDBStoredProcedureTreeItem';
-import { DocDBStoredProcedureNodeEditor } from './docdb/editors/DocDBStoredProcedureNodeEditor';
-import { ext } from './extensionVariables';
+import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
+import * as vscodeUtils from './utils/vscodeUtils';
 
 export interface ICosmosEditor<T = {}> {
     label: string;

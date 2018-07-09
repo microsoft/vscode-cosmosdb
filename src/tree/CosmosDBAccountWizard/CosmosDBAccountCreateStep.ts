@@ -5,10 +5,10 @@
 
 import { Capability } from 'azure-arm-cosmosdb/lib/models';
 import { AzureWizardExecuteStep } from 'vscode-azureextensionui';
-import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
+import { getCosmosDBManagementClient } from '../../docdb/getCosmosDBManagementClient';
 import { API } from '../../experiences';
 import { ext } from '../../extensionVariables';
-import { getCosmosDBManagementClient } from '../../docdb/getCosmosDBManagementClient';
+import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBWizardContext> {
     public async execute(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {

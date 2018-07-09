@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IAzureNode, IAzureTreeItem } from "vscode-azureextensionui";
-import { DocDBAccountTreeItemBase } from "../../docdb/tree/DocDBAccountTreeItemBase";
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
+import { DocDBAccountTreeItemBase } from "../../docdb/tree/DocDBAccountTreeItemBase";
 
 export class TableAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBTableAccount";

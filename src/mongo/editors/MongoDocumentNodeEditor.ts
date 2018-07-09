@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IAzureNode } from "vscode-azureextensionui";
-import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
+import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 // tslint:disable:no-var-requires
 const EJSON = require("mongodb-extended-json");
 

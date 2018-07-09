@@ -3,16 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from 'vscode';
-import * as path from 'path';
 import { Db } from 'mongodb';
-import { IAzureParentTreeItem, IAzureTreeItem, IAzureNode, UserCancelledError, appendExtensionUserAgent } from 'vscode-azureextensionui';
-import { MongoDatabaseTreeItem, validateMongoCollectionName } from './MongoDatabaseTreeItem';
-import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
-import { MongoDocumentTreeItem } from './MongoDocumentTreeItem';
+import * as path from 'path';
+import * as vscode from 'vscode';
+import { appendExtensionUserAgent, IAzureNode, IAzureParentTreeItem, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
-import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
 import { connectToMongoClient } from '../connectToMongoClient';
+import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
+import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
+import { MongoDatabaseTreeItem, validateMongoCollectionName } from './MongoDatabaseTreeItem';
+import { MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 
 export class MongoAccountTreeItem implements IAzureParentTreeItem {
     public static contextValue: string = "cosmosDBMongoServer";

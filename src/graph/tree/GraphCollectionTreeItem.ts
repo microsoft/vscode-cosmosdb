@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as path from 'path';
-import { IAzureTreeItem, IAzureNode, UserCancelledError, DialogResponses } from 'vscode-azureextensionui';
-import * as vscode from 'vscode';
 import { CollectionMeta, DocumentClient } from 'documentdb';
+import * as path from 'path';
+import * as vscode from 'vscode';
+import { DialogResponses, IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { getDocumentClient } from '../../docdb/getDocumentClient';
+import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 import { GraphTreeItem } from './GraphTreeItem';
-import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
-import { getDocumentClient } from '../../docdb/getDocumentClient';
 
 export class GraphCollectionTreeItem implements IAzureTreeItem {
     public static contextValue: string = "cosmosDBGraph";

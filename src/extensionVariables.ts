@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IAzureNode, IAzureUserInput } from "vscode-azureextensionui";
 import { ExtensionContext, OutputChannel } from "vscode";
+import { IAzureNode, IAzureUserInput } from "vscode-azureextensionui";
 import TelemetryReporter from "vscode-extension-telemetry";
 
 /**

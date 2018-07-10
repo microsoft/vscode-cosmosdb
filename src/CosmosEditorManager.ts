@@ -76,6 +76,7 @@ export class CosmosEditorManager {
         this._globalState.update(this._persistedEditorsKey, fileMapLabels);
 
         const textEditor = await vscode.window.showTextDocument(document, column, preserveFocus);
+        await vscodeUtils.writeToEditor(textEditor, "");
         const data = await editor.getData();
         await this.updateEditor(data, textEditor, editor);
     }

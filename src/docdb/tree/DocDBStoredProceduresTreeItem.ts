@@ -40,7 +40,6 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
         const client = this.getDocumentClient();
         let spID = await vscode.window.showInputBox({
             prompt: "Enter a unique stored Procedure ID",
-            validateInput: this.validateName,
             ignoreFocusOut: true
         });
 
@@ -76,17 +75,5 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
 
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<ProcedureMeta>> {
         return await client.readStoredProcedures(this.link, feedOptions);
-    }
-
-    private validateName(name: string): string | null | undefined {
-        if (name) {
-            if (name.indexOf("/") !== -1 || name.indexOf("\\") !== -1 || name.indexOf("?") !== -1 || name.indexOf("#") !== -1) {
-                return "Id contains illegal chars: /,\\,?,#";
-            }
-            if (name[name.length - 1] === " ") {
-                return "Id ends with a space.";
-            }
-        }
-        return null;
     }
 }

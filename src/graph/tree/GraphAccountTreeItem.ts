@@ -6,6 +6,7 @@
 import { DatabaseMeta } from 'documentdb';
 import { IAzureTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
+import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
 import { IGremlinEndpoint } from '../gremlinEndpoints';
 import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
@@ -26,6 +27,7 @@ export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
         switch (contextValue) {
             case GraphDatabaseTreeItem.contextValue:
             case GraphCollectionTreeItem.contextValue:
+            case DocDBStoredProceduresTreeItem.contextValue:
                 return true;
             default:
                 return false;

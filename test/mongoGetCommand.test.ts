@@ -6,8 +6,8 @@
 // The module 'assert' provides assertion methods from node
 import * as assert from 'assert';
 import { Position } from 'vscode';
-import { getAllCommandsFromText, getCommandFromTextAtLocation } from '../src/mongo/MongoScrapbook';
 import { MongoCommand } from '../src/mongo/MongoCommand';
+import { getAllCommandsFromText, getCommandFromTextAtLocation } from '../src/mongo/MongoScrapbook';
 
 function expectSingleCommand(text: string): MongoCommand {
     let commands = getAllCommandsFromText(text);
@@ -640,6 +640,30 @@ suite("scrapbook parsing Tests", () => {
         }
     });
 
+    //Examples inspired from https://docs.mongodb.com/manual/reference/operator/query/regex/
+    test("test regular expressions - only pattern, no flags", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /789$/ } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+        assert.deepEqual(generatedRegExp.flags, "");
+        assert.deepEqual(generatedRegExp.source, "789$");
+    });
+
+    test("test regular expressions - pattern and flags", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /789$/i } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+        assert.deepEqual(generatedRegExp.flags, "i");
+        assert.deepEqual(generatedRegExp.source, "789$");
+    });
+
+    test("test regular expressions - Intellisense - flag contains invalid option", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /789$/q } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.errors[0].message, "mismatched input '}' expecting '('");
+        assert.deepEqual(command.errors[0].range.start.character, 44);
+    });
+
 
     test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/688", () => {
         for (let q = 0; q <= 2; q++) {
@@ -706,7 +730,7 @@ suite("scrapbook parsing Tests", () => {
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         assert.deepEqual(command.collection, "c1");
         assert.deepEqual(command.argumentObjects, [{}, {}]);
-        assert.deepEqual(command.errors[0].message, "mismatched input 'f' expecting {'{', '[', StringLiteral, 'null', BooleanLiteral, NumericLiteral}")
+        assert.deepEqual(command.errors[0].message, "mismatched input 'f' expecting {'{', '[', StringLiteral, 'null', BooleanLiteral, NumericLiteral, RegexLiteral}")
     });
 
 });

@@ -241,8 +241,10 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			if (tokenType === mongoParser.mongoParser.StringLiteral) {
 				parsedObject = stripQuotes(text);
 			} else if (tokenType === mongoParser.mongoParser.RegexLiteral) {
-				//let params = child.text.split('/');
-				parsedObject = new RegExp(child.text);
+				let params: string[] = child.text.split('/');
+				let pattern = params[1];
+				let flags = params.length > 2 ? params[2] : undefined;
+				parsedObject = new RegExp(pattern, flags);
 			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 				parsedObject = JSON.parse(text);
 			} else {

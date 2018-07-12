@@ -74,7 +74,12 @@ export function getAllCommandsFromTextDocument(document: vscode.TextDocument): M
 
 async function executeCommands(activeEditor: vscode.TextEditor, database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext, commands: MongoCommand[]): Promise<void> {
 	for (let command of commands) {
-		await executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
+		try {
+			await executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
+		} catch (e) {
+			e.message = `${command.text.split('(')[0]}, line ${command.range.start.line + 1}, character ${command.range.start.character + 1}: ${e.message}`;
+			throw e;
+		}
 	}
 }
 

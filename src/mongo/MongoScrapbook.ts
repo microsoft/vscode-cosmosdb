@@ -8,7 +8,7 @@ import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import * as vscode from 'vscode';
-import { AzureTreeDataProvider, IActionContext, IAzureParentNode } from 'vscode-azureextensionui';
+import { AzureTreeDataProvider, IActionContext, IAzureParentNode, parseError } from 'vscode-azureextensionui';
 import { CosmosEditorManager } from '../CosmosEditorManager';
 import { ext } from '../extensionVariables';
 import { filterType, findType } from '../utils/array';
@@ -77,8 +77,9 @@ async function executeCommands(activeEditor: vscode.TextEditor, database: IAzure
 		try {
 			await executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
 		} catch (e) {
-			e.message = `${command.text.split('(')[0]}, line ${command.range.start.line + 1}, character ${command.range.start.character + 1}: ${e.message}`;
-			throw e;
+			const err = parseError(e);
+			err.message = `${command.text.split('(')[0]}, ${command.range.start.line + 1}:${command.range.start.character + 1} - ${err.message}`;
+			throw err;
 		}
 	}
 }

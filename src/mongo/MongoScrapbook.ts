@@ -79,7 +79,7 @@ async function executeCommands(activeEditor: vscode.TextEditor, database: IAzure
 		} catch (e) {
 			const err = parseError(e);
 			err.message = `${command.text.split('(')[0]}, ${command.range.start.line + 1}:${command.range.start.character + 1} - ${err.message}`;
-			throw err;
+			throw new Error(err.message);
 		}
 	}
 }

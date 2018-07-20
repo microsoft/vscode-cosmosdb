@@ -34,7 +34,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     }
 
     get id(): string {
-        return this.document._id.toString();
+        return (this.document._id && this.document._id.toString()) || "null";
     }
 
     public async refreshLabel(): Promise<void> {

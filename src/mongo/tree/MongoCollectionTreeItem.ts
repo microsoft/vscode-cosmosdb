@@ -34,13 +34,13 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		}
 	}
 
-	public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
+	public async update(documents: IMongoDocument[], flag = false): Promise<IMongoDocument[]> {
 		const operations = documents.map((document) => {
 			return {
 				updateOne: {
 					filter: { _id: document._id },
 					update: _.omit(document, '_id'),
-					upsert: false
+					upsert: flag
 				}
 			};
 		});
@@ -91,7 +91,8 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		}
 		this._batchSize *= 2;
 
-		return documents.map((document: IMongoDocument) => new MongoDocumentTreeItem(document, this.collection));
+		const docTreeItems = documents.map((document: IMongoDocument) => new MongoDocumentTreeItem(document, this.collection));
+		return docTreeItems;
 	}
 
 	public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {

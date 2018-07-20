@@ -7,7 +7,7 @@
 
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
-import { AzureTreeDataProvider, AzureUserInput, IActionContext, IAzureNode, IAzureParentNode, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
+import { AzureTreeDataProvider, AzureUserInput, IActionContext, IAzureNode, IAzureParentNode, IAzureUserInput, parseError, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
@@ -20,6 +20,7 @@ import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
 import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
 import { registerMongoCommands } from './mongo/registerMongoCommands';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
+import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
@@ -87,6 +88,31 @@ export function activate(context: vscode.ExtensionContext) {
 
 		await attachedNode.treeItem.detach(node.treeItem.id);
 		await tree.refresh(attachedNode);
+	});
+	registerCommand('cosmosDB.importDocument', async (_node, nodes: vscode.Uri[]) => {
+		if (!nodes) {
+			return;
+		}
+		let documents = [];
+		for (let node of nodes) {
+			const document = (await vscode.workspace.openTextDocument(node));
+			const text = document.getText();
+			let parsed;
+			try {
+				parsed = JSON.parse(text);
+			} catch (e) {
+				const err = parseError(e);
+				const fileName = node.path.split('/').pop();
+				await vscode.window.showErrorMessage(`Encountered an error parsing ${fileName}. Please check syntax.\n${err.message}`);
+			}
+			if (parsed) {
+				documents.push(parsed);
+			}
+		}
+		const collectionNode = <IAzureParentNode<MongoCollectionTreeItem>>await tree.showNodePicker([MongoCollectionTreeItem.contextValue]);
+		//collectionNode.treeItem.update(documents, true);
+		//tslint:disable:no-non-null-assertion
+		collectionNode.treeItem!.executeCommand('insertMany', documents);
 	});
 	registerCommand('cosmosDB.openInPortal', async (node?: IAzureNode) => {
 		if (!node) {

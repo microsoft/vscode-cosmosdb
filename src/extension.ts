@@ -7,7 +7,7 @@
 
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
-import { AzureTreeDataProvider, AzureUserInput, IActionContext, IAzureNode, IAzureParentNode, IAzureUserInput, parseError, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
+import { AzureTreeDataProvider, AzureUserInput, IActionContext, IAzureNode, IAzureParentNode, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
@@ -97,22 +97,12 @@ export function activate(context: vscode.ExtensionContext) {
 		for (let node of nodes) {
 			const document = (await vscode.workspace.openTextDocument(node));
 			const text = document.getText();
-			let parsed;
-			try {
-				parsed = JSON.parse(text);
-			} catch (e) {
-				const err = parseError(e);
-				const fileName = node.path.split('/').pop();
-				await vscode.window.showErrorMessage(`Encountered an error parsing ${fileName}. Please check syntax.\n${err.message}`);
-			}
-			if (parsed) {
-				documents.push(parsed);
-			}
+			documents.push(text);
 		}
 		const collectionNode = <IAzureParentNode<MongoCollectionTreeItem>>await tree.showNodePicker([MongoCollectionTreeItem.contextValue]);
-		//collectionNode.treeItem.update(documents, true);
 		//tslint:disable:no-non-null-assertion
-		collectionNode.treeItem!.executeCommand('insertMany', documents);
+		const result = await collectionNode.treeItem!.executeCommand('insertMany', [`[${documents.join(',')}]`]);
+		vscode.window.showInformationMessage(result);
 	});
 	registerCommand('cosmosDB.openInPortal', async (node?: IAzureNode) => {
 		if (!node) {

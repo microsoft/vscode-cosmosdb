@@ -108,7 +108,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 			if (parsed) {
 				if (Array.isArray(parsed)) {
-					documents.concat(parsed);
+					documents = documents.concat(parsed);
 				} else {
 					documents.push(parsed);
 				}

@@ -93,27 +93,12 @@ export function activate(context: vscode.ExtensionContext) {
 		if (!nodes) {
 			return;
 		}
-		let documents = [];
-		for (let node of nodes) {
-			const document = (await vscode.workspace.openTextDocument(node));
-			const text = document.getText();
-			let parsed;
-			try {
-				parsed = JSON.parse(text);
-			} catch (e) {
-				const err = parseError(e);
-				const fileName = node.path.split('/').pop();
-				await vscode.window.showTextDocument(document);
-				await vscode.window.showErrorMessage(`Encountered an error parsing ${fileName}. Please check syntax.\n${err.message}`);
-			}
-			if (parsed) {
-				if (Array.isArray(parsed)) {
-					documents = documents.concat(parsed);
-				} else {
-					documents.push(parsed);
-				}
-			}
-			//documents.push(text);
+		const parseResult = await parseDocuments(nodes);
+		const documents = parseResult[0];
+		const errors = parseResult[1];
+		if (errors.length > 0) {
+			ext.outputChannel.show();
+			throw new Error(`Errors found in the following documents: ${errors.join(',')}.\nPlease fix these and try again.`);
 		}
 		const collectionNode = <IAzureParentNode<MongoCollectionTreeItem>>await tree.showNodePicker([MongoCollectionTreeItem.contextValue]);
 		//tslint:disable:no-non-null-assertion
@@ -176,6 +161,34 @@ async function copyConnectionString(node: IAzureNode<MongoAccountTreeItem | DocD
 	} else {
 		vscode.window.showErrorMessage('You must have xclip installed to copy the connection string.');
 	}
+}
+
+async function parseDocuments(nodes: vscode.Uri[]) {
+	let documents = [];
+	let errors = {};
+	for (let node of nodes) {
+		const document = (await vscode.workspace.openTextDocument(node));
+		const text = document.getText();
+		let parsed;
+		try {
+			parsed = JSON.parse(text);
+		} catch (e) {
+			const err = parseError(e);
+			const fileName = node.path.split('/').pop();
+			errors[fileName] = err;
+			ext.outputChannel.appendLine(`${fileName}:\n${err}`);
+			await vscode.window.showTextDocument(document);
+		}
+		if (parsed) {
+			if (Array.isArray(parsed)) {
+				documents = documents.concat(parsed);
+			} else {
+				documents.push(parsed);
+			}
+		}
+		//documents.push(text);
+	}
+	return [documents, Object.keys(errors)];
 }
 
 // this method is called when your extension is deactivated

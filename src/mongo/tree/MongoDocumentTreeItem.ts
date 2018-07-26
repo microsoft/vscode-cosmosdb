@@ -34,7 +34,8 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     }
 
     get id(): string {
-        return this.document._id.toString();
+        // tslint:disable-next-line:no-non-null-assertion
+        return String(this.document!._id);
     }
 
     public async refreshLabel(): Promise<void> {

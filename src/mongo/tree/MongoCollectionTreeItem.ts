@@ -189,6 +189,9 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	}
 
 	private insert(document: Object): Thenable<string> {
+		if (!document) {
+			throw new Error("The insert command requires at least one argument");
+		}
 		return this.collection.insert(document)
 			.then(({ insertedCount, insertedId, result }) => {
 				return this.stringify({ insertedCount, insertedId, result });

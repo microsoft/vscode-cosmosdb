@@ -25,6 +25,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	private _cursor: Cursor | undefined;
 	private _hasMoreChildren: boolean = true;
 	private _batchSize: number = DefaultBatchSize;
+	private readonly deferToShell = null;
 
 	constructor(collection: Collection, query?: string[]) {
 		this.collection = collection;
@@ -102,13 +103,41 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	}
 
 	//tslint:disable:cyclomatic-complexity
-	executeCommand(name: string, args?: string[]): Thenable<string> {
+	executeCommand(name: string, args?: string[]): Thenable<string> | null {
+		//const requiresOneArg = ['findOne', 'insertMany', 'insertOne', 'insert', 'deleteOne', 'deleteMany', 'remove'];
+		const parameters = args ? args.map(parseJSContent) : undefined;
 		try {
-			if (name === 'findOne') {
-				return reportProgress(this.findOne(args ? args.map(parseJSContent) : undefined), 'Finding');
+			type MongoFunction = (document: Object | undefined) => Thenable<string>;
+			let functions: { [functionName: string]: [MongoFunction, string, number, number, number] } = {
+				// format: command name (from the argument) : corr. function call, text to show during the operation, min #args, #max args, #args this function handles
+				"drop": [this.drop, 'Dropping collection', 0, 0, 0],
+				"insert": [this.insert, 'Inserting document', 1, 1, 1],
+				"count": [this.count, 'Counting documents', 0, 2, 2],
+				"findOne": [this.findOne, 'Finding Document', 0, 2, 2]
+			};
+
+			if (name in functions) {
+				let functionData = functions[name];
+				if (parameters.length < functionData[2]) { //has less than the min allowed
+					return Promise.reject(new Error(`Too few arguments passed to command ${name}.`));
+				}
+				if (parameters.length > functionData[3]) { //has more than the max allowed
+					return Promise.reject(new Error(`Too many arguments passed to command ${name}`));
+				}
+				if (parameters.length > functionData[4]) { //this function won't handle these arguments, but the shell will
+					return this.deferToShell;
+				}
+				const mongoFunction: (args: Object[]) => Thenable<string> = functionData[0];
+				return reportProgress(mongoFunction.call(this, parameters), functionData[1]);
+			}
+			if (name === 'count') {
+				return reportProgress(this.count(args[0] ? parseJSContent(args[0]) : undefined), 'Counting');
 			}
 			if (name === 'drop') {
 				return reportProgress(this.drop(), 'Dropping collection');
+			}
+			if (name === 'findOne') {
+				return reportProgress(this.findOne(args ? args.map(parseJSContent) : undefined), 'Finding');
 			}
 			if (name === 'insertMany') {
 				return reportProgress(this.insertMany(args ? args.map(parseJSContent) : undefined), 'Inserting documents');
@@ -116,13 +145,10 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			else {
 				let argument;
 				if (args && args.length > 1) {
-					return undefined;
+					return this.deferToShell;
 				}
 				if (args) {
 					argument = args[0];
-				}
-				if (name === 'insert') {
-					return reportProgress(this.insert(argument ? parseJSContent(argument) : undefined), 'Inserting document');
 				}
 				if (name === 'insertOne') {
 					return reportProgress(this.insertOne(argument ? parseJSContent(argument) : undefined), 'Inserting document');
@@ -136,10 +162,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 				if (name === 'remove') {
 					return reportProgress(this.remove(argument ? parseJSContent(argument) : undefined), 'Removing');
 				}
-				if (name === 'count') {
-					return reportProgress(this.count(argument ? parseJSContent(argument) : undefined), 'Counting');
-				}
-				return null;
+				return this.deferToShell;
 			}
 		} catch (error) {
 			return Promise.reject(error);
@@ -250,7 +273,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			});
 	}
 
-	private async count(args?: Object): Promise<string> {
+	private async count(args?: Object[]): Promise<string> {
 		const count = await this.collection.count(args);
 		return JSON.stringify(count);
 	}

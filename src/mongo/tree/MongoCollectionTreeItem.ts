@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, InsertOneWriteOpResult } from 'mongodb';
+import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, InsertOneWriteOpResult, MongoCountPreferences } from 'mongodb';
 import * as path from 'path';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
@@ -130,9 +130,10 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 				const mongoFunction: (args: Object[]) => Thenable<string> = functionData[0];
 				return reportProgress(mongoFunction.call(this, parameters), functionData[1]);
 			}
-			if (name === 'count') {
-				return reportProgress(this.count(args[0] ? parseJSContent(args[0]) : undefined), 'Counting');
-			}
+			//Unreachable
+			// if (name === 'count') {
+			// 	return reportProgress(this.count(args[0] ? parseJSContent(args[0]) : undefined), 'Counting');
+			// }
 			if (name === 'drop') {
 				return reportProgress(this.drop(), 'Dropping collection');
 			}
@@ -273,8 +274,8 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			});
 	}
 
-	private async count(args?: Object[]): Promise<string> {
-		const count = await this.collection.count(args);
+	private async count(query?: Object[], options?: MongoCountPreferences): Promise<string> {
+		const count = await this.collection.count(query, options);
 		return JSON.stringify(count);
 	}
 

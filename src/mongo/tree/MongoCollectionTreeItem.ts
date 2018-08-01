@@ -102,18 +102,24 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		return new MongoDocumentTreeItem(newDocument, this.collection);
 	}
 
-	//tslint:disable:cyclomatic-complexity
 	executeCommand(name: string, args?: string[]): Thenable<string> | null {
 		//const requiresOneArg = ['findOne', 'insertMany', 'insertOne', 'insert', 'deleteOne', 'deleteMany', 'remove'];
 		const parameters = args ? args.map(parseJSContent) : undefined;
 		try {
-			type MongoFunction = (document: Object | undefined) => Thenable<string>;
+			// tslint:disable-next-line:no-any
+			type MongoFunction = (...args: any[]) => Thenable<string>;
 			let functions: { [functionName: string]: [MongoFunction, string, number, number, number] } = {
-				// format: command name (from the argument) : corr. function call, text to show during the operation, min #args, #max args, #args this function handles
+				// format: command name (from the argument) : corresponding function call[0],
+				// text to show during the operation[1], min #args[2], #max args[3], #args this function handles[4]
 				"drop": [this.drop, 'Dropping collection', 0, 0, 0],
 				"insert": [this.insert, 'Inserting document', 1, 1, 1],
 				"count": [this.count, 'Counting documents', 0, 2, 2],
-				"findOne": [this.findOne, 'Finding Document', 0, 2, 2]
+				"findOne": [this.findOne, 'Finding Document', 0, 2, 2],
+				"insertMany": [this.insertMany, 'Inserting documents', 1, 2, 2],
+				"insertOne": [this.insertOne, 'Inserting document', 1, 2, 2],
+				"deleteOne": [this.deleteOne, 'Deleting document', 1, 2, 1],
+				"deleteMany": [this.deleteMany, 'Deleting documents', 1, 2, 1],
+				"remove": [this.remove, 'Deleting document(s)', 1, 2, 1]
 			};
 
 			if (name in functions) {
@@ -128,43 +134,9 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 					return this.deferToShell;
 				}
 				const mongoFunction: (args: Object[]) => Thenable<string> = functionData[0];
-				return reportProgress(mongoFunction.call(this, parameters), functionData[1]);
+				return reportProgress(mongoFunction.apply(this, parameters), functionData[1]);
 			}
-			//Unreachable
-			// if (name === 'count') {
-			// 	return reportProgress(this.count(args[0] ? parseJSContent(args[0]) : undefined), 'Counting');
-			// }
-			if (name === 'drop') {
-				return reportProgress(this.drop(), 'Dropping collection');
-			}
-			if (name === 'findOne') {
-				return reportProgress(this.findOne(args ? args.map(parseJSContent) : undefined), 'Finding');
-			}
-			if (name === 'insertMany') {
-				return reportProgress(this.insertMany(args ? args.map(parseJSContent) : undefined), 'Inserting documents');
-			}
-			else {
-				let argument;
-				if (args && args.length > 1) {
-					return this.deferToShell;
-				}
-				if (args) {
-					argument = args[0];
-				}
-				if (name === 'insertOne') {
-					return reportProgress(this.insertOne(argument ? parseJSContent(argument) : undefined), 'Inserting document');
-				}
-				if (name === 'deleteOne') {
-					return reportProgress(this.deleteOne(argument ? parseJSContent(argument) : undefined), 'Deleting document');
-				}
-				if (name === 'deleteMany') {
-					return reportProgress(this.deleteMany(argument ? parseJSContent(argument) : undefined), 'Deleting documents');
-				}
-				if (name === 'remove') {
-					return reportProgress(this.remove(argument ? parseJSContent(argument) : undefined), 'Removing');
-				}
-				return this.deferToShell;
-			}
+			return this.deferToShell;
 		} catch (error) {
 			return Promise.reject(error);
 		}
@@ -195,18 +167,8 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		}
 	}
 
-	//tslint:disable:no-any
-	private async findOne(args?: any[]): Promise<string> {
-		let result;
-		if (!args || args.length === 0) {
-			result = await this.collection.findOne({});
-		} else if (args.length === 1) {
-			result = await this.collection.findOne(args[0]);
-		} else if (args.length === 2) {
-			result = await this.collection.findOne(args[0], { fields: args[1] });
-		} else {
-			return Promise.reject(new Error("Too many arguments passed to findOne."));
-		}
+	private async findOne(query?: Object, fieldsOption?: Object): Promise<string> {
+		const result = await this.collection.findOne(query || {}, { fields: fieldsOption });
 		// findOne is the only command in this file whose output requires EJSON support.
 		// Hence that's the only function which uses EJSON.stringify rather than this.stringify.
 		return EJSON.stringify(result, null, '\t');
@@ -222,53 +184,51 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			});
 	}
 
-	private insertOne(document: Object): Thenable<string> {
-		return this.collection.insertOne(document)
+	// tslint:disable-next-line:no-any
+	private insertOne(document: Object, options?: any): Thenable<string> {
+		return this.collection.insertOne(document, { w: options && options.writeConcern })
 			.then(({ insertedCount, insertedId, result }) => {
 				return this.stringify({ insertedCount, insertedId, result });
 			});
 	}
 
 	//tslint:disable:no-any
-	private insertMany(args: any[]): Thenable<string> {
-		// documents = args[0], collectionWriteOptions from args[1]
+	private insertMany(documents: any[], options?: any): Thenable<string> {
 		let insertManyOptions: CollectionInsertManyOptions = {};
 		const docsLink: string = "Please see mongo shell documentation. https://docs.mongodb.com/manual/reference/method/db.collection.insertMany/#db.collection.insertMany.";
-		if (!args || args.length === 0) {
+		if (!documents) { // this code should not be hit
 			return Promise.reject(new Error("Too few arguments passed to insertMany. " + docsLink));
-		} else if (args.length > 2) {
-			return Promise.reject(new Error("Too many arguments passed to insertMany. " + docsLink));
-		} else if (args.length === 2) {
-			if (args[1] && args[1].ordered) {
-				insertManyOptions["ordered"] = args[1].ordered;
+		} else if (options) {
+			if (options.ordered) {
+				insertManyOptions["ordered"] = options.ordered;
 			}
-			if (args[1] && args[1].writeConcern) {
-				insertManyOptions["w"] = args[1].writeConcern;
+			if (options.writeConcern) {
+				insertManyOptions["w"] = options.writeConcern;
 			}
 		}
 
-		return this.collection.insertMany(args[0], insertManyOptions)
+		return this.collection.insertMany(documents, insertManyOptions)
 			.then(({ insertedCount, insertedIds, result }) => {
 				return this.stringify({ insertedCount, insertedIds, result });
 			});
 	}
 
-	private remove(args?: Object): Thenable<string> {
-		return this.collection.remove(args)
+	private remove(filter?: Object): Thenable<string> {
+		return this.collection.remove(filter)
 			.then(({ ops, result }) => {
 				return this.stringify({ ops, result });
 			});
 	}
 
-	private deleteOne(args?: Object): Thenable<string> {
-		return this.collection.deleteOne(args)
+	private deleteOne(filter: Object): Thenable<string> {
+		return this.collection.deleteOne(filter)
 			.then(({ deletedCount, result }) => {
 				return this.stringify({ deletedCount, result });
 			});
 	}
 
-	private deleteMany(args?: Object): Thenable<string> {
-		return this.collection.deleteMany(args)
+	private deleteMany(filter: Object): Thenable<string> {
+		return this.collection.deleteMany(filter)
 			.then(({ deletedCount, result }) => {
 				return this.stringify({ deletedCount, result });
 			});

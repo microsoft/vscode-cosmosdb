@@ -7,7 +7,6 @@ import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from 'azure-arm-cosmosdb/lib/models';
 import * as vscode from 'vscode';
 import { AzureWizard, IActionContext, IAzureNode, IAzureTreeItem, IChildProvider, LocationListStep, parseError, ResourceGroupListStep } from 'vscode-azureextensionui';
-import { getCosmosDBManagementClient } from '../docdb/getCosmosDBManagementClient';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { API, getExperience } from '../experiences';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
@@ -28,7 +27,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
     }
 
     public async loadMoreChildren(node: IAzureNode): Promise<IAzureTreeItem[]> {
-        const client = getCosmosDBManagementClient(node.credentials, node.subscriptionId);
+        const client = new CosmosDBManagementClient(node.credentials, node.subscriptionId, node.environment.resourceManagerEndpointUrl);
         const accounts: DatabaseAccountsListResult = await client.databaseAccounts.list();
         let accountTreeItems = [];
         await Promise.all(
@@ -48,7 +47,7 @@ export class CosmosDBAccountProvider implements IChildProvider {
     }
 
     public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void, actionContext?: IActionContext): Promise<IAzureTreeItem> {
-        const client = getCosmosDBManagementClient(node.credentials, node.subscriptionId);
+        const client = new CosmosDBManagementClient(node.credentials, node.subscriptionId, node.environment.resourceManagerEndpointUrl);
         const wizardContext: ICosmosDBWizardContext = {
             credentials: node.credentials,
             subscriptionId: node.subscriptionId,

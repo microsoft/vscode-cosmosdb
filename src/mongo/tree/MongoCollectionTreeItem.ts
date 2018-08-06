@@ -25,7 +25,6 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	private _cursor: Cursor | undefined;
 	private _hasMoreChildren: boolean = true;
 	private _batchSize: number = DefaultBatchSize;
-	private readonly deferToShell = null;
 
 	constructor(collection: Collection, query?: string[]) {
 		this.collection = collection;
@@ -105,12 +104,20 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	executeCommand(name: string, args?: string[]): Thenable<string> | null {
 		//const requiresOneArg = ['findOne', 'insertMany', 'insertOne', 'insert', 'deleteOne', 'deleteMany', 'remove'];
 		const parameters = args ? args.map(parseJSContent) : undefined;
+		const deferToShell = null; //The value executeCommand returns to instruct the caller function to run the same command in the Mongo shell.
+
 		try {
-			// tslint:disable-next-line:no-any
-			type MongoFunction = (...args: any[]) => Thenable<string>;
+			type MongoFunction = (...args: Object[]) => Thenable<string>;
 			let functions: { [functionName: string]: [MongoFunction, string, number, number, number] } = {
-				// format: command name (from the argument) : corresponding function call[0],
-				// text to show during the operation[1], min #args[2], #max args[3], #args this function handles[4]
+				/*
+				format: command name (from the argument) :
+				0: corresponding function call,
+				1: text to show during the operation,
+				2: min number of args allowed by the shell
+				3: max number of args allowed by the shell
+				4: Max number of args executeCommand supports, i.e., has mapper code to convert options provided - to the shell - into an API compatible options object
+				4th element <= 3rd element
+				*/
 				"drop": [this.drop, 'Dropping collection', 0, 0, 0],
 				"insert": [this.insert, 'Inserting document', 1, 1, 1],
 				"count": [this.count, 'Counting documents', 0, 2, 2],
@@ -124,19 +131,23 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 			if (name in functions) {
 				let functionData = functions[name];
-				if (parameters.length < functionData[2]) { //has less than the min allowed
+				const mongoFunction: (args: Object[]) => Thenable<string> = functionData[0];
+				let pendingText: string = functionData[1];
+				let minArgs: number = functionData[2];
+				let maxArgs: number = functionData[3];
+				let handledMaxArgs: number = functionData[4];
+				if (parameters.length < minArgs) { //has less than the min allowed
 					return Promise.reject(new Error(`Too few arguments passed to command ${name}.`));
 				}
-				if (parameters.length > functionData[3]) { //has more than the max allowed
+				if (parameters.length > maxArgs) { //has more than the max allowed
 					return Promise.reject(new Error(`Too many arguments passed to command ${name}`));
 				}
-				if (parameters.length > functionData[4]) { //this function won't handle these arguments, but the shell will
-					return this.deferToShell;
+				if (parameters.length > handledMaxArgs) { //this function won't handle these arguments, but the shell will
+					return deferToShell;
 				}
-				const mongoFunction: (args: Object[]) => Thenable<string> = functionData[0];
-				return reportProgress(mongoFunction.apply(this, parameters), functionData[1]);
+				return reportProgress(mongoFunction.apply(this, parameters), pendingText);
 			}
-			return this.deferToShell;
+			return deferToShell;
 		} catch (error) {
 			return Promise.reject(error);
 		}
@@ -195,10 +206,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	//tslint:disable:no-any
 	private insertMany(documents: any[], options?: any): Thenable<string> {
 		let insertManyOptions: CollectionInsertManyOptions = {};
-		const docsLink: string = "Please see mongo shell documentation. https://docs.mongodb.com/manual/reference/method/db.collection.insertMany/#db.collection.insertMany.";
-		if (!documents) { // this code should not be hit
-			return Promise.reject(new Error("Too few arguments passed to insertMany. " + docsLink));
-		} else if (options) {
+		if (options) {
 			if (options.ordered) {
 				insertManyOptions["ordered"] = options.ordered;
 			}

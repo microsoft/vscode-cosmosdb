@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, InsertOneWriteOpResult, MongoCountPreferences } from 'mongodb';
+import * as assert from 'assert';
+import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, DeleteWriteOpResultObject, InsertOneWriteOpResult, InsertWriteOpResult, MongoCountPreferences } from 'mongodb';
 import * as path from 'path';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
@@ -102,7 +103,6 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	}
 
 	executeCommand(name: string, args?: string[]): Thenable<string> | null {
-		//const requiresOneArg = ['findOne', 'insertMany', 'insertOne', 'insert', 'deleteOne', 'deleteMany', 'remove'];
 		const parameters = args ? args.map(parseJSContent) : undefined;
 		const deferToShell = null; //The value executeCommand returns to instruct the caller function to run the same command in the Mongo shell.
 
@@ -185,26 +185,23 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		return EJSON.stringify(result, null, '\t');
 	}
 
-	private insert(document: Object): Thenable<string> {
+	private async insert(document: Object): Promise<string> {
 		if (!document) {
 			throw new Error("The insert command requires at least one argument");
 		}
-		return this.collection.insert(document)
-			.then(({ insertedCount, insertedId, result }) => {
-				return this.stringify({ insertedCount, insertedId, result });
-			});
+		const insertResult = await this.collection.insert(document);
+		return this.stringify(insertResult);
 	}
 
 	// tslint:disable-next-line:no-any
-	private insertOne(document: Object, options?: any): Thenable<string> {
-		return this.collection.insertOne(document, { w: options && options.writeConcern })
-			.then(({ insertedCount, insertedId, result }) => {
-				return this.stringify({ insertedCount, insertedId, result });
-			});
+	private async insertOne(document: Object, options?: any): Promise<string> {
+		const insertOneResult: InsertOneWriteOpResult = await this.collection.insertOne(document, { w: options && options.writeConcern });
+		return this.stringify(insertOneResult);
 	}
 
 	//tslint:disable:no-any
-	private insertMany(documents: any[], options?: any): Thenable<string> {
+	private async insertMany(documents: any[], options?: any): Promise<string> {
+		assert.notEqual(documents.length, 0, "Array of documents cannot be empty");
 		let insertManyOptions: CollectionInsertManyOptions = {};
 		if (options) {
 			if (options.ordered) {
@@ -215,36 +212,28 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 			}
 		}
 
-		return this.collection.insertMany(documents, insertManyOptions)
-			.then(({ insertedCount, insertedIds, result }) => {
-				return this.stringify({ insertedCount, insertedIds, result });
-			});
+		const insertManyResult: InsertWriteOpResult = await this.collection.insertMany(documents, insertManyOptions);
+		return this.stringify(insertManyResult);
 	}
 
-	private remove(filter?: Object): Thenable<string> {
-		return this.collection.remove(filter)
-			.then(({ ops, result }) => {
-				return this.stringify({ ops, result });
-			});
+	private async remove(filter?: Object): Promise<string> {
+		const removeResult = await this.collection.remove(filter);
+		return this.stringify(removeResult);
 	}
 
-	private deleteOne(filter: Object): Thenable<string> {
-		return this.collection.deleteOne(filter)
-			.then(({ deletedCount, result }) => {
-				return this.stringify({ deletedCount, result });
-			});
+	private async deleteOne(filter: Object): Promise<string> {
+		const deleteOneResult: DeleteWriteOpResultObject = await this.collection.deleteOne(filter);
+		return this.stringify(deleteOneResult);
 	}
 
-	private deleteMany(filter: Object): Thenable<string> {
-		return this.collection.deleteMany(filter)
-			.then(({ deletedCount, result }) => {
-				return this.stringify({ deletedCount, result });
-			});
+	private async deleteMany(filter: Object): Promise<string> {
+		const deleteOpResult: DeleteWriteOpResultObject = await this.collection.deleteMany(filter);
+		return this.stringify(deleteOpResult);
 	}
 
 	private async count(query?: Object[], options?: MongoCountPreferences): Promise<string> {
 		const count = await this.collection.count(query, options);
-		return JSON.stringify(count);
+		return this.stringify(count);
 	}
 
 	// tslint:disable-next-line:no-any

@@ -52,7 +52,8 @@ export class CosmosDBAccountProvider implements IChildProvider {
         const wizardContext: ICosmosDBWizardContext = {
             credentials: node.credentials,
             subscriptionId: node.subscriptionId,
-            subscriptionDisplayName: node.subscriptionDisplayName
+            subscriptionDisplayName: node.subscriptionDisplayName,
+            environment: node.environment
         };
 
         const wizard = new AzureWizard(

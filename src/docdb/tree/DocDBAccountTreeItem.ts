@@ -10,6 +10,7 @@ import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
+import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 
 export class DocDBAccountTreeItem extends DocDBAccountTreeItemBase {
@@ -27,6 +28,7 @@ export class DocDBAccountTreeItem extends DocDBAccountTreeItemBase {
             case DocDBDocumentTreeItem.contextValue:
             case DocDBStoredProcedureTreeItem.contextValue:
             case DocDBDocumentsTreeItem.contextValue:
+            case DocDBStoredProceduresTreeItem.contextValue:
                 return true;
             default:
                 return false;

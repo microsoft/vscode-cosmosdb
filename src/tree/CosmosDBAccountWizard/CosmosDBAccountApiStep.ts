@@ -13,7 +13,7 @@ export class CosmosDBAccountApiStep extends AzureWizardPromptStep<ICosmosDBWizar
         const picks: IAzureQuickPickItem<Experience>[] = getExperienceQuickPicks();
 
         const result: IAzureQuickPickItem<Experience> = await ext.ui.showQuickPick(picks, {
-            placeHolder: "Select an API for your Cosmos DB account...",
+            placeHolder: "Select an API for your Cosmos DB account..."
         });
 
         wizardContext.defaultExperience = result.data;

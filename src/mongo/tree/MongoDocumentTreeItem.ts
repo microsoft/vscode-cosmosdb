@@ -34,7 +34,8 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     }
 
     get id(): string {
-        return this.document._id.toString();
+        // tslint:disable-next-line:no-non-null-assertion
+        return String(this.document!._id);
     }
 
     public async refreshLabel(): Promise<void> {
@@ -48,7 +49,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
             light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Document.svg'),
-            dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Document.svg'),
+            dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Document.svg')
         };
     }
 

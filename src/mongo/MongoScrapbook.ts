@@ -8,7 +8,7 @@ import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import * as vscode from 'vscode';
-import { AzureTreeDataProvider, IActionContext, IAzureParentNode } from 'vscode-azureextensionui';
+import { AzureTreeDataProvider, IActionContext, IAzureParentNode, parseError } from 'vscode-azureextensionui';
 import { CosmosEditorManager } from '../CosmosEditorManager';
 import { ext } from '../extensionVariables';
 import { filterType, findType } from '../utils/array';
@@ -76,7 +76,13 @@ export function getAllCommandsFromTextDocument(document: vscode.TextDocument): M
 
 async function executeCommands(activeEditor: vscode.TextEditor, database: IAzureParentNode<MongoDatabaseTreeItem>, extensionPath, editorManager: CosmosEditorManager, tree: AzureTreeDataProvider, context: IActionContext, commands: MongoCommand[]): Promise<void> {
 	for (let command of commands) {
-		await executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
+		try {
+			await executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
+		} catch (e) {
+			const err = parseError(e);
+			err.message = `${command.text.split('(')[0]}, ${command.range.start.line + 1}:${command.range.start.character + 1} - ${err.message}`;
+			throw new Error(err.message);
+		}
 	}
 }
 

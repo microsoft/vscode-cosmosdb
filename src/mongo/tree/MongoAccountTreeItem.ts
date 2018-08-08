@@ -71,7 +71,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
             return [{
                 id: 'cosmosMongoError',
                 contextValue: 'cosmosMongoError',
-                label: error.message,
+                label: error.message
             }];
         } finally {
             if (db) {
@@ -84,7 +84,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
         const databaseName = await vscode.window.showInputBox({
             placeHolder: "Database Name",
             prompt: "Enter the name of the database",
-            validateInput: validateDatabaseName,
+            validateInput: validateDatabaseName
         });
         if (databaseName) {
             const collectionName = await vscode.window.showInputBox({

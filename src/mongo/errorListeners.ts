@@ -8,12 +8,12 @@ import { ANTLRErrorListener } from '../../node_modules/antlr4ts/ANTLRErrorListen
 import { RecognitionException } from '../../node_modules/antlr4ts/RecognitionException';
 import { Recognizer } from '../../node_modules/antlr4ts/Recognizer';
 import { Token } from '../../node_modules/antlr4ts/Token';
-import { errorDescription } from './MongoCommand';
+import { ErrorDescription } from './MongoCommand';
 
 export class ParserErrorListener implements ANTLRErrorListener<Token> {
-    private _errors: errorDescription[] = [];
+    private _errors: ErrorDescription[] = [];
 
-    public get errors(): errorDescription[] {
+    public get errors(): ErrorDescription[] {
         return this._errors;
     }
 
@@ -29,7 +29,7 @@ export class ParserErrorListener implements ANTLRErrorListener<Token> {
         const position = new vscode.Position(line - 1, charPositionInLine); // Symbol lines are 1-indexed. Position lines are 0-indexed
         let range = new vscode.Range(position, position);
 
-        let error: errorDescription = {
+        let error: ErrorDescription = {
             message: msg,
             range: range,
             exception: e
@@ -39,9 +39,9 @@ export class ParserErrorListener implements ANTLRErrorListener<Token> {
 }
 
 export class LexerErrorListener implements ANTLRErrorListener<number> {
-    private _errors: errorDescription[] = [];
+    private _errors: ErrorDescription[] = [];
 
-    public get errors(): errorDescription[] {
+    public get errors(): ErrorDescription[] {
         return this._errors;
     }
 
@@ -57,7 +57,7 @@ export class LexerErrorListener implements ANTLRErrorListener<number> {
         const position = new vscode.Position(line - 1, charPositionInLine); // Symbol lines are 1-indexed. Position lines are 0-indexed
         let range = new vscode.Range(position, position);
 
-        let error: errorDescription = {
+        let error: ErrorDescription = {
             message: msg,
             range: range,
             exception: e

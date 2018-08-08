@@ -12,6 +12,7 @@ import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
 import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
 import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
+import { DocDBStoredProceduresTreeItem } from "./tree/DocDBStoredProceduresTreeItem";
 import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
 
 export function registerDocDBCommands(tree: AzureTreeDataProvider, editorManager: CosmosEditorManager): void {
@@ -38,7 +39,7 @@ export function registerDocDBCommands(tree: AzureTreeDataProvider, editorManager
     });
     registerCommand('cosmosDB.createDocDBStoredProcedure', async (node?: IAzureParentNode) => {
         if (!node) {
-            node = <IAzureParentNode>await tree.showNodePicker(DocDBDocumentsTreeItem.contextValue);
+            node = <IAzureParentNode>await tree.showNodePicker(DocDBStoredProceduresTreeItem.contextValue);
         }
         let childNode = await node.createChild();
         await commands.executeCommand("cosmosDB.openStoredProcedure", childNode);

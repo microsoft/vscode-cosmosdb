@@ -10,7 +10,7 @@ import { Db, MongoClient, MongoClientOptions } from 'mongodb';
 export async function connectToMongoClient(connectionString: string, extensionUserAgent: string): Promise<Db> {
     // appname appears to be the correct equivalent to user-agent for mongo
     let options: MongoClientOptions = <MongoClientOptions>{
-        appname: extensionUserAgent,
+        appname: extensionUserAgent
     };
 
     return await MongoClient.connect(connectionString, options);

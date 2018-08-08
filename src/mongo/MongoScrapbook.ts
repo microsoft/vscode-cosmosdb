@@ -21,6 +21,8 @@ import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
 import { MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
+// tslint:disable:no-var-requires
+const EJSON = require("mongodb-extended-json");
 
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
 
@@ -216,7 +218,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 				const lastCommand = this.commands[this.commands.length - 1];
 				const argAsObject = this.contextToObject(ctx);
 				lastCommand.argumentObjects.push(argAsObject);
-				lastCommand.arguments.push(JSON.stringify(argAsObject));
+				lastCommand.arguments.push(EJSON.stringify(argAsObject));
 			}
 		}
 		return super.visitArgument(ctx);

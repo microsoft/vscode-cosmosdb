@@ -7,7 +7,7 @@ import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { ServiceClientCredentials } from "ms-rest";
 import { addExtensionUserAgent } from "vscode-azureextensionui";
 
-export function getCosmosDBManagementClient(credentials: ServiceClientCredentials, subscriptionId: string, baseUri='https://management.azure.com/'): CosmosDBManagementClient {
+export function getCosmosDBManagementClient(credentials: ServiceClientCredentials, subscriptionId: string, baseUri: string): CosmosDBManagementClient {
     const client = new CosmosDBManagementClient(credentials, subscriptionId, baseUri);
     addExtensionUserAgent(client);
 

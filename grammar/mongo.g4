@@ -58,6 +58,8 @@ propertyName: StringLiteral | IDENTIFIER;
 
 comment: SingleLineComment | MultiLineComment;
 
+RegexLiteral: '/' (~[/] | '\\/')+ '/' (RegexFlag)*;
+
 SingleLineComment:
 	'//' ~[\r\n\u2028\u2029]* -> channel(HIDDEN);
 
@@ -72,8 +74,6 @@ NullLiteral: 'null';
 BooleanLiteral: 'true' | 'false';
 
 NumericLiteral: '-'? DecimalLiteral;
-
-RegexLiteral: '/' (~[/])+ '/' (RegexFlag)*;
 
 RegexFlag: [gimuy];
 

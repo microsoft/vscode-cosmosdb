@@ -39,13 +39,13 @@ export class mongoParser extends Parser {
 	public static readonly T__5 = 6;
 	public static readonly T__6 = 7;
 	public static readonly T__7 = 8;
-	public static readonly SingleLineComment = 9;
-	public static readonly MultiLineComment = 10;
-	public static readonly StringLiteral = 11;
-	public static readonly NullLiteral = 12;
-	public static readonly BooleanLiteral = 13;
-	public static readonly NumericLiteral = 14;
-	public static readonly RegexLiteral = 15;
+	public static readonly RegexLiteral = 9;
+	public static readonly SingleLineComment = 10;
+	public static readonly MultiLineComment = 11;
+	public static readonly StringLiteral = 12;
+	public static readonly NullLiteral = 13;
+	public static readonly BooleanLiteral = 14;
+	public static readonly NumericLiteral = 15;
 	public static readonly RegexFlag = 16;
 	public static readonly DecimalLiteral = 17;
 	public static readonly LineTerminator = 18;
@@ -82,13 +82,13 @@ export class mongoParser extends Parser {
 
 	private static readonly _LITERAL_NAMES: (string | undefined)[] = [
 		undefined, "'('", "','", "')'", "'{'", "'}'", "'['", "']'", "':'", undefined,
-		undefined, undefined, "'null'", undefined, undefined, undefined, undefined,
+		undefined, undefined, undefined, "'null'", undefined, undefined, undefined,
 		undefined, undefined, "';'", "'.'", "'db'"
 	];
 	private static readonly _SYMBOLIC_NAMES: (string | undefined)[] = [
 		undefined, undefined, undefined, undefined, undefined, undefined, undefined,
-		undefined, undefined, "SingleLineComment", "MultiLineComment", "StringLiteral",
-		"NullLiteral", "BooleanLiteral", "NumericLiteral", "RegexLiteral", "RegexFlag",
+		undefined, undefined, "RegexLiteral", "SingleLineComment", "MultiLineComment",
+		"StringLiteral", "NullLiteral", "BooleanLiteral", "NumericLiteral", "RegexFlag",
 		"DecimalLiteral", "LineTerminator", "SEMICOLON", "DOT", "DB", "IDENTIFIER",
 		"DOUBLE_QUOTED_STRING_LITERAL", "SINGLE_QUOTED_STRING_LITERAL", "WHITESPACE"
 	];
@@ -368,7 +368,7 @@ export class mongoParser extends Parser {
 				this.state = 79;
 				this._errHandler.sync(this);
 				_la = this._input.LA(1);
-				if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__3) | (1 << mongoParser.T__5) | (1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.NumericLiteral) | (1 << mongoParser.RegexLiteral))) !== 0)) {
+				if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__3) | (1 << mongoParser.T__5) | (1 << mongoParser.RegexLiteral) | (1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.NumericLiteral))) !== 0)) {
 					{
 						this.state = 71;
 						this.argument();
@@ -417,11 +417,11 @@ export class mongoParser extends Parser {
 			this.state = 86;
 			this._errHandler.sync(this);
 			switch (this._input.LA(1)) {
+				case mongoParser.RegexLiteral:
 				case mongoParser.StringLiteral:
 				case mongoParser.NullLiteral:
 				case mongoParser.BooleanLiteral:
 				case mongoParser.NumericLiteral:
-				case mongoParser.RegexLiteral:
 					this.enterOuterAlt(_localctx, 1);
 					{
 						this.state = 83;
@@ -521,7 +521,7 @@ export class mongoParser extends Parser {
 				this.state = 99;
 				this._errHandler.sync(this);
 				_la = this._input.LA(1);
-				if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__3) | (1 << mongoParser.T__5) | (1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.NumericLiteral) | (1 << mongoParser.RegexLiteral) | (1 << mongoParser.IDENTIFIER))) !== 0)) {
+				if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__3) | (1 << mongoParser.T__5) | (1 << mongoParser.RegexLiteral) | (1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.NumericLiteral) | (1 << mongoParser.IDENTIFIER))) !== 0)) {
 					{
 						this.state = 98;
 						this.elementList();
@@ -669,11 +669,11 @@ export class mongoParser extends Parser {
 			this.state = 127;
 			this._errHandler.sync(this);
 			switch (this._input.LA(1)) {
+				case mongoParser.RegexLiteral:
 				case mongoParser.StringLiteral:
 				case mongoParser.NullLiteral:
 				case mongoParser.BooleanLiteral:
 				case mongoParser.NumericLiteral:
-				case mongoParser.RegexLiteral:
 					this.enterOuterAlt(_localctx, 1);
 					{
 						this.state = 123;
@@ -869,18 +869,18 @@ export class mongoParser extends Parser {
 		"\x0F\x03\x10\x03\x10\x03\x10\x05\x10\x87\n\x10\x03\x11\x03\x11\x03\x12" +
 		"\x03\x12\x03\x12\x02\x02\x02\x13\x02\x02\x04\x02\x06\x02\b\x02\n\x02\f" +
 		"\x02\x0E\x02\x10\x02\x12\x02\x14\x02\x16\x02\x18\x02\x1A\x02\x1C\x02\x1E" +
-		"\x02 \x02\"\x02\x02\x05\x03\x02\r\x0F\x04\x02\r\r\x18\x18\x03\x02\v\f" +
-		"\x8F\x02$\x03\x02\x02\x02\x04,\x03\x02\x02\x02\x06/\x03\x02\x02\x02\b" +
-		";\x03\x02\x02\x02\n=\x03\x02\x02\x02\fE\x03\x02\x02\x02\x0EH\x03\x02\x02" +
-		"\x02\x10X\x03\x02\x02\x02\x12Z\x03\x02\x02\x02\x14c\x03\x02\x02\x02\x16" +
-		"i\x03\x02\x02\x02\x18q\x03\x02\x02\x02\x1Ay\x03\x02\x02\x02\x1C\x81\x03" +
-		"\x02\x02\x02\x1E\x86\x03\x02\x02\x02 \x88\x03\x02\x02\x02\"\x8A\x03\x02" +
-		"\x02\x02$%\x05\x04\x03\x02%&\x07\x02\x02\x03&\x03\x03\x02\x02\x02\'+\x05" +
-		"\x06\x04\x02(+\x05\b\x05\x02)+\x05\"\x12\x02*\'\x03\x02\x02\x02*(\x03" +
-		"\x02\x02\x02*)\x03\x02\x02\x02+.\x03\x02\x02\x02,*\x03\x02\x02\x02,-\x03" +
-		"\x02\x02\x02-\x05\x03\x02\x02\x02.,\x03\x02\x02\x02/0\x07\x17\x02\x02" +
-		"06\x07\x16\x02\x0217\x05\f\x07\x0223\x05\n\x06\x0234\x07\x16\x02\x024" +
-		"5\x05\f\x07\x0257\x03\x02\x02\x0261\x03\x02\x02\x0262\x03\x02\x02\x02" +
+		"\x02 \x02\"\x02\x02\x05\x03\x02\x0E\x10\x04\x02\x0E\x0E\x18\x18\x03\x02" +
+		"\f\r\x8F\x02$\x03\x02\x02\x02\x04,\x03\x02\x02\x02\x06/\x03\x02\x02\x02" +
+		"\b;\x03\x02\x02\x02\n=\x03\x02\x02\x02\fE\x03\x02\x02\x02\x0EH\x03\x02" +
+		"\x02\x02\x10X\x03\x02\x02\x02\x12Z\x03\x02\x02\x02\x14c\x03\x02\x02\x02" +
+		"\x16i\x03\x02\x02\x02\x18q\x03\x02\x02\x02\x1Ay\x03\x02\x02\x02\x1C\x81" +
+		"\x03\x02\x02\x02\x1E\x86\x03\x02\x02\x02 \x88\x03\x02\x02\x02\"\x8A\x03" +
+		"\x02\x02\x02$%\x05\x04\x03\x02%&\x07\x02\x02\x03&\x03\x03\x02\x02\x02" +
+		"\'+\x05\x06\x04\x02(+\x05\b\x05\x02)+\x05\"\x12\x02*\'\x03\x02\x02\x02" +
+		"*(\x03\x02\x02\x02*)\x03\x02\x02\x02+.\x03\x02\x02\x02,*\x03\x02\x02\x02" +
+		",-\x03\x02\x02\x02-\x05\x03\x02\x02\x02.,\x03\x02\x02\x02/0\x07\x17\x02" +
+		"\x0206\x07\x16\x02\x0217\x05\f\x07\x0223\x05\n\x06\x0234\x07\x16\x02\x02" +
+		"45\x05\f\x07\x0257\x03\x02\x02\x0261\x03\x02\x02\x0262\x03\x02\x02\x02" +
 		"79\x03\x02\x02\x028:\x07\x15\x02\x0298\x03\x02\x02\x029:\x03\x02\x02\x02" +
 		":\x07\x03\x02\x02\x02;<\x07\x15\x02\x02<\t\x03\x02\x02\x02=B\x07\x18\x02" +
 		"\x02>?\x07\x16\x02\x02?A\x07\x18\x02\x02@>\x03\x02\x02\x02AD\x03\x02\x02" +
@@ -904,11 +904,11 @@ export class mongoParser extends Parser {
 		"\x02{|\x05\x1C\x0F\x02|\x1B\x03\x02\x02\x02}\x82\x05\x1E\x10\x02~\x82" +
 		"\x05\x12\n\x02\x7F\x82\x05\x14\v\x02\x80\x82\x05\f\x07\x02\x81}\x03\x02" +
 		"\x02\x02\x81~\x03\x02\x02\x02\x81\x7F\x03\x02\x02\x02\x81\x80\x03\x02" +
-		"\x02\x02\x82\x1D\x03\x02\x02\x02\x83\x87\t\x02\x02\x02\x84\x87\x07\x11" +
-		"\x02\x02\x85\x87\x07\x10\x02\x02\x86\x83\x03\x02\x02\x02\x86\x84\x03\x02" +
-		"\x02\x02\x86\x85\x03\x02\x02\x02\x87\x1F\x03\x02\x02\x02\x88\x89\t\x03" +
-		"\x02\x02\x89!\x03\x02\x02\x02\x8A\x8B\t\x04\x02\x02\x8B#\x03\x02\x02\x02" +
-		"\x11*,69BNQX\\_env\x81\x86";
+		"\x02\x02\x82\x1D\x03\x02\x02\x02\x83\x87\t\x02\x02\x02\x84\x87\x07\v\x02" +
+		"\x02\x85\x87\x07\x11\x02\x02\x86\x83\x03\x02\x02\x02\x86\x84\x03\x02\x02" +
+		"\x02\x86\x85\x03\x02\x02\x02\x87\x1F\x03\x02\x02\x02\x88\x89\t\x03\x02" +
+		"\x02\x89!\x03\x02\x02\x02\x8A\x8B\t\x04\x02\x02\x8B#\x03\x02\x02\x02\x11" +
+		"*,69BNQX\\_env\x81\x86";
 	public static __ATN: ATN;
 	public static get _ATN(): ATN {
 		if (!mongoParser.__ATN) {

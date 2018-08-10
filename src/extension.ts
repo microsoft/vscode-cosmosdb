@@ -110,15 +110,14 @@ export function activate(context: vscode.ExtensionContext) {
 			result = await collectionTreeItem!.executeCommand('insertMany', [JSON.stringify(documents)]);
 		} else { //DocDB
 			const collectionTreeItem = (<DocDBCollectionTreeItem>collectionNode.treeItem);
-			const documentsTreeItem: DocDBDocumentsTreeItem = collectionTreeItem.loadMoreChildren(collectionNode, false)[0];
-			const partitionPathObject = documentsTreeItem.promptForPartitionKey({}); //prompt once for partition value, and create the required object
+			const documentsTreeItem: DocDBDocumentsTreeItem = <DocDBDocumentsTreeItem>(await collectionTreeItem.loadMoreChildren(collectionNode, false))[0];
+			const partitionPathObject = await documentsTreeItem.promptForPartitionKey({}); //prompt once for partition value, and create the required object
 			for (let document of documents) {
 				Object.assign(document, partitionPathObject);
 				documentsTreeItem.createDocument(document);
 			}
-			collectionNode.refresh();
 		}
-		collectionNode.refresh();
+		await collectionNode.refresh();
 		vscode.window.showInformationMessage(result);
 	});
 	registerCommand('cosmosDB.openInPortal', async (node?: IAzureNode) => {

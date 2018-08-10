@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocumentClient, FeedOptions, QueryIterator, RetrievedDocument } from 'documentdb';
+import { DocumentClient, FeedOptions, NewDocument, QueryIterator, RetrievedDocument } from 'documentdb';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
@@ -51,7 +51,6 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
     }
 
     public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
-        const client = this.getDocumentClient();
         let docID = await vscode.window.showInputBox({
             prompt: "Enter a unique document ID or leave blank for a generated ID",
             ignoreFocusOut: true
@@ -60,33 +59,43 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
         if (docID || docID === "") {
             docID = docID.trim();
             let body = { 'id': docID };
-            const partitionKey: string | undefined = this._collection.partitionKey && this._collection.partitionKey.paths[0];
-            if (partitionKey) {
-                const partitionKeyValue: string = await vscode.window.showInputBox({
-                    prompt: `Enter a value for the partition key ("${partitionKey}")`,
-                    ignoreFocusOut: true
-                });
-                if (partitionKeyValue) {
-                    // Unlike delete/replace, createDocument does not accept a partition key value via an options parameter.
-                    // We need to present the partitionKey value as part of the document contents
-                    Object.assign(body, this.createPartitionPathObject(partitionKey, partitionKeyValue));
-                }
-            }
+            body = <NewDocument>(await this.promptForPartitionKey(body));
             showCreatingNode(docID);
-            const document: RetrievedDocument = await new Promise<RetrievedDocument>((resolve, reject) => {
-                client.createDocument(this.link, body, (err, result: RetrievedDocument) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(result);
-                    }
-                });
-            });
+            const document = await this.createDocument(body);
 
             return this.initChild(document);
         }
 
         throw new UserCancelledError();
+    }
+
+    public async createDocument(body: NewDocument): Promise<RetrievedDocument> {
+        const document: RetrievedDocument = await new Promise<RetrievedDocument>((resolve, reject) => {
+            this.getDocumentClient().createDocument(this.link, body, (err, result: RetrievedDocument) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(result);
+                }
+            });
+        });
+        return document;
+    }
+
+    public async promptForPartitionKey(body: Object): Promise<Object> {
+        const partitionKey: string | undefined = this._collection.partitionKey && this._collection.partitionKey.paths[0];
+        if (partitionKey) {
+            const partitionKeyValue: string = await vscode.window.showInputBox({
+                prompt: `Enter a value for the partition key ("${partitionKey}")`,
+                ignoreFocusOut: true
+            });
+            if (partitionKeyValue) {
+                // Unlike delete/replace, createDocument does not accept a partition key value via an options parameter.
+                // We need to present the partitionKey value as part of the document contents
+                Object.assign(body, this.createPartitionPathObject(partitionKey, partitionKeyValue));
+            }
+        }
+        return body;
     }
 
     // Create a nested Object given the partition key path and value

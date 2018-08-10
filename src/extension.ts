@@ -13,6 +13,8 @@ import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
+import { DocDBCollectionTreeItem } from './docdb/tree/DocDBCollectionTreeItem';
+import { DocDBDocumentsTreeItem } from './docdb/tree/DocDBDocumentsTreeItem';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { ext } from './extensionVariables';
 import { registerGraphCommands } from './graph/registerGraphCommands';
@@ -100,9 +102,22 @@ export function activate(context: vscode.ExtensionContext) {
 			ext.outputChannel.show();
 			throw new Error(`Errors found in the following documents: ${errors.join(',')}.\nPlease fix these and try again.`);
 		}
-		const collectionNode = <IAzureParentNode<MongoCollectionTreeItem>>await tree.showNodePicker([MongoCollectionTreeItem.contextValue]);
-		//tslint:disable:no-non-null-assertion
-		const result = await collectionNode.treeItem!.executeCommand('insertMany', [JSON.stringify(documents)]);
+		const collectionNode = <IAzureParentNode<MongoCollectionTreeItem | DocDBCollectionTreeItem>>await tree.showNodePicker([MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue]);
+		let result;
+		if (collectionNode.treeItem instanceof MongoCollectionTreeItem) {
+			const collectionTreeItem = <MongoCollectionTreeItem>collectionNode.treeItem;
+			//tslint:disable:no-non-null-assertion
+			result = await collectionTreeItem!.executeCommand('insertMany', [JSON.stringify(documents)]);
+		} else { //DocDB
+			const collectionTreeItem = (<DocDBCollectionTreeItem>collectionNode.treeItem);
+			const documentsTreeItem: DocDBDocumentsTreeItem = collectionTreeItem.loadMoreChildren(collectionNode, false)[0];
+			const partitionPathObject = documentsTreeItem.promptForPartitionKey({}); //prompt once for partition value, and create the required object
+			for (let document of documents) {
+				Object.assign(document, partitionPathObject);
+				documentsTreeItem.createDocument(document);
+			}
+			collectionNode.refresh();
+		}
 		collectionNode.refresh();
 		vscode.window.showInformationMessage(result);
 	});
@@ -186,7 +201,6 @@ async function parseDocuments(nodes: vscode.Uri[]) {
 				documents.push(parsed);
 			}
 		}
-		//documents.push(text);
 	}
 	return [documents, Object.keys(errors)];
 }

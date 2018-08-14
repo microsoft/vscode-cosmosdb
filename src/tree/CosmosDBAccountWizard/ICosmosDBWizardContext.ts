@@ -29,7 +29,7 @@ export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
 
     /**
      * The environment to connect to
-     * This will be defined after `CosmosDBAccountApiStep.prompt` occurs.
+     * This field is required
      */
-    environment?: AzureEnvironment;
+    environment: AzureEnvironment;
 }

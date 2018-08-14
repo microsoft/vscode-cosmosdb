@@ -16,7 +16,7 @@ export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContex
     }
 
     public async prompt(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {
-        const client = getCosmosDBManagementClient(wizardContext.credentials, wizardContext.subscriptionId);
+        const client = getCosmosDBManagementClient(wizardContext.credentials, wizardContext.subscriptionId, wizardContext.environment.resourceManagerEndpointUrl);
         wizardContext.accountName = (await ext.ui.showInputBox({
             placeHolder: "Account name",
             prompt: "Provide a Cosmos DB account name",

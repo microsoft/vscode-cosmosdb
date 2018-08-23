@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
+import { AzureEnvironment } from 'ms-rest-azure';
 import { IResourceGroupWizardContext } from 'vscode-azureextensionui';
 import { Experience } from '../../experiences';
 
@@ -25,4 +26,10 @@ export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
      * This will be defined after `CosmosDBAccountApiStep.prompt` occurs.
      */
     defaultExperience?: Experience;
+
+    /**
+     * The environment to connect to
+     * This field is required
+     */
+    environment: AzureEnvironment;
 }

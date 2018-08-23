@@ -12,7 +12,7 @@ import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBWizardContext> {
     public async execute(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {
-        const client = getCosmosDBManagementClient(wizardContext.credentials, wizardContext.subscriptionId);
+        const client = getCosmosDBManagementClient(wizardContext.credentials, wizardContext.subscriptionId, wizardContext.environment.resourceManagerEndpointUrl);
         ext.outputChannel.appendLine(`Creating Cosmos DB account "${wizardContext.accountName}" with API "${wizardContext.defaultExperience.shortName}"...`);
         let options = {
             location: wizardContext.location.name,

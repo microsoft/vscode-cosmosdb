@@ -39,9 +39,15 @@ export function registerGraphCommands(context: vscode.ExtensionContext, tree: Az
         await node.deleteNode();
     });
     registerCommand('cosmosDB.openGraphExplorer', async (node: IAzureNode<GraphTreeItem>) => {
-        if (!node) {
-            node = <IAzureNode<GraphTreeItem>>await tree.showNodePicker(GraphCollectionTreeItem.contextValue);
+        let treeItem: GraphTreeItem;
+        if (node) {
+            treeItem = node.treeItem;
         }
-        await node.treeItem.showExplorer(graphViewsManager);
+        if (!node) {
+            let collectionNode = <IAzureNode<GraphCollectionTreeItem>>await tree.showNodePicker(GraphCollectionTreeItem.contextValue);
+            let children = await collectionNode.treeItem.loadMoreChildren(collectionNode, false);
+            treeItem = <GraphTreeItem>(children[0]);
+        }
+        await treeItem.showExplorer(graphViewsManager);
     });
 }

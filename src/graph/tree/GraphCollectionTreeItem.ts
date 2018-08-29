@@ -8,8 +8,6 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { DialogResponses, IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { getDocumentClient } from '../../docdb/getDocumentClient';
-import { DocDBDocumentsTreeItem } from '../../docdb/tree/DocDBDocumentsTreeItem';
-import { DocDBDocumentTreeItem } from '../../docdb/tree/DocDBDocumentTreeItem';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from '../../docdb/tree/DocDBStoredProcedureTreeItem';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
@@ -81,8 +79,6 @@ export class GraphCollectionTreeItem implements IAzureTreeItem {
 
     public pickTreeItem?(expectedContextValue: string): IAzureTreeItem | undefined {
         switch (expectedContextValue) {
-            case DocDBDocumentsTreeItem.contextValue:
-            case DocDBDocumentTreeItem.contextValue:
             case GraphTreeItem.contextValue:
                 return this._graphTreeItem;
 

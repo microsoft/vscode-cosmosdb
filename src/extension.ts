@@ -94,10 +94,12 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	registerCommand('cosmosDB.importDocument', async (_node, nodes: vscode.Uri[]) => {
 		if (!nodes) {
-			// tslint:disable-next-line:no-suspicious-comment
-			// TODO: get all workspace directories
-			// get all files in those workspace directories
-			// generate items with label being filename, detail being relPath, having the URI's too.
+			let files: vscode.Uri[] = await vscode.workspace.findFiles("*.json");
+			let items: vscode.QuickPickItem[] & { uri: vscode.Uri } = files.map(file => {
+				return { uri: file, detail: file.fsPath, label: vscode.workspace.asRelativePath(file) };
+			});
+			let chosen: vscode.QuickPickItem[] & { uri: vscode.Uri } = await vscode.window.showQuickPick(items, { matchOnDescription: true, ignoreFocusOut: true, canPickMany: true });
+			nodes = chosen.map(choice => choice.uri)
 			return;
 		}
 		const parseResult = await parseDocuments(nodes);

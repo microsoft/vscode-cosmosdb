@@ -6,6 +6,7 @@
 'use strict';
 
 import * as copypaste from 'copy-paste';
+import { NewDocument } from 'documentdb';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureUserInput, IActionContext, IAzureNode, IAzureParentNode, IAzureUserInput, parseError, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
 import { CosmosEditorManager } from './CosmosEditorManager';
@@ -93,6 +94,10 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	registerCommand('cosmosDB.importDocument', async (_node, nodes: vscode.Uri[]) => {
 		if (!nodes) {
+			// tslint:disable-next-line:no-suspicious-comment
+			// TODO: get all workspace directories
+			// get all files in those workspace directories
+			// generate items with label being filename, detail being relPath, having the URI's too.
 			return;
 		}
 		const parseResult = await parseDocuments(nodes);
@@ -111,9 +116,12 @@ export function activate(context: vscode.ExtensionContext) {
 		} else { //DocDB
 			const collectionTreeItem = (<DocDBCollectionTreeItem>collectionNode.treeItem);
 			const documentsTreeItem: DocDBDocumentsTreeItem = <DocDBDocumentsTreeItem>(await collectionTreeItem.loadMoreChildren(collectionNode, false))[0];
-			const partitionPathObject = await documentsTreeItem.promptForPartitionKey({}); //prompt once for partition value, and create the required object
-			for (let document of documents) {
-				Object.assign(document, partitionPathObject);
+			let i = 0;
+			for (i = 0; i < documents.length; i++) {
+				let document: NewDocument = documents[i];
+				if (!documentsTreeItem.documentHasPartitionKey(document)) {
+					throw new Error(`Error in file ${vscode.workspace.asRelativePath(nodes[i])}. Please ensure every document has a partition key path for the collection you choose to import into.`);
+				}
 				documentsTreeItem.createDocument(document);
 			}
 		}

@@ -82,6 +82,27 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
         return document;
     }
 
+    public documentHasPartitionKey(doc: Object): boolean {
+        let interim = doc;
+        let partitionKey: string | undefined = this._collection.partitionKey && this._collection.partitionKey.paths[0];
+        if (!partitionKey) {
+            return true;
+        }
+        if (partitionKey[0] === '/') {
+            partitionKey = partitionKey.slice(1);
+        }
+        let keyPath = partitionKey.split('/');
+        let i: number;
+        for (i = 0; i < keyPath.length - 1; i++) {
+            if (interim.hasOwnProperty(keyPath[i])) {
+                interim = interim[keyPath[i]];
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public async promptForPartitionKey(body: Object): Promise<Object> {
         const partitionKey: string | undefined = this._collection.partitionKey && this._collection.partitionKey.paths[0];
         if (partitionKey) {

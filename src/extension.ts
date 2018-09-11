@@ -8,7 +8,7 @@
 import * as copypaste from 'copy-paste';
 import { NewDocument } from 'documentdb';
 import * as vscode from 'vscode';
-import { AzureTreeDataProvider, AzureUserInput, IActionContext, IAzureNode, IAzureParentNode, IAzureUserInput, parseError, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
+import { AzureTreeDataProvider, AzureUserInput, IActionContext, IAzureNode, IAzureParentNode, IAzureUserInput, parseError, registerCommand, registerEvent, registerUIExtensionVariables, UserCancelledError } from 'vscode-azureextensionui';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
@@ -95,12 +95,14 @@ export function activate(context: vscode.ExtensionContext) {
 	registerCommand('cosmosDB.importDocument', async (_node, nodes: vscode.Uri[]) => {
 		if (!nodes) {
 			let files: vscode.Uri[] = await vscode.workspace.findFiles("*.json");
-			let items: vscode.QuickPickItem[] & { uri: vscode.Uri } = files.map(file => {
-				return { uri: file, detail: file.fsPath, label: vscode.workspace.asRelativePath(file) };
+			let items: (vscode.QuickPickItem & { uri: vscode.Uri })[] = files.map(file => {
+				return { uri: file, label: vscode.workspace.asRelativePath(file) };
 			});
-			let chosen: vscode.QuickPickItem[] & { uri: vscode.Uri } = await vscode.window.showQuickPick(items, { matchOnDescription: true, ignoreFocusOut: true, canPickMany: true });
-			nodes = chosen.map(choice => choice.uri)
-			return;
+			let chosen: (vscode.QuickPickItem & { uri: vscode.Uri })[] = await ext.ui.showQuickPick(items, { canPickMany: true });
+			if (!chosen.length) {
+				throw new UserCancelledError();
+			}
+			nodes = chosen.map(choice => choice.uri);
 		}
 		const parseResult = await parseDocuments(nodes);
 		const documents = parseResult[0];
@@ -110,12 +112,13 @@ export function activate(context: vscode.ExtensionContext) {
 			throw new Error(`Errors found in the following documents: ${errors.join(',')}.\nPlease fix these and try again.`);
 		}
 		const collectionNode = <IAzureParentNode<MongoCollectionTreeItem | DocDBCollectionTreeItem>>await tree.showNodePicker([MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue]);
-		let result;
+		let result: string;
 		if (collectionNode.treeItem instanceof MongoCollectionTreeItem) {
 			const collectionTreeItem = <MongoCollectionTreeItem>collectionNode.treeItem;
 			//tslint:disable:no-non-null-assertion
 			result = await collectionTreeItem!.executeCommand('insertMany', [JSON.stringify(documents)]);
 		} else { //DocDB
+			let ids = [];
 			const collectionTreeItem = (<DocDBCollectionTreeItem>collectionNode.treeItem);
 			const documentsTreeItem: DocDBDocumentsTreeItem = <DocDBDocumentsTreeItem>(await collectionTreeItem.loadMoreChildren(collectionNode, false))[0];
 			let i = 0;
@@ -124,12 +127,15 @@ export function activate(context: vscode.ExtensionContext) {
 				if (!documentsTreeItem.documentHasPartitionKey(document)) {
 					throw new Error(`Error in file ${vscode.workspace.asRelativePath(nodes[i])}. Please ensure every document has a partition key path for the collection you choose to import into.`);
 				}
-				documentsTreeItem.createDocument(document);
+				const retrieved = await documentsTreeItem.createDocument(document);
+				ids.push(retrieved.id);
 			}
+			result = `Imported ${ids.length} documents`;
 		}
 		await collectionNode.refresh();
-		vscode.window.showInformationMessage(result);
+		await vscode.window.showInformationMessage(result);
 	});
+
 	registerCommand('cosmosDB.openInPortal', async (node?: IAzureNode) => {
 		if (!node) {
 			node = await tree.showNodePicker(accountContextValues);

@@ -646,6 +646,14 @@
 				{
 					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccounts"
+				},
+				{
+					"command": "cosmosDB.importDocument",
+					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+				},
+				{
+					"command": "cosmosDB.importDocument",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
 				}
 			],
 			"explorer/context": [

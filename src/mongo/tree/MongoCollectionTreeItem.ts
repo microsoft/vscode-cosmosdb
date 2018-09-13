@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, InsertOneWriteOpResult } from 'mongodb';
+import * as assert from 'assert';
+import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, DeleteWriteOpResultObject, InsertOneWriteOpResult, InsertWriteOpResult, MongoCountPreferences } from 'mongodb';
 import * as path from 'path';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
@@ -101,46 +102,52 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		return new MongoDocumentTreeItem(newDocument, this.collection);
 	}
 
-	//tslint:disable:cyclomatic-complexity
-	executeCommand(name: string, args?: string[]): Thenable<string> {
+	executeCommand(name: string, args?: string[]): Thenable<string> | null {
+		const parameters = args ? args.map(parseJSContent) : undefined;
+		const deferToShell = null; //The value executeCommand returns to instruct the caller function to run the same command in the Mongo shell.
+
 		try {
-			if (name === 'findOne') {
-				return reportProgress(this.findOne(args ? args.map(parseJSContent) : undefined), 'Finding');
+			type MongoFunction = (...args: Object[]) => Thenable<string>;
+			let functions: { [functionName: string]: [MongoFunction, string, number, number, number] } = {
+				/*
+				format: command name (from the argument) :
+				0: corresponding function call,
+				1: text to show during the operation,
+				2: min number of args allowed by the shell
+				3: max number of args allowed by the shell
+				4: Max number of args executeCommand supports, i.e., has mapper code to convert options provided - to the shell - into an API compatible options object
+				4th element <= 3rd element
+				*/
+				"drop": [this.drop, 'Dropping collection', 0, 0, 0],
+				"insert": [this.insert, 'Inserting document', 1, 1, 1],
+				"count": [this.count, 'Counting documents', 0, 2, 2],
+				"findOne": [this.findOne, 'Finding Document', 0, 2, 2],
+				"insertMany": [this.insertMany, 'Inserting documents', 1, 2, 2],
+				"insertOne": [this.insertOne, 'Inserting document', 1, 2, 2],
+				"deleteOne": [this.deleteOne, 'Deleting document', 1, 2, 1],
+				"deleteMany": [this.deleteMany, 'Deleting documents', 1, 2, 1],
+				"remove": [this.remove, 'Deleting document(s)', 1, 2, 1]
+			};
+
+			if (name in functions) {
+				let functionData = functions[name];
+				const mongoFunction: (args: Object[]) => Thenable<string> = functionData[0];
+				let pendingText: string = functionData[1];
+				let minArgs: number = functionData[2];
+				let maxArgs: number = functionData[3];
+				let handledMaxArgs: number = functionData[4];
+				if (parameters.length < minArgs) { //has less than the min allowed
+					return Promise.reject(new Error(`Too few arguments passed to command ${name}.`));
+				}
+				if (parameters.length > maxArgs) { //has more than the max allowed
+					return Promise.reject(new Error(`Too many arguments passed to command ${name}`));
+				}
+				if (parameters.length > handledMaxArgs) { //this function won't handle these arguments, but the shell will
+					return deferToShell;
+				}
+				return reportProgress(mongoFunction.apply(this, parameters), pendingText);
 			}
-			if (name === 'drop') {
-				return reportProgress(this.drop(), 'Dropping collection');
-			}
-			if (name === 'insertMany') {
-				return reportProgress(this.insertMany(args ? args.map(parseJSContent) : undefined), 'Inserting documents');
-			}
-			else {
-				let argument;
-				if (args && args.length > 1) {
-					return undefined;
-				}
-				if (args) {
-					argument = args[0];
-				}
-				if (name === 'insert') {
-					return reportProgress(this.insert(argument ? parseJSContent(argument) : undefined), 'Inserting document');
-				}
-				if (name === 'insertOne') {
-					return reportProgress(this.insertOne(argument ? parseJSContent(argument) : undefined), 'Inserting document');
-				}
-				if (name === 'deleteOne') {
-					return reportProgress(this.deleteOne(argument ? parseJSContent(argument) : undefined), 'Deleting document');
-				}
-				if (name === 'deleteMany') {
-					return reportProgress(this.deleteMany(argument ? parseJSContent(argument) : undefined), 'Deleting documents');
-				}
-				if (name === 'remove') {
-					return reportProgress(this.remove(argument ? parseJSContent(argument) : undefined), 'Removing');
-				}
-				if (name === 'count') {
-					return reportProgress(this.count(argument ? parseJSContent(argument) : undefined), 'Counting');
-				}
-				return null;
-			}
+			return deferToShell;
 		} catch (error) {
 			return Promise.reject(error);
 		}
@@ -171,85 +178,62 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		}
 	}
 
-	//tslint:disable:no-any
-	private async findOne(args?: any[]): Promise<string> {
-		let result;
-		if (!args || args.length === 0) {
-			result = await this.collection.findOne({});
-		} else if (args.length === 1) {
-			result = await this.collection.findOne(args[0]);
-		} else if (args.length === 2) {
-			result = await this.collection.findOne(args[0], { fields: args[1] });
-		} else {
-			return Promise.reject(new Error("Too many arguments passed to findOne."));
-		}
+	private async findOne(query?: Object, fieldsOption?: Object): Promise<string> {
+		const result = await this.collection.findOne(query || {}, { fields: fieldsOption });
 		// findOne is the only command in this file whose output requires EJSON support.
 		// Hence that's the only function which uses EJSON.stringify rather than this.stringify.
 		return EJSON.stringify(result, null, '\t');
 	}
 
-	private insert(document: Object): Thenable<string> {
-		return this.collection.insert(document)
-			.then(({ insertedCount, insertedId, result }) => {
-				return this.stringify({ insertedCount, insertedId, result });
-			});
+	private async insert(document: Object): Promise<string> {
+		if (!document) {
+			throw new Error("The insert command requires at least one argument");
+		}
+		const insertResult = await this.collection.insert(document);
+		return this.stringify(insertResult);
 	}
 
-	private insertOne(document: Object): Thenable<string> {
-		return this.collection.insertOne(document)
-			.then(({ insertedCount, insertedId, result }) => {
-				return this.stringify({ insertedCount, insertedId, result });
-			});
+	// tslint:disable-next-line:no-any
+	private async insertOne(document: Object, options?: any): Promise<string> {
+		const insertOneResult: InsertOneWriteOpResult = await this.collection.insertOne(document, { w: options && options.writeConcern });
+		return this.stringify(insertOneResult);
 	}
 
 	//tslint:disable:no-any
-	private insertMany(args: any[]): Thenable<string> {
-		// documents = args[0], collectionWriteOptions from args[1]
+	private async insertMany(documents: any[], options?: any): Promise<string> {
+		assert.notEqual(documents.length, 0, "Array of documents cannot be empty");
 		let insertManyOptions: CollectionInsertManyOptions = {};
-		const docsLink: string = "Please see mongo shell documentation. https://docs.mongodb.com/manual/reference/method/db.collection.insertMany/#db.collection.insertMany.";
-		if (!args || args.length === 0) {
-			return Promise.reject(new Error("Too few arguments passed to insertMany. " + docsLink));
-		} else if (args.length > 2) {
-			return Promise.reject(new Error("Too many arguments passed to insertMany. " + docsLink));
-		} else if (args.length === 2) {
-			if (args[1] && args[1].ordered) {
-				insertManyOptions["ordered"] = args[1].ordered;
+		if (options) {
+			if (options.ordered) {
+				insertManyOptions["ordered"] = options.ordered;
 			}
-			if (args[1] && args[1].writeConcern) {
-				insertManyOptions["w"] = args[1].writeConcern;
+			if (options.writeConcern) {
+				insertManyOptions["w"] = options.writeConcern;
 			}
 		}
 
-		return this.collection.insertMany(args[0], insertManyOptions)
-			.then(({ insertedCount, insertedIds, result }) => {
-				return this.stringify({ insertedCount, insertedIds, result });
-			});
+		const insertManyResult: InsertWriteOpResult = await this.collection.insertMany(documents, insertManyOptions);
+		return this.stringify(insertManyResult);
 	}
 
-	private remove(args?: Object): Thenable<string> {
-		return this.collection.remove(args)
-			.then(({ ops, result }) => {
-				return this.stringify({ ops, result });
-			});
+	private async remove(filter?: Object): Promise<string> {
+		const removeResult = await this.collection.remove(filter);
+		return this.stringify(removeResult);
 	}
 
-	private deleteOne(args?: Object): Thenable<string> {
-		return this.collection.deleteOne(args)
-			.then(({ deletedCount, result }) => {
-				return this.stringify({ deletedCount, result });
-			});
+	private async deleteOne(filter: Object): Promise<string> {
+		const deleteOneResult: DeleteWriteOpResultObject = await this.collection.deleteOne(filter);
+		return this.stringify(deleteOneResult);
 	}
 
-	private deleteMany(args?: Object): Thenable<string> {
-		return this.collection.deleteMany(args)
-			.then(({ deletedCount, result }) => {
-				return this.stringify({ deletedCount, result });
-			});
+	private async deleteMany(filter: Object): Promise<string> {
+		const deleteOpResult: DeleteWriteOpResultObject = await this.collection.deleteMany(filter);
+		return this.stringify(deleteOpResult);
 	}
 
-	private async count(args?: Object): Promise<string> {
-		const count = await this.collection.count(args);
-		return JSON.stringify(count);
+	private async count(query?: Object[], options?: MongoCountPreferences): Promise<string> {
+		const count = await this.collection.count(query, options);
+		return this.stringify(count);
 	}
 
 	// tslint:disable-next-line:no-any

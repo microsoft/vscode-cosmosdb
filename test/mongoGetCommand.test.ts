@@ -730,8 +730,7 @@ suite("scrapbook parsing Tests", () => {
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         assert.deepEqual(command.collection, "c1");
         assert.deepEqual(command.argumentObjects, [{}, {}]);
-        assert.deepEqual(command.errors[0].message, "mismatched input 'f' expecting {'{', '[', StringLiteral, 'null', BooleanLiteral, NumericLiteral, RegexLiteral}")
+        assert.deepEqual(command.errors[0].message, "mismatched input 'f' expecting {'{', '[', RegexLiteral, StringLiteral, 'null', BooleanLiteral, NumericLiteral}")
     });
-
 });
 

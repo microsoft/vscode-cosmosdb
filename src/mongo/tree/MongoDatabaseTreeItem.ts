@@ -92,19 +92,19 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		return accountConnection.db(this.databaseName);
 	}
 
-	executeCommand(command: MongoCommand, context: IActionContext): Thenable<string> {
+	async executeCommand(command: MongoCommand, context: IActionContext): Promise<string> {
 		if (command.collection) {
-			return this.getDb()
-				.then(db => {
-					const collection = db.collection(command.collection);
-					if (collection) {
-						const result = new MongoCollectionTreeItem(collection, command.arguments).executeCommand(command.name, command.arguments);
-						if (result) {
-							return result;
-						}
-					}
-					return withProgress(this.executeCommandInShell(command, context), 'Executing command');
-				});
+			let db = await this.getDb();
+			const collection = db.collection(command.collection);
+			if (collection) {
+				const collectionTreeItem = new MongoCollectionTreeItem(collection, command.arguments);
+				const result = await collectionTreeItem.executeCommand(command.name, command.arguments);
+				if (result) {
+					return result;
+				}
+			}
+			return withProgress(this.executeCommandInShell(command, context), 'Executing command');
+
 		}
 
 		if (command.name === 'createCollection') {

@@ -40,7 +40,7 @@ export function registerGraphCommands(context: vscode.ExtensionContext, tree: Az
     });
     registerCommand('cosmosDB.openGraphExplorer', async (node: IAzureNode<GraphTreeItem>) => {
         if (!node) {
-            node = <IAzureNode<GraphTreeItem>>await tree.showNodePicker(GraphCollectionTreeItem.contextValue);
+            node = <IAzureNode<GraphTreeItem>>await tree.showNodePicker(GraphTreeItem.contextValue);
         }
         await node.treeItem.showExplorer(graphViewsManager);
     });

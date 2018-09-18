@@ -181,14 +181,22 @@ async function importDocuments(tree: AzureTreeDataProvider, nodes: vscode.Uri[] 
 
 async function askForDocuments(): Promise<vscode.Uri[]> {
 	let files: vscode.Uri[] = await vscode.workspace.findFiles("*.json");
+	let jsonDocuments: (vscode.QuickPickItem & { uri: vscode.Uri })[] = [];
 	let items: (vscode.QuickPickItem & { uri: vscode.Uri })[] = files.map(file => {
 		return { uri: file, label: vscode.workspace.asRelativePath(file) };
 	});
-	let chosen: (vscode.QuickPickItem & { uri: vscode.Uri })[] = await ext.ui.showQuickPick(items, { canPickMany: true });
-	if (!chosen.length) {
-		throw new UserCancelledError();
+	let pickAgain: string = "Pick again";
+	let discontinue = "Discontiue import";
+	while (!jsonDocuments.length) {
+		jsonDocuments = await ext.ui.showQuickPick(items, { canPickMany: true, placeHolder: "Choose a document to upload. Hit Escape to Cancel" });
+		if (!jsonDocuments.length) {
+			let action: string = await vscode.window.showWarningMessage("No document picked. Want to pick again?", pickAgain, discontinue);
+			if (action === discontinue) {
+				throw new UserCancelledError();
+			}
+		}
 	}
-	return chosen.map(choice => choice.uri);
+	return jsonDocuments.map(choice => choice.uri);
 }
 
 // tslint:disable-next-line:no-any

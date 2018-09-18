@@ -14,7 +14,14 @@
 		"strictNullChecks": false,
 		"noUnusedParameters": true,
 		"rootDir": ".",
-		"experimentalDecorators": true
+		"experimentalDecorators": true,
+		"baseUrl": "./",
+		"paths": {
+			"*": [
+				"node_modules/vscode/*",
+				"*"
+			]
+		}
 	},
 	"exclude": [
 		"node_modules",

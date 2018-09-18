@@ -7,9 +7,11 @@ import { DatabaseMeta } from 'documentdb';
 import { IAzureTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
+import { DocDBStoredProcedureTreeItem } from '../../docdb/tree/DocDBStoredProcedureTreeItem';
 import { IGremlinEndpoint } from '../gremlinEndpoints';
 import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
+import { GraphTreeItem } from './GraphTreeItem';
 
 export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBGraphAccount";
@@ -28,6 +30,8 @@ export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
             case GraphDatabaseTreeItem.contextValue:
             case GraphCollectionTreeItem.contextValue:
             case DocDBStoredProceduresTreeItem.contextValue:
+            case DocDBStoredProcedureTreeItem.contextValue:
+            case GraphTreeItem.contextValue:
                 return true;
             default:
                 return false;

@@ -292,7 +292,7 @@
 			{
 				"category": "Cosmos DB",
 				"command": "cosmosDB.openInPortal",
-				"title": "Open In Portal"
+				"title": "Open in Portal"
 			},
 			{
 				"category": "Cosmos DB",

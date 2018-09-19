@@ -52,15 +52,14 @@ propertyValue:
 
 literal: (NullLiteral | BooleanLiteral | StringLiteral)
 	| RegexLiteral
-	| NumericLiteral;
+	| NumericLiteral
+	| ObjectIDLiteral;
 
 propertyName: StringLiteral | IDENTIFIER;
 
 comment: SingleLineComment | MultiLineComment;
 
-RegexLiteral: RegexPattern (RegexFlag)*;
-
-RegexPattern: '/' (~[/] | '\\/')+ '/';
+RegexLiteral: '/' (~[/] | '\\/')+ '/' (RegexFlag)*;
 
 fragment RegexFlag: [gimuy];
 
@@ -83,6 +82,8 @@ DecimalLiteral:
 	DecimalIntegerLiteral '.' DecimalDigit+ ExponentPart?
 	| '.' DecimalDigit+ ExponentPart?
 	| DecimalIntegerLiteral ExponentPart?;
+
+ObjectIDLiteral: 'ObjectID(' ('"' ([0-9A-Fa-f])+ '"')? ')';
 
 LineTerminator: [\r\n\u2028\u2029] -> channel(HIDDEN);
 

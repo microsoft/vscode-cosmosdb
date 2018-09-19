@@ -7,6 +7,7 @@ import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
+import { ObjectID } from 'bson';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, IActionContext, IAzureParentNode, parseError } from 'vscode-azureextensionui';
 import { CosmosEditorManager } from '../CosmosEditorManager';
@@ -249,10 +250,18 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			if (tokenType === mongoParser.mongoParser.StringLiteral) {
 				parsedObject = stripQuotes(text);
 			} else if (tokenType === mongoParser.mongoParser.RegexLiteral) {
-				let params: string[] = child.text.split('/');
-				let pattern = params[1];
-				let flags = params.length > 2 ? params[2] : undefined;
+				let separator = child.text.lastIndexOf('/');
+				let flags = separator !== child.text.length - 1 ? child.text.substring(separator + 1) : "";
+				let pattern = child.text.substring(1, separator);
+				if (flags.match(/[^gimuy]/)) {
+					let err = "Wrong flag";
+				}
 				parsedObject = new RegExp(pattern, flags);
+			} else if (tokenType === mongoParser.mongoParser.ObjectIDLiteral) {
+				let opening = child.text.indexOf('(');
+				let closing = child.text.indexOf(')');
+				let hexID = child.text.substring(opening + 2, closing - 1); //ignore quotes "".
+				parsedObject = new ObjectID(hexID);
 			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 				parsedObject = JSON.parse(text);
 			} else {

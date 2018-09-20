@@ -19,7 +19,7 @@ import { LexerErrorListener, ParserErrorListener } from './errorListeners';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
-import { MongoCommand } from './MongoCommand';
+import { ErrorDescription, MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
 // tslint:disable:no-var-requires
 const EJSON = require("mongodb-extended-json");
@@ -249,10 +249,16 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			if (tokenType === mongoParser.mongoParser.StringLiteral) {
 				parsedObject = stripQuotes(text);
 			} else if (tokenType === mongoParser.mongoParser.RegexLiteral) {
-				let params: string[] = child.text.split('/');
-				let pattern = params[1];
-				let flags = params.length > 2 ? params[2] : undefined;
-				parsedObject = new RegExp(pattern, flags);
+				let separator = child.text.lastIndexOf('/');
+				let flags = separator !== child.text.length - 1 ? child.text.substring(separator + 1) : "";
+				let pattern = child.text.substring(1, separator);
+				try {
+					parsedObject = new RegExp(pattern, flags);
+				} catch (error) { //User may not have finished typing
+					let errors: ErrorDescription[] = this.commands[this.commands.length - 1].errors;
+					let currentErrorDesc: ErrorDescription = { message: parseError(error).message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
+					errors.push(currentErrorDesc);
+				}
 			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 				parsedObject = JSON.parse(text);
 			} else {

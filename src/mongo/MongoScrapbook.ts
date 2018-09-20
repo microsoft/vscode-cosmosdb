@@ -255,9 +255,10 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 				try {
 					parsedObject = new RegExp(pattern, flags);
 				} catch (error) { //User may not have finished typing
-					let errors: ErrorDescription[] = this.commands[this.commands.length - 1].errors;
+					let command = this.commands[this.commands.length - 1];
+					command.errors = command.errors || [];
 					let currentErrorDesc: ErrorDescription = { message: parseError(error).message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
-					errors.push(currentErrorDesc);
+					command.errors.push(currentErrorDesc);
 				}
 			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 				parsedObject = JSON.parse(text);

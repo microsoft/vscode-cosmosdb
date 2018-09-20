@@ -5,6 +5,7 @@
 
 // The module 'assert' provides assertion methods from node
 import * as assert from 'assert';
+import { ObjectID } from 'bson';
 import { Position } from 'vscode';
 import { MongoCommand } from '../src/mongo/MongoCommand';
 import { getAllCommandsFromText, getCommandFromTextAtLocation } from '../src/mongo/MongoScrapbook';
@@ -664,6 +665,63 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(command.errors[0].range.start.character, 44);
     });
 
+    test("test ObjectID - hex", () => {
+        let idParam = "abcdef123456789012345678";
+        let text = `db.c1.insert({"name": ObjectID("${idParam}")})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.collection, "c1");
+        let id = new ObjectID(idParam);
+        assert.deepEqual(command.argumentObjects, [{ name: id }]);
+    });
+
+    test("test faulty ObjectID - hex - extra characters", () => {
+        let idParam = "abcdef12345678901234567890";
+        let text = `db.c1.insert({"name": ObjectID("${idParam}")})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
+        assert.deepEqual(command.collection, "c1");
+        assert.deepEqual(command.argumentObjects, [{}]);
+        assert.deepEqual(command.errors[0].message, errorMessage);
+    });
+
+    test("test faulty ObjectID - hex - fewer characters", () => {
+        let idParam = "abcdef123456789012345";
+        let text = `db.c1.insert({"name": ObjectID("${idParam}")})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
+        assert.deepEqual(command.collection, "c1");
+        assert.deepEqual(command.argumentObjects, [{}]);
+        assert.deepEqual(command.errors[0].message, errorMessage);
+    });
+
+    test("test ObjectID - bytes", () => {
+        let idParam = "abcdef123456";
+        let text = `db.c1.insert({"name": ObjectID("${idParam}")})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.collection, "c1");
+        let id = new ObjectID(idParam);
+        assert.deepEqual(command.argumentObjects, [{ name: id }]);
+    });
+
+    test("test faulty ObjectID - bytes - extra characters", () => {
+        let idParam = "abcdef12345678901234";
+        let text = `db.c1.insert({"name": ObjectID("${idParam}")})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
+        assert.deepEqual(command.collection, "c1");
+        assert.deepEqual(command.argumentObjects, [{}]);
+        assert.deepEqual(command.errors[0].message, errorMessage);
+    });
+
+    test("test faulty ObjectID - bytes- fewer characters", () => {
+        let idParam = "abcdef1";
+        let text = `db.c1.insert({"name": ObjectID("${idParam}")})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
+        assert.deepEqual(command.collection, "c1");
+        assert.deepEqual(command.argumentObjects, [{}]);
+        assert.deepEqual(command.errors[0].message, errorMessage);
+    });
 
     test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/688", () => {
         for (let q = 0; q <= 2; q++) {

@@ -20,7 +20,7 @@ import { LexerErrorListener, ParserErrorListener } from './errorListeners';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
-import { MongoCommand } from './MongoCommand';
+import { ErrorDescription, MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
 // tslint:disable:no-var-requires
 const EJSON = require("mongodb-extended-json");
@@ -249,19 +249,18 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			const nonStringLiterals = [mongoParser.mongoParser.NullLiteral, mongoParser.mongoParser.BooleanLiteral, mongoParser.mongoParser.NumericLiteral];
 			if (tokenType === mongoParser.mongoParser.StringLiteral) {
 				parsedObject = stripQuotes(text);
-			} else if (tokenType === mongoParser.mongoParser.RegexLiteral) {
-				let separator = child.text.lastIndexOf('/');
-				let flags = separator !== child.text.length - 1 ? child.text.substring(separator + 1) : "";
-				let pattern = child.text.substring(1, separator);
-				if (flags.match(/[^gimuy]/)) {
-					let err = "Wrong flag";
-				}
-				parsedObject = new RegExp(pattern, flags);
 			} else if (tokenType === mongoParser.mongoParser.ObjectIDLiteral) {
 				let opening = child.text.indexOf('(');
 				let closing = child.text.indexOf(')');
 				let hexID = child.text.substring(opening + 2, closing - 1); //ignore quotes "".
-				parsedObject = new ObjectID(hexID);
+				try {
+					parsedObject = new ObjectID(hexID);
+				} catch (err) {
+					let command = this.commands[this.commands.length - 1];
+					command.errors = command.errors || [];
+					let error: ErrorDescription = { message: parseError(err).message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
+					command.errors.push(error);
+				}
 			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 				parsedObject = JSON.parse(text);
 			} else {

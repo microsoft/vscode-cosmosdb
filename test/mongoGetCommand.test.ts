@@ -665,6 +665,14 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(command.errors[0].range.start.character, 44);
     });
 
+    test("test ObjectID - no parameter", () => {
+        let text = `db.c1.insert({"name": ObjectID()})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.collection, "c1");
+        let id = new ObjectID();
+        assert.deepEqual(command.argumentObjects, [{ name: id }]);
+    });
+
     test("test ObjectID - hex", () => {
         let idParam = "abcdef123456789012345678";
         let text = `db.c1.insert({"name": ObjectID("${idParam}")})`;

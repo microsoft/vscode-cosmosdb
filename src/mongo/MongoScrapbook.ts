@@ -252,7 +252,12 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			} else if (tokenType === mongoParser.mongoParser.ObjectIDLiteral) {
 				let opening = child.text.indexOf('(');
 				let closing = child.text.indexOf(')');
-				let hexID = child.text.substring(opening + 2, closing - 1); //ignore quotes "".
+				let hexID: string;
+				if (child.text.includes('"')) {
+					hexID = child.text.substring(opening + 2, closing - 1); //ignore quotes "".
+				} else {
+					hexID = child.text.substring(opening + 1, closing);
+				}
 				try {
 					parsedObject = new ObjectID(hexID);
 				} catch (err) {

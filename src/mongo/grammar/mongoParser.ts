@@ -39,23 +39,22 @@ export class mongoParser extends Parser {
 	public static readonly T__5 = 6;
 	public static readonly T__6 = 7;
 	public static readonly T__7 = 8;
-	public static readonly RegexLiteral = 9;
-	public static readonly SingleLineComment = 10;
-	public static readonly MultiLineComment = 11;
-	public static readonly StringLiteral = 12;
-	public static readonly NullLiteral = 13;
-	public static readonly BooleanLiteral = 14;
-	public static readonly NumericLiteral = 15;
-	public static readonly DecimalLiteral = 16;
-	public static readonly ObjectIDLiteral = 17;
-	public static readonly LineTerminator = 18;
-	public static readonly SEMICOLON = 19;
-	public static readonly DOT = 20;
-	public static readonly DB = 21;
-	public static readonly IDENTIFIER = 22;
-	public static readonly DOUBLE_QUOTED_STRING_LITERAL = 23;
-	public static readonly SINGLE_QUOTED_STRING_LITERAL = 24;
-	public static readonly WHITESPACE = 25;
+	public static readonly SingleLineComment = 9;
+	public static readonly MultiLineComment = 10;
+	public static readonly StringLiteral = 11;
+	public static readonly NullLiteral = 12;
+	public static readonly BooleanLiteral = 13;
+	public static readonly NumericLiteral = 14;
+	public static readonly DecimalLiteral = 15;
+	public static readonly ObjectIdLiteral = 16;
+	public static readonly LineTerminator = 17;
+	public static readonly SEMICOLON = 18;
+	public static readonly DOT = 19;
+	public static readonly DB = 20;
+	public static readonly IDENTIFIER = 21;
+	public static readonly DOUBLE_QUOTED_STRING_LITERAL = 22;
+	public static readonly SINGLE_QUOTED_STRING_LITERAL = 23;
+	public static readonly WHITESPACE = 24;
 	public static readonly RULE_mongoCommands = 0;
 	public static readonly RULE_commands = 1;
 	public static readonly RULE_command = 2;
@@ -82,15 +81,15 @@ export class mongoParser extends Parser {
 
 	private static readonly _LITERAL_NAMES: (string | undefined)[] = [
 		undefined, "'('", "','", "')'", "'{'", "'}'", "'['", "']'", "':'", undefined,
-		undefined, undefined, undefined, "'null'", undefined, undefined, undefined,
-		undefined, undefined, "';'", "'.'", "'db'"
+		undefined, undefined, "'null'", undefined, undefined, undefined, undefined,
+		undefined, "';'", "'.'", "'db'"
 	];
 	private static readonly _SYMBOLIC_NAMES: (string | undefined)[] = [
 		undefined, undefined, undefined, undefined, undefined, undefined, undefined,
-		undefined, undefined, "RegexLiteral", "SingleLineComment", "MultiLineComment",
-		"StringLiteral", "NullLiteral", "BooleanLiteral", "NumericLiteral", "DecimalLiteral",
-		"ObjectIDLiteral", "LineTerminator", "SEMICOLON", "DOT", "DB", "IDENTIFIER",
-		"DOUBLE_QUOTED_STRING_LITERAL", "SINGLE_QUOTED_STRING_LITERAL", "WHITESPACE"
+		undefined, undefined, "SingleLineComment", "MultiLineComment", "StringLiteral",
+		"NullLiteral", "BooleanLiteral", "NumericLiteral", "DecimalLiteral", "ObjectIdLiteral",
+		"LineTerminator", "SEMICOLON", "DOT", "DB", "IDENTIFIER", "DOUBLE_QUOTED_STRING_LITERAL",
+		"SINGLE_QUOTED_STRING_LITERAL", "WHITESPACE"
 	];
 	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoParser._LITERAL_NAMES, mongoParser._SYMBOLIC_NAMES, []);
 
@@ -368,7 +367,7 @@ export class mongoParser extends Parser {
 				this.state = 79;
 				this._errHandler.sync(this);
 				_la = this._input.LA(1);
-				if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__3) | (1 << mongoParser.T__5) | (1 << mongoParser.RegexLiteral) | (1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.NumericLiteral) | (1 << mongoParser.ObjectIDLiteral))) !== 0)) {
+				if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__3) | (1 << mongoParser.T__5) | (1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.NumericLiteral) | (1 << mongoParser.ObjectIdLiteral))) !== 0)) {
 					{
 						this.state = 71;
 						this.argument();
@@ -417,12 +416,11 @@ export class mongoParser extends Parser {
 			this.state = 86;
 			this._errHandler.sync(this);
 			switch (this._input.LA(1)) {
-				case mongoParser.RegexLiteral:
 				case mongoParser.StringLiteral:
 				case mongoParser.NullLiteral:
 				case mongoParser.BooleanLiteral:
 				case mongoParser.NumericLiteral:
-				case mongoParser.ObjectIDLiteral:
+				case mongoParser.ObjectIdLiteral:
 					this.enterOuterAlt(_localctx, 1);
 					{
 						this.state = 83;
@@ -522,7 +520,7 @@ export class mongoParser extends Parser {
 				this.state = 99;
 				this._errHandler.sync(this);
 				_la = this._input.LA(1);
-				if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__3) | (1 << mongoParser.T__5) | (1 << mongoParser.RegexLiteral) | (1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.NumericLiteral) | (1 << mongoParser.ObjectIDLiteral) | (1 << mongoParser.IDENTIFIER))) !== 0)) {
+				if ((((_la) & ~0x1F) === 0 && ((1 << _la) & ((1 << mongoParser.T__3) | (1 << mongoParser.T__5) | (1 << mongoParser.StringLiteral) | (1 << mongoParser.NullLiteral) | (1 << mongoParser.BooleanLiteral) | (1 << mongoParser.NumericLiteral) | (1 << mongoParser.ObjectIdLiteral) | (1 << mongoParser.IDENTIFIER))) !== 0)) {
 					{
 						this.state = 98;
 						this.elementList();
@@ -670,12 +668,11 @@ export class mongoParser extends Parser {
 			this.state = 127;
 			this._errHandler.sync(this);
 			switch (this._input.LA(1)) {
-				case mongoParser.RegexLiteral:
 				case mongoParser.StringLiteral:
 				case mongoParser.NullLiteral:
 				case mongoParser.BooleanLiteral:
 				case mongoParser.NumericLiteral:
-				case mongoParser.ObjectIDLiteral:
+				case mongoParser.ObjectIdLiteral:
 					this.enterOuterAlt(_localctx, 1);
 					{
 						this.state = 123;
@@ -727,7 +724,7 @@ export class mongoParser extends Parser {
 		this.enterRule(_localctx, 28, mongoParser.RULE_literal);
 		let _la: number;
 		try {
-			this.state = 133;
+			this.state = 132;
 			this._errHandler.sync(this);
 			switch (this._input.LA(1)) {
 				case mongoParser.StringLiteral:
@@ -749,25 +746,18 @@ export class mongoParser extends Parser {
 						}
 					}
 					break;
-				case mongoParser.RegexLiteral:
+				case mongoParser.NumericLiteral:
 					this.enterOuterAlt(_localctx, 2);
 					{
 						this.state = 130;
-						this.match(mongoParser.RegexLiteral);
-					}
-					break;
-				case mongoParser.NumericLiteral:
-					this.enterOuterAlt(_localctx, 3);
-					{
-						this.state = 131;
 						this.match(mongoParser.NumericLiteral);
 					}
 					break;
-				case mongoParser.ObjectIDLiteral:
-					this.enterOuterAlt(_localctx, 4);
+				case mongoParser.ObjectIdLiteral:
+					this.enterOuterAlt(_localctx, 3);
 					{
-						this.state = 132;
-						this.match(mongoParser.ObjectIDLiteral);
+						this.state = 131;
+						this.match(mongoParser.ObjectIdLiteral);
 					}
 					break;
 				default:
@@ -796,7 +786,7 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-				this.state = 135;
+				this.state = 134;
 				_la = this._input.LA(1);
 				if (!(_la === mongoParser.StringLiteral || _la === mongoParser.IDENTIFIER)) {
 					this._errHandler.recoverInline(this);
@@ -832,7 +822,7 @@ export class mongoParser extends Parser {
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
-				this.state = 137;
+				this.state = 136;
 				_la = this._input.LA(1);
 				if (!(_la === mongoParser.SingleLineComment || _la === mongoParser.MultiLineComment)) {
 					this._errHandler.recoverInline(this);
@@ -862,7 +852,7 @@ export class mongoParser extends Parser {
 	}
 
 	public static readonly _serializedATN: string =
-		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\x1B\x8E\x04\x02" +
+		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x03\x1A\x8D\x04\x02" +
 		"\t\x02\x04\x03\t\x03\x04\x04\t\x04\x04\x05\t\x05\x04\x06\t\x06\x04\x07" +
 		"\t\x07\x04\b\t\b\x04\t\t\t\x04\n\t\n\x04\v\t\v\x04\f\t\f\x04\r\t\r\x04" +
 		"\x0E\t\x0E\x04\x0F\t\x0F\x04\x10\t\x10\x04\x11\t\x11\x04\x12\t\x12\x03" +
@@ -875,50 +865,49 @@ export class mongoParser extends Parser {
 		"\n\x03\n\x03\v\x03\v\x05\vf\n\v\x03\v\x03\v\x03\f\x03\f\x03\f\x07\fm\n" +
 		"\f\f\f\x0E\fp\v\f\x03\r\x03\r\x03\r\x07\ru\n\r\f\r\x0E\rx\v\r\x03\x0E" +
 		"\x03\x0E\x03\x0E\x03\x0E\x03\x0F\x03\x0F\x03\x0F\x03\x0F\x05\x0F\x82\n" +
-		"\x0F\x03\x10\x03\x10\x03\x10\x03\x10\x05\x10\x88\n\x10\x03\x11\x03\x11" +
-		"\x03\x12\x03\x12\x03\x12\x02\x02\x02\x13\x02\x02\x04\x02\x06\x02\b\x02" +
-		"\n\x02\f\x02\x0E\x02\x10\x02\x12\x02\x14\x02\x16\x02\x18\x02\x1A\x02\x1C" +
-		"\x02\x1E\x02 \x02\"\x02\x02\x05\x03\x02\x0E\x10\x04\x02\x0E\x0E\x18\x18" +
-		"\x03\x02\f\r\x91\x02$\x03\x02\x02\x02\x04,\x03\x02\x02\x02\x06/\x03\x02" +
-		"\x02\x02\b;\x03\x02\x02\x02\n=\x03\x02\x02\x02\fE\x03\x02\x02\x02\x0E" +
-		"H\x03\x02\x02\x02\x10X\x03\x02\x02\x02\x12Z\x03\x02\x02\x02\x14c\x03\x02" +
-		"\x02\x02\x16i\x03\x02\x02\x02\x18q\x03\x02\x02\x02\x1Ay\x03\x02\x02\x02" +
-		"\x1C\x81\x03\x02\x02\x02\x1E\x87\x03\x02\x02\x02 \x89\x03\x02\x02\x02" +
-		"\"\x8B\x03\x02\x02\x02$%\x05\x04\x03\x02%&\x07\x02\x02\x03&\x03\x03\x02" +
-		"\x02\x02\'+\x05\x06\x04\x02(+\x05\b\x05\x02)+\x05\"\x12\x02*\'\x03\x02" +
-		"\x02\x02*(\x03\x02\x02\x02*)\x03\x02\x02\x02+.\x03\x02\x02\x02,*\x03\x02" +
-		"\x02\x02,-\x03\x02\x02\x02-\x05\x03\x02\x02\x02.,\x03\x02\x02\x02/0\x07" +
-		"\x17\x02\x0206\x07\x16\x02\x0217\x05\f\x07\x0223\x05\n\x06\x0234\x07\x16" +
-		"\x02\x0245\x05\f\x07\x0257\x03\x02\x02\x0261\x03\x02\x02\x0262\x03\x02" +
-		"\x02\x0279\x03\x02\x02\x028:\x07\x15\x02\x0298\x03\x02\x02\x029:\x03\x02" +
-		"\x02\x02:\x07\x03\x02\x02\x02;<\x07\x15\x02\x02<\t\x03\x02\x02\x02=B\x07" +
-		"\x18\x02\x02>?\x07\x16\x02\x02?A\x07\x18\x02\x02@>\x03\x02\x02\x02AD\x03" +
-		"\x02\x02\x02B@\x03\x02\x02\x02BC\x03\x02\x02\x02C\v\x03\x02\x02\x02DB" +
-		"\x03\x02\x02\x02EF\x07\x18\x02\x02FG\x05\x0E\b\x02G\r\x03\x02\x02\x02" +
-		"HQ\x07\x03\x02\x02IN\x05\x10\t\x02JK\x07\x04\x02\x02KM\x05\x10\t\x02L" +
-		"J\x03\x02\x02\x02MP\x03\x02\x02\x02NL\x03\x02\x02\x02NO\x03\x02\x02\x02" +
-		"OR\x03\x02\x02\x02PN\x03\x02\x02\x02QI\x03\x02\x02\x02QR\x03\x02\x02\x02" +
-		"RS\x03\x02\x02\x02ST\x07\x05\x02\x02T\x0F\x03\x02\x02\x02UY\x05\x1E\x10" +
-		"\x02VY\x05\x12\n\x02WY\x05\x14\v\x02XU\x03\x02\x02\x02XV\x03\x02\x02\x02" +
-		"XW\x03\x02\x02\x02Y\x11\x03\x02\x02\x02Z\\\x07\x06\x02\x02[]\x05\x18\r" +
-		"\x02\\[\x03\x02\x02\x02\\]\x03\x02\x02\x02]_\x03\x02\x02\x02^`\x07\x04" +
-		"\x02\x02_^\x03\x02\x02\x02_`\x03\x02\x02\x02`a\x03\x02\x02\x02ab\x07\x07" +
-		"\x02\x02b\x13\x03\x02\x02\x02ce\x07\b\x02\x02df\x05\x16\f\x02ed\x03\x02" +
-		"\x02\x02ef\x03\x02\x02\x02fg\x03\x02\x02\x02gh\x07\t\x02\x02h\x15\x03" +
-		"\x02\x02\x02in\x05\x1C\x0F\x02jk\x07\x04\x02\x02km\x05\x1C\x0F\x02lj\x03" +
-		"\x02\x02\x02mp\x03\x02\x02\x02nl\x03\x02\x02\x02no\x03\x02\x02\x02o\x17" +
-		"\x03\x02\x02\x02pn\x03\x02\x02\x02qv\x05\x1A\x0E\x02rs\x07\x04\x02\x02" +
-		"su\x05\x1A\x0E\x02tr\x03\x02\x02\x02ux\x03\x02\x02\x02vt\x03\x02\x02\x02" +
-		"vw\x03\x02\x02\x02w\x19\x03\x02\x02\x02xv\x03\x02\x02\x02yz\x05 \x11\x02" +
-		"z{\x07\n\x02\x02{|\x05\x1C\x0F\x02|\x1B\x03\x02\x02\x02}\x82\x05\x1E\x10" +
-		"\x02~\x82\x05\x12\n\x02\x7F\x82\x05\x14\v\x02\x80\x82\x05\f\x07\x02\x81" +
-		"}\x03\x02\x02\x02\x81~\x03\x02\x02\x02\x81\x7F\x03\x02\x02\x02\x81\x80" +
-		"\x03\x02\x02\x02\x82\x1D\x03\x02\x02\x02\x83\x88\t\x02\x02\x02\x84\x88" +
-		"\x07\v\x02\x02\x85\x88\x07\x11\x02\x02\x86\x88\x07\x13\x02\x02\x87\x83" +
-		"\x03\x02\x02\x02\x87\x84\x03\x02\x02\x02\x87\x85\x03\x02\x02\x02\x87\x86" +
-		"\x03\x02\x02\x02\x88\x1F\x03\x02\x02\x02\x89\x8A\t\x03\x02\x02\x8A!\x03" +
-		"\x02\x02\x02\x8B\x8C\t\x04\x02\x02\x8C#\x03\x02\x02\x02\x11*,69BNQX\\" +
-		"_env\x81\x87";
+		"\x0F\x03\x10\x03\x10\x03\x10\x05\x10\x87\n\x10\x03\x11\x03\x11\x03\x12" +
+		"\x03\x12\x03\x12\x02\x02\x02\x13\x02\x02\x04\x02\x06\x02\b\x02\n\x02\f" +
+		"\x02\x0E\x02\x10\x02\x12\x02\x14\x02\x16\x02\x18\x02\x1A\x02\x1C\x02\x1E" +
+		"\x02 \x02\"\x02\x02\x05\x03\x02\r\x0F\x04\x02\r\r\x17\x17\x03\x02\v\f" +
+		"\x8F\x02$\x03\x02\x02\x02\x04,\x03\x02\x02\x02\x06/\x03\x02\x02\x02\b" +
+		";\x03\x02\x02\x02\n=\x03\x02\x02\x02\fE\x03\x02\x02\x02\x0EH\x03\x02\x02" +
+		"\x02\x10X\x03\x02\x02\x02\x12Z\x03\x02\x02\x02\x14c\x03\x02\x02\x02\x16" +
+		"i\x03\x02\x02\x02\x18q\x03\x02\x02\x02\x1Ay\x03\x02\x02\x02\x1C\x81\x03" +
+		"\x02\x02\x02\x1E\x86\x03\x02\x02\x02 \x88\x03\x02\x02\x02\"\x8A\x03\x02" +
+		"\x02\x02$%\x05\x04\x03\x02%&\x07\x02\x02\x03&\x03\x03\x02\x02\x02\'+\x05" +
+		"\x06\x04\x02(+\x05\b\x05\x02)+\x05\"\x12\x02*\'\x03\x02\x02\x02*(\x03" +
+		"\x02\x02\x02*)\x03\x02\x02\x02+.\x03\x02\x02\x02,*\x03\x02\x02\x02,-\x03" +
+		"\x02\x02\x02-\x05\x03\x02\x02\x02.,\x03\x02\x02\x02/0\x07\x16\x02\x02" +
+		"06\x07\x15\x02\x0217\x05\f\x07\x0223\x05\n\x06\x0234\x07\x15\x02\x024" +
+		"5\x05\f\x07\x0257\x03\x02\x02\x0261\x03\x02\x02\x0262\x03\x02\x02\x02" +
+		"79\x03\x02\x02\x028:\x07\x14\x02\x0298\x03\x02\x02\x029:\x03\x02\x02\x02" +
+		":\x07\x03\x02\x02\x02;<\x07\x14\x02\x02<\t\x03\x02\x02\x02=B\x07\x17\x02" +
+		"\x02>?\x07\x15\x02\x02?A\x07\x17\x02\x02@>\x03\x02\x02\x02AD\x03\x02\x02" +
+		"\x02B@\x03\x02\x02\x02BC\x03\x02\x02\x02C\v\x03\x02\x02\x02DB\x03\x02" +
+		"\x02\x02EF\x07\x17\x02\x02FG\x05\x0E\b\x02G\r\x03\x02\x02\x02HQ\x07\x03" +
+		"\x02\x02IN\x05\x10\t\x02JK\x07\x04\x02\x02KM\x05\x10\t\x02LJ\x03\x02\x02" +
+		"\x02MP\x03\x02\x02\x02NL\x03\x02\x02\x02NO\x03\x02\x02\x02OR\x03\x02\x02" +
+		"\x02PN\x03\x02\x02\x02QI\x03\x02\x02\x02QR\x03\x02\x02\x02RS\x03\x02\x02" +
+		"\x02ST\x07\x05\x02\x02T\x0F\x03\x02\x02\x02UY\x05\x1E\x10\x02VY\x05\x12" +
+		"\n\x02WY\x05\x14\v\x02XU\x03\x02\x02\x02XV\x03\x02\x02\x02XW\x03\x02\x02" +
+		"\x02Y\x11\x03\x02\x02\x02Z\\\x07\x06\x02\x02[]\x05\x18\r\x02\\[\x03\x02" +
+		"\x02\x02\\]\x03\x02\x02\x02]_\x03\x02\x02\x02^`\x07\x04\x02\x02_^\x03" +
+		"\x02\x02\x02_`\x03\x02\x02\x02`a\x03\x02\x02\x02ab\x07\x07\x02\x02b\x13" +
+		"\x03\x02\x02\x02ce\x07\b\x02\x02df\x05\x16\f\x02ed\x03\x02\x02\x02ef\x03" +
+		"\x02\x02\x02fg\x03\x02\x02\x02gh\x07\t\x02\x02h\x15\x03\x02\x02\x02in" +
+		"\x05\x1C\x0F\x02jk\x07\x04\x02\x02km\x05\x1C\x0F\x02lj\x03\x02\x02\x02" +
+		"mp\x03\x02\x02\x02nl\x03\x02\x02\x02no\x03\x02\x02\x02o\x17\x03\x02\x02" +
+		"\x02pn\x03\x02\x02\x02qv\x05\x1A\x0E\x02rs\x07\x04\x02\x02su\x05\x1A\x0E" +
+		"\x02tr\x03\x02\x02\x02ux\x03\x02\x02\x02vt\x03\x02\x02\x02vw\x03\x02\x02" +
+		"\x02w\x19\x03\x02\x02\x02xv\x03\x02\x02\x02yz\x05 \x11\x02z{\x07\n\x02" +
+		"\x02{|\x05\x1C\x0F\x02|\x1B\x03\x02\x02\x02}\x82\x05\x1E\x10\x02~\x82" +
+		"\x05\x12\n\x02\x7F\x82\x05\x14\v\x02\x80\x82\x05\f\x07\x02\x81}\x03\x02" +
+		"\x02\x02\x81~\x03\x02\x02\x02\x81\x7F\x03\x02\x02\x02\x81\x80\x03\x02" +
+		"\x02\x02\x82\x1D\x03\x02\x02\x02\x83\x87\t\x02\x02\x02\x84\x87\x07\x10" +
+		"\x02\x02\x85\x87\x07\x12\x02\x02\x86\x83\x03\x02\x02\x02\x86\x84\x03\x02" +
+		"\x02\x02\x86\x85\x03\x02\x02\x02\x87\x1F\x03\x02\x02\x02\x88\x89\t\x03" +
+		"\x02\x02\x89!\x03\x02\x02\x02\x8A\x8B\t\x04\x02\x02\x8B#\x03\x02\x02\x02" +
+		"\x11*,69BNQX\\_env\x81\x86";
 	public static __ATN: ATN;
 	public static get _ATN(): ATN {
 		if (!mongoParser.__ATN) {
@@ -1390,9 +1379,8 @@ export class LiteralContext extends ParserRuleContext {
 	public NullLiteral(): TerminalNode | undefined { return this.tryGetToken(mongoParser.NullLiteral, 0); }
 	public BooleanLiteral(): TerminalNode | undefined { return this.tryGetToken(mongoParser.BooleanLiteral, 0); }
 	public StringLiteral(): TerminalNode | undefined { return this.tryGetToken(mongoParser.StringLiteral, 0); }
-	public RegexLiteral(): TerminalNode | undefined { return this.tryGetToken(mongoParser.RegexLiteral, 0); }
 	public NumericLiteral(): TerminalNode | undefined { return this.tryGetToken(mongoParser.NumericLiteral, 0); }
-	public ObjectIDLiteral(): TerminalNode | undefined { return this.tryGetToken(mongoParser.ObjectIDLiteral, 0); }
+	public ObjectIdLiteral(): TerminalNode | undefined { return this.tryGetToken(mongoParser.ObjectIdLiteral, 0); }
 	constructor(parent: ParserRuleContext, invokingState: number);
 	constructor(parent: ParserRuleContext, invokingState: number) {
 		super(parent, invokingState);

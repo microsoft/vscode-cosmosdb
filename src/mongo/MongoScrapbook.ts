@@ -249,22 +249,22 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			const nonStringLiterals = [mongoParser.mongoParser.NullLiteral, mongoParser.mongoParser.BooleanLiteral, mongoParser.mongoParser.NumericLiteral];
 			if (tokenType === mongoParser.mongoParser.StringLiteral) {
 				parsedObject = stripQuotes(text);
-			} else if (tokenType === mongoParser.mongoParser.ObjectIDLiteral) {
+			} else if (tokenType === mongoParser.mongoParser.ObjectIdLiteral) {
 				let opening = child.text.indexOf('(');
 				let closing = child.text.indexOf(')');
 				let hexID: string;
-				if (child.text.includes('"')) {
-					hexID = child.text.substring(opening + 2, closing - 1); //ignore quotes "".
+				if (closing === opening + 1) { // usage : ObjectID()
+					parsedObject = new ObjectID();
 				} else {
-					hexID = child.text.substring(opening + 1, closing);
-				}
-				try {
-					parsedObject = new ObjectID(hexID);
-				} catch (err) {
-					let command = this.commands[this.commands.length - 1];
-					command.errors = command.errors || [];
-					let error: ErrorDescription = { message: parseError(err).message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
-					command.errors.push(error);
+					hexID = child.text.substring(opening + 2, closing - 1); //exclude quotes ""
+					try {
+						parsedObject = new ObjectID(hexID);
+					} catch (err) {
+						let command = this.commands[this.commands.length - 1];
+						command.errors = command.errors || [];
+						let error: ErrorDescription = { message: parseError(err).message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
+						command.errors.push(error);
+					}
 				}
 			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 				parsedObject = JSON.parse(text);

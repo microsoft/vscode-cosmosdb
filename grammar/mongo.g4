@@ -52,7 +52,7 @@ propertyValue:
 
 literal: (NullLiteral | BooleanLiteral | StringLiteral)
 	| NumericLiteral
-	| ObjectIDLiteral;
+	| ObjectIdLiteral;
 
 propertyName: StringLiteral | IDENTIFIER;
 
@@ -78,7 +78,7 @@ DecimalLiteral:
 	| '.' DecimalDigit+ ExponentPart?
 	| DecimalIntegerLiteral ExponentPart?;
 
-ObjectIDLiteral: 'ObjectID(' ('"' ([0-9A-Fa-f])+ '"')? ')';
+ObjectIdLiteral: 'ObjectId(' ('"' ([0-9A-Fa-f])* '"')? ')';
 
 LineTerminator: [\r\n\u2028\u2029] -> channel(HIDDEN);
 

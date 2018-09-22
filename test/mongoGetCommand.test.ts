@@ -640,42 +640,41 @@ suite("scrapbook parsing Tests", () => {
             }]);
         }
     });
+    /*
+        //Examples inspired from https://docs.mongodb.com/manual/reference/operator/query/regex/
+        test("test regular expressions - only pattern, no flags", () => {
+            let text = `db.test1.beep.find({ sku: { $regex: /789$/ } })`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+            assert.deepEqual(generatedRegExp.flags, "");
+            assert.deepEqual(generatedRegExp.source, "789$");
+        });
 
-    //Examples inspired from https://docs.mongodb.com/manual/reference/operator/query/regex/
-    test("test regular expressions - only pattern, no flags", () => {
-        let text = `db.test1.beep.find({ sku: { $regex: /789$/ } })`;
-        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-        let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
-        assert.deepEqual(generatedRegExp.flags, "");
-        assert.deepEqual(generatedRegExp.source, "789$");
-    });
+        test("test regular expressions - pattern and flags", () => {
+            let text = `db.test1.beep.find({ sku: { $regex: /789$/i } })`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+            assert.deepEqual(generatedRegExp.flags, "i");
+            assert.deepEqual(generatedRegExp.source, "789$");
+        });
 
-    test("test regular expressions - pattern and flags", () => {
-        let text = `db.test1.beep.find({ sku: { $regex: /789$/i } })`;
-        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-        let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
-        assert.deepEqual(generatedRegExp.flags, "i");
-        assert.deepEqual(generatedRegExp.source, "789$");
-    });
-
-    test("test regular expressions - Intellisense - flag contains invalid option", () => {
-        let text = `db.test1.beep.find({ sku: { $regex: /789$/q } })`;
-        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-        assert.deepEqual(command.errors[0].message, "mismatched input '}' expecting '('");
-        assert.deepEqual(command.errors[0].range.start.character, 44);
-    });
-
+        test("test regular expressions - Intellisense - flag contains invalid option", () => {
+            let text = `db.test1.beep.find({ sku: { $regex: /789$/q } })`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            assert.deepEqual(command.errors[0].message, "mismatched input '}' expecting '('");
+            assert.deepEqual(command.errors[0].range.start.character, 44);
+        });
+    */
     test("test ObjectID - no parameter", () => {
-        let text = `db.c1.insert({"name": ObjectID()})`;
+        let text = `db.c1.insert({"name": ObjectId()})`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         assert.deepEqual(command.collection, "c1");
-        let id = new ObjectID();
-        assert.deepEqual(command.argumentObjects, [{ name: id }]);
+        assert.ok((<any>command.argumentObjects[0]).name instanceof ObjectID);
     });
 
     test("test ObjectID - hex", () => {
         let idParam = "abcdef123456789012345678";
-        let text = `db.c1.insert({"name": ObjectID("${idParam}")})`;
+        let text = `db.c1.insert({"name": ObjectId("${idParam}")})`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         assert.deepEqual(command.collection, "c1");
         let id = new ObjectID(idParam);
@@ -684,50 +683,21 @@ suite("scrapbook parsing Tests", () => {
 
     test("test faulty ObjectID - hex - extra characters", () => {
         let idParam = "abcdef12345678901234567890";
-        let text = `db.c1.insert({"name": ObjectID("${idParam}")})`;
+        let text = `db.c1.insert({"name": ObjectId("${idParam}")})`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
         assert.deepEqual(command.collection, "c1");
-        assert.deepEqual(command.argumentObjects, [{}]);
+        assert.deepEqual(command.argumentObjects, [{ name: {} }]);
         assert.deepEqual(command.errors[0].message, errorMessage);
     });
 
     test("test faulty ObjectID - hex - fewer characters", () => {
         let idParam = "abcdef123456789012345";
-        let text = `db.c1.insert({"name": ObjectID("${idParam}")})`;
+        let text = `db.c1.insert({"name": ObjectId("${idParam}")})`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
         assert.deepEqual(command.collection, "c1");
-        assert.deepEqual(command.argumentObjects, [{}]);
-        assert.deepEqual(command.errors[0].message, errorMessage);
-    });
-
-    test("test ObjectID - bytes", () => {
-        let idParam = "abcdef123456";
-        let text = `db.c1.insert({"name": ObjectID("${idParam}")})`;
-        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-        assert.deepEqual(command.collection, "c1");
-        let id = new ObjectID(idParam);
-        assert.deepEqual(command.argumentObjects, [{ name: id }]);
-    });
-
-    test("test faulty ObjectID - bytes - extra characters", () => {
-        let idParam = "abcdef12345678901234";
-        let text = `db.c1.insert({"name": ObjectID("${idParam}")})`;
-        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-        let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
-        assert.deepEqual(command.collection, "c1");
-        assert.deepEqual(command.argumentObjects, [{}]);
-        assert.deepEqual(command.errors[0].message, errorMessage);
-    });
-
-    test("test faulty ObjectID - bytes- fewer characters", () => {
-        let idParam = "abcdef1";
-        let text = `db.c1.insert({"name": ObjectID("${idParam}")})`;
-        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-        let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
-        assert.deepEqual(command.collection, "c1");
-        assert.deepEqual(command.argumentObjects, [{}]);
+        assert.deepEqual(command.argumentObjects, [{ name: {} }]);
         assert.deepEqual(command.errors[0].message, errorMessage);
     });
 
@@ -796,7 +766,7 @@ suite("scrapbook parsing Tests", () => {
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         assert.deepEqual(command.collection, "c1");
         assert.deepEqual(command.argumentObjects, [{}, {}]);
-        assert.deepEqual(command.errors[0].message, "mismatched input 'f' expecting {'{', '[', RegexLiteral, StringLiteral, 'null', BooleanLiteral, NumericLiteral}")
+        assert.deepEqual(command.errors[0].message, "mismatched input 'f' expecting {'{', '[', StringLiteral, 'null', BooleanLiteral, NumericLiteral, ObjectIDLiteral}")
     });
 });
 

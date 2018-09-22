@@ -666,12 +666,12 @@ suite("scrapbook parsing Tests", () => {
     });
 
     test("test regular expressions - wrong escape - throw error", () => {
-        let text = `db.test1.beep.find({ sku: { $regex: /789$\\/q } })`;
+        let text = `db.test1.beep.find({ sku: { $regex: /789$\\/b\\/q } })`;
         try {
             getCommandFromTextAtLocation(text, new Position(0, 0));
         }
         catch (error) {
-            assert.equal(error.message, "Invalid regular expression: /789$\\/: \\ at end of pattern");
+            assert.equal(error.message, "Invalid regular expression: /789$\\/b\\/: \\ at end of pattern");
         }
     });
 

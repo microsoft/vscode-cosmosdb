@@ -9,7 +9,7 @@ import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { ObjectID } from 'bson';
 import * as vscode from 'vscode';
-import { AzureTreeDataProvider, IActionContext, IAzureParentNode, parseError } from 'vscode-azureextensionui';
+import { AzureTreeDataProvider, IActionContext, IAzureParentNode, IParsedError, parseError } from 'vscode-azureextensionui';
 import { CosmosEditorManager } from '../CosmosEditorManager';
 import { ext } from '../extensionVariables';
 import { filterType, findType } from '../utils/array';
@@ -302,11 +302,9 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			hexID = tokenText.substring(opening + 2, closing - 1); //exclude quotes ""
 			try {
 				tokenObject = new ObjectID(hexID);
-			} catch (err) {
-				let command = this.commands[this.commands.length - 1];
-				command.errors = command.errors || [];
-				let error: ErrorDescription = { message: parseError(err).message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
-				command.errors.push(error);
+			} catch (error) {
+				let err: IParsedError = parseError(error);
+				this.addErrorToCommand(err, ctx);
 			}
 		}
 		return tokenObject;
@@ -320,12 +318,17 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		try {
 			tokenObject = new RegExp(pattern, flags);
 		} catch (error) { //User may not have finished typing
-			let command = this.commands[this.commands.length - 1];
-			command.errors = command.errors || [];
-			let currentErrorDesc: ErrorDescription = { message: parseError(error).message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
-			command.errors.push(currentErrorDesc);
+			let err: IParsedError = parseError(error);
+			this.addErrorToCommand(err, ctx);
 		}
 		return tokenObject;
+	}
+
+	private addErrorToCommand(error: IParsedError, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): void {
+		let command = this.commands[this.commands.length - 1];
+		command.errors = command.errors || [];
+		let currentErrorDesc: ErrorDescription = { message: error.message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
+		command.errors.push(currentErrorDesc);
 	}
 
 }

@@ -250,22 +250,9 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			if (tokenType === mongoParser.mongoParser.StringLiteral) {
 				parsedObject = stripQuotes(text);
 			} else if (tokenType === mongoParser.mongoParser.ObjectIdLiteral) {
-				let opening = child.text.indexOf('(');
-				let closing = child.text.indexOf(')');
-				let hexID: string;
-				if (closing === opening + 1) { // usage : ObjectID()
-					parsedObject = new ObjectID();
-				} else {
-					hexID = child.text.substring(opening + 2, closing - 1); //exclude quotes ""
-					try {
-						parsedObject = new ObjectID(hexID);
-					} catch (err) {
-						let command = this.commands[this.commands.length - 1];
-						command.errors = command.errors || [];
-						let error: ErrorDescription = { message: parseError(err).message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
-						command.errors.push(error);
-					}
-				}
+				return this.objectIdContextToObject(ctx, text);
+			} else if (tokenType === mongoParser.mongoParser.RegexLiteral) {
+				return this.regexLiteralContextToObject(ctx, text);
 			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 				parsedObject = JSON.parse(text);
 			} else {
@@ -302,6 +289,43 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		}
 
 		return parsedObject;
+	}
+
+	private objectIdContextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText: string): Object {
+		let opening = tokenText.indexOf('(');
+		let closing = tokenText.indexOf(')');
+		let hexID: string;
+		let tokenObject: Object = {};
+		if (closing === opening + 1) { // usage : ObjectID()
+			tokenObject = new ObjectID();
+		} else {
+			hexID = tokenText.substring(opening + 2, closing - 1); //exclude quotes ""
+			try {
+				tokenObject = new ObjectID(hexID);
+			} catch (err) {
+				let command = this.commands[this.commands.length - 1];
+				command.errors = command.errors || [];
+				let error: ErrorDescription = { message: parseError(err).message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
+				command.errors.push(error);
+			}
+		}
+		return tokenObject;
+	}
+
+	private regexLiteralContextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, text: string): Object {
+		let separator = text.lastIndexOf('/');
+		let flags = separator !== text.length - 1 ? text.substring(separator + 1) : "";
+		let pattern = text.substring(1, separator);
+		let tokenObject: Object = {};
+		try {
+			tokenObject = new RegExp(pattern, flags);
+		} catch (error) { //User may not have finished typing
+			let command = this.commands[this.commands.length - 1];
+			command.errors = command.errors || [];
+			let currentErrorDesc: ErrorDescription = { message: parseError(error).message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
+			command.errors.push(currentErrorDesc);
+		}
+		return tokenObject;
 	}
 
 }

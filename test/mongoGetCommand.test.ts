@@ -594,6 +594,7 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(command.argumentObjects, ["That\"s all"]);
     });
 
+    // Note: when escaping a character, escape it twice.
     test("test quotes inside a string - 3", () => {
         let text = `db.test1.find("Hello \\"there\\"")`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
@@ -700,6 +701,101 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(command.argumentObjects, [{ name: {} }]);
         assert.deepEqual(command.errors[0].message, errorMessage);
     });
+    //Examples inspired from https://docs.mongodb.com/manual/reference/operator/query/regex/
+    test("test regular expressions - only pattern, no flags", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /789$/ } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+        assert.deepEqual(generatedRegExp.flags, "");
+        assert.deepEqual(generatedRegExp.source, "789$");
+    });
+
+    test("test regular expressions - pattern and flags", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /789$/i } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+        assert.deepEqual(generatedRegExp.flags, "i");
+        assert.deepEqual(generatedRegExp.source, "789$");
+    });
+
+    test("test regular expressions - Intellisense - flag contains invalid option", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /789$/q } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.errors[0].message, "mismatched input '}' expecting '('");
+        assert.deepEqual(command.errors[0].range.start.character, 44);
+    });
+
+    test("test regular expressions - wrong escape - throw error", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /789$\\/b\\/q } })`;
+        try {
+            getCommandFromTextAtLocation(text, new Position(0, 0));
+        }
+        catch (error) {
+            assert.equal(error.message, "Invalid regular expression: /789$\\/b\\/: \\ at end of pattern");
+        }
+    });
+
+    //Passing the following test should imply the rest of the tests pass too.
+    // The regex parsing tests following this test should help zero-in on which case isn't handled properly.
+    test("test regular expression parsing - with many special cases", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /^(hello?= world).*[^0-9]+|(world\\b\\*){0,2}$/g } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "^(hello?= world).*[^0-9]+|(world\\b\\*){0,2}$");
+    });
+
+    test("test regular expression parsing - with groupings", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /(?:hello)\\3/g } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "(?:hello)\\3");
+    });
+
+    test("test regular expression parsing - with special characters", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /(hello)*(world)?(name)+./g } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "(hello)*(world)?(name)+.");
+    });
+
+
+    test("test regular expression parsing - with boundaries", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /^(hello world)[^0-9]|(world\\b)$/g } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "^(hello world)[^0-9]|(world\\b)$");
+    });
+
+    test("test regular expression parsing - with quantifiers", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /(hello)*[^0-9]+|(world){0,2}./g } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "(hello)*[^0-9]+|(world){0,2}.");
+    });
+
+
+    test("test regular expression parsing - with conditional", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /(hello?= world)|(world)/g } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "(hello?= world)|(world)");
+    });
+
+    test("test regular expression parsing - with escaped special characters", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /world\\*\\.\\?\\+/g } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "world\\*\\.\\?\\+");
+    });
+
+    //TODO: Tests to simulate cases where the user hasn't completed typing
 
     test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/688", () => {
         for (let q = 0; q <= 2; q++) {
@@ -766,7 +862,7 @@ suite("scrapbook parsing Tests", () => {
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         assert.deepEqual(command.collection, "c1");
         assert.deepEqual(command.argumentObjects, [{}, {}]);
-        assert.deepEqual(command.errors[0].message, "mismatched input 'f' expecting {'{', '[', StringLiteral, 'null', BooleanLiteral, NumericLiteral, ObjectIDLiteral}")
+        assert.deepEqual(command.errors[0].message, "mismatched input 'f' expecting {'{', '[', RegexLiteral, StringLiteral, 'null', BooleanLiteral, NumericLiteral, ObjectIdLiteral}")
     });
 });
 

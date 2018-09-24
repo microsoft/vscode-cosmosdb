@@ -51,11 +51,16 @@ propertyValue:
 	| functionCall;
 
 literal: (NullLiteral | BooleanLiteral | StringLiteral)
+	| RegexLiteral
 	| NumericLiteral;
 
 propertyName: StringLiteral | IDENTIFIER;
 
 comment: SingleLineComment | MultiLineComment;
+
+RegexLiteral: '/' (~[/] | '\\/')+ '/' (RegexFlag)*;
+
+fragment RegexFlag: [gimuy];
 
 SingleLineComment:
 	'//' ~[\r\n\u2028\u2029]* -> channel(HIDDEN);

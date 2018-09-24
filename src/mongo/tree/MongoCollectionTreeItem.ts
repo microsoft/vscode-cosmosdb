@@ -27,10 +27,10 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 	private _hasMoreChildren: boolean = true;
 	private _batchSize: number = DefaultBatchSize;
 
-	constructor(collection: Collection, query?: string[]) {
+	constructor(collection: Collection, query?: Object[]) {
 		this.collection = collection;
 		if (query && query.length) {
-			this._query = EJSON.parse(query[0]);
+			this._query = query[0];
 			this._projection = query.length > 1 && EJSON.parse(query[1]);
 		}
 	}

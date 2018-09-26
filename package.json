@@ -202,12 +202,12 @@
 				"title": "Create Stored Procedure"
 			},
 			{
-				"category": "Graph",
+				"category": "Graph (Gremlin)",
 				"command": "cosmosDB.createGraphDatabase",
 				"title": "Create Database"
 			},
 			{
-				"category": "Graph",
+				"category": "Graph (Gremlin)",
 				"command": "cosmosDB.createGraph",
 				"title": "Create Graph"
 			},
@@ -257,17 +257,17 @@
 				"title": "Delete Stored Procedure"
 			},
 			{
-				"category": "Graph",
+				"category": "Graph (Gremlin)",
 				"command": "cosmosDB.deleteGraphDatabase",
 				"title": "Delete Database"
 			},
 			{
-				"category": "Graph",
+				"category": "Graph (Gremlin)",
 				"command": "cosmosDB.deleteGraph",
 				"title": "Delete Graph"
 			},
 			{
-				"category": "Graph",
+				"category": "Graph (Gremlin)",
 				"command": "cosmosDB.openGraphExplorer",
 				"title": "Open Graph Explorer"
 			},

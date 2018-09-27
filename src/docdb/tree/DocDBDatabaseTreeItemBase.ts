@@ -65,7 +65,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     // Create a DB collection
     public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
         const collectionName = await vscode.window.showInputBox({
-            placeHolder: `Enter a name for your ${this.childTypeLabel}`,
+            placeHolder: `Enter an id for your ${this.childTypeLabel}`,
             ignoreFocusOut: true,
             validateInput: DocDBDatabaseTreeItemBase.validateCollectionName
         });

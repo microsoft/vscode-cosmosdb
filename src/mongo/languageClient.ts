@@ -10,8 +10,7 @@ import * as nls from 'vscode-nls';
 
 const localize = nls.loadMessageBundle();
 
-// tslint:disable-next-line:no-default-export // Grandfathered in
-export default class MongoDBLanguageClient {
+export class MongoDBLanguageClient {
 
 	public client: LanguageClient;
 

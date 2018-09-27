@@ -15,7 +15,7 @@ import { mongoLexer } from './../grammar/mongoLexer';
 import * as mongoParser from './../grammar/mongoParser';
 import { MongoVisitor } from './../grammar/visitors';
 import { CompletionItemsVisitor } from './completionItemProvider';
-import SchemaService from './schemaService';
+import { SchemaService } from './schemaService';
 
 export class MongoScriptDocumentManager {
 

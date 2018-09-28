@@ -327,6 +327,11 @@
 				"category": "Cosmos DB",
 				"command": "cosmosDB.openCollection",
 				"title": "Open Collection"
+			},
+			{
+				"category": "Cosmos DB",
+				"command": "cosmosDB.api.getDatabase",
+				"title": "Get Database Id"
 			}
 		],
 		"menus": {
@@ -653,6 +658,10 @@
 				},
 				{
 					"command": "cosmosDB.loadMore",
+					"when": "never"
+				},
+				{
+					"command": "cosmosDB.api.getDatabase",
 					"when": "never"
 				},
 				{

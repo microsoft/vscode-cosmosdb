@@ -13,6 +13,7 @@ import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
+import { DocDBDatabaseTreeItem } from './docdb/tree/DocDBDatabaseTreeItem';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { ext } from './extensionVariables';
 import { registerGraphCommands } from './graph/registerGraphCommands';
@@ -20,6 +21,7 @@ import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
 import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
 import { registerMongoCommands } from './mongo/registerMongoCommands';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
+import { MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
@@ -122,14 +124,17 @@ export function activate(context: vscode.ExtensionContext) {
 	registerEvent(
 		'cosmosDB.onDidChangeConfiguration',
 		vscode.workspace.onDidChangeConfiguration,
-		async function
-			(this: IActionContext, event: vscode.ConfigurationChangeEvent): Promise<void> {
+		async function (this: IActionContext, event: vscode.ConfigurationChangeEvent): Promise<void> {
 			this.properties.isActivationEvent = "true";
 			this.suppressErrorDisplay = true;
 			if (event.affectsConfiguration(ext.settingsKeys.documentLabelFields)) {
 				await vscode.commands.executeCommand("cosmosDB.refresh");
 			}
 		});
+	registerCommand('cosmosDB.api.getDatabase', async () => {
+		const AttachedDatabaseTreeItemContextvalue: string = 'cosmosDBAttachDatabaseAccount';
+		return (<IAzureParentNode>await tree.showNodePicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue, AttachedDatabaseTreeItemContextvalue])).id;
+	});
 }
 
 async function getAttachedNode(tree: AzureTreeDataProvider): Promise<IAzureParentNode<AttachedAccountsTreeItem>> {

@@ -132,8 +132,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		});
 	registerCommand('cosmosDB.api.getDatabase', async () => {
-		const AttachedDatabaseTreeItemContextvalue: string = 'cosmosDBAttachDatabaseAccount';
-		return (<IAzureParentNode>await tree.showNodePicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue, AttachedDatabaseTreeItemContextvalue])).id;
+		return (<IAzureParentNode>await tree.showNodePicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue])).id;
 	});
 }
 

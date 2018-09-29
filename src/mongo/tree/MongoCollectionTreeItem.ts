@@ -35,13 +35,13 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		}
 	}
 
-	public async update(documents: IMongoDocument[], flag = false): Promise<IMongoDocument[]> {
+	public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
 		const operations = documents.map((document) => {
 			return {
 				updateOne: {
 					filter: { _id: document._id },
 					update: _.omit(document, '_id'),
-					upsert: flag
+					upsert: false
 				}
 			};
 		});

@@ -12,7 +12,7 @@ import { CompletionItem, CompletionItemKind, Position, Range, TextDocument } fro
 import { mongoLexer } from './../grammar/mongoLexer';
 import * as mongoParser from './../grammar/mongoParser';
 import { MongoVisitor } from './../grammar/visitors';
-import SchemaService from './schemaService';
+import { SchemaService } from './schemaService';
 
 export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[]>> {
 

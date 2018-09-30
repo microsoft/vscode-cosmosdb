@@ -67,10 +67,7 @@ export class GraphCollectionTreeItem implements IAzureTreeItem {
         if (result === DialogResponses.deleteResponse) {
             const client = this._database.getDocumentClient();
             await new Promise((resolve, reject) => {
-                // tslint:disable-next-line:no-function-expression // Grandfathered in
-                client.deleteCollection(this.link, function (err) {
-                    err ? reject(err) : resolve();
-                });
+                client.deleteCollection(this.link, err => err ? reject(err) : resolve());
             });
         } else {
             throw new UserCancelledError();

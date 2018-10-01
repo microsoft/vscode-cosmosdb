@@ -19,8 +19,10 @@ import { LexerErrorListener, ParserErrorListener } from './errorListeners';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
-import { MongoCommand } from './MongoCommand';
+import { ErrorDescription, MongoCommand } from './MongoCommand';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
+// tslint:disable:no-var-requires
+const EJSON = require("mongodb-extended-json");
 
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
 
@@ -222,7 +224,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 				const lastCommand = this.commands[this.commands.length - 1];
 				const argAsObject = this.contextToObject(ctx);
 				lastCommand.argumentObjects.push(argAsObject);
-				lastCommand.arguments.push(JSON.stringify(argAsObject));
+				lastCommand.arguments.push(EJSON.stringify(argAsObject));
 			}
 		}
 		return super.visitArgument(ctx);
@@ -246,6 +248,18 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			const nonStringLiterals = [mongoParser.mongoParser.NullLiteral, mongoParser.mongoParser.BooleanLiteral, mongoParser.mongoParser.NumericLiteral];
 			if (tokenType === mongoParser.mongoParser.StringLiteral) {
 				parsedObject = stripQuotes(text);
+			} else if (tokenType === mongoParser.mongoParser.RegexLiteral) {
+				let separator = child.text.lastIndexOf('/');
+				let flags = separator !== child.text.length - 1 ? child.text.substring(separator + 1) : "";
+				let pattern = child.text.substring(1, separator);
+				try {
+					parsedObject = new RegExp(pattern, flags);
+				} catch (error) { //User may not have finished typing
+					let command = this.commands[this.commands.length - 1];
+					command.errors = command.errors || [];
+					let currentErrorDesc: ErrorDescription = { message: parseError(error).message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
+					command.errors.push(currentErrorDesc);
+				}
 			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 				parsedObject = JSON.parse(text);
 			} else {

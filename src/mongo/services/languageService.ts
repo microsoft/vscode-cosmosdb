@@ -10,7 +10,7 @@ import { getLanguageService, LanguageService as JsonLanguageService, SchemaConfi
 import { CompletionItem, IConnection, InitializeParams, InitializeResult, TextDocumentPositionParams, TextDocuments } from 'vscode-languageserver';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoScriptDocumentManager } from './mongoScript';
-import SchemaService from './schemaService';
+import { SchemaService } from './schemaService';
 
 export class LanguageService {
 

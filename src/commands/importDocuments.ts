@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { NewDocument } from 'documentdb';
+import * as fse from 'fs-extra';
 import { DocDBDocumentsTreeItem } from 'src/docdb/tree/DocDBDocumentsTreeItem';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, IAzureParentNode, parseError, UserCancelledError } from 'vscode-azureextensionui';
@@ -65,13 +66,12 @@ async function parseDocumentsForErrors(nodes: vscode.Uri[]): Promise<any[]> {
 }
 
 // tslint:disable-next-line:no-any
-async function parseDocuments(nodes: vscode.Uri[]): Promise<[any[], string[]]> {
+async function parseDocuments(uris: vscode.Uri[]): Promise<[any[], string[]]> {
     let documents = [];
     let errors = {};
     let errorFoundFlag: boolean = false;
-    for (let node of nodes) {
-        const document = (await vscode.workspace.openTextDocument(node));
-        const text = document.getText();
+    for (let uri of uris) {
+        const text: string = await fse.readFile(uri.fsPath, 'utf-8');
         let parsed;
         try {
             parsed = JSON.parse(text);
@@ -80,11 +80,10 @@ async function parseDocuments(nodes: vscode.Uri[]): Promise<[any[], string[]]> {
                 ext.outputChannel.appendLine("Errors found in documents listed below. Please fix these.");
             }
             const err = parseError(e);
-            const fileName = node.path.split('/').pop();
+            const fileName = uri.path.split('/').pop();
             errors[fileName] = err;
             ext.outputChannel.appendLine(`${fileName}:\n${err.message}`);
             ext.outputChannel.show();
-            await vscode.window.showTextDocument(document);
         }
         if (parsed) {
             if (Array.isArray(parsed)) {

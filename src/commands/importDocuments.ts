@@ -10,12 +10,14 @@ import { AzureTreeDataProvider, IAzureParentNode, parseError, UserCancelledError
 import { DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
 import { MongoCollectionTreeItem } from '../mongo/tree/MongoCollectionTreeItem';
+import { withProgress } from '../mongo/tree/MongoDatabaseTreeItem';
 
 export async function importDocuments(tree: AzureTreeDataProvider, uris: vscode.Uri[] | undefined, collectionNode: IAzureParentNode<MongoCollectionTreeItem | DocDBCollectionTreeItem> | undefined): Promise<void> {
     if (!uris) {
         uris = await askForDocuments();
     }
-    const documents = await parseDocumentsForErrors(uris);
+    uris = uris.filter((uri) => uri.fsPath.endsWith('.json'));
+    const documents = await withProgress(parseDocumentsForErrors(uris), "Parsing documents...", vscode.ProgressLocation.Notification);
 
     if (!collectionNode) {
         collectionNode = <IAzureParentNode<MongoCollectionTreeItem | DocDBCollectionTreeItem>>await tree.showNodePicker([MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue]);
@@ -57,7 +59,6 @@ async function parseDocumentsForErrors(nodes: vscode.Uri[]): Promise<any[]> {
     const documents = parseResult[0];
     const errors: string[] = parseResult[1];
     if (errors.length > 0) {
-        ext.outputChannel.show();
         throw new Error(`Errors found in the following documents: ${errors.join(',')}.\nPlease fix these and try again.`);
     }
     return documents;
@@ -67,6 +68,7 @@ async function parseDocumentsForErrors(nodes: vscode.Uri[]): Promise<any[]> {
 async function parseDocuments(nodes: vscode.Uri[]): Promise<[any[], string[]]> {
     let documents = [];
     let errors = {};
+    let errorFoundFlag: boolean = false;
     for (let node of nodes) {
         const document = (await vscode.workspace.openTextDocument(node));
         const text = document.getText();
@@ -74,10 +76,14 @@ async function parseDocuments(nodes: vscode.Uri[]): Promise<[any[], string[]]> {
         try {
             parsed = JSON.parse(text);
         } catch (e) {
+            if (!errorFoundFlag) {
+                ext.outputChannel.appendLine("Errors found in documents listed below. Please fix these.");
+            }
             const err = parseError(e);
             const fileName = node.path.split('/').pop();
             errors[fileName] = err;
-            ext.outputChannel.appendLine(`${fileName}:\n${err}`);
+            ext.outputChannel.appendLine(`${fileName}:\n${err.message}`);
+            ext.outputChannel.show();
             await vscode.window.showTextDocument(document);
         }
         if (parsed) {

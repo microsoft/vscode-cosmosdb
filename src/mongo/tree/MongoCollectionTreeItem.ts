@@ -247,7 +247,7 @@ function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
 	return vscode.window.withProgress<T>(
 		{
 			location: vscode.ProgressLocation.Window,
-			title
+			title: title
 		},
 		(_progress) => {
 			return promise;

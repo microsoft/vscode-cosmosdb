@@ -17,7 +17,19 @@ export async function importDocuments(tree: AzureTreeDataProvider, uris: vscode.
     if (!uris) {
         uris = await askForDocuments();
     }
-    uris = uris.filter((uri) => uri.fsPath.endsWith('.json'));
+    let ignoredUris: vscode.Uri[] = []; //account for https://github.com/Microsoft/vscode/issues/59782
+    uris = uris.filter((uri) => {
+        if (uri.fsPath.endsWith('.json')) {
+            return true;
+        } else {
+            ignoredUris.push(uri);
+            return false;
+        }
+    });
+    if (ignoredUris.length) {
+        ext.outputChannel.appendLine(`The following selected files are not json: ${ignoredUris.map(uri => uri.fsPath).join(',')}. \nWe are ignoring these.`);
+        ext.outputChannel.show();
+    }
     const documents = await withProgress(parseDocumentsForErrors(uris), "Parsing documents...", vscode.ProgressLocation.Notification);
 
     if (!collectionNode) {

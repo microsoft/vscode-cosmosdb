@@ -299,7 +299,13 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		if (closing === opening + 1) { // usage : ObjectID()
 			tokenObject = new ObjectID();
 		} else {
-			hexID = tokenText.substring(opening + 2, closing - 1); //exclude quotes ""
+			if (tokenText[opening + 1] === "\"") {
+				opening += 1;
+			}
+			if (tokenObject[closing - 1] === "\"") {
+				closing -= 1;
+			}
+			hexID = tokenText.substring(opening + 1, closing);
 			try {
 				tokenObject = new ObjectID(hexID);
 			} catch (error) {

@@ -83,7 +83,7 @@ DecimalLiteral:
 	| '.' DecimalDigit+ ExponentPart?
 	| DecimalIntegerLiteral ExponentPart?;
 
-ObjectIdLiteral: 'ObjectId(' ('"' ([0-9A-Fa-f])* '"')? ')';
+ObjectIdLiteral: 'ObjectId(' ('"'? ([0-9A-Fa-f])* '"'?) ')';
 
 LineTerminator: [\r\n\u2028\u2029] -> channel(HIDDEN);
 

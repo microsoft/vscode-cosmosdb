@@ -179,7 +179,7 @@ export function validateMongoCollectionName(collectionName: string): string | un
 	return undefined;
 }
 
-export function withProgress<T>(promise: Thenable<T>, title: string, location = vscode.ProgressLocation.Window): Thenable<T> {
+function withProgress<T>(promise: Thenable<T>, title: string, location = vscode.ProgressLocation.Window): Thenable<T> {
 	return vscode.window.withProgress<T>(
 		{
 			location: location,

@@ -160,7 +160,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 				// tslint:disable-next-line:no-constant-condition
 				const openFile: vscode.MessageItem = { title: `Browse to ${mongoExecutableFileName}` };
 				const browse: vscode.MessageItem = { title: 'Open installation page' };
-				let response = await vscode.window.showErrorMessage('This functionality requires the Mongo DB shell.', browse, openFile);
+				let response = await vscode.window.showErrorMessage('This functionality requires the Mongo DB shell, but we could not find it in the path or using the mongo.shell.path setting.', browse, openFile);
 				if (response === openFile) {
 					// tslint:disable-next-line:no-constant-condition
 					while (true) {
@@ -186,6 +186,8 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 							this._cachedShellPathOrCmd = fsPath;
 							await vscode.workspace.getConfiguration().update(ext.settingsKeys.mongoShellPath, this._cachedShellPathOrCmd, vscode.ConfigurationTarget.Global);
 							return;
+						} else {
+							throw new UserCancelledError();
 						}
 					}
 				} else if (response === browse) {

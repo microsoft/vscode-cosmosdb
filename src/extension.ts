@@ -96,9 +96,9 @@ export function activate(context: vscode.ExtensionContext) {
 	registerCommand('cosmosDB.importDocument', async (selectedNode: vscode.Uri | IAzureParentNode<MongoCollectionTreeItem | DocDBCollectionTreeItem>, uris: vscode.Uri[]) => //ignore first pass
 	{
 		if (selectedNode instanceof vscode.Uri) {
-			importDocuments(tree, uris, undefined);
+			await importDocuments(tree, uris, undefined);
 		} else {
-			importDocuments(tree, undefined, selectedNode);
+			await importDocuments(tree, undefined, selectedNode);
 		}
 	});
 

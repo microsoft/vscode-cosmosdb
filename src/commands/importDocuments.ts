@@ -26,28 +26,34 @@ export async function importDocuments(tree: AzureTreeDataProvider, uris: vscode.
         }
     });
     if (ignoredUris.length) {
-        ext.outputChannel.appendLine(`The following selected files are not json: ${ignoredUris.map(uri => uri.fsPath).join(',')}. \nIgnoring these.`);
+        ext.outputChannel.appendLine(`Ignoring the following files which are not json:`);
+        ignoredUris.forEach(uri => ext.outputChannel.appendLine(`${uri.fsPath}`));
         ext.outputChannel.show();
     }
     if (!collectionNode) {
         collectionNode = <IAzureParentNode<MongoCollectionTreeItem | DocDBCollectionTreeItem>>await tree.showNodePicker([MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue]);
     }
-
-    const documents = await vscode.window.withProgress(
+    let result: string;
+    result = await vscode.window.withProgress(
         {
             location: vscode.ProgressLocation.Notification,
-            title: "Import documents..."
+            title: "Importing documents..."
         },
-        (_progress) => parseDocumentsForErrors(uris)
+        async (progress) => {
+            progress.report({ increment: 20, message: "Parsing documents for errors" });
+            const documents = await parseDocuments(uris);
+            progress.report({ increment: 30, message: "Parsed documents. Importing" });
+            if (collectionNode.treeItem instanceof MongoCollectionTreeItem) {
+                const collectionTreeItem = <MongoCollectionTreeItem>collectionNode.treeItem;
+                result = await collectionTreeItem.executeCommand('insertMany', [JSON.stringify(documents)]);
+            } else {
+                result = await insertDocumentsIntoDocdb(<IAzureParentNode<DocDBCollectionTreeItem>>collectionNode, documents, uris);
+            }
+            progress.report({ increment: 50, message: "Finished importing" });
+            return result;
+        }
     );
 
-    let result: string;
-    if (collectionNode.treeItem instanceof MongoCollectionTreeItem) {
-        const collectionTreeItem = <MongoCollectionTreeItem>collectionNode.treeItem;
-        result = await collectionTreeItem.executeCommand('insertMany', [JSON.stringify(documents)]);
-    } else {
-        result = await insertDocumentsIntoDocdb(<IAzureParentNode<DocDBCollectionTreeItem>>collectionNode, documents, uris);
-    }
     await collectionNode.refresh();
     await vscode.window.showInformationMessage(result);
 }
@@ -64,28 +70,17 @@ async function askForDocuments(): Promise<vscode.Uri[]> {
 }
 
 // tslint:disable-next-line:no-any
-async function parseDocumentsForErrors(nodes: vscode.Uri[]): Promise<any[]> {
-    const parseResult = await parseDocuments(nodes);
-    const documents = parseResult[0];
-    const hasErrors: boolean = parseResult[1];
-    if (hasErrors) {
-        throw new Error(`Errors found in some documents.\nPlease see the output, fix these and try again.`);
-    }
-    return documents;
-}
-
-// tslint:disable-next-line:no-any
-async function parseDocuments(uris: vscode.Uri[]): Promise<[any[], boolean]> {
+async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
     let documents = [];
     let errors = {};
     let errorFoundFlag: boolean = false;
     for (let uri of uris) {
-        const text: string = await fse.readFile(uri.fsPath, 'utf-8');
         let parsed;
         try {
-            parsed = JSON.parse(text);
+            parsed = await fse.readJSON(uri.fsPath);
         } catch (e) {
             if (!errorFoundFlag) {
+                errorFoundFlag = true;
                 ext.outputChannel.appendLine("Errors found in documents listed below. Please fix these.");
                 ext.outputChannel.show();
             }
@@ -101,7 +96,11 @@ async function parseDocuments(uris: vscode.Uri[]): Promise<[any[], boolean]> {
             }
         }
     }
-    return [documents, !!Object.keys(errors).length];
+    if (errorFoundFlag) {
+        throw new Error(`Errors found in some documents. Please see the output, fix these and try again.`);
+    }
+
+    return documents;
 }
 
 // tslint:disable-next-line:no-any
@@ -122,10 +121,9 @@ async function insertDocumentsIntoDocdb(collectionNode: IAzureParentNode<DocDBCo
         ext.outputChannel.appendLine(`The following documents do not contain the required partition key:`);
         erroneousFiles.forEach(file => ext.outputChannel.appendLine(file.path));
         ext.outputChannel.show();
-        throw new Error(`Some documents do not contain the Partition Key field required by the collection ${collectionNode.treeItem.label}. Please ensure every document contains this field. See output for list of documents.`);
+        throw new Error(`See output for list of documents that do not contain the partition key '${collectionNode.treeItem.partitionKey}' required by collection '${collectionNode.treeItem.label}'`);
     }
-    for (i = 0; i < documents.length; i++) {
-        let document: NewDocument = documents[i];
+    for (let document of documents) {
         const retrieved = await documentsTreeItem.createDocument(document);
         ids.push(retrieved.id);
     }

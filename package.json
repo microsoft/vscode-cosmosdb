@@ -686,6 +686,11 @@
 				"key": "ctrl+shift+;",
 				"mac": "cmd+shift+;",
 				"when": "editorLangId == 'mongo' && editorTextFocus"
+			},
+			{
+				"command": "workbench.view.extension.azure",
+				"key": "ctrl+shift+a",
+				"mac": "cmd+shift+a"
 			}
 		],
 		"configuration": {

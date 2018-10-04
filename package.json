@@ -696,7 +696,7 @@
 						"string",
 						"null"
 					],
-					"description": "Command to execute to start the Mongo shell",
+					"description": "Command to execute or full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. If empty, will search in the system path for 'mongo'.",
 					"default": null
 				},
 				"cosmosDB.showExplorer": {
@@ -839,6 +839,7 @@
 		"azure-storage": "^2.8.1",
 		"gulp": "^3.9.1",
 		"mocha": "^2.3.3",
+		"@types/opn": "^5.1.0",
 		"tslint": "^5.7.0",
 		"tslint-microsoft-contrib": "5.0.1",
 		"typescript": "^2.0.3",
@@ -858,6 +859,7 @@
 		"mongodb": "^2.2.25",
 		"mongodb-extended-json": "^1.10.0",
 		"ms-rest": "^2.2.1",
+		"opn": "^5.4.0",
 		"request-light": "^0.2.3",
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",

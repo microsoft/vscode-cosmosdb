@@ -51,7 +51,6 @@ propertyValue:
 	| functionCall;
 
 literal: (NullLiteral | BooleanLiteral | StringLiteral)
-	| ObjectIdLiteral
 	| RegexLiteral
 	| NumericLiteral;
 
@@ -82,8 +81,6 @@ DecimalLiteral:
 	DecimalIntegerLiteral '.' DecimalDigit+ ExponentPart?
 	| '.' DecimalDigit+ ExponentPart?
 	| DecimalIntegerLiteral ExponentPart?;
-
-ObjectIdLiteral: 'ObjectId(' ('"'? ([0-9A-Fa-f])* '"'?) ')';
 
 LineTerminator: [\r\n\u2028\u2029] -> channel(HIDDEN);
 

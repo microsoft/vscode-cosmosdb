@@ -249,8 +249,6 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			const nonStringLiterals = [mongoParser.mongoParser.NullLiteral, mongoParser.mongoParser.BooleanLiteral, mongoParser.mongoParser.NumericLiteral];
 			if (tokenType === mongoParser.mongoParser.StringLiteral) {
 				parsedObject = stripQuotes(text);
-			} else if (tokenType === mongoParser.mongoParser.ObjectIdLiteral) {
-				return this.objectIdContextToObject(ctx, text);
 			} else if (tokenType === mongoParser.mongoParser.RegexLiteral) {
 				return this.regexLiteralContextToObject(ctx, text);
 			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
@@ -283,7 +281,11 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 				parsedObject = [];
 			}
 		} else if (child instanceof mongoParser.FunctionCallContext || child instanceof ErrorNode) {
-			return {};
+			if (child.text.startsWith("ObjectId")) {
+				parsedObject = this.objectIdContextToObject(ctx, child.text);
+			} else {
+				return {};
+			}
 		} else {
 			return {};
 		}
@@ -302,7 +304,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			if (tokenText[opening + 1] === "\"") {
 				opening += 1;
 			}
-			if (tokenObject[closing - 1] === "\"") {
+			if (tokenText[closing - 1] === "\"") {
 				closing -= 1;
 			}
 			hexID = tokenText.substring(opening + 1, closing);

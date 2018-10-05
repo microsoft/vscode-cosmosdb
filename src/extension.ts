@@ -135,7 +135,10 @@ export function activate(context: vscode.ExtensionContext) {
 		return (<IAzureParentNode>await tree.showNodePicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue])).id;
 	});
 	registerCommand('cosmosDB.api.getConnectionString', async (treeItemId: string) => {
-		const node = (<IAzureNode>await tree.findNode(treeItemId));
+		const node = (<IAzureNode | undefined>await tree.findNode(treeItemId));
+		if (node === undefined) {
+			throw new Error("Coudn't find node with provided Id.");
+		}
 		switch (node.treeItem.contextValue) {
 			case MongoDatabaseTreeItem.contextValue:
 				return (<IAzureNode<MongoDatabaseTreeItem>>node).treeItem.connectionString;

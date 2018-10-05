@@ -96,7 +96,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		if (command.collection) {
 			let db = await this.getDb();
 			const collection = db.collection(command.collection);
-			if (collection) {
+			if (collection && !command.chained) {
 				const collectionTreeItem = new MongoCollectionTreeItem(collection, command.arguments);
 				const result = await collectionTreeItem.executeCommand(command.name, command.arguments);
 				if (result) {

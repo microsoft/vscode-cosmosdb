@@ -548,11 +548,11 @@
 				},
 				{
 					"command": "cosmosDB.attachDatabaseAccount",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccounts"
+					"when": "view == cosmosDBExplorer && viewItem =~ /^cosmosDBAttachedAccounts/"
 				},
 				{
 					"command": "cosmosDB.attachEmulator",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccounts"
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccountsWithEmulator"
 				},
 				{
 					"command": "cosmosDB.openInPortal",
@@ -644,7 +644,7 @@
 				},
 				{
 					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccounts"
+					"when": "view == cosmosDBExplorer && viewItem =~ /^cosmosDBAttachedAccounts/"
 				}
 			],
 			"commandPalette": [

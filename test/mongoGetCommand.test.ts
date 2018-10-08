@@ -734,6 +734,32 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(generatedRegExp.source, "world\\*\\.\\?\\+");
     });
 
+    test("test chained command: argument aggregation", () => {
+        testParse('db.timesheets.find({name: "Andy", surname: "Jackson"}).pretty();', {
+            collection: "timesheets",
+            name: "pretty",
+            args: [{ name: "Andy", surname: "Jackson" }]
+        });
+    });
+
+    test("Chained command - order of parsed arguments", () => {
+        testParse('db.timesheets.find({name:"Andy"}).sort({age: 1}).skip(40);', {
+            collection: "timesheets",
+            name: "skip",
+            args: [{ name: "Andy" }, { age: 1 }, 40]
+        });
+    });
+
+    test("Chained command - missing period", () => {
+        testParse('db.timesheets.find({name:"Andy"}).sort({age: 1})skip(40);', {
+            collection: "timesheets",
+            name: "sort",
+            args: [{ name: "Andy" }, { age: 1 }],
+            firstErrorText: "mismatched input 'skip' expecting <EOF>"
+        });
+    });
+
+
     //TODO: Tests to simulate cases where the user hasn't completed typing
 
     test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/688", () => {
@@ -746,6 +772,30 @@ suite("scrapbook parsing Tests", () => {
             assert.deepEqual(command.collection, "hdr");
             assert.deepEqual(command.argumentObjects, [[{ $match: { "CURRENCY_ID": "USD" } }, {}]]);
         }
+    });
+
+    test("Chained command- test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/785", () => {
+        testParse('db.timesheets.find({name:"Andy"}).count();', {
+            collection: "timesheets",
+            name: "count",
+            args: [{ name: "Andy" }]
+        });
+    });
+
+    test("Chained command- test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/795", () => {
+        testParse('db.timesheets.find({}).limit(10);', {
+            collection: "timesheets",
+            name: "limit",
+            args: [{}, 10]
+        });
+    });
+
+    test("Chained command alternative for rs.slaveOk()- test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/565", () => {
+        testParse('db.getMongo().setSlaveOk();', {
+            collection: "",
+            name: "setSlaveOk",
+            args: []
+        });
     });
 
     test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/703", () => {

@@ -187,6 +187,11 @@
 				"title": "Create Database"
 			},
 			{
+				"category": "MongoDB",
+				"command": "cosmosDB.openCollection",
+				"title": "Open Collection"
+			},
+			{
 				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.createDocDBCollection",
 				"title": "Create Collection"
@@ -322,11 +327,6 @@
 				"category": "Cosmos DB",
 				"command": "cosmosDB.openStoredProcedure",
 				"title": "Open Stored Procedure"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.openCollection",
-				"title": "Open Collection"
 			},
 			{
 				"category": "Cosmos DB",

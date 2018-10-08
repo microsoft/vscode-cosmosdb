@@ -450,12 +450,11 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(err.range.start.character, 26);
     });
 
-    test("Trying to use pretty()", () => {
+    test("Chained command: to use pretty()", () => {
         testParse('db.timesheets.find().pretty();', {
             collection: "timesheets",
-            name: "find",
-            args: [],
-            firstErrorText: "mismatched input '.' expecting <EOF>"
+            name: "pretty",
+            args: []
         });
     });
 

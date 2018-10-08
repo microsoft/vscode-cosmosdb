@@ -6,11 +6,10 @@ import { Cursor, Db } from 'mongodb';
 import { SchemaConfiguration } from 'vscode-json-languageservice';
 import { JSONSchema } from 'vscode-json-languageservice/lib/umd/jsonSchema';
 
-// tslint:disable:no-reserved-keywords // Grandfathered in ("arguments" and "type")
+// tslint:disable:no-reserved-keywords // Grandfathered in ("type")
 // tslint:disable:no-any
 
-// tslint:disable-next-line:no-default-export // Grandfathered in
-export default class SchemaService {
+export class SchemaService {
 
 	private _db: Db;
 	private _schemasCache: Map<string, string> = new Map<string, string>();

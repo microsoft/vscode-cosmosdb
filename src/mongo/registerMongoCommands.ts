@@ -9,7 +9,7 @@ import { CosmosEditorManager } from "../CosmosEditorManager";
 import { ext } from "../extensionVariables";
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { MongoCollectionNodeEditor } from "./editors/MongoCollectionNodeEditor";
-import MongoDBLanguageClient from "./languageClient";
+import { MongoDBLanguageClient } from "./languageClient";
 import { executeAllCommandsFromActiveEditor, executeCommandFromActiveEditor, executeCommandFromText, getAllErrorsFromTextDocument } from "./MongoScrapbook";
 import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
 import { MongoAccountTreeItem } from "./tree/MongoAccountTreeItem";

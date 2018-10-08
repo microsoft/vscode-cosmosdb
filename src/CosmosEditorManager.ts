@@ -95,7 +95,13 @@ export class CosmosEditorManager {
         const timestamp = (new Date()).toLocaleTimeString();
         ext.outputChannel.appendLine(`${timestamp}: Updated entity "${editor.label}"`);
         ext.outputChannel.show();
-        await this.updateEditor(updatedContent, vscode.window.activeTextEditor, editor);
+        if (doc.isClosed !== true) {
+            const firstRelatedEditor = vscode.window.visibleTextEditors.find((ed) => ed.document === doc);
+            if (firstRelatedEditor) {
+                await this.updateEditor(updatedContent, firstRelatedEditor, editor);
+                //all visible editors for that doc will be updated
+            }
+        }
     }
 
     private async updateEditor(data: {}, textEditor: vscode.TextEditor, editor: ICosmosEditor): Promise<void> {

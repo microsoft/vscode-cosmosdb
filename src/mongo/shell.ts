@@ -102,7 +102,7 @@ export class Shell {
 
 				if (result && result.code) {
 					if (result.code === 'ENOENT') {
-						result.message = `Could not find Mongo shell. Make sure it is on your path or you have set the '${ext.settingsKeys.mongoShellPath}' VS Code setting to point to the Mongo shell executable file. Attempted command: "${this.execPath}"`;
+						result.message = `This functionality requires the Mongo DB shell, but we could not find it. Please make sure it is on your path or you have set the '${ext.settingsKeys.mongoShellPath}' VS Code setting to point to the Mongo shell executable file (not folder). Attempted command: "${this.execPath}"`;
 					}
 
 					e(result);

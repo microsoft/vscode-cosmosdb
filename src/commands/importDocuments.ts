@@ -45,7 +45,7 @@ export async function importDocuments(tree: AzureTreeDataProvider, uris: vscode.
             progress.report({ increment: 30, message: "Parsed documents. Importing" });
             if (collectionNode.treeItem instanceof MongoCollectionTreeItem) {
                 const collectionTreeItem = <MongoCollectionTreeItem>collectionNode.treeItem;
-                result = await collectionTreeItem.executeCommand('insertMany', [JSON.stringify(documents)]);
+                result = processMongoResults(await collectionTreeItem.executeCommand('insertMany', [JSON.stringify(documents)]));
             } else {
                 result = await insertDocumentsIntoDocdb(<IAzureParentNode<DocDBCollectionTreeItem>>collectionNode, documents, uris);
             }
@@ -129,4 +129,17 @@ async function insertDocumentsIntoDocdb(collectionNode: IAzureParentNode<DocDBCo
     }
     result = `Imported ${ids.length} documents`;
     return result;
+}
+
+// tslint:disable-next-line:no-any
+function processMongoResults(result: string): string {
+    let output = "";
+    let parsed = JSON.parse(result);
+    if (parsed.result && parsed.result.ok) {
+        output = `Import into mongo successful. Inserted ${parsed.insertedCount} document(s). See output for more details.`;
+        for (let inserted of parsed.insertedIds) {
+            ext.outputChannel.appendLine(`Inserted document: ${inserted}`);
+        }
+    }
+    return output;
 }

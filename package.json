@@ -365,6 +365,10 @@
 				{
 					"command": "cosmosDB.update",
 					"when": "resourceFilename==cosmos-stored-procedure.js"
+				},
+				{
+					"command": "cosmosDB.importDocument",
+					"when": "resourceLangId==json"
 				}
 			],
 			"editor/title": [

@@ -817,6 +817,26 @@ suite("scrapbook parsing Tests", () => {
         });
     });
 
+    test("Multiple line command, from #489", () => {
+        testParse(`
+        db.finalists.find({name: "Jefferson"})
+        .
+        limit
+        (10);
+        `,
+            {
+                collection: "finalists",
+                name: "limit",
+                args: [
+                    {
+                        name: "Jefferson"
+                    },
+                    10
+                ]
+            });
+    });
+
+
     test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/703", () => {
         for (let q = 0; q <= 2; q++) {
             let text = `db.Users.find({ ${wrapInQuotes("user", q)}: { ${wrapInQuotes("$in", q)}: [ "A80", "HPA" ] } },{ ${wrapInQuotes("_id", q)}: false });`;

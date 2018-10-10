@@ -119,7 +119,7 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: IAzureP
 				await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result, tree), 'cosmos-result.json', { showInNextColumn: true });
 			} else {
 				await vscodeUtil.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
-				if (command.collection && command.name !== "count") {
+				if (command.collection && command.name !== 'count') {
 					const collectionNode = await tree.findNode(database.id + "/" + command.collection);
 					tree.refresh(collectionNode);
 				}

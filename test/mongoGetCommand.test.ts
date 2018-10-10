@@ -760,6 +760,25 @@ suite("scrapbook parsing Tests", () => {
     });
 
 
+    test("Chained command - mid-type - missing bracket", () => {
+        testParse('db.timesheets.find({name:"Andy"}).sort', {
+            collection: "timesheets",
+            name: "sort",
+            args: [{ name: "Andy" }],
+            firstErrorText: "mismatched input '<EOF>' expecting '('"
+        });
+    });
+
+    test("Chained command - mid-type - typed the dot, but not the function call", () => {
+        testParse('db.timesheets.find({name:"Andy"}).', {
+            collection: "timesheets",
+            name: "",
+            args: [{ name: "Andy" }],
+            firstErrorText: "mismatched input '<EOF>' expecting IDENTIFIER"
+        });
+    });
+
+
     //TODO: Tests to simulate cases where the user hasn't completed typing
 
     test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/688", () => {

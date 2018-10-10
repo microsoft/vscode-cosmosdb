@@ -11,6 +11,7 @@ import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoCommand } from '../MongoCommand';
+import { getDatabaseConnectionStringByAccountConnectionString } from '../mongoConnectionStrings';
 import { Shell } from '../shell';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 
@@ -26,24 +27,9 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 
 	constructor(databaseName: string, connectionString: string, isEmulator: boolean, parentId: string) {
 		this.databaseName = databaseName;
-		const parsedConnectionString = this.parseConnectionString(connectionString);
-		if (parsedConnectionString && parsedConnectionString[4] === '/') {
-			parsedConnectionString.shift();
-			parsedConnectionString[3] += this.databaseName;
-			this.connectionString = parsedConnectionString.join('');
-		} else {
-			this.connectionString = connectionString;
-		}
+		this.connectionString = getDatabaseConnectionStringByAccountConnectionString(connectionString, this.databaseName);
 		this.isEmulator = isEmulator;
 		this._parentId = parentId;
-	}
-
-	private parseConnectionString(id: string): RegExpMatchArray | undefined {
-		const matches: RegExpMatchArray | null = id.match('(^mongodb(/+srv)?:\/\/)(.*)(\/[a-zA-Z0-9]*)(/??.*)$');
-		if (matches === null || matches.length !== 6) {
-			return undefined;
-		}
-		return matches;
 	}
 
 	public get label(): string {

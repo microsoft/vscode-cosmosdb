@@ -136,14 +136,14 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	registerCommand('cosmosDB.api.getConnectionString', async (treeItemId: string) => {
 		const node = (<IAzureNode | undefined>await tree.findNode(treeItemId));
-		if (node === undefined) {
-			throw new Error("Couldn't find the database node in Cosmos DB with provided Id.");
+		if (!node) {
+			throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
 		}
 		switch (node.treeItem.contextValue) {
 			case MongoDatabaseTreeItem.contextValue:
 				return (<IAzureNode<MongoDatabaseTreeItem>>node).treeItem.connectionString;
 			default:
-				throw new Error("Not implemented yet. For now works only with Mongo.");
+				throw new Error('Not implemented yet. For now works only with Mongo.');
 		}
 	});
 }

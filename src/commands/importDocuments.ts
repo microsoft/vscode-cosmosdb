@@ -121,7 +121,7 @@ async function insertDocumentsIntoDocdb(collectionNode: IAzureParentNode<DocDBCo
         ext.outputChannel.appendLine(`The following documents do not contain the required partition key:`);
         erroneousFiles.forEach(file => ext.outputChannel.appendLine(file.path));
         ext.outputChannel.show();
-        throw new Error(`See output for list of documents that do not contain the partition key '${collectionNode.treeItem.partitionKey}' required by collection '${collectionNode.treeItem.label}'`);
+        throw new Error(`See output for list of documents that do not contain the partition key '${collectionNode.treeItem.partitionKey.paths[0]}' required by collection '${collectionNode.treeItem.label}'`);
     }
     for (let document of documents) {
         const retrieved = await documentsTreeItem.createDocument(document);

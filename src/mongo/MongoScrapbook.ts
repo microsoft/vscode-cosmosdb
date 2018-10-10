@@ -107,6 +107,9 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: IAzureP
 		}
 		if (command.name === 'find') {
 			await editorManager.showDocument(new MongoFindResultEditor(database, command, tree), 'cosmos-result.json', { showInNextColumn: true });
+		} else if (command.name === 'drop') {
+			const collectionNode = await tree.findNode(database.id + "/" + command.collection);
+			collectionNode.deleteNode();
 		} else {
 			const result = await database.treeItem.executeCommand(command, context);
 			if (command.name === 'findOne') {
@@ -116,6 +119,10 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: IAzureP
 				await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result, tree), 'cosmos-result.json', { showInNextColumn: true });
 			} else {
 				await vscodeUtil.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
+				if (command.collection && command.name !== "count") {
+					const collectionNode = await tree.findNode(database.id + "/" + command.collection);
+					tree.refresh(collectionNode);
+				}
 			}
 		}
 	} else {

@@ -108,44 +108,35 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 
 		try {
 			type MongoFunction = (...args: Object[]) => Thenable<string>;
-			let functions: { [functionName: string]: [MongoFunction, string, number, number, number] } = {
-				/*
-				format: command name (from the argument) :
-				0: corresponding function call,
-				1: text to show during the operation,
-				2: min number of args allowed by the shell
-				3: max number of args allowed by the shell
-				4: Max number of args executeCommand supports, i.e., has mapper code to convert options provided - to the shell - into an API compatible options object
-				4th element <= 3rd element
-				*/
-				"drop": [this.drop, 'Dropping collection', 0, 0, 0],
-				"insert": [this.insert, 'Inserting document', 1, 1, 1],
-				"count": [this.count, 'Counting documents', 0, 2, 2],
-				"findOne": [this.findOne, 'Finding Document', 0, 2, 2],
-				"insertMany": [this.insertMany, 'Inserting documents', 1, 2, 2],
-				"insertOne": [this.insertOne, 'Inserting document', 1, 2, 2],
-				"deleteOne": [this.deleteOne, 'Deleting document', 1, 2, 1],
-				"deleteMany": [this.deleteMany, 'Deleting documents', 1, 2, 1],
-				"remove": [this.remove, 'Deleting document(s)', 1, 2, 1]
+			class FunctionDescriptor {
+				public constructor(public mongoFunction: MongoFunction, public text: string, public minShellArgs: number, public maxShellArgs: number, public maxHandledArgs: number) {
+				}
+			}
+			const functions = {
+				drop: new FunctionDescriptor(this.drop, 'Dropping collection', 0, 0, 0),
+				count: new FunctionDescriptor(this.count, 'Counting documents', 0, 2, 2),
+				findOne: new FunctionDescriptor(this.findOne, 'Finding document', 0, 2, 2),
+				insert: new FunctionDescriptor(this.insert, 'Inserting document', 1, 1, 1),
+				insertMany: new FunctionDescriptor(this.insertMany, 'Inserting documents', 1, 2, 2),
+				insertOne: new FunctionDescriptor(this.insertOne, 'Inserting document', 1, 2, 2),
+				deleteMany: new FunctionDescriptor(this.deleteMany, 'Deleting documents', 1, 2, 1),
+				deleteOne: new FunctionDescriptor(this.deleteOne, 'Deleting document', 1, 2, 1),
+				remove: new FunctionDescriptor(this.remove, 'Deleting document(s)', 1, 2, 1)
 			};
 
-			if (name in functions) {
-				let functionData = functions[name];
-				const mongoFunction: (args: Object[]) => Thenable<string> = functionData[0];
-				let pendingText: string = functionData[1];
-				let minArgs: number = functionData[2];
-				let maxArgs: number = functionData[3];
-				let handledMaxArgs: number = functionData[4];
-				if (parameters.length < minArgs) { //has less than the min allowed
+			if (functions.hasOwnProperty(name)) {
+				let descriptor: FunctionDescriptor = functions[name];
+
+				if (parameters.length < descriptor.minShellArgs) {
 					return Promise.reject(new Error(`Too few arguments passed to command ${name}.`));
 				}
-				if (parameters.length > maxArgs) { //has more than the max allowed
+				if (parameters.length > descriptor.maxShellArgs) {
 					return Promise.reject(new Error(`Too many arguments passed to command ${name}`));
 				}
-				if (parameters.length > handledMaxArgs) { //this function won't handle these arguments, but the shell will
+				if (parameters.length > descriptor.maxHandledArgs) { //this function won't handle these arguments, but the shell will
 					return deferToShell;
 				}
-				return reportProgress(mongoFunction.apply(this, parameters), pendingText);
+				return reportProgress(descriptor.mongoFunction.apply(this, parameters), descriptor.text);
 			}
 			return deferToShell;
 		} catch (error) {

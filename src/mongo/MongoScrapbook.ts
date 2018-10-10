@@ -80,8 +80,12 @@ async function executeCommands(activeEditor: vscode.TextEditor, database: IAzure
 			await executeCommand(activeEditor, database, extensionPath, editorManager, tree, context, command);
 		} catch (e) {
 			const err = parseError(e);
-			err.message = `${command.text.split('(')[0]}, ${command.range.start.line + 1}:${command.range.start.character + 1} - ${err.message}`;
-			throw new Error(err.message);
+			if (err.isUserCancelledError) {
+				throw e;
+			} else {
+				let message = `${command.text.split('(')[0]} at ${command.range.start.line + 1}:${command.range.start.character + 1}: ${err.message}`;
+				throw new Error(message);
+			}
 		}
 	}
 }

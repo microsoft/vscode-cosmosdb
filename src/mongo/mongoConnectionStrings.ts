@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export function parseConnectionString(connectionString: string): string[] | undefined {
+function parseConnectionString(connectionString: string): string[] | undefined {
     // Connection strings follow the following format (https://docs.mongodb.com/manual/reference/connection-string/):
     //   mongodb[+srv]://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
     // Some example connection strings:
@@ -45,11 +45,11 @@ export function getDatabaseNameFromConnectionString(connectionString: string): s
     return undefined;
 }
 
-export function getDatabaseConnectionStringByAccountConnectionString(connectionString: string, databaseName: string): string | undefined {
+export function addDatabaseToConnectionString(connectionString: string, databaseName: string): string | undefined {
     try {
-        let [, mongoPrefix, hosts, parsedDatabaseName, options] = parseConnectionString(connectionString);
+        let [, , , parsedDatabaseName] = parseConnectionString(connectionString);
         if (!parsedDatabaseName) {
-            return mongoPrefix + String('://') + hosts + String('/') + databaseName + String('?') + options;
+            return connectionString.replace(new RegExp('(^mongodb(?:[+]srv)?:\/\/[^\/]*)(?:\/((?:[^/?]*).*)?|$)'), `$1\/${databaseName}$2`);
         } else {
             return connectionString;
         }

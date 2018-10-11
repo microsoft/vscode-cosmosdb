@@ -241,86 +241,116 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 	}
 
 	private contextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
-		let parsedObject: Object = {};
 		if (!ctx || ctx.childCount === 0) { //Base case and malformed statements
-			return parsedObject;
+			return {};
 		}
 		// In a well formed expression, Argument and propertyValue tokens should have exactly one child, from their definitions in mongo.g4
-		// The only difference in types of children between PropertyValue and argument tokens is the functionCallContext that isn't handled at the moment.
 		let child: ParseTree = ctx.children[0];
 		if (child instanceof mongoParser.LiteralContext) {
-			let text = child.text;
-			let tokenType = child.start.type;
-			const nonStringLiterals = [mongoParser.mongoParser.NullLiteral, mongoParser.mongoParser.BooleanLiteral, mongoParser.mongoParser.NumericLiteral];
-			if (tokenType === mongoParser.mongoParser.StringLiteral) {
-				parsedObject = stripQuotes(text);
-			} else if (tokenType === mongoParser.mongoParser.RegexLiteral) {
-				return this.regexLiteralContextToObject(ctx, text);
-			} else if (nonStringLiterals.indexOf(tokenType) > -1) {
-				parsedObject = JSON.parse(text);
-			} else {
-				throw new Error(`Unrecognized token. Token text: ${text}`);
-			}
-		}
-		else if (child instanceof mongoParser.ObjectLiteralContext) {
-			let propertyNameAndValue = findType(child.children, mongoParser.PropertyNameAndValueListContext);
-			if (!propertyNameAndValue) { // Argument is {}
-				return {};
-			}
-			else {
-				//tslint:disable:no-non-null-assertion
-				let propertyAssignments = filterType(propertyNameAndValue.children, mongoParser.PropertyAssignmentContext);
-				for (let propertyAssignment of propertyAssignments) {
-					const propertyName = <mongoParser.PropertyNameContext>propertyAssignment.children[0];
-					const propertyValue = <mongoParser.PropertyValueContext>propertyAssignment.children[2];
-					parsedObject[stripQuotes(propertyName.text)] = this.contextToObject(propertyValue);
-				}
-			}
-		}
-		else if (child instanceof mongoParser.ArrayLiteralContext) {
-			let elementList = findType(child.children, mongoParser.ElementListContext);
-			if (elementList) {
-				let elementItems = filterType(elementList.children, mongoParser.PropertyValueContext);
-				parsedObject = elementItems.map(this.contextToObject.bind(this));
-			} else {
-				parsedObject = [];
-			}
+			return this.literalContextToObject(child, ctx);
+		} else if (child instanceof mongoParser.ObjectLiteralContext) {
+			return this.objectLiteralContextToObject(child);
+		} else if (child instanceof mongoParser.ArrayLiteralContext) {
+			return this.arrayLiteralContextToObject(child);
 		} else if (child instanceof mongoParser.FunctionCallContext) {
-			let functionTokens = child!.children;
-			let constructorCall: TerminalNode = findType(functionTokens, TerminalNode);
-			let argumentsToken: mongoParser.ArgumentsContext = findType(functionTokens, mongoParser.ArgumentsContext);
-			let argumentContextArray: mongoParser.ArgumentContext[] = filterType(argumentsToken!.children, mongoParser.ArgumentContext);
-
-			if (constructorCall.text === "ObjectId") {
-				if (argumentContextArray.length > 1) {
-					throw new Error("Too many arguments. You only need to pass in 0 or 1 argument to ObjectId");
-				}
-				parsedObject = this.objectIdContextToObject(ctx, argumentContextArray.length && argumentContextArray[0].text);
-			}
+			return this.functionCallContextToObject(child, ctx);
 		} else if (child instanceof ErrorNode) {
 			return {};
 		} else {
-			return {};
+			throw new Error("Unrecognized node type encountered");
 		}
-
-		return parsedObject;
 	}
 
-	private objectIdContextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText: string | number): Object {
-		let hexID: string;
-		let tokenObject: Object = {};
-		if (!tokenText) { // usage : ObjectID()
-			tokenObject = new ObjectID();
+	private literalContextToObject(child: mongoParser.LiteralContext, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
+		let text = child.text;
+		let tokenType = child.start.type;
+		const nonStringLiterals = [mongoParser.mongoParser.NullLiteral, mongoParser.mongoParser.BooleanLiteral, mongoParser.mongoParser.NumericLiteral];
+		if (tokenType === mongoParser.mongoParser.StringLiteral) {
+			return stripQuotes(text);
+		} else if (tokenType === mongoParser.mongoParser.RegexLiteral) {
+			return this.regexLiteralContextToObject(ctx, text);
+		} else if (nonStringLiterals.indexOf(tokenType) > -1) {
+			return JSON.parse(text);
 		} else {
-			hexID = stripQuotes(<string>tokenText);
+			throw new Error(`Unrecognized token. Token text: ${text}`);
+		}
+	}
+
+	private objectLiteralContextToObject(child: mongoParser.ObjectLiteralContext): Object {
+		let propertyNameAndValue = findType(child.children, mongoParser.PropertyNameAndValueListContext);
+		if (!propertyNameAndValue) { // Argument is {}
+			return {};
+		}
+		else {
+			let parsedObject: Object = {};
+			//tslint:disable:no-non-null-assertion
+			let propertyAssignments = filterType(propertyNameAndValue.children, mongoParser.PropertyAssignmentContext);
+			for (let propertyAssignment of propertyAssignments) {
+				const propertyName = <mongoParser.PropertyNameContext>propertyAssignment.children[0];
+				const propertyValue = <mongoParser.PropertyValueContext>propertyAssignment.children[2];
+				parsedObject[stripQuotes(propertyName.text)] = this.contextToObject(propertyValue);
+			}
+			return parsedObject;
+		}
+	}
+
+	private arrayLiteralContextToObject(child: mongoParser.ArrayLiteralContext) {
+		let elementList = findType(child.children, mongoParser.ElementListContext);
+		if (elementList) {
+			let elementItems = filterType(elementList.children, mongoParser.PropertyValueContext);
+			return elementItems.map(this.contextToObject.bind(this));
+		}
+		else {
+			return [];
+		}
+	}
+
+	private functionCallContextToObject(child: mongoParser.FunctionCallContext, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
+		let functionTokens = child.children;
+		let constructorCall: TerminalNode = findType(functionTokens, TerminalNode);
+		let argumentsToken: mongoParser.ArgumentsContext = findType(functionTokens, mongoParser.ArgumentsContext);
+		let argumentContextArray: mongoParser.ArgumentContext[] = filterType(argumentsToken.children, mongoParser.ArgumentContext);
+
+		let functionMap = { "ObjectId": this.objectIdToObject, "ISODate": this.dateToObject, "Date": this.dateToObject };
+		if (argumentContextArray.length > 1) {
+			throw new Error("Too many arguments. You only need to pass in 0 or 1 argument to ObjectId");
+		}
+		if (constructorCall.text in functionMap) {
+			return functionMap[constructorCall.text](ctx, argumentContextArray.length ? argumentContextArray[0].text : undefined);
+		}
+		throw new Error("Unrecognized node type encountered");
+	}
+
+	private dateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {
+		let constructedObject: Date;
+		if (!tokenText) { // usage : ObjectID()
+			constructedObject = new Date();
+		} else {
 			try {
-				tokenObject = new ObjectID(hexID);
+				constructedObject = new Date(stripQuotes(tokenText));
 			} catch (error) {
 				let err: IParsedError = parseError(error);
 				this.addErrorToCommand(err, ctx);
 			}
 		}
-		return tokenObject;
+		return constructedObject;
+	}
+
+	private objectIdToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {
+		let hexID: string;
+		let constructedObject: Object = {};
+		if (!tokenText) { // usage : ObjectID()
+			constructedObject = new ObjectID();
+		} else {
+			hexID = stripQuotes(<string>tokenText);
+			try {
+				constructedObject = new ObjectID(hexID);
+			} catch (error) {
+				let err: IParsedError = parseError(error);
+				this.addErrorToCommand(err, ctx);
+			}
+		}
+		return constructedObject;
 	}
 
 	private regexLiteralContextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, text: string): Object {

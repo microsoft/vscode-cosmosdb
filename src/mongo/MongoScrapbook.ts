@@ -7,6 +7,7 @@ import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
+import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ObjectID } from 'bson';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, IActionContext, IAzureParentNode, IParsedError, parseError } from 'vscode-azureextensionui';
@@ -284,12 +285,20 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			} else {
 				parsedObject = [];
 			}
-		} else if (child instanceof mongoParser.FunctionCallContext || child instanceof ErrorNode) {
-			if (child.text.startsWith("ObjectId")) {
-				parsedObject = this.objectIdContextToObject(ctx, child.text);
-			} else {
-				return {};
+		} else if (child instanceof mongoParser.FunctionCallContext) {
+			let functionTokens = child!.children;
+			let constructorCall: TerminalNode = findType(functionTokens, TerminalNode);
+			let argumentsToken: mongoParser.ArgumentsContext = findType(functionTokens, mongoParser.ArgumentsContext);
+			let argumentContextArray: mongoParser.ArgumentContext[] = filterType(argumentsToken!.children, mongoParser.ArgumentContext);
+
+			if (constructorCall.text === "ObjectId") {
+				if (argumentContextArray.length > 1) {
+					throw new Error("Too many arguments. You only need to pass in 0 or 1 argument to ObjectId");
+				}
+				parsedObject = this.objectIdContextToObject(ctx, argumentContextArray.length && argumentContextArray[0].text);
 			}
+		} else if (child instanceof ErrorNode) {
+			return {};
 		} else {
 			return {};
 		}
@@ -297,21 +306,13 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		return parsedObject;
 	}
 
-	private objectIdContextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText: string): Object {
-		let opening = tokenText.indexOf('(');
-		let closing = tokenText.indexOf(')');
+	private objectIdContextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText: string | number): Object {
 		let hexID: string;
 		let tokenObject: Object = {};
-		if (closing === opening + 1) { // usage : ObjectID()
+		if (!tokenText) { // usage : ObjectID()
 			tokenObject = new ObjectID();
 		} else {
-			if (tokenText[opening + 1] === "\"") {
-				opening += 1;
-			}
-			if (tokenText[closing - 1] === "\"") {
-				closing -= 1;
-			}
-			hexID = tokenText.substring(opening + 1, closing);
+			hexID = stripQuotes(<string>tokenText);
 			try {
 				tokenObject = new ObjectID(hexID);
 			} catch (error) {

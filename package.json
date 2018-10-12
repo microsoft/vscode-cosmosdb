@@ -601,6 +601,22 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
 				},
 				{
+					"command": "cosmosDB.copyConnectionString",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
+				},
+				{
+					"command": "cosmosDB.copyConnectionString",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
+				},
+				{
+					"command": "cosmosDB.copyConnectionString",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
+				},
+				{
+					"command": "cosmosDB.copyConnectionString",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccountAttached"
+				},
+				{
 					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
 				},

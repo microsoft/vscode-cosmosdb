@@ -72,7 +72,6 @@ async function askForDocuments(): Promise<vscode.Uri[]> {
 // tslint:disable-next-line:no-any
 async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
     let documents = [];
-    let errors = {};
     let errorFoundFlag: boolean = false;
     for (let uri of uris) {
         let parsed;
@@ -85,7 +84,6 @@ async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
                 ext.outputChannel.show();
             }
             const err = parseError(e);
-            errors[uri.path] = err;
             ext.outputChannel.appendLine(`${uri.path}:\n${err.message}`);
         }
         if (parsed) {

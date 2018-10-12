@@ -62,6 +62,7 @@
 		"onCommand:cosmosDB.deleteDocDBDocument",
 		"onCommand:cosmosDB.deleteGraphDatabase",
 		"onCommand:cosmosDB.deleteGraph",
+		"onCommand:cosmosDB.importDocument",
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.update",
 		"onCommand:cosmosDB.openDocument",
@@ -325,6 +326,11 @@
 			},
 			{
 				"category": "Cosmos DB",
+				"command": "cosmosDB.importDocument",
+				"title": "Import Document into a Collection"
+			},
+			{
+				"category": "Cosmos DB",
 				"command": "cosmosDB.openStoredProcedure",
 				"title": "Open Stored Procedure"
 			},
@@ -359,6 +365,10 @@
 				{
 					"command": "cosmosDB.update",
 					"when": "resourceFilename==cosmos-stored-procedure.js"
+				},
+				{
+					"command": "cosmosDB.importDocument",
+					"when": "resourceLangId==json"
 				}
 			],
 			"editor/title": [
@@ -661,6 +671,20 @@
 				{
 					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem =~ /^cosmosDBAttachedAccounts/"
+				},
+				{
+					"command": "cosmosDB.importDocument",
+					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+				},
+				{
+					"command": "cosmosDB.importDocument",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
+				}
+			],
+			"explorer/context": [
+				{
+					"command": "cosmosDB.importDocument",
+					"when": "resourceLangId == json"
 				}
 			],
 			"commandPalette": [
@@ -885,7 +909,7 @@
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "^0.17.0",
+		"vscode-azureextensionui": "^0.17.5",
 		"vscode-extension-telemetry": "^0.0.18",
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.4.0",

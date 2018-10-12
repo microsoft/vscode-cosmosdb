@@ -93,13 +93,12 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
                 ignoreFocusOut: true,
                 validateInput: validateMongoCollectionName
             });
+            showCreatingNode(databaseName);
+            const databaseTreeItem = new MongoDatabaseTreeItem(databaseName, this.connectionString, this.isEmulator, node.id);
             if (collectionName) {
-                showCreatingNode(databaseName);
-
-                const databaseTreeItem = new MongoDatabaseTreeItem(databaseName, this.connectionString, this.isEmulator, node.id);
                 await databaseTreeItem.createCollection(collectionName);
-                return databaseTreeItem;
             }
+            return databaseTreeItem;
         }
 
         throw new UserCancelledError();

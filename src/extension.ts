@@ -146,6 +146,18 @@ export function activate(context: vscode.ExtensionContext) {
 	registerCommand('cosmosDB.api.getDatabase', async () => {
 		return (<IAzureParentNode>await tree.showNodePicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue])).id;
 	});
+	registerCommand('cosmosDB.api.getConnectionString', async (treeItemId: string) => {
+		const node = await tree.findNode(treeItemId);
+		if (!node) {
+			throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
+		}
+		switch (node.treeItem.contextValue) {
+			case MongoDatabaseTreeItem.contextValue:
+				return (<IAzureNode<MongoDatabaseTreeItem>>node).treeItem.connectionString;
+			default:
+				throw new Error('Not implemented yet. For now works only with Mongo.');
+		}
+	});
 }
 
 async function getAttachedNode(tree: AzureTreeDataProvider): Promise<IAzureParentNode<AttachedAccountsTreeItem>> {

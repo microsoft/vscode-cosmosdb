@@ -37,8 +37,8 @@
 	"activationEvents": [
 		"onLanguage:mongo",
 		"onView:cosmosDBExplorer",
-		"onCommand:cosmosDB.executeMongoCommand",
-		"onCommand:cosmosDB.executeAllMongoCommands",
+		"onCommand:cosmosDB.api.getConnectionString",
+		"onCommand:cosmosDB.api.getDatabase",
 		"onCommand:cosmosDB.attachDatabaseAccount",
 		"onCommand:cosmosDB.attachEmulator",
 		"onCommand:cosmosDB.createAccount",
@@ -62,6 +62,8 @@
 		"onCommand:cosmosDB.deleteDocDBDocument",
 		"onCommand:cosmosDB.deleteGraphDatabase",
 		"onCommand:cosmosDB.deleteGraph",
+		"onCommand:cosmosDB.executeAllMongoCommands",
+		"onCommand:cosmosDB.executeMongoCommand",
 		"onCommand:cosmosDB.importDocument",
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.update",
@@ -333,6 +335,11 @@
 				"category": "Cosmos DB",
 				"command": "cosmosDB.openStoredProcedure",
 				"title": "Open Stored Procedure"
+			},
+			{
+				"category": "Cosmos DB",
+				"command": "cosmosDB.api.getConnectionString",
+				"title": "Get connection string"
 			},
 			{
 				"category": "Cosmos DB",
@@ -698,6 +705,10 @@
 				},
 				{
 					"command": "cosmosDB.loadMore",
+					"when": "never"
+				},
+				{
+					"command": "cosmosDB.api.getConnectionString",
 					"when": "never"
 				},
 				{

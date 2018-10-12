@@ -316,7 +316,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			throw new Error("Too many arguments. You only need to pass in 0 or 1 argument to ObjectId");
 		}
 		if (constructorCall.text in functionMap) {
-			return functionMap[constructorCall.text](ctx, argumentContextArray.length ? argumentContextArray[0].text : undefined);
+			let args = [ctx, argumentContextArray.length ? argumentContextArray[0].text : undefined];
+			return functionMap[constructorCall.text].apply(this, args);
 		}
 		throw new Error("Unrecognized node type encountered");
 	}

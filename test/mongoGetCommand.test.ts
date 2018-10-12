@@ -694,12 +694,14 @@ suite("scrapbook parsing Tests", () => {
 
     test("test faulty ObjectID - hex - fewer characters", () => {
         let idParam = "abcdef123456789012345";
-        let text = `db.c1.insert({"name": ObjectId("${idParam}")})`;
-        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-        let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
-        assert.deepEqual(command.collection, "c1");
-        assert.deepEqual(command.argumentObjects, [{ name: {} }]);
-        assert.deepEqual(command.errors[0].message, errorMessage);
+        for (let i = 1; i < 3; i++) {
+            let text = `db.c1.insert({"name": ObjectId(${wrapInQuotes(idParam, i)})})`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
+            assert.deepEqual(command.collection, "c1");
+            assert.deepEqual(command.argumentObjects, [{ name: {} }]);
+            assert.deepEqual(command.errors[0].message, errorMessage);
+        }
     });
     //Examples inspired from https://docs.mongodb.com/manual/reference/operator/query/regex/
     test("test regular expressions - only pattern, no flags", () => {

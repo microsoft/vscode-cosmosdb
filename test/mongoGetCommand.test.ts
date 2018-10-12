@@ -7,6 +7,7 @@
 import * as assert from 'assert';
 import { ObjectID } from 'bson';
 import { Position } from 'vscode';
+import { parseError } from 'vscode-azureextensionui';
 import { MongoCommand } from '../src/mongo/MongoCommand';
 import { getAllCommandsFromText, getCommandFromTextAtLocation } from '../src/mongo/MongoScrapbook';
 
@@ -722,9 +723,12 @@ suite("scrapbook parsing Tests", () => {
 
     test("test regular expressions - Intellisense - flag contains invalid option", () => {
         let text = `db.test1.beep.find({ sku: { $regex: /789$/q } })`;
-        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-        assert.deepEqual(command.errors[0].message, "mismatched input '}' expecting '('");
-        assert.deepEqual(command.errors[0].range.start.character, 44);
+        try {
+            getCommandFromTextAtLocation(text, new Position(0, 0));
+        } catch (error) {
+            let err = parseError(error);
+            assert.deepEqual("Unexpected node encountered", err.message);
+        }
     });
 
     test("test regular expressions - wrong escape - throw error", () => {

@@ -309,6 +309,9 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		let functionTokens = child.children;
 		let constructorCall: TerminalNode = findType(functionTokens, TerminalNode);
 		let argumentsToken: mongoParser.ArgumentsContext = findType(functionTokens, mongoParser.ArgumentsContext);
+		if (!argumentsToken.children || argumentsToken.text === "") {
+			throw new Error("Unexpected node encountered");
+		}
 		let argumentContextArray: mongoParser.ArgumentContext[] = filterType(argumentsToken.children, mongoParser.ArgumentContext);
 
 		let functionMap = { "ObjectId": this.objectIdToObject, "ISODate": this.dateToObject, "Date": this.dateToObject };

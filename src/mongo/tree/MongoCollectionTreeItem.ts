@@ -31,7 +31,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		this.collection = collection;
 		if (query && query.length) {
 			this._query = query[0];
-			this._projection = query.length > 1 && EJSON.parse(query[1]);
+			this._projection = query.length > 1 && query[1];
 		}
 	}
 

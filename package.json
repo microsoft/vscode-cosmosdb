@@ -598,10 +598,6 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
 				},
 				{
-					"command": "cosmosDB.copyConnectionString",
-					"when": "view == cosmosDBExplorer && viewItem == mongoDb"
-				},
-				{
 					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
 				},

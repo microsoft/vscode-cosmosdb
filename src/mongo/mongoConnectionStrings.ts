@@ -13,13 +13,14 @@
 //   Full match
 //   mongodb[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]]
 //   [database]
+
 const parsePrefix = '([a-zA-Z]+:\/\/[^\/]*)';
 const parseDatabaseName = '\/?([^/?]+)?';
-const parseConnectionString = new RegExp(parsePrefix + parseDatabaseName);
+const connectionStringRegExp = new RegExp(parsePrefix + parseDatabaseName);
 
 export function getDatabaseNameFromConnectionString(connectionString: string): string | undefined {
     try {
-        let [, , databaseName] = connectionString.match(parseConnectionString);
+        let [, , databaseName] = connectionString.match(connectionStringRegExp);
         return databaseName;
     } catch (error) {
         // Shouldn't happen, but ignore if does
@@ -30,7 +31,7 @@ export function getDatabaseNameFromConnectionString(connectionString: string): s
 
 export function addDatabaseToAccountConnectionString(connectionString: string, databaseName: string): string | undefined {
     try {
-        return connectionString.replace(parseConnectionString, `$1\/${databaseName}`);
+        return connectionString.replace(connectionStringRegExp, `$1\/${databaseName}`);
     } catch (error) {
         // Shouldn't happen, but ignore if does
     }

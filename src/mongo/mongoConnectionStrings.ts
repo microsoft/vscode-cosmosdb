@@ -13,7 +13,7 @@
 //   Full match
 //   mongodb[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]]
 //   [database]
-const parsePrefix = '^(mongodb(?:[+]srv)?:\/\/[^\/]*)';
+const parsePrefix = '([a-zA-Z]+:\/\/[^\/]*)';
 const parseDatabaseName = '\/?([^/?]+)?';
 const parseConnectionString = new RegExp(parsePrefix + parseDatabaseName);
 

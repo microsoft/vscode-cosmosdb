@@ -11,7 +11,7 @@ import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoCommand } from '../MongoCommand';
-import { addDatabaseToConnectionString } from '../mongoConnectionStrings';
+import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings';
 import { Shell } from '../shell';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 
@@ -27,7 +27,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 
 	constructor(databaseName: string, connectionString: string, isEmulator: boolean, parentId: string) {
 		this.databaseName = databaseName;
-		this.connectionString = addDatabaseToConnectionString(connectionString, this.databaseName);
+		this.connectionString = addDatabaseToAccountConnectionString(connectionString, this.databaseName);
 		this.isEmulator = isEmulator;
 		this._parentId = parentId;
 	}

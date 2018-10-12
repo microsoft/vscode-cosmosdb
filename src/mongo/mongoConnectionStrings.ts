@@ -3,41 +3,24 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-function parseConnectionString(connectionString: string): string[] | undefined {
-    // Connection strings follow the following format (https://docs.mongodb.com/manual/reference/connection-string/):
-    //   mongodb[+srv]://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
-    // Some example connection strings:
-    //   mongodb://dbuser:dbpassword@dbname.mlab.com:14118
-    //   mongodb+srv://db1.example.net:27017,db2.example.net:2500/?replicaSet=test
-    //   mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/database?ssh=true
-    // Regex splits into five parts:
-    //   Full match
-    //   mongodb[+srv]
-    //   [username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]]
-    //   [database]
-    //   [?options]
-
-    try {
-        let matches = connectionString.match('(^mongodb(?:[+]srv)?):\/\/([^\/]*)(?:\/([^/?]*)(.*))?$');
-        if (matches && matches.length === 5) {
-            return matches.map(str => {
-                if (str === "") {
-                    str = undefined;
-                }
-                return str;
-            });
-        }
-    } catch (error) {
-        // Shouldn't happen, but ignore if does
-    }
-
-    return undefined;
-}
+// Connection strings follow the following format (https://docs.mongodb.com/manual/reference/connection-string/):
+//   mongodb[+srv]://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
+// Some example connection strings:
+//   mongodb://dbuser:dbpassword@dbname.mlab.com:14118
+//   mongodb+srv://db1.example.net:27017,db2.example.net:2500/?replicaSet=test
+//   mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/database?ssh=true
+// Regex splits into three parts:
+//   Full match
+//   mongodb[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]]
+//   [database]
+const parsePrefix = '^(mongodb(?:[+]srv)?:\/\/[^\/]*)';
+const parseDatabaseName = '\/?([^/?]+)?';
+const parseConnectionString = new RegExp(parsePrefix + parseDatabaseName);
 
 export function getDatabaseNameFromConnectionString(connectionString: string): string | undefined {
     try {
-        let [, , , database] = parseConnectionString(connectionString);
-        return database;
+        let [, , databaseName] = connectionString.match(parseConnectionString);
+        return databaseName;
     } catch (error) {
         // Shouldn't happen, but ignore if does
     }
@@ -45,14 +28,9 @@ export function getDatabaseNameFromConnectionString(connectionString: string): s
     return undefined;
 }
 
-export function addDatabaseToConnectionString(connectionString: string, databaseName: string): string | undefined {
+export function addDatabaseToAccountConnectionString(connectionString: string, databaseName: string): string | undefined {
     try {
-        let [, , , parsedDatabaseName] = parseConnectionString(connectionString);
-        if (!parsedDatabaseName) {
-            return connectionString.replace(new RegExp('(^mongodb(?:[+]srv)?:\/\/[^\/]*)(?:\/((?:[^/?]*).*)?|$)'), `$1\/${databaseName}$2`);
-        } else {
-            return connectionString;
-        }
+        return connectionString.replace(parseConnectionString, `$1\/${databaseName}`);
     } catch (error) {
         // Shouldn't happen, but ignore if does
     }

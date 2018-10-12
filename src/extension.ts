@@ -8,11 +8,13 @@
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureUserInput, IActionContext, IAzureNode, IAzureParentNode, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
+import { importDocuments } from './commands/importDocuments';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
+import { DocDBCollectionTreeItem } from './docdb/tree/DocDBCollectionTreeItem';
 import { DocDBDatabaseTreeItem } from './docdb/tree/DocDBDatabaseTreeItem';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { ext } from './extensionVariables';
@@ -21,6 +23,7 @@ import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
 import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
 import { registerMongoCommands } from './mongo/registerMongoCommands';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
+import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
@@ -90,6 +93,15 @@ export function activate(context: vscode.ExtensionContext) {
 		await attachedNode.treeItem.detach(node.treeItem.id);
 		await tree.refresh(attachedNode);
 	});
+	registerCommand('cosmosDB.importDocument', async (selectedNode: vscode.Uri | IAzureParentNode<MongoCollectionTreeItem | DocDBCollectionTreeItem>, uris: vscode.Uri[]) => //ignore first pass
+	{
+		if (selectedNode instanceof vscode.Uri) {
+			await importDocuments(tree, uris || [selectedNode], undefined);
+		} else {
+			await importDocuments(tree, undefined, selectedNode);
+		}
+	});
+
 	registerCommand('cosmosDB.openInPortal', async (node?: IAzureNode) => {
 		if (!node) {
 			node = await tree.showNodePicker(accountContextValues);

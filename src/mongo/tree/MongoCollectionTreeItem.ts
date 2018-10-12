@@ -92,7 +92,8 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		}
 		this._batchSize *= 2;
 
-		return documents.map((document: IMongoDocument) => new MongoDocumentTreeItem(document, this.collection));
+		const docTreeItems = documents.map((document: IMongoDocument) => new MongoDocumentTreeItem(document, this.collection));
+		return docTreeItems;
 	}
 
 	public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
@@ -246,7 +247,7 @@ function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
 	return vscode.window.withProgress<T>(
 		{
 			location: vscode.ProgressLocation.Window,
-			title
+			title: title
 		},
 		(_progress) => {
 			return promise;

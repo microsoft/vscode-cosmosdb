@@ -921,7 +921,7 @@
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
 		"vscode-azureextensionui": "^0.18.2",
-		"vscode-extension-telemetry": "^0.0.18",
+		"vscode-extension-telemetry": "^0.0.22",
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.4.0",
 		"vscode-languageserver": "^4.4.0",

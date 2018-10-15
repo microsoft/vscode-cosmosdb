@@ -142,6 +142,7 @@ export function activate(context: vscode.ExtensionContext) {
 				await vscode.commands.executeCommand("cosmosDB.refresh");
 			}
 		});
+<<<<<<< HEAD
 	registerCommand('cosmosDB.api.revealTreeItem', async (treeItemId: string) => {
 		const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
 		const node = await tree.findTreeItem(treeItemId);
@@ -149,6 +150,11 @@ export function activate(context: vscode.ExtensionContext) {
 			throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
 		}
 		customView.reveal(node);
+=======
+	registerCommand('cosmosDB.revealTreeItem', async (treeItemId: string) => {
+		const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
+		customView.reveal(await tree.findTreeItem(treeItemId));
+>>>>>>> Added reveal command.
 	});
 	registerCommand('cosmosDB.api.getDatabase', async () => {
 		return (await tree.showTreeItemPicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue])).fullId;

@@ -3,14 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CollectionMeta, DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
+import { Collection, CollectionMeta, DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { DialogResponses, IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { ext } from '../../extensionVariables';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
-const minThroughput: number = 1000;
+const minThroughput: number = 400;
 const maxThroughput: number = 100000;
 
 /**
@@ -64,58 +65,53 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
 
     // Create a DB collection
     public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
-        const collectionName = await vscode.window.showInputBox({
+        const collectionName = await ext.ui.showInputBox({
             placeHolder: `Enter an id for your ${this.childTypeLabel}`,
             ignoreFocusOut: true,
             validateInput: DocDBDatabaseTreeItemBase.validateCollectionName
         });
 
-        if (collectionName) {
-            let partitionKey: string | undefined = await vscode.window.showInputBox({
-                prompt: 'Partition Key',
-                ignoreFocusOut: true,
-                validateInput: DocDBDatabaseTreeItemBase.validatePartitionKey
-            });
+        let collectionDef: Collection = {
+            id: collectionName
+        };
 
-            if (partitionKey) {
-                if (partitionKey[0] !== '/') {
-                    partitionKey = '/' + partitionKey;
-                }
-                const throughput: number = Number(await vscode.window.showInputBox({
-                    value: minThroughput.toString(),
-                    ignoreFocusOut: true,
-                    prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput}`,
-                    validateInput: DocDBDatabaseTreeItemBase.validateThroughput
-                }));
+        let partitionKey: string | undefined = await ext.ui.showInputBox({
+            prompt: 'Enter the partition key for the collection, or leave blank in case of fixed size.',
+            ignoreFocusOut: true,
+            validateInput: DocDBDatabaseTreeItemBase.validatePartitionKey
+        });
 
-                if (throughput) {
-                    const options = { offerThroughput: throughput };
-                    const collectionDef = {
-                        id: collectionName,
-                        partitionKey: {
-                            paths: [partitionKey],
-                            kind: DocumentBase.PartitionKind.Hash
-                        }
-                    };
-
-                    showCreatingNode(collectionName);
-                    const client = this.getDocumentClient();
-                    const collection: CollectionMeta = await new Promise<CollectionMeta>((resolve, reject) => {
-                        client.createCollection(this.link, collectionDef, options, (err, result) => {
-                            err ? reject(err) : resolve(result);
-                        });
-                    });
-
-                    return this.initChild(collection);
-                }
-            }
+        if (partitionKey && partitionKey.length && partitionKey[0] !== '/') {
+            partitionKey = '/' + partitionKey;
         }
+        if (partitionKey !== "") {
+            collectionDef.partitionKey = {
+                paths: [partitionKey],
+                kind: DocumentBase.PartitionKind.Hash
+            };
+        }
+        const throughput: number = Number(await ext.ui.showInputBox({
+            value: minThroughput.toString(),
+            ignoreFocusOut: true,
+            prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput}`,
+            validateInput: DocDBDatabaseTreeItemBase.validateThroughput
+        }));
 
-        throw new UserCancelledError();
+        const options = { offerThroughput: throughput };
+
+        showCreatingNode(collectionName);
+        const client = this.getDocumentClient();
+        const collection: CollectionMeta = await new Promise<CollectionMeta>((resolve, reject) => {
+            client.createCollection(this.link, collectionDef, options, (err, result) => {
+                err ? reject(err) : resolve(result);
+            });
+        });
+
+        return this.initChild(collection);
     }
 
     private static validatePartitionKey(key: string): string | undefined | null {
-        if (/^[#?\\]*$/.test(key)) {
+        if (/[#?\\]/.test(key)) {
             return "Cannot contain these characters - ?,#,\\, etc.";
         }
         return undefined;

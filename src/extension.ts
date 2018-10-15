@@ -142,7 +142,7 @@ export function activate(context: vscode.ExtensionContext) {
 				await vscode.commands.executeCommand("cosmosDB.refresh");
 			}
 		});
-	registerCommand('cosmosDB.revealTreeItem', async (treeItemId: string) => {
+	registerCommand('cosmosDB.api.revealTreeItem', async (treeItemId: string) => {
 		const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
 		customView.reveal(await tree.findTreeItem(treeItemId));
 	});

@@ -39,6 +39,7 @@
 		"onView:cosmosDBExplorer",
 		"onCommand:cosmosDB.api.getConnectionString",
 		"onCommand:cosmosDB.api.getDatabase",
+		"onCommand:cosmosDB.api.revealTreeItem",
 		"onCommand:cosmosDB.attachDatabaseAccount",
 		"onCommand:cosmosDB.attachEmulator",
 		"onCommand:cosmosDB.createAccount",
@@ -339,12 +340,17 @@
 			{
 				"category": "Cosmos DB",
 				"command": "cosmosDB.api.getConnectionString",
-				"title": "Get connection string"
+				"title": "Get Connection String"
 			},
 			{
 				"category": "Cosmos DB",
 				"command": "cosmosDB.api.getDatabase",
 				"title": "Get Database Id"
+			},
+			{
+				"category": "Cosmos DB",
+				"command": "cosmosDB.api.revealTreeItem",
+				"title": "Reveal Database in Explorer"
 			}
 		],
 		"menus": {
@@ -713,6 +719,10 @@
 				},
 				{
 					"command": "cosmosDB.api.getDatabase",
+					"when": "never"
+				},
+				{
+					"command": "cosmosDB.api.revealTreeItem",
 					"when": "never"
 				},
 				{

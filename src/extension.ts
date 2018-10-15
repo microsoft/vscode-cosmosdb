@@ -143,6 +143,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		});
 <<<<<<< HEAD
+<<<<<<< HEAD
 	registerCommand('cosmosDB.api.revealTreeItem', async (treeItemId: string) => {
 		const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
 		const node = await tree.findTreeItem(treeItemId);
@@ -152,6 +153,9 @@ export function activate(context: vscode.ExtensionContext) {
 		customView.reveal(node);
 =======
 	registerCommand('cosmosDB.revealTreeItem', async (treeItemId: string) => {
+=======
+	registerCommand('cosmosDB.api.revealTreeItem', async (treeItemId: string) => {
+>>>>>>> Refactored the name of command and added it in the package.json.
 		const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
 		customView.reveal(await tree.findTreeItem(treeItemId));
 >>>>>>> Added reveal command.

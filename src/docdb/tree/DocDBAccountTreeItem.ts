@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseMeta } from 'documentdb';
-import { IAzureTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
@@ -17,11 +16,11 @@ export class DocDBAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBDocumentServer";
     public contextValue: string = DocDBAccountTreeItem.contextValue;
 
-    public initChild(database: DatabaseMeta): IAzureTreeItem {
-        return new DocDBDatabaseTreeItem(this.documentEndpoint, this.masterKey, database, this.isEmulator);
+    public initChild(database: DatabaseMeta): DocDBDatabaseTreeItem {
+        return new DocDBDatabaseTreeItem(this, database);
     }
 
-    public isAncestorOf(contextValue: string): boolean {
+    public isAncestorOfImpl(contextValue: string): boolean {
         switch (contextValue) {
             case DocDBDatabaseTreeItem.contextValue:
             case DocDBCollectionTreeItem.contextValue:

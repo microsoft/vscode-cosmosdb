@@ -6,7 +6,7 @@
 import { DocumentClient, FeedOptions, NewDocument, QueryIterator, RetrievedDocument } from 'documentdb';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { UserCancelledError } from 'vscode-azureextensionui';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -18,9 +18,10 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
     public static contextValue: string = "cosmosDBDocumentsGroup";
     public readonly contextValue: string = DocDBDocumentsTreeItem.contextValue;
     public readonly childTypeLabel: string = "Documents";
+    public readonly parent: DocDBCollectionTreeItem;
 
-    constructor(documentEndpoint: string, masterKey: string, private _collection: DocDBCollectionTreeItem, isEmulator: boolean) {
-        super(documentEndpoint, masterKey, isEmulator);
+    constructor(parent: DocDBCollectionTreeItem) {
+        super(parent);
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -39,18 +40,18 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
     }
 
     public get link(): string {
-        return this._collection.link;
+        return this.parent.link;
     }
 
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<RetrievedDocument>> {
         return await client.readDocuments(this.link, feedOptions);
     }
 
-    public initChild(document: RetrievedDocument): IAzureTreeItem {
-        return new DocDBDocumentTreeItem(this._collection, document);
+    public initChild(document: RetrievedDocument): DocDBDocumentTreeItem {
+        return new DocDBDocumentTreeItem(this, document);
     }
 
-    public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
+    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<DocDBDocumentTreeItem> {
         let docID = await vscode.window.showInputBox({
             prompt: "Enter a unique document ID or leave blank for a generated ID",
             ignoreFocusOut: true
@@ -60,7 +61,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
             docID = docID.trim();
             let body = { 'id': docID };
             body = <NewDocument>(await this.promptForPartitionKey(body));
-            showCreatingNode(docID);
+            showCreatingTreeItem(docID);
             const document = await this.createDocument(body);
 
             return this.initChild(document);
@@ -71,7 +72,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
 
     public async createDocument(body: NewDocument): Promise<RetrievedDocument> {
         const document: RetrievedDocument = await new Promise<RetrievedDocument>((resolve, reject) => {
-            this.getDocumentClient().createDocument(this.link, body, (err, result: RetrievedDocument) => {
+            this.root.getDocumentClient().createDocument(this.link, body, (err, result: RetrievedDocument) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -84,7 +85,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
 
     public documentHasPartitionKey(doc: Object): boolean {
         let interim = doc;
-        let partitionKey: string | undefined = this._collection.partitionKey && this._collection.partitionKey.paths[0];
+        let partitionKey: string | undefined = this.parent.partitionKey && this.parent.partitionKey.paths[0];
         if (!partitionKey) {
             return true;
         }
@@ -104,7 +105,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
     }
 
     public async promptForPartitionKey(body: Object): Promise<Object> {
-        const partitionKey: string | undefined = this._collection.partitionKey && this._collection.partitionKey.paths[0];
+        const partitionKey: string | undefined = this.parent.partitionKey && this.parent.partitionKey.paths[0];
         if (partitionKey) {
             const partitionKeyValue: string = await vscode.window.showInputBox({
                 prompt: `Enter a value for the partition key ("${partitionKey}")`,

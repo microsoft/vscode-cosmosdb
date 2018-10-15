@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CollectionMeta } from 'documentdb';
-import { IAzureTreeItem } from 'vscode-azureextensionui';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDatabaseTreeItemBase } from './DocDBDatabaseTreeItemBase';
 
@@ -13,7 +12,7 @@ export class DocDBDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
     public readonly contextValue: string = DocDBDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Collection';
 
-    public initChild(collection: CollectionMeta): IAzureTreeItem {
-        return new DocDBCollectionTreeItem(this.documentEndpoint, this.masterKey, collection, this.isEmulator);
+    public initChild(collection: CollectionMeta): DocDBCollectionTreeItem {
+        return new DocDBCollectionTreeItem(this, collection);
     }
 }

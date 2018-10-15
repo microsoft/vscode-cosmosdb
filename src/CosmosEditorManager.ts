@@ -8,7 +8,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { MessageItem, ViewColumn } from 'vscode';
-import { AzureTreeDataProvider, DialogResponses, IActionContext, IAzureNode, IAzureParentNode, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
 import { DocDBStoredProcedureNodeEditor } from './docdb/editors/DocDBStoredProcedureNodeEditor';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
@@ -80,10 +80,10 @@ export class CosmosEditorManager {
         await this.updateEditor(data, textEditor, editor);
     }
 
-    public async updateMatchingNode(documentUri: vscode.Uri, tree?: AzureTreeDataProvider): Promise<void> {
+    public async updateMatchingNode(documentUri: vscode.Uri): Promise<void> {
         let filePath: string = Object.keys(this.fileMap).find((fp) => path.relative(documentUri.fsPath, fp) === '');
         if (!filePath) {
-            filePath = await this.loadPersistedEditor(documentUri, tree);
+            filePath = await this.loadPersistedEditor(documentUri);
         }
         const document = await vscode.workspace.openTextDocument(documentUri.fsPath);
         await this.updateToCloud(this.fileMap[filePath], document);
@@ -115,23 +115,23 @@ export class CosmosEditorManager {
         }
     }
 
-    private async loadPersistedEditor(documentUri: vscode.Uri, tree: AzureTreeDataProvider): Promise<string> {
+    private async loadPersistedEditor(documentUri: vscode.Uri): Promise<string> {
         const persistedEditors = this._globalState.get(this._persistedEditorsKey);
         //Based on the documentUri, split just the appropriate key's value on '/'
         if (persistedEditors) {
             const editorFilePath = Object.keys(persistedEditors).find((label) => path.relative(documentUri.fsPath, label) === '');
             if (editorFilePath) {
-                const editorNode: IAzureNode | undefined = await tree.findNode(persistedEditors[editorFilePath]);
+                const editorNode: AzureTreeItem | undefined = await ext.tree.findTreeItem(persistedEditors[editorFilePath]);
                 let editor: ICosmosEditor;
                 if (editorNode) {
-                    if (editorNode.treeItem instanceof MongoCollectionTreeItem) {
-                        editor = new MongoCollectionNodeEditor(<IAzureParentNode<MongoCollectionTreeItem>>editorNode);
-                    } else if (editorNode.treeItem instanceof DocDBDocumentTreeItem) {
-                        editor = new DocDBDocumentNodeEditor(<IAzureNode<DocDBDocumentTreeItem>>editorNode);
-                    } else if (editorNode.treeItem instanceof MongoDocumentTreeItem) {
-                        editor = new MongoDocumentNodeEditor(<IAzureNode<MongoDocumentTreeItem>>editorNode);
-                    } else if (editorNode.treeItem instanceof DocDBStoredProcedureTreeItem) {
-                        editor = new DocDBStoredProcedureNodeEditor(<IAzureNode<DocDBStoredProcedureTreeItem>>editorNode);
+                    if (editorNode instanceof MongoCollectionTreeItem) {
+                        editor = new MongoCollectionNodeEditor(editorNode);
+                    } else if (editorNode instanceof DocDBDocumentTreeItem) {
+                        editor = new DocDBDocumentNodeEditor(editorNode);
+                    } else if (editorNode instanceof MongoDocumentTreeItem) {
+                        editor = new MongoDocumentNodeEditor(editorNode);
+                    } else if (editorNode instanceof DocDBStoredProcedureTreeItem) {
+                        editor = new DocDBStoredProcedureNodeEditor(editorNode);
                     } else {
                         throw new Error("Unexpected type of Editor treeItem");
                     }
@@ -146,11 +146,11 @@ export class CosmosEditorManager {
         }
     }
 
-    public async onDidSaveTextDocument(context: IActionContext, doc: vscode.TextDocument, tree: AzureTreeDataProvider): Promise<void> {
+    public async onDidSaveTextDocument(context: IActionContext, doc: vscode.TextDocument): Promise<void> {
         context.suppressTelemetry = true;
         let filePath = Object.keys(this.fileMap).find((fp) => path.relative(doc.uri.fsPath, fp) === '');
         if (!filePath) {
-            filePath = await this.loadPersistedEditor(doc.uri, tree);
+            filePath = await this.loadPersistedEditor(doc.uri);
         }
         if (!this.ignoreSave && filePath) {
             context.suppressTelemetry = false;

@@ -3,16 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { Capability } from 'azure-arm-cosmosdb/lib/models';
-import { AzureWizardExecuteStep } from 'vscode-azureextensionui';
-import { getCosmosDBManagementClient } from '../../docdb/getCosmosDBManagementClient';
+import { AzureWizardExecuteStep, createAzureClient } from 'vscode-azureextensionui';
 import { API } from '../../experiences';
 import { ext } from '../../extensionVariables';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBWizardContext> {
     public async execute(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {
-        const client = getCosmosDBManagementClient(wizardContext.credentials, wizardContext.subscriptionId, wizardContext.environment.resourceManagerEndpointUrl);
+        const client: CosmosDBManagementClient = createAzureClient(wizardContext, CosmosDBManagementClient);
         ext.outputChannel.appendLine(`Creating Cosmos DB account "${wizardContext.accountName}" with API "${wizardContext.defaultExperience.shortName}"...`);
         let options = {
             location: wizardContext.location.name,

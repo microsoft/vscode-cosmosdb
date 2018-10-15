@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Collection } from "mongodb";
-import { AzureTreeDataProvider, IAzureParentNode } from "vscode-azureextensionui";
 import { ICosmosEditor } from "../../CosmosEditorManager";
+import { ext } from "../../extensionVariables";
 import { MongoCommand } from "../MongoCommand";
 import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
 import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
@@ -15,44 +15,41 @@ import { MongoCollectionNodeEditor } from "./MongoCollectionNodeEditor";
 const EJSON = require("mongodb-extended-json");
 
 export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
-    private _databaseNode: IAzureParentNode<MongoDatabaseTreeItem>;
+    private _databaseNode: MongoDatabaseTreeItem;
     private _command: MongoCommand;
     private _collectionTreeItem: MongoCollectionTreeItem;
-    private _tree: AzureTreeDataProvider;
 
-    constructor(databaseNode: IAzureParentNode<MongoDatabaseTreeItem>, command: MongoCommand, tree: AzureTreeDataProvider) {
+    constructor(databaseNode: MongoDatabaseTreeItem, command: MongoCommand) {
         this._databaseNode = databaseNode;
         this._command = command;
-        this._tree = tree;
     }
 
     public get label(): string {
         const accountNode = this._databaseNode.parent;
-        return `${accountNode.treeItem.label}/${this._databaseNode.treeItem.label}/${this._command.collection}`;
+        return `${accountNode.label}/${this._databaseNode.label}/${this._command.collection}`;
     }
 
     public async getData(): Promise<IMongoDocument[]> {
-        const dbTreeItem: MongoDatabaseTreeItem = this._databaseNode.treeItem;
-        const db = await dbTreeItem.getDb();
+        const db = await this._databaseNode.getDb();
         const collection: Collection = db.collection(this._command.collection);
         // NOTE: Intentionally creating a _new_ tree item rather than searching for a cached node in the tree because
         // the executed 'find' command could have a filter or projection that is not handled by a cached tree node
-        this._collectionTreeItem = new MongoCollectionTreeItem(collection, this._command.argumentObjects);
-        const documents: MongoDocumentTreeItem[] = <MongoDocumentTreeItem[]>await this._collectionTreeItem.loadMoreChildren(undefined, true);
+        this._collectionTreeItem = new MongoCollectionTreeItem(this._databaseNode, collection, this._command.argumentObjects);
+        const documents: MongoDocumentTreeItem[] = <MongoDocumentTreeItem[]>await this._collectionTreeItem.getCachedChildren();
         return documents.map((docTreeItem) => docTreeItem.document);
     }
 
     public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
         const updatedDocs = await this._collectionTreeItem.update(documents);
-        const cachedCollectionNode = await this._tree.findNode(this.id);
+        const cachedCollectionNode = await ext.tree.findTreeItem(this.id);
         if (cachedCollectionNode) {
-            await MongoCollectionNodeEditor.updateCachedDocNodes(updatedDocs, <IAzureParentNode<MongoCollectionTreeItem>>cachedCollectionNode);
+            await MongoCollectionNodeEditor.updateCachedDocNodes(updatedDocs, <MongoCollectionTreeItem>cachedCollectionNode);
         }
         return updatedDocs;
     }
 
     public get id(): string {
-        return `${this._databaseNode.id}/${this._command.collection}`;
+        return `${this._databaseNode.fullId}/${this._command.collection}`;
     }
 
     public convertFromString(data: string): IMongoDocument[] {

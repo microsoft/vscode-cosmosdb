@@ -45,6 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(tree);
 	ext.tree = tree;
 	context.subscriptions.push(vscode.window.registerTreeDataProvider('cosmosDBExplorer', tree));
+	const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
 
 	const editorManager: CosmosEditorManager = new CosmosEditorManager(context.globalState);
 
@@ -142,6 +143,13 @@ export function activate(context: vscode.ExtensionContext) {
 				await vscode.commands.executeCommand("cosmosDB.refresh");
 			}
 		});
+	registerCommand('cosmosDB.api.revealTreeItem', async (treeItemId: string) => {
+		const node = await tree.findTreeItem(treeItemId);
+		if (!node) {
+			throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
+		}
+		customView.reveal(node);
+	});
 	registerCommand('cosmosDB.api.getDatabase', async () => {
 		return (await tree.showTreeItemPicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue])).fullId;
 	});

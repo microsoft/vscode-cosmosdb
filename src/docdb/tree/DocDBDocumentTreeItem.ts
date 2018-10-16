@@ -6,26 +6,27 @@
 import { DocumentClient, RetrievedDocument } from 'documentdb';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DialogResponses, IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
 import { emptyPartitionKeyValue } from '../../constants';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
-import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
+import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) document
  */
-export class DocDBDocumentTreeItem implements IAzureTreeItem {
+export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
     public static contextValue: string = "cosmosDBDocument";
     public readonly contextValue: string = DocDBDocumentTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openDocument';
+    public readonly parent: DocDBDocumentsTreeItem;
 
     private readonly _partitionKeyValue: string | undefined | Object;
     private _label: string;
     private _document: RetrievedDocument;
-    private _collection: DocDBCollectionTreeItem;
 
-    constructor(collection: DocDBCollectionTreeItem, document: RetrievedDocument) {
-        this._collection = collection;
+    constructor(parent: DocDBDocumentsTreeItem, document: RetrievedDocument) {
+        super(parent);
         this._document = document;
         this._partitionKeyValue = this.getPartitionKeyValue();
         this._label = getDocumentTreeItemLabel(this._document);
@@ -35,7 +36,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
         return this.document.id;
     }
 
-    public async refreshLabel(): Promise<void> {
+    public async refreshLabelImpl(): Promise<void> {
         this._label = getDocumentTreeItemLabel(this._document);
     }
 
@@ -58,11 +59,11 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
         };
     }
 
-    public async deleteTreeItem(_node: IAzureNode): Promise<void> {
+    public async deleteTreeItemImpl(): Promise<void> {
         const message: string = `Are you sure you want to delete document '${this.label}'?`;
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
-            const client = this._collection.getDocumentClient();
+            const client = this.root.getDocumentClient();
             const options = { partitionKey: this._partitionKeyValue };
             await new Promise((resolve, reject) => {
                 // Disabling type check in the next line. This helps ensure documents having no partition key value
@@ -80,7 +81,7 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
     }
 
     public async update(newData: RetrievedDocument): Promise<RetrievedDocument> {
-        const client: DocumentClient = this._collection.getDocumentClient();
+        const client: DocumentClient = this.root.getDocumentClient();
         const _self: string = this.document._self;
         if (["_self", "_etag"].some((element) => !newData[element])) {
             throw new Error(`The "_self" and "_etag" fields are required to update a document`);
@@ -101,13 +102,12 @@ export class DocDBDocumentTreeItem implements IAzureTreeItem {
                         }
                     });
             });
-            await this.refreshLabel();
             return this.document;
         }
     }
 
     private getPartitionKeyValue(): string | undefined | Object {
-        const partitionKey = this._collection.partitionKey;
+        const partitionKey = this.parent.parent.partitionKey;
         if (!partitionKey) { //Fixed collections -> no partitionKeyValue
             return undefined;
         }

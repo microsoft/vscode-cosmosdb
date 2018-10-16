@@ -7,9 +7,11 @@ import { Collection, CollectionMeta, DatabaseMeta, DocumentClient, FeedOptions, 
 import { DocumentBase } from 'documentdb/lib';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DialogResponses, IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
+import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
+import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 const minThroughput: number = 400;
 const maxThroughput: number = 100000;
@@ -21,8 +23,8 @@ const maxThroughput: number = 100000;
 export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<CollectionMeta> {
     private readonly _database: DatabaseMeta;
 
-    constructor(documentEndpoint: string, masterKey: string, database: DatabaseMeta, isEmulator: boolean) {
-        super(documentEndpoint, masterKey, isEmulator);
+    constructor(parent: DocDBAccountTreeItemBase, database: DatabaseMeta) {
+        super(parent);
         this._database = database;
     }
 
@@ -50,11 +52,11 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     // Delete the database
-    public async deleteTreeItem(_node: IAzureNode): Promise<void> {
+    public async deleteTreeItemImpl(): Promise<void> {
         const message: string = `Are you sure you want to delete database '${this.label}' and its contents?`;
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
-            const client = this.getDocumentClient();
+            const client = this.root.getDocumentClient();
             await new Promise((resolve, reject) => {
                 client.deleteDatabase(this.link, err => err ? reject(err) : resolve());
             });
@@ -64,7 +66,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     // Create a DB collection
-    public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
+    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<AzureTreeItem<IDocDBTreeRoot>> {
         const collectionName = await ext.ui.showInputBox({
             placeHolder: `Enter an id for your ${this.childTypeLabel}`,
             ignoreFocusOut: true,
@@ -99,8 +101,8 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
 
         const options = { offerThroughput: throughput };
 
-        showCreatingNode(collectionName);
-        const client = this.getDocumentClient();
+        showCreatingTreeItem(collectionName);
+        const client = this.root.getDocumentClient();
         const collection: CollectionMeta = await new Promise<CollectionMeta>((resolve, reject) => {
             client.createCollection(this.link, collectionDef, options, (err, result) => {
                 err ? reject(err) : resolve(result);

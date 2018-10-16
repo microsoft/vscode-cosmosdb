@@ -3,33 +3,31 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CollectionMeta, CollectionPartitionKey, DocumentClient } from 'documentdb';
+import { CollectionMeta, CollectionPartitionKey } from 'documentdb';
 import * as path from "path";
 import * as vscode from 'vscode';
-import { DialogResponses, IAzureNode, IAzureParentTreeItem, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
-import { getDocumentClient } from "../getDocumentClient";
+import { AzureParentTreeItem, AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
+import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
+import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
  * Represents a DocumentDB collection
  */
-export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
+export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot> {
     public static contextValue: string = "cosmosDBDocumentCollection";
     public readonly contextValue: string = DocDBCollectionTreeItem.contextValue;
+    public readonly documentsTreeItem: DocDBDocumentsTreeItem;
 
-    private readonly _documentsTreeItem: DocDBDocumentsTreeItem;
     private readonly _storedProceduresTreeItem: DocDBStoredProceduresTreeItem;
 
-    constructor(
-        private _documentEndpoint: string,
-        private _masterKey: string,
-        private _collection: CollectionMeta,
-        private _isEmulator: boolean) {
-        this._documentsTreeItem = new DocDBDocumentsTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator);
-        this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator);
+    constructor(parent: DocDBDatabaseTreeItem, private _collection: CollectionMeta) {
+        super(parent);
+        this.documentsTreeItem = new DocDBDocumentsTreeItem(this);
+        this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this);
     }
 
     public get id(): string {
@@ -55,15 +53,11 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
         return this._collection.partitionKey;
     }
 
-    public getDocumentClient(): DocumentClient {
-        return getDocumentClient(this._documentEndpoint, this._masterKey, this._isEmulator);
-    }
-
-    public async deleteTreeItem(_node: IAzureNode): Promise<void> {
+    public async deleteTreeItemImpl(): Promise<void> {
         const message: string = `Are you sure you want to delete collection '${this.label}' and its contents?`;
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
-            const client = this.getDocumentClient();
+            const client = this.root.getDocumentClient();
             await new Promise((resolve, reject) => {
                 client.deleteCollection(this.link, err => err ? reject(err) : resolve());
             });
@@ -72,19 +66,19 @@ export class DocDBCollectionTreeItem implements IAzureParentTreeItem {
         }
     }
 
-    public async loadMoreChildren(_node: IAzureNode<IAzureTreeItem>, _clearCache: boolean): Promise<IAzureTreeItem[]> {
-        return [this._documentsTreeItem, this._storedProceduresTreeItem];
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem<IDocDBTreeRoot>[]> {
+        return [this.documentsTreeItem, this._storedProceduresTreeItem];
     }
 
-    public hasMoreChildren(): boolean {
+    public hasMoreChildrenImpl(): boolean {
         return false;
     }
 
-    public pickTreeItem?(expectedContextValue: string): IAzureTreeItem | undefined {
+    public pickTreeItemImpl(expectedContextValue: string): AzureTreeItem<IDocDBTreeRoot> | undefined {
         switch (expectedContextValue) {
             case DocDBDocumentsTreeItem.contextValue:
             case DocDBDocumentTreeItem.contextValue:
-                return this._documentsTreeItem;
+                return this.documentsTreeItem;
 
             case DocDBStoredProceduresTreeItem.contextValue:
             case DocDBStoredProcedureTreeItem.contextValue:

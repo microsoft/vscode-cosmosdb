@@ -6,7 +6,7 @@
 import { DocumentClient, FeedOptions, ProcedureMeta, QueryIterator } from 'documentdb';
 import * as path from 'path';
 import * as vscode from "vscode";
-import { IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { UserCancelledError } from 'vscode-azureextensionui';
 import { defaultStoredProcedure } from '../../constants';
 import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
@@ -20,13 +20,14 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
     public static contextValue: string = "cosmosDBStoredProceduresGroup";
     public readonly contextValue: string = DocDBStoredProceduresTreeItem.contextValue;
     public readonly childTypeLabel: string = "Stored Procedure";
+    public readonly parent: DocDBCollectionTreeItem | GraphCollectionTreeItem;
 
-    constructor(endpoint: string, masterKey: string, private _collection: DocDBCollectionTreeItem | GraphCollectionTreeItem, isEmulator: boolean) {
-        super(endpoint, masterKey, isEmulator);
+    constructor(parent: DocDBCollectionTreeItem | GraphCollectionTreeItem) {
+        super(parent);
     }
 
-    public initChild(resource: ProcedureMeta): IAzureTreeItem {
-        return new DocDBStoredProcedureTreeItem(this.documentEndpoint, this.masterKey, this.isEmulator, this._collection.getDocumentClient(), resource);
+    public initChild(resource: ProcedureMeta): DocDBStoredProcedureTreeItem {
+        return new DocDBStoredProcedureTreeItem(this, resource);
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -36,8 +37,8 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
         };
     }
 
-    public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
-        const client = this.getDocumentClient();
+    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<DocDBStoredProcedureTreeItem> {
+        const client = this.root.getDocumentClient();
         let spID = await vscode.window.showInputBox({
             prompt: "Enter a unique stored procedure ID",
             validateInput: this.validateName,
@@ -46,7 +47,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
 
         if (spID || spID === "") {
             spID = spID.trim();
-            showCreatingNode(spID);
+            showCreatingTreeItem(spID);
             const sproc: ProcedureMeta = await new Promise<ProcedureMeta>((resolve, reject) => {
                 client.createStoredProcedure(this.link, { id: spID, body: defaultStoredProcedure }, (err, result: ProcedureMeta) => {
                     if (err) {
@@ -71,7 +72,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
     }
 
     public get link(): string {
-        return this._collection.link;
+        return this.parent.link;
     }
 
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<ProcedureMeta>> {

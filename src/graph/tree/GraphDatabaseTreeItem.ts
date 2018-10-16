@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CollectionMeta, DatabaseMeta } from 'documentdb';
-import { IAzureTreeItem } from 'vscode-azureextensionui';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { getPossibleGremlinEndpoints, IGremlinEndpoint } from '../gremlinEndpoints';
+import { GraphAccountTreeItem } from './GraphAccountTreeItem';
 import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 
 export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
@@ -14,12 +14,12 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
     public readonly contextValue: string = GraphDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Graph';
 
-    constructor(documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, database: DatabaseMeta, isEmulator: boolean) {
-        super(documentEndpoint, masterKey, database, isEmulator);
+    constructor(parent: GraphAccountTreeItem, private _gremlinEndpoint: IGremlinEndpoint | undefined, database: DatabaseMeta) {
+        super(parent, database);
     }
 
-    public initChild(collection: CollectionMeta): IAzureTreeItem {
-        return new GraphCollectionTreeItem(this, collection, this.documentEndpoint, this.masterKey, this.isEmulator);
+    public initChild(collection: CollectionMeta): GraphCollectionTreeItem {
+        return new GraphCollectionTreeItem(this, collection);
     }
 
     // Gremlin endpoint, if definitely known
@@ -28,6 +28,6 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
     }
 
     get possibleGremlinEndpoints(): IGremlinEndpoint[] {
-        return getPossibleGremlinEndpoints(this.documentEndpoint);
+        return getPossibleGremlinEndpoints(this.root.documentEndpoint);
     }
 }

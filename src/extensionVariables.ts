@@ -4,18 +4,20 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ExtensionContext, OutputChannel } from "vscode";
-import { IAzureNode, IAzureUserInput } from "vscode-azureextensionui";
+import { AzureTreeDataProvider, IAzureUserInput } from "vscode-azureextensionui";
 import TelemetryReporter from "vscode-extension-telemetry";
+import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
  */
 export namespace ext {
-    export let connectedMongoDB: IAzureNode | undefined;
+    export let connectedMongoDB: MongoDatabaseTreeItem | undefined;
     export let ui: IAzureUserInput;
     export let context: ExtensionContext;
     export let outputChannel: OutputChannel;
     export let reporter: TelemetryReporter | undefined;
+    export let tree: AzureTreeDataProvider;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

@@ -17,6 +17,7 @@ import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings'
 import { Shell } from '../shell';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
+
 import opn = require('opn');
 
 const mongoExecutableFileName = process.platform === 'win32' ? 'mongo.exe' : 'mongo';

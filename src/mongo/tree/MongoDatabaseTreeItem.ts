@@ -5,7 +5,6 @@
 
 import * as fse from 'fs-extra';
 import { Collection, Db } from 'mongodb';
-import opn = require('opn');
 import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
@@ -18,6 +17,8 @@ import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings'
 import { Shell } from '../shell';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
+
+import opn = require('opn');
 
 const mongoExecutableFileName = process.platform === 'win32' ? 'mongo.exe' : 'mongo';
 

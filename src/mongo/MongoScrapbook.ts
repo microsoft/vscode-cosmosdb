@@ -198,12 +198,14 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 	private commands: MongoCommand[] = [];
 
 	visitCommand(ctx: mongoParser.CommandContext): MongoCommand[] {
+		let funcCallCount: number = filterType(ctx.children, mongoParser.FunctionCallContext).length;
 		this.commands.push({
 			range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine),
 			text: ctx.text,
 			name: '',
 			arguments: [],
-			argumentObjects: []
+			argumentObjects: [],
+			chained: funcCallCount > 1 ? true : false
 		});
 		return super.visitCommand(ctx);
 	}

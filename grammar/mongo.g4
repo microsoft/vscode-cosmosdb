@@ -19,8 +19,7 @@ mongoCommands: commands EOF;
 
 commands: ( command | emptyCommand | comment)*;
 
-command:
-	DB DOT (functionCall | (collection DOT functionCall)) SEMICOLON?;
+command: DB (DOT collection)? (DOT functionCall)+ SEMICOLON?;
 
 emptyCommand: SEMICOLON;
 

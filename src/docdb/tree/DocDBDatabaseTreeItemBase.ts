@@ -13,7 +13,8 @@ import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
-const minThroughput: number = 400;
+const minThroughputFixed = 400;
+const minThroughputPartitioned = 1000;
 const maxThroughput: number = 100000;
 
 /**
@@ -78,7 +79,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         };
 
         let partitionKey: string | undefined = await ext.ui.showInputBox({
-            prompt: 'Enter the partition key for the collection, or leave blank in case of fixed size.',
+            prompt: 'Enter the partition key for the collection, or leave blank to create a fixed size collection.',
             ignoreFocusOut: true,
             validateInput: DocDBDatabaseTreeItemBase.validatePartitionKey
         });
@@ -86,17 +87,19 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         if (partitionKey && partitionKey.length && partitionKey[0] !== '/') {
             partitionKey = '/' + partitionKey;
         }
-        if (partitionKey !== "") {
+        if (!partitionKey) {
             collectionDef.partitionKey = {
                 paths: [partitionKey],
                 kind: DocumentBase.PartitionKind.Hash
             };
         }
+        const isFixed: boolean = !(collectionDef.partitionKey);
+        const minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
         const throughput: number = Number(await ext.ui.showInputBox({
             value: minThroughput.toString(),
             ignoreFocusOut: true,
             prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput}`,
-            validateInput: DocDBDatabaseTreeItemBase.validateThroughput
+            validateInput: (input: string) => DocDBDatabaseTreeItemBase.validateThroughput(isFixed, input)
         }));
 
         const options = { offerThroughput: throughput };
@@ -119,8 +122,9 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         return undefined;
     }
 
-    private static validateThroughput(input: string): string | undefined | null {
+    private static validateThroughput(isFixed: boolean, input: string): string | undefined | null {
         try {
+            let minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
             const value = Number(input);
             if (value < minThroughput || value > maxThroughput) {
                 return `Value must be between ${minThroughput} and ${maxThroughput}`;

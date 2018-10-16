@@ -112,7 +112,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
 
     private static validatePartitionKey(key: string): string | undefined | null {
         if (/[#?\\]/.test(key)) {
-            return "Cannot contain these characters - ?,#,\\, etc.";
+            return "Cannot contain these characters: ?,#,\\, etc.";
         }
         return undefined;
     }

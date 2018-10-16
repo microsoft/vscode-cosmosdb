@@ -33,7 +33,7 @@ const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
 export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
     public static contextValue: string = 'cosmosDBAttachedAccounts' + (process.platform === 'win32' ? 'WithEmulator' : 'WithoutEmulator');
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
-    public readonly id: string = AttachedAccountsTreeItem.contextValue;
+    public readonly id: string = 'cosmosDBAttachedAccounts';
     public readonly label: string = 'Attached Database Accounts';
     public childTypeLabel: string = 'Account';
 

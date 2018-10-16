@@ -8,26 +8,28 @@ import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Curso
 import * as path from 'path';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { DialogResponses, IAzureNode, IAzureParentTreeItem, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureParentTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
 import { DefaultBatchSize } from '../../constants';
 import { ext } from '../../extensionVariables';
+import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 // tslint:disable:no-var-requires
 const EJSON = require("mongodb-extended-json");
 
-export class MongoCollectionTreeItem implements IAzureParentTreeItem {
+export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 	public static contextValue: string = "MongoCollection";
 	public readonly contextValue: string = MongoCollectionTreeItem.contextValue;
 	public readonly childTypeLabel: string = "Document";
+	public readonly collection: Collection;
 
-	private readonly collection: Collection;
 	private readonly _query: object | undefined;
 	private readonly _projection: object | undefined;
 	private _cursor: Cursor | undefined;
 	private _hasMoreChildren: boolean = true;
 	private _batchSize: number = DefaultBatchSize;
 
-	constructor(collection: Collection, query?: Object[]) {
+	constructor(parent: AzureParentTreeItem, collection: Collection, query?: Object[]) {
+		super(parent);
 		this.collection = collection;
 		if (query && query.length) {
 			this._query = query[0];
@@ -66,11 +68,11 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		};
 	}
 
-	public hasMoreChildren(): boolean {
+	public hasMoreChildrenImpl(): boolean {
 		return this._hasMoreChildren;
 	}
 
-	public async loadMoreChildren(_node: IAzureNode, clearCache: boolean): Promise<IAzureTreeItem[]> {
+	public async loadMoreChildrenImpl(clearCache: boolean): Promise<MongoDocumentTreeItem[]> {
 		if (clearCache || this._cursor === undefined) {
 			this._cursor = this.collection.find(this._query).batchSize(DefaultBatchSize);
 			if (this._projection) {
@@ -92,15 +94,15 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		}
 		this._batchSize *= 2;
 
-		const docTreeItems = documents.map((document: IMongoDocument) => new MongoDocumentTreeItem(document, this.collection));
+		const docTreeItems = documents.map((document: IMongoDocument) => new MongoDocumentTreeItem(this, document));
 		return docTreeItems;
 	}
 
-	public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
-		showCreatingNode("");
+	public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<MongoDocumentTreeItem> {
+		showCreatingTreeItem("");
 		const result: InsertOneWriteOpResult = await this.collection.insertOne({});
 		const newDocument: IMongoDocument = await this.collection.findOne({ _id: result.insertedId });
-		return new MongoDocumentTreeItem(newDocument, this.collection);
+		return new MongoDocumentTreeItem(this, newDocument);
 	}
 
 	executeCommand(name: string, args?: string[]): Thenable<string> | null {
@@ -154,7 +156,7 @@ export class MongoCollectionTreeItem implements IAzureParentTreeItem {
 		}
 	}
 
-	public async deleteTreeItem(_node: IAzureNode): Promise<void> {
+	public async deleteTreeItemImpl(): Promise<void> {
 		const message: string = `Are you sure you want to delete collection '${this.label}'?`;
 		const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
 		if (result === DialogResponses.deleteResponse) {

@@ -7,8 +7,10 @@ import { Collection, DeleteWriteOpResultObject, ObjectID, UpdateWriteOpResult } 
 import * as path from 'path';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { DialogResponses, IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
+import { IMongoTreeRoot } from './IMongoTreeRoot';
+import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 
 export interface IMongoDocument {
     _id: string | ObjectID;
@@ -18,19 +20,19 @@ export interface IMongoDocument {
     [key: string]: any;
 }
 
-export class MongoDocumentTreeItem implements IAzureTreeItem {
+export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
     public static contextValue: string = "MongoDocument";
     public readonly contextValue: string = MongoDocumentTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openDocument';
     public document: IMongoDocument;
+    public readonly parent: MongoCollectionTreeItem;
 
     private _label;
-    private _collection: Collection;
 
-    constructor(document: IMongoDocument, collection: Collection) {
+    constructor(parent: MongoCollectionTreeItem, document: IMongoDocument) {
+        super(parent);
         this.document = document;
         this._label = getDocumentTreeItemLabel(this.document);
-        this._collection = collection;
     }
 
     get id(): string {
@@ -38,7 +40,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
         return String(this.document!._id);
     }
 
-    public async refreshLabel(): Promise<void> {
+    public async refreshLabelImpl(): Promise<void> {
         this._label = getDocumentTreeItemLabel(this.document);
     }
 
@@ -53,11 +55,11 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
         };
     }
 
-    public async deleteTreeItem(_node: IAzureNode): Promise<void> {
+    public async deleteTreeItemImpl(): Promise<void> {
         const message: string = `Are you sure you want to delete document '${this._label}'?`;
         const dialogResult = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (dialogResult === DialogResponses.deleteResponse) {
-            const deleteResult: DeleteWriteOpResultObject = await this._collection.deleteOne({ "_id": this.document._id });
+            const deleteResult: DeleteWriteOpResultObject = await this.parent.collection.deleteOne({ "_id": this.document._id });
             if (deleteResult.deletedCount !== 1) {
                 throw new Error(`Failed to delete document with _id '${this.document._id}'.`);
             }
@@ -67,8 +69,7 @@ export class MongoDocumentTreeItem implements IAzureTreeItem {
     }
 
     public async update(newDocument: IMongoDocument): Promise<IMongoDocument> {
-        this.document = await MongoDocumentTreeItem.update(this._collection, newDocument);
-        await this.refreshLabel();
+        this.document = await MongoDocumentTreeItem.update(this.parent.collection, newDocument);
         return this.document;
     }
 

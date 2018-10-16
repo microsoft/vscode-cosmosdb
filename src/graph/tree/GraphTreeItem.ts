@@ -6,21 +6,23 @@
 import { CollectionMeta } from 'documentdb';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { IAzureTreeItem } from 'vscode-azureextensionui';
+import { AzureTreeItem } from 'vscode-azureextensionui';
+import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
 import { GraphConfiguration } from '../GraphConfiguration';
 import { GraphViewsManager } from '../GraphViewsManager';
+import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 
-export class GraphTreeItem implements IAzureTreeItem {
+export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
     public static contextValue: string = "cosmosDBGraphGraph";
     public readonly contextValue: string = GraphTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openGraphExplorer';
+    public readonly parent: GraphCollectionTreeItem;
 
-    private readonly _database: GraphDatabaseTreeItem;
     private readonly _collection: CollectionMeta;
 
-    constructor(database: GraphDatabaseTreeItem, collection: CollectionMeta) {
-        this._database = database;
+    constructor(parent: GraphCollectionTreeItem, collection: CollectionMeta) {
+        super(parent);
         this._collection = collection;
     }
 
@@ -44,13 +46,14 @@ export class GraphTreeItem implements IAzureTreeItem {
     }
 
     public async showExplorer(graphViewsManager: GraphViewsManager): Promise<void> {
+        const databaseTreeItem: GraphDatabaseTreeItem = this.parent.parent;
         await graphViewsManager.showGraphViewer(this._collection.id, <GraphConfiguration>{
-            documentEndpoint: this._database.documentEndpoint,
-            gremlinEndpoint: this._database.gremlinEndpoint,
-            possibleGremlinEndpoints: this._database.possibleGremlinEndpoints,
-            databaseName: this._database.label,
+            documentEndpoint: databaseTreeItem.root.documentEndpoint,
+            gremlinEndpoint: databaseTreeItem.gremlinEndpoint,
+            possibleGremlinEndpoints: databaseTreeItem.possibleGremlinEndpoints,
+            databaseName: databaseTreeItem.label,
             graphName: this._collection.id,
-            key: this._database.masterKey
+            key: databaseTreeItem.root.masterKey
         });
     }
 }

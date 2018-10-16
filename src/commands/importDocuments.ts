@@ -6,13 +6,12 @@
 import { NewDocument } from 'documentdb';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
-import { AzureTreeDataProvider, IAzureParentNode, parseError } from 'vscode-azureextensionui';
+import { parseError } from 'vscode-azureextensionui';
 import { DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
-import { DocDBDocumentsTreeItem } from '../docdb/tree/DocDBDocumentsTreeItem';
 import { ext } from '../extensionVariables';
 import { MongoCollectionTreeItem } from '../mongo/tree/MongoCollectionTreeItem';
 
-export async function importDocuments(tree: AzureTreeDataProvider, uris: vscode.Uri[] | undefined, collectionNode: IAzureParentNode<MongoCollectionTreeItem | DocDBCollectionTreeItem> | undefined): Promise<void> {
+export async function importDocuments(uris: vscode.Uri[] | undefined, collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | undefined): Promise<void> {
     if (!uris) {
         uris = await askForDocuments();
     }
@@ -31,7 +30,7 @@ export async function importDocuments(tree: AzureTreeDataProvider, uris: vscode.
         ext.outputChannel.show();
     }
     if (!collectionNode) {
-        collectionNode = <IAzureParentNode<MongoCollectionTreeItem | DocDBCollectionTreeItem>>await tree.showNodePicker([MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue]);
+        collectionNode = <MongoCollectionTreeItem | DocDBCollectionTreeItem>await ext.tree.showTreeItemPicker([MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue]);
     }
     let result: string;
     result = await vscode.window.withProgress(
@@ -43,11 +42,10 @@ export async function importDocuments(tree: AzureTreeDataProvider, uris: vscode.
             progress.report({ increment: 20, message: "Parsing documents for errors" });
             const documents = await parseDocuments(uris);
             progress.report({ increment: 30, message: "Parsed documents. Importing" });
-            if (collectionNode.treeItem instanceof MongoCollectionTreeItem) {
-                const collectionTreeItem = <MongoCollectionTreeItem>collectionNode.treeItem;
-                result = processMongoResults(await collectionTreeItem.executeCommand('insertMany', [JSON.stringify(documents)]));
+            if (collectionNode instanceof MongoCollectionTreeItem) {
+                result = processMongoResults(await collectionNode.executeCommand('insertMany', [JSON.stringify(documents)]));
             } else {
-                result = await insertDocumentsIntoDocdb(<IAzureParentNode<DocDBCollectionTreeItem>>collectionNode, documents, uris);
+                result = await insertDocumentsIntoDocdb(collectionNode, documents, uris);
             }
             progress.report({ increment: 50, message: "Finished importing" });
             return result;
@@ -102,16 +100,14 @@ async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
 }
 
 // tslint:disable-next-line:no-any
-async function insertDocumentsIntoDocdb(collectionNode: IAzureParentNode<DocDBCollectionTreeItem>, documents: any[], uris: vscode.Uri[]): Promise<string> {
+async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem, documents: any[], uris: vscode.Uri[]): Promise<string> {
     let result;
     let ids = [];
-    let children = (await collectionNode.getCachedChildren());
-    const documentsTreeItem: DocDBDocumentsTreeItem = <DocDBDocumentsTreeItem>(children.find(node => node.treeItem instanceof DocDBDocumentsTreeItem).treeItem);
     let i = 0;
     let erroneousFiles: vscode.Uri[] = [];
     for (i = 0; i < documents.length; i++) {
         let document: NewDocument = documents[i];
-        if (!documentsTreeItem.documentHasPartitionKey(document)) {
+        if (!collectionNode.documentsTreeItem.documentHasPartitionKey(document)) {
             erroneousFiles.push(uris[i]);
         }
     }
@@ -119,10 +115,10 @@ async function insertDocumentsIntoDocdb(collectionNode: IAzureParentNode<DocDBCo
         ext.outputChannel.appendLine(`The following documents do not contain the required partition key:`);
         erroneousFiles.forEach(file => ext.outputChannel.appendLine(file.path));
         ext.outputChannel.show();
-        throw new Error(`See output for list of documents that do not contain the partition key '${collectionNode.treeItem.partitionKey.paths[0]}' required by collection '${collectionNode.treeItem.label}'`);
+        throw new Error(`See output for list of documents that do not contain the partition key '${collectionNode.partitionKey.paths[0]}' required by collection '${collectionNode.label}'`);
     }
     for (let document of documents) {
-        const retrieved = await documentsTreeItem.createDocument(document);
+        const retrieved = await collectionNode.documentsTreeItem.createDocument(document);
         ids.push(retrieved.id);
     }
     result = `Imported ${ids.length} documents`;

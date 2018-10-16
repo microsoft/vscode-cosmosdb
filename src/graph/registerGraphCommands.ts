@@ -4,44 +4,45 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { AzureTreeDataProvider, IAzureNode, IAzureParentNode, registerCommand } from "vscode-azureextensionui";
+import { registerCommand } from "vscode-azureextensionui";
+import { ext } from '../extensionVariables';
 import { GraphViewsManager } from "./GraphViewsManager";
 import { GraphAccountTreeItem } from "./tree/GraphAccountTreeItem";
 import { GraphCollectionTreeItem } from "./tree/GraphCollectionTreeItem";
 import { GraphDatabaseTreeItem } from "./tree/GraphDatabaseTreeItem";
 import { GraphTreeItem } from "./tree/GraphTreeItem";
 
-export function registerGraphCommands(context: vscode.ExtensionContext, tree: AzureTreeDataProvider): void {
+export function registerGraphCommands(context: vscode.ExtensionContext): void {
     let graphViewsManager = new GraphViewsManager(context);
 
-    registerCommand('cosmosDB.createGraphDatabase', async (node?: IAzureParentNode) => {
+    registerCommand('cosmosDB.createGraphDatabase', async (node?: GraphAccountTreeItem) => {
         if (!node) {
-            node = <IAzureParentNode>await tree.showNodePicker(GraphAccountTreeItem.contextValue);
+            node = <GraphAccountTreeItem>await ext.tree.showTreeItemPicker(GraphAccountTreeItem.contextValue);
         }
         await node.createChild();
     });
-    registerCommand('cosmosDB.createGraph', async (node?: IAzureParentNode) => {
+    registerCommand('cosmosDB.createGraph', async (node?: GraphDatabaseTreeItem) => {
         if (!node) {
-            node = <IAzureParentNode>await tree.showNodePicker(GraphDatabaseTreeItem.contextValue);
+            node = <GraphDatabaseTreeItem>await ext.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue);
         }
         await node.createChild();
     });
-    registerCommand('cosmosDB.deleteGraphDatabase', async (node?: IAzureNode) => {
+    registerCommand('cosmosDB.deleteGraphDatabase', async (node?: GraphDatabaseTreeItem) => {
         if (!node) {
-            node = await tree.showNodePicker(GraphDatabaseTreeItem.contextValue);
+            node = <GraphDatabaseTreeItem>await ext.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue);
         }
-        await node.deleteNode();
+        await node.deleteTreeItem();
     });
-    registerCommand('cosmosDB.deleteGraph', async (node?: IAzureNode) => {
+    registerCommand('cosmosDB.deleteGraph', async (node?: GraphCollectionTreeItem) => {
         if (!node) {
-            node = await tree.showNodePicker(GraphCollectionTreeItem.contextValue);
+            node = <GraphCollectionTreeItem>await ext.tree.showTreeItemPicker(GraphCollectionTreeItem.contextValue);
         }
-        await node.deleteNode();
+        await node.deleteTreeItem();
     });
-    registerCommand('cosmosDB.openGraphExplorer', async (node: IAzureNode<GraphTreeItem>) => {
+    registerCommand('cosmosDB.openGraphExplorer', async (node: GraphTreeItem) => {
         if (!node) {
-            node = <IAzureNode<GraphTreeItem>>await tree.showNodePicker(GraphTreeItem.contextValue);
+            node = <GraphTreeItem>await ext.tree.showTreeItemPicker(GraphTreeItem.contextValue);
         }
-        await node.treeItem.showExplorer(graphViewsManager);
+        await node.showExplorer(graphViewsManager);
     });
 }

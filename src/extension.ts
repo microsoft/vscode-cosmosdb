@@ -159,10 +159,11 @@ export function activate(context: vscode.ExtensionContext) {
 			throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
 		}
 
-		if (node instanceof MongoDatabaseTreeItem) {
-			return node.connectionString;
-		} else {
-			throw new Error('Not implemented yet. For now works only with Mongo.');
+		switch (node.contextValue) {
+			case MongoDatabaseTreeItem.contextValue:
+				return (<MongoDatabaseTreeItem>node).connectionString;
+			default:
+				throw new Error('Not implemented yet. For now works only with Mongo.');
 		}
 	});
 }

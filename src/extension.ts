@@ -142,8 +142,6 @@ export function activate(context: vscode.ExtensionContext) {
 				await vscode.commands.executeCommand("cosmosDB.refresh");
 			}
 		});
-<<<<<<< HEAD
-<<<<<<< HEAD
 	registerCommand('cosmosDB.api.revealTreeItem', async (treeItemId: string) => {
 		const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
 		const node = await tree.findTreeItem(treeItemId);
@@ -151,17 +149,6 @@ export function activate(context: vscode.ExtensionContext) {
 			throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
 		}
 		customView.reveal(node);
-<<<<<<< HEAD
-=======
-	registerCommand('cosmosDB.revealTreeItem', async (treeItemId: string) => {
-=======
-	registerCommand('cosmosDB.api.revealTreeItem', async (treeItemId: string) => {
->>>>>>> Refactored the name of command and added it in the package.json.
-		const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
-		customView.reveal(await tree.findTreeItem(treeItemId));
->>>>>>> Added reveal command.
-=======
->>>>>>> Handle revealing of inexistent database.
 	});
 	registerCommand('cosmosDB.api.getDatabase', async () => {
 		return (await tree.showTreeItemPicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue])).fullId;

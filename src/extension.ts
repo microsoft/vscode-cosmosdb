@@ -44,6 +44,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const tree: AzureTreeDataProvider = new AzureTreeDataProvider(CosmosDBAccountProvider, 'cosmosDB.loadMore', [attachedAccountsNode]);
 	context.subscriptions.push(tree);
 	ext.tree = tree;
+	const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
 	context.subscriptions.push(vscode.window.registerTreeDataProvider('cosmosDBExplorer', tree));
 
 	const editorManager: CosmosEditorManager = new CosmosEditorManager(context.globalState);
@@ -143,7 +144,6 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		});
 	registerCommand('cosmosDB.api.revealTreeItem', async (treeItemId: string) => {
-		const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
 		const node = await tree.findTreeItem(treeItemId);
 		if (!node) {
 			throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
@@ -159,11 +159,10 @@ export function activate(context: vscode.ExtensionContext) {
 			throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
 		}
 
-		switch (node.contextValue) {
-			case MongoDatabaseTreeItem.contextValue:
-				return (<MongoDatabaseTreeItem>node).connectionString;
-			default:
-				throw new Error('Not implemented yet. For now works only with Mongo.');
+		if (node instanceof MongoDatabaseTreeItem) {
+			return node.connectionString;
+		} else {
+			throw new Error('Not implemented yet. For now works only with Mongo.');
 		}
 	});
 }

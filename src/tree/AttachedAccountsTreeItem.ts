@@ -29,7 +29,7 @@ export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start w
 const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
 
 export class AttachedAccountsTreeItem implements IAzureParentTreeItem {
-    public static contextValue: string = 'cosmosDBAttachedAccounts';
+    public static contextValue: string = 'cosmosDBAttachedAccounts' + (process.platform === 'win32' ? 'WithEmulator' : 'WithoutEmulator');
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
     public readonly id: string = AttachedAccountsTreeItem.contextValue;
     public readonly label: string = 'Attached Database Accounts';

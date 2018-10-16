@@ -3,16 +3,22 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as fse from 'fs-extra';
 import { Collection, Db } from 'mongodb';
+import opn = require('opn');
 import * as path from 'path';
+import * as process from 'process';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, DialogResponses, IActionContext, IAzureNode, IAzureParentTreeItem, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoCommand } from '../MongoCommand';
+import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings';
 import { Shell } from '../shell';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
+
+const mongoExecutableFileName = process.platform === 'win32' ? 'mongo.exe' : 'mongo';
 
 export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public static contextValue: string = "mongoDb";
@@ -23,10 +29,12 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	public readonly databaseName: string;
 
 	private _parentId: string;
+	private _previousShellPathSetting: string | undefined;
+	private _cachedShellPathOrCmd: string | undefined;
 
 	constructor(databaseName: string, connectionString: string, isEmulator: boolean, parentId: string) {
 		this.databaseName = databaseName;
-		this.connectionString = connectionString;
+		this.connectionString = addDatabaseToAccountConnectionString(connectionString, this.databaseName);
 		this.isEmulator = isEmulator;
 		this._parentId = parentId;
 	}
@@ -130,28 +138,75 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	}
 
 	private async getShell(): Promise<Shell> {
-		const settingKey: string = ext.settingsKeys.mongoShellPath;
-		let shellPath: string | undefined = vscode.workspace.getConfiguration().get(settingKey);
-		if (!shellPath) {
+		let shellPathSetting: string | undefined = vscode.workspace.getConfiguration().get(ext.settingsKeys.mongoShellPath);
+		if (!this._cachedShellPathOrCmd || this._previousShellPathSetting !== shellPathSetting) {
+			// Only do this if setting changed since last time
+			this._previousShellPathSetting = shellPathSetting;
+			await this._determineShellPathOrCmd(shellPathSetting);
+		}
+
+		return await this.createShell(this._cachedShellPathOrCmd);
+	}
+
+	private async _determineShellPathOrCmd(shellPathSetting: string): Promise<void> {
+		this._cachedShellPathOrCmd = shellPathSetting;
+		if (!shellPathSetting) {
+			// User hasn't specified the path
 			if (await cpUtils.commandSucceeds('mongo', '--version')) {
 				// If the user already has mongo in their system path, just use that
-				shellPath = 'mongo';
+				this._cachedShellPathOrCmd = 'mongo';
 			} else {
 				// If all else fails, prompt the user for the mongo path
-				shellPath = await vscode.window.showInputBox({
-					placeHolder: "Configure the path to the mongo shell executable",
-					ignoreFocusOut: true
-				});
 
-				if (shellPath) {
-					await vscode.workspace.getConfiguration().update(settingKey, shellPath, vscode.ConfigurationTarget.Global);
-				} else {
-					throw new UserCancelledError();
+				// tslint:disable-next-line:no-constant-condition
+				const openFile: vscode.MessageItem = { title: `Browse to ${mongoExecutableFileName}` };
+				const browse: vscode.MessageItem = { title: 'Open installation page' };
+				let response = await vscode.window.showErrorMessage('This functionality requires the Mongo DB shell, but we could not find it in the path or using the mongo.shell.path setting.', browse, openFile);
+				if (response === openFile) {
+					// tslint:disable-next-line:no-constant-condition
+					while (true) {
+						let newPath: vscode.Uri[] = await vscode.window.showOpenDialog({
+							filters: { 'Executable Files': [process.platform === 'win32' ? 'exe' : ''] },
+							openLabel: `Select ${mongoExecutableFileName}`
+						});
+						if (newPath && newPath.length) {
+							let fsPath = newPath[0].fsPath;
+							let baseName = path.basename(fsPath);
+							if (baseName !== mongoExecutableFileName) {
+								const useAnyway: vscode.MessageItem = { title: 'Use anyway' };
+								const tryAgain: vscode.MessageItem = { title: 'Try again' };
+								let response2 = await ext.ui.showWarningMessage(
+									`Expected a file named "${mongoExecutableFileName}, but the selected filename is "${baseName}"`,
+									useAnyway,
+									tryAgain);
+								if (response2 === tryAgain) {
+									continue;
+								}
+							}
+
+							this._cachedShellPathOrCmd = fsPath;
+							await vscode.workspace.getConfiguration().update(ext.settingsKeys.mongoShellPath, this._cachedShellPathOrCmd, vscode.ConfigurationTarget.Global);
+							return;
+						} else {
+							throw new UserCancelledError();
+						}
+					}
+				} else if (response === browse) {
+					this._cachedShellPathOrCmd = undefined;
+					opn('https://docs.mongodb.com/manual/installation/');
+				}
+
+				throw new UserCancelledError();
+			}
+		} else {
+			// User has specified the path or command.  Sometimes they set the folder instead of a path to the file, let's check that and auto fix
+			if (await fse.pathExists(shellPathSetting)) {
+				let stat = await fse.stat(shellPathSetting);
+				if (stat.isDirectory()) {
+					this._cachedShellPathOrCmd = path.join(shellPathSetting, mongoExecutableFileName);
 				}
 			}
 		}
-
-		return await this.createShell(shellPath);
 	}
 
 	private async createShell(shellPath: string): Promise<Shell> {
@@ -179,11 +234,11 @@ export function validateMongoCollectionName(collectionName: string): string | un
 	return undefined;
 }
 
-function withProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
+function withProgress<T>(promise: Thenable<T>, title: string, location = vscode.ProgressLocation.Window): Thenable<T> {
 	return vscode.window.withProgress<T>(
 		{
-			location: vscode.ProgressLocation.Window,
-			title
+			location: location,
+			title: title
 		},
 		(_progress) => {
 			return promise;

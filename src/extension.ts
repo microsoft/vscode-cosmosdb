@@ -44,8 +44,8 @@ export function activate(context: vscode.ExtensionContext) {
 	const tree: AzureTreeDataProvider = new AzureTreeDataProvider(CosmosDBAccountProvider, 'cosmosDB.loadMore', [attachedAccountsNode]);
 	context.subscriptions.push(tree);
 	ext.tree = tree;
-	const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
 	context.subscriptions.push(vscode.window.registerTreeDataProvider('cosmosDBExplorer', tree));
+	const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
 
 	const editorManager: CosmosEditorManager = new CosmosEditorManager(context.globalState);
 

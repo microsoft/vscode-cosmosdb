@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseMeta } from 'documentdb';
-import { IAzureTreeItem } from 'vscode-azureextensionui';
+import { AzureParentTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from '../../docdb/tree/DocDBStoredProcedureTreeItem';
@@ -17,15 +17,15 @@ export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBGraphAccount";
     public contextValue: string = GraphAccountTreeItem.contextValue;
 
-    constructor(id: string, label: string, documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, isEmulator: boolean) {
-        super(id, label, documentEndpoint, masterKey, isEmulator);
+    constructor(parent: AzureParentTreeItem, id: string, label: string, documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, isEmulator: boolean) {
+        super(parent, id, label, documentEndpoint, masterKey, isEmulator);
     }
 
-    public initChild(database: DatabaseMeta): IAzureTreeItem {
-        return new GraphDatabaseTreeItem(this.documentEndpoint, this._gremlinEndpoint, this.masterKey, database, this.isEmulator);
+    public initChild(database: DatabaseMeta): GraphDatabaseTreeItem {
+        return new GraphDatabaseTreeItem(this, this._gremlinEndpoint, database);
     }
 
-    public isAncestorOf(contextValue: string): boolean {
+    public isAncestorOfImpl(contextValue: string): boolean {
         switch (contextValue) {
             case GraphDatabaseTreeItem.contextValue:
             case GraphCollectionTreeItem.contextValue:

@@ -4,50 +4,35 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DocumentClient, FeedOptions, QueryError, QueryIterator } from 'documentdb';
-import { IAzureNode, IAzureParentTreeItem, IAzureTreeItem } from 'vscode-azureextensionui';
+import { AzureParentTreeItem, AzureTreeItem } from 'vscode-azureextensionui';
 import { DefaultBatchSize } from '../../constants';
-import { getDocumentClient } from "../getDocumentClient";
+import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
  * This class provides common iteration logic for DocumentDB accounts, databases, and collections
  */
-export abstract class DocDBTreeItemBase<T> implements IAzureParentTreeItem {
+export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTreeRoot> {
     public abstract readonly id: string;
     public abstract readonly label: string;
     public abstract readonly contextValue: string;
     public abstract readonly childTypeLabel: string;
 
-    public readonly documentEndpoint: string;
-    public readonly masterKey: string;
-
-    public isEmulator: boolean;
-
     private _hasMoreChildren: boolean = true;
     private _iterator: QueryIterator<T> | undefined;
     private _batchSize: number = DefaultBatchSize;
 
-    constructor(documentEndpoint: string, masterKey: string, isEmulator: boolean) {
-        this.documentEndpoint = documentEndpoint;
-        this.masterKey = masterKey;
-        this.isEmulator = isEmulator;
-    }
-
-    public hasMoreChildren(): boolean {
+    public hasMoreChildrenImpl(): boolean {
         return this._hasMoreChildren;
     }
 
-    public getDocumentClient(): DocumentClient {
-        return getDocumentClient(this.documentEndpoint, this.masterKey, this.isEmulator);
-    }
-
-    public abstract initChild(resource: T): IAzureTreeItem;
+    public abstract initChild(resource: T): AzureTreeItem<IDocDBTreeRoot>;
 
     public abstract getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<T>>;
 
-    public async loadMoreChildren(_node: IAzureNode, clearCache: boolean): Promise<IAzureTreeItem[]> {
+    public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzureTreeItem<IDocDBTreeRoot>[]> {
         if (clearCache || this._iterator === undefined) {
             this._hasMoreChildren = true;
-            const client = this.getDocumentClient();
+            const client = this.root.getDocumentClient();
             this._iterator = await this.getIterator(client, { maxItemCount: DefaultBatchSize });
             this._batchSize = DefaultBatchSize;
         }

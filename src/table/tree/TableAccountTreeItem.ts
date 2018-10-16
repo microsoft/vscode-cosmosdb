@@ -3,32 +3,32 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IAzureNode, IAzureTreeItem } from "vscode-azureextensionui";
+import { AzureTreeItem, GenericTreeItem } from "vscode-azureextensionui";
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { DocDBAccountTreeItemBase } from "../../docdb/tree/DocDBAccountTreeItemBase";
+import { IDocDBTreeRoot } from "../../docdb/tree/IDocDBTreeRoot";
 
 export class TableAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBTableAccount";
     public contextValue: string = TableAccountTreeItem.contextValue;
 
-    public hasMoreChildren(): boolean {
+    public hasMoreChildrenImpl(): boolean {
         return false;
     }
 
-    public initChild(): IAzureTreeItem {
+    public initChild(): AzureTreeItem<IDocDBTreeRoot> {
         throw new Error('Table Accounts are not supported yet.');
     }
 
-    public async loadMoreChildren(_node: IAzureNode, _clearCache: boolean): Promise<IAzureTreeItem[]> {
-        return [{
-            id: 'tableNotSupported',
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem<IDocDBTreeRoot>[]> {
+        return [new GenericTreeItem(this, {
             contextValue: 'tableNotSupported',
             label: 'Table Accounts are not supported yet.'
-        }];
+        })];
     }
 
-    public async deleteTreeItem(node: IAzureNode): Promise<void> {
-        await deleteCosmosDBAccount(node);
+    public async deleteTreeItemImpl(): Promise<void> {
+        await deleteCosmosDBAccount(this);
     }
 
 }

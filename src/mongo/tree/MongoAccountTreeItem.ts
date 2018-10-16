@@ -6,15 +6,16 @@
 import { Db } from 'mongodb';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, IAzureNode, IAzureParentTreeItem, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
+import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoDatabaseTreeItem, validateMongoCollectionName } from './MongoDatabaseTreeItem';
 import { MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 
-export class MongoAccountTreeItem implements IAzureParentTreeItem {
+export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
     public static contextValue: string = "cosmosDBMongoServer";
     public readonly contextValue: string = MongoAccountTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
@@ -22,13 +23,19 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
     public readonly label: string;
     public readonly connectionString: string;
 
-    public isEmulator: boolean;
+    private _root: IMongoTreeRoot;
 
-    constructor(id: string, label: string, connectionString: string, isEmulator: boolean) {
+    constructor(parent: AzureParentTreeItem, id: string, label: string, connectionString: string, isEmulator: boolean) {
+        super(parent);
         this.id = id;
         this.label = label;
         this.connectionString = connectionString;
-        this.isEmulator = isEmulator;
+        this._root = Object.assign({}, parent.root, { isEmulator });
+    }
+
+    // overrides ISubscriptionRoot with an object that also has Mongo info
+    public get root(): IMongoTreeRoot {
+        return this._root;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -38,11 +45,11 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
         };
     }
 
-    public hasMoreChildren(): boolean {
+    public hasMoreChildrenImpl(): boolean {
         return false;
     }
 
-    public async loadMoreChildren(node: IAzureNode, _clearCache: boolean): Promise<IAzureTreeItem[]> {
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem<IMongoTreeRoot>[]> {
         let db: Db | undefined;
         try {
             let databases: IDatabaseInfo[];
@@ -53,7 +60,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
 
             db = await connectToMongoClient(this.connectionString, appendExtensionUserAgent());
             let databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);
-            if (databaseInConnectionString && !this.isEmulator) { // emulator violates the connection string format
+            if (databaseInConnectionString && !this.root.isEmulator) { // emulator violates the connection string format
                 // If the database is in the connection string, that's all we connect to (we might not even have permissions to list databases)
                 databases = [{
                     name: databaseInConnectionString,
@@ -65,14 +72,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
             }
             return databases
                 .filter((database: IDatabaseInfo) => !(database.name && database.name.toLowerCase() === "admin" && database.empty)) // Filter out the 'admin' database if it's empty
-                .map(database => new MongoDatabaseTreeItem(database.name, this.connectionString, this.isEmulator, node.id));
-
-        } catch (error) {
-            return [{
-                id: 'cosmosMongoError',
-                contextValue: 'cosmosMongoError',
-                label: error.message
-            }];
+                .map(database => new MongoDatabaseTreeItem(this, database.name, this.connectionString));
         } finally {
             if (db) {
                 db.close();
@@ -80,7 +80,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
         }
     }
 
-    public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
+    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<MongoDatabaseTreeItem> {
         const databaseName = await vscode.window.showInputBox({
             placeHolder: "Database Name",
             prompt: "Enter the name of the database",
@@ -94,9 +94,9 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
                 validateInput: validateMongoCollectionName
             });
             if (collectionName) {
-                showCreatingNode(databaseName);
+                showCreatingTreeItem(databaseName);
 
-                const databaseTreeItem = new MongoDatabaseTreeItem(databaseName, this.connectionString, this.isEmulator, node.id);
+                const databaseTreeItem = new MongoDatabaseTreeItem(this, databaseName, this.connectionString);
                 await databaseTreeItem.createCollection(collectionName);
                 return databaseTreeItem;
             }
@@ -105,7 +105,7 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
         throw new UserCancelledError();
     }
 
-    public isAncestorOf(contextValue: string): boolean {
+    public isAncestorOfImpl(contextValue: string): boolean {
         switch (contextValue) {
             case MongoDatabaseTreeItem.contextValue:
             case MongoCollectionTreeItem.contextValue:
@@ -116,8 +116,8 @@ export class MongoAccountTreeItem implements IAzureParentTreeItem {
         }
     }
 
-    public async deleteTreeItem(node: IAzureNode): Promise<void> {
-        await deleteCosmosDBAccount(node);
+    public async deleteTreeItemImpl(): Promise<void> {
+        await deleteCosmosDBAccount(this);
     }
 }
 

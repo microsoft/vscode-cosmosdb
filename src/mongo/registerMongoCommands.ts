@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { AzureTreeDataProvider, callWithTelemetryAndErrorHandling, IActionContext, IAzureNode, IAzureParentNode, registerCommand, registerEvent } from "vscode-azureextensionui";
+import { AzureTreeItem, callWithTelemetryAndErrorHandling, IActionContext, registerCommand, registerEvent } from "vscode-azureextensionui";
 import { CosmosEditorManager } from "../CosmosEditorManager";
 import { ext } from "../extensionVariables";
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -20,7 +20,7 @@ import { MongoDocumentTreeItem } from "./tree/MongoDocumentTreeItem";
 const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 let diagnosticsCollection: vscode.DiagnosticCollection;
 
-export function registerMongoCommands(context: vscode.ExtensionContext, tree: AzureTreeDataProvider, editorManager: CosmosEditorManager): void {
+export function registerMongoCommands(context: vscode.ExtensionContext, editorManager: CosmosEditorManager): void {
     let languageClient: MongoDBLanguageClient = new MongoDBLanguageClient(context);
 
     const codeLensProvider = new MongoCodeLensProvider();
@@ -31,74 +31,74 @@ export function registerMongoCommands(context: vscode.ExtensionContext, tree: Az
 
     setUpErrorReporting();
 
-    const loadPersistedMongoDBTask: Promise<void> = loadPersistedMongoDB(context, tree, languageClient, codeLensProvider);
+    const loadPersistedMongoDBTask: Promise<void> = loadPersistedMongoDB(context, languageClient, codeLensProvider);
 
-    registerCommand('cosmosDB.createMongoDatabase', async (node?: IAzureParentNode) => {
+    registerCommand('cosmosDB.createMongoDatabase', async (node?: MongoAccountTreeItem) => {
         if (!node) {
-            node = <IAzureParentNode>await tree.showNodePicker(MongoAccountTreeItem.contextValue);
+            node = <MongoAccountTreeItem>await ext.tree.showTreeItemPicker(MongoAccountTreeItem.contextValue);
         }
         const childNode = await node.createChild();
         await vscode.commands.executeCommand('cosmosDB.connectMongoDB', childNode);
     });
-    registerCommand('cosmosDB.createMongoCollection', async (node?: IAzureParentNode) => {
+    registerCommand('cosmosDB.createMongoCollection', async (node?: MongoDatabaseTreeItem) => {
         if (!node) {
-            node = <IAzureParentNode>await tree.showNodePicker(MongoDatabaseTreeItem.contextValue);
+            node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue);
         }
         const childNode = await node.createChild();
         await vscode.commands.executeCommand('cosmosDB.connectMongoDB', childNode.parent);
     });
-    registerCommand('cosmosDB.createMongoDocument', async (node?: IAzureParentNode) => {
+    registerCommand('cosmosDB.createMongoDocument', async (node?: MongoCollectionTreeItem) => {
         if (!node) {
-            node = <IAzureParentNode>await tree.showNodePicker(MongoCollectionTreeItem.contextValue);
+            node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue);
         }
         let childNode = await node.createChild();
         await vscode.commands.executeCommand("cosmosDB.openDocument", childNode);
     });
-    registerCommand('cosmosDB.connectMongoDB', async (node?: IAzureParentNode<MongoDatabaseTreeItem>) => {
+    registerCommand('cosmosDB.connectMongoDB', async (node?: MongoDatabaseTreeItem) => {
         if (!node) {
-            node = <IAzureParentNode<MongoDatabaseTreeItem>>await tree.showNodePicker(MongoDatabaseTreeItem.contextValue);
+            node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue);
         }
 
-        const oldNodeId: string | undefined = ext.connectedMongoDB && ext.connectedMongoDB.id;
-        await languageClient.connect(node.treeItem.connectionString, node.treeItem.databaseName);
-        context.globalState.update(connectedDBKey, node.id);
+        const oldNodeId: string | undefined = ext.connectedMongoDB && ext.connectedMongoDB.fullId;
+        await languageClient.connect(node.connectionString, node.databaseName);
+        context.globalState.update(connectedDBKey, node.fullId);
         setConnectedNode(node, codeLensProvider);
         await node.refresh();
 
         if (oldNodeId) {
-            // We have to use findNode to get the instance of the old node that's being displayed in the tree. Our specific instance might have been out-of-date
-            const oldNode: IAzureNode | undefined = await tree.findNode(oldNodeId);
+            // We have to use findTreeItem to get the instance of the old node that's being displayed in the ext.tree. Our specific instance might have been out-of-date
+            const oldNode: AzureTreeItem | undefined = await ext.tree.findTreeItem(oldNodeId);
             if (oldNode) {
                 await oldNode.refresh();
             }
         }
     });
-    registerCommand('cosmosDB.deleteMongoDB', async (node?: IAzureNode<MongoDatabaseTreeItem>) => {
+    registerCommand('cosmosDB.deleteMongoDB', async (node?: MongoDatabaseTreeItem) => {
         if (!node) {
-            node = <IAzureNode<MongoDatabaseTreeItem>>await tree.showNodePicker(MongoDatabaseTreeItem.contextValue);
+            node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue);
         }
-        await node.deleteNode();
-        if (ext.connectedMongoDB && ext.connectedMongoDB.id === node.id) {
+        await node.deleteTreeItem();
+        if (ext.connectedMongoDB && ext.connectedMongoDB.fullId === node.fullId) {
             setConnectedNode(undefined, codeLensProvider);
             context.globalState.update(connectedDBKey, undefined);
             languageClient.disconnect();
         }
     });
-    registerCommand('cosmosDB.deleteMongoCollection', async (node?: IAzureNode) => {
+    registerCommand('cosmosDB.deleteMongoCollection', async (node?: MongoCollectionTreeItem) => {
         if (!node) {
-            node = await tree.showNodePicker(MongoCollectionTreeItem.contextValue);
+            node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue);
         }
-        await node.deleteNode();
+        await node.deleteTreeItem();
     });
-    registerCommand('cosmosDB.deleteMongoDocument', async (node?: IAzureNode) => {
+    registerCommand('cosmosDB.deleteMongoDocument', async (node?: MongoDocumentTreeItem) => {
         if (!node) {
-            node = await tree.showNodePicker(MongoDocumentTreeItem.contextValue);
+            node = <MongoDocumentTreeItem>await ext.tree.showTreeItemPicker(MongoDocumentTreeItem.contextValue);
         }
-        await node.deleteNode();
+        await node.deleteTreeItem();
     });
-    registerCommand('cosmosDB.openCollection', async (node?: IAzureParentNode<MongoCollectionTreeItem>) => {
+    registerCommand('cosmosDB.openCollection', async (node?: MongoCollectionTreeItem) => {
         if (!node) {
-            node = <IAzureParentNode<MongoCollectionTreeItem>>await tree.showNodePicker(MongoCollectionTreeItem.contextValue);
+            node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue);
         }
         await editorManager.showDocument(new MongoCollectionNodeEditor(node), 'cosmos-collection.json');
     });
@@ -107,18 +107,18 @@ export function registerMongoCommands(context: vscode.ExtensionContext, tree: Az
     registerCommand('cosmosDB.executeMongoCommand', async function (this: IActionContext, commandText: object) {
         await loadPersistedMongoDBTask;
         if (typeof commandText === "string") {
-            await executeCommandFromText(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this, <string>commandText);
+            await executeCommandFromText(ext.connectedMongoDB, context.extensionPath, editorManager, this, <string>commandText);
         } else {
-            await executeCommandFromActiveEditor(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this);
+            await executeCommandFromActiveEditor(ext.connectedMongoDB, context.extensionPath, editorManager, this);
         }
     });
     registerCommand('cosmosDB.executeAllMongoCommands', async function (this: IActionContext) {
         await loadPersistedMongoDBTask;
-        await executeAllCommandsFromActiveEditor(<IAzureParentNode<MongoDatabaseTreeItem>>ext.connectedMongoDB, context.extensionPath, editorManager, tree, this);
+        await executeAllCommandsFromActiveEditor(ext.connectedMongoDB, context.extensionPath, editorManager, this);
     });
 }
 
-async function loadPersistedMongoDB(context: vscode.ExtensionContext, tree: AzureTreeDataProvider, languageClient: MongoDBLanguageClient, codeLensProvider: MongoCodeLensProvider): Promise<void> {
+async function loadPersistedMongoDB(context: vscode.ExtensionContext, languageClient: MongoDBLanguageClient, codeLensProvider: MongoCodeLensProvider): Promise<void> {
     // NOTE: We want to make sure this function never throws or returns a rejected promise because it gets awaited multiple times
     await callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', async function (this: IActionContext): Promise<void> {
         this.suppressErrorDisplay = true;
@@ -127,7 +127,7 @@ async function loadPersistedMongoDB(context: vscode.ExtensionContext, tree: Azur
         try {
             const persistedNodeId: string | undefined = context.globalState.get(connectedDBKey);
             if (persistedNodeId) {
-                const persistedNode = await tree.findNode(persistedNodeId);
+                const persistedNode = await ext.tree.findTreeItem(persistedNodeId);
                 if (persistedNode) {
                     await languageClient.client.onReady();
                     await vscode.commands.executeCommand('cosmosDB.connectMongoDB', persistedNode);
@@ -148,9 +148,9 @@ function launchMongoShell() {
     terminal.show();
 }
 
-function setConnectedNode(node: IAzureNode | undefined, codeLensProvider: MongoCodeLensProvider) {
+function setConnectedNode(node: MongoDatabaseTreeItem | undefined, codeLensProvider: MongoCodeLensProvider) {
     ext.connectedMongoDB = node;
-    let dbName = node && node.treeItem.label;
+    let dbName = node && node.label;
     codeLensProvider.setConnectedDatabase(dbName);
 }
 

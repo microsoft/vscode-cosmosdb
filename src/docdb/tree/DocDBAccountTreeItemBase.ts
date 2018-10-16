@@ -6,9 +6,11 @@
 import { DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureParentTreeItem, AzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
+import { getDocumentClient } from '../getDocumentClient';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
+import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
  * This class provides common logic for DocumentDB, Graph, and Table accounts
@@ -19,14 +21,27 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     public readonly label: string;
     public readonly childTypeLabel: string = "Database";
 
-    constructor(id: string, label: string, documentEndpoint: string, masterKey: string, isEmulator: boolean) {
-        super(documentEndpoint, masterKey, isEmulator);
+    private _root: IDocDBTreeRoot;
+
+    constructor(parent: AzureParentTreeItem, id: string, label: string, documentEndpoint: string, masterKey: string, isEmulator: boolean) {
+        super(parent);
         this.id = id;
         this.label = label;
+        this._root = Object.assign({}, parent.root, {
+            documentEndpoint,
+            masterKey,
+            isEmulator,
+            getDocumentClient: () => getDocumentClient(documentEndpoint, masterKey, isEmulator)
+        });
+    }
+
+    // overrides ISubscriptionRoot with an object that also has DocDB info
+    public get root(): IDocDBTreeRoot {
+        return this._root;
     }
 
     public get connectionString(): string {
-        return `AccountEndpoint=${this.documentEndpoint};AccountKey=${this.masterKey}`;
+        return `AccountEndpoint=${this.root.documentEndpoint};AccountKey=${this.root.masterKey}`;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -40,7 +55,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         return await client.readDatabases(feedOptions);
     }
 
-    public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
+    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<AzureTreeItem<IDocDBTreeRoot>> {
         const databaseName = await vscode.window.showInputBox({
             placeHolder: 'Database Name',
             validateInput: DocDBAccountTreeItemBase.validateDatabaseName,
@@ -48,8 +63,8 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         });
 
         if (databaseName) {
-            showCreatingNode(databaseName);
-            const client = this.getDocumentClient();
+            showCreatingTreeItem(databaseName);
+            const client = this.root.getDocumentClient();
             const database: DatabaseMeta = await new Promise<DatabaseMeta>((resolve, reject) => {
                 client.createDatabase({ id: databaseName }, (err, db: DatabaseMeta) => {
                     if (err) {
@@ -79,8 +94,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         return undefined;
     }
 
-    public async deleteTreeItem(node: IAzureNode): Promise<void> {
-        await deleteCosmosDBAccount(node);
+    public async deleteTreeItemImpl(): Promise<void> {
+        await deleteCosmosDBAccount(this);
     }
-
 }

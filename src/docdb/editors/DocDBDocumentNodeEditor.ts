@@ -4,14 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { RetrievedDocument } from "documentdb";
-import { IAzureNode } from "vscode-azureextensionui";
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
 import { DocDBDocumentTreeItem } from "../tree/DocDBDocumentTreeItem";
 
 export class DocDBDocumentNodeEditor implements ICosmosEditor<RetrievedDocument> {
-    private _documentNode: IAzureNode<DocDBDocumentTreeItem>;
-    constructor(documentNode: IAzureNode<DocDBDocumentTreeItem>) {
+    private _documentNode: DocDBDocumentTreeItem;
+    constructor(documentNode: DocDBDocumentTreeItem) {
         this._documentNode = documentNode;
     }
 
@@ -20,17 +19,17 @@ export class DocDBDocumentNodeEditor implements ICosmosEditor<RetrievedDocument>
     }
 
     public async getData(): Promise<RetrievedDocument> {
-        return this._documentNode.treeItem.document;
+        return this._documentNode.document;
     }
 
     public async update(document: RetrievedDocument): Promise<RetrievedDocument> {
-        const updatedDoc = await this._documentNode.treeItem.update(document);
+        const updatedDoc = await this._documentNode.update(document);
         await this._documentNode.refresh();
         return updatedDoc;
     }
 
     public get id(): string {
-        return this._documentNode.id;
+        return this._documentNode.fullId;
     }
 
     public convertFromString(data: string): RetrievedDocument {

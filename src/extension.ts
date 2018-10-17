@@ -8,6 +8,7 @@
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, createTelemetryReporter, IActionContext, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
+import { revealTreeItem } from '../src/commands/revealTreeItem';
 import { importDocuments } from './commands/importDocuments';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
@@ -44,7 +45,9 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(tree);
 	ext.tree = tree;
 	context.subscriptions.push(vscode.window.registerTreeDataProvider('cosmosDBExplorer', tree));
-	const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
+
+	const cosmosView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
+	ext.cosmosView = cosmosView;
 
 	const editorManager: CosmosEditorManager = new CosmosEditorManager(context.globalState);
 
@@ -142,13 +145,7 @@ export function activate(context: vscode.ExtensionContext) {
 				await vscode.commands.executeCommand("cosmosDB.refresh");
 			}
 		});
-	registerCommand('cosmosDB.api.revealTreeItem', async (treeItemId: string) => {
-		const node = await tree.findTreeItem(treeItemId);
-		if (!node) {
-			throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
-		}
-		customView.reveal(node);
-	});
+	registerCommand('cosmosDB.api.revealTreeItem', revealTreeItem);
 	registerCommand('cosmosDB.api.getDatabase', async () => {
 		return (await tree.showTreeItemPicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue])).fullId;
 	});

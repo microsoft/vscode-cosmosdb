@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ExtensionContext, OutputChannel } from "vscode";
-import { AzureTreeDataProvider, IAzureUserInput } from "vscode-azureextensionui";
-import TelemetryReporter from "vscode-extension-telemetry";
+import { AzureTreeDataProvider, IAzureUserInput, ITelemetryReporter } from "vscode-azureextensionui";
 import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 
 /**
@@ -16,7 +15,7 @@ export namespace ext {
     export let ui: IAzureUserInput;
     export let context: ExtensionContext;
     export let outputChannel: OutputChannel;
-    export let reporter: TelemetryReporter | undefined;
+    export let reporter: ITelemetryReporter;
     export let tree: AzureTreeDataProvider;
 
     export namespace settingsKeys {

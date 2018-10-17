@@ -16,6 +16,12 @@ import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 // tslint:disable:no-var-requires
 const EJSON = require("mongodb-extended-json");
 
+type MongoFunction = (...args: Object[]) => Thenable<string>;
+class FunctionDescriptor {
+	public constructor(public mongoFunction: MongoFunction, public text: string, public minShellArgs: number, public maxShellArgs: number, public maxHandledArgs: number) {
+	}
+}
+
 export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 	public static contextValue: string = "MongoCollection";
 	public readonly contextValue: string = MongoCollectionTreeItem.contextValue;
@@ -110,11 +116,6 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 		const deferToShell = null; //The value executeCommand returns to instruct the caller function to run the same command in the Mongo shell.
 
 		try {
-			type MongoFunction = (...args: Object[]) => Thenable<string>;
-			class FunctionDescriptor {
-				public constructor(public mongoFunction: MongoFunction, public text: string, public minShellArgs: number, public maxShellArgs: number, public maxHandledArgs: number) {
-				}
-			}
 			const functions = {
 				drop: new FunctionDescriptor(this.drop, 'Dropping collection', 0, 0, 0),
 				count: new FunctionDescriptor(this.count, 'Counting documents', 0, 2, 2),

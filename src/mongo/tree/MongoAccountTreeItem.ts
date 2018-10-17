@@ -76,7 +76,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         } catch (error) {
             let message = parseError(error).message;
             if (this._root.isEmulator && message.includes("ECONNREFUSED")) {
-                error.message = "Unable to reach emulator. Please ensure it is started and writing to the appropriate port. Then try again.";
+                error.message = "Unable to reach emulator. Please ensure it is started and writing to the appropriate port. Then try again.\n" + message;
             }
             throw error;
         }

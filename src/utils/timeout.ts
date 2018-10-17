@@ -24,12 +24,12 @@ export async function valueOnTimeout<T>(timeoutMs: number, timeoutValue: T, acti
 /**
  * Returns the result of awaiting a specified action. Rejects if the action throws or if the time-out occurs.
  */
-export async function rejectOnTimeout<T>(timeoutMs: number, action: () => Promise<T> | T, callerTimeOutError?: string) {
+export async function rejectOnTimeout<T>(timeoutMs: number, action: () => Promise<T> | T, callerTimeOutMessage?: string) {
     return await new Promise<T>(async (resolve, reject) => {
         let timer: NodeJS.Timer | undefined = setTimeout(
             () => {
                 timer = undefined;
-                reject(new Error(callerTimeOutError || timedOutMessage));
+                reject(new Error(callerTimeOutMessage || timedOutMessage));
             },
             timeoutMs);
 

@@ -79,7 +79,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         };
 
         let partitionKey: string | undefined = await ext.ui.showInputBox({
-            prompt: 'Enter the partition key for the collection, or leave blank to create a fixed size collection.',
+            prompt: 'Enter the partition key for the collection, or leave blank for fixed size.',
             ignoreFocusOut: true,
             validateInput: DocDBDatabaseTreeItemBase.validatePartitionKey
         });

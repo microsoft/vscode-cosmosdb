@@ -8,9 +8,9 @@
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, createTelemetryReporter, IActionContext, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
-import { revealTreeItem } from '../src/commands/api/revealTreeItem';
 import { getConnectionString } from './commands/api/getConnectionString';
 import { getDatabase } from './commands/api/getDatabase';
+import { revealTreeItem } from './commands/api/revealTreeItem';
 import { importDocuments } from './commands/importDocuments';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';

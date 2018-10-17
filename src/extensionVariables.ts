@@ -18,7 +18,7 @@ export namespace ext {
     export let outputChannel: OutputChannel;
     export let reporter: TelemetryReporter | undefined;
     export let tree: AzureTreeDataProvider;
-    export let cosmosView: TreeView<AzureTreeItem<ISubscriptionRoot>>;
+    export let treeView: TreeView<AzureTreeItem<ISubscriptionRoot>>;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

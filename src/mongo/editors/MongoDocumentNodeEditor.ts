@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IAzureNode } from "vscode-azureextensionui";
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
@@ -11,9 +10,9 @@ import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTree
 const EJSON = require("mongodb-extended-json");
 
 export class MongoDocumentNodeEditor implements ICosmosEditor<IMongoDocument> {
-    private _documentNode: IAzureNode<MongoDocumentTreeItem>;
-    constructor(collectionNode: IAzureNode<MongoDocumentTreeItem>) {
-        this._documentNode = collectionNode;
+    private _documentNode: MongoDocumentTreeItem;
+    constructor(documentNode: MongoDocumentTreeItem) {
+        this._documentNode = documentNode;
     }
 
     public get label(): string {
@@ -21,17 +20,17 @@ export class MongoDocumentNodeEditor implements ICosmosEditor<IMongoDocument> {
     }
 
     public async getData(): Promise<IMongoDocument> {
-        return this._documentNode.treeItem.document;
+        return this._documentNode.document;
     }
 
     public async update(document: IMongoDocument): Promise<IMongoDocument> {
-        const updatedDoc = await this._documentNode.treeItem.update(document);
+        const updatedDoc = await this._documentNode.update(document);
         await this._documentNode.refresh();
         return updatedDoc;
     }
 
     public get id(): string {
-        return this._documentNode.id;
+        return this._documentNode.fullId;
     }
 
     public convertFromString(data: string): IMongoDocument {

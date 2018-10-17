@@ -37,8 +37,9 @@
 	"activationEvents": [
 		"onLanguage:mongo",
 		"onView:cosmosDBExplorer",
-		"onCommand:cosmosDB.executeMongoCommand",
-		"onCommand:cosmosDB.executeAllMongoCommands",
+		"onCommand:cosmosDB.api.getConnectionString",
+		"onCommand:cosmosDB.api.getDatabase",
+		"onCommand:cosmosDB.api.revealTreeItem",
 		"onCommand:cosmosDB.attachDatabaseAccount",
 		"onCommand:cosmosDB.attachEmulator",
 		"onCommand:cosmosDB.createAccount",
@@ -62,6 +63,9 @@
 		"onCommand:cosmosDB.deleteDocDBDocument",
 		"onCommand:cosmosDB.deleteGraphDatabase",
 		"onCommand:cosmosDB.deleteGraph",
+		"onCommand:cosmosDB.executeAllMongoCommands",
+		"onCommand:cosmosDB.executeMongoCommand",
+		"onCommand:cosmosDB.importDocument",
 		"onCommand:cosmosDB.newMongoScrapbook",
 		"onCommand:cosmosDB.update",
 		"onCommand:cosmosDB.openDocument",
@@ -325,13 +329,28 @@
 			},
 			{
 				"category": "Cosmos DB",
+				"command": "cosmosDB.importDocument",
+				"title": "Import Document into a Collection"
+			},
+			{
+				"category": "Cosmos DB",
 				"command": "cosmosDB.openStoredProcedure",
 				"title": "Open Stored Procedure"
 			},
 			{
 				"category": "Cosmos DB",
+				"command": "cosmosDB.api.getConnectionString",
+				"title": "Get Connection String"
+			},
+			{
+				"category": "Cosmos DB",
 				"command": "cosmosDB.api.getDatabase",
 				"title": "Get Database Id"
+			},
+			{
+				"category": "Cosmos DB",
+				"command": "cosmosDB.api.revealTreeItem",
+				"title": "Reveal Database in Explorer"
 			}
 		],
 		"menus": {
@@ -359,6 +378,10 @@
 				{
 					"command": "cosmosDB.update",
 					"when": "resourceFilename==cosmos-stored-procedure.js"
+				},
+				{
+					"command": "cosmosDB.importDocument",
+					"when": "resourceLangId==json"
 				}
 			],
 			"editor/title": [
@@ -591,6 +614,22 @@
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
 				},
 				{
+					"command": "cosmosDB.copyConnectionString",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
+				},
+				{
+					"command": "cosmosDB.copyConnectionString",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
+				},
+				{
+					"command": "cosmosDB.copyConnectionString",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
+				},
+				{
+					"command": "cosmosDB.copyConnectionString",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccountAttached"
+				},
+				{
 					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
 				},
@@ -645,6 +684,20 @@
 				{
 					"command": "cosmosDB.refresh",
 					"when": "view == cosmosDBExplorer && viewItem =~ /^cosmosDBAttachedAccounts/"
+				},
+				{
+					"command": "cosmosDB.importDocument",
+					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+				},
+				{
+					"command": "cosmosDB.importDocument",
+					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
+				}
+			],
+			"explorer/context": [
+				{
+					"command": "cosmosDB.importDocument",
+					"when": "resourceLangId == json"
 				}
 			],
 			"commandPalette": [
@@ -661,7 +714,15 @@
 					"when": "never"
 				},
 				{
+					"command": "cosmosDB.api.getConnectionString",
+					"when": "never"
+				},
+				{
 					"command": "cosmosDB.api.getDatabase",
+					"when": "never"
+				},
+				{
+					"command": "cosmosDB.api.revealTreeItem",
 					"when": "never"
 				},
 				{
@@ -869,8 +930,7 @@
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "^0.17.0",
-		"vscode-extension-telemetry": "^0.0.18",
+		"vscode-azureextensionui": "^0.18.2",
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.4.0",
 		"vscode-languageserver": "^4.4.0",

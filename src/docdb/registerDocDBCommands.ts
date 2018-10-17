@@ -4,8 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { commands } from "vscode";
-import { AzureTreeDataProvider, IAzureNode, IAzureParentNode, registerCommand } from "vscode-azureextensionui";
+import { registerCommand } from "vscode-azureextensionui";
 import { CosmosEditorManager } from "../CosmosEditorManager";
+import { ext } from "../extensionVariables";
 import { DocDBStoredProcedureNodeEditor } from "./editors/DocDBStoredProcedureNodeEditor";
 import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
 import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
@@ -15,64 +16,64 @@ import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
 import { DocDBStoredProceduresTreeItem } from "./tree/DocDBStoredProceduresTreeItem";
 import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
 
-export function registerDocDBCommands(tree: AzureTreeDataProvider, editorManager: CosmosEditorManager): void {
-    registerCommand('cosmosDB.createDocDBDatabase', async (node?: IAzureParentNode) => {
+export function registerDocDBCommands(editorManager: CosmosEditorManager): void {
+    registerCommand('cosmosDB.createDocDBDatabase', async (node?: DocDBAccountTreeItem) => {
         if (!node) {
-            node = <IAzureParentNode>await tree.showNodePicker(DocDBAccountTreeItem.contextValue);
+            node = <DocDBAccountTreeItem>await ext.tree.showTreeItemPicker(DocDBAccountTreeItem.contextValue);
         }
-        const databaseNode: IAzureParentNode = <IAzureParentNode>await node.createChild();
+        const databaseNode: DocDBDatabaseTreeItem = <DocDBDatabaseTreeItem>await node.createChild();
         await databaseNode.createChild();
     });
-    registerCommand('cosmosDB.createDocDBCollection', async (node?: IAzureParentNode) => {
+    registerCommand('cosmosDB.createDocDBCollection', async (node?: DocDBDatabaseTreeItem) => {
         if (!node) {
-            node = <IAzureParentNode>await tree.showNodePicker(DocDBDatabaseTreeItem.contextValue);
+            node = <DocDBDatabaseTreeItem>await ext.tree.showTreeItemPicker(DocDBDatabaseTreeItem.contextValue);
         }
         await node.createChild();
     });
-    registerCommand('cosmosDB.createDocDBDocument', async (node?: IAzureParentNode) => {
+    registerCommand('cosmosDB.createDocDBDocument', async (node?: DocDBDocumentsTreeItem) => {
         if (!node) {
-            node = <IAzureParentNode>await tree.showNodePicker(DocDBDocumentsTreeItem.contextValue);
+            node = <DocDBDocumentsTreeItem>await ext.tree.showTreeItemPicker(DocDBDocumentsTreeItem.contextValue);
         }
         let childNode = await node.createChild();
         await commands.executeCommand("cosmosDB.openDocument", childNode);
 
     });
-    registerCommand('cosmosDB.createDocDBStoredProcedure', async (node?: IAzureParentNode) => {
+    registerCommand('cosmosDB.createDocDBStoredProcedure', async (node?: DocDBStoredProceduresTreeItem) => {
         if (!node) {
-            node = <IAzureParentNode>await tree.showNodePicker(DocDBStoredProceduresTreeItem.contextValue);
+            node = <DocDBStoredProceduresTreeItem>await ext.tree.showTreeItemPicker(DocDBStoredProceduresTreeItem.contextValue);
         }
         let childNode = await node.createChild();
         await commands.executeCommand("cosmosDB.openStoredProcedure", childNode);
 
     });
-    registerCommand('cosmosDB.deleteDocDBDatabase', async (node?: IAzureNode) => {
+    registerCommand('cosmosDB.deleteDocDBDatabase', async (node?: DocDBDatabaseTreeItem) => {
         if (!node) {
-            node = await tree.showNodePicker(DocDBDatabaseTreeItem.contextValue);
+            node = <DocDBDatabaseTreeItem>await ext.tree.showTreeItemPicker(DocDBDatabaseTreeItem.contextValue);
         }
-        await node.deleteNode();
+        await node.deleteTreeItem();
     });
-    registerCommand('cosmosDB.deleteDocDBCollection', async (node?: IAzureNode) => {
+    registerCommand('cosmosDB.deleteDocDBCollection', async (node?: DocDBCollectionTreeItem) => {
         if (!node) {
-            node = await tree.showNodePicker(DocDBCollectionTreeItem.contextValue);
+            node = <DocDBCollectionTreeItem>await ext.tree.showTreeItemPicker(DocDBCollectionTreeItem.contextValue);
         }
-        await node.deleteNode();
+        await node.deleteTreeItem();
     });
-    registerCommand('cosmosDB.openStoredProcedure', async (node?: IAzureNode) => {
+    registerCommand('cosmosDB.openStoredProcedure', async (node?: DocDBStoredProcedureTreeItem) => {
         if (!node) {
-            node = await tree.showNodePicker([DocDBStoredProcedureTreeItem.contextValue]);
+            node = <DocDBStoredProcedureTreeItem>await ext.tree.showTreeItemPicker([DocDBStoredProcedureTreeItem.contextValue]);
         }
-        await editorManager.showDocument(new DocDBStoredProcedureNodeEditor(<IAzureNode<DocDBStoredProcedureTreeItem>>node), 'cosmos-stored-procedure.js');
+        await editorManager.showDocument(new DocDBStoredProcedureNodeEditor(node), 'cosmos-stored-procedure.js');
     });
-    registerCommand('cosmosDB.deleteDocDBDocument', async (node?: IAzureNode) => {
+    registerCommand('cosmosDB.deleteDocDBDocument', async (node?: DocDBDocumentTreeItem) => {
         if (!node) {
-            node = await tree.showNodePicker(DocDBDocumentTreeItem.contextValue);
+            node = <DocDBDocumentTreeItem>await ext.tree.showTreeItemPicker(DocDBDocumentTreeItem.contextValue);
         }
-        await node.deleteNode();
+        await node.deleteTreeItem();
     });
-    registerCommand('cosmosDB.deleteDocDBStoredProcedure', async (node?: IAzureNode) => {
+    registerCommand('cosmosDB.deleteDocDBStoredProcedure', async (node?: DocDBStoredProcedureTreeItem) => {
         if (!node) {
-            node = await tree.showNodePicker(DocDBStoredProcedureTreeItem.contextValue);
+            node = <DocDBStoredProcedureTreeItem>await ext.tree.showTreeItemPicker(DocDBStoredProcedureTreeItem.contextValue);
         }
-        await node.deleteNode();
+        await node.deleteTreeItem();
     });
 }

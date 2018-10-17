@@ -5,37 +5,37 @@
 
 import * as fse from 'fs-extra';
 import { Collection, Db } from 'mongodb';
-import opn = require('opn');
 import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, DialogResponses, IActionContext, IAzureNode, IAzureParentTreeItem, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzureParentTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoCommand } from '../MongoCommand';
+import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings';
 import { Shell } from '../shell';
+import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
+
+import opn = require('opn');
 
 const mongoExecutableFileName = process.platform === 'win32' ? 'mongo.exe' : 'mongo';
 
-export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
+export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 	public static contextValue: string = "mongoDb";
 	public readonly contextValue: string = MongoDatabaseTreeItem.contextValue;
 	public readonly childTypeLabel: string = "Collection";
 	public readonly connectionString: string;
-	public readonly isEmulator: boolean;
 	public readonly databaseName: string;
 
-	private _parentId: string;
 	private _previousShellPathSetting: string | undefined;
 	private _cachedShellPathOrCmd: string | undefined;
 
-	constructor(databaseName: string, connectionString: string, isEmulator: boolean, parentId: string) {
+	constructor(parent: AzureParentTreeItem, databaseName: string, connectionString: string) {
+		super(parent);
 		this.databaseName = databaseName;
-		this.connectionString = connectionString;
-		this.isEmulator = isEmulator;
-		this._parentId = parentId;
+		this.connectionString = addDatabaseToAccountConnectionString(connectionString, this.databaseName);
 	}
 
 	public get label(): string {
@@ -43,7 +43,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	}
 
 	public get description(): string {
-		return ext.connectedMongoDB && ext.connectedMongoDB.id === `${this._parentId}/${this.id}` ? 'Connected' : '';
+		return ext.connectedMongoDB && ext.connectedMongoDB.fullId === this.fullId ? 'Connected' : '';
 	}
 
 	public get id(): string {
@@ -57,17 +57,17 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		};
 	}
 
-	public hasMoreChildren(): boolean {
+	public hasMoreChildrenImpl(): boolean {
 		return false;
 	}
 
-	public async loadMoreChildren(_node: IAzureNode, _clearCache: boolean): Promise<IAzureTreeItem[]> {
+	public async loadMoreChildrenImpl(_clearCache: boolean): Promise<MongoCollectionTreeItem[]> {
 		const db: Db = await this.getDb();
 		const collections: Collection[] = await db.collections();
-		return collections.map(collection => new MongoCollectionTreeItem(collection));
+		return collections.map(collection => new MongoCollectionTreeItem(this, collection));
 	}
 
-	public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
+	public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<MongoCollectionTreeItem> {
 		const collectionName = await vscode.window.showInputBox({
 			placeHolder: "Collection Name",
 			prompt: "Enter the name of the collection",
@@ -76,14 +76,14 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		});
 
 		if (collectionName) {
-			showCreatingNode(collectionName);
+			showCreatingTreeItem(collectionName);
 			return await this.createCollection(collectionName);
 		}
 
 		throw new UserCancelledError();
 	}
 
-	public async deleteTreeItem(_node: IAzureNode): Promise<void> {
+	public async deleteTreeItemImpl(): Promise<void> {
 		const message: string = `Are you sure you want to delete database '${this.label}'?`;
 		const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
 		if (result === DialogResponses.deleteResponse) {
@@ -104,7 +104,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 			let db = await this.getDb();
 			const collection = db.collection(command.collection);
 			if (collection) {
-				const collectionTreeItem = new MongoCollectionTreeItem(collection, command.arguments);
+				const collectionTreeItem = new MongoCollectionTreeItem(this, collection, command.arguments);
 				const result = await collectionTreeItem.executeCommand(command.name, command.arguments);
 				if (result) {
 					return result;
@@ -128,7 +128,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 		// However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
 		const result = await newCollection.insertOne({});
 		await newCollection.deleteOne({ _id: result.insertedId });
-		return new MongoCollectionTreeItem(newCollection);
+		return new MongoCollectionTreeItem(this, newCollection);
 	}
 
 	executeCommandInShell(command: MongoCommand, context: IActionContext): Thenable<string> {
@@ -209,7 +209,7 @@ export class MongoDatabaseTreeItem implements IAzureParentTreeItem {
 	}
 
 	private async createShell(shellPath: string): Promise<Shell> {
-		return <Promise<null>>Shell.create(shellPath, this.connectionString, this.isEmulator)
+		return <Promise<null>>Shell.create(shellPath, this.connectionString, this.root.isEmulator)
 			.then(
 				shell => {
 					return shell.useDatabase(this.databaseName).then(() => shell);
@@ -233,11 +233,11 @@ export function validateMongoCollectionName(collectionName: string): string | un
 	return undefined;
 }
 
-function withProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
+function withProgress<T>(promise: Thenable<T>, title: string, location = vscode.ProgressLocation.Window): Thenable<T> {
 	return vscode.window.withProgress<T>(
 		{
-			location: vscode.ProgressLocation.Window,
-			title
+			location: location,
+			title: title
 		},
 		(_progress) => {
 			return promise;

@@ -3,31 +3,31 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CollectionMeta, DocumentClient } from 'documentdb';
+import { CollectionMeta } from 'documentdb';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DialogResponses, IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
-import { getDocumentClient } from '../../docdb/getDocumentClient';
+import { AzureParentTreeItem, AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from '../../docdb/tree/DocDBStoredProcedureTreeItem';
+import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 import { GraphTreeItem } from './GraphTreeItem';
 
-export class GraphCollectionTreeItem implements IAzureTreeItem {
+export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot> {
     public static contextValue: string = "cosmosDBGraph";
     public readonly contextValue: string = GraphCollectionTreeItem.contextValue;
+    public readonly parent: GraphDatabaseTreeItem;
 
     private readonly _graphTreeItem: GraphTreeItem;
     private readonly _storedProceduresTreeItem: DocDBStoredProceduresTreeItem;
 
-    private readonly _database: GraphDatabaseTreeItem;
     private readonly _collection: CollectionMeta;
 
-    constructor(database: GraphDatabaseTreeItem, collection: CollectionMeta, private _documentEndpoint: string, private _masterKey: string, private _isEmulator: boolean) {
-        this._database = database;
+    constructor(parent: GraphDatabaseTreeItem, collection: CollectionMeta) {
+        super(parent);
         this._collection = collection;
-        this._graphTreeItem = new GraphTreeItem(this._database, this._collection);
-        this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this._documentEndpoint, this._masterKey, this, this._isEmulator);
+        this._graphTreeItem = new GraphTreeItem(this, this._collection);
+        this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this);
     }
 
     public get id(): string {
@@ -49,23 +49,19 @@ export class GraphCollectionTreeItem implements IAzureTreeItem {
         };
     }
 
-    public getDocumentClient(): DocumentClient {
-        return getDocumentClient(this._documentEndpoint, this._masterKey, this._isEmulator);
-    }
-
-    public async loadMoreChildren(_node: IAzureNode<IAzureTreeItem>, _clearCache: boolean): Promise<IAzureTreeItem[]> {
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem<IDocDBTreeRoot>[]> {
         return [this._graphTreeItem, this._storedProceduresTreeItem];
     }
 
-    public hasMoreChildren(): boolean {
+    public hasMoreChildrenImpl(): boolean {
         return false;
     }
 
-    public async deleteTreeItem(_node: IAzureNode): Promise<void> {
+    public async deleteTreeItemImpl(): Promise<void> {
         const message: string = `Are you sure you want to delete graph '${this.label}' and its contents?`;
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
-            const client = this._database.getDocumentClient();
+            const client = this.root.getDocumentClient();
             await new Promise((resolve, reject) => {
                 client.deleteCollection(this.link, err => err ? reject(err) : resolve());
             });
@@ -74,7 +70,7 @@ export class GraphCollectionTreeItem implements IAzureTreeItem {
         }
     }
 
-    public pickTreeItem?(expectedContextValue: string): IAzureTreeItem | undefined {
+    public pickTreeItemImpl(expectedContextValue: string): AzureTreeItem<IDocDBTreeRoot> | undefined {
         switch (expectedContextValue) {
             case GraphTreeItem.contextValue:
                 return this._graphTreeItem;
@@ -87,5 +83,4 @@ export class GraphCollectionTreeItem implements IAzureTreeItem {
                 return undefined;
         }
     }
-
 }

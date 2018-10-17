@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ExtensionContext, OutputChannel } from "vscode";
-import { AzureTreeDataProvider, IAzureUserInput } from "vscode-azureextensionui";
+import { ExtensionContext, OutputChannel, TreeView } from "vscode";
+import { AzureTreeDataProvider, AzureTreeItem, IAzureUserInput, ISubscriptionRoot } from "vscode-azureextensionui";
 import TelemetryReporter from "vscode-extension-telemetry";
 import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 
@@ -18,6 +18,7 @@ export namespace ext {
     export let outputChannel: OutputChannel;
     export let reporter: TelemetryReporter | undefined;
     export let tree: AzureTreeDataProvider;
+    export let cosmosView: TreeView<AzureTreeItem<ISubscriptionRoot>>;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

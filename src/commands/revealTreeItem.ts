@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ext } from './extensionVariables';
+import { ext } from '../extensionVariables';
 
 export async function revealTreeItem(treeItemId: string): Promise<void> {
     const node = await ext.tree.findTreeItem(treeItemId);

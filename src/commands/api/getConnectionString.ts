@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { MongoDatabaseTreeItem } from '../../../src/mongo/tree/MongoDatabaseTreeItem';
 import { ext } from '../../extensionVariables';
+import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 
 export async function getConnectionString(treeItemId: string): Promise<string> {
     const node = await ext.tree.findTreeItem(treeItemId);

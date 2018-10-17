@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocDBDatabaseTreeItem } from '../../../src/docdb/tree/DocDBDatabaseTreeItem';
-import { MongoDatabaseTreeItem } from '../../../src/mongo/tree/MongoDatabaseTreeItem';
+import { DocDBDatabaseTreeItem } from '../../docdb/tree/DocDBDatabaseTreeItem';
 import { ext } from '../../extensionVariables';
+import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 
 export async function getDatabase(): Promise<String> {
     return (await ext.tree.showTreeItemPicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue])).fullId;

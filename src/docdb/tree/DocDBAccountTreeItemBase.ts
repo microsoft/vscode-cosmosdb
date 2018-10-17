@@ -8,6 +8,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, AzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
+import { rejectOnTimeout } from '../../utils/timeout';
 import { getDocumentClient } from '../getDocumentClient';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
@@ -79,6 +80,11 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         }
 
         throw new UserCancelledError();
+    }
+
+    public async loadMoreChildrenImpl(clearCache: boolean) {
+        let unableToReachEmulatorMessage: string = "Unable to reach emulator. Please ensure it is started and writing to the appropriate port. Then try again.";
+        return await rejectOnTimeout(2000, () => super.loadMoreChildrenImpl(clearCache), unableToReachEmulatorMessage);
     }
 
     private static validateDatabaseName(name: string): string | undefined | null {

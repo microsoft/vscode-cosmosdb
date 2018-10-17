@@ -113,7 +113,7 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 		if (command.name === 'find') {
 			await editorManager.showDocument(new MongoFindResultEditor(database, command), 'cosmos-result.json', { showInNextColumn: true });
 		} else if (command.name === 'drop') {
-			const collectionNode = await database.treeDataProvider.findTreeItem(database.id + "/" + command.collection);
+			const collectionNode = await database.treeDataProvider.findTreeItem(database.fullId + "/" + command.collection);
 			if (collectionNode) {
 				collectionNode.deleteTreeItem();
 			}
@@ -126,8 +126,8 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 				await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result), 'cosmos-result.json', { showInNextColumn: true });
 			} else {
 				await vscodeUtil.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
-				if (command.collection && command.name !== 'count') {
-					const collectionNode = await treeData.findTreeItem(database.id + "/" + command.collection);
+				if (command.collection && /^(insert|update|delete|replace|remove|write|bulkWrite)/i.test(command.name)) {
+					const collectionNode = await treeData.findTreeItem(database.fullId + "/" + command.collection);
 					if (collectionNode) {
 						treeData.refresh(collectionNode);
 					}

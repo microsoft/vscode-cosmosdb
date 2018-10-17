@@ -8,6 +8,9 @@
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, createTelemetryReporter, IActionContext, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
+import { getConnectionString } from './commands/api/getConnectionString';
+import { getDatabase } from './commands/api/getDatabase';
+import { revealTreeItem } from './commands/api/revealTreeItem';
 import { importDocuments } from './commands/importDocuments';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
@@ -15,7 +18,6 @@ import { registerDocDBCommands } from './docdb/registerDocDBCommands';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBCollectionTreeItem } from './docdb/tree/DocDBCollectionTreeItem';
-import { DocDBDatabaseTreeItem } from './docdb/tree/DocDBDatabaseTreeItem';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { ext } from './extensionVariables';
 import { registerGraphCommands } from './graph/registerGraphCommands';
@@ -24,7 +26,6 @@ import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor
 import { registerMongoCommands } from './mongo/registerMongoCommands';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
-import { MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
@@ -44,7 +45,8 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(tree);
 	ext.tree = tree;
 	context.subscriptions.push(vscode.window.registerTreeDataProvider('cosmosDBExplorer', tree));
-	const customView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
+
+	ext.treeView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: tree });
 
 	const editorManager: CosmosEditorManager = new CosmosEditorManager(context.globalState);
 
@@ -142,28 +144,9 @@ export function activate(context: vscode.ExtensionContext) {
 				await vscode.commands.executeCommand("cosmosDB.refresh");
 			}
 		});
-	registerCommand('cosmosDB.api.revealTreeItem', async (treeItemId: string) => {
-		const node = await tree.findTreeItem(treeItemId);
-		if (!node) {
-			throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
-		}
-		customView.reveal(node);
-	});
-	registerCommand('cosmosDB.api.getDatabase', async () => {
-		return (await tree.showTreeItemPicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue])).fullId;
-	});
-	registerCommand('cosmosDB.api.getConnectionString', async (treeItemId: string) => {
-		const node = await tree.findTreeItem(treeItemId);
-		if (!node) {
-			throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
-		}
-
-		if (node instanceof MongoDatabaseTreeItem) {
-			return node.connectionString;
-		} else {
-			throw new Error('Not implemented yet. For now works only with Mongo.');
-		}
-	});
+	registerCommand('cosmosDB.api.getConnectionString', getConnectionString);
+	registerCommand('cosmosDB.api.getDatabase', getDatabase);
+	registerCommand('cosmosDB.api.revealTreeItem', revealTreeItem);
 }
 
 async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase) {

@@ -7,7 +7,7 @@
 
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
-import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, IActionContext, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
+import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, createTelemetryReporter, IActionContext, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
 import { importDocuments } from './commands/importDocuments';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
@@ -30,12 +30,11 @@ import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
 import * as cpUtil from './utils/cp';
-import { Reporter } from './utils/telemetry';
 
 export function activate(context: vscode.ExtensionContext) {
 	registerUIExtensionVariables(ext);
 	ext.context = context;
-	context.subscriptions.push(new Reporter(context));
+	ext.reporter = createTelemetryReporter(context);
 
 	const ui: IAzureUserInput = new AzureUserInput(context.globalState);
 	ext.ui = ui;

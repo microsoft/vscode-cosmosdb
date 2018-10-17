@@ -83,8 +83,12 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     public async loadMoreChildrenImpl(clearCache: boolean) {
-        let unableToReachEmulatorMessage: string = "Unable to reach emulator. Please ensure it is started and writing to the appropriate port. Then try again.";
-        return await rejectOnTimeout(2000, () => super.loadMoreChildrenImpl(clearCache), unableToReachEmulatorMessage);
+        if (this._root.isEmulator) {
+            let unableToReachEmulatorMessage: string = "Unable to reach emulator. Please ensure it is started and writing to the appropriate port. Then try again.";
+            return await rejectOnTimeout(2000, () => super.loadMoreChildrenImpl(clearCache), unableToReachEmulatorMessage);
+        } else {
+            return await super.loadMoreChildrenImpl(clearCache);
+        }
     }
 
     private static validateDatabaseName(name: string): string | undefined | null {

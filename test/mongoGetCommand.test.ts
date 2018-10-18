@@ -5,7 +5,9 @@
 
 // The module 'assert' provides assertion methods from node
 import * as assert from 'assert';
+import { ObjectID } from 'bson';
 import { Position } from 'vscode';
+import { parseError } from 'vscode-azureextensionui';
 import { MongoCommand } from '../src/mongo/MongoCommand';
 import { getAllCommandsFromText, getCommandFromTextAtLocation } from '../src/mongo/MongoScrapbook';
 
@@ -639,7 +641,68 @@ suite("scrapbook parsing Tests", () => {
             }]);
         }
     });
+    /*
+        //Examples inspired from https://docs.mongodb.com/manual/reference/operator/query/regex/
+        test("test regular expressions - only pattern, no flags", () => {
+            let text = `db.test1.beep.find({ sku: { $regex: /789$/ } })`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+            assert.deepEqual(generatedRegExp.flags, "");
+            assert.deepEqual(generatedRegExp.source, "789$");
+        });
 
+        test("test regular expressions - pattern and flags", () => {
+            let text = `db.test1.beep.find({ sku: { $regex: /789$/i } })`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
+            assert.deepEqual(generatedRegExp.flags, "i");
+            assert.deepEqual(generatedRegExp.source, "789$");
+        });
+
+        test("test regular expressions - Intellisense - flag contains invalid option", () => {
+            let text = `db.test1.beep.find({ sku: { $regex: /789$/q } })`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            assert.deepEqual(command.errors[0].message, "mismatched input '}' expecting '('");
+            assert.deepEqual(command.errors[0].range.start.character, 44);
+        });
+    */
+    test("test ObjectID - no parameter", () => {
+        let text = `db.c1.insert({"name": ObjectId()})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.collection, "c1");
+        assert.ok((<any>command.argumentObjects[0]).name instanceof ObjectID);
+    });
+
+    test("test ObjectID - hex", () => {
+        let idParam = "abcdef123456789012345678";
+        let text = `db.c1.insert({"name": ObjectId("${idParam}")})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.collection, "c1");
+        let id = new ObjectID(idParam);
+        assert.deepEqual(command.argumentObjects, [{ name: id }]);
+    });
+
+    test("test faulty ObjectID - hex - extra characters", () => {
+        let idParam = "abcdef12345678901234567890";
+        let text = `db.c1.insert({"name": ObjectId("${idParam}")})`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
+        assert.deepEqual(command.collection, "c1");
+        assert.deepEqual(command.argumentObjects, [{ name: {} }]);
+        assert.deepEqual(command.errors[0].message, errorMessage);
+    });
+
+    test("test faulty ObjectID - hex - fewer characters", () => {
+        let idParam = "abcdef123456789012345";
+        for (let i = 1; i < 3; i++) {
+            let text = `db.c1.insert({"name": ObjectId(${wrapInQuotes(idParam, i)})})`;
+            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+            let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
+            assert.deepEqual(command.collection, "c1");
+            assert.deepEqual(command.argumentObjects, [{ name: {} }]);
+            assert.deepEqual(command.errors[0].message, errorMessage);
+        }
+    });
     //Examples inspired from https://docs.mongodb.com/manual/reference/operator/query/regex/
     test("test regular expressions - only pattern, no flags", () => {
         let text = `db.test1.beep.find({ sku: { $regex: /789$/ } })`;
@@ -659,9 +722,12 @@ suite("scrapbook parsing Tests", () => {
 
     test("test regular expressions - Intellisense - flag contains invalid option", () => {
         let text = `db.test1.beep.find({ sku: { $regex: /789$/q } })`;
-        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-        assert.deepEqual(command.errors[0].message, "mismatched input '}' expecting '('");
-        assert.deepEqual(command.errors[0].range.start.character, 44);
+        try {
+            getCommandFromTextAtLocation(text, new Position(0, 0));
+        } catch (error) {
+            let err = parseError(error);
+            assert.deepEqual("Unexpected node encountered", err.message);
+        }
     });
 
     test("test regular expressions - wrong escape - throw error", () => {

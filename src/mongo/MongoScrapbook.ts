@@ -109,14 +109,9 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 			const err = command.errors[0];
 			throw new Error(`Error near line ${err.range.start.line}, column ${err.range.start.character}: '${err.message}'. Please check syntax.`);
 		}
-		const treeData = database.treeDataProvider;
+
 		if (command.name === 'find') {
 			await editorManager.showDocument(new MongoFindResultEditor(database, command), 'cosmos-result.json', { showInNextColumn: true });
-		} else if (command.name === 'drop') {
-			const collectionNode = await database.treeDataProvider.findTreeItem(database.fullId + "/" + command.collection);
-			if (collectionNode) {
-				collectionNode.deleteTreeItem();
-			}
 		} else {
 			const result = await database.executeCommand(command, context);
 			if (command.name === 'findOne') {
@@ -126,16 +121,24 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 				await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result), 'cosmos-result.json', { showInNextColumn: true });
 			} else {
 				await vscodeUtil.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
-				if (command.collection && /^(insert|update|delete|replace|remove|write|bulkWrite)/i.test(command.name)) {
-					const collectionNode = await treeData.findTreeItem(database.fullId + "/" + command.collection);
-					if (collectionNode) {
-						treeData.refresh(collectionNode);
-					}
-				}
+				await refreshTree();
 			}
 		}
 	} else {
 		throw new Error('No MongoDB command found at the current cursor location.');
+	}
+
+	async function refreshTree() {
+		if (command.name === 'drop') {
+			database.refresh();
+		}
+		else if (command.collection && /^(insert|update|delete|replace|remove|write|bulkWrite)/i.test(command.name)) {
+			const treeData = database.treeDataProvider;
+			const collectionNode = await treeData.findTreeItem(database.fullId + "/" + command.collection);
+			if (collectionNode) {
+				treeData.refresh(collectionNode);
+			}
+		}
 	}
 }
 

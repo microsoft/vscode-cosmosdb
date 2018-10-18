@@ -6,7 +6,7 @@
 import { Db } from 'mongodb';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, parseError, UserCancelledError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
@@ -73,7 +73,14 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
             return databases
                 .filter((database: IDatabaseInfo) => !(database.name && database.name.toLowerCase() === "admin" && database.empty)) // Filter out the 'admin' database if it's empty
                 .map(database => new MongoDatabaseTreeItem(this, database.name, this.connectionString));
-        } finally {
+        } catch (error) {
+            let message = parseError(error).message;
+            if (this._root.isEmulator && message.includes("ECONNREFUSED")) {
+                error.message = "Unable to reach emulator. Please ensure it is started and writing to the appropriate port. Then try again.\n" + message;
+            }
+            throw error;
+        }
+        finally {
             if (db) {
                 db.close();
             }

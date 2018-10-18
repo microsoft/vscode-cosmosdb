@@ -3,14 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IAzureNode } from "vscode-azureextensionui";
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
 import { DocDBStoredProcedureTreeItem } from "../tree/DocDBStoredProcedureTreeItem";
 
 export class DocDBStoredProcedureNodeEditor implements ICosmosEditor<string> {
-    private _spNode: IAzureNode<DocDBStoredProcedureTreeItem>;
-    constructor(spNode: IAzureNode<DocDBStoredProcedureTreeItem>) {
+    private _spNode: DocDBStoredProcedureTreeItem;
+    constructor(spNode: DocDBStoredProcedureTreeItem) {
         this._spNode = spNode;
     }
 
@@ -19,15 +18,15 @@ export class DocDBStoredProcedureNodeEditor implements ICosmosEditor<string> {
     }
 
     public async getData(): Promise<string> {
-        return this._spNode.treeItem.procedure.body;
+        return this._spNode.procedure.body;
     }
 
     public async update(document: string): Promise<string> {
-        return await this._spNode.treeItem.update(document);
+        return await this._spNode.update(document);
     }
 
     public get id(): string {
-        return this._spNode.id;
+        return this._spNode.fullId;
     }
 
     public convertFromString(data: string): string {

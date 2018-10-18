@@ -3,14 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CollectionMeta, DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
+import { Collection, CollectionMeta, DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DialogResponses, IAzureNode, IAzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
+import { ext } from '../../extensionVariables';
+import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
+import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
-const minThroughput: number = 1000;
+const minThroughputFixed = 400;
+const minThroughputPartitioned = 1000;
 const maxThroughput: number = 100000;
 
 /**
@@ -20,8 +24,8 @@ const maxThroughput: number = 100000;
 export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<CollectionMeta> {
     private readonly _database: DatabaseMeta;
 
-    constructor(documentEndpoint: string, masterKey: string, database: DatabaseMeta, isEmulator: boolean) {
-        super(documentEndpoint, masterKey, isEmulator);
+    constructor(parent: DocDBAccountTreeItemBase, database: DatabaseMeta) {
+        super(parent);
         this._database = database;
     }
 
@@ -49,11 +53,11 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     // Delete the database
-    public async deleteTreeItem(_node: IAzureNode): Promise<void> {
+    public async deleteTreeItemImpl(): Promise<void> {
         const message: string = `Are you sure you want to delete database '${this.label}' and its contents?`;
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
-            const client = this.getDocumentClient();
+            const client = this.root.getDocumentClient();
             await new Promise((resolve, reject) => {
                 client.deleteDatabase(this.link, err => err ? reject(err) : resolve());
             });
@@ -63,66 +67,64 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     // Create a DB collection
-    public async createChild(_node: IAzureNode, showCreatingNode: (label: string) => void): Promise<IAzureTreeItem> {
-        const collectionName = await vscode.window.showInputBox({
+    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<AzureTreeItem<IDocDBTreeRoot>> {
+        const collectionName = await ext.ui.showInputBox({
             placeHolder: `Enter an id for your ${this.childTypeLabel}`,
             ignoreFocusOut: true,
             validateInput: DocDBDatabaseTreeItemBase.validateCollectionName
         });
 
-        if (collectionName) {
-            let partitionKey: string | undefined = await vscode.window.showInputBox({
-                prompt: 'Partition Key',
-                ignoreFocusOut: true,
-                validateInput: DocDBDatabaseTreeItemBase.validatePartitionKey
-            });
+        let collectionDef: Collection = {
+            id: collectionName
+        };
 
-            if (partitionKey) {
-                if (partitionKey[0] !== '/') {
-                    partitionKey = '/' + partitionKey;
-                }
-                const throughput: number = Number(await vscode.window.showInputBox({
-                    value: minThroughput.toString(),
-                    ignoreFocusOut: true,
-                    prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput}`,
-                    validateInput: DocDBDatabaseTreeItemBase.validateThroughput
-                }));
+        let partitionKey: string | undefined = await ext.ui.showInputBox({
+            prompt: 'Enter the partition key for the collection, or leave blank for fixed size.',
+            ignoreFocusOut: true,
+            validateInput: DocDBDatabaseTreeItemBase.validatePartitionKey
+        });
 
-                if (throughput) {
-                    const options = { offerThroughput: throughput };
-                    const collectionDef = {
-                        id: collectionName,
-                        partitionKey: {
-                            paths: [partitionKey],
-                            kind: DocumentBase.PartitionKind.Hash
-                        }
-                    };
-
-                    showCreatingNode(collectionName);
-                    const client = this.getDocumentClient();
-                    const collection: CollectionMeta = await new Promise<CollectionMeta>((resolve, reject) => {
-                        client.createCollection(this.link, collectionDef, options, (err, result) => {
-                            err ? reject(err) : resolve(result);
-                        });
-                    });
-
-                    return this.initChild(collection);
-                }
-            }
+        if (partitionKey && partitionKey.length && partitionKey[0] !== '/') {
+            partitionKey = '/' + partitionKey;
         }
+        if (!!partitionKey) {
+            collectionDef.partitionKey = {
+                paths: [partitionKey],
+                kind: DocumentBase.PartitionKind.Hash
+            };
+        }
+        const isFixed: boolean = !(collectionDef.partitionKey);
+        const minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
+        const throughput: number = Number(await ext.ui.showInputBox({
+            value: minThroughput.toString(),
+            ignoreFocusOut: true,
+            prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput}`,
+            validateInput: (input: string) => DocDBDatabaseTreeItemBase.validateThroughput(isFixed, input)
+        }));
 
-        throw new UserCancelledError();
+        const options = { offerThroughput: throughput };
+
+        showCreatingTreeItem(collectionName);
+        const client = this.root.getDocumentClient();
+        const collection: CollectionMeta = await new Promise<CollectionMeta>((resolve, reject) => {
+            client.createCollection(this.link, collectionDef, options, (err, result) => {
+                err ? reject(err) : resolve(result);
+            });
+        });
+
+        return this.initChild(collection);
     }
 
     private static validatePartitionKey(key: string): string | undefined | null {
-        if (/^[#?\\]*$/.test(key)) {
-            return "Cannot contain these characters - ?,#,\\, etc.";
+        if (/[#?\\]/.test(key)) {
+            return "Cannot contain these characters: ?,#,\\, etc.";
         }
         return undefined;
     }
 
-    private static validateThroughput(input: string): string | undefined | null {
+    private static validateThroughput(isFixed: boolean, input: string): string | undefined | null {
         try {
+            let minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
             const value = Number(input);
             if (value < minThroughput || value > maxThroughput) {
                 return `Value must be between ${minThroughput} and ${maxThroughput}`;

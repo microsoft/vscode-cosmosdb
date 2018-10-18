@@ -6,8 +6,7 @@
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from 'azure-arm-cosmosdb/lib/models';
 import * as vscode from 'vscode';
-import { AzureWizard, IActionContext, IAzureNode, IAzureTreeItem, IChildProvider, LocationListStep, parseError, ResourceGroupListStep } from 'vscode-azureextensionui';
-import { getCosmosDBManagementClient } from '../docdb/getCosmosDBManagementClient';
+import { AzureTreeItem, AzureWizard, createAzureClient, createTreeItemsWithErrorHandling, IActionContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { API, getExperience } from '../experiences';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
@@ -20,41 +19,28 @@ import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccou
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
 
-export class CosmosDBAccountProvider implements IChildProvider {
+export class CosmosDBAccountProvider extends SubscriptionTreeItem {
     public childTypeLabel: string = 'Account';
 
-    public hasMoreChildren(): boolean {
+    public hasMoreChildrenImpl(): boolean {
         return false;
     }
 
-    public async loadMoreChildren(node: IAzureNode): Promise<IAzureTreeItem[]> {
-        const client = getCosmosDBManagementClient(node.credentials, node.subscriptionId, node.environment.resourceManagerEndpointUrl);
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem[]> {
+        const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
         const accounts: DatabaseAccountsListResult = await client.databaseAccounts.list();
-        let accountTreeItems = [];
-        await Promise.all(
-            accounts.map(async (databaseAccount: DatabaseAccount) => {
-                try {
-                    let account = await this.initChild(client, databaseAccount);
-                    accountTreeItems.push(account);
-                } catch (e) {
-                    const err = parseError(e);
-                    //tslint:disable-next-line:no-non-null-assertion
-                    accountTreeItems.push(<IAzureTreeItem>{ label: databaseAccount!.name, description: "Invalid: " + err.message });
-                }
-
-            })
+        return await createTreeItemsWithErrorHandling(
+            this,
+            accounts,
+            'invalidCosmosDBAccount',
+            async (db: DatabaseAccount) => await this.initChild(client, db),
+            (db: DatabaseAccount) => db.name
         );
-        return accountTreeItems;
     }
 
-    public async createChild(node: IAzureNode, showCreatingNode: (label: string) => void, actionContext?: IActionContext): Promise<IAzureTreeItem> {
-        const client = getCosmosDBManagementClient(node.credentials, node.subscriptionId, node.environment.resourceManagerEndpointUrl);
-        const wizardContext: ICosmosDBWizardContext = {
-            credentials: node.credentials,
-            subscriptionId: node.subscriptionId,
-            subscriptionDisplayName: node.subscriptionDisplayName,
-            environment: node.environment
-        };
+    public async createChildImpl(showCreatingTreeItem: (label: string) => void, actionContext?: IActionContext): Promise<AzureTreeItem> {
+        const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
+        const wizardContext: ICosmosDBWizardContext = Object.assign({}, this.root);
 
         const wizard = new AzureWizard(
             [
@@ -76,14 +62,14 @@ export class CosmosDBAccountProvider implements IChildProvider {
         actionContext.properties.defaultExperience = wizardContext.defaultExperience.api;
 
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
-            showCreatingNode(wizardContext.accountName);
+            showCreatingTreeItem(wizardContext.accountName);
             progress.report({ message: `Cosmos DB: Creating account '${wizardContext.accountName}'` });
             await wizard.execute(actionContext);
         });
         return await this.initChild(client, wizardContext.databaseAccount);
     }
 
-    private async initChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<IAzureTreeItem> {
+    private async initChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<AzureTreeItem> {
         const defaultExperience = <API>(databaseAccount && databaseAccount.tags && databaseAccount.tags.defaultExperience);
         const resourceGroup: string = azureUtils.getResourceGroupFromId(databaseAccount.id);
         const accountKind = getExperience(defaultExperience).shortName;
@@ -92,20 +78,20 @@ export class CosmosDBAccountProvider implements IChildProvider {
         if (defaultExperience === "MongoDB") {
             const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, databaseAccount.name);
             // Use the default connection string
-            return new MongoAccountTreeItem(databaseAccount.id, label, result.connectionStrings[0].connectionString, isEmulator);
+            return new MongoAccountTreeItem(this, databaseAccount.id, label, result.connectionStrings[0].connectionString, isEmulator);
         } else {
             const keyResult: DatabaseAccountListKeysResult = await client.databaseAccounts.listKeys(resourceGroup, databaseAccount.name);
             switch (defaultExperience) {
                 case "Table":
-                    return new TableAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator);
+                    return new TableAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator);
                 case "Graph": {
                     const gremlinEndpoint = await TryGetGremlinEndpointFromAzure(client, resourceGroup, databaseAccount.name);
-                    return new GraphAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, gremlinEndpoint, keyResult.primaryMasterKey, isEmulator);
+                    return new GraphAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, gremlinEndpoint, keyResult.primaryMasterKey, isEmulator);
                 }
                 case "DocumentDB":
                 default:
                     // Default to DocumentDB, the base type for all Cosmos DB Accounts
-                    return new DocDBAccountTreeItem(databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator);
+                    return new DocDBAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator);
 
             }
         }

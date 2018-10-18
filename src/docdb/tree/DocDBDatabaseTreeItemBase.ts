@@ -87,7 +87,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         if (partitionKey && partitionKey.length && partitionKey[0] !== '/') {
             partitionKey = '/' + partitionKey;
         }
-        if (!partitionKey) {
+        if (!!partitionKey) {
             collectionDef.partitionKey = {
                 paths: [partitionKey],
                 kind: DocumentBase.PartitionKind.Hash

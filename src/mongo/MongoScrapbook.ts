@@ -309,20 +309,24 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		let functionTokens = child.children;
 		let constructorCall: TerminalNode = findType(functionTokens, TerminalNode);
 		let argumentsToken: mongoParser.ArgumentsContext = findType(functionTokens, mongoParser.ArgumentsContext);
-		if (!argumentsToken.children || argumentsToken.text === "") {
-			throw new Error("Unexpected node encountered");
+		if (!(argumentsToken._CLOSED_PARENTHESIS && argumentsToken._OPEN_PARENTHESIS)) { //argumentsToken does not have '(' or ')'
+			let err: IParsedError = parseError(`Expecting parentheses or quotes at '${constructorCall.text}'`);
+			this.addErrorToCommand(err, ctx);
+			return {};
 		}
 		let argumentContextArray: mongoParser.ArgumentContext[] = filterType(argumentsToken.children, mongoParser.ArgumentContext);
 
 		let functionMap = { "ObjectId": this.objectIdToObject, "ISODate": this.dateToObject, "Date": this.dateToObject };
 		if (argumentContextArray.length > 1) {
-			throw new Error("Too many arguments. You only need to pass in 0 or 1 argument to ObjectId");
+			let err: IParsedError = parseError(`Too many arguments. Expecting 0 or 1 argument(s) to ${constructorCall}`);
+			this.addErrorToCommand(err, ctx);
+			return {};
 		}
 		if (constructorCall.text in functionMap) {
 			let args = [ctx, argumentContextArray.length ? argumentContextArray[0].text : undefined];
 			return functionMap[constructorCall.text].apply(this, args);
 		}
-		throw new Error("Unrecognized node type encountered");
+		throw new Error(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`);
 	}
 
 	private dateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {

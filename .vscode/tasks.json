@@ -11,7 +11,8 @@
 	"tasks": [
 		{
 			"label": "Compile",
-			"type": "npm",
+			"type": "shell",
+			"command": "npm",
 			"presentation": {
 				"reveal": "never"
 			},

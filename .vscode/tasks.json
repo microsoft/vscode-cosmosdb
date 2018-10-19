@@ -8,11 +8,10 @@
 // A task runner that calls a custom npm script that compiles the extension.
 {
 	"version": "2.0.0",
-	"task": [
+	"tasks": [
 		{
-			"label": "build",
-			"command": "npm",
-			"type": "shell",
+			"label": "Compile",
+			"type": "npm",
 			"presentation": {
 				"reveal": "never"
 			},
@@ -22,6 +21,10 @@
 				"--loglevel",
 				"silent"
 			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
 			"isBackground": true,
 			"problemMatcher": "$tsc-watch"
 		}

@@ -31,8 +31,11 @@ import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
 import * as cpUtil from './utils/cp';
+import { CosmosAPI } from './vscode-cosmosdb';
 
 export function activate(context: vscode.ExtensionContext) {
+	const cosmosAPI = new CosmosAPI();
+
 	registerUIExtensionVariables(ext);
 	ext.context = context;
 	ext.reporter = createTelemetryReporter(context);
@@ -147,6 +150,8 @@ export function activate(context: vscode.ExtensionContext) {
 	registerCommand('cosmosDB.api.getConnectionString', getConnectionString);
 	registerCommand('cosmosDB.api.getDatabase', getDatabase);
 	registerCommand('cosmosDB.api.revealTreeItem', revealTreeItem);
+
+	return Promise.resolve(cosmosAPI.api); // Return promise to work around weird error in WinJS.
 }
 
 async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase) {

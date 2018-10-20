@@ -48,6 +48,10 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         return this._database._self;
     }
 
+    public get connectionString(): string {
+        return `AccountEndpoint=${this.root.documentEndpoint};AccountKey=${this.root.masterKey};Database=${this.id}`;
+    }
+
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<CollectionMeta>> {
         return await client.readCollections(this.link, feedOptions);
     }

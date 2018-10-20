@@ -1,3 +1,6 @@
+import { DocDBDatabaseTreeItem } from "./docdb/tree/DocDBDatabaseTreeItem";
+import { ext } from "./extensionVariables";
+import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 import { VscodeCosmos } from "./vscode-cosmosdb.api";
 
 /*---------------------------------------------------------------------------------------------
@@ -6,14 +9,34 @@ import { VscodeCosmos } from "./vscode-cosmosdb.api";
  *--------------------------------------------------------------------------------------------*/
 
 export class CosmosAPI {
-    version = '0.00.00';
+    api: VscodeCosmos = {
+        getConnectionString: (treeItemId: string) => this.getConnectionString(treeItemId),
+        getDatabase: () => this.getDatabase(),
+        revealTreeItem: (treeItemId: string) => this.revealTreeItem(treeItemId)
+    };
 
-    async helloworld(): Promise<string> {
-        return 'Hello World!';
+    async getConnectionString(treeItemId: string): Promise<string> {
+        const node = await ext.tree.findTreeItem(treeItemId);
+        if (!node) {
+            throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
+        }
+
+        if (node instanceof MongoDatabaseTreeItem) {
+            return node.connectionString;
+        } else {
+            throw new Error('Not implemented yet. For now works only with Mongo.');
+        }
     }
 
-    api: VscodeCosmos = {
-        version: this.version,
-        helloworld: () => this.helloworld()
-    };
+    async getDatabase(): Promise<string> {
+        return (await ext.tree.showTreeItemPicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue])).fullId;
+    }
+
+    async revealTreeItem(treeItemId: string): Promise<void> {
+        const node = await ext.tree.findTreeItem(treeItemId);
+        if (!node) {
+            throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
+        }
+        ext.treeView.reveal(node);
+    }
 }

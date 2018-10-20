@@ -5,6 +5,7 @@
 
 
 export interface VscodeCosmos {
-    readonly version: string;
-    readonly helloworld: () => Promise<string>;
+    readonly getConnectionString: (treeItemId: string) => Promise<string>;
+    readonly getDatabase: () => Promise<string>;
+    readonly revealTreeItem: (treeItemId: string) => Promise<void>;
 }

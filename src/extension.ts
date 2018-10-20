@@ -8,9 +8,6 @@
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, createTelemetryReporter, IActionContext, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
-import { getConnectionString } from './commands/api/getConnectionString';
-import { getDatabase } from './commands/api/getDatabase';
-import { revealTreeItem } from './commands/api/revealTreeItem';
 import { importDocuments } from './commands/importDocuments';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
@@ -32,8 +29,9 @@ import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/Attached
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
 import * as cpUtil from './utils/cp';
 import { CosmosAPI } from './vscode-cosmosdb';
+import { VscodeCosmos } from './vscode-cosmosdb.api';
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext): Promise<VscodeCosmos> {
 	const cosmosAPI = new CosmosAPI();
 
 	registerUIExtensionVariables(ext);
@@ -147,11 +145,8 @@ export function activate(context: vscode.ExtensionContext) {
 				await vscode.commands.executeCommand("cosmosDB.refresh");
 			}
 		});
-	registerCommand('cosmosDB.api.getConnectionString', getConnectionString);
-	registerCommand('cosmosDB.api.getDatabase', getDatabase);
-	registerCommand('cosmosDB.api.revealTreeItem', revealTreeItem);
 
-	return Promise.resolve(cosmosAPI.api); // Return promise to work around weird error in WinJS.
+	return cosmosAPI.api;
 }
 
 async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase) {

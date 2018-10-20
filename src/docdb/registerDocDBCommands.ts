@@ -22,20 +22,24 @@ export function registerDocDBCommands(editorManager: CosmosEditorManager): void 
             node = <DocDBAccountTreeItem>await ext.tree.showTreeItemPicker(DocDBAccountTreeItem.contextValue);
         }
         const databaseNode: DocDBDatabaseTreeItem = <DocDBDatabaseTreeItem>await node.createChild();
-        await databaseNode.createChild();
+        await ext.treeView.reveal(databaseNode, { focus: false });
+        const collectionNode: DocDBCollectionTreeItem = <DocDBCollectionTreeItem>await databaseNode.createChild();
+        await ext.treeView.reveal(collectionNode);
     });
     registerCommand('cosmosDB.createDocDBCollection', async (node?: DocDBDatabaseTreeItem) => {
         if (!node) {
             node = <DocDBDatabaseTreeItem>await ext.tree.showTreeItemPicker(DocDBDatabaseTreeItem.contextValue);
         }
-        await node.createChild();
+        const collectionNode: DocDBCollectionTreeItem = <DocDBCollectionTreeItem>await node.createChild();
+        await ext.treeView.reveal(collectionNode);
     });
     registerCommand('cosmosDB.createDocDBDocument', async (node?: DocDBDocumentsTreeItem) => {
         if (!node) {
             node = <DocDBDocumentsTreeItem>await ext.tree.showTreeItemPicker(DocDBDocumentsTreeItem.contextValue);
         }
-        let childNode = await node.createChild();
-        await commands.executeCommand("cosmosDB.openDocument", childNode);
+        let documentNode = <DocDBDocumentTreeItem>await node.createChild();
+        await ext.treeView.reveal(documentNode);
+        await commands.executeCommand("cosmosDB.openDocument", documentNode);
 
     });
     registerCommand('cosmosDB.createDocDBStoredProcedure', async (node?: DocDBStoredProceduresTreeItem) => {

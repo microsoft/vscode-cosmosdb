@@ -121,23 +121,22 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 				await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result), 'cosmos-result.json', { showInNextColumn: true });
 			} else {
 				await vscodeUtil.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
-				await refreshTree();
+				await refreshTreeAfterCommand(database, command);
 			}
 		}
 	} else {
 		throw new Error('No MongoDB command found at the current cursor location.');
 	}
+}
 
-	async function refreshTree() {
-		if (command.name === 'drop') {
-			database.refresh();
-		}
-		else if (command.collection && /^(insert|update|delete|replace|remove|write|bulkWrite)/i.test(command.name)) {
-			const treeData = database.treeDataProvider;
-			const collectionNode = await treeData.findTreeItem(database.fullId + "/" + command.collection);
-			if (collectionNode) {
-				treeData.refresh(collectionNode);
-			}
+async function refreshTreeAfterCommand(database: MongoDatabaseTreeItem, command: MongoCommand) {
+	if (command.name === 'drop') {
+		database.refresh();
+	}
+	else if (command.collection && /^(insert|update|delete|replace|remove|write|bulkWrite)/i.test(command.name)) {
+		const collectionNode = await ext.tree.findTreeItem(database.fullId + "/" + command.collection);
+		if (collectionNode) {
+			collectionNode.refresh();
 		}
 	}
 }

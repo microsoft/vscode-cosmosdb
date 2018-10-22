@@ -16,6 +16,6 @@ export async function getConnectionString(treeItemId: string): Promise<string> {
     if (node instanceof MongoDatabaseTreeItem || node instanceof DocDBDatabaseTreeItem) {
         return node.connectionString;
     } else {
-        throw new Error('Not implemented yet. For now works only with Mongo.');
+        throw new Error('Not implemented yet. For now works only with Mongo and DocDB.');
     }
 }

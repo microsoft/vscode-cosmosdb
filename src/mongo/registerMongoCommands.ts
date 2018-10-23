@@ -38,6 +38,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, editorMa
             node = <MongoAccountTreeItem>await ext.tree.showTreeItemPicker(MongoAccountTreeItem.contextValue);
         }
         const databaseNode = <MongoDatabaseTreeItem>await node.createChild();
+        // reveal the database treeItem in case user cancels collection creation
         await ext.treeView.reveal(databaseNode, { focus: false });
         const collectionNode = <MongoCollectionTreeItem>await databaseNode.createChild();
         await ext.treeView.reveal(collectionNode, { focus: true });
@@ -56,7 +57,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, editorMa
         if (!node) {
             node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue);
         }
-        let documentNode = await node.createChild();
+        const documentNode = await node.createChild();
         await ext.treeView.reveal(documentNode);
         await vscode.commands.executeCommand("cosmosDB.openDocument", documentNode);
     });

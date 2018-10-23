@@ -5,7 +5,8 @@
 
 // The module 'assert' provides assertion methods from node
 import * as assert from 'assert';
-import { getDatabaseNameFromConnectionString, addDatabaseToAccountConnectionString } from '../src/mongo/mongoConnectionStrings';
+import { ext } from '../src/extensionVariables';
+import { addDatabaseToAccountConnectionString, getDatabaseNameFromConnectionString } from '../src/mongo/mongoConnectionStrings';
 
 function testDatabaseToAccountConnectionString(connectionString: string, databaseName: string, expectedConnectionString: string | undefined) {
     let databaseConnectionString = addDatabaseToAccountConnectionString(connectionString, databaseName);
@@ -58,6 +59,7 @@ suite(`mongoCollectionStrings`, () => {
         testDatabaseNameFromConectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/Icantlikespaces`, 'Icantlikespaces');
 
         // emulator: mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@localhost:10255?ssl=true
+        testDatabaseNameFromConectionString(`mongodb://localhost:${ext.emulatorPassword}@localhost:10255/admin?ssl=true`, 'admin');
     });
 
     test('addDatabaseToAccountConnectionString', () => {
@@ -95,6 +97,9 @@ suite(`mongoCollectionStrings`, () => {
         testDatabaseToAccountConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc...`, 'abc.def', 'mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc.def');
         testDatabaseToAccountConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/?`, 'abc.def.-ghi_jkl', 'mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc.def.-ghi_jkl?');
         testDatabaseToAccountConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017`, 'icantlikespaces', 'mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/icantlikespaces');
+
+        // Emulator
+        testDatabaseToAccountConnectionString(`mongodb://localhost:${ext.emulatorPassword}@localhost:10255?ssl=true`, 'admin', `mongodb://localhost:${ext.emulatorPassword}@localhost:10255/admin?ssl=true`);
     });
 });
 

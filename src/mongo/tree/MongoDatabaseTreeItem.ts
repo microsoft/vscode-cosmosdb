@@ -68,19 +68,15 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 	}
 
 	public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<MongoCollectionTreeItem> {
-		const collectionName = await vscode.window.showInputBox({
+		const collectionName = await ext.ui.showInputBox({
 			placeHolder: "Collection Name",
 			prompt: "Enter the name of the collection",
 			validateInput: validateMongoCollectionName,
 			ignoreFocusOut: true
 		});
 
-		if (collectionName) {
-			showCreatingTreeItem(collectionName);
-			return await this.createCollection(collectionName);
-		}
-
-		throw new UserCancelledError();
+		showCreatingTreeItem(collectionName);
+		return await this.createCollection(collectionName);
 	}
 
 	public async deleteTreeItemImpl(): Promise<void> {

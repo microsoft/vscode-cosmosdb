@@ -60,6 +60,12 @@ suite(`mongoCollectionStrings`, () => {
 
         // emulator: mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@localhost:10255?ssl=true
         testDatabaseNameFromConectionString(`mongodb://localhost:${ext.emulatorPassword}@localhost:10255/admin?ssl=true`, 'admin');
+        // Collection within database
+        testDatabaseNameFromConectionString(`mongodb://localhost:${ext.emulatorPassword}@localhost:10255/admin/adminCollection?ssl=true`, 'admin/adminCollection');
+        testDatabaseNameFromConectionString(`mongodb://localhost:${ext.emulatorPassword}@localhost:10255/admin-master?ssl=true`, 'admin-master');
+        // test characters mentioned in : https://docs.mongodb.com/manual/reference/limits/#Restrictions-on-Database-Names-for-Windows
+        testDatabaseNameFromConectionString(`mongodb://localhost:${ext.emulatorPassword}@localhost:10255/admin!@#%^*()-_,[]?ssl=true`, 'admin!@#%^*()-_,[]');
+
     });
 
     test('addDatabaseToAccountConnectionString', () => {
@@ -100,6 +106,10 @@ suite(`mongoCollectionStrings`, () => {
 
         // Emulator
         testDatabaseToAccountConnectionString(`mongodb://localhost:${ext.emulatorPassword}@localhost:10255?ssl=true`, 'admin', `mongodb://localhost:${ext.emulatorPassword}@localhost:10255/admin?ssl=true`);
+        // Collection within emulator
+        testDatabaseToAccountConnectionString(`mongodb://localhost:${ext.emulatorPassword}@localhost:10255?ssl=true`, 'admin/level1/level2', `mongodb://localhost:${ext.emulatorPassword}@localhost:10255/admin/level1/level2?ssl=true`);
+        testDatabaseToAccountConnectionString(`mongodb://localhost:${ext.emulatorPassword}@localhost:10255?ssl=true`, 'admin-master', `mongodb://localhost:${ext.emulatorPassword}@localhost:10255/admin-master?ssl=true`);
+        testDatabaseToAccountConnectionString(`mongodb://localhost:${ext.emulatorPassword}@localhost:10255?ssl=true`, 'admin!@#%^*()-_,[]', `mongodb://localhost:${ext.emulatorPassword}@localhost:10255/admin!@#%^*()-_,[]?ssl=true`);
     });
 });
 

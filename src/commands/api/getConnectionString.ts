@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocDBDatabaseTreeItem } from '../../docdb/tree/DocDBDatabaseTreeItem';
+import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 
@@ -13,7 +13,7 @@ export async function getConnectionString(treeItemId: string): Promise<string> {
         throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
     }
 
-    if (node instanceof MongoDatabaseTreeItem || node instanceof DocDBDatabaseTreeItem) {
+    if (node instanceof MongoDatabaseTreeItem || node instanceof DocDBDatabaseTreeItemBase) {
         return node.connectionString;
     } else {
         throw new Error('Not implemented yet. For now works only with Mongo and DocDB.');

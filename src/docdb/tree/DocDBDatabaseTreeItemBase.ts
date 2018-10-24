@@ -23,6 +23,7 @@ const maxThroughput: number = 100000;
  */
 export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<CollectionMeta> {
     private readonly _database: DatabaseMeta;
+    public readonly parent: DocDBAccountTreeItemBase;
 
     constructor(parent: DocDBAccountTreeItemBase, database: DatabaseMeta) {
         super(parent);
@@ -49,7 +50,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     public get connectionString(): string {
-        return `AccountEndpoint=${this.root.documentEndpoint};AccountKey=${this.root.masterKey};Database=${this.id}`;
+        return this.parent.connectionString.concat(`;Database=${this.id}`);
     }
 
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<CollectionMeta>> {

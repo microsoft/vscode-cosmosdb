@@ -8,6 +8,9 @@
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, createTelemetryReporter, IActionContext, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
+import { getConnectionString } from './commands/api/getConnectionString';
+import { getDatabase } from './commands/api/getDatabase';
+import { revealTreeItem } from './commands/api/revealTreeItem';
 import { importDocuments } from './commands/importDocuments';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
@@ -28,12 +31,9 @@ import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
 import * as cpUtil from './utils/cp';
-import { CosmosAPI } from './vscode-cosmosdb';
-import { VscodeCosmos } from './vscode-cosmosdb.api';
+import { VSCodeCosmosDB } from './vscode-cosmosdb.api';
 
-export async function activate(context: vscode.ExtensionContext): Promise<VscodeCosmos> {
-	const cosmosAPI = new CosmosAPI();
-
+export async function activate(context: vscode.ExtensionContext): Promise<VSCodeCosmosDB> {
 	registerUIExtensionVariables(ext);
 	ext.context = context;
 	ext.reporter = createTelemetryReporter(context);
@@ -146,7 +146,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<Vscode
 			}
 		});
 
-	return cosmosAPI.api;
+	return {
+		getConnectionString,
+		getDatabase,
+		revealTreeItem
+	};
 }
 
 async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase) {

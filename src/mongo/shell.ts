@@ -91,7 +91,8 @@ export class Shell {
 
 		return await new Promise<string>((c, e) => {
 			let executed = false;
-			const timeout: number = vscode.workspace.getConfiguration().get<number>(ext.settingsKeys.mongoShellTimeout);
+			// timeout setting specified in seconds. Convert to ms for setTimeout
+			const timeout: number = 1000 * vscode.workspace.getConfiguration().get<number>(ext.settingsKeys.mongoShellTimeout);
 			const handler = setTimeout(
 				() => {
 					if (!executed) {

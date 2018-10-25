@@ -22,7 +22,7 @@ export namespace ext {
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';
         export const documentLabelFields = 'cosmosDB.documentLabelFields';
-        export const mongoShellTimeout = 'mongo.shell.timeoutInMilliseconds';
+        export const mongoShellTimeout = 'mongo.shell.timeout';
 
         export namespace vsCode {
             export const proxyStrictSSL = "http.proxyStrictSSL";

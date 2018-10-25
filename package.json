@@ -765,9 +765,9 @@
 					"description": "Command to execute or full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. If empty, will search in the system path for 'mongo'.",
 					"default": null
 				},
-				"mongo.shell.timeoutInMilliseconds": {
+				"mongo.shell.timeout": {
 					"type": "number",
-					"description": "The duration allowed (in milliseconds) for the mongo shell to execute a command. Default value is 5 seconds",
+					"description": "The duration allowed (in milliseconds) for the Mongo shell to execute a command. Default value is 5 seconds",
 					"default": 5000
 				},
 				"cosmosDB.showExplorer": {

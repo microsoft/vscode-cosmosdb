@@ -57,7 +57,8 @@ propertyName: StringLiteral | IDENTIFIER;
 
 comment: SingleLineComment | MultiLineComment;
 
-RegexLiteral: '/' (~[/] | '\\/')+ '/' (RegexFlag)*;
+RegexLiteral:
+	'/' (~[/\n*] | '\\/') (~[/\n] | '\\/')* '/' (RegexFlag)*;
 
 fragment RegexFlag: [gimuy];
 

@@ -705,7 +705,7 @@ suite("scrapbook parsing Tests", () => {
     });
     //Examples inspired from https://docs.mongodb.com/manual/reference/operator/query/regex/
     test("test regular expressions - only pattern, no flags", () => {
-        let text = `db.test1.beep.find({ sku: { $regex: /789$/ } })`;
+        let text = `db.test1.beep.find({ sku: { $regex: "789$" } })`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         let generatedRegExp = (<any>command.argumentObjects[0]).sku;
         assert.deepEqual(generatedRegExp.flags, "");
@@ -713,7 +713,7 @@ suite("scrapbook parsing Tests", () => {
     });
 
     test("test regular expressions - pattern and flags", () => {
-        let text = `db.test1.beep.find({ sku: { $regex: /789$/i } })`;
+        let text = `db.test1.beep.find({ sku: { $regex: "789$", $options: "i" } })`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         let generatedRegExp = (<any>command.argumentObjects[0]).sku;
         assert.deepEqual(generatedRegExp.flags, "i");
@@ -721,7 +721,7 @@ suite("scrapbook parsing Tests", () => {
     });
 
     test("test regular expressions - Intellisense - flag contains invalid option", () => {
-        let text = `db.test1.beep.find({ sku: { $regex: /789$/q } })`;
+        let text = `db.test1.beep.find({ sku: { $regex: "789$", $options: "q" } })`;
         try {
             getCommandFromTextAtLocation(text, new Position(0, 0));
         } catch (error) {

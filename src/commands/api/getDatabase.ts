@@ -3,10 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocDBDatabaseTreeItem } from '../../docdb/tree/DocDBDatabaseTreeItem';
-import { ext } from '../../extensionVariables';
-import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
+import { CosmosDBItem } from '../../vscode-cosmosdb.api';
 
-export async function getDatabase(): Promise<string> {
-    return (await ext.tree.showTreeItemPicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue])).fullId;
+export async function getDatabase(connectionString: CosmosDBItem): Promise<CosmosDBItem> {
+    if (connectionString) {
+        throw new Error('Not implemented yet.');
+    }
+    return undefined;
 }

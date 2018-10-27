@@ -8,8 +8,8 @@
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, createTelemetryReporter, IActionContext, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
-import { getConnectionString } from './commands/api/getConnectionString';
 import { getDatabase } from './commands/api/getDatabase';
+import { pickDatabase } from './commands/api/pickDatabase';
 import { revealTreeItem } from './commands/api/revealTreeItem';
 import { importDocuments } from './commands/importDocuments';
 import { CosmosEditorManager } from './CosmosEditorManager';
@@ -147,8 +147,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<VSCode
 		});
 
 	return {
-		getConnectionString,
 		getDatabase,
+		pickDatabase,
 		revealTreeItem
 	};
 }

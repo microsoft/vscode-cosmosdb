@@ -37,22 +37,29 @@ export function registerMongoCommands(context: vscode.ExtensionContext, editorMa
         if (!node) {
             node = <MongoAccountTreeItem>await ext.tree.showTreeItemPicker(MongoAccountTreeItem.contextValue);
         }
-        const childNode = await node.createChild();
-        await vscode.commands.executeCommand('cosmosDB.connectMongoDB', childNode);
+        const databaseNode = <MongoDatabaseTreeItem>await node.createChild();
+        // reveal the database treeItem in case user cancels collection creation
+        await ext.treeView.reveal(databaseNode, { focus: false });
+        const collectionNode = <MongoCollectionTreeItem>await databaseNode.createChild();
+        await ext.treeView.reveal(collectionNode, { focus: true });
+
+        await vscode.commands.executeCommand('cosmosDB.connectMongoDB', databaseNode);
     });
     registerCommand('cosmosDB.createMongoCollection', async (node?: MongoDatabaseTreeItem) => {
         if (!node) {
             node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue);
         }
-        const childNode = await node.createChild();
-        await vscode.commands.executeCommand('cosmosDB.connectMongoDB', childNode.parent);
+        const collectionNode = await node.createChild();
+        await ext.treeView.reveal(collectionNode);
+        await vscode.commands.executeCommand('cosmosDB.connectMongoDB', collectionNode.parent);
     });
     registerCommand('cosmosDB.createMongoDocument', async (node?: MongoCollectionTreeItem) => {
         if (!node) {
             node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue);
         }
-        let childNode = await node.createChild();
-        await vscode.commands.executeCommand("cosmosDB.openDocument", childNode);
+        const documentNode = await node.createChild();
+        await ext.treeView.reveal(documentNode);
+        await vscode.commands.executeCommand("cosmosDB.openDocument", documentNode);
     });
     registerCommand('cosmosDB.connectMongoDB', async (node?: MongoDatabaseTreeItem) => {
         if (!node) {

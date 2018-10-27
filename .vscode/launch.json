@@ -15,7 +15,7 @@
 			"outFiles": [
 				"${workspaceRoot}/out/src/**/*.js"
 			],
-			"preLaunchTask": "npm"
+			"preLaunchTask": "Compile"
 		},
 		{
 			"name": "Launch Tests",
@@ -31,7 +31,7 @@
 			"outFiles": [
 				"${workspaceRoot}/out/test"
 			],
-			"preLaunchTask": "npm"
+			"preLaunchTask": "Compile"
 		},
 		{
 			"type": "node",

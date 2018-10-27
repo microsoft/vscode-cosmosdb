@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 import * as cp from 'child_process';
 import * as os from 'os';
+import * as vscode from "vscode";
 import { EventEmitter, window } from 'vscode';
 import { ext } from '../extensionVariables';
 import { IDisposable, toDisposable } from '../utils/vscodeUtils';
@@ -90,13 +91,15 @@ export class Shell {
 
 		return await new Promise<string>((c, e) => {
 			let executed = false;
+			// timeout setting specified in seconds. Convert to ms for setTimeout
+			const timeout: number = 1000 * vscode.workspace.getConfiguration().get<number>(ext.settingsKeys.mongoShellTimeout);
 			const handler = setTimeout(
 				() => {
 					if (!executed) {
 						e(`Timed out executing MongoDB command "${script}"`);
 					}
 				},
-				5000);
+				timeout);
 			const disposable = this.onResult.event(result => {
 				disposable.dispose();
 

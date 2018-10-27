@@ -97,7 +97,7 @@ DOUBLE_QUOTED_STRING_LITERAL:
 SINGLE_QUOTED_STRING_LITERAL:
 	'\'' ((~['\\]) | STRING_ESCAPE)* '\'';
 
-fragment STRING_ESCAPE: '\\' [\\"\\'];
+fragment STRING_ESCAPE: '\\' [\\"\\'bwrn];
 
 fragment DecimalIntegerLiteral: '0' | [1-9] DecimalDigit*;
 

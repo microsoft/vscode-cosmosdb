@@ -726,7 +726,7 @@ suite("scrapbook parsing Tests", () => {
             getCommandFromTextAtLocation(text, new Position(0, 0));
         } catch (error) {
             let err = parseError(error);
-            assert.deepEqual("Unexpected node encountered", err.message);
+            assert.deepEqual("Invalid flags supplied to RegExp constructor 'q'", err.message);
         }
     });
 
@@ -743,68 +743,68 @@ suite("scrapbook parsing Tests", () => {
     //Passing the following test should imply the rest of the tests pass too.
     // The regex parsing tests following this test should help zero-in on which case isn't handled properly.
     test("test regular expression parsing - with many special cases", () => {
-        let text1 = `db.test1.beep.find({ sku: { $regex: "^(hello?= world).*[^0-9]+|(world\\b\\*){0,2}$", $options: "g" } })`;
+        let text1 = `db.test1.beep.find({ sku: { $regex: "^(hello?= world).*[^0-9]+|(world\b\*){0,2}$", $options: "g" } })`;
         let command1 = getCommandFromTextAtLocation(text1, new Position(0, 0));
         let generatedRegExp1 = (<any>command1.argumentObjects[0]).sku;
         assert.deepEqual(generatedRegExp1.flags, "g");
-        assert.deepEqual(generatedRegExp1.source, "^(hello?= world).*[^0-9]+|(world\\b\\*){0,2}$");
-        let text2 = `db.test1.beep.find({ sku: /^(hello?= world).*[^0-9]+|(world\\b\\*){0,2}$/g } })`;
+        assert.deepEqual(generatedRegExp1.source, "^(hello?= world).*[^0-9]+|(world\b\*){0,2}$");
+        let text2 = `db.test1.beep.find({ sku: /^(hello?= world).*[^0-9]+|(world\b\*){0,2}$/g } })`;
         let command2 = getCommandFromTextAtLocation(text2, new Position(0, 0));
         let generatedRegExp2 = (<any>command2.argumentObjects[0]).sku;
         assert.deepEqual(generatedRegExp1.flags, generatedRegExp2.flags);
         assert.deepEqual(generatedRegExp1.source, generatedRegExp2.source);
     });
 
-    /*     test("test regular expression parsing - with groupings", () => {
-            let text = `db.test1.beep.find({ sku: { $regex: /(?:hello)\\3/g } })`;
-            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-            let generatedRegExp = (<any>command.argumentObjects[0]).sku;
-            assert.deepEqual(generatedRegExp.flags, "g");
-            assert.deepEqual(generatedRegExp.source, "(?:hello)\\3");
-        });
+    test("test regular expression parsing - with groupings", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /(?:hello)\\3/g } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "(?:hello)\\3");
+    });
 
-        test("test regular expression parsing - with special characters", () => {
-            let text = `db.test1.beep.find({ sku: { $regex: /(hello)*(world)?(name)+./g } })`;
-            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-            let generatedRegExp = (<any>command.argumentObjects[0]).sku;
-            assert.deepEqual(generatedRegExp.flags, "g");
-            assert.deepEqual(generatedRegExp.source, "(hello)*(world)?(name)+.");
-        });
-
-
-        test("test regular expression parsing - with boundaries", () => {
-            let text = `db.test1.beep.find({ sku: { $regex: /^(hello world)[^0-9]|(world\\b)$/g } })`;
-            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-            let generatedRegExp = (<any>command.argumentObjects[0]).sku;
-            assert.deepEqual(generatedRegExp.flags, "g");
-            assert.deepEqual(generatedRegExp.source, "^(hello world)[^0-9]|(world\\b)$");
-        });
-
-        test("test regular expression parsing - with quantifiers", () => {
-            let text = `db.test1.beep.find({ sku: { $regex: /(hello)*[^0-9]+|(world){0,2}./g } })`;
-            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-            let generatedRegExp = (<any>command.argumentObjects[0]).sku;
-            assert.deepEqual(generatedRegExp.flags, "g");
-            assert.deepEqual(generatedRegExp.source, "(hello)*[^0-9]+|(world){0,2}.");
-        });
+    test("test regular expression parsing - with special characters", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /(hello)*(world)?(name)+./g } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "(hello)*(world)?(name)+.");
+    });
 
 
-        test("test regular expression parsing - with conditional", () => {
-            let text = `db.test1.beep.find({ sku: { $regex: /(hello?= world)|(world)/g } })`;
-            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-            let generatedRegExp = (<any>command.argumentObjects[0]).sku;
-            assert.deepEqual(generatedRegExp.flags, "g");
-            assert.deepEqual(generatedRegExp.source, "(hello?= world)|(world)");
-        });
+    test("test regular expression parsing - with boundaries", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /^(hello world)[^0-9]|(world\\b)$/g } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "^(hello world)[^0-9]|(world\\b)$");
+    });
 
-        test("test regular expression parsing - with escaped special characters", () => {
-            let text = `db.test1.beep.find({ sku: { $regex: /world\\*\\.\\?\\+/g } })`;
-            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-            let generatedRegExp = (<any>command.argumentObjects[0]).sku;
-            assert.deepEqual(generatedRegExp.flags, "g");
-            assert.deepEqual(generatedRegExp.source, "world\\*\\.\\?\\+");
-        });
-    */
+    test("test regular expression parsing - with quantifiers", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /(hello)*[^0-9]+|(world){0,2}./g } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "(hello)*[^0-9]+|(world){0,2}.");
+    });
+
+
+    test("test regular expression parsing - with conditional", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /(hello?= world)|(world)/g } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "(hello?= world)|(world)");
+    });
+
+    test("test regular expression parsing - with escaped special characters", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: /world\\*\\.\\?\\+/g } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "world\\*\\.\\?\\+");
+    });
+
     test("test chained command: argument aggregation", () => {
         testParse('db.timesheets.find({name: "Andy", surname: "Jackson"}).pretty();', {
             collection: "timesheets",

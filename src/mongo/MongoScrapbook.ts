@@ -246,7 +246,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 				const lastCommand = this.commands[this.commands.length - 1];
 				const argAsObject = this.contextToObject(ctx);
 				const arg = EJSON.stringify(argAsObject);
-				lastCommand.argumentObjects.push(EJSON.parse(arg));
+				let ejsonObj = EJSON.parse(arg);
+				lastCommand.argumentObjects.push(ejsonObj);
 				lastCommand.arguments.push(arg);
 			}
 		}

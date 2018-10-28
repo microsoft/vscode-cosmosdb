@@ -122,10 +122,11 @@ export function activate(context: vscode.ExtensionContext) {
 			node = <MongoDocumentTreeItem | DocDBDocumentTreeItem>await tree.showTreeItemPicker([MongoDocumentTreeItem.contextValue, DocDBDocumentTreeItem.contextValue]);
 		}
 
+		const editorTabName = node.label + "cosmos-doc.json";
 		if (node instanceof MongoDocumentTreeItem) {
-			await editorManager.showDocument(new MongoDocumentNodeEditor(node), 'cosmos-document.json');
+			await editorManager.showDocument(new MongoDocumentNodeEditor(node), editorTabName);
 		} else {
-			await editorManager.showDocument(new DocDBDocumentNodeEditor(node), 'cosmos-document.json');
+			await editorManager.showDocument(new DocDBDocumentNodeEditor(node), editorTabName);
 		}
 	});
 	registerCommand('cosmosDB.update', (filePath: vscode.Uri) => editorManager.updateMatchingNode(filePath));

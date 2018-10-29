@@ -7,9 +7,9 @@ import { DocDBDatabaseTreeItem } from '../../docdb/tree/DocDBDatabaseTreeItem';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
-import { CosmosDBItem } from '../../vscode-cosmosdb.api';
+import { CosmosDBDatabase } from '../../vscode-cosmosdb.api';
 
-export async function pickDatabase(): Promise<CosmosDBItem> {
+export async function pickDatabase(): Promise<CosmosDBDatabase> {
     const pickedDatabase = (await ext.tree.showTreeItemPicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue]));
 
     if (pickedDatabase instanceof MongoDatabaseTreeItem || pickedDatabase instanceof DocDBDatabaseTreeItemBase) {

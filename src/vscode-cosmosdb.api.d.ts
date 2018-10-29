@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export interface CosmosDBItem {
+export interface CosmosDBDatabase {
     accountName: string
     connectionString: string
     treeItemId: string
@@ -12,15 +12,15 @@ export interface CosmosDBItem {
 
 export interface VSCodeCosmosDB {
     /**
-     * Finds the database in CosmosDB and returns CosmosDBItem object or undefined if can't find
+     * Finds the database in CosmosDB and returns CosmosDBDatabase object or undefined if can't find
      * @param detectionData The database connection string
      */
-    getDatabase(detectionData: { connectionString: string }): Promise<CosmosDBItem | undefined>;
+    getDatabase(detectionData: { connectionString: string }): Promise<CosmosDBDatabase | undefined>;
 
     /**
-     *  Traverses the CosmosDB tree with a quick pick at each level. Goes until find item with database-level context value. Returns the CosmosDBItem object based on picked db.
+     *  Traverses the CosmosDB tree with a quick pick at each level. Goes until find item with database-level context value. Returns the CosmosDBDatabase object based on picked db.
      */
-    pickDatabase(): Promise<CosmosDBItem | undefined>;
+    pickDatabase(): Promise<CosmosDBDatabase | undefined>;
 
     /**
      * Reveal tree item in the CosmosDB explorer by its id

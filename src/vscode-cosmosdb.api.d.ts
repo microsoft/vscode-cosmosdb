@@ -4,18 +4,18 @@
  *--------------------------------------------------------------------------------------------*/
 
 export interface CosmosDBItem {
-    accountName: string | undefined
-    connectionString: string | undefined
-    cosmosDBTreeItemId: string | undefined
-    databaseName: string | undefined
+    accountName: string
+    connectionString: string
+    treeItemId: string
+    databaseName: string
 }
 
 export interface VSCodeCosmosDB {
     /**
-     * Founds the database in CosmosDB and return info about it including TreeItem id in CosmosDB Explorer
-     * @param connectionData The connection string and/or other info that provided for successfull database searching
+     * Finds the database in CosmosDB and returns CosmosDBItem object or undefined if can't find
+     * @param detectionData The database connection string
      */
-    getDatabase(connectionData: CosmosDBItem): Promise<CosmosDBItem | undefined>;
+    getDatabase(detectionData: { connectionString: string }): Promise<CosmosDBItem | undefined>;
 
     /**
      *  Traverses the CosmosDB tree with a quick pick at each level. Goes until find item with database-level context value. Returns the CosmosDBItem object based on picked db.

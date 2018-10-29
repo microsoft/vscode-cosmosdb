@@ -15,7 +15,7 @@ export async function pickDatabase(): Promise<CosmosDBItem> {
     if (pickedDatabase instanceof MongoDatabaseTreeItem || pickedDatabase instanceof DocDBDatabaseTreeItemBase) {
         return {
             connectionString: pickedDatabase.connectionString,
-            cosmosDBTreeItemId: pickedDatabase.fullId,
+            treeItemId: pickedDatabase.fullId,
             accountName: pickedDatabase.parent.label,
             databaseName: pickedDatabase.label
         };

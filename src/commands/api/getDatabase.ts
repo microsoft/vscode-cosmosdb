@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBItem } from '../../vscode-cosmosdb.api';
+import { CosmosDBDatabase } from '../../vscode-cosmosdb.api';
 
-export async function getDatabase(connectionString: CosmosDBItem): Promise<CosmosDBItem> {
+export async function getDatabase(connectionString: CosmosDBDatabase): Promise<CosmosDBDatabase> {
     if (connectionString) {
         throw new Error('Not implemented yet.');
     }

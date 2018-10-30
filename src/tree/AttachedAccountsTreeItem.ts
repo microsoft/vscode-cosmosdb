@@ -10,9 +10,9 @@ import { AzureEnvironment } from 'ms-rest-azure';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzureTreeItem, GenericTreeItem, ISubscriptionRoot, RootTreeItem, SubscriptionTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { emulatorPassword } from '../constants';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { API, getExperience, getExperienceQuickPick, getExperienceQuickPicks } from '../experiences';
-import { ext } from '../extensionVariables';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../mongo/mongoConnectionStrings';
@@ -167,10 +167,10 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
             if (port) {
                 if (defaultExperience.api === API.MongoDB) {
                     // Mongo shell doesn't parse passwords with slashes, so we need to URI encode it
-                    connectionString = `mongodb://localhost:${encodeURIComponent(ext.emulatorPassword)}@localhost:${port}/?ssl=true`;
+                    connectionString = `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:${port}/?ssl=true`;
                 }
                 else {
-                    connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=${ext.emulatorPassword};`;
+                    connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=${emulatorPassword};`;
                 }
                 const label = `${defaultExperience.shortName} Emulator`;
                 let treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api, label);

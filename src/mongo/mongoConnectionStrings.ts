@@ -1,5 +1,3 @@
-import { ext } from "../extensionVariables";
-
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -16,13 +14,15 @@ import { ext } from "../extensionVariables";
 //   mongodb[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]]
 //   [database]
 
+import { emulatorPassword } from "../constants";
+
 const parsePrefix = '([a-zA-Z]+:\/\/[^\/]*)';
 const parseDatabaseName = '\/?([^/?]+)?';
 const connectionStringRegExp = new RegExp(parsePrefix + parseDatabaseName);
 
 export function getDatabaseNameFromConnectionString(connectionString: string): string | undefined {
     try {
-        if (connectionString.includes(ext.emulatorPassword)) {
+        if (connectionString.includes(emulatorPassword)) {
             let portWithDB = connectionString.substring(connectionString.lastIndexOf(':') + 1, connectionString.lastIndexOf('?'));
             if (!portWithDB.includes('/')) {
                 return undefined;
@@ -41,7 +41,7 @@ export function getDatabaseNameFromConnectionString(connectionString: string): s
 
 export function addDatabaseToAccountConnectionString(connectionString: string, databaseName: string): string | undefined {
     try {
-        if (connectionString.includes(ext.emulatorPassword)) {
+        if (connectionString.includes(emulatorPassword)) {
             return connectionString.replace('?', `/${databaseName}?`);
         }
         return connectionString.replace(connectionStringRegExp, `$1\/${databaseName}`);

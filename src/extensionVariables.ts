@@ -18,7 +18,6 @@ export namespace ext {
     export let reporter: ITelemetryReporter;
     export let tree: AzureTreeDataProvider;
     export let treeView: TreeView<AzureTreeItem<ISubscriptionRoot>>;
-    export let emulatorPassword = 'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

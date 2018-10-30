@@ -960,11 +960,13 @@ suite("scrapbook parsing Tests", () => {
     });
 
     test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/899 - multi-line comment, not regex", () => {
-        let text = `db.heroes.count()\n\n/*db.c2.insertMany([\n{"name": "Stephen", "age": 38, "male": true},\n{"name": "Stephen", "age": 38, "male": true}\n]);\n*/\n\ndb.heroes.find();`;
-        let commands = getAllCommandsFromText(text);
-        assert.equal(commands.length, 2, `Error in parsing ${text}`);
-        assert.equal(commands[0].name, "count");
-        assert.equal(commands[1].name, "find");
+        for (let escape of ['\n', '\r', '\n\r', '\r\n']) {
+            let text = `db.heroes.count()${escape}/*db.c2.insertMany([${escape}{"name": "Stephen", "age": 38, "male": true},${escape}{"name": "Stephen", "age": 38, "male": true}${escape}]);${escape}*/${escape}${escape}db.heroes.find();`;
+            let commands = getAllCommandsFromText(text);
+            assert.equal(commands.length, 2, `Error in parsing ${text}`);
+            assert.equal(commands[0].name, "count");
+            assert.equal(commands[1].name, "find");
+        }
     });
 });
 

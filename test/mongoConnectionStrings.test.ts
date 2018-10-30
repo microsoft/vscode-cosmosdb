@@ -60,8 +60,6 @@ suite(`mongoCollectionStrings`, () => {
 
         // emulator: mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@localhost:10255?ssl=true
         testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin?ssl=true`, 'admin');
-        // Collection within database
-        //testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin/adminCollection?ssl=true`, 'admin/adminCollection');
         testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin-master?ssl=true`, 'admin-master');
         // test characters mentioned in : https://docs.mongodb.com/manual/reference/limits/#Restrictions-on-Database-Names-for-Windows
         testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin!@#%^*()-_,[]?ssl=true`, 'admin!@#%^*()-_,[]');

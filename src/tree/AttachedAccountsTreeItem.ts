@@ -166,7 +166,7 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
             }
             if (port) {
                 if (defaultExperience.api === API.MongoDB) {
-                    // Mongo shell doesn't parse passwords with slashes, so we need to URI encode it
+                    // Mongo shell doesn't parse passwords with slashes, so we need to URI encode it. The '/' before the options is required by mongo conventions
                     connectionString = `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:${port}/?ssl=true`;
                 }
                 else {

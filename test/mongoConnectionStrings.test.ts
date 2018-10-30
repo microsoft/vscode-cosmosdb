@@ -59,12 +59,12 @@ suite(`mongoCollectionStrings`, () => {
         testDatabaseNameFromConectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/Icantlikespaces`, 'Icantlikespaces');
 
         // emulator: mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@localhost:10255?ssl=true
-        testDatabaseNameFromConectionString(`mongodb://localhost:${emulatorPassword}@localhost:10255/admin?ssl=true`, 'admin');
+        testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin?ssl=true`, 'admin');
         // Collection within database
-        testDatabaseNameFromConectionString(`mongodb://localhost:${emulatorPassword}@localhost:10255/admin/adminCollection?ssl=true`, 'admin/adminCollection');
-        testDatabaseNameFromConectionString(`mongodb://localhost:${emulatorPassword}@localhost:10255/admin-master?ssl=true`, 'admin-master');
+        //testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin/adminCollection?ssl=true`, 'admin/adminCollection');
+        testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin-master?ssl=true`, 'admin-master');
         // test characters mentioned in : https://docs.mongodb.com/manual/reference/limits/#Restrictions-on-Database-Names-for-Windows
-        testDatabaseNameFromConectionString(`mongodb://localhost:${emulatorPassword}@localhost:10255/admin!@#%^*()-_,[]?ssl=true`, 'admin!@#%^*()-_,[]');
+        testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin!@#%^*()-_,[]?ssl=true`, 'admin!@#%^*()-_,[]');
 
     });
 
@@ -105,11 +105,11 @@ suite(`mongoCollectionStrings`, () => {
         testDatabaseToAccountConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017`, 'icantlikespaces', 'mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/icantlikespaces');
 
         // Emulator
-        testDatabaseToAccountConnectionString(`mongodb://localhost:${emulatorPassword}@localhost:10255?ssl=true`, 'admin', `mongodb://localhost:${emulatorPassword}@localhost:10255/admin?ssl=true`);
+        testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin?ssl=true`);
         // Collection within emulator
-        testDatabaseToAccountConnectionString(`mongodb://localhost:${emulatorPassword}@localhost:10255?ssl=true`, 'admin/level1/level2', `mongodb://localhost:${emulatorPassword}@localhost:10255/admin/level1/level2?ssl=true`);
-        testDatabaseToAccountConnectionString(`mongodb://localhost:${emulatorPassword}@localhost:10255?ssl=true`, 'admin-master', `mongodb://localhost:${emulatorPassword}@localhost:10255/admin-master?ssl=true`);
-        testDatabaseToAccountConnectionString(`mongodb://localhost:${emulatorPassword}@localhost:10255?ssl=true`, 'admin!@#%^*()-_,[]', `mongodb://localhost:${emulatorPassword}@localhost:10255/admin!@#%^*()-_,[]?ssl=true`);
+        testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin/level1/level2', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin/level1/level2?ssl=true`);
+        testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin-master', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin-master?ssl=true`);
+        testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin!@#%^*()-_,[]', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin!@#%^*()-_,[]?ssl=true`);
     });
 });
 

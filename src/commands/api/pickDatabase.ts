@@ -3,23 +3,28 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocDBDatabaseTreeItem } from '../../docdb/tree/DocDBDatabaseTreeItem';
-import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
+import { AttachedAccountsTreeItem } from 'src/tree/AttachedAccountsTreeItem';
 import { ext } from '../../extensionVariables';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { CosmosDBDatabase } from '../../vscode-cosmosdb.api';
 
 export async function pickDatabase(): Promise<CosmosDBDatabase> {
-    const pickedDatabase = (await ext.tree.showTreeItemPicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue]));
+    const pickedDatabase = (await ext.tree.showTreeItemPicker([MongoDatabaseTreeItem.contextValue]));
 
-    if (pickedDatabase instanceof MongoDatabaseTreeItem || pickedDatabase instanceof DocDBDatabaseTreeItemBase) {
+    const attachedAccountsNode = <AttachedAccountsTreeItem | undefined>(await ext.tree.getChildren()).find((subscription) => {
+        return (subscription.id === 'cosmosDBAttachedAccounts');
+    });
+
+    if (pickedDatabase instanceof MongoDatabaseTreeItem) {
+        const databaseFullId = await attachedAccountsNode.attachDatabase(pickedDatabase);
+        await attachedAccountsNode.refresh();
         return {
             connectionString: pickedDatabase.connectionString,
-            treeItemId: pickedDatabase.fullId,
+            treeItemId: databaseFullId,
             accountName: pickedDatabase.parent.label,
-            databaseName: pickedDatabase.label
+            databaseName: undefined
         };
     }
 
-    throw new Error(`For now, supports only MongoDB and DocDB.`);
+    throw new Error(`For now, supports only MongoDB.`);
 }

@@ -9,13 +9,14 @@ import { ServiceClientCredentials } from 'ms-rest';
 import { AzureEnvironment } from 'ms-rest-azure';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzureTreeItem, GenericTreeItem, ISubscriptionRoot, RootTreeItem, SubscriptionTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionRoot, RootTreeItem, SubscriptionTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { API, getExperience, getExperienceQuickPick, getExperienceQuickPicks } from '../experiences';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
+import { MongoDatabaseTreeItem } from '../mongo/tree/MongoDatabaseTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { tryfetchNodeModule } from '../utils/vscodeUtils';
 
@@ -143,6 +144,18 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         }
     }
 
+    public async attachDatabase(database: AzureParentTreeItem): Promise<string> {
+        if (database instanceof MongoDatabaseTreeItem) {
+            const treeItem = await this.createTreeItem(database.connectionString, API.MongoDB);
+            const showWarning: boolean = false;
+            await this.attachAccount(treeItem, database.connectionString, showWarning);
+            // Add database to node id
+            return `${treeItem.fullId}/${getDatabaseNameFromConnectionString(database.connectionString)}`;
+        } else {
+            throw new Error("For now works only with Mongo");
+        }
+    }
+
     public async attachEmulator(): Promise<void> {
         let connectionString: string;
         const defaultExperiencePick = await vscode.window.showQuickPick(
@@ -181,11 +194,13 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         }
     }
 
-    private async attachAccount(treeItem: AzureTreeItem, connectionString: string): Promise<void> {
+    private async attachAccount(treeItem: AzureTreeItem, connectionString: string, showWarning: boolean = true): Promise<void> {
         const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
 
         if (attachedAccounts.find(s => s.id === treeItem.id)) {
-            vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`);
+            if (showWarning) {
+                vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`);
+            }
         } else {
             attachedAccounts.push(treeItem);
             if (this._keytar) {

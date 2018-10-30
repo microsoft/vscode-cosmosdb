@@ -7,7 +7,7 @@ export interface CosmosDBDatabase {
     accountName: string
     connectionString: string
     treeItemId: string
-    databaseName: string
+    databaseName: string | undefined
 }
 
 export interface VSCodeCosmosDB {

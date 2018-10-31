@@ -357,12 +357,12 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 				this.addErrorToCommand(err, ctx);
 			}
 		}
-		return constructedObject;
+		return { $date: constructedObject.toString() };
 	}
 
 	private objectIdToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {
 		let hexID: string;
-		let constructedObject: Object = {};
+		let constructedObject: ObjectID;
 		if (!tokenText) { // usage : ObjectID()
 			constructedObject = new ObjectID();
 		} else {
@@ -374,21 +374,21 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 				this.addErrorToCommand(err, ctx);
 			}
 		}
-		return constructedObject;
+		return { $oid: constructedObject.toString() };
 	}
 
 	private regexLiteralContextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, text: string): Object {
 		let separator = text.lastIndexOf('/');
 		let flags = separator !== text.length - 1 ? text.substring(separator + 1) : "";
 		let pattern = text.substring(1, separator);
-		let tokenObject: Object = {};
 		try {
-			tokenObject = new RegExp(pattern, flags);
+			let tokenObject = new RegExp(pattern, flags);
+			return { $regex: tokenObject.source, $options: tokenObject.flags };
 		} catch (error) { //User may not have finished typing
 			let err: IParsedError = parseError(error);
 			this.addErrorToCommand(err, ctx);
+			return {};
 		}
-		return tokenObject;
 	}
 
 	private addErrorToCommand(error: IParsedError, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): void {

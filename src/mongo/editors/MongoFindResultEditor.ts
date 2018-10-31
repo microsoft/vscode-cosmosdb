@@ -34,7 +34,7 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
         const collection: Collection = db.collection(this._command.collection);
         // NOTE: Intentionally creating a _new_ tree item rather than searching for a cached node in the tree because
         // the executed 'find' command could have a filter or projection that is not handled by a cached tree node
-        this._collectionTreeItem = new MongoCollectionTreeItem(this._databaseNode, collection, this._command.argumentObjects);
+        this._collectionTreeItem = new MongoCollectionTreeItem(this._databaseNode, collection, this._command.arguments.map((text) => EJSON.parse(text)));
         const documents: MongoDocumentTreeItem[] = <MongoDocumentTreeItem[]>await this._collectionTreeItem.getCachedChildren();
         return documents.map((docTreeItem) => docTreeItem.document);
     }

@@ -958,5 +958,15 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(command.argumentObjects, [{}, {}]);
         assert.deepEqual(command.errors[0].message, "mismatched input 'f' expecting {'{', '[', RegexLiteral, StringLiteral, 'null', BooleanLiteral, NumericLiteral}")
     });
+
+    test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/899 - multi-line comment, not regex", () => {
+        for (let escape of ['\n', '\r', '\n\r', '\r\n']) {
+            let text = `db.heroes.count()${escape}/*db.c2.insertMany([${escape}{"name": "Stephen", "age": 38, "male": true},${escape}{"name": "Stephen", "age": 38, "male": true}${escape}]);${escape}*/${escape}${escape}db.heroes.find();`;
+            let commands = getAllCommandsFromText(text);
+            assert.equal(commands.length, 2, `Error in parsing ${text}`);
+            assert.equal(commands[0].name, "count");
+            assert.equal(commands[1].name, "find");
+        }
+    });
 });
 

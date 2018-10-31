@@ -245,8 +245,9 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
 				const lastCommand = this.commands[this.commands.length - 1];
 				const argAsObject = this.contextToObject(ctx);
-				lastCommand.argumentObjects.push(argAsObject);
-				lastCommand.arguments.push(EJSON.stringify(argAsObject));
+				const argText = EJSON.stringify(argAsObject);
+				lastCommand.arguments.push(argText);
+				lastCommand.argumentObjects.push(EJSON.parse(argText));
 			}
 		}
 		return super.visitArgument(ctx);
@@ -355,6 +356,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			} catch (error) {
 				let err: IParsedError = parseError(error);
 				this.addErrorToCommand(err, ctx);
+				return {};
 			}
 		}
 		return { $date: constructedObject.toString() };
@@ -372,6 +374,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			} catch (error) {
 				let err: IParsedError = parseError(error);
 				this.addErrorToCommand(err, ctx);
+				return {};
 			}
 		}
 		return { $oid: constructedObject.toString() };

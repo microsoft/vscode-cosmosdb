@@ -4,7 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * Do not add any imports do this file, they will not work since they're not hosted in a Node.js process.
+ * Do not add any imports to this file, they will not work since they're not hosted in a Node.js process
+ *   (the resulting graphClient.js file is included as script by graphClient.html).
  * Dependencies must be added to graphClient.html as script includes.
  *
  * Client code should be kept small.

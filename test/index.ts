@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *  Licensed under the MIT License. See LICENSE.md in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
 //
@@ -15,13 +15,41 @@
 // to report the results back to the caller. When the tests are finished, return
 // a possible error to the callback or null if none.
 
-var testRunner = require('vscode/lib/testrunner');
+import testRunner = require('vscode/lib/testrunner');
 
-// You can directly control Mocha options by uncommenting the following lines
-// See https://github.com/mochajs/mocha/wiki/Using-mocha-programmatically#set-options for more info
-testRunner.configure({
+const options: { [key: string]: string | boolean | number } = {
     ui: 'tdd', 		// the TDD UI is being used in extension.test.ts (suite, test, etc.)
     useColors: true // colored output from test results
-});
+};
+
+// You can directly control Mocha options using environment variables beginning with MOCHA_.
+// For example:
+// {
+//   "name": "Launch Tests",
+//   "type": "extensionHost",
+//   "request": "launch",
+//   ...
+//   "env": {
+//     "MOCHA_enableTimeouts": "0",
+//     "MOCHA_grep": "tests-to-run"
+// }
+//
+// See https://github.com/mochajs/mocha/wiki/Using-mocha-programmatically#set-options for all available options
+
+for (const envVar of Object.keys(process.env)) {
+    const match: RegExpMatchArray | null = envVar.match(/^mocha_(.+)/i);
+    if (match) {
+        const [, option] = match;
+        // tslint:disable-next-line:strict-boolean-expressions
+        let value: string | number = process.env[envVar] || '';
+        if (!isNaN(parseInt(value))) {
+            value = parseInt(value);
+        }
+        options[option] = value;
+    }
+}
+console.warn(`Mocha options: ${JSON.stringify(options, null, 2)}`);
+
+testRunner.configure(options);
 
 module.exports = testRunner;

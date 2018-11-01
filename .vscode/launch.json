@@ -15,7 +15,7 @@
 			"outFiles": [
 				"${workspaceRoot}/out/src/**/*.js"
 			],
-			"preLaunchTask": "Compile"
+			"preLaunchTask": "npm: compile"
 		},
 		{
 			"name": "Launch Tests",
@@ -31,7 +31,13 @@
 			"outFiles": [
 				"${workspaceRoot}/out/test"
 			],
-			"preLaunchTask": "Compile"
+			"preLaunchTask": "npm: compile",
+			"env": {
+				"MOCHA_grep": "", // RegExp of tests to run (empty for all)
+				"MOCHA_enableTimeouts": "0", // Disable time-outs
+				"DEBUGTELEMETRY": "1",
+				"NODE_DEBUG": ""
+			}
 		},
 		{
 			"type": "node",

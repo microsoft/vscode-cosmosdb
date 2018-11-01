@@ -15,7 +15,10 @@
 			"outFiles": [
 				"${workspaceRoot}/out/src/**/*.js"
 			],
-			"preLaunchTask": "npm: compile"
+			"preLaunchTask": "npm: compile",
+			"env": {
+				"DEBUGTELEMETRY": "1"
+			}
 		},
 		{
 			"name": "Launch Tests",

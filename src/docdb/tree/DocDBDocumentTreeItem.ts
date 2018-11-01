@@ -34,6 +34,8 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
 
     public get id(): string {
         return this.document._rid || `${this.document.id}:${this.getPartitionKeyValue()}`;
+        // Every document has an _rid field, even though the type definitions call it optional. The second clause is fallback.
+        // The toString implicit conversion handles undefined and {} as expected. toString satisfies the uniqueness criterion.
     }
 
     public async refreshLabelImpl(): Promise<void> {

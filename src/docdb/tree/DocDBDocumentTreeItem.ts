@@ -33,7 +33,7 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
     }
 
     public get id(): string {
-        return this.document.id;
+        return this.document._rid || `${this.document.id}:${this.getPartitionKeyValue()}`;
     }
 
     public async refreshLabelImpl(): Promise<void> {

@@ -53,7 +53,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
 
     public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<DocDBDocumentTreeItem> {
         let docID = await vscode.window.showInputBox({
-            prompt: "Enter a unique document ID or leave blank for a generated ID",
+            prompt: "Enter a document ID or leave blank for a generated ID",
             ignoreFocusOut: true
         });
 

@@ -4,9 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * Do not add any imports to this file, they will not work since they're not hosted in a Node.js process
- *   (the resulting graphClient.js file is included as script by graphClient.html).
- * Dependencies must be added to graphClient.html as script includes.
+ * ** IMPORTANT **
+ * Do not add any imports to this file, they will not work in this browser context.
+ * Dependencies must instead be added to graphClient.html as script includes.
+ * The resulting graphClient.js file is included as script by graphClient.html.
  *
  * Client code should be kept small.
  */

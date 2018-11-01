@@ -4,43 +4,44 @@
  *--------------------------------------------------------------------------------------------*/
 
 const gulp = require('gulp');
+const decompress = require('gulp-decompress');
+const download = require('gulp-download');
 const path = require('path');
-const azureStorage = require('azure-storage');
-const vsce = require('vsce');
-const packageJson = require('./package.json');
+const os = require('os');
+const cp = require('child_process');
+const glob = require('glob');
 
-gulp.task('package', async () => {
-    await vsce.createVSIX();
+gulp.task('test', ['install-azure-account'], (cb) => {
+    const env = process.env;
+    env.DEBUGTELEMETRY = 1;
+    env.MOCHA_reporter = 'mocha-junit-reporter';
+    env.MOCHA_FILE = path.join(__dirname, 'test-results.xml');
+    const cmd = cp.spawn('node', ['./node_modules/vscode/bin/test'], { stdio: 'inherit', env });
+    cmd.on('close', (code) => {
+        cb(code);
+    });
 });
 
-gulp.task('upload-vsix', (callback) => {
-    if (process.env.TRAVIS_PULL_REQUEST_BRANCH) {
-        console.log('Skipping upload-vsix for PR build.');
+/**
+ * Installs the azure account extension before running tests (otherwise our extension would fail to activate)
+ * NOTE: The version isn't super important since we don't actually use the account extension in tests
+ */
+gulp.task('install-azure-account', () => {
+    const version = '0.4.3';
+    const extensionPath = path.join(os.homedir(), `.vscode/extensions/ms-vscode.azure-account-${version}`);
+    const existingExtensions = glob.sync(extensionPath.replace(version, '*'));
+    if (existingExtensions.length === 0) {
+        return download(`http://ms-vscode.gallery.vsassets.io/_apis/public/gallery/publisher/ms-vscode/extension/azure-account/${version}/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage`)
+            .pipe(decompress({
+                filter: file => file.path.startsWith('extension/'),
+                map: file => {
+                    file.path = file.path.slice(10);
+                    return file;
+                }
+            }))
+            .pipe(gulp.dest(extensionPath));
     } else {
-        const containerName = packageJson.name;
-        const vsixName = `${packageJson.name}-${packageJson.version}.vsix`;
-        const blobPath = path.join(process.env.TRAVIS_BRANCH, process.env.TRAVIS_BUILD_NUMBER, vsixName);
-        const blobService = azureStorage.createBlobService(process.env.STORAGE_NAME, process.env.STORAGE_KEY);
-        blobService.createContainerIfNotExists(containerName, { publicAccessLevel: "blob" }, (err) => {
-            if (err) {
-                callback(err);
-            } else {
-                blobService.createBlockBlobFromLocalFile(containerName, blobPath, vsixName, (err) => {
-                    if (err) {
-                        callback(err);
-                    } else {
-                        const brightYellowFormatting = '\x1b[33m\x1b[1m%s\x1b[0m';
-                        const brightWhiteFormatting = '\x1b[1m%s\x1b[0m';
-                        console.log();
-                        console.log(brightYellowFormatting, '================================================ vsix url ================================================');
-                        console.log();
-                        console.log(brightWhiteFormatting, blobService.getUrl(containerName, blobPath));
-                        console.log();
-                        console.log(brightYellowFormatting, '==========================================================================================================');
-                        console.log();
-                    }
-                });
-            }
-        });
+        console.log('Azure Account extension already installed.');
     }
 });
+

@@ -5,10 +5,11 @@
 
 import { ext } from '../../extensionVariables';
 
-export async function revealTreeItem(treeItemId: string): Promise<void> {
-    const node = await ext.tree.findTreeItem(treeItemId);
+export async function revealTreeItem(treeItemId: string): Promise<boolean> {
+    let node = await ext.tree.findTreeItem(treeItemId);
     if (!node) {
-        throw new Error(`Couldn't find the database node in Cosmos DB with provided Id: ${treeItemId}`);
+        return false;
     }
-    ext.treeView.reveal(node);
+    await ext.treeView.reveal(node);
+    return true;
 }

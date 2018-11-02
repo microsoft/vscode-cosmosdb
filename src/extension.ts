@@ -8,6 +8,7 @@
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, createTelemetryReporter, IActionContext, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
+import { attachDatabase } from './commands/api/attachDatabase';
 import { getDatabase } from './commands/api/getDatabase';
 import { pickDatabase } from './commands/api/pickDatabase';
 import { revealTreeItem } from './commands/api/revealTreeItem';
@@ -105,6 +106,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<VSCode
 	});
 
 	registerCommand('cosmosDB.openInPortal', async (node?: AzureTreeItem) => {
+		getDatabase({ connectionString: 'mongodb://user228:user228@ds052837.mlab.com:52837/superdata' });
 		if (!node) {
 			node = await tree.showTreeItemPicker(accountContextValues);
 		}
@@ -147,6 +149,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<VSCode
 		});
 
 	return {
+		attachDatabase,
 		getDatabase,
 		pickDatabase,
 		revealTreeItem

@@ -16,11 +16,11 @@
 
 const parsePrefix = '([a-zA-Z]+:\/\/[^\/]*)';
 const parseDatabaseName = '\/?([^/?]+)?';
-const connectionStringRegExp = new RegExp(parsePrefix + parseDatabaseName);
+const mongoConnectionStringRegExp = new RegExp(parsePrefix + parseDatabaseName);
 
 export function getDatabaseNameFromConnectionString(connectionString: string): string | undefined {
     try {
-        let [, , databaseName] = connectionString.match(connectionStringRegExp);
+        let [, , databaseName] = connectionString.match(mongoConnectionStringRegExp);
         return databaseName;
     } catch (error) {
         // Shouldn't happen, but ignore if does
@@ -31,7 +31,7 @@ export function getDatabaseNameFromConnectionString(connectionString: string): s
 
 export function addDatabaseToAccountConnectionString(connectionString: string, databaseName: string): string | undefined {
     try {
-        return connectionString.replace(connectionStringRegExp, `$1\/${databaseName}`);
+        return connectionString.replace(mongoConnectionStringRegExp, `$1\/${databaseName}`);
     } catch (error) {
         // Shouldn't happen, but ignore if does
     }

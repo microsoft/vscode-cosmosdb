@@ -21,14 +21,16 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
     public readonly contextValue: string = MongoAccountTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
     public readonly id: string;
+    public readonly name: string;
     public readonly label: string;
     public readonly connectionString: string;
 
     private _root: IMongoTreeRoot;
 
-    constructor(parent: AzureParentTreeItem, id: string, label: string, connectionString: string, isEmulator: boolean) {
+    constructor(parent: AzureParentTreeItem, id: string, name: string, label: string, connectionString: string, isEmulator: boolean) {
         super(parent);
         this.id = id;
+        this.name = name;
         this.label = label;
         this.connectionString = connectionString;
         this._root = Object.assign({}, parent.root, { isEmulator });

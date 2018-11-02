@@ -9,14 +9,13 @@ import { ServiceClientCredentials } from 'ms-rest';
 import { AzureEnvironment } from 'ms-rest-azure';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionRoot, RootTreeItem, SubscriptionTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzureTreeItem, GenericTreeItem, ISubscriptionRoot, RootTreeItem, SubscriptionTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { API, getExperience, getExperienceQuickPick, getExperienceQuickPicks } from '../experiences';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { MongoDatabaseTreeItem } from '../mongo/tree/MongoDatabaseTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { tryfetchNodeModule } from '../utils/vscodeUtils';
 
@@ -30,6 +29,30 @@ export const AttachedAccountSuffix: string = 'Attached';
 export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start with "mongodb://" or "mongodb+srv://"';
 
 const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
+
+export async function getServerIdFromConnectionString(connectionString: string): Promise<string> {
+    let host: string;
+    let port: string;
+
+    const db = await connectToMongoClient(connectionString, appendExtensionUserAgent());
+    const serverConfig = db.serverConfig;
+    // Azure CosmosDB comes back as a ReplSet
+    if (serverConfig instanceof ReplSet) {
+        // get the first connection string from the seedlist for the ReplSet
+        // this may not be best solution, but the connection (below) gives
+        // the replicaset host name, which is different than what is in the connection string
+        // "s" is not part of ReplSet static definition but can't find any official documentation on it. Yet it is definitely there at runtime. Grandfathering in.
+        // tslint:disable-next-line:no-any
+        let rs: any = serverConfig;
+        host = rs.s.replset.s.seedlist[0].host;
+        port = rs.s.replset.s.seedlist[0].port;
+    } else {
+        host = serverConfig['host'];
+        port = serverConfig['port'];
+    }
+
+    return `${host}:${port}`;
+}
 
 export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
     public static contextValue: string = 'cosmosDBAttachedAccounts' + (process.platform === 'win32' ? 'WithEmulator' : 'WithoutEmulator');
@@ -144,16 +167,11 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         }
     }
 
-    public async attachDatabase(database: AzureParentTreeItem): Promise<string> {
-        if (database instanceof MongoDatabaseTreeItem) {
-            const treeItem = await this.createTreeItem(database.connectionString, API.MongoDB);
-            const showWarning: boolean = false;
-            await this.attachAccount(treeItem, database.connectionString, showWarning);
-            // Add database to node id
-            return `${treeItem.fullId}/${getDatabaseNameFromConnectionString(database.connectionString)}`;
-        } else {
-            throw new Error("For now works only with Mongo");
-        }
+    public async attachNewDatabase(connectionString: string): Promise<string> {
+        const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, API.MongoDB);
+        await this.attachAccount(treeItem, connectionString);
+        // Add database to node id
+        return `${treeItem.fullId}/${getDatabaseNameFromConnectionString(connectionString)}`;
     }
 
     public async attachEmulator(): Promise<void> {
@@ -194,13 +212,11 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         }
     }
 
-    private async attachAccount(treeItem: AzureTreeItem, connectionString: string, showWarning: boolean = true): Promise<void> {
+    private async attachAccount(treeItem: AzureTreeItem, connectionString: string): Promise<void> {
         const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
 
         if (attachedAccounts.find(s => s.id === treeItem.id)) {
-            if (showWarning) {
-                vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`);
-            }
+            vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`);
         } else {
             attachedAccounts.push(treeItem);
             if (this._keytar) {
@@ -221,30 +237,6 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
                 await this.persistIds(attachedAccounts);
             }
         }
-    }
-
-    private async getServerIdFromConnectionString(connectionString: string): Promise<string> {
-        let host: string;
-        let port: string;
-
-        const db = await connectToMongoClient(connectionString, appendExtensionUserAgent());
-        const serverConfig = db.serverConfig;
-        // Azure CosmosDB comes back as a ReplSet
-        if (serverConfig instanceof ReplSet) {
-            // get the first connection string from the seedlist for the ReplSet
-            // this may not be best solution, but the connection (below) gives
-            // the replicaset host name, which is different than what is in the connection string
-            // "s" is not part of ReplSet static definition but can't find any official documentation on it. Yet it is definitely there at runtime. Grandfathering in.
-            // tslint:disable-next-line:no-any
-            let rs: any = serverConfig;
-            host = rs.s.replset.s.seedlist[0].host;
-            port = rs.s.replset.s.seedlist[0].port;
-        } else {
-            host = serverConfig['host'];
-            port = serverConfig['port'];
-        }
-
-        return `${host}:${port}`;
     }
 
     private async loadPersistedAccounts(): Promise<AzureTreeItem[]> {
@@ -283,7 +275,7 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         // tslint:disable-next-line:possible-timing-attack // not security related
         if (api === API.MongoDB) {
             if (id === undefined) {
-                id = await this.getServerIdFromConnectionString(connectionString);
+                id = await getServerIdFromConnectionString(connectionString);
 
                 // Add database to node id if specified in connection string
                 let database = !isEmulator && getDatabaseNameFromConnectionString(connectionString);
@@ -293,20 +285,20 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
             }
 
             label = label || `${id} (${getExperience(api).shortName})`;
-            treeItem = new MongoAccountTreeItem(this, id, label, connectionString, isEmulator);
+            treeItem = new MongoAccountTreeItem(this, id, id, label, connectionString, isEmulator);
         } else {
             const [endpoint, masterKey, parsedId] = AttachedAccountsTreeItem.parseDocDBConnectionString(connectionString);
 
             label = label || `${parsedId} (${getExperience(api).shortName})`;
             switch (api) {
                 case API.Table:
-                    treeItem = new TableAccountTreeItem(this, parsedId, label, endpoint, masterKey, isEmulator);
+                    treeItem = new TableAccountTreeItem(this, parsedId, parsedId, label, endpoint, masterKey, isEmulator);
                     break;
                 case API.Graph:
-                    treeItem = new GraphAccountTreeItem(this, parsedId, label, endpoint, undefined, masterKey, isEmulator);
+                    treeItem = new GraphAccountTreeItem(this, parsedId, parsedId, label, endpoint, undefined, masterKey, isEmulator);
                     break;
                 case API.DocumentDB:
-                    treeItem = new DocDBAccountTreeItem(this, parsedId, label, endpoint, masterKey, isEmulator);
+                    treeItem = new DocDBAccountTreeItem(this, parsedId, parsedId, label, endpoint, masterKey, isEmulator);
                     break;
                 default:
                     throw new Error(`Unexpected defaultExperience "${api}".`);

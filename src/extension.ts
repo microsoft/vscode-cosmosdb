@@ -106,7 +106,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<VSCode
 	});
 
 	registerCommand('cosmosDB.openInPortal', async (node?: AzureTreeItem) => {
-		getDatabase({ connectionString: 'mongodb://user228:user228@ds052837.mlab.com:52837/superdata' });
 		if (!node) {
 			node = await tree.showTreeItemPicker(accountContextValues);
 		}

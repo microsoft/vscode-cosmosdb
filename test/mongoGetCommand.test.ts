@@ -641,31 +641,7 @@ suite("scrapbook parsing Tests", () => {
             }]);
         }
     });
-    /*
-        //Examples inspired from https://docs.mongodb.com/manual/reference/operator/query/regex/
-        test("test regular expressions - only pattern, no flags", () => {
-            let text = `db.test1.beep.find({ sku: { $regex: /789$/ } })`;
-            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-            let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
-            assert.deepEqual(generatedRegExp.flags, "");
-            assert.deepEqual(generatedRegExp.source, "789$");
-        });
 
-        test("test regular expressions - pattern and flags", () => {
-            let text = `db.test1.beep.find({ sku: { $regex: /789$/i } })`;
-            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-            let generatedRegExp = (<any>command.argumentObjects[0]).sku.$regex;
-            assert.deepEqual(generatedRegExp.flags, "i");
-            assert.deepEqual(generatedRegExp.source, "789$");
-        });
-
-        test("test regular expressions - Intellisense - flag contains invalid option", () => {
-            let text = `db.test1.beep.find({ sku: { $regex: /789$/q } })`;
-            let command = getCommandFromTextAtLocation(text, new Position(0, 0));
-            assert.deepEqual(command.errors[0].message, "mismatched input '}' expecting '('");
-            assert.deepEqual(command.errors[0].range.start.character, 44);
-        });
-    */
     test("test ObjectID - no parameter", () => {
         let text = `db.c1.insert({"name": ObjectId()})`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
@@ -749,6 +725,50 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual(generatedRegExp.flags, "g");
         assert.deepEqual(generatedRegExp.source, "^(hello?= world).*[^0-9]+|(world\\b\\*){0,2}$");
     });
+
+
+    test("test regular expression parsing EJSON syntax - with many special cases", () => {
+        let text = `db.test1.beep.find({ sku:  {$regex: "^(hello?= world).*[^0-9]+|(world\\\\b\\\\*){0,2}$", $options: "g"} })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku;
+        assert.deepEqual(generatedRegExp.flags, "g");
+        assert.deepEqual(generatedRegExp.source, "^(hello?= world).*[^0-9]+|(world\\b\\*){0,2}$");
+    });
+
+    test("test regular expression parsing interoperability", () => {
+        let text1 = `db.test1.beep.find({ sku:  /^(hello?= world).*[^0-9]+|(world\\b\\*){0,2}$/g })`;
+        let command1 = getCommandFromTextAtLocation(text1, new Position(0, 0));
+        let generatedRegExp1 = (<any>command1.argumentObjects[0]).sku;
+        let text2 = `db.test1.beep.find({ sku:  {$regex: "^(hello?= world).*[^0-9]+|(world\\\\b\\\\*){0,2}$", $options: "g"} })`;
+        let command2 = getCommandFromTextAtLocation(text2, new Position(0, 0));
+        let generatedRegExp2 = (<any>command2.argumentObjects[0]).sku;
+        assert.deepEqual([generatedRegExp1.flags, generatedRegExp1.source], ["g", "^(hello?= world).*[^0-9]+|(world\\b\\*){0,2}$"]);
+        assert.deepEqual([generatedRegExp2.flags, generatedRegExp2.source], ["g", "^(hello?= world).*[^0-9]+|(world\\b\\*){0,2}$"]);
+    });
+
+    test("test regular expressions - only pattern, no flags", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: "789$" } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku;
+        assert.deepEqual(generatedRegExp.flags, "");
+        assert.deepEqual(generatedRegExp.source, "789$");
+    });
+
+    test("test regular expressions - pattern and flags", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: "789$", $options:"i" } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        let generatedRegExp = (<any>command.argumentObjects[0]).sku;
+        assert.deepEqual(generatedRegExp.flags, "i");
+        assert.deepEqual(generatedRegExp.source, "789$");
+    });
+
+    test("test regular expressions - Intellisense - flag contains invalid option", () => {
+        let text = `db.test1.beep.find({ sku: { $regex: "789$", $options:"q" } })`;
+        let command = getCommandFromTextAtLocation(text, new Position(0, 0));
+        assert.deepEqual(command.errors[0].message, "Invalid flags supplied to RegExp constructor 'q'");
+        assert.deepEqual(command.errors[0].range.start.character, 19);
+    });
+
 
     test("test regular expression parsing - with groupings", () => {
         let text = `db.test1.beep.find({ sku:  /(?:hello)\\3/g })`;

@@ -247,7 +247,17 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 				const argAsObject = this.contextToObject(ctx);
 				const argText = EJSON.stringify(argAsObject);
 				lastCommand.arguments.push(argText);
-				lastCommand.argumentObjects.push(EJSON.parse(argText));
+				let removeDuplicatedBackslash = /\\{4}(?=[0-9bwds.*])/gi;
+				// \\{4} looks for the slash 4 times (note the escape).
+				// Look forward to check if the character being escaped has a special meaning.
+				let escapeHandled = argText.replace(removeDuplicatedBackslash, `\\\\`);
+				let ejsonParsed = {};
+				try {
+					ejsonParsed = EJSON.parse(escapeHandled);
+				} catch (err) { //EJSON parse failed due to a wrong flag, etc.
+					this.addErrorToCommand(parseError(err), ctx);
+				}
+				lastCommand.argumentObjects.push(ejsonParsed);
 			}
 		}
 		return super.visitArgument(ctx);
@@ -386,7 +396,10 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		let pattern = text.substring(1, separator);
 		try {
 			let tokenObject = new RegExp(pattern, flags);
-			return { $regex: tokenObject.source, $options: tokenObject.flags };
+			tokenObject = tokenObject;
+			// validate the pattern and flags.
+			// It is intended for the errors thrown here to be handled by the catch block.
+			return { $regex: pattern, $options: flags };
 		} catch (error) { //User may not have finished typing
 			let err: IParsedError = parseError(error);
 			this.addErrorToCommand(err, ctx);

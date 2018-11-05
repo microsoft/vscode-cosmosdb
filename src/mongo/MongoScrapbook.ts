@@ -248,8 +248,13 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 				const argText = EJSON.stringify(argAsObject);
 				lastCommand.arguments.push(argText);
 				let removeDuplicatedBackslash = /\\{4}(?=[0-9bwds.*])/gi;
-				// \\{4} looks for the slash 4 times (note the escape).
-				// Look forward to check if the character being escaped has a special meaning.
+				/*
+				We remove duplicate backslashes due the behavior of '\b' - \b in a regex denotes word boundary, while \b in a string denotes backspace.
+				$regex syntax uses a string. Strings require slashes to be escaped, while /regex/ does not. Eg. /abc+\b/ is equivalent to {$regex: "abc+\\b"}.
+				{$regex: "abc+\b"} with an unescaped slash gets parsed as  {$regex: <EOF>}. The user can only type '\\b' (which is encoded as '\\\\b').
+				We need to convert this appropriately. Other special characters (\n, \t, \r) don't carry significance in regexes - we don't handle those
+				What the regex does: '\\{4}' looks for the escaped slash 4 times. Lookahead checks if the character being escaped has a special meaning.
+				*/
 				let escapeHandled = argText.replace(removeDuplicatedBackslash, `\\\\`);
 				let ejsonParsed = {};
 				try {
@@ -395,10 +400,10 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		let flags = separator !== text.length - 1 ? text.substring(separator + 1) : "";
 		let pattern = text.substring(1, separator);
 		try {
-			let tokenObject = new RegExp(pattern, flags);
-			tokenObject = tokenObject;
 			// validate the pattern and flags.
 			// It is intended for the errors thrown here to be handled by the catch block.
+			let tokenObject = new RegExp(pattern, flags);
+			tokenObject = tokenObject;
 			return { $regex: pattern, $options: flags };
 		} catch (error) { //User may not have finished typing
 			let err: IParsedError = parseError(error);

@@ -7,10 +7,8 @@
 
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
-import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, createTelemetryReporter, IActionContext, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
-import { getConnectionString } from './commands/api/getConnectionString';
-import { getDatabase } from './commands/api/getDatabase';
-import { revealTreeItem } from './commands/api/revealTreeItem';
+import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, createApiProvider, createTelemetryReporter, IActionContext, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
+import { AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
 import { importDocuments } from './commands/importDocuments';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
@@ -32,7 +30,7 @@ import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/Attached
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
 import * as cpUtil from './utils/cp';
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext): Promise<AzureExtensionApiProvider> {
 	registerUIExtensionVariables(ext);
 	ext.context = context;
 	ext.reporter = createTelemetryReporter(context);
@@ -144,9 +142,8 @@ export function activate(context: vscode.ExtensionContext) {
 				await vscode.commands.executeCommand("cosmosDB.refresh");
 			}
 		});
-	registerCommand('cosmosDB.api.getConnectionString', getConnectionString);
-	registerCommand('cosmosDB.api.getDatabase', getDatabase);
-	registerCommand('cosmosDB.api.revealTreeItem', revealTreeItem);
+
+	return createApiProvider([]);
 }
 
 async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase) {

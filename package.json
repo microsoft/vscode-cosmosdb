@@ -37,9 +37,6 @@
 	"activationEvents": [
 		"onLanguage:mongo",
 		"onView:cosmosDBExplorer",
-		"onCommand:cosmosDB.api.getConnectionString",
-		"onCommand:cosmosDB.api.getDatabase",
-		"onCommand:cosmosDB.api.revealTreeItem",
 		"onCommand:cosmosDB.attachDatabaseAccount",
 		"onCommand:cosmosDB.attachEmulator",
 		"onCommand:cosmosDB.createAccount",
@@ -336,21 +333,6 @@
 				"category": "Cosmos DB",
 				"command": "cosmosDB.openStoredProcedure",
 				"title": "Open Stored Procedure"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.api.getConnectionString",
-				"title": "Get Connection String"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.api.getDatabase",
-				"title": "Get Database Id"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.api.revealTreeItem",
-				"title": "Reveal Database in Explorer"
 			}
 		],
 		"menus": {
@@ -714,18 +696,6 @@
 					"when": "never"
 				},
 				{
-					"command": "cosmosDB.api.getConnectionString",
-					"when": "never"
-				},
-				{
-					"command": "cosmosDB.api.getDatabase",
-					"when": "never"
-				},
-				{
-					"command": "cosmosDB.api.revealTreeItem",
-					"when": "never"
-				},
-				{
 					"command": "cosmosDB.executeAllMongoCommands",
 					"when": "editorLangId == 'mongo'"
 				},
@@ -938,7 +908,7 @@
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "^0.18.2",
+		"vscode-azureextensionui": "^0.18.6",
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.4.0",
 		"vscode-languageserver": "^4.4.0",

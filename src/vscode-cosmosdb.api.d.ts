@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-
 export interface CosmosDBExtensionApi {
     /**
      * Finds the first matching item in the Cosmos DB tree, or otherwise returns undefined.

@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AttachedAccountsTreeItem } from 'src/tree/AttachedAccountsTreeItem';
 import { ext } from '../../extensionVariables';
 import { addDatabaseToAccountConnectionString, getDatabaseNameFromConnectionString, getHostPortFromConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
+import { AttachedAccountsTreeItem } from '../../tree/AttachedAccountsTreeItem';
 import { CosmosDBTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { reveal } from './reveal';
 
@@ -41,23 +41,22 @@ export async function findTreeItem<T extends CosmosDBTreeItem>(query: TreeItemQu
                 const databases = await account.getCachedChildren();
                 for (const database of databases) {
                     if ((database instanceof MongoDatabaseTreeItem) && connectionString === database.connectionString) {
-                        // Temporary name
-                        const res1 = {
+                        // @ts-ignore
+                        return {
                             connectionString: connectionString,
                             databaseName: database.databaseName,
                             hostName: hostport.host,
                             port: hostport.port,
                             reveal: () => reveal(database.fullId)
                         };
-                        return res1;
                     }
                 }
             }
         }
 
         let fullId: string | undefined;
-        // Temporary name
-        const res2 = {
+        //@ts-ignore
+        return {
             connectionString: connectionString,
             databaseName: getDatabaseNameFromConnectionString(connectionString),
             hostName: hostport.host,
@@ -70,7 +69,6 @@ export async function findTreeItem<T extends CosmosDBTreeItem>(query: TreeItemQu
                 reveal(fullId);
             }
         };
-        return res2;
     }
 
     return undefined;

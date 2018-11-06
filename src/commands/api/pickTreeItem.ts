@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocDBDatabaseTreeItem } from 'src/docdb/tree/DocDBDatabaseTreeItem';
-import { GraphDatabaseTreeItem } from 'src/graph/tree/GraphDatabaseTreeItem';
-import { getHostPortFromConnectionString } from 'src/mongo/mongoConnectionStrings';
+import { DocDBDatabaseTreeItem } from '../../docdb/tree/DocDBDatabaseTreeItem';
 import { ext } from '../../extensionVariables';
+import { GraphDatabaseTreeItem } from '../../graph/tree/GraphDatabaseTreeItem';
+import { getHostPortFromConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { CosmosDBResourceType, CosmosDBTreeItem, PickTreeItemOptions } from '../../vscode-cosmosdb.api';
 import { reveal } from './reveal';
@@ -32,8 +32,8 @@ export async function pickTreeItem<T extends CosmosDBTreeItem>(options: PickTree
 
     const pickedDatabase = <MongoDatabaseTreeItem>(await ext.tree.showTreeItemPicker(contextValuesToFind));
     const hostport = await getHostPortFromConnectionString(pickedDatabase.connectionString);
-    // Temporary name
-    const res = {
+    // @ts-ignore
+    return {
         databaseName: pickedDatabase.databaseName,
         connectionString: pickedDatabase.connectionString,
         hostName: hostport.host,
@@ -41,6 +41,4 @@ export async function pickTreeItem<T extends CosmosDBTreeItem>(options: PickTree
         azureData: { accountName: pickedDatabase.parent.name },
         reveal: () => reveal(pickedDatabase.fullId)
     };
-
-    return res;
 }

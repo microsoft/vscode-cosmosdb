@@ -1,6 +1,19 @@
 # Change Log
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
+## 0.9.0 - 2018-11-05
+###Added
+- Mongo
+    - Support for [ObjectId, ISODate](https://github.com/Microsoft/vscode-cosmosdb/issues/769) and [regular expression](https://github.com/Microsoft/vscode-cosmosdb/issues/786) [(/pattern/flag)](https://github.com/Microsoft/vscode-cosmosdb/issues/667) syntax in the scrapbook
+    - Support for [method chaining](https://github.com/Microsoft/vscode-cosmosdb/issues/785).
+    - Ability to [change timeout](https://github.com/Microsoft/vscode-cosmosdb/issues/809) for commands in scrapbook
+- Support [importing documents](https://github.com/Microsoft/vscode-cosmosdb/issues/404) into CosmosDB and Mongo databases.
+
+### Fixed
+- Creating collections and graphs of [fixed](https://github.com/Microsoft/vscode-cosmosdb/issues/295) [size](https://github.com/Microsoft/vscode-cosmosdb/issues/504)
+- Collections having two documents of the [same](https://github.com/Microsoft/vscode-cosmosdb/issues/588) [id](https://github.com/Microsoft/vscode-cosmosdb/issues/892) will render properly
+- [Some](https://github.com/Microsoft/vscode-cosmosdb/issues/576) [UI](https://github.com/Microsoft/vscode-cosmosdb/issues/873) fixes
+- [Additional bugs fixed](https://github.com/Microsoft/vscode-cosmosdb/milestone/16?closed=1)
 
 ## 0.8.0 - 2018-07-05
 ### Added

@@ -369,7 +369,7 @@
 				},
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename=~/(.*cosmos-doc[.]json)/"
+					"when": "resourceFilename=~/(.*cosmos-document[.]json)/"
 				},
 				{
 					"command": "cosmosDB.update",
@@ -377,7 +377,7 @@
 				},
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename=~/(.*cosmos-sp[.]js)/"
+					"when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)/"
 				},
 				{
 					"command": "cosmosDB.importDocument",
@@ -392,7 +392,7 @@
 				},
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename=~/(.*cosmos-doc[.]json)/",
+					"when": "resourceFilename=~/(.*cosmos-document[.]json)/",
 					"group": "navigation"
 				},
 				{
@@ -402,7 +402,7 @@
 				},
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename=~/(.*cosmos-sp[.]js)/",
+					"when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)/",
 					"group": "navigation"
 				}
 			],

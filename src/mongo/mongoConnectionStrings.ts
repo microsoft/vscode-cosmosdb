@@ -1,3 +1,7 @@
+import { ReplSet } from "mongodb";
+import { appendExtensionUserAgent } from "vscode-azureextensionui";
+import { connectToMongoClient } from "./connectToMongoClient";
+
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -37,4 +41,31 @@ export function addDatabaseToAccountConnectionString(connectionString: string, d
     }
 
     return undefined;
+}
+
+export async function getHostPortFromConnectionString(connectionString: string): Promise<{ host: string, port: string }> {
+    let host: string;
+    let port: string;
+
+    const db = await connectToMongoClient(connectionString, appendExtensionUserAgent());
+    const serverConfig = db.serverConfig;
+    // Azure CosmosDB comes back as a ReplSet
+    if (serverConfig instanceof ReplSet) {
+        // get the first connection string from the seedlist for the ReplSet
+        // this may not be best solution, but the connection (below) gives
+        // the replicaset host name, which is different than what is in the connection string
+        // "s" is not part of ReplSet static definition but can't find any official documentation on it. Yet it is definitely there at runtime. Grandfathering in.
+        // tslint:disable-next-line:no-any
+        let rs: any = serverConfig;
+        host = rs.s.replset.s.seedlist[0].host;
+        port = rs.s.replset.s.seedlist[0].port;
+    } else {
+        host = serverConfig['host'];
+        port = serverConfig['port'];
+    }
+
+    return {
+        host: host,
+        port: port
+    };
 }

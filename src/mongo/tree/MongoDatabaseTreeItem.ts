@@ -34,7 +34,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 	private _previousShellPathSetting: string | undefined;
 	private _cachedShellPathOrCmd: string | undefined;
 
-	constructor(parent: AzureParentTreeItem, databaseName: string, connectionString: string) {
+	constructor(parent: MongoAccountTreeItem, databaseName: string, connectionString: string) {
 		super(parent);
 		this.databaseName = databaseName;
 		this.connectionString = addDatabaseToAccountConnectionString(connectionString, this.databaseName);

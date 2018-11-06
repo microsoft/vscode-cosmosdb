@@ -8,10 +8,8 @@
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, createTelemetryReporter, IActionContext, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
-import { attachDatabase } from './commands/api/attachDatabase';
-import { getDatabase } from './commands/api/getDatabase';
-import { pickDatabase } from './commands/api/pickDatabase';
-import { revealTreeItem } from './commands/api/revealTreeItem';
+import { findTreeItem } from './commands/api/findTreeItem';
+import { pickTreeItem } from './commands/api/pickTreeItem';
 import { importDocuments } from './commands/importDocuments';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
@@ -32,9 +30,9 @@ import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
 import * as cpUtil from './utils/cp';
-import { VSCodeCosmosDB } from './vscode-cosmosdb.api';
+import { CosmosDBExtensionApi } from './vscode-cosmosdb.api';
 
-export async function activate(context: vscode.ExtensionContext): Promise<VSCodeCosmosDB> {
+export async function activate(context: vscode.ExtensionContext): Promise<CosmosDBExtensionApi> {
 	registerUIExtensionVariables(ext);
 	ext.context = context;
 	ext.reporter = createTelemetryReporter(context);
@@ -148,10 +146,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<VSCode
 		});
 
 	return {
-		attachDatabase,
-		getDatabase,
-		pickDatabase,
-		revealTreeItem
+		findTreeItem,
+		pickTreeItem
 	};
 }
 

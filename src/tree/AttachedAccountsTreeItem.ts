@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as keytarType from 'keytar';
-import { ReplSet } from "mongodb";
 import { ServiceClientCredentials } from 'ms-rest';
 import { AzureEnvironment } from 'ms-rest-azure';
 import * as path from 'path';
@@ -14,7 +13,7 @@ import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { API, getExperience, getExperienceQuickPick, getExperienceQuickPicks } from '../experiences';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
-import { getDatabaseNameFromConnectionString } from '../mongo/mongoConnectionStrings';
+import { getDatabaseNameFromConnectionString, getHostPortFromConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { tryfetchNodeModule } from '../utils/vscodeUtils';
@@ -29,30 +28,6 @@ export const AttachedAccountSuffix: string = 'Attached';
 export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start with "mongodb://" or "mongodb+srv://"';
 
 const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
-
-export async function getServerIdFromConnectionString(connectionString: string): Promise<string> {
-    let host: string;
-    let port: string;
-
-    const db = await connectToMongoClient(connectionString, appendExtensionUserAgent());
-    const serverConfig = db.serverConfig;
-    // Azure CosmosDB comes back as a ReplSet
-    if (serverConfig instanceof ReplSet) {
-        // get the first connection string from the seedlist for the ReplSet
-        // this may not be best solution, but the connection (below) gives
-        // the replicaset host name, which is different than what is in the connection string
-        // "s" is not part of ReplSet static definition but can't find any official documentation on it. Yet it is definitely there at runtime. Grandfathering in.
-        // tslint:disable-next-line:no-any
-        let rs: any = serverConfig;
-        host = rs.s.replset.s.seedlist[0].host;
-        port = rs.s.replset.s.seedlist[0].port;
-    } else {
-        host = serverConfig['host'];
-        port = serverConfig['port'];
-    }
-
-    return `${host}:${port}`;
-}
 
 export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
     public static contextValue: string = 'cosmosDBAttachedAccounts' + (process.platform === 'win32' ? 'WithEmulator' : 'WithoutEmulator');
@@ -275,7 +250,8 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         // tslint:disable-next-line:possible-timing-attack // not security related
         if (api === API.MongoDB) {
             if (id === undefined) {
-                id = await getServerIdFromConnectionString(connectionString);
+                const hostport = await getHostPortFromConnectionString(connectionString);
+                id = `${hostport.host}:${hostport.port}`;
 
                 // Add database to node id if specified in connection string
                 let database = !isEmulator && getDatabaseNameFromConnectionString(connectionString);

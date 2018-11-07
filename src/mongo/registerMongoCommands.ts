@@ -107,7 +107,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, editorMa
         if (!node) {
             node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue);
         }
-        await editorManager.showDocument(new MongoCollectionNodeEditor(node), 'cosmos-collection.json');
+        await editorManager.showDocument(new MongoCollectionNodeEditor(node), node.label + '-cosmos-collection.json');
     });
     registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
     registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', context.extensionPath, 'Scrapbook', '.mongo'));

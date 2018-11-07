@@ -122,7 +122,7 @@ export function activate(context: vscode.ExtensionContext) {
 			node = <MongoDocumentTreeItem | DocDBDocumentTreeItem>await tree.showTreeItemPicker([MongoDocumentTreeItem.contextValue, DocDBDocumentTreeItem.contextValue]);
 		}
 
-		const editorTabName = node.label + "cosmos-document.json";
+		const editorTabName = node.label + "-cosmos-document.json";
 		if (node instanceof MongoDocumentTreeItem) {
 			await editorManager.showDocument(new MongoDocumentNodeEditor(node), editorTabName);
 		} else {

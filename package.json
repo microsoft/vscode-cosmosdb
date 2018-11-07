@@ -373,7 +373,7 @@
 				},
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename==cosmos-collection.json"
+					"when": "resourceFilename=~/(.*cosmos-collection[.]json)/"
 				},
 				{
 					"command": "cosmosDB.update",
@@ -397,7 +397,7 @@
 				},
 				{
 					"command": "cosmosDB.update",
-					"when": "resourceFilename==cosmos-collection.json",
+					"when": "resourceFilename=~/(.*cosmos-collection[.]json)/",
 					"group": "navigation"
 				},
 				{

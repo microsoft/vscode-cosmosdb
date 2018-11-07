@@ -8,9 +8,9 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
     - Support for [method chaining](https://github.com/Microsoft/vscode-cosmosdb/issues/785).
     - Ability to [change timeout](https://github.com/Microsoft/vscode-cosmosdb/issues/809) for commands in scrapbook
 - Support [importing documents](https://github.com/Microsoft/vscode-cosmosdb/issues/404) into CosmosDB and Mongo databases.
+- Support creation of [fixed](https://github.com/Microsoft/vscode-cosmosdb/issues/295) [size](https://github.com/Microsoft/vscode-cosmosdb/issues/504) collections and graphs.
 
 ### Fixed
-- Creating collections and graphs of [fixed](https://github.com/Microsoft/vscode-cosmosdb/issues/295) [size](https://github.com/Microsoft/vscode-cosmosdb/issues/504)
 - Collections having two documents of the [same](https://github.com/Microsoft/vscode-cosmosdb/issues/588) [id](https://github.com/Microsoft/vscode-cosmosdb/issues/892) will render properly
 - [Some](https://github.com/Microsoft/vscode-cosmosdb/issues/576) [UI](https://github.com/Microsoft/vscode-cosmosdb/issues/873) fixes
 - [Additional bugs fixed](https://github.com/Microsoft/vscode-cosmosdb/milestone/16?closed=1)

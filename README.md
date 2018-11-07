@@ -44,7 +44,7 @@ You will now find us by clicking in the new Azure view container instead of the 
 - Save and re-use later
 ![Mongo Scrapbook](resources/Scrapbook.gif)
 
-## Import into CosmosDB
+## Import into Cosmos DB
 
 - You can now import documents from your workspace into CosmosDB. Use the context menu of a collection or a document file (json) to get started!
 ![Import documents](resources/import_documents.gif)

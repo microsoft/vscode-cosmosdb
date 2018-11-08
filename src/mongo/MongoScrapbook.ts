@@ -415,11 +415,11 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 	private padRegexEscape(pattern: string): string {
 		// The equivalence:
 		// /ker\b/ <=> $regex: "ker\\b", /ker\\b/ <=> "ker\\\\b"
-		return pattern.replace(/\\(?=bwd)/i, '\\\\');
+		return pattern.replace(/\\([bwd])/i, '\\\\$1');
 	}
 
 	private deduplicateEscapesForRegex(argAsString: string) {
-		let removeDuplicatedBackslash = /\\{4}(?=[0-9bwds.*])/gi;
+		let removeDuplicatedBackslash = /\\{4}([0-9bwds.*])/gi;
 		/*
 		We remove duplicate backslashes due the behavior of '\b' - \b in a regex denotes word boundary, while \b in a string denotes backspace.
 		$regex syntax uses a string. Strings require slashes to be escaped, while /regex/ does not. Eg. /abc+\b/ is equivalent to {$regex: "abc+\\b"}.
@@ -427,7 +427,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		We need to convert this appropriately. Other special characters (\n, \t, \r) don't carry significance in regexes - we don't handle those
 		What the regex does: '\\{4}' looks for the escaped slash 4 times. Lookahead checks if the character being escaped has a special meaning.
 		*/
-		let escapeHandled = argAsString.replace(removeDuplicatedBackslash, `\\\\`);
+		let escapeHandled = argAsString.replace(removeDuplicatedBackslash, `\\\\$1`);
 		return escapeHandled;
 	}
 

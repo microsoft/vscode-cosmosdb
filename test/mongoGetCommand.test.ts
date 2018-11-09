@@ -746,6 +746,38 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual([generatedRegExp2.flags, generatedRegExp2.source], ["g", "^(hello?= world).*[^0-9]+|(world\\b\\*){0,2}$"]);
     });
 
+    test("test regular expression parsing interoperability - word break", () => {
+        let text1 = `db.test1.beep.find({ sku:  /ker\\b/g })`; // equivalent to user typing out /ker\b/
+        let command1 = getCommandFromTextAtLocation(text1, new Position(0, 0));
+        let generatedRegExp1 = (<any>command1.argumentObjects[0]).sku;
+        let text2 = `db.test1.beep.find({ sku:  {$regex: "ker\\\\b", $options: "g"} })`;
+        let command2 = getCommandFromTextAtLocation(text2, new Position(0, 0));
+        let generatedRegExp2 = (<any>command2.argumentObjects[0]).sku;
+        assert.deepEqual([generatedRegExp1.flags, generatedRegExp1.source], ["g", "ker\\b"]);
+        assert.deepEqual([generatedRegExp2.flags, generatedRegExp2.source], ["g", "ker\\b"]);
+    });
+
+    test("test regular expression parsing interoperability - newline", () => {
+        let text1 = `db.test1.beep.find({ sku:  /ker\\n/g })`; // equivalent to user typing out /ker\b/
+        let command1 = getCommandFromTextAtLocation(text1, new Position(0, 0));
+        let generatedRegExp1 = (<any>command1.argumentObjects[0]).sku;
+        let text2 = `db.test1.beep.find({ sku:  {$regex: "ker\\\\n", $options: "g"} })`;
+        let command2 = getCommandFromTextAtLocation(text2, new Position(0, 0));
+        let generatedRegExp2 = (<any>command2.argumentObjects[0]).sku;
+        assert.deepEqual([generatedRegExp2.flags, generatedRegExp2.source], ["g", "ker\\n"]);
+        assert.deepEqual([generatedRegExp1.flags, generatedRegExp1.source], ["g", "ker\\n"]);
+    });
+    test("test regular expression parsing interoperability - carriage return", () => {
+        let text1 = `db.test1.beep.find({ sku:  /ker\\r/g })`; // equivalent to user typing out /ker\b/
+        let command1 = getCommandFromTextAtLocation(text1, new Position(0, 0));
+        let generatedRegExp1 = (<any>command1.argumentObjects[0]).sku;
+        let text2 = `db.test1.beep.find({ sku:  {$regex: "ker\\\\r", $options: "g"} })`;
+        let command2 = getCommandFromTextAtLocation(text2, new Position(0, 0));
+        let generatedRegExp2 = (<any>command2.argumentObjects[0]).sku;
+        assert.deepEqual([generatedRegExp1.flags, generatedRegExp1.source], ["g", "ker\\r"]);
+        assert.deepEqual([generatedRegExp2.flags, generatedRegExp2.source], ["g", "ker\\r"]);
+    });
+
     test("test regular expressions - only pattern, no flags", () => {
         let text = `db.test1.beep.find({ sku: { $regex: "789$" } })`;
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));

@@ -3,36 +3,37 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocDBDatabaseTreeItem } from '../../docdb/tree/DocDBDatabaseTreeItem';
 import { ext } from '../../extensionVariables';
-import { GraphDatabaseTreeItem } from '../../graph/tree/GraphDatabaseTreeItem';
 import { getHostPortFromConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
-import { CosmosDBResourceType, CosmosDBTreeItem, PickTreeItemOptions } from '../../vscode-cosmosdb.api';
+import { CosmosDBApiType, DatabaseTreeItem, PickTreeItemOptions } from '../../vscode-cosmosdb.api';
 import { reveal } from './reveal';
 
-const databaseContextValues = [MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue, GraphDatabaseTreeItem.contextValue];
+const allSupportedDatabaseContextValues = [MongoDatabaseTreeItem.contextValue];
 
-export async function pickTreeItem<T extends CosmosDBTreeItem>(options: PickTreeItemOptions): Promise<T | undefined> {
-    if (options.resourceType === CosmosDBResourceType.DatabaseAccount) {
-        throw new Error('Picked database method supports only mongo databases now.');
+function getContextValue(str: CosmosDBApiType) {
+    if (str === 'Mongo') {
+        return MongoDatabaseTreeItem.contextValue;
     }
 
-    let contextValuesToFind = databaseContextValues;
+    throw new Error(`Pick method supports only Mongo database now.`);
+}
+
+export async function pickTreeItem(options: PickTreeItemOptions): Promise<DatabaseTreeItem | undefined> {
+    if (options.resourceType !== 'Database') {
+        throw new Error('Pick method supports only Mongo database now.');
+    }
+
+    let contextValuesToFind = allSupportedDatabaseContextValues;
     if (options.apiType) {
         contextValuesToFind = [];
         options.apiType.forEach(element => {
-            contextValuesToFind.push(databaseContextValues[element.valueOf() - 1]);
+            contextValuesToFind.push(getContextValue(element));
         });
-    }
-
-    if (contextValuesToFind.length !== 1 || contextValuesToFind[0] !== MongoDatabaseTreeItem.contextValue) {
-        throw new Error('Picked database method supports only mongo databases now.');
     }
 
     const pickedDatabase = <MongoDatabaseTreeItem>(await ext.tree.showTreeItemPicker(contextValuesToFind));
     const hostport = await getHostPortFromConnectionString(pickedDatabase.connectionString);
-    // @ts-ignore
     return {
         databaseName: pickedDatabase.databaseName,
         connectionString: pickedDatabase.connectionString,

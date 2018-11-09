@@ -8,7 +8,7 @@ import { addDatabaseToAccountConnectionString, getDatabaseNameFromConnectionStri
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { AttachedAccountsTreeItem } from '../../tree/AttachedAccountsTreeItem';
-import { CosmosDBTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
+import { DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { reveal } from './reveal';
 
 function isParentAccount(connectionString: string, account: MongoAccountTreeItem): boolean {
@@ -24,7 +24,7 @@ function isParentAccount(connectionString: string, account: MongoAccountTreeItem
     return (attachedAccount === attachedDatabase);
 }
 
-export async function findTreeItem<T extends CosmosDBTreeItem>(query: TreeItemQuery): Promise<T | undefined> {
+export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseTreeItem | undefined> {
     const connectionString = query.connectionString;
 
     if (/^mongodb[^:]*:\/\//i.test(connectionString)) {
@@ -41,7 +41,6 @@ export async function findTreeItem<T extends CosmosDBTreeItem>(query: TreeItemQu
                 const databases = await account.getCachedChildren();
                 for (const database of databases) {
                     if ((database instanceof MongoDatabaseTreeItem) && connectionString === database.connectionString) {
-                        // @ts-ignore
                         return {
                             connectionString: connectionString,
                             databaseName: database.databaseName,
@@ -55,7 +54,6 @@ export async function findTreeItem<T extends CosmosDBTreeItem>(query: TreeItemQu
         }
 
         let fullId: string | undefined;
-        //@ts-ignore
         return {
             connectionString: connectionString,
             databaseName: getDatabaseNameFromConnectionString(connectionString),

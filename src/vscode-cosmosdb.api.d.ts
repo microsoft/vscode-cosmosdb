@@ -3,21 +3,24 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+
 export interface CosmosDBExtensionApi {
     /**
      * Finds the first matching item in the Cosmos DB tree, or otherwise returns undefined.
      * NOTE: The item may not actually be loaded/attached in the tree until 'reveal' is called.
      *
      * @param query The query object to use for the find
+     * @param options Configures the behavior of the find
      */
-    findTreeItem<T extends CosmosDBTreeItem>(query: TreeItemQuery): Promise<T | undefined>;
+    findTreeItem(query: TreeItemQuery): Promise<DatabaseTreeItem | undefined>;
 
     /**
      * Prompts the user to pick an item from the Cosmos DB tree
      *
      * @param options Configures the behavior of the tree item picker
      */
-    pickTreeItem<T extends CosmosDBTreeItem>(options: PickTreeItemOptions): Promise<T | undefined>;
+    pickTreeItem(options: PickTreeItemOptions & { resourceType: 'DatabaseAccount' }): Promise<AccountTreeItem | undefined>;
+    pickTreeItem(options: PickTreeItemOptions & { resourceType: 'Database' }): Promise<DatabaseTreeItem | undefined>;
 }
 
 export interface CosmosDBTreeItem {
@@ -27,57 +30,26 @@ export interface CosmosDBTreeItem {
     reveal(): Promise<void>;
 }
 
-export interface DatabaseTreeItem extends CosmosDBTreeItem {
-    connectionString: string;
-    databaseName: string;
+export interface AccountTreeItem extends CosmosDBTreeItem {
     hostName: string;
     port: string;
+    connectionString: string;
 
     /**
      * Data specific to Azure or undefined if the resource is not in Azure.
      */
     azureData?: {
         accountName: string;
-    };
+    }
 }
 
-/**
- * See here for more info on Cosmos DB resource types:
- * https://docs.microsoft.com/azure/cosmos-db/sql-api-resources
- */
-export enum CosmosDBResourceType {
-    /**
-     * A database account is associated with a set of databases and a fixed amount of blob storage for attachments.
-     */
-    DatabaseAccount = 1,
-
-    /**
-     * A database is a logical container of document storage partitioned across collections.
-     */
-    Database = 2
+export interface DatabaseTreeItem extends AccountTreeItem {
+    databaseName: string;
 }
 
-export enum CosmosDBApiType {
-    /**
-     * https://docs.microsoft.com/azure/cosmos-db/mongodb-introduction
-     */
-    Mongo = 1,
+export type CosmosDBResourceType = 'DatabaseAccount' | 'Database';
 
-    /**
-     * https://docs.microsoft.com/azure/cosmos-db/sql-api-introduction
-     */
-    SQL = 2,
-
-    /**
-     * https://docs.microsoft.com/azure/cosmos-db/graph-introduction
-     */
-    Graph = 3,
-
-    /**
-     * https://docs.microsoft.com/azure/cosmos-db/table-introduction
-     */
-    Table = 4
-}
+export type CosmosDBApiType = 'Mongo' | 'SQL' | 'Graph' | 'Table';
 
 export interface PickTreeItemOptions {
     /**

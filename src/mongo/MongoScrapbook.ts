@@ -245,8 +245,24 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
 				const lastCommand = this.commands[this.commands.length - 1];
 				const argAsObject = this.contextToObject(ctx);
-				lastCommand.argumentObjects.push(argAsObject);
-				lastCommand.arguments.push(EJSON.stringify(argAsObject));
+				const argText = EJSON.stringify(argAsObject);
+				lastCommand.arguments.push(argText);
+				let removeDuplicatedBackslash = /\\{4}(?=[0-9bwds.*])/gi;
+				/*
+				We remove duplicate backslashes due the behavior of '\b' - \b in a regex denotes word boundary, while \b in a string denotes backspace.
+				$regex syntax uses a string. Strings require slashes to be escaped, while /regex/ does not. Eg. /abc+\b/ is equivalent to {$regex: "abc+\\b"}.
+				{$regex: "abc+\b"} with an unescaped slash gets parsed as  {$regex: <EOF>}. The user can only type '\\b' (which is encoded as '\\\\b').
+				We need to convert this appropriately. Other special characters (\n, \t, \r) don't carry significance in regexes - we don't handle those
+				What the regex does: '\\{4}' looks for the escaped slash 4 times. Lookahead checks if the character being escaped has a special meaning.
+				*/
+				let escapeHandled = argText.replace(removeDuplicatedBackslash, `\\\\`);
+				let ejsonParsed = {};
+				try {
+					ejsonParsed = EJSON.parse(escapeHandled);
+				} catch (err) { //EJSON parse failed due to a wrong flag, etc.
+					this.addErrorToCommand(parseError(err), ctx);
+				}
+				lastCommand.argumentObjects.push(ejsonParsed);
 			}
 		}
 		return super.visitArgument(ctx);
@@ -355,14 +371,15 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			} catch (error) {
 				let err: IParsedError = parseError(error);
 				this.addErrorToCommand(err, ctx);
+				return {};
 			}
 		}
-		return constructedObject;
+		return { $date: constructedObject.toString() };
 	}
 
 	private objectIdToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {
 		let hexID: string;
-		let constructedObject: Object = {};
+		let constructedObject: ObjectID;
 		if (!tokenText) { // usage : ObjectID()
 			constructedObject = new ObjectID();
 		} else {
@@ -372,23 +389,27 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			} catch (error) {
 				let err: IParsedError = parseError(error);
 				this.addErrorToCommand(err, ctx);
+				return {};
 			}
 		}
-		return constructedObject;
+		return { $oid: constructedObject.toString() };
 	}
 
 	private regexLiteralContextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, text: string): Object {
 		let separator = text.lastIndexOf('/');
 		let flags = separator !== text.length - 1 ? text.substring(separator + 1) : "";
 		let pattern = text.substring(1, separator);
-		let tokenObject: Object = {};
 		try {
-			tokenObject = new RegExp(pattern, flags);
+			// validate the pattern and flags.
+			// It is intended for the errors thrown here to be handled by the catch block.
+			let tokenObject = new RegExp(pattern, flags);
+			tokenObject = tokenObject;
+			return { $regex: pattern, $options: flags };
 		} catch (error) { //User may not have finished typing
 			let err: IParsedError = parseError(error);
 			this.addErrorToCommand(err, ctx);
+			return {};
 		}
-		return tokenObject;
 	}
 
 	private addErrorToCommand(error: IParsedError, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): void {

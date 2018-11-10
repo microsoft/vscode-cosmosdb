@@ -57,7 +57,10 @@ propertyName: StringLiteral | IDENTIFIER;
 
 comment: SingleLineComment | MultiLineComment;
 
-RegexLiteral: '/' (~[/] | '\\/')+ '/' (RegexFlag)*;
+RegexLiteral:
+	'/' (~[/\n\r*] | '\\/') (~[/\n\r] | '\\/')* '/' (RegexFlag)*;
+// Disallow '*' to succeed the opening '/'. This ensures we don't wrongly parse multi-line comments.
+// Disallow carriage returns too.
 
 fragment RegexFlag: [gimuy];
 

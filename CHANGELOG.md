@@ -1,6 +1,30 @@
 # Change Log
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
+## 0.9.0 - 2018-11-05
+### Added
+- Mongo
+    - Support for [ObjectId, ISODate](https://github.com/Microsoft/vscode-cosmosdb/issues/769) and [regular expression](https://github.com/Microsoft/vscode-cosmosdb/issues/786) [(/pattern/flag)](https://github.com/Microsoft/vscode-cosmosdb/issues/667) syntax in the scrapbook
+    - Support for [method chaining](https://github.com/Microsoft/vscode-cosmosdb/issues/785).
+    - Ability to [change timeout](https://github.com/Microsoft/vscode-cosmosdb/issues/809) for commands in scrapbook
+- Support [importing documents](https://github.com/Microsoft/vscode-cosmosdb/issues/404) into CosmosDB and Mongo databases.
+- Support for [soveriegn clouds](https://github.com/Microsoft/vscode-cosmosdb/commit/5b573f535cdeba109d7ff037b914575e0172c6bd)
+- Support creation of fixed collections and graphs [#295](https://github.com/Microsoft/vscode-cosmosdb/issues/295) and [#504](https://github.com/Microsoft/vscode-cosmosdb/issues/504)
+
+### Fixed
+- Collections having two documents of the same id will render properly [#588](https://github.com/Microsoft/vscode-cosmosdb/issues/588) and [#892](https://github.com/Microsoft/vscode-cosmosdb/issues/892)
+- Some UI fixes [#576](https://github.com/Microsoft/vscode-cosmosdb/issues/576) and [#873](https://github.com/Microsoft/vscode-cosmosdb/issues/873)
+- [Additional bugs fixed](https://github.com/Microsoft/vscode-cosmosdb/milestone/16?closed=1)
+
+### Thank you
+A big thank you to the following contributors that helped make the extension even better!
+- [Nicolas Kyriazopuolos-Panagiotopoulos @tec-goblin](https://github.com/tec-goblin):
+    - Updates to a collection now update the corresponding tree item [PR#856](https://github.com/Microsoft/vscode-cosmosdb/pull/856)
+    - Uploading a document by closing it no longer tries to update the closed editor  [PR#818](https://github.com/Microsoft/vscode-cosmosdb/pull/818)
+    - Fixing tslint issues [PR#829](https://github.com/Microsoft/vscode-cosmosdb/pull/829)
+    - Use consistent language for various commands [PR#828](https://github.com/Microsoft/vscode-cosmosdb/pull/828)
+    - Fix some typos [PR#810](https://github.com/Microsoft/vscode-cosmosdb/pull/810) and [PR#816](https://github.com/Microsoft/vscode-cosmosdb/pull/816)
+- [Nguyen Long Nhat @torn4dom4n](https://github.com/torn4dom4n), for updating our tasks [PR#887](https://github.com/Microsoft/vscode-cosmosdb/pull/887)
 
 ## 0.8.0 - 2018-07-05
 ### Added

@@ -1,7 +1,7 @@
 
 # Cosmos DB Support for VS Code (Preview)
 
-[![Version](https://vsmarketplacebadge.apphb.com/version/ms-azuretools.vscode-cosmosdb.svg)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb) [![Installs](https://vsmarketplacebadge.apphb.com/installs-short/ms-azuretools.vscode-cosmosdb.svg)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb) [![Build Status](https://travis-ci.org/Microsoft/vscode-cosmosdb.svg?branch=master)](https://travis-ci.org/Microsoft/vscode-cosmosdb)
+[![Version](https://vsmarketplacebadge.apphb.com/version/ms-azuretools.vscode-cosmosdb.svg)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb) [![Installs](https://vsmarketplacebadge.apphb.com/installs-short/ms-azuretools.vscode-cosmosdb.svg)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb) [![Build Status](https://dev.azure.com/ms-azuretools/AzCode/_apis/build/status/vscode-cosmosdb)](https://dev.azure.com/ms-azuretools/AzCode/_build/latest?definitionId=7)
 
 Browse and query your MongoDB databases both locally and in the cloud using [_scrapbooks_](#mongo-scrapbooks) with rich Intellisense then connect to Azure to manage your Cosmos DB databases with support for MongoDB, Graph (Gremlin), and SQL (previously known as DocumentDB).
 
@@ -43,6 +43,11 @@ You will now find us by clicking in the new Azure view container instead of the 
 - To run all commands, click on "Execute All", or press `CMD+:` or `Ctrl+:`
 - Save and re-use later
 ![Mongo Scrapbook](resources/Scrapbook.gif)
+
+## Import into Cosmos DB
+
+- You can now import documents from your workspace into CosmosDB. Use the context menu of a collection or a document file (json) to get started!
+![Import documents](resources/import_documents.gif)
 
 ## Use [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support) to query graphs
 

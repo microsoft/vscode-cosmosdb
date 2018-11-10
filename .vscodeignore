@@ -10,3 +10,5 @@ package-lock.json
 tsconfig.json
 tslint.json
 .github/**
+test-results.xml
+.azure-pipelines/**

@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { AzureParentTreeItem } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import { getDatabaseNameFromConnectionString, getHostPortFromConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
@@ -22,19 +23,30 @@ export async function findTreeItem(query: TreeItemQuery, attachedAccountsNode: A
 
     if (/^mongodb[^:]*:\/\//i.test(connectionString)) {
         const hostport = await getHostPortFromConnectionString(connectionString);
-        const accounts = await attachedAccountsNode.getCachedChildren();
-        for (const account of accounts) {
-            if ((account instanceof MongoAccountTreeItem) && (await isParentAccount(connectionString, account))) {
-                const databases = await account.getCachedChildren();
-                for (const database of databases) {
-                    if ((database instanceof MongoDatabaseTreeItem) && getDatabaseNameFromConnectionString(connectionString) === getDatabaseNameFromConnectionString(database.connectionString)) {
-                        return {
-                            connectionString: connectionString,
-                            databaseName: database.databaseName,
-                            hostName: hostport.host,
-                            port: hostport.port,
-                            reveal: async () => await ext.treeView.reveal(database)
-                        };
+
+        //Look into attached accounts at the first
+        const subscriptions = (await ext.tree.getChildren()).filter((subscription) => {
+            return (subscription !== attachedAccountsNode);
+        });
+        subscriptions.unshift(attachedAccountsNode);
+        for (const subscription of subscriptions) {
+            if (subscription instanceof AzureParentTreeItem) {
+                const accounts = await subscription.getCachedChildren();
+                for (const account of accounts) {
+                    if ((account instanceof MongoAccountTreeItem) && (await isParentAccount(connectionString, account))) {
+                        const databases = await account.getCachedChildren();
+                        for (const database of databases) {
+                            if ((database instanceof MongoDatabaseTreeItem) && connectionString === database.connectionString) {
+                                return {
+                                    connectionString: connectionString,
+                                    databaseName: database.databaseName,
+                                    hostName: hostport.host,
+                                    port: hostport.port,
+                                    azureData: database.parent.databaseAccount ? { accountName: database.parent.databaseAccount.name } : undefined,
+                                    reveal: async () => await ext.treeView.reveal(database)
+                                };
+                            }
+                        }
                     }
                 }
             }

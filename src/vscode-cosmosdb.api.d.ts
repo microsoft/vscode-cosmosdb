@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-
 export interface CosmosDBExtensionApi {
+    apiVersion: string;
+
     /**
      * Finds the first matching item in the Cosmos DB tree, or otherwise returns undefined.
      * NOTE: The item may not actually be loaded/attached in the tree until 'reveal' is called.
      *
      * @param query The query object to use for the find
-     * @param options Configures the behavior of the find
      */
     findTreeItem(query: TreeItemQuery): Promise<DatabaseTreeItem | undefined>;
 
@@ -19,7 +19,7 @@ export interface CosmosDBExtensionApi {
      *
      * @param options Configures the behavior of the tree item picker
      */
-    pickTreeItem(options: PickTreeItemOptions & { resourceType: 'DatabaseAccount' }): Promise<AccountTreeItem | undefined>;
+    pickTreeItem(options: PickTreeItemOptions & { resourceType: 'DatabaseAccount' }): Promise<DatabaseAccountTreeItem | undefined>;
     pickTreeItem(options: PickTreeItemOptions & { resourceType: 'Database' }): Promise<DatabaseTreeItem | undefined>;
 }
 
@@ -30,7 +30,7 @@ export interface CosmosDBTreeItem {
     reveal(): Promise<void>;
 }
 
-export interface AccountTreeItem extends CosmosDBTreeItem {
+export interface DatabaseAccountTreeItem extends CosmosDBTreeItem {
     hostName: string;
     port: string;
     connectionString: string;
@@ -43,7 +43,7 @@ export interface AccountTreeItem extends CosmosDBTreeItem {
     }
 }
 
-export interface DatabaseTreeItem extends AccountTreeItem {
+export interface DatabaseTreeItem extends DatabaseAccountTreeItem {
     databaseName: string;
 }
 

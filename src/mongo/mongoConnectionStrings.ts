@@ -1,11 +1,11 @@
-import { ReplSet } from "mongodb";
-import { appendExtensionUserAgent } from "vscode-azureextensionui";
-import { connectToMongoClient } from "./connectToMongoClient";
-
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+
+import { ReplSet } from "mongodb";
+import { appendExtensionUserAgent } from "vscode-azureextensionui";
+import { connectToMongoClient } from "./connectToMongoClient";
 
 // Connection strings follow the following format (https://docs.mongodb.com/manual/reference/connection-string/):
 //   mongodb[+srv]://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]

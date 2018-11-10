@@ -78,20 +78,20 @@ export class CosmosDBAccountProvider extends SubscriptionTreeItem {
         if (defaultExperience === "MongoDB") {
             const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, databaseAccount.name);
             // Use the default connection string
-            return new MongoAccountTreeItem(this, databaseAccount.id, databaseAccount.name, label, result.connectionStrings[0].connectionString, isEmulator);
+            return new MongoAccountTreeItem(this, databaseAccount.id, label, result.connectionStrings[0].connectionString, isEmulator, databaseAccount);
         } else {
             const keyResult: DatabaseAccountListKeysResult = await client.databaseAccounts.listKeys(resourceGroup, databaseAccount.name);
             switch (defaultExperience) {
                 case "Table":
-                    return new TableAccountTreeItem(this, databaseAccount.id, databaseAccount.name, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator);
+                    return new TableAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator, databaseAccount);
                 case "Graph": {
                     const gremlinEndpoint = await TryGetGremlinEndpointFromAzure(client, resourceGroup, databaseAccount.name);
-                    return new GraphAccountTreeItem(this, databaseAccount.id, databaseAccount.name, label, databaseAccount.documentEndpoint, gremlinEndpoint, keyResult.primaryMasterKey, isEmulator);
+                    return new GraphAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, gremlinEndpoint, keyResult.primaryMasterKey, isEmulator, databaseAccount);
                 }
                 case "DocumentDB":
                 default:
                     // Default to DocumentDB, the base type for all Cosmos DB Accounts
-                    return new DocDBAccountTreeItem(this, databaseAccount.id, databaseAccount.name, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator);
+                    return new DocDBAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator, databaseAccount);
 
             }
         }

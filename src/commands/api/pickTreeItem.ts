@@ -7,7 +7,6 @@ import { ext } from '../../extensionVariables';
 import { getHostPortFromConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { CosmosDBApiType, DatabaseTreeItem, PickTreeItemOptions } from '../../vscode-cosmosdb.api';
-import { reveal } from './reveal';
 
 const allSupportedDatabaseContextValues = [MongoDatabaseTreeItem.contextValue];
 
@@ -39,7 +38,7 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
         connectionString: pickedDatabase.connectionString,
         hostName: hostport.host,
         port: hostport.port,
-        azureData: { accountName: pickedDatabase.parent.name },
-        reveal: () => reveal(pickedDatabase.fullId)
+        azureData: pickedDatabase.parent.databaseAccount ? { accountName: pickedDatabase.parent.databaseAccount.name } : undefined,
+        reveal: async () => await ext.treeView.reveal(pickedDatabase)
     };
 }

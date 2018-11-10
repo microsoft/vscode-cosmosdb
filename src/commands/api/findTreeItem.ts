@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ext } from '../../extensionVariables';
-import { addDatabaseToAccountConnectionString, getDatabaseNameFromConnectionString, getHostPortFromConnectionString } from '../../mongo/mongoConnectionStrings';
+import { getDatabaseNameFromConnectionString, getHostPortFromConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { AttachedAccountsTreeItem } from '../../tree/AttachedAccountsTreeItem';
@@ -12,41 +12,28 @@ import { DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { reveal } from './reveal';
 
 function isParentAccount(connectionString: string, account: MongoAccountTreeItem): boolean {
-    const mongoAccountString = addDatabaseToAccountConnectionString(account.connectionString, '');
-    // Mongo database connection string will always contian '/' after addDatabaseToAccountConnectionString method, but account connection string can be without in this case: mongodb://localhost
-    if (mongoAccountString.startsWith(account.connectionString)) {
-        return true;
-    }
-
-    // In case if database was attached, it's connection strings will be the same
-    const attachedAccount = addDatabaseToAccountConnectionString(account.connectionString, '');
-    const attachedDatabase = addDatabaseToAccountConnectionString(connectionString, '');
-    return (attachedAccount === attachedDatabase);
+    const databaseHostPort = getHostPortFromConnectionString(connectionString);
+    const accountHostPort = getHostPortFromConnectionString(account.connectionString);
+    return (databaseHostPort === accountHostPort);
 }
 
-export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseTreeItem | undefined> {
+export async function findTreeItem(query: TreeItemQuery, attachedAccountsNode: AttachedAccountsTreeItem): Promise<DatabaseTreeItem | undefined> {
     const connectionString = query.connectionString;
 
     if (/^mongodb[^:]*:\/\//i.test(connectionString)) {
         const hostport = await getHostPortFromConnectionString(connectionString);
-
-        //Look into attached accounts first
-        const attachedAccountsNode = <AttachedAccountsTreeItem>(await ext.tree.getChildren()).find((subscription) => {
-            return (subscription.id === 'cosmosDBAttachedAccounts');
-        });
-
         const accounts = await attachedAccountsNode.getCachedChildren();
         for (const account of accounts) {
             if ((account instanceof MongoAccountTreeItem) && isParentAccount(connectionString, account)) {
                 const databases = await account.getCachedChildren();
                 for (const database of databases) {
-                    if ((database instanceof MongoDatabaseTreeItem) && connectionString === database.connectionString) {
+                    if ((database instanceof MongoDatabaseTreeItem) && getDatabaseNameFromConnectionString(connectionString) === getDatabaseNameFromConnectionString(database.connectionString)) {
                         return {
                             connectionString: connectionString,
                             databaseName: database.databaseName,
                             hostName: hostport.host,
                             port: hostport.port,
-                            reveal: () => reveal(database.fullId)
+                            reveal: async () => await ext.treeView.reveal(database)
                         };
                     }
                 }

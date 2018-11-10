@@ -261,20 +261,20 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
             }
 
             label = label || `${id} (${getExperience(api).shortName})`;
-            treeItem = new MongoAccountTreeItem(this, id, id, label, connectionString, isEmulator);
+            treeItem = new MongoAccountTreeItem(this, id, label, connectionString, isEmulator);
         } else {
             const [endpoint, masterKey, parsedId] = AttachedAccountsTreeItem.parseDocDBConnectionString(connectionString);
 
             label = label || `${parsedId} (${getExperience(api).shortName})`;
             switch (api) {
                 case API.Table:
-                    treeItem = new TableAccountTreeItem(this, parsedId, parsedId, label, endpoint, masterKey, isEmulator);
+                    treeItem = new TableAccountTreeItem(this, parsedId, label, endpoint, masterKey, isEmulator);
                     break;
                 case API.Graph:
-                    treeItem = new GraphAccountTreeItem(this, parsedId, parsedId, label, endpoint, undefined, masterKey, isEmulator);
+                    treeItem = new GraphAccountTreeItem(this, parsedId, label, endpoint, undefined, masterKey, isEmulator);
                     break;
                 case API.DocumentDB:
-                    treeItem = new DocDBAccountTreeItem(this, parsedId, parsedId, label, endpoint, masterKey, isEmulator);
+                    treeItem = new DocDBAccountTreeItem(this, parsedId, label, endpoint, masterKey, isEmulator);
                     break;
                 default:
                     throw new Error(`Unexpected defaultExperience "${api}".`);

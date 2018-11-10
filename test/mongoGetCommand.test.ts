@@ -758,7 +758,7 @@ suite("scrapbook parsing Tests", () => {
     });
 
     test("test regular expression parsing interoperability - newline", () => {
-        let text1 = `db.test1.beep.find({ sku:  /ker\\n/g })`; // equivalent to user typing out /ker\b/
+        let text1 = `db.test1.beep.find({ sku:  /ker\\n/g })`; // equivalent to user typing out /ker\n/
         let command1 = getCommandFromTextAtLocation(text1, new Position(0, 0));
         let generatedRegExp1 = (<any>command1.argumentObjects[0]).sku;
         let text2 = `db.test1.beep.find({ sku:  {$regex: "ker\\\\n", $options: "g"} })`;
@@ -768,7 +768,7 @@ suite("scrapbook parsing Tests", () => {
         assert.deepEqual([generatedRegExp1.flags, generatedRegExp1.source], ["g", "ker\\n"]);
     });
     test("test regular expression parsing interoperability - carriage return", () => {
-        let text1 = `db.test1.beep.find({ sku:  /ker\\r/g })`; // equivalent to user typing out /ker\b/
+        let text1 = `db.test1.beep.find({ sku:  /ker\\r/g })`; // equivalent to user typing out /ker\r/
         let command1 = getCommandFromTextAtLocation(text1, new Position(0, 0));
         let generatedRegExp1 = (<any>command1.argumentObjects[0]).sku;
         let text2 = `db.test1.beep.find({ sku:  {$regex: "ker\\\\r", $options: "g"} })`;

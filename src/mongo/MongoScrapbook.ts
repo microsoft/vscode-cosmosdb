@@ -397,7 +397,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			let tokenObject = new RegExp(pattern, flags);
 			tokenObject = tokenObject;
 			// we are passing back a $regex annotation, hence we ensure parity wit the $regex syntax
-			return { $regex: this.padRegexEscape(pattern), $options: flags };
+			return { $regex: this.regexToStringNotation(pattern), $options: flags };
 		} catch (error) { //User may not have finished typing
 			let err: IParsedError = parseError(error);
 			this.addErrorToCommand(err, ctx);
@@ -412,7 +412,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		command.errors.push(currentErrorDesc);
 	}
 
-	private padRegexEscape(pattern: string): string {
+	private regexToStringNotation(pattern: string): string {
 		// The equivalence:
 		// /ker\b/ <=> $regex: "ker\\b", /ker\\b/ <=> "ker\\\\b"
 		return pattern.replace(/\\([0-9a-z.*])/i, '\\\\$1');

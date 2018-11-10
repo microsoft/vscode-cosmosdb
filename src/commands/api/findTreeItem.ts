@@ -11,10 +11,10 @@ import { AttachedAccountsTreeItem } from '../../tree/AttachedAccountsTreeItem';
 import { DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { reveal } from './reveal';
 
-function isParentAccount(connectionString: string, account: MongoAccountTreeItem): boolean {
-    const databaseHostPort = getHostPortFromConnectionString(connectionString);
-    const accountHostPort = getHostPortFromConnectionString(account.connectionString);
-    return (databaseHostPort === accountHostPort);
+async function isParentAccount(connectionString: string, account: MongoAccountTreeItem): Promise<boolean> {
+    const databaseHostPort = await getHostPortFromConnectionString(connectionString);
+    const accountHostPort = await getHostPortFromConnectionString(account.connectionString);
+    return (databaseHostPort.host === accountHostPort.host && databaseHostPort.port === accountHostPort.port);
 }
 
 export async function findTreeItem(query: TreeItemQuery, attachedAccountsNode: AttachedAccountsTreeItem): Promise<DatabaseTreeItem | undefined> {
@@ -24,7 +24,7 @@ export async function findTreeItem(query: TreeItemQuery, attachedAccountsNode: A
         const hostport = await getHostPortFromConnectionString(connectionString);
         const accounts = await attachedAccountsNode.getCachedChildren();
         for (const account of accounts) {
-            if ((account instanceof MongoAccountTreeItem) && isParentAccount(connectionString, account)) {
+            if ((account instanceof MongoAccountTreeItem) && (await isParentAccount(connectionString, account))) {
                 const databases = await account.getCachedChildren();
                 for (const database of databases) {
                     if ((database instanceof MongoDatabaseTreeItem) && getDatabaseNameFromConnectionString(connectionString) === getDatabaseNameFromConnectionString(database.connectionString)) {

@@ -247,15 +247,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 				const argAsObject = this.contextToObject(ctx);
 				const argText = EJSON.stringify(argAsObject);
 				lastCommand.arguments.push(argText);
-				let removeDuplicatedBackslash = /\\{4}(?=[0-9bwds.*])/gi;
-				/*
-				We remove duplicate backslashes due the behavior of '\b' - \b in a regex denotes word boundary, while \b in a string denotes backspace.
-				$regex syntax uses a string. Strings require slashes to be escaped, while /regex/ does not. Eg. /abc+\b/ is equivalent to {$regex: "abc+\\b"}.
-				{$regex: "abc+\b"} with an unescaped slash gets parsed as  {$regex: <EOF>}. The user can only type '\\b' (which is encoded as '\\\\b').
-				We need to convert this appropriately. Other special characters (\n, \t, \r) don't carry significance in regexes - we don't handle those
-				What the regex does: '\\{4}' looks for the escaped slash 4 times. Lookahead checks if the character being escaped has a special meaning.
-				*/
-				let escapeHandled = argText.replace(removeDuplicatedBackslash, `\\\\`);
+				let escapeHandled = this.deduplicateEscapesForRegex(argText);
 				let ejsonParsed = {};
 				try {
 					ejsonParsed = EJSON.parse(escapeHandled);
@@ -404,7 +396,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			// It is intended for the errors thrown here to be handled by the catch block.
 			let tokenObject = new RegExp(pattern, flags);
 			tokenObject = tokenObject;
-			return { $regex: pattern, $options: flags };
+			// we are passing back a $regex annotation, hence we ensure parity wit the $regex syntax
+			return { $regex: this.regexToStringNotation(pattern), $options: flags };
 		} catch (error) { //User may not have finished typing
 			let err: IParsedError = parseError(error);
 			this.addErrorToCommand(err, ctx);
@@ -417,6 +410,25 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		command.errors = command.errors || [];
 		let currentErrorDesc: ErrorDescription = { message: error.message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
 		command.errors.push(currentErrorDesc);
+	}
+
+	private regexToStringNotation(pattern: string): string {
+		// The equivalence:
+		// /ker\b/ <=> $regex: "ker\\b", /ker\\b/ <=> "ker\\\\b"
+		return pattern.replace(/\\([0-9a-z.*])/i, '\\\\$1');
+	}
+
+	private deduplicateEscapesForRegex(argAsString: string) {
+		let removeDuplicatedBackslash = /\\{4}([0-9a-z.*])/gi;
+		/*
+		We remove duplicate backslashes due the behavior of '\b' - \b in a regex denotes word boundary, while \b in a string denotes backspace.
+		$regex syntax uses a string. Strings require slashes to be escaped, while /regex/ does not. Eg. /abc+\b/ is equivalent to {$regex: "abc+\\b"}.
+		{$regex: "abc+\b"} with an unescaped slash gets parsed as  {$regex: <EOF>}. The user can only type '\\b' (which is encoded as '\\\\b').
+		We need to convert this appropriately. Other special characters (\n, \t, \r) don't carry significance in regexes - we don't handle those
+		What the regex does: '\\{4}' looks for the escaped slash 4 times. Lookahead checks if the character being escaped has a special meaning.
+		*/
+		let escapeHandled = argAsString.replace(removeDuplicatedBackslash, `\\\\$1`);
+		return escapeHandled;
 	}
 
 }

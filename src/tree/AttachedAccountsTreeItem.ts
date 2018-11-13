@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as keytarType from 'keytar';
-import { ReplSet } from "mongodb";
 import { ServiceClientCredentials } from 'ms-rest';
 import { AzureEnvironment } from 'ms-rest-azure';
 import * as path from 'path';
@@ -15,7 +14,7 @@ import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { API, getExperience, getExperienceQuickPick, getExperienceQuickPicks } from '../experiences';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
-import { getDatabaseNameFromConnectionString } from '../mongo/mongoConnectionStrings';
+import { getDatabaseNameFromConnectionString, getHostPortFromConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { tryfetchNodeModule } from '../utils/vscodeUtils';
@@ -144,6 +143,13 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         }
     }
 
+    public async attachNewDatabase(connectionString: string): Promise<string> {
+        const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, API.MongoDB);
+        await this.attachAccount(treeItem, connectionString);
+        // Add database to node id
+        return `${treeItem.fullId}/${getDatabaseNameFromConnectionString(connectionString)}`;
+    }
+
     public async attachEmulator(): Promise<void> {
         let connectionString: string;
         const defaultExperiencePick = await vscode.window.showQuickPick(
@@ -209,30 +215,6 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         }
     }
 
-    private async getServerIdFromConnectionString(connectionString: string): Promise<string> {
-        let host: string;
-        let port: string;
-
-        const db = await connectToMongoClient(connectionString, appendExtensionUserAgent());
-        const serverConfig = db.serverConfig;
-        // Azure CosmosDB comes back as a ReplSet
-        if (serverConfig instanceof ReplSet) {
-            // get the first connection string from the seedlist for the ReplSet
-            // this may not be best solution, but the connection (below) gives
-            // the replicaset host name, which is different than what is in the connection string
-            // "s" is not part of ReplSet static definition but can't find any official documentation on it. Yet it is definitely there at runtime. Grandfathering in.
-            // tslint:disable-next-line:no-any
-            let rs: any = serverConfig;
-            host = rs.s.replset.s.seedlist[0].host;
-            port = rs.s.replset.s.seedlist[0].port;
-        } else {
-            host = serverConfig['host'];
-            port = serverConfig['port'];
-        }
-
-        return `${host}:${port}`;
-    }
-
     private async loadPersistedAccounts(): Promise<AzureTreeItem[]> {
         const persistedAccounts: AzureTreeItem[] = [];
         const value: string | undefined = this._globalState.get(this._serviceName);
@@ -269,7 +251,8 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         // tslint:disable-next-line:possible-timing-attack // not security related
         if (api === API.MongoDB) {
             if (id === undefined) {
-                id = await this.getServerIdFromConnectionString(connectionString);
+                const hostport = await getHostPortFromConnectionString(connectionString);
+                id = `${hostport.host}:${hostport.port}`;
 
                 // Add database to node id if specified in connection string
                 let database = !isEmulator && getDatabaseNameFromConnectionString(connectionString);

@@ -8,7 +8,9 @@
 import * as copypaste from 'copy-paste';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, createApiProvider, createTelemetryReporter, IActionContext, IAzureUserInput, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
-import { AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
+import { AzureExtensionApi, AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
+import { findTreeItem } from './commands/api/findTreeItem';
+import { pickTreeItem } from './commands/api/pickTreeItem';
 import { importDocuments } from './commands/importDocuments';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
@@ -29,6 +31,7 @@ import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
 import * as cpUtil from './utils/cp';
+import { TreeItemQuery } from './vscode-cosmosdb.api';
 
 export async function activate(context: vscode.ExtensionContext): Promise<AzureExtensionApiProvider> {
 	registerUIExtensionVariables(ext);
@@ -143,7 +146,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<AzureE
 			}
 		});
 
-	return createApiProvider([]);
+	return createApiProvider([<AzureExtensionApi>{
+		findTreeItem: (query: TreeItemQuery) => findTreeItem(query, attachedAccountsNode),
+		pickTreeItem,
+		apiVersion: '1.0.0'
+	}]);
 }
 
 async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase) {

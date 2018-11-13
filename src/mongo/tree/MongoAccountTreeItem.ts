@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
 import { Db } from 'mongodb';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -26,7 +27,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 
     private _root: IMongoTreeRoot;
 
-    constructor(parent: AzureParentTreeItem, id: string, label: string, connectionString: string, isEmulator: boolean) {
+    constructor(parent: AzureParentTreeItem, id: string, label: string, connectionString: string, isEmulator: boolean, readonly databaseAccount?: DatabaseAccount) {
         super(parent);
         this.id = id;
         this.label = label;

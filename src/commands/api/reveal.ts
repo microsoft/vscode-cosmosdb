@@ -3,10 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocDBDatabaseTreeItem } from '../../docdb/tree/DocDBDatabaseTreeItem';
 import { ext } from '../../extensionVariables';
-import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 
-export async function getDatabase(): Promise<String> {
-    return (await ext.tree.showTreeItemPicker([MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue])).fullId;
+export async function reveal(treeItemId: string): Promise<void> {
+    let node = await ext.tree.findTreeItem(treeItemId);
+    if (!node) {
+        throw new Error(`Coudn't find database with cosmos id:${treeItemId}`);
+    }
+    await ext.treeView.reveal(node);
 }

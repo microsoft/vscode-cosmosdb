@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
 import { DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -24,7 +25,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
 
     private _root: IDocDBTreeRoot;
 
-    constructor(parent: AzureParentTreeItem, id: string, label: string, documentEndpoint: string, masterKey: string, isEmulator: boolean) {
+    constructor(parent: AzureParentTreeItem, id: string, label: string, documentEndpoint: string, masterKey: string, isEmulator: boolean, readonly databaseAccount?: DatabaseAccount) {
         super(parent);
         this.id = id;
         this.label = label;

@@ -16,6 +16,7 @@ import { MongoCommand } from '../MongoCommand';
 import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings';
 import { Shell } from '../shell';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
+import { MongoAccountTreeItem } from './MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 
 import opn = require('opn');
@@ -28,11 +29,12 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 	public readonly childTypeLabel: string = "Collection";
 	public readonly connectionString: string;
 	public readonly databaseName: string;
+	public readonly parent: MongoAccountTreeItem;
 
 	private _previousShellPathSetting: string | undefined;
 	private _cachedShellPathOrCmd: string | undefined;
 
-	constructor(parent: AzureParentTreeItem, databaseName: string, connectionString: string) {
+	constructor(parent: MongoAccountTreeItem, databaseName: string, connectionString: string) {
 		super(parent);
 		this.databaseName = databaseName;
 		this.connectionString = addDatabaseToAccountConnectionString(connectionString, this.databaseName);

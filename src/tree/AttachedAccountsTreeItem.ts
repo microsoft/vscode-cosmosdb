@@ -9,12 +9,13 @@ import { AzureEnvironment } from 'ms-rest-azure';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzureTreeItem, GenericTreeItem, ISubscriptionRoot, RootTreeItem, SubscriptionTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword } from '../constants';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { API, getExperience, getExperienceQuickPick, getExperienceQuickPicks } from '../experiences';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
-import { getDatabaseNameFromConnectionString, getHostPortFromConnectionString } from '../mongo/mongoConnectionStrings';
+import { parseMongoConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { tryfetchNodeModule } from '../utils/vscodeUtils';
@@ -143,11 +144,11 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         }
     }
 
-    public async attachNewDatabase(connectionString: string): Promise<string> {
-        const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, API.MongoDB);
+    public async attachMongoConnectionString(connectionString: string): Promise<MongoAccountTreeItem> {
+        const treeItem: MongoAccountTreeItem = <MongoAccountTreeItem>await this.createTreeItem(connectionString, API.MongoDB);
         await this.attachAccount(treeItem, connectionString);
-        // Add database to node id
-        return `${treeItem.fullId}/${getDatabaseNameFromConnectionString(connectionString)}`;
+        this.refresh();
+        return treeItem;
     }
 
     public async attachEmulator(): Promise<void> {
@@ -202,15 +203,20 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         }
     }
 
-    public async detach(id: string): Promise<void> {
+    public async detach(node: AzureTreeItem): Promise<void> {
         const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
 
-        const index = attachedAccounts.findIndex((account) => account.id === id);
+        const index = attachedAccounts.findIndex((account) => account.fullId === node.fullId);
         if (index !== -1) {
             attachedAccounts.splice(index, 1);
             if (this._keytar) {
-                await this._keytar.deletePassword(this._serviceName, id);
+                await this._keytar.deletePassword(this._serviceName, node.id); // intentionally using 'id' instead of 'fullId' for the sake of backwards compatability
                 await this.persistIds(attachedAccounts);
+            }
+
+            if (node instanceof MongoAccountTreeItem) {
+                const parsedCS = await parseMongoConnectionString(node.connectionString);
+                removeTreeItemFromCache(parsedCS);
             }
         }
     }
@@ -251,14 +257,8 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         // tslint:disable-next-line:possible-timing-attack // not security related
         if (api === API.MongoDB) {
             if (id === undefined) {
-                const hostport = await getHostPortFromConnectionString(connectionString);
-                id = `${hostport.host}:${hostport.port}`;
-
-                // Add database to node id if specified in connection string
-                let database = !isEmulator && getDatabaseNameFromConnectionString(connectionString);
-                if (database) {
-                    id = `${id}/${database}`;
-                }
+                const parsedCS = await parseMongoConnectionString(connectionString);
+                id = parsedCS.fullId;
             }
 
             label = label || `${id} (${getExperience(api).shortName})`;

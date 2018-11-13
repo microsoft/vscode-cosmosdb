@@ -31,7 +31,6 @@ import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
 import * as cpUtil from './utils/cp';
-import { TreeItemQuery } from './vscode-cosmosdb.api';
 
 export async function activate(context: vscode.ExtensionContext): Promise<AzureExtensionApiProvider> {
 	registerUIExtensionVariables(ext);
@@ -42,6 +41,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<AzureE
 	ext.ui = ui;
 
 	const attachedAccountsNode: AttachedAccountsTreeItem = new AttachedAccountsTreeItem(context.globalState);
+	ext.attachedAccountsNode = attachedAccountsNode;
 	const tree: AzureTreeDataProvider = new AzureTreeDataProvider(CosmosDBAccountProvider, 'cosmosDB.loadMore', [attachedAccountsNode]);
 	context.subscriptions.push(tree);
 	ext.tree = tree;
@@ -92,7 +92,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<AzureE
 			node = await tree.showTreeItemPicker(accountContextValues.map((val: string) => val += AttachedAccountSuffix), attachedAccountsNode);
 		}
 
-		await attachedAccountsNode.detach(node.id);
+		await attachedAccountsNode.detach(node);
 		await tree.refresh(attachedAccountsNode);
 	});
 	registerCommand('cosmosDB.importDocument', async (selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => //ignore first pass
@@ -147,7 +147,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<AzureE
 		});
 
 	return createApiProvider([<AzureExtensionApi>{
-		findTreeItem: (query: TreeItemQuery) => findTreeItem(query, attachedAccountsNode),
+		findTreeItem,
 		pickTreeItem,
 		apiVersion: '1.0.0'
 	}]);

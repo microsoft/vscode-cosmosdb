@@ -4,9 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ext } from '../../extensionVariables';
-import { getHostPortFromConnectionString } from '../../mongo/mongoConnectionStrings';
+import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { CosmosDBApiType, DatabaseTreeItem, PickTreeItemOptions } from '../../vscode-cosmosdb.api';
+import { cacheTreeItem } from './apiCache';
+import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
 const allSupportedDatabaseContextValues = [MongoDatabaseTreeItem.contextValue];
 
@@ -32,13 +34,8 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
     }
 
     const pickedDatabase = <MongoDatabaseTreeItem>(await ext.tree.showTreeItemPicker(contextValuesToFind));
-    const hostport = await getHostPortFromConnectionString(pickedDatabase.connectionString);
-    return {
-        databaseName: pickedDatabase.databaseName,
-        connectionString: pickedDatabase.connectionString,
-        hostName: hostport.host,
-        port: hostport.port,
-        azureData: pickedDatabase.parent.databaseAccount ? { accountName: pickedDatabase.parent.databaseAccount.name } : undefined,
-        reveal: async () => await ext.treeView.reveal(pickedDatabase)
-    };
+    const parsedCS = await parseMongoConnectionString(pickedDatabase.connectionString);
+    const result = new DatabaseTreeItemInternal(parsedCS, pickedDatabase.parent, pickedDatabase);
+    cacheTreeItem(parsedCS, result);
+    return result;
 }

@@ -7,10 +7,6 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 
 ![Cosmos DB Extension](resources/features.png)
 
-# We've Moved!
-
-You will now find us by clicking in the new Azure view container instead of the file explorer.
-
 # Prerequisites
 
 - Some less-common commands in the Mongo [scrapbook](#mongo-scrapbooks) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).

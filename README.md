@@ -110,7 +110,7 @@ To select which subscriptions show up in the extension's explorer, click on the 
 - Azure no longer supports gremlin queries on pre-GA graph accounts. If you see the error "Could not find a valid gremlin endpoint for *graph*", then choose "Open Portal" on the graph node and check the "Gremlin Endpoint" in the Overview tab. If it does not take the form of '...[graph-name].***gremlin***.cosmosdb.azure.com...', then you will need to create a new graph account using the Azure portal or the current version of the extension.
 - Graphs are not currently supported with the emulator
 - Viewing/editing tables is not currently supported
-- Support for escapes in the scrapbooks is under iteration. We currently do not support escaped characters as is inside a string - the characters need to be double escaped. If you find any issues with how the scrapbook handles escapes, please add to issue [#937](https://github.com/Microsoft/vscode-cosmosdb/issues/937).
+- Support for escapes in the scrapbooks is under iteration. We currently do not support escaped characters as is inside a string - the characters need to be double escaped. For example, newlines in the string should be  '\\\\n' instead of '\\n' to be recognized correctly. If you find any issues with how the scrapbook handles escapes, please add to issue [#937](https://github.com/Microsoft/vscode-cosmosdb/issues/937).
 
 # Contributing
 There are several ways you can contribute to our [repo](https://github.com/Microsoft/vscode-cosmosdb):

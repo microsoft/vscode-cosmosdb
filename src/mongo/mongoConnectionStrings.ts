@@ -70,6 +70,10 @@ export async function parseMongoConnectionString(connectionString: string): Prom
 export class ParsedMongoConnectionString {
     public readonly host: string;
     public readonly port: string;
+
+    /**
+     * databaseName may be undefined if this is an account-level connection string
+     */
     public readonly databaseName: string | undefined;
     public readonly connectionString: string;
 

@@ -26,10 +26,10 @@ export function tryGetTreeItemFromCache(parsedCS: ParsedMongoConnectionString): 
 
 export function removeTreeItemFromCache(expected: ParsedMongoConnectionString): void {
     if (!expected.databaseName) {
-        // If parsedCS represents an account, iterate and remove all databases that match that account
+        // If parsedCS represents an account, remove the account and any databases that match that account
         for (const [key, value] of sessionCache.entries()) {
-            const actual = new ParsedMongoConnectionString(value.connectionString, value.hostName, value.port, undefined);
-            if (actual.fullId === expected.fullId) {
+            const actual = new ParsedMongoConnectionString(value.connectionString, value.hostName, value.port, value.databaseName);
+            if (actual.accountId === expected.accountId) {
                 sessionCache.delete(key);
             }
         }

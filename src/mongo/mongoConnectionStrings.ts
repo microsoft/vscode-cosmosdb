@@ -70,7 +70,7 @@ export async function parseMongoConnectionString(connectionString: string): Prom
 export class ParsedMongoConnectionString {
     public readonly host: string;
     public readonly port: string;
-    public readonly databaseName: string;
+    public readonly databaseName: string | undefined;
     public readonly connectionString: string;
 
     constructor(connectionString: string, host: string, port: string, databaseName: string | undefined) {

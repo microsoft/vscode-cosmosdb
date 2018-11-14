@@ -43,7 +43,7 @@ export function addDatabaseToAccountConnectionString(connectionString: string, d
     return undefined;
 }
 
-export async function getHostPortFromConnectionString(connectionString: string): Promise<{ host: string, port: string }> {
+export async function parseMongoConnectionString(connectionString: string): Promise<ParsedMongoConnectionString> {
     let host: string;
     let port: string;
 
@@ -64,8 +64,31 @@ export async function getHostPortFromConnectionString(connectionString: string):
         port = serverConfig['port'];
     }
 
-    return {
-        host: host,
-        port: port
-    };
+    return new ParsedMongoConnectionString(connectionString, host, port, getDatabaseNameFromConnectionString(connectionString));
+}
+
+export class ParsedMongoConnectionString {
+    public readonly host: string;
+    public readonly port: string;
+
+    /**
+     * databaseName may be undefined if this is an account-level connection string
+     */
+    public readonly databaseName: string | undefined;
+    public readonly connectionString: string;
+
+    constructor(connectionString: string, host: string, port: string, databaseName: string | undefined) {
+        this.connectionString = connectionString;
+        this.host = host;
+        this.port = port;
+        this.databaseName = databaseName;
+    }
+
+    public get accountId(): string {
+        return `${this.host}:${this.port}`;
+    }
+
+    public get fullId(): string {
+        return `${this.accountId}${this.databaseName ? '/' + this.databaseName : ''}`;
+    }
 }

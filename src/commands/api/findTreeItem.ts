@@ -3,57 +3,87 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { AzureTreeItem } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
-import { getDatabaseNameFromConnectionString, getHostPortFromConnectionString } from '../../mongo/mongoConnectionStrings';
+import { ParsedMongoConnectionString, parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
-import { AttachedAccountsTreeItem } from '../../tree/AttachedAccountsTreeItem';
+import { CosmosDBAccountProvider } from '../../tree/CosmosDBAccountProvider';
 import { DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
-import { reveal } from './reveal';
+import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
+import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
-async function isParentAccount(connectionString: string, account: MongoAccountTreeItem): Promise<boolean> {
-    const databaseHostPort = await getHostPortFromConnectionString(connectionString);
-    const accountHostPort = await getHostPortFromConnectionString(account.connectionString);
-    return (databaseHostPort.host === accountHostPort.host && databaseHostPort.port === accountHostPort.port);
-}
-
-export async function findTreeItem(query: TreeItemQuery, attachedAccountsNode: AttachedAccountsTreeItem): Promise<DatabaseTreeItem | undefined> {
+export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseTreeItem | undefined> {
     const connectionString = query.connectionString;
+    if (!/^mongodb[^:]*:\/\//i.test(connectionString)) {
+        throw new Error('Method not implemented for non-mongo connection string.');
+    }
 
-    if (/^mongodb[^:]*:\/\//i.test(connectionString)) {
-        const hostport = await getHostPortFromConnectionString(connectionString);
-        const accounts = await attachedAccountsNode.getCachedChildren();
-        for (const account of accounts) {
-            if ((account instanceof MongoAccountTreeItem) && (await isParentAccount(connectionString, account))) {
-                const databases = await account.getCachedChildren();
-                for (const database of databases) {
-                    if ((database instanceof MongoDatabaseTreeItem) && getDatabaseNameFromConnectionString(connectionString) === getDatabaseNameFromConnectionString(database.connectionString)) {
-                        return {
-                            connectionString: connectionString,
-                            databaseName: database.databaseName,
-                            hostName: hostport.host,
-                            port: hostport.port,
-                            reveal: async () => await ext.treeView.reveal(database)
-                        };
-                    }
+    const parsedCS = await parseMongoConnectionString(connectionString);
+
+    if (!parsedCS.databaseName) {
+        throw new Error('Method not implemented for account-level connection string.');
+    }
+
+    const maxTime = Date.now() + 10 * 1000; // Give up searching subscriptions after 10 seconds and just attach the account
+
+    // 1. Get result from cache if possible
+    let result: DatabaseTreeItem | undefined = tryGetTreeItemFromCache(parsedCS);
+
+    // 2. Search attached accounts (do this before subscriptions because it's faster)
+    if (!result) {
+        const attachedDbAccounts = await ext.attachedAccountsNode.getCachedChildren();
+        result = await searchDbAccounts(attachedDbAccounts, parsedCS, maxTime);
+    }
+
+    // 3. Search subscriptions
+    if (!result) {
+        const rootNodes = await ext.tree.getChildren();
+        for (const rootNode of rootNodes) {
+            if (Date.now() > maxTime) {
+                break;
+            }
+
+            if (rootNode instanceof CosmosDBAccountProvider) {
+                const dbAccounts = await rootNode.getCachedChildren();
+                result = await searchDbAccounts(dbAccounts, parsedCS, maxTime);
+                if (result) {
+                    break;
                 }
             }
         }
+    }
 
-        let fullId: string | undefined;
-        return {
-            connectionString: connectionString,
-            databaseName: getDatabaseNameFromConnectionString(connectionString),
-            hostName: hostport.host,
-            port: hostport.port,
-            reveal: async () => {
-                if (!fullId) {
-                    fullId = await attachedAccountsNode.attachNewDatabase(connectionString);
-                    await attachedAccountsNode.refresh();
+    // 4. If all else fails, just attach a new node
+    if (!result) {
+        result = new DatabaseTreeItemInternal(parsedCS);
+    }
+
+    cacheTreeItem(parsedCS, result);
+
+    return result;
+}
+
+async function searchDbAccounts(dbAccounts: AzureTreeItem[], expected: ParsedMongoConnectionString, maxTime: number): Promise<DatabaseTreeItem | undefined> {
+    for (const dbAccount of dbAccounts) {
+        if (Date.now() > maxTime) {
+            return undefined;
+        }
+
+        if (dbAccount instanceof MongoAccountTreeItem) {
+            const actual = await parseMongoConnectionString(dbAccount.connectionString);
+            if (expected.accountId === actual.accountId) {
+                const dbs = await dbAccount.getCachedChildren();
+                for (const db of dbs) {
+                    if (db instanceof MongoDatabaseTreeItem && expected.databaseName === db.databaseName) {
+                        return new DatabaseTreeItemInternal(expected, dbAccount, db);
+                    }
                 }
-                reveal(fullId);
+
+                // We found the right account - just not the db. In this case we can still 'reveal' the account
+                return new DatabaseTreeItemInternal(expected, dbAccount);
             }
-        };
+        }
     }
 
     return undefined;

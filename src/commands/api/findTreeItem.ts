@@ -11,7 +11,8 @@ import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { CosmosDBAccountProvider } from '../../tree/CosmosDBAccountProvider';
 import { DatabaseAccountTreeItem, DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
-import { DatabaseAccountTreeItemInternal, DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
+import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
+import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
 export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
     const connectionString = query.connectionString;

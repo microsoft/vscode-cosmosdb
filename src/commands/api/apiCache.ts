@@ -17,11 +17,7 @@ export function cacheTreeItem(parsedCS: ParsedMongoConnectionString, treeItem: D
 }
 
 export function tryGetTreeItemFromCache(parsedCS: ParsedMongoConnectionString): DatabaseTreeItem | undefined {
-    if (sessionCache.has(parsedCS.fullId)) {
-        return sessionCache.get(parsedCS.fullId);
-    } else {
-        return undefined;
-    }
+    return sessionCache.get(parsedCS.fullId);
 }
 
 export function removeTreeItemFromCache(expected: ParsedMongoConnectionString): void {
@@ -33,7 +29,7 @@ export function removeTreeItemFromCache(expected: ParsedMongoConnectionString): 
                 sessionCache.delete(key);
             }
         }
-    } else if (sessionCache.has(expected.fullId)) {
+    } else {
         sessionCache.delete(expected.fullId);
     }
 }

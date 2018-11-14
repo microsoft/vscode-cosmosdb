@@ -8,17 +8,15 @@ import { ext } from '../../extensionVariables';
 import { ParsedMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
-import { DatabaseTreeItem } from '../../vscode-cosmosdb.api';
+import { DatabaseAccountTreeItem, DatabaseTreeItem } from '../../vscode-cosmosdb.api';
 
-export class DatabaseTreeItemInternal implements DatabaseTreeItem {
-    private _parsedCS: ParsedMongoConnectionString;
+export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem {
+    protected _parsedCS: ParsedMongoConnectionString;
     private _accountNode: MongoAccountTreeItem | undefined;
-    private _dbNode: AzureTreeItem | undefined;
 
-    constructor(parsedCS: ParsedMongoConnectionString, accountNode?: MongoAccountTreeItem, dbNode?: MongoDatabaseTreeItem) {
+    constructor(parsedCS: ParsedMongoConnectionString, accountNode?: MongoAccountTreeItem) {
         this._parsedCS = parsedCS;
         this._accountNode = accountNode;
-        this._dbNode = dbNode;
     }
 
     public get connectionString(): string {
@@ -33,10 +31,6 @@ export class DatabaseTreeItemInternal implements DatabaseTreeItem {
         return this._parsedCS.port;
     }
 
-    public get databaseName(): string {
-        return this._parsedCS.databaseName;
-    }
-
     public get azureData(): { accountName: string; } | undefined {
         if (this._accountNode && this._accountNode.databaseAccount) {
             return {
@@ -48,16 +42,38 @@ export class DatabaseTreeItemInternal implements DatabaseTreeItem {
     }
 
     public async reveal(): Promise<void> {
+        ext.treeView.reveal(await this.getAccountNode());
+    }
+
+    protected async getAccountNode(): Promise<MongoAccountTreeItem> {
         // If this._accountNode is undefined, attach a new node based on connection string
         if (!this._accountNode) {
-            this._accountNode = await ext.attachedAccountsNode.attachMongoConnectionString(this._parsedCS.connectionString);
+            this._accountNode = await ext.attachedAccountsNode.attachMongoConnectionString(this.connectionString);
         }
 
+        return this._accountNode;
+    }
+}
+
+export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal implements DatabaseTreeItem {
+    private _dbNode: AzureTreeItem | undefined;
+
+    constructor(parsedCS: ParsedMongoConnectionString & { databaseName: string }, accountNode?: MongoAccountTreeItem, dbNode?: MongoDatabaseTreeItem) {
+        super(parsedCS, accountNode);
+        this._dbNode = dbNode;
+    }
+
+    public get databaseName(): string {
+        return this._parsedCS.databaseName;
+    }
+
+    public async reveal(): Promise<void> {
+        const accountNode: MongoAccountTreeItem = await this.getAccountNode();
         if (!this._dbNode) {
-            const databaseId = `${this._accountNode.fullId}/${this._parsedCS.databaseName}`;
+            const databaseId = `${accountNode.fullId}/${this.databaseName}`;
             this._dbNode = await ext.tree.findTreeItem(databaseId);
         }
 
-        ext.treeView.reveal(this._dbNode || this._accountNode);
+        ext.treeView.reveal(this._dbNode || accountNode);
     }
 }

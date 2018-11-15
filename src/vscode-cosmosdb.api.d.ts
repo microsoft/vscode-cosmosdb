@@ -12,7 +12,7 @@ export interface CosmosDBExtensionApi {
      *
      * @param query The query object to use for the find
      */
-    findTreeItem(query: TreeItemQuery): Promise<DatabaseTreeItem | undefined>;
+    findTreeItem(query: TreeItemQuery): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined>;
 
     /**
      * Prompts the user to pick an item from the Cosmos DB tree

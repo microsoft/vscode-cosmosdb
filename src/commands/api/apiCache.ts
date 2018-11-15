@@ -4,19 +4,19 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ParsedMongoConnectionString } from '../../mongo/mongoConnectionStrings';
-import { DatabaseTreeItem } from '../../vscode-cosmosdb.api';
+import { DatabaseAccountTreeItem, DatabaseTreeItem } from '../../vscode-cosmosdb.api';
 
 /**
  * This cache is used to speed up api calls from other extensions to the Cosmos DB extension
  * For now, it only helps on a per-session basis
  */
-const sessionCache: Map<string, DatabaseTreeItem> = new Map();
+const sessionCache: Map<string, DatabaseAccountTreeItem | DatabaseTreeItem> = new Map();
 
-export function cacheTreeItem(parsedCS: ParsedMongoConnectionString, treeItem: DatabaseTreeItem): void {
+export function cacheTreeItem(parsedCS: ParsedMongoConnectionString, treeItem: DatabaseAccountTreeItem | DatabaseTreeItem): void {
     sessionCache.set(parsedCS.fullId, treeItem);
 }
 
-export function tryGetTreeItemFromCache(parsedCS: ParsedMongoConnectionString): DatabaseTreeItem | undefined {
+export function tryGetTreeItemFromCache(parsedCS: ParsedMongoConnectionString): DatabaseAccountTreeItem | DatabaseTreeItem | undefined {
     return sessionCache.get(parsedCS.fullId);
 }
 
@@ -24,7 +24,7 @@ export function removeTreeItemFromCache(expected: ParsedMongoConnectionString): 
     if (!expected.databaseName) {
         // If parsedCS represents an account, remove the account and any databases that match that account
         for (const [key, value] of sessionCache.entries()) {
-            const actual = new ParsedMongoConnectionString(value.connectionString, value.hostName, value.port, value.databaseName);
+            const actual = new ParsedMongoConnectionString(value.connectionString, value.hostName, value.port, undefined);
             if (actual.accountId === expected.accountId) {
                 sessionCache.delete(key);
             }

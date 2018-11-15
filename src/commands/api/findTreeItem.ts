@@ -9,11 +9,12 @@ import { ParsedMongoConnectionString, parseMongoConnectionString } from '../../m
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { CosmosDBAccountProvider } from '../../tree/CosmosDBAccountProvider';
-import { DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
+import { DatabaseAccountTreeItem, DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
+import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
-export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseTreeItem | undefined> {
+export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
     const connectionString = query.connectionString;
     if (!/^mongodb[^:]*:\/\//i.test(connectionString)) {
         throw new Error('Method not implemented for non-mongo connection string.');
@@ -21,14 +22,10 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseTreeIt
 
     const parsedCS = await parseMongoConnectionString(connectionString);
 
-    if (!parsedCS.databaseName) {
-        throw new Error('Method not implemented for account-level connection string.');
-    }
-
     const maxTime = Date.now() + 10 * 1000; // Give up searching subscriptions after 10 seconds and just attach the account
 
     // 1. Get result from cache if possible
-    let result: DatabaseTreeItem | undefined = tryGetTreeItemFromCache(parsedCS);
+    let result: DatabaseAccountTreeItem | DatabaseTreeItem | undefined = tryGetTreeItemFromCache(parsedCS);
 
     // 2. Search attached accounts (do this before subscriptions because it's faster)
     if (!result) {
@@ -64,7 +61,7 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseTreeIt
     return result;
 }
 
-async function searchDbAccounts(dbAccounts: AzureTreeItem[], expected: ParsedMongoConnectionString, maxTime: number): Promise<DatabaseTreeItem | undefined> {
+async function searchDbAccounts(dbAccounts: AzureTreeItem[], expected: ParsedMongoConnectionString, maxTime: number): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
     for (const dbAccount of dbAccounts) {
         if (Date.now() > maxTime) {
             return undefined;
@@ -73,15 +70,19 @@ async function searchDbAccounts(dbAccounts: AzureTreeItem[], expected: ParsedMon
         if (dbAccount instanceof MongoAccountTreeItem) {
             const actual = await parseMongoConnectionString(dbAccount.connectionString);
             if (expected.accountId === actual.accountId) {
-                const dbs = await dbAccount.getCachedChildren();
-                for (const db of dbs) {
-                    if (db instanceof MongoDatabaseTreeItem && expected.databaseName === db.databaseName) {
-                        return new DatabaseTreeItemInternal(expected, dbAccount, db);
+                if (expected.databaseName) {
+                    const dbs = await dbAccount.getCachedChildren();
+                    for (const db of dbs) {
+                        if (db instanceof MongoDatabaseTreeItem && expected.databaseName === db.databaseName) {
+                            return new DatabaseTreeItemInternal(expected, dbAccount, db);
+                        }
                     }
+
+                    // We found the right account - just not the db. In this case we can still 'reveal' the account
+                    return new DatabaseTreeItemInternal(expected, dbAccount);
                 }
 
-                // We found the right account - just not the db. In this case we can still 'reveal' the account
-                return new DatabaseTreeItemInternal(expected, dbAccount);
+                return new DatabaseAccountTreeItemInternal(expected, dbAccount);
             }
         }
     }

@@ -53,6 +53,10 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         return this.parent.connectionString.concat(`;Database=${this._database.id}`);
     }
 
+    public get databaseName(): string {
+        return this._database.id;
+    }
+
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<CollectionMeta>> {
         return await client.readCollections(this.link, feedOptions);
     }

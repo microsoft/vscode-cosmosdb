@@ -4,10 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureTreeItem } from 'vscode-azureextensionui';
+import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
+import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
+import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
-import { ParsedMongoConnectionString, parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
+import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
+import { ParsedConnectionString } from '../../ParsedConnectionString';
 import { CosmosDBAccountProvider } from '../../tree/CosmosDBAccountProvider';
 import { DatabaseAccountTreeItem, DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
@@ -16,11 +20,12 @@ import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
 export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
     const connectionString = query.connectionString;
-    if (!/^mongodb[^:]*:\/\//i.test(connectionString)) {
-        throw new Error('Method not implemented for non-mongo connection string.');
+    let parsedCS: ParsedConnectionString;
+    if (/^mongodb[^:]*:\/\//i.test(connectionString)) {
+        parsedCS = await parseMongoConnectionString(connectionString);
+    } else {
+        parsedCS = parseDocDBConnectionString(connectionString);
     }
-
-    const parsedCS = await parseMongoConnectionString(connectionString);
 
     const maxTime = Date.now() + 10 * 1000; // Give up searching subscriptions after 10 seconds and just attach the account
 
@@ -61,29 +66,35 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
     return result;
 }
 
-async function searchDbAccounts(dbAccounts: AzureTreeItem[], expected: ParsedMongoConnectionString, maxTime: number): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
+async function searchDbAccounts(dbAccounts: AzureTreeItem[], expected: ParsedConnectionString, maxTime: number): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
     for (const dbAccount of dbAccounts) {
         if (Date.now() > maxTime) {
             return undefined;
         }
 
+        let actual: ParsedConnectionString;
         if (dbAccount instanceof MongoAccountTreeItem) {
-            const actual = await parseMongoConnectionString(dbAccount.connectionString);
-            if (expected.accountId === actual.accountId) {
-                if (expected.databaseName) {
-                    const dbs = await dbAccount.getCachedChildren();
-                    for (const db of dbs) {
-                        if (db instanceof MongoDatabaseTreeItem && expected.databaseName === db.databaseName) {
-                            return new DatabaseTreeItemInternal(expected, dbAccount, db);
-                        }
-                    }
+            actual = await parseMongoConnectionString(dbAccount.connectionString);
+        } else if (dbAccount instanceof DocDBAccountTreeItemBase) {
+            actual = parseDocDBConnectionString(dbAccount.connectionString);
+        } else {
+            return undefined;
+        }
 
-                    // We found the right account - just not the db. In this case we can still 'reveal' the account
-                    return new DatabaseTreeItemInternal(expected, dbAccount);
+        if (expected.accountId === actual.accountId) {
+            if (expected.databaseName) {
+                const dbs = await dbAccount.getCachedChildren();
+                for (const db of dbs) {
+                    if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) && expected.databaseName === db.databaseName) {
+                        return new DatabaseTreeItemInternal(expected, dbAccount, db);
+                    }
                 }
 
-                return new DatabaseAccountTreeItemInternal(expected, dbAccount);
+                // We found the right account - just not the db. In this case we can still 'reveal' the account
+                return new DatabaseTreeItemInternal(expected, dbAccount);
             }
+
+            return new DatabaseAccountTreeItemInternal(expected, dbAccount);
         }
     }
 

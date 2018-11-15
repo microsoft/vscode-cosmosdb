@@ -11,7 +11,9 @@ import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzureTreeItem, GenericTreeItem, ISubscriptionRoot, RootTreeItem, SubscriptionTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword } from '../constants';
+import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
+import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 import { API, getExperience, getExperienceQuickPick, getExperienceQuickPicks } from '../experiences';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
@@ -144,8 +146,8 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         }
     }
 
-    public async attachMongoConnectionString(connectionString: string): Promise<MongoAccountTreeItem> {
-        const treeItem: MongoAccountTreeItem = <MongoAccountTreeItem>await this.createTreeItem(connectionString, API.MongoDB);
+    public async attachConnectionString(connectionString: string, api: API.MongoDB | API.DocumentDB): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase> {
+        const treeItem = <MongoAccountTreeItem | DocDBAccountTreeItemBase>await this.createTreeItem(connectionString, api);
         await this.attachAccount(treeItem, connectionString);
         this.refresh();
         return treeItem;
@@ -217,6 +219,9 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
             if (node instanceof MongoAccountTreeItem) {
                 const parsedCS = await parseMongoConnectionString(node.connectionString);
                 removeTreeItemFromCache(parsedCS);
+            } else if (node instanceof DocDBAccountTreeItemBase) {
+                const parsedCS = await parseDocDBConnectionString(node.connectionString);
+                removeTreeItemFromCache(parsedCS);
             }
         }
     }
@@ -264,18 +269,18 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
             label = label || `${id} (${getExperience(api).shortName})`;
             treeItem = new MongoAccountTreeItem(this, id, label, connectionString, isEmulator);
         } else {
-            const [endpoint, masterKey, parsedId] = AttachedAccountsTreeItem.parseDocDBConnectionString(connectionString);
+            const parsedCS = parseDocDBConnectionString(connectionString);
 
-            label = label || `${parsedId} (${getExperience(api).shortName})`;
+            label = label || `${parsedCS.accountId} (${getExperience(api).shortName})`;
             switch (api) {
                 case API.Table:
-                    treeItem = new TableAccountTreeItem(this, parsedId, label, endpoint, masterKey, isEmulator);
+                    treeItem = new TableAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, parsedCS.masterKey, isEmulator);
                     break;
                 case API.Graph:
-                    treeItem = new GraphAccountTreeItem(this, parsedId, label, endpoint, undefined, masterKey, isEmulator);
+                    treeItem = new GraphAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, undefined, parsedCS.masterKey, isEmulator);
                     break;
                 case API.DocumentDB:
-                    treeItem = new DocDBAccountTreeItem(this, parsedId, label, endpoint, masterKey, isEmulator);
+                    treeItem = new DocDBAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, parsedCS.masterKey, isEmulator);
                     break;
                 default:
                     throw new Error(`Unexpected defaultExperience "${api}".`);
@@ -318,27 +323,12 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
 
     private static validateDocDBConnectionString(value: string): string | undefined {
         try {
-            const [endpoint, masterKey, id] = AttachedAccountsTreeItem.parseDocDBConnectionString(value);
-            if (endpoint && masterKey) {
-                if (id) {
-                    return undefined;
-                } else {
-                    return 'AccountEndpoint is invalid url.';
-                }
-            }
+            parseDocDBConnectionString(value);
+            return undefined;
         } catch (error) {
-            // Swallow specific errors, show error message below
+            return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..."';
         }
 
-        return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..."';
-    }
-
-    private static parseDocDBConnectionString(value: string): [string, string, string] {
-        const matches = value.match(/AccountEndpoint=(.*);AccountKey=(.*)/);
-        const endpoint = matches[1];
-        const masterKey = matches[2];
-        const id = vscode.Uri.parse(endpoint).authority;
-        return [endpoint, masterKey, id];
     }
 }
 

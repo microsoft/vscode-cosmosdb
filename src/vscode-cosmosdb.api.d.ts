@@ -41,6 +41,11 @@ export interface DatabaseAccountTreeItem extends CosmosDBTreeItem {
     azureData?: {
         accountName: string;
     }
+
+    docDBData?: {
+        masterKey: string;
+        documentEndpoint: string;
+    }
 }
 
 export interface DatabaseTreeItem extends DatabaseAccountTreeItem {

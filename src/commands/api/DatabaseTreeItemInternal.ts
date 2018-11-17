@@ -4,17 +4,19 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureTreeItem } from 'vscode-azureextensionui';
+import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
+import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
-import { ParsedMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
+import { ParsedConnectionString } from '../../ParsedConnectionString';
 import { DatabaseTreeItem } from '../../vscode-cosmosdb.api';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 
 export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal implements DatabaseTreeItem {
     private _dbNode: AzureTreeItem | undefined;
 
-    constructor(parsedCS: ParsedMongoConnectionString & { databaseName: string }, accountNode?: MongoAccountTreeItem, dbNode?: MongoDatabaseTreeItem) {
+    constructor(parsedCS: ParsedConnectionString & { databaseName: string }, accountNode?: MongoAccountTreeItem | DocDBAccountTreeItemBase, dbNode?: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase) {
         super(parsedCS, accountNode);
         this._dbNode = dbNode;
     }
@@ -24,7 +26,7 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
     }
 
     public async reveal(): Promise<void> {
-        const accountNode: MongoAccountTreeItem = await this.getAccountNode();
+        const accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase = await this.getAccountNode();
         if (!this._dbNode) {
             const databaseId = `${accountNode.fullId}/${this.databaseName}`;
             this._dbNode = await ext.tree.findTreeItem(databaseId);

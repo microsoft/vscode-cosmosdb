@@ -5,6 +5,7 @@
 
 import { ReplSet } from "mongodb";
 import { appendExtensionUserAgent } from "vscode-azureextensionui";
+import { ParsedConnectionString } from "../ParsedConnectionString";
 import { connectToMongoClient } from "./connectToMongoClient";
 
 // Connection strings follow the following format (https://docs.mongodb.com/manual/reference/connection-string/):
@@ -67,28 +68,13 @@ export async function parseMongoConnectionString(connectionString: string): Prom
     return new ParsedMongoConnectionString(connectionString, host, port, getDatabaseNameFromConnectionString(connectionString));
 }
 
-export class ParsedMongoConnectionString {
-    public readonly host: string;
+export class ParsedMongoConnectionString extends ParsedConnectionString {
+    public readonly hostName: string;
     public readonly port: string;
 
-    /**
-     * databaseName may be undefined if this is an account-level connection string
-     */
-    public readonly databaseName: string | undefined;
-    public readonly connectionString: string;
-
-    constructor(connectionString: string, host: string, port: string, databaseName: string | undefined) {
-        this.connectionString = connectionString;
-        this.host = host;
+    constructor(connectionString: string, hostName: string, port: string, databaseName: string | undefined) {
+        super(connectionString, databaseName);
+        this.hostName = hostName;
         this.port = port;
-        this.databaseName = databaseName;
-    }
-
-    public get accountId(): string {
-        return `${this.host}:${this.port}`;
-    }
-
-    public get fullId(): string {
-        return `${this.accountId}${this.databaseName ? '/' + this.databaseName : ''}`;
     }
 }

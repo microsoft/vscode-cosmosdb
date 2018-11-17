@@ -66,7 +66,7 @@ export function registerDocDBCommands(editorManager: CosmosEditorManager): void 
         if (!node) {
             node = <DocDBStoredProcedureTreeItem>await ext.tree.showTreeItemPicker([DocDBStoredProcedureTreeItem.contextValue]);
         }
-        await editorManager.showDocument(new DocDBStoredProcedureNodeEditor(node), 'cosmos-stored-procedure.js');
+        await editorManager.showDocument(new DocDBStoredProcedureNodeEditor(node), node.label + '-cosmos-stored-procedure.js');
     });
     registerCommand('cosmosDB.deleteDocDBDocument', async (node?: DocDBDocumentTreeItem) => {
         if (!node) {

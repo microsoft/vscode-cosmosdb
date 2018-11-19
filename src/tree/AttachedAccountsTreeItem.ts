@@ -76,7 +76,12 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         return false;
     }
 
-    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem[]> {
+    public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzureTreeItem[]> {
+        if (clearCache) {
+            this._attachedAccounts = undefined;
+            this._loadPersistedAccountsTask = this.loadPersistedAccounts();
+        }
+
         const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
 
         return attachedAccounts.length > 0 ? attachedAccounts : [new GenericTreeItem(this, {

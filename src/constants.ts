@@ -3,7 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export const DefaultBatchSize: number = 50;
+export const defaultBatchSize: number = 50;
+
+export const doubleClickDebounceDelay = 200; //milliseconds
 
 export const defaultStoredProcedure =
     `function sample(prefix) {

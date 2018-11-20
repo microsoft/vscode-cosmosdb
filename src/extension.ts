@@ -15,6 +15,7 @@ import { AzureExtensionApi, AzureExtensionApiProvider } from 'vscode-azureextens
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
 import { importDocuments } from './commands/importDocuments';
+import { doubleClickDebounceDelay } from './constants';
 import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
@@ -134,7 +135,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<AzureE
                 await editorManager.showDocument(new DocDBDocumentNodeEditor(node), editorTabName);
             }
             // tslint:disable-next-line:align
-        }, 200);
+        }, doubleClickDebounceDelay);
         registerCommand('cosmosDB.update', (filePath: vscode.Uri) => editorManager.updateMatchingNode(filePath));
         registerCommand('cosmosDB.loadMore', (node?: AzureTreeItem) => tree.loadMore(node));
         registerEvent('cosmosDB.CosmosEditorManager.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument, async function (

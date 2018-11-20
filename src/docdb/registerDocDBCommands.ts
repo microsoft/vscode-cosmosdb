@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { doubleClickDebounceDelay } from "src/constants";
 import { commands } from "vscode";
 import { registerCommand } from "vscode-azureextensionui";
 import { CosmosEditorManager } from "../CosmosEditorManager";
@@ -68,7 +69,7 @@ export function registerDocDBCommands(editorManager: CosmosEditorManager): void 
         }
         await editorManager.showDocument(new DocDBStoredProcedureNodeEditor(node), node.label + '-cosmos-stored-procedure.js');
         // tslint:disable-next-line:align
-    }, 200);
+    }, doubleClickDebounceDelay);
     registerCommand('cosmosDB.deleteDocDBDocument', async (node?: DocDBDocumentTreeItem) => {
         if (!node) {
             node = <DocDBDocumentTreeItem>await ext.tree.showTreeItemPicker(DocDBDocumentTreeItem.contextValue);

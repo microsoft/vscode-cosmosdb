@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { doubleClickDebounceDelay } from 'src/constants';
 import * as vscode from 'vscode';
 import { registerCommand } from "vscode-azureextensionui";
 import { ext } from '../extensionVariables';
@@ -45,5 +46,5 @@ export function registerGraphCommands(context: vscode.ExtensionContext): void {
         }
         await node.showExplorer(graphViewsManager);
         // tslint:disable-next-line:align
-    }, 200);
+    }, doubleClickDebounceDelay);
 }

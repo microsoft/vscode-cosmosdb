@@ -61,7 +61,7 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
             break;
         case 'DatabaseAccount':
             contextValuesToFind = options.apiType ? options.apiType.map(getAccountContextValue) : accountContextValues;
-            contextValuesToFind = contextValuesToFind.concat(contextValuesToFind.map((val: string) => val += AttachedAccountSuffix));
+            contextValuesToFind = contextValuesToFind.concat(contextValuesToFind.map((val: string) => val + AttachedAccountSuffix));
             break;
         default:
             throw new RangeError(`Unsupported resource type "${options.resourceType}".`);

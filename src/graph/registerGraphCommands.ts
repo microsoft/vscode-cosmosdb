@@ -44,5 +44,6 @@ export function registerGraphCommands(context: vscode.ExtensionContext): void {
             node = <GraphTreeItem>await ext.tree.showTreeItemPicker(GraphTreeItem.contextValue);
         }
         await node.showExplorer(graphViewsManager);
-    });
+        // tslint:disable-next-line:align
+    }, 200);
 }

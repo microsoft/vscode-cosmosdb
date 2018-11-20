@@ -133,7 +133,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<AzureE
             } else {
                 await editorManager.showDocument(new DocDBDocumentNodeEditor(node), editorTabName);
             }
-        });
+            // tslint:disable-next-line:align
+        }, 200);
         registerCommand('cosmosDB.update', (filePath: vscode.Uri) => editorManager.updateMatchingNode(filePath));
         registerCommand('cosmosDB.loadMore', (node?: AzureTreeItem) => tree.loadMore(node));
         registerEvent('cosmosDB.CosmosEditorManager.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument, async function (

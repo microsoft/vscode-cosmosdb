@@ -17,7 +17,7 @@ export function parseDocDBConnectionString(connectionString: string): ParsedDocD
 }
 
 function getPropertyFromConnectionString(connectionString: string, property: string): string | undefined {
-    const regexp = new RegExp(`(?:^|;)${property}=([^;]+)(?:;|$)`, 'i');
+    const regexp = new RegExp(`(?:^|;)\\s*${property}=([^;]+)(?:;|$)`, 'i');
     const match = connectionString.match(regexp);
     return match && match[1];
 }

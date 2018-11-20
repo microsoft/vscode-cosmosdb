@@ -20,6 +20,8 @@ suite(`docDBConnectionStrings`, () => {
     test(`Without database name`, () => {
         // Testing different ordering, different use of ';', different casing, etc.
         testConnectionString('AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==', 'https://abcdef.documents.azure.com:443/', 'abcdef==', undefined);
+        testConnectionString('    AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==', 'https://abcdef.documents.azure.com:443/', 'abcdef==', undefined);
+        testConnectionString('AccountEndpoint=https://abcdef.documents.azure.com:443/;    AccountKey=abcdef==', 'https://abcdef.documents.azure.com:443/', 'abcdef==', undefined);
         testConnectionString('AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==;', 'https://abcdef.documents.azure.com:443/', 'abcdef==', undefined);
         testConnectionString('AccountKey=abcdef==;AccountEndpoint=https://abcdef.documents.azure.com:443/', 'https://abcdef.documents.azure.com:443/', 'abcdef==', undefined);
         testConnectionString('AccountKey=abcdef==;AccountEndpoint=https://abcdef.documents.azure.com:443/;', 'https://abcdef.documents.azure.com:443/', 'abcdef==', undefined);

@@ -664,7 +664,7 @@ suite("scrapbook parsing Tests", () => {
         let command = getCommandFromTextAtLocation(text, new Position(0, 0));
         let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
         assert.deepEqual(command.collection, "c1");
-        assert.deepEqual(command.argumentObjects, [{ name: {} }]);
+        assert.deepEqual(command.argumentObjects, []);
         assert.deepEqual(command.errors[0].message, errorMessage);
     });
 
@@ -675,7 +675,7 @@ suite("scrapbook parsing Tests", () => {
             let command = getCommandFromTextAtLocation(text, new Position(0, 0));
             let errorMessage = "Argument passed in must be a single String of 12 bytes or a string of 24 hex characters";
             assert.deepEqual(command.collection, "c1");
-            assert.deepEqual(command.argumentObjects, [{ name: {} }]);
+            assert.deepEqual(command.argumentObjects, []);
             assert.deepEqual(command.errors[0].message, errorMessage);
         }
     });

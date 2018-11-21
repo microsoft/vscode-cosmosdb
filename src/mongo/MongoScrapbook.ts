@@ -281,7 +281,9 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		} else if (child instanceof ErrorNode) {
 			return {};
 		} else {
-			throw new Error("Unrecognized node type encountered");
+			let err = new Error(`Unrecognized node type encountered. We could not parse ${child.text}`);
+			this.addErrorToCommand(parseError(err), ctx);
+			return {};
 		}
 	}
 
@@ -296,7 +298,9 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 			return JSON.parse(text);
 		} else {
-			throw new Error(`Unrecognized token. Token text: ${text}`);
+			let err = new Error(`Unrecognized token. Token text: ${text}`);
+			this.addErrorToCommand(parseError(err), ctx);
+			return {};
 		}
 	}
 
@@ -350,7 +354,9 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			let args = [ctx, argumentContextArray.length ? argumentContextArray[0].text : undefined];
 			return functionMap[constructorCall.text].apply(this, args);
 		}
-		throw new Error(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`);
+		let unrecognizedNodeErr = new Error(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`);
+		this.addErrorToCommand(parseError(unrecognizedNodeErr), ctx);
+		return {};
 	}
 
 	private dateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {

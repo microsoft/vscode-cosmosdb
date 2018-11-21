@@ -239,23 +239,27 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 	}
 
 	visitArgument(ctx: mongoParser.ArgumentContext): MongoCommand[] {
-		let argumentsContext = ctx.parent;
-		if (argumentsContext) {
-			let functionCallContext = argumentsContext.parent;
-			if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
-				const lastCommand = this.commands[this.commands.length - 1];
-				const argAsObject = this.contextToObject(ctx);
-				const argText = EJSON.stringify(argAsObject);
-				lastCommand.arguments.push(argText);
-				let escapeHandled = this.deduplicateEscapesForRegex(argText);
-				let ejsonParsed = {};
-				try {
-					ejsonParsed = EJSON.parse(escapeHandled);
-				} catch (err) { //EJSON parse failed due to a wrong flag, etc.
-					this.addErrorToCommand(parseError(err), ctx);
+		try {
+			let argumentsContext = ctx.parent;
+			if (argumentsContext) {
+				let functionCallContext = argumentsContext.parent;
+				if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
+					const lastCommand = this.commands[this.commands.length - 1];
+					const argAsObject = this.contextToObject(ctx);
+					const argText = EJSON.stringify(argAsObject);
+					lastCommand.arguments.push(argText);
+					let escapeHandled = this.deduplicateEscapesForRegex(argText);
+					let ejsonParsed = {};
+					try {
+						ejsonParsed = EJSON.parse(escapeHandled);
+					} catch (err) { //EJSON parse failed due to a wrong flag, etc.
+						this.addErrorToCommand(parseError(err), ctx);
+					}
+					lastCommand.argumentObjects.push(ejsonParsed);
 				}
-				lastCommand.argumentObjects.push(ejsonParsed);
 			}
+		} catch (error) {
+			this.addErrorToCommand(parseError(error), ctx);
 		}
 		return super.visitArgument(ctx);
 	}

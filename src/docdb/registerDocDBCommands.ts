@@ -5,6 +5,7 @@
 
 import { commands } from "vscode";
 import { registerCommand } from "vscode-azureextensionui";
+import { doubleClickDebounceDelay } from "../constants";
 import { CosmosEditorManager } from "../CosmosEditorManager";
 import { ext } from "../extensionVariables";
 import { DocDBStoredProcedureNodeEditor } from "./editors/DocDBStoredProcedureNodeEditor";
@@ -67,7 +68,8 @@ export function registerDocDBCommands(editorManager: CosmosEditorManager): void 
             node = <DocDBStoredProcedureTreeItem>await ext.tree.showTreeItemPicker([DocDBStoredProcedureTreeItem.contextValue]);
         }
         await editorManager.showDocument(new DocDBStoredProcedureNodeEditor(node), node.label + '-cosmos-stored-procedure.js');
-    });
+        // tslint:disable-next-line:align
+    }, doubleClickDebounceDelay);
     registerCommand('cosmosDB.deleteDocDBDocument', async (node?: DocDBDocumentTreeItem) => {
         if (!node) {
             node = <DocDBDocumentTreeItem>await ext.tree.showTreeItemPicker(DocDBDocumentTreeItem.contextValue);

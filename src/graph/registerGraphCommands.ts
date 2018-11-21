@@ -5,6 +5,7 @@
 
 import * as vscode from 'vscode';
 import { registerCommand } from "vscode-azureextensionui";
+import { doubleClickDebounceDelay } from '../constants';
 import { ext } from '../extensionVariables';
 import { GraphViewsManager } from "./GraphViewsManager";
 import { GraphAccountTreeItem } from "./tree/GraphAccountTreeItem";
@@ -44,5 +45,6 @@ export function registerGraphCommands(context: vscode.ExtensionContext): void {
             node = <GraphTreeItem>await ext.tree.showTreeItemPicker(GraphTreeItem.contextValue);
         }
         await node.showExplorer(graphViewsManager);
-    });
+        // tslint:disable-next-line:align
+    }, doubleClickDebounceDelay);
 }

@@ -9,7 +9,7 @@ import * as path from 'path';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
-import { DefaultBatchSize } from '../../constants';
+import { defaultBatchSize } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
@@ -32,7 +32,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 	private readonly _projection: object | undefined;
 	private _cursor: Cursor | undefined;
 	private _hasMoreChildren: boolean = true;
-	private _batchSize: number = DefaultBatchSize;
+	private _batchSize: number = defaultBatchSize;
 
 	constructor(parent: AzureParentTreeItem, collection: Collection, query?: Object[]) {
 		super(parent);
@@ -80,11 +80,11 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 
 	public async loadMoreChildrenImpl(clearCache: boolean): Promise<MongoDocumentTreeItem[]> {
 		if (clearCache || this._cursor === undefined) {
-			this._cursor = this.collection.find(this._query).batchSize(DefaultBatchSize);
+			this._cursor = this.collection.find(this._query).batchSize(defaultBatchSize);
 			if (this._projection) {
 				this._cursor = this._cursor.project(this._projection);
 			}
-			this._batchSize = DefaultBatchSize;
+			this._batchSize = defaultBatchSize;
 		}
 
 		const documents: IMongoDocument[] = [];

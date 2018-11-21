@@ -10,7 +10,7 @@ import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ObjectID } from 'bson';
 import * as vscode from 'vscode';
-import { IActionContext, IParsedError, parseError } from 'vscode-azureextensionui';
+import { IActionContext, IParsedError, parseError, callWithTelemetryAndErrorHandlingSync } from 'vscode-azureextensionui';
 import { CosmosEditorManager } from '../CosmosEditorManager';
 import { ext } from '../extensionVariables';
 import { filterType, findType } from '../utils/array';
@@ -243,18 +243,23 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		if (argumentsContext) {
 			let functionCallContext = argumentsContext.parent;
 			if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
-				const lastCommand = this.commands[this.commands.length - 1];
-				const argAsObject = this.contextToObject(ctx);
-				const argText = EJSON.stringify(argAsObject);
-				lastCommand.arguments.push(argText);
-				let escapeHandled = this.deduplicateEscapesForRegex(argText);
-				let ejsonParsed = {};
 				try {
-					ejsonParsed = EJSON.parse(escapeHandled);
-				} catch (err) { //EJSON parse failed due to a wrong flag, etc.
+					const me = this;
+					callWithTelemetryAndErrorHandlingSync('mongo.visitArgument', function (this: IActionContext) {
+						this.rethrowError = true;
+						this.suppressErrorDisplay = true;
+						this.suppressTelemetry = true;
+
+						const lastCommand = me.commands[me.commands.length - 1];
+						const argAsObject = me.contextToObject(ctx);
+						const argText = EJSON.stringify(argAsObject);
+						lastCommand.arguments.push(argText);
+						let escapeHandled = me.deduplicateEscapesForRegex(argText);
+						lastCommand.argumentObjects.push(EJSON.parse(escapeHandled));
+					});
+				} catch (err) {
 					this.addErrorToCommand(parseError(err), ctx);
 				}
-				lastCommand.argumentObjects.push(ejsonParsed);
 			}
 		}
 		return super.visitArgument(ctx);
@@ -271,13 +276,13 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		// In a well formed expression, Argument and propertyValue tokens should have exactly one child, from their definitions in mongo.g4
 		let child: ParseTree = ctx.children[0];
 		if (child instanceof mongoParser.LiteralContext) {
-			return this.literalContextToObject(child, ctx);
+			return this.literalContextToObject(child);
 		} else if (child instanceof mongoParser.ObjectLiteralContext) {
 			return this.objectLiteralContextToObject(child);
 		} else if (child instanceof mongoParser.ArrayLiteralContext) {
 			return this.arrayLiteralContextToObject(child);
 		} else if (child instanceof mongoParser.FunctionCallContext) {
-			return this.functionCallContextToObject(child, ctx);
+			return this.functionCallContextToObject(child);
 		} else if (child instanceof ErrorNode) {
 			return {};
 		} else {
@@ -285,14 +290,14 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		}
 	}
 
-	private literalContextToObject(child: mongoParser.LiteralContext, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
+	private literalContextToObject(child: mongoParser.LiteralContext): Object {
 		let text = child.text;
 		let tokenType = child.start.type;
 		const nonStringLiterals = [mongoParser.mongoParser.NullLiteral, mongoParser.mongoParser.BooleanLiteral, mongoParser.mongoParser.NumericLiteral];
 		if (tokenType === mongoParser.mongoParser.StringLiteral) {
 			return stripQuotes(text);
 		} else if (tokenType === mongoParser.mongoParser.RegexLiteral) {
-			return this.regexLiteralContextToObject(ctx, text);
+			return this.regexLiteralContextToObject(text);
 		} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 			return JSON.parse(text);
 		} else {
@@ -329,80 +334,63 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		}
 	}
 
-	private functionCallContextToObject(child: mongoParser.FunctionCallContext, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
+	private functionCallContextToObject(child: mongoParser.FunctionCallContext): Object {
 		let functionTokens = child.children;
 		let constructorCall: TerminalNode = findType(functionTokens, TerminalNode);
 		let argumentsToken: mongoParser.ArgumentsContext = findType(functionTokens, mongoParser.ArgumentsContext);
 		if (!(argumentsToken._CLOSED_PARENTHESIS && argumentsToken._OPEN_PARENTHESIS)) { //argumentsToken does not have '(' or ')'
-			let err: IParsedError = parseError(`Expecting parentheses or quotes at '${constructorCall.text}'`);
-			this.addErrorToCommand(err, ctx);
-			return {};
+			throw new Error(`Expecting parentheses or quotes at '${constructorCall.text}'`);
 		}
 		let argumentContextArray: mongoParser.ArgumentContext[] = filterType(argumentsToken.children, mongoParser.ArgumentContext);
 
-		let functionMap = { "ObjectId": this.objectIdToObject, "ISODate": this.dateToObject, "Date": this.dateToObject };
 		if (argumentContextArray.length > 1) {
-			let err: IParsedError = parseError(`Too many arguments. Expecting 0 or 1 argument(s) to ${constructorCall}`);
-			this.addErrorToCommand(err, ctx);
-			return {};
+			throw new Error(`Too many arguments. Expecting 0 or 1 argument(s) to ${constructorCall}`);
 		}
-		if (constructorCall.text in functionMap) {
-			let args = [ctx, argumentContextArray.length ? argumentContextArray[0].text : undefined];
-			return functionMap[constructorCall.text].apply(this, args);
+
+		const tokenText = argumentContextArray.length ? argumentContextArray[0].text : undefined;
+		switch (constructorCall.text) {
+			case 'ObjectId':
+				return this.objectIdToObject(tokenText);
+			case 'ISODate':
+			case 'Date':
+				return this.dateToObject(tokenText);
+			default:
+				throw new Error(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`);
 		}
-		throw new Error(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`);
 	}
 
-	private dateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {
+	private dateToObject(tokenText?: string): Object {
 		let constructedObject: Date;
 		if (!tokenText) { // usage : ObjectID()
 			constructedObject = new Date();
 		} else {
-			try {
-				constructedObject = new Date(stripQuotes(tokenText));
-			} catch (error) {
-				let err: IParsedError = parseError(error);
-				this.addErrorToCommand(err, ctx);
-				return {};
-			}
+			constructedObject = new Date(stripQuotes(tokenText));
 		}
 		return { $date: constructedObject.toString() };
 	}
 
-	private objectIdToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {
+	private objectIdToObject(tokenText?: string): Object {
 		let hexID: string;
 		let constructedObject: ObjectID;
 		if (!tokenText) { // usage : ObjectID()
 			constructedObject = new ObjectID();
 		} else {
 			hexID = stripQuotes(<string>tokenText);
-			try {
-				constructedObject = new ObjectID(hexID);
-			} catch (error) {
-				let err: IParsedError = parseError(error);
-				this.addErrorToCommand(err, ctx);
-				return {};
-			}
+			constructedObject = new ObjectID(hexID);
 		}
 		return { $oid: constructedObject.toString() };
 	}
 
-	private regexLiteralContextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, text: string): Object {
+	private regexLiteralContextToObject(text: string): Object {
 		let separator = text.lastIndexOf('/');
 		let flags = separator !== text.length - 1 ? text.substring(separator + 1) : "";
 		let pattern = text.substring(1, separator);
-		try {
-			// validate the pattern and flags.
-			// It is intended for the errors thrown here to be handled by the catch block.
-			let tokenObject = new RegExp(pattern, flags);
-			tokenObject = tokenObject;
-			// we are passing back a $regex annotation, hence we ensure parity wit the $regex syntax
-			return { $regex: this.regexToStringNotation(pattern), $options: flags };
-		} catch (error) { //User may not have finished typing
-			let err: IParsedError = parseError(error);
-			this.addErrorToCommand(err, ctx);
-			return {};
-		}
+		// validate the pattern and flags.
+		// It is intended for the errors thrown here to be handled by the catch block.
+		let tokenObject = new RegExp(pattern, flags);
+		tokenObject = tokenObject;
+		// we are passing back a $regex annotation, hence we ensure parity wit the $regex syntax
+		return { $regex: this.regexToStringNotation(pattern), $options: flags };
 	}
 
 	private addErrorToCommand(error: IParsedError, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): void {

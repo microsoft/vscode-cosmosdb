@@ -281,8 +281,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		} else if (child instanceof ErrorNode) {
 			return {};
 		} else {
-			let err = new Error(`Unrecognized node type encountered. We could not parse ${child.text}`);
-			this.addErrorToCommand(parseError(err), ctx);
+			let err: IParsedError = parseError(`Unrecognized node type encountered. We could not parse ${child.text}`);
+			this.addErrorToCommand(err, ctx);
 			return {};
 		}
 	}
@@ -298,8 +298,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 			return JSON.parse(text);
 		} else {
-			let err = new Error(`Unrecognized token. Token text: ${text}`);
-			this.addErrorToCommand(parseError(err), ctx);
+			let err: IParsedError = parseError(`Unrecognized token. Token text: ${text}`);
+			this.addErrorToCommand(err, ctx);
 			return {};
 		}
 	}
@@ -354,8 +354,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			let args = [ctx, argumentContextArray.length ? argumentContextArray[0].text : undefined];
 			return functionMap[constructorCall.text].apply(this, args);
 		}
-		let unrecognizedNodeErr = new Error(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`);
-		this.addErrorToCommand(parseError(unrecognizedNodeErr), ctx);
+		let unrecognizedNodeErr: IParsedError = parseError(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`);
+		this.addErrorToCommand(unrecognizedNodeErr, ctx);
 		return {};
 	}
 
@@ -411,7 +411,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		}
 	}
 
-	private addErrorToCommand(error: IParsedError, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): void {
+	private addErrorToCommand(error: { message: string }, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): void {
 		let command = this.commands[this.commands.length - 1];
 		command.errors = command.errors || [];
 		let currentErrorDesc: ErrorDescription = { message: error.message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };

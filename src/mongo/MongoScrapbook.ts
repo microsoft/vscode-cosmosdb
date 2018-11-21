@@ -10,7 +10,7 @@ import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ObjectID } from 'bson';
 import * as vscode from 'vscode';
-import { IActionContext, IParsedError, parseError, callWithTelemetryAndErrorHandlingSync } from 'vscode-azureextensionui';
+import { callWithTelemetryAndErrorHandlingSync, IActionContext, IParsedError, parseError } from 'vscode-azureextensionui';
 import { CosmosEditorManager } from '../CosmosEditorManager';
 import { ext } from '../extensionVariables';
 import { filterType, findType } from '../utils/array';
@@ -244,6 +244,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			let functionCallContext = argumentsContext.parent;
 			if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
 				try {
+					//tslint:disable:no-var-self
 					const me = this;
 					callWithTelemetryAndErrorHandlingSync('mongo.visitArgument', function (this: IActionContext) {
 						this.rethrowError = true;

@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { doubleClickDebounceDelay } from "src/constants";
 import { commands } from "vscode";
 import { registerCommand } from "vscode-azureextensionui";
+import { doubleClickDebounceDelay } from "../constants";
 import { CosmosEditorManager } from "../CosmosEditorManager";
 import { ext } from "../extensionVariables";
 import { DocDBStoredProcedureNodeEditor } from "./editors/DocDBStoredProcedureNodeEditor";

@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { doubleClickDebounceDelay } from 'src/constants';
 import * as vscode from 'vscode';
 import { registerCommand } from "vscode-azureextensionui";
+import { doubleClickDebounceDelay } from '../constants';
 import { ext } from '../extensionVariables';
 import { GraphViewsManager } from "./GraphViewsManager";
 import { GraphAccountTreeItem } from "./tree/GraphAccountTreeItem";

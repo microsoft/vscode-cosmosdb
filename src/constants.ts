@@ -5,7 +5,7 @@
 
 export const defaultBatchSize: number = 50;
 
-export const doubleClickDebounceDelay = 200; //milliseconds
+export const doubleClickDebounceDelay = 500; //milliseconds
 
 export const defaultStoredProcedure =
     `function sample(prefix) {

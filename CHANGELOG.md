@@ -1,6 +1,15 @@
 # Change Log
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
+
+## 0.9.1 - 2018-11-28
+### Added
+- API support for integration with [App Service extension](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-azureappservice)
+- Multiple documents, collections, or stored procedures can be viewed/edited at once (thanks [@tec-goblin](https://github.com/tec-goblin))
+
+### [Fixed](https://github.com/Microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A0.9.1+label%3Abug+is%3Aclosed)
+- Refresh button doesn't refresh attached accounts [#904](https://github.com/Microsoft/vscode-cosmosdb/issues/904)
+
 ## 0.9.0 - 2018-11-05
 ### Added
 - Mongo

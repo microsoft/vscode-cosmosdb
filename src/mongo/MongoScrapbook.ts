@@ -239,23 +239,27 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 	}
 
 	visitArgument(ctx: mongoParser.ArgumentContext): MongoCommand[] {
-		let argumentsContext = ctx.parent;
-		if (argumentsContext) {
-			let functionCallContext = argumentsContext.parent;
-			if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
-				const lastCommand = this.commands[this.commands.length - 1];
-				const argAsObject = this.contextToObject(ctx);
-				const argText = EJSON.stringify(argAsObject);
-				lastCommand.arguments.push(argText);
-				let escapeHandled = this.deduplicateEscapesForRegex(argText);
-				let ejsonParsed = {};
-				try {
-					ejsonParsed = EJSON.parse(escapeHandled);
-				} catch (err) { //EJSON parse failed due to a wrong flag, etc.
-					this.addErrorToCommand(parseError(err), ctx);
+		try {
+			let argumentsContext = ctx.parent;
+			if (argumentsContext) {
+				let functionCallContext = argumentsContext.parent;
+				if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
+					const lastCommand = this.commands[this.commands.length - 1];
+					const argAsObject = this.contextToObject(ctx);
+					const argText = EJSON.stringify(argAsObject);
+					lastCommand.arguments.push(argText);
+					let escapeHandled = this.deduplicateEscapesForRegex(argText);
+					let ejsonParsed = {};
+					try {
+						ejsonParsed = EJSON.parse(escapeHandled);
+					} catch (err) { //EJSON parse failed due to a wrong flag, etc.
+						this.addErrorToCommand(parseError(err), ctx);
+					}
+					lastCommand.argumentObjects.push(ejsonParsed);
 				}
-				lastCommand.argumentObjects.push(ejsonParsed);
 			}
+		} catch (error) {
+			this.addErrorToCommand(parseError(error), ctx);
 		}
 		return super.visitArgument(ctx);
 	}
@@ -281,7 +285,9 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		} else if (child instanceof ErrorNode) {
 			return {};
 		} else {
-			throw new Error("Unrecognized node type encountered");
+			let err: IParsedError = parseError(`Unrecognized node type encountered. We could not parse ${child.text}`);
+			this.addErrorToCommand(err, ctx);
+			return {};
 		}
 	}
 
@@ -296,7 +302,9 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		} else if (nonStringLiterals.indexOf(tokenType) > -1) {
 			return JSON.parse(text);
 		} else {
-			throw new Error(`Unrecognized token. Token text: ${text}`);
+			let err: IParsedError = parseError(`Unrecognized token. Token text: ${text}`);
+			this.addErrorToCommand(err, ctx);
+			return {};
 		}
 	}
 
@@ -350,7 +358,9 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			let args = [ctx, argumentContextArray.length ? argumentContextArray[0].text : undefined];
 			return functionMap[constructorCall.text].apply(this, args);
 		}
-		throw new Error(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`);
+		let unrecognizedNodeErr: IParsedError = parseError(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`);
+		this.addErrorToCommand(unrecognizedNodeErr, ctx);
+		return {};
 	}
 
 	private dateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {
@@ -405,7 +415,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		}
 	}
 
-	private addErrorToCommand(error: IParsedError, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): void {
+	private addErrorToCommand(error: { message: string }, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): void {
 		let command = this.commands[this.commands.length - 1];
 		command.errors = command.errors || [];
 		let currentErrorDesc: ErrorDescription = { message: error.message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };

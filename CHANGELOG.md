@@ -9,6 +9,8 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 
 ### [Fixed](https://github.com/Microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A0.9.1+label%3Abug+is%3Aclosed)
 - Refresh button doesn't refresh attached accounts [#904](https://github.com/Microsoft/vscode-cosmosdb/issues/904)
+- Some scrapbook parse errors were causing an error alert [#959](https://github.com/Microsoft/vscode-cosmosdb/pull/959)
+- Downgrade event-stream version due to [event-stream#116](https://github.com/dominictarr/event-stream/issues/116)
 
 ## 0.9.0 - 2018-11-05
 ### Added

@@ -901,6 +901,7 @@
 		"fs-extra": "^4.0.2",
 		"gremlin": "^2.6.0",
 		"mongodb": "^2.2.25",
+		"event-stream": "3.3.4",
 		"mongodb-extended-json": "^1.10.0",
 		"ms-rest": "^2.2.1",
 		"opn": "^5.4.0",

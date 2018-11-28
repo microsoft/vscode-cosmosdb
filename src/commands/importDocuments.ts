@@ -57,14 +57,18 @@ export async function importDocuments(uris: vscode.Uri[] | undefined, collection
 }
 
 async function askForDocuments(): Promise<vscode.Uri[]> {
-    return await ext.ui.showOpenDialog({
+    let openDialogOptions: vscode.OpenDialogOptions = {
         canSelectMany: true,
         openLabel: "Import",
         filters: {
             "JSON": ["json"]
-        },
-        defaultUri: vscode.Uri.file(vscode.workspace.rootPath)
-    });
+        }
+    };
+    let rootPath = vscode.workspace.rootPath;
+    if (rootPath) {
+        openDialogOptions.defaultUri = vscode.Uri.file(rootPath);
+    }
+    return await ext.ui.showOpenDialog(openDialogOptions);
 }
 
 // tslint:disable-next-line:no-any

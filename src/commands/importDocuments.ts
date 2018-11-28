@@ -57,13 +57,17 @@ export async function importDocuments(uris: vscode.Uri[] | undefined, collection
 }
 
 async function askForDocuments(): Promise<vscode.Uri[]> {
+    let rootPath = vscode.workspace.rootPath;
+    if (!rootPath) {
+        throw new Error("No workspace found. Please open a workspace");
+    }
     return await ext.ui.showOpenDialog({
         canSelectMany: true,
         openLabel: "Import",
         filters: {
             "JSON": ["json"]
         },
-        defaultUri: vscode.Uri.file(vscode.workspace.rootPath)
+        defaultUri: vscode.Uri.file(rootPath)
     });
 }
 

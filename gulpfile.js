@@ -7,20 +7,11 @@ const gulp = require('gulp');
 const decompress = require('gulp-decompress');
 const download = require('gulp-download');
 const path = require('path');
+const print = require('gulp-print').default;
 const os = require('os');
 const cp = require('child_process');
 const glob = require('glob');
 
-gulp.task('test', ['install-azure-account'], (cb) => {
-    const env = process.env;
-    env.DEBUGTELEMETRY = 1;
-    env.MOCHA_reporter = 'mocha-junit-reporter';
-    env.MOCHA_FILE = path.join(__dirname, 'test-results.xml');
-    const cmd = cp.spawn('node', ['./node_modules/vscode/bin/test'], { stdio: 'inherit', env });
-    cmd.on('close', (code) => {
-        cb(code);
-    });
-});
 
 /**
  * Installs the azure account extension before running tests (otherwise our extension would fail to activate)
@@ -41,7 +32,19 @@ gulp.task('install-azure-account', () => {
             }))
             .pipe(gulp.dest(extensionPath));
     } else {
-        console.log('Azure Account extension already installed.');
+        // We don't use console.log because we need to signal completion of this asyn task to gulp
+        return gulp.src('package.json')
+            .pipe(print(function () { return 'Azure Account extension already installed.'; }));
     }
 });
 
+
+const testTask = () => {
+    const env = process.env;
+    env.DEBUGTELEMETRY = 1;
+    env.MOCHA_reporter = 'mocha-junit-reporter';
+    env.MOCHA_FILE = path.join(__dirname, 'test-results.xml');
+    return cp.spawn('node', ['./node_modules/vscode/bin/test'], { stdio: 'inherit', env });
+};
+
+gulp.task('test', gulp.series('install-azure-account', testTask));

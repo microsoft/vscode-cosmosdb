@@ -32,7 +32,7 @@ gulp.task('install-azure-account', () => {
             }))
             .pipe(gulp.dest(extensionPath));
     } else {
-        // We don't use console.log because we need to signal completion of this asyn task to gulp
+        // We don't use console.log because we need to signal completion of this async task to gulp
         return gulp.src('package.json')
             .pipe(print(function () { return 'Azure Account extension already installed.'; }));
     }

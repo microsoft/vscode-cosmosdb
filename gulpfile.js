@@ -32,19 +32,18 @@ gulp.task('install-azure-account', () => {
             }))
             .pipe(gulp.dest(extensionPath));
     } else {
-        // We don't use console.log because we need to signal completion of this async task to gulp
-        return gulp.src('package.json')
-            .pipe(print(function () { return 'Azure Account extension already installed.'; }));
+        console.log("Azure Account extension already installed.")
+        // We need to signal to gulp that we've completed this async task
+        return Promise.resolve();
     }
 });
 
 
-const testTask = () => {
+gulp.task('test', gulp.series('install-azure-account', () => {
     const env = process.env;
     env.DEBUGTELEMETRY = 1;
     env.MOCHA_reporter = 'mocha-junit-reporter';
     env.MOCHA_FILE = path.join(__dirname, 'test-results.xml');
-    return cp.spawn('node', ['./node_modules/vscode/bin/test'], { stdio: 'inherit', env });
-};
-
-gulp.task('test', gulp.series('install-azure-account', testTask));
+    const cmd = cp.spawn('node', ['./node_modules/vscode/bin/test'], { stdio: 'inherit', env });
+    return cmd;
+}));

@@ -7,7 +7,6 @@ const gulp = require('gulp');
 const decompress = require('gulp-decompress');
 const download = require('gulp-download');
 const path = require('path');
-const print = require('gulp-print').default;
 const os = require('os');
 const cp = require('child_process');
 const glob = require('glob');

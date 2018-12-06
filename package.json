@@ -897,7 +897,6 @@
 		"clipboardy": "^1.2.3",
 		"d3": "^3.0.0",
 		"documentdb": "^1.14.2",
-		"event-stream": "3.3.4",
 		"fs-extra": "^4.0.2",
 		"gremlin": "^2.6.0",
 		"mongodb": "^2.2.25",

@@ -894,7 +894,6 @@
 		"antlr4ts": "^0.4.1-alpha.0",
 		"azure-arm-cosmosdb": "^1.1.2",
 		"azure-arm-resource": "^3.0.0-preview",
-		"azure-graph": "^2.2.0",
 		"clipboardy": "^1.2.3",
 		"d3": "^3.0.0",
 		"documentdb": "^1.14.2",
@@ -904,7 +903,6 @@
 		"mongodb-extended-json": "^1.10.0",
 		"ms-rest": "^2.2.1",
 		"opn": "^5.4.0",
-		"request-light": "^0.2.3",
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
@@ -912,8 +910,7 @@
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.4.0",
 		"vscode-languageserver": "^4.4.0",
-		"vscode-nls": "^2.0.2",
-		"vscode-uri": "^1.0.1"
+		"vscode-nls": "^2.0.2"
 	},
 	"extensionDependencies": [
 		"ms-vscode.azure-account"

@@ -161,7 +161,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<AzureE
 }
 
 async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase) {
-    clipboardy.write(node.connectionString);
+    await clipboardy.write(node.connectionString);
 }
 
 // this method is called when your extension is deactivated

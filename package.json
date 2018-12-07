@@ -866,6 +866,7 @@
 		"all": "npm i && npm run lint && npm test"
 	},
 	"devDependencies": {
+		"@types/clipboardy": "^1.1.0",
 		"@types/d3": "5.0.0",
 		"@types/documentdb": "^1.10.2",
 		"@types/fs-extra": "^4.0.3",

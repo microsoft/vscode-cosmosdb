@@ -8,7 +8,7 @@
 const loadStartTime: number = Date.now();
 let loadEndTime: number;
 
-import * as copypaste from 'copy-paste';
+import * as clipboardy from 'clipboardy';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, callWithTelemetryAndErrorHandling, createApiProvider, createTelemetryReporter, IActionContext, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
 import { AzureExtensionApi, AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
@@ -34,7 +34,6 @@ import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
-import * as cpUtil from './utils/cp';
 
 export async function activate(context: vscode.ExtensionContext): Promise<AzureExtensionApiProvider> {
     ext.context = context;
@@ -162,11 +161,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<AzureE
 }
 
 async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase) {
-    if (process.platform !== 'linux' || (await cpUtil.commandSucceeds('xclip', '-version'))) {
-        copypaste.copy(node.connectionString);
-    } else {
-        vscode.window.showErrorMessage('You must have xclip installed to copy the connection string.');
-    }
+    await clipboardy.write(node.connectionString);
 }
 
 // this method is called when your extension is deactivated

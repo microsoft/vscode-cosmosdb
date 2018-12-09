@@ -37,6 +37,16 @@ export async function showNewFile(data: string, extensionPath: string, fileName:
     await writeToEditor(editor, data);
 }
 
+export async function showFile(data: string, extensionPath: string, fileName: string, fileExtension: string, column?: vscode.ViewColumn): Promise<void> {
+    let uri: vscode.Uri;
+    const folderPath: string = vscode.workspace.rootPath || extensionPath;
+    const fullFileName: string | undefined = await getFileName(fileName, fileExtension);
+    uri = vscode.Uri.file(path.join(folderPath, fullFileName)).with({ scheme: 'untitled' });
+    const textDocument = await vscode.workspace.openTextDocument(uri);
+    const editor = await vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true);
+    await writeToEditor(editor, data);
+}
+
 export async function writeToEditor(editor: vscode.TextEditor, data: string): Promise<void> {
     await editor.edit((editBuilder: vscode.TextEditorEdit) => {
         if (editor.document.lineCount > 0) {
@@ -66,6 +76,11 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
     }
 
     throw new Error('Could not find unique name for new file.');
+}
+
+async function getFileName(fileName: string, fileExtension: string): Promise<string> {
+    const fullFileName: string = fileName + fileExtension;
+    return fullFileName;
 }
 
 export function tryfetchNodeModule(moduleName: string) {

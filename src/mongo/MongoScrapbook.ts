@@ -122,7 +122,8 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 				}
 				await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result), 'cosmos-result.json', { showInNextColumn: true });
 			} else {
-				await vscodeUtil.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
+				await vscodeUtil.showFile(result, extensionPath, 'scrapbook-result', '.json', activeEditor.viewColumn + 1);
+
 				await refreshTreeAfterCommand(database, command);
 			}
 		}

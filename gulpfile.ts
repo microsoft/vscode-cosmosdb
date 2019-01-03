@@ -20,6 +20,7 @@ function installAzureAccount() {
     const extensionPath = path.join(os.homedir(), `.vscode/extensions/ms-vscode.azure-account-${version}`);
     const existingExtensions = glob.sync(extensionPath.replace(version, '*'));
     if (existingExtensions.length === 0) {
+        // tslint:disable-next-line:no-http-string
         return download(`http://ms-vscode.gallery.vsassets.io/_apis/public/gallery/publisher/ms-vscode/extension/azure-account/${version}/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage`)
             .pipe(decompress({
                 filter: file => file.path.startsWith('extension/'),
@@ -30,7 +31,7 @@ function installAzureAccount() {
             }))
             .pipe(gulp.dest(extensionPath));
     } else {
-        console.log("Azure Account extension already installed.")
+        console.log("Azure Account extension already installed.");
         // We need to signal to gulp that we've completed this async task
         return Promise.resolve();
     }

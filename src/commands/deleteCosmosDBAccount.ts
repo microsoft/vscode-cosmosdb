@@ -7,7 +7,6 @@ import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import * as vscode from 'vscode';
 import { AzureTreeItem, createAzureClient, DialogResponses } from 'vscode-azureextensionui';
 import { UserCancelledError } from 'vscode-azureextensionui';
-import { ext } from '../extensionVariables';
 import { azureUtils } from '../utils/azureUtils';
 
 export async function deleteCosmosDBAccount(node: AzureTreeItem): Promise<void> {
@@ -17,11 +16,12 @@ export async function deleteCosmosDBAccount(node: AzureTreeItem): Promise<void> 
         const client: CosmosDBManagementClient = createAzureClient(node.root, CosmosDBManagementClient);
         const resourceGroup: string = azureUtils.getResourceGroupFromId(node.fullId);
         const accountName: string = azureUtils.getAccountNameFromId(node.fullId);
-        ext.outputChannel.appendLine(`Deleting account "${accountName}"...`);
-        ext.outputChannel.show();
-        await client.databaseAccounts.deleteMethod(resourceGroup, accountName);
-        ext.outputChannel.appendLine(`Successfully deleted account "${accountName}"`);
-        ext.outputChannel.show();
+        const deletingMessage: string = `Deleting account "${accountName}"...`;
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
+            await client.databaseAccounts.deleteMethod(resourceGroup, accountName);
+        });
+        // don't wait
+        vscode.window.showInformationMessage(`Successfully deleted account "${accountName}".`);
     } else {
         throw new UserCancelledError();
     }

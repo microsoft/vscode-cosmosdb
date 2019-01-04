@@ -61,11 +61,13 @@ export class CosmosDBAccountProvider extends SubscriptionTreeItem {
 
         actionContext.properties.defaultExperience = wizardContext.defaultExperience.api;
 
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Window }, async (progress) => {
+        const creatingMessage: string = `Creating account "${wizardContext.accountName}"...`;
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: creatingMessage }, async () => {
             showCreatingTreeItem(wizardContext.accountName);
-            progress.report({ message: `Cosmos DB: Creating account '${wizardContext.accountName}'` });
             await wizard.execute(actionContext);
         });
+        // don't wait
+        vscode.window.showInformationMessage(`Successfully created account "${wizardContext.accountName}".`);
         return await this.initChild(client, wizardContext.databaseAccount);
     }
 

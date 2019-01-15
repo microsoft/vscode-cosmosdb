@@ -29,7 +29,7 @@ const externalNodeModules = [
     'vscode-languageclient',
     'gremlin',
     'socket.io',
-    'mongodb-core' // TODO: Is this necessary?
+    'mongodb-core'
 ];
 
 // External modules and all their dependencies and subdependencies (these will not be webpacked)

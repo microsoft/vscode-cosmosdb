@@ -3,10 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// The module 'assert' provides assertion methods from node
 import * as assert from 'assert';
-import { parseDocDBConnectionString } from '../src/docdb/docDBConnectionStrings';
-import { emulatorPassword } from '../src/constants';
+import { parseDocDBConnectionString } from '../extension';
+import { emulatorPassword } from '../extension';
 
 
 function testConnectionString(connectionString: string, expectedEndpoint: string, expectedKey: string, expectedDatabaseName: string | undefined) {

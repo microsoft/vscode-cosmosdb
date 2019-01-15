@@ -3,10 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// The module 'assert' provides assertion methods from node
 import * as assert from 'assert';
-import { emulatorPassword } from '../src/constants';
-import { addDatabaseToAccountConnectionString, getDatabaseNameFromConnectionString } from '../src/mongo/mongoConnectionStrings';
+import { emulatorPassword } from '../extension';
+import { addDatabaseToAccountConnectionString, getDatabaseNameFromConnectionString } from '../extension';
 
 function testDatabaseToAccountConnectionString(connectionString: string, databaseName: string, expectedConnectionString: string | undefined) {
     let databaseConnectionString = addDatabaseToAccountConnectionString(connectionString, databaseName);

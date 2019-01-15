@@ -6,6 +6,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from 'vscode';
+import { resourcesPath } from "../constants";
 import { areConfigsEqual, GraphConfiguration } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
 
@@ -82,8 +83,7 @@ class GraphViewDocumentContentProvider implements vscode.TextDocumentContentProv
     console.assert(serverId > 0);
     let server = this._serverProvider.findServerById(serverId);
     if (server) {
-      let outPath = path.join(path.dirname(module.filename), "../..");
-      let clientHtmlPath = path.join(outPath, "../resources/graphClient/graphClient.html");
+      let clientHtmlPath = path.join(resourcesPath, 'graphClient', 'graphClient.html');
       console.assert(fs.existsSync(clientHtmlPath), `Couldn't find ${clientHtmlPath}`);
 
       let html = `

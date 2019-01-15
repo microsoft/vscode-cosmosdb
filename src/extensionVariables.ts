@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as path from 'path';
 import { ExtensionContext, OutputChannel, TreeView } from "vscode";
 import { AzureTreeDataProvider, AzureTreeItem, IAzureUserInput, ISubscriptionRoot, ITelemetryReporter } from "vscode-azureextensionui";
 import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
@@ -17,6 +18,7 @@ export namespace ext {
     export let context: ExtensionContext;
     export let outputChannel: OutputChannel;
     export let reporter: ITelemetryReporter;
+    export let resourcesPath = path.join(__dirname, 'resources');
     export let tree: AzureTreeDataProvider;
     export let treeView: TreeView<AzureTreeItem<ISubscriptionRoot>>;
     export let attachedAccountsNode: AttachedAccountsTreeItem;

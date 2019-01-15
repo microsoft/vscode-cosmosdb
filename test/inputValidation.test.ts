@@ -3,9 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// The module 'assert' provides assertion methods from node
 import * as assert from 'assert';
-import { validOnTimeoutOrException } from '../src/utils/inputValidation';
+import { validOnTimeoutOrException } from '../extension';
 
 suite("inputValidation Tests", () => {
 

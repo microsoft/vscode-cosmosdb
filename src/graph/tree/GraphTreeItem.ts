@@ -7,6 +7,7 @@ import { CollectionMeta } from 'documentdb';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { AzureTreeItem } from 'vscode-azureextensionui';
+import { resourcesPath } from '../../constants';
 import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
 import { GraphConfiguration } from '../GraphConfiguration';
 import { GraphViewsManager } from '../GraphViewsManager';
@@ -40,8 +41,8 @@ export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
-            light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Collection.svg'),
-            dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Collection.svg')
+            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Collection.svg'),
+            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Collection.svg')
         };
     }
 

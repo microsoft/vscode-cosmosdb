@@ -5,10 +5,12 @@
 
 import * as fse from 'fs-extra';
 import { Collection, Db } from 'mongodb';
+import opn = require('opn');
 import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzureParentTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
+import { resourcesPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
 import { connectToMongoClient } from '../connectToMongoClient';
@@ -18,8 +20,6 @@ import { Shell } from '../shell';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoAccountTreeItem } from './MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
-
-import opn = require('opn');
 
 const mongoExecutableFileName = process.platform === 'win32' ? 'mongo.exe' : 'mongo';
 
@@ -54,8 +54,8 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 
 	public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
 		return {
-			light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Database.svg'),
-			dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'theme-agnostic', 'Database.svg')
+			light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Database.svg'),
+			dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Database.svg')
 		};
 	}
 

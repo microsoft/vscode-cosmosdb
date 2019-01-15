@@ -898,7 +898,7 @@
 		"ts-node": "^7.0.1",
 		"tslint": "^5.7.0",
 		"tslint-microsoft-contrib": "5.0.1",
-		"typescript": "^2.0.3",
+		"typescript": "^3.2.2",
 		"vsce": "^1.37.5",
 		"vscode": "^1.1.18",
 		"webpack": "4.28.1",

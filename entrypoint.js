@@ -22,6 +22,12 @@ async function activate(ctx) {
     return await extension.activateInternal(ctx, perfStats);
 }
 
+async function deactivate(ctx) {
+    return await extension.deactivateInternal(ctx, perfStats);
+}
+
+// Export as entrypoints for vscode
 exports.activate = activate;
+exports.deactivate = deactivate;
 
 perfStats.loadEndTime = Date.now();

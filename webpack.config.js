@@ -45,16 +45,7 @@ const config = {
     // vscode extensions run in a Node.js context, see https://webpack.js.org/configuration/node/
     target: 'node',
     node: {
-        // __filename: Specify how to replace __filename in code:
-        //   true: The filename of the input file relative to the context option.
-        //   false: The regular Node.js __filename behavior. The filename of the output file when run in a Node.js environment.
-        //   "mock": [default] The fixed value "index.js".
-        // __dirname: Specify how to replace __dirname in code:
-        //   true: The dirname of the input file relative to the context option.
-        //   false: The regular Node.js __dirname behavior. The dirname of the output file when run in a Node.js environment.
-        //   "mock": [default] The fixed value "/".
-
-        // For __dirname and __filename, use the default Node.js behavior (i.e., use the path to the packed extension.js file, not the original source file)
+        // For __dirname and __filename, use the default Node.js behavior (i.e., gives the path to the packed extension.js file, not the original source file)
         __filename: false,
         __dirname: false
     },
@@ -174,7 +165,6 @@ const config = {
                 exclude: /node_modules/,
                 use: [{
                     // Note: the TS loader will transpile the .ts file directly during webpack, it doesn't use the out folder.
-                    // CONSIDER: awesome-typescript-loader (faster?)
                     loader: 'ts-loader'
                 }]
             },

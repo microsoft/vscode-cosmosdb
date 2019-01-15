@@ -12,9 +12,13 @@
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
+			// outFiles is used for locating generated JavaScript files, see https://code.visualstudio.com/docs/nodejs/nodejs-debugging#_source-maps
+			"outFiles": [
+				"${workspaceFolder}/**/*.js"
+			],
 			"preLaunchTask": "npm: webpack",
 			"env": {
-				"DEBUGTELEMETRY": "",
+				"DEBUGTELEMETRY": "1",
 				"NODE_DEBUG": ""
 			}
 		},
@@ -29,6 +33,10 @@
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
+			// outFiles is used for locating generated JavaScript files, see https://code.visualstudio.com/docs/nodejs/nodejs-debugging#_source-maps
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],
 			"preLaunchTask": "npm: webpack",
 			"env": {
 				"MOCHA_grep": "", // RegExp of tests to run (empty for all)
@@ -55,7 +63,10 @@
 			"protocol": "inspector",
 			"port": 5870,
 			"sourceMaps": true,
-			"restart": true
+			"restart": true,
+			"outFiles": [
+				"${workspaceRoot}/out/src"
+			]
 		},
 		{
 			// INSTRUCTIONS

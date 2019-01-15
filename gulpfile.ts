@@ -17,7 +17,7 @@ const env = process.env;
 function webpack(mode: string): cp.ChildProcess {
     // without this, webpack can run out of memory in some environments
     env.NODE_OPTIONS = '--max-old-space-size=8192';
-    return spawn(path.join(__dirname, './node_modules/.bin/webpack'), ['--mode', mode], { stdio: 'inherit', env });
+    return spawn(path.join(__dirname, './node_modules/.bin/webpack'), ['--mode', mode, '--display', 'minimal'], { stdio: 'inherit', env });
 }
 
 /**

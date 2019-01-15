@@ -320,7 +320,10 @@ function getExternalsCopyEntry() {
         });
     }
 
-    console.log(patterns);
+    if (DEBUG_WEBPACK) {
+        console.log(patterns);
+    }
+
     return new CopyWebpackPlugin(patterns);
 }
 

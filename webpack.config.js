@@ -65,7 +65,10 @@ const config = {
         // The bundles are stored in the 'dist' folder (check package.json), see https://webpack.js.org/configuration/output/
         path: path.resolve(__dirname, 'dist'),
         filename: '[name].js',
-        libraryTarget: "commonjs2"
+        libraryTarget: "commonjs2",
+
+        // This is required to get the correct paths for sources in the generated map file
+        devtoolModuleFilenameTemplate: "../[resource-path]"
     },
     devtool: "source-map",
     externals: [

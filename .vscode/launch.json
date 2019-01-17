@@ -12,12 +12,14 @@
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
+			// outFiles is used for locating generated JavaScript files, see https://code.visualstudio.com/docs/nodejs/nodejs-debugging#_source-maps
 			"outFiles": [
-				"${workspaceRoot}/out/src/**/*.js"
+				"${workspaceFolder}/**/*.js"
 			],
-			"preLaunchTask": "npm: compile",
+			"preLaunchTask": "npm: webpack",
 			"env": {
-				"DEBUGTELEMETRY": "1"
+				"DEBUGTELEMETRY": "1",
+				"NODE_DEBUG": ""
 			}
 		},
 		{
@@ -27,14 +29,15 @@
 			"runtimeExecutable": "${execPath}",
 			"args": [
 				"--extensionDevelopmentPath=${workspaceRoot}",
-				"--extensionTestsPath=${workspaceRoot}/out/test"
+				"--extensionTestsPath=${workspaceRoot}/dist/test"
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
+			// outFiles is used for locating generated JavaScript files, see https://code.visualstudio.com/docs/nodejs/nodejs-debugging#_source-maps
 			"outFiles": [
-				"${workspaceRoot}/out/test"
+				"${workspaceFolder}/dist/**/*.js"
 			],
-			"preLaunchTask": "npm: compile",
+			"preLaunchTask": "npm: webpack",
 			"env": {
 				"MOCHA_grep": "", // RegExp of tests to run (empty for all)
 				"MOCHA_enableTimeouts": "0", // Disable time-outs
@@ -50,7 +53,7 @@
 			"port": 6005,
 			"sourceMaps": true,
 			"outFiles": [
-				"${workspaceRoot}/out/**/*.js"
+				"${workspaceRoot}/dist/**/*.js"
 			]
 		},
 		{
@@ -76,7 +79,7 @@
 			"name": "Debug Mongo grammar",
 			"type": "antlr-debug",
 			"request": "launch",
-			// This doesn't seem to work: "input": "${workspaceFolder}/${command:AskForTestInput}",
+			// This doesn't seem to work: "input": "${workspaceRoot}/${command:AskForTestInput}",
 			"input": "c:/temp/debugger-input.mongo",
 			"grammar": "grammar/mongo.g4",
 			"startRule": "mongoCommands",

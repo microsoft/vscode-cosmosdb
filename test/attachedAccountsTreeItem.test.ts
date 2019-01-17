@@ -3,10 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// The module 'assert' provides assertion methods from node
 import * as assert from 'assert';
 
-import { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from '../src/tree/AttachedAccountsTreeItem';
+import { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from '../extension';
 
 function assertConnectionValid(connectionString: string, expected: string | undefined) {
     const actual = AttachedAccountsTreeItem.validateMongoConnectionString(connectionString);

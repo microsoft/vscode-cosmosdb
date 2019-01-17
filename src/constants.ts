@@ -3,6 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as path from 'path';
+
+export const resourcesPath = path.join(__dirname, '..', 'resources'); // (relative to dist folder)
+
 export const defaultBatchSize: number = 50;
 
 export const doubleClickDebounceDelay = 500; //milliseconds

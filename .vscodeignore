@@ -12,3 +12,17 @@ tslint.json
 .github/**
 test-results.xml
 .azure-pipelines/**
+node_modules/**
+out/**
+src/**
+test/**
+dist/test/**
+testOutput/**
+test-results.xml
+gulp*
+webpack.config*
+package-lock.json
+stats.json
+*.tgz
+grammar
+build

@@ -5,9 +5,6 @@
 
 'use strict';
 
-const loadStartTime: number = Date.now();
-let loadEndTime: number;
-
 import * as clipboardy from 'clipboardy';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, callWithTelemetryAndErrorHandling, createApiProvider, createTelemetryReporter, IActionContext, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
@@ -35,7 +32,7 @@ import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountsTreeItem, AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { CosmosDBAccountProvider } from './tree/CosmosDBAccountProvider';
 
-export async function activate(context: vscode.ExtensionContext): Promise<AzureExtensionApiProvider> {
+export async function activateInternal(context: vscode.ExtensionContext, perfStats: { loadStartTime: number, loadEndTime: number }): Promise<AzureExtensionApiProvider> {
     ext.context = context;
     ext.reporter = createTelemetryReporter(context);
     ext.ui = new AzureUserInput(context.globalState);
@@ -45,7 +42,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<AzureE
 
     await callWithTelemetryAndErrorHandling('cosmosDB.activate', async function (this: IActionContext): Promise<void> {
         this.properties.isActivationEvent = 'true';
-        this.measurements.mainFileLoad = (loadEndTime - loadStartTime) / 1000;
+        this.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
 
         const attachedAccountsNode: AttachedAccountsTreeItem = new AttachedAccountsTreeItem(context.globalState);
         ext.attachedAccountsNode = attachedAccountsNode;
@@ -165,8 +162,6 @@ async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTre
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {
+export function deactivateInternal() {
     // NOOP
 }
-
-loadEndTime = Date.now();

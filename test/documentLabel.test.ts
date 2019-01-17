@@ -5,7 +5,7 @@
 
 
 import * as assert from 'assert';
-import { getDocumentTreeItemLabel } from '../src/utils/vscodeUtils';
+import { getDocumentTreeItemLabel } from '../extension';
 
 suite("Document Label Tests", () => {
     test("Non-zero number", () => {

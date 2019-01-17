@@ -16,6 +16,7 @@
 		"rootDir": ".",
 		"experimentalDecorators": true,
 		"baseUrl": "./",
+		"alwaysStrict": true,
 		"paths": {
 			"*": [
 				"node_modules/vscode/*",

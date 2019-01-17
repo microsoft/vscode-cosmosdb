@@ -7,6 +7,7 @@ import { ProcedureMeta } from 'documentdb';
 import * as path from 'path';
 import * as vscode from "vscode";
 import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
+import { resourcesPath } from '../../constants';
 import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
@@ -52,8 +53,8 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
-            light: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'light', 'Process_16x.svg'),
-            dark: path.join(__filename, '..', '..', '..', '..', '..', 'resources', 'icons', 'dark', 'Process_16x.svg')
+            light: path.join(resourcesPath, 'icons', 'light', 'Process_16x.svg'),
+            dark: path.join(resourcesPath, 'icons', 'dark', 'Process_16x.svg')
         };
     }
 

@@ -3,13 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// The module 'assert' provides assertion methods from node
 import * as assert from 'assert';
-import { ObjectID, ObjectId } from 'bson';
+import { ObjectID, ObjectId } from '../extension';
 import { Position } from 'vscode';
 import { parseError } from 'vscode-azureextensionui';
-import { MongoCommand } from '../src/mongo/MongoCommand';
-import { getAllCommandsFromText, getCommandFromTextAtLocation } from '../src/mongo/MongoScrapbook';
+import { MongoCommand } from '../extension';
+import { getAllCommandsFromText, getCommandFromTextAtLocation } from '../extension';
 
 function expectSingleCommand(text: string): MongoCommand {
     let commands = getAllCommandsFromText(text);

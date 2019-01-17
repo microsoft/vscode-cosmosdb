@@ -3,9 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// The module 'assert' provides assertion methods from node
 import * as assert from 'assert';
-import { rejectOnTimeout, valueOnTimeout } from '../src/utils/timeout';
+import { rejectOnTimeout, valueOnTimeout } from '../extension';
 
 suite("timeout Tests", () => {
     suite("rejectOnTimeout", () => {

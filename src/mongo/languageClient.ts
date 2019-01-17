@@ -16,7 +16,7 @@ export class MongoDBLanguageClient {
 
 	constructor(context: ExtensionContext) {
 		// The server is implemented in node
-		let serverModule = context.asAbsolutePath(path.join('out', 'src', 'mongo', 'languageServer.js'));
+		let serverModule = context.asAbsolutePath(path.join('dist', 'mongo-languageServer.js'));
 		// The debug options for the server
 		let debugOptions = { execArgv: ['--nolazy', '--debug=6005', '--inspect'] };
 

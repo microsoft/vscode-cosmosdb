@@ -261,3 +261,7 @@ test-results.xml
 
 # Artifacts from ANTLR4 extension
 grammar/.antlr
+
+dist
+stats.json
+*.tgz

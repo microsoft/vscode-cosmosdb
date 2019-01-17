@@ -13,11 +13,11 @@ export function removeDuplicatesById<T extends { id: string }>(entries: T[]): T[
 }
 
 // tslint:disable-next-line:no-any
-export function filterType<T>(arr: Object[], genericConstructor: { new(...args: any[]): T }): T[] {
+export function filterType<T>(arr: Object[], genericConstructor: new(...args: any[]) => T): T[] {
     return <T[]>arr.filter(element => element instanceof genericConstructor);
 }
 
 // tslint:disable-next-line:no-any
-export function findType<T>(arr: Object[], genericConstructor: { new(...args: any[]): T }): T {
+export function findType<T>(arr: Object[], genericConstructor: new(...args: any[]) => T): T {
     return <T>arr.find(element => element instanceof genericConstructor);
 }

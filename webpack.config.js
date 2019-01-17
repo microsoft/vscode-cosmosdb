@@ -10,15 +10,10 @@
 
 'use strict';
 
-const path = require('path');
 const process = require('process');
 const webpack = require('webpack');
-const fse = require('fs-extra');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 const StringReplacePlugin = require("string-replace-webpack-plugin");
 const dev = require("vscode-azureextensiondev");
-
-const packageLock = fse.readJSONSync('./package-lock.json');
 
 let DEBUG_WEBPACK = !!process.env.DEBUG_WEBPACK;
 

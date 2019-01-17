@@ -262,10 +262,6 @@ test-results.xml
 # Artifacts from ANTLR4 extension
 grammar/.antlr
 
-node_modules
-out
-*.vsix
-.vscode-test
-test-results.xml
 dist
 stats.json
+*.tgz

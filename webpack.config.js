@@ -5,8 +5,7 @@
 
 //@ts-check
 
-// Using webpack helps reduce the install and startup time of large extensions by reducing the large number of files into a much smaller set
-// Full webpack documentation: [https://webpack.js.org/configuration/]().
+// See https://github.com/Microsoft/vscode-azuretools/wiki/webpack for guidance
 
 'use strict';
 

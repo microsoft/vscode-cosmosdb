@@ -6,7 +6,7 @@
 import * as cp from 'child_process';
 import * as gulp from 'gulp';
 import * as path from 'path';
-import { gulp_installAzureAccount, gulp_spawn, gulp_webpack } from 'vscode-azureextensiondev';
+import { gulp_installAzureAccount, gulp_webpack } from 'vscode-azureextensiondev';
 
 function test(): cp.ChildProcess {
     const env = process.env;
@@ -14,7 +14,7 @@ function test(): cp.ChildProcess {
     env.DEBUGTELEMETRY = '1';
     env.CODE_TESTS_PATH = path.join(__dirname, 'dist/test');
     console.log(env.CODE_TESTS_PATH);
-    return gulp_spawn('node', ['./node_modules/vscode/bin/test'], { stdio: 'inherit', env });
+    return cp.spawn('node', ['./node_modules/vscode/bin/test'], { stdio: 'inherit', env });
 }
 
 exports['webpack-dev'] = () => gulp_webpack('development');

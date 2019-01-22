@@ -5,7 +5,7 @@
 
 import * as assert from 'assert';
 
-import { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from '../extension';
+import { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from '../extension.bundle';
 
 function assertConnectionValid(connectionString: string, expected: string | undefined) {
     const actual = AttachedAccountsTreeItem.validateMongoConnectionString(connectionString);

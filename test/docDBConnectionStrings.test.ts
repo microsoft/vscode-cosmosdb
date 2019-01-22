@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { parseDocDBConnectionString } from '../extension';
-import { emulatorPassword } from '../extension';
+import { parseDocDBConnectionString } from '../extension.bundle';
+import { emulatorPassword } from '../extension.bundle';
 
 
 function testConnectionString(connectionString: string, expectedEndpoint: string, expectedKey: string, expectedDatabaseName: string | undefined) {

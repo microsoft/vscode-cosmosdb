@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import * as arrayUtil from '../extension';
+import * as arrayUtil from '../extension.bundle';
 
 suite("arrayUtil Tests", () => {
 

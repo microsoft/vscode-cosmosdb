@@ -33,7 +33,7 @@
 		"type": "git",
 		"url": "https://github.com/microsoft/vscode-cosmosdb"
 	},
-	"main": "./entrypoint",
+	"main": "./main",
 	"activationEvents": [
 		"onLanguage:mongo",
 		"onView:cosmosDBExplorer",

@@ -34,8 +34,8 @@ let config = dev.getDefaultWebpackConfig({
         // of the others, and that individually includes all dependencies necessary (i.e. common
         // dependencies will have a copy in each entry file, no sharing).
 
-        // Create a separate module bundle for the mongo language server (doesn't share any code with main extension.js)
-        './mongo-languageServer': './src/mongo/languageServer.ts'
+        // Create a separate module bundle for the mongo language server (doesn't share any code with extension.bundle.js)
+        './mongo-languageServer.bundle': './src/mongo/languageServer.ts'
     },
 
     externals:

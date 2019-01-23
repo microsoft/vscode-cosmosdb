@@ -27,7 +27,10 @@ let config = dev.getDefaultWebpackConfig({
         'require_optional',
         'gremlin',
         'socket.io',
-        'mongodb-core'
+        'mongodb-core',
+
+        // Electron fork depends on file at location of original source
+        'vscode-languageclient'
     ],
     entries: {
         // Note: Each entry is a completely separate Node.js application that cannot interact with any

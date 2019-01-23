@@ -18,9 +18,9 @@ import * as path from 'path';
 // a possible error to the callback or null if none.
 
 // tslint:disable-next-line:no-require-imports no-var-requires
-let testRunner = require('vscode/lib/testrunner');
+const testRunner = require('vscode/lib/testrunner');
 
-let options: { [key: string]: string | boolean | number | object } = {
+const options: { [key: string]: string | boolean | number | object } = {
     ui: 'tdd', 		// the TDD UI is being used in extension.test.ts (suite, test, etc.)
     useColors: true // colored output from test results
 };
@@ -48,11 +48,11 @@ options.reporterOptions = {
     }
 };
 
-let environmentVariables = <{ [key: string]: string }>process.env;
-for (let envVar of Object.keys(environmentVariables)) {
-    let match = envVar.match(/^mocha_(.+)/i);
+const environmentVariables = <{ [key: string]: string }>process.env;
+for (const envVar of Object.keys(environmentVariables)) {
+    const match = envVar.match(/^mocha_(.+)/i);
     if (match) {
-        let [, option] = match;
+        const [, option] = match;
         let value: string | number = environmentVariables[envVar];
         if (typeof value === 'string' && !isNaN(parseInt(value, undefined))) {
             value = parseInt(value, undefined);

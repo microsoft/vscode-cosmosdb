@@ -13,7 +13,6 @@ function test(): cp.ChildProcess {
 
     env.DEBUGTELEMETRY = '1';
     env.CODE_TESTS_PATH = path.join(__dirname, 'dist/test');
-    console.log(env.CODE_TESTS_PATH);
     return cp.spawn('node', ['./node_modules/vscode/bin/test'], { stdio: 'inherit', env });
 }
 

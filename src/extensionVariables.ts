@@ -9,7 +9,7 @@ import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 import { AttachedAccountsTreeItem } from "./tree/AttachedAccountsTreeItem";
 
 /**
- * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.bundle.ts
+ * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
  */
 export namespace ext {
     export let connectedMongoDB: MongoDatabaseTreeItem | undefined;

@@ -4,19 +4,19 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * This is the external face of extension.js, the main webpack bundle for the extension.
+ * This is the external face of extension.bundle.js, the main webpack bundle for the extension.
  * Anything needing to be exposed outside of the extension sources must be exported from here, because
- * everything else will be in private modules in extension.js.
+ * everything else will be in private modules in extension.bundle.js.
  */
 
 // Export activate/deactivate for entrypoint.js
-export { activateInternal, deactivateInternal } from './src/cosmosExtension';
+export { activateInternal, deactivateInternal } from './src/extension';
 
 // Exports for tests
 // The tests are not packaged with the webpack bundle and therefore only have access to code exported from this file.
 //
-// The tests should import '../extension.ts'. At design-time they live in tests/ and so will pick up this file (extension.ts).
-// At runtime the tests live in dist/tests and will therefore pick up the main webpack bundle at dist/extension.js.
+// The tests should import '../extension.bundle.ts'. At design-time they live in tests/ and so will pick up this file (extension.bundle.ts).
+// At runtime the tests live in dist/tests and will therefore pick up the main webpack bundle at dist/extension.bundle.js.
 export { ext } from './src/extensionVariables';
 export * from './src/utils/array';
 export { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from './src/tree/AttachedAccountsTreeItem';

@@ -5,9 +5,9 @@
 
 "use strict";
 
-// This is the extension entrypoint module, which imports extension.js, the actual extension code.
+// This is the extension entrypoint module, which imports extension.bundle.js, the actual extension code.
 //
-// This is in a separate file so we can properly measure extension.js load time.
+// This is in a separate file so we can properly measure extension.bundle.js load time.
 
 let perfStats = {
     loadStartTime: Date.now(),
@@ -16,7 +16,7 @@ let perfStats = {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 
-const extension = require("./dist/extension");
+const extension = require("./dist/extension.bundle");
 
 async function activate(ctx) {
     return await extension.activateInternal(ctx, perfStats);

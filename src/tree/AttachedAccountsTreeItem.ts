@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as keytarType from 'keytar';
 import { ServiceClientCredentials } from 'ms-rest';
 import { AzureEnvironment } from 'ms-rest-azure';
 import * as path from 'path';
@@ -20,7 +19,7 @@ import { connectToMongoClient } from '../mongo/connectToMongoClient';
 import { parseMongoConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
-import { tryfetchNodeModule } from '../utils/vscodeUtils';
+import { KeyTar, tryGetKeyTar } from '../utils/keytar';
 
 interface IPersistedAccount {
     id: string;
@@ -42,13 +41,13 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
 
     private readonly _serviceName = "ms-azuretools.vscode-cosmosdb.connectionStrings";
     private _attachedAccounts: AzureTreeItem[] | undefined;
-    private _keytar: typeof keytarType;
+    private _keytar: KeyTar;
 
     private _loadPersistedAccountsTask: Promise<AzureTreeItem[]>;
 
     constructor(private readonly _globalState: vscode.Memento) {
         super(new AttachedAccountRoot());
-        this._keytar = tryfetchNodeModule('keytar');
+        this._keytar = tryGetKeyTar();
         this._loadPersistedAccountsTask = this.loadPersistedAccounts();
     }
 

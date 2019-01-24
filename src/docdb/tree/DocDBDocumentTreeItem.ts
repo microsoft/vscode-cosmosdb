@@ -38,7 +38,7 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
         // The toString implicit conversion handles undefined and {} as expected. toString satisfies the uniqueness criterion.
     }
 
-    public async refreshLabelImpl(): Promise<void> {
+    public async refreshImpl(): Promise<void> {
         this._label = getDocumentTreeItemLabel(this._document);
     }
 

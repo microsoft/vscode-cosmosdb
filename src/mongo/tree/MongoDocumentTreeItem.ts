@@ -41,7 +41,7 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
         return String(this.document!._id);
     }
 
-    public async refreshLabelImpl(): Promise<void> {
+    public async refreshImpl(): Promise<void> {
         this._label = getDocumentTreeItemLabel(this.document);
     }
 

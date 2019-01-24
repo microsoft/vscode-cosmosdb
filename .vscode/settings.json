@@ -16,5 +16,6 @@
 		"mode": "internal",
 		"listeners": true,
 		"visitors": false
-	}
+	},
+	"tslint.autoFixOnSave": true
 }

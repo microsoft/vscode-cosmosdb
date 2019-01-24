@@ -68,22 +68,6 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
     throw new Error('Could not find unique name for new file.');
 }
 
-export function tryfetchNodeModule(moduleName: string) {
-    try {
-        // tslint:disable-next-line:non-literal-require
-        return require(`${vscode.env.appRoot}/node_modules.asar/${moduleName}`);
-    } catch (err) {
-        //Empty catch block intended
-    }
-    try {
-        // tslint:disable-next-line:non-literal-require
-        return require(`${vscode.env.appRoot}/node_modules/${moduleName}`);
-    } catch (err) {
-        //Empty catch block intended
-    }
-    return null;
-}
-
 export function getNodeEditorLabel(node: AzureTreeItem): string {
     let labels = [node.label];
     while (node.parent) {

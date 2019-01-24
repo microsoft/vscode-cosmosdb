@@ -19,7 +19,8 @@
 			"preLaunchTask": "npm: webpack",
 			"env": {
 				"DEBUGTELEMETRY": "1",
-				"NODE_DEBUG": ""
+				"NODE_DEBUG": "",
+				"DEBUG_WEBPACK": "1"
 			}
 		},
 		{
@@ -42,7 +43,8 @@
 				"MOCHA_grep": "", // RegExp of tests to run (empty for all)
 				"MOCHA_enableTimeouts": "0", // Disable time-outs
 				"DEBUGTELEMETRY": "1",
-				"NODE_DEBUG": ""
+				"NODE_DEBUG": "",
+				"DEBUG_WEBPACK": ""
 			}
 		},
 		{

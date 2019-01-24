@@ -11,6 +11,7 @@
 
 const process = require('process');
 const webpack = require('webpack');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const StringReplacePlugin = require("string-replace-webpack-plugin");
 const dev = require("vscode-azureextensiondev");
 
@@ -56,6 +57,9 @@ let config = dev.getDefaultWebpackConfig({
 
         // Fix "module not found" error in node_modules/es6-promise/dist/es6-promise.js
         'vertx': 'commonjs vertx',
+
+        // ./getCoreNodeModule.js (path from keytar.ts) uses a dynamic require which can't be webpacked
+        './getCoreNodeModule': 'commonjs getCoreNodeModule',
     }, // end of externals
 
     loaderRules: [
@@ -109,8 +113,14 @@ let config = dev.getDefaultWebpackConfig({
         new webpack.NormalModuleReplacementPlugin(
             /[/\\]vscode-languageserver[/\\]lib[/\\]files\.js/,
             require.resolve('./build/vscode-languageserver-files-stub.js')
-        )
-    ] // end of plugins
+        ),
+
+        // Copy files to dist folder where the runtime can find them
+        new CopyWebpackPlugin([
+            // getCoreNodeModule.js -> dist/node_modules/getCoreNodeModule.js
+            { from: './src/utils/getCoreNodeModule.js', to: 'node_modules' }
+        ])
+    ]
 });
 
 if (DEBUG_WEBPACK) {

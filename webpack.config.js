@@ -31,7 +31,10 @@ let config = dev.getDefaultWebpackConfig({
         'mongodb-core',
 
         // Electron fork depends on file at location of original source
-        'vscode-languageclient'
+        'vscode-languageclient',
+
+        // contains a binary
+        'clipboardy',
     ],
     entries: {
         // Note: Each entry is a completely separate Node.js application that cannot interact with any

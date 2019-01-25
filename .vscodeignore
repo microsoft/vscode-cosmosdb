@@ -20,5 +20,6 @@ gulp*
 webpack.config*
 stats.json
 *.tgz
-grammar
+grammar/*.md
+grammar/*.g4
 build

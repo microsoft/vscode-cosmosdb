@@ -86,7 +86,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
 
     public async loadMoreChildrenImpl(clearCache: boolean) {
         if (this._root.isEmulator) {
-            let unableToReachEmulatorMessage: string = "Unable to reach emulator. Please ensure it is started and writing to the appropriate port. Then try again.";
+            let unableToReachEmulatorMessage: string = "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.";
             return await rejectOnTimeout(2000, () => super.loadMoreChildrenImpl(clearCache), unableToReachEmulatorMessage);
         } else {
             return await super.loadMoreChildrenImpl(clearCache);

@@ -7,7 +7,6 @@ src/**
 **/*.map
 .gitignore
 .travis.yml
-package-lock.json
 tsconfig.json
 tslint.json
 .github/**
@@ -20,5 +19,6 @@ gulp*
 webpack.config*
 stats.json
 *.tgz
-grammar
+grammar/*.md
+grammar/*.g4
 build

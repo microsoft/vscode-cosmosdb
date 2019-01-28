@@ -16,7 +16,26 @@
 			"outFiles": [
 				"${workspaceFolder}/**/*.js"
 			],
-			"preLaunchTask": "npm: webpack",
+			"preLaunchTask": "npm: webpack-prod",
+			"env": {
+				"DEBUGTELEMETRY": "1",
+				"NODE_DEBUG": ""
+			}
+		},
+		{
+			"name": "Launch Extension (no build)",
+			"type": "extensionHost",
+			"request": "launch",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceRoot}"
+			],
+			"stopOnEntry": false,
+			"sourceMaps": true,
+			// outFiles is used for locating generated JavaScript files, see https://code.visualstudio.com/docs/nodejs/nodejs-debugging#_source-maps
+			"outFiles": [
+				"${workspaceFolder}/**/*.js"
+			],
 			"env": {
 				"DEBUGTELEMETRY": "1",
 				"NODE_DEBUG": ""

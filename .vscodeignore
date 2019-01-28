@@ -7,7 +7,6 @@ src/**
 **/*.map
 .gitignore
 .travis.yml
-package-lock.json
 tsconfig.json
 tslint.json
 .github/**

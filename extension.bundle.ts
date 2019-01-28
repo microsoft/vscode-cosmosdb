@@ -9,7 +9,7 @@
  * everything else will be in private modules in extension.bundle.js.
  */
 
-// Export activate/deactivate for entrypoint.js
+// Export activate/deactivate for main.js
 export { activateInternal, deactivateInternal } from './src/extension';
 
 // Exports for tests

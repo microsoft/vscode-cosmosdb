@@ -17,7 +17,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             location: wizardContext.location.name,
             locations: [{ locationName: wizardContext.location.name }],
             kind: wizardContext.defaultExperience.kind,
-            // Note: Setting this tag has no functional effect in the portal, but we'll keep doing it because it seems to be used for UI
+            // Note: Setting this tag has no functional effect in the portal, but we'll keep doing it to imitate portal behavior
             tags: { defaultExperience: wizardContext.defaultExperience.api },
             capabilities: []
         };

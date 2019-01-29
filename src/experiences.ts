@@ -23,7 +23,7 @@ export type CapabilityName = 'EnableGremlin' | 'EnableTable';
 export function getExperienceFromApi(api: API): Experience {
     let info = experiencesMap.get(api);
     if (!info) {
-        info = { api: api, shortName: api, longName: api, kind: DBAccountKind.GlobalDocumentDB };
+        info = { api: api, shortName: api, longName: api, kind: DBAccountKind.GlobalDocumentDB, tag: api };
     }
     return info;
 }
@@ -69,6 +69,9 @@ export interface Experience {
     // These properties are what the portal actually looks at to determine the difference between APIs
     kind: DBAccountKind;
     capability?: CapabilityName;
+
+    // The defaultExperience tag to place into the resource (has no actual effect in Azure, just imitating the portal)
+    tag: string;
 }
 
 export function getExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
@@ -82,11 +85,10 @@ export function getExperienceQuickPick(api: API): IAzureQuickPickItem<Experience
 
 // Mongo is distinguished by having kind="MongoDB". All others have kind="GlobalDocumentDB"
 // Table and Gremlin are distinguished from SQL by their capabilities
-// Note that default experience is no longer necessary to set, but we'll leave it for now to keep code churn minimal
-const SQLExperience: Experience = { api: API.DocumentDB, longName: "SQL", description: "(DocumentDB)", shortName: "SQL", kind: DBAccountKind.GlobalDocumentDB };
-const MongoExperience: Experience = { api: API.MongoDB, longName: "MongoDB", shortName: "MongoDB", kind: DBAccountKind.MongoDB };
-const TableExperience: Experience = { api: API.Table, longName: "Azure Table", shortName: "Table", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableTable' };
-const GremlinExperience: Experience = { api: API.Graph, longName: "Gremlin", description: "(Graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableGremlin' };
+const SQLExperience: Experience = { api: API.DocumentDB, longName: "SQL", description: "(DocumentDB)", shortName: "SQL", kind: DBAccountKind.GlobalDocumentDB, tag: "Core (SQL)" };
+const MongoExperience: Experience = { api: API.MongoDB, longName: "MongoDB", shortName: "MongoDB", kind: DBAccountKind.MongoDB, tag: "Azure Cosmos DB for MongoDB API" };
+const TableExperience: Experience = { api: API.Table, longName: "Azure Table", shortName: "Table", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableTable', tag: "Azure Table" };
+const GremlinExperience: Experience = { api: API.Graph, longName: "Gremlin", description: "(Graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableGremlin', tag: "Gremlin (graph)" };
 
 const experiencesArray: Experience[] = [SQLExperience, MongoExperience, TableExperience, GremlinExperience];
 const experiencesMap = new Map<API, Experience>(experiencesArray.map((info: Experience): [API, Experience] => [info.api, info]));

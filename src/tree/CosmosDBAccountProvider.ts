@@ -8,7 +8,7 @@ import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListRes
 import * as vscode from 'vscode';
 import { AzureTreeItem, AzureWizard, createAzureClient, createTreeItemsWithErrorHandling, IActionContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
-import { API, getExperience } from '../experiences';
+import { getExperienceLabel, tryGetExperience } from '../experiences';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
@@ -72,18 +72,19 @@ export class CosmosDBAccountProvider extends SubscriptionTreeItem {
     }
 
     private async initChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<AzureTreeItem> {
-        const defaultExperience = <API>(databaseAccount && databaseAccount.tags && databaseAccount.tags.defaultExperience);
+        const experience = tryGetExperience(databaseAccount);
         const resourceGroup: string = azureUtils.getResourceGroupFromId(databaseAccount.id);
-        const accountKind = getExperience(defaultExperience).shortName;
-        const label: string = databaseAccount.name + (accountKind ? ` (${accountKind})` : ``);
+        const accountKindLabel = getExperienceLabel(databaseAccount);
+        const label: string = databaseAccount.name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
         const isEmulator: boolean = false;
-        if (defaultExperience === "MongoDB") {
+
+        if (experience && experience.api === "MongoDB") {
             const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, databaseAccount.name);
             // Use the default connection string
             return new MongoAccountTreeItem(this, databaseAccount.id, label, result.connectionStrings[0].connectionString, isEmulator, databaseAccount);
         } else {
             const keyResult: DatabaseAccountListKeysResult = await client.databaseAccounts.listKeys(resourceGroup, databaseAccount.name);
-            switch (defaultExperience) {
+            switch (experience && experience.api) {
                 case "Table":
                     return new TableAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator, databaseAccount);
                 case "Graph": {

@@ -16,7 +16,7 @@
 			"outFiles": [
 				"${workspaceFolder}/**/*.js"
 			],
-			"preLaunchTask": "npm: webpack-prod",
+			"preLaunchTask": "npm: webpack",
 			"env": {
 				"DEBUGTELEMETRY": "1",
 				"NODE_DEBUG": ""

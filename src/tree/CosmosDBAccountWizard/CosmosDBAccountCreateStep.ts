@@ -6,7 +6,6 @@
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { Capability } from 'azure-arm-cosmosdb/lib/models';
 import { AzureWizardExecuteStep, createAzureClient } from 'vscode-azureextensionui';
-import { API } from '../../experiences';
 import { ext } from '../../extensionVariables';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
@@ -18,11 +17,12 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             location: wizardContext.location.name,
             locations: [{ locationName: wizardContext.location.name }],
             kind: wizardContext.defaultExperience.kind,
-            tags: { defaultExperience: wizardContext.defaultExperience.api },
+            // Note: Setting this tag has no functional effect in the portal, but we'll keep doing it to imitate portal behavior
+            tags: { defaultExperience: wizardContext.defaultExperience.tag },
             capabilities: []
         };
-        if (wizardContext.defaultExperience.api === API.Graph) {
-            options.capabilities.push(<Capability>{ name: "EnableGremlin" });
+        if (wizardContext.defaultExperience.capability) {
+            options.capabilities.push(<Capability>{ name: wizardContext.defaultExperience.capability });
         }
         wizardContext.databaseAccount = await client.databaseAccounts.createOrUpdate(wizardContext.resourceGroup.name, wizardContext.accountName, options);
 

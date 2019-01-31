@@ -13,7 +13,7 @@ import { emulatorPassword, resourcesPath } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
-import { API, getExperience, getExperienceQuickPick, getExperienceQuickPicks } from '../experiences';
+import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../experiences';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
 import { parseMongoConnectionString } from '../mongo/mongoConnectionStrings';
@@ -23,6 +23,7 @@ import { KeyTar, tryGetKeyTar } from '../utils/keytar';
 
 interface IPersistedAccount {
     id: string;
+    // defaultExperience is not the same as API but we can't change the name due to backwards compatibility
     defaultExperience: API;
     isEmulator: boolean;
 }
@@ -245,13 +246,13 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
                     // (Mongo was originally the only account type that could be attached)
                     id = account;
                     api = API.MongoDB;
-                    label = `${account} (${getExperience(api).shortName})`;
+                    label = `${account} (${getExperienceFromApi(api).shortName})`;
                     isEmulator = false;
                 } else {
                     id = (<IPersistedAccount>account).id;
                     api = (<IPersistedAccount>account).defaultExperience;
                     isEmulator = (<IPersistedAccount>account).isEmulator;
-                    label = isEmulator ? `${getExperience(api).shortName} Emulator` : `${id} (${getExperience(api).shortName})`;
+                    label = isEmulator ? `${getExperienceFromApi(api).shortName} Emulator` : `${id} (${getExperienceFromApi(api).shortName})`;
                 }
                 const connectionString: string = await this._keytar.getPassword(this._serviceName, id);
                 persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
@@ -270,12 +271,12 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
                 id = parsedCS.fullId;
             }
 
-            label = label || `${id} (${getExperience(api).shortName})`;
+            label = label || `${id} (${getExperienceFromApi(api).shortName})`;
             treeItem = new MongoAccountTreeItem(this, id, label, connectionString, isEmulator);
         } else {
             const parsedCS = parseDocDBConnectionString(connectionString);
 
-            label = label || `${parsedCS.accountId} (${getExperience(api).shortName})`;
+            label = label || `${parsedCS.accountId} (${getExperienceFromApi(api).shortName})`;
             switch (api) {
                 case API.Table:
                     treeItem = new TableAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, parsedCS.masterKey, isEmulator);
@@ -297,23 +298,23 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
 
     private async persistIds(attachedAccounts: AzureTreeItem[]) {
         const value: IPersistedAccount[] = attachedAccounts.map((node: AzureTreeItem) => {
-            let experience: API;
+            let api: API;
             let isEmulator: boolean;
             if (node instanceof MongoAccountTreeItem || node instanceof DocDBAccountTreeItem || node instanceof GraphAccountTreeItem || node instanceof TableAccountTreeItem) {
                 isEmulator = node.root.isEmulator;
             }
             if (node instanceof MongoAccountTreeItem) {
-                experience = API.MongoDB;
+                api = API.MongoDB;
             } else if (node instanceof GraphAccountTreeItem) {
-                experience = API.Graph;
+                api = API.Graph;
             } else if (node instanceof TableAccountTreeItem) {
-                experience = API.Table;
+                api = API.Table;
             } else if (node instanceof DocDBAccountTreeItem) {
-                experience = API.DocumentDB;
+                api = API.DocumentDB;
             } else {
                 throw new Error(`Unexpected account node "${node.constructor.name}".`);
             }
-            return { id: node.id, defaultExperience: experience, isEmulator: isEmulator };
+            return { id: node.id, defaultExperience: api, isEmulator: isEmulator };
         });
         await this._globalState.update(this._serviceName, JSON.stringify(value));
     }

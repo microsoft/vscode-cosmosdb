@@ -22,3 +22,5 @@ stats.json
 grammar/*.md
 grammar/*.g4
 build
+*.ts
+*.zip

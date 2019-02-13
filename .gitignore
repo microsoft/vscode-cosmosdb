@@ -265,3 +265,4 @@ grammar/.antlr
 dist
 stats.json
 *.tgz
+*.zip

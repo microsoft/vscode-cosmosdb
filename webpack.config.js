@@ -28,7 +28,10 @@ let config = dev.getDefaultWebpackConfig({
         'require_optional',
         'gremlin',
         'socket.io',
-        'mongodb-core'
+        'mongodb-core',
+
+        // Needed by graphClient.html
+        'd3'
     ],
     entries: {
         // Note: Each entry is a completely separate Node.js application that cannot interact with any
@@ -105,9 +108,11 @@ let config = dev.getDefaultWebpackConfig({
         }
     ], // end of loaderRules
 
+
     plugins: [
         // Replace vscode-languageserver/lib/files.js with a modified version that doesn't have webpack issues
         new webpack.NormalModuleReplacementPlugin(
+
             /[/\\]vscode-languageserver[/\\]lib[/\\]files\.js/,
             require.resolve('./build/vscode-languageserver-files-stub.js')
         ),
@@ -115,7 +120,10 @@ let config = dev.getDefaultWebpackConfig({
         // Copy files to dist folder where the runtime can find them
         new CopyWebpackPlugin([
             // getCoreNodeModule.js -> dist/node_modules/getCoreNodeModule.js
-            { from: './src/utils/getCoreNodeModule.js', to: 'node_modules' }
+            { from: './src/utils/getCoreNodeModule.js', to: 'node_modules' },
+
+            // graphClient.js -> dist, which is used by graphClient.html
+            { from: './out/src/graph/client/graphClient.js', to: 'graphClient.js' }
         ])
     ]
 });

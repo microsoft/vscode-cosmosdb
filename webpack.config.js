@@ -19,7 +19,7 @@ let DEBUG_WEBPACK = !!process.env.DEBUG_WEBPACK;
 
 let config = dev.getDefaultWebpackConfig({
     projectRoot: __dirname,
-    verbosity: DEBUG_WEBPACK ? 'normal' : 'debug',
+    verbosity: DEBUG_WEBPACK ? 'debug' : 'normal',
 
     externalNodeModules: [
         // Modules that we can't easily webpack for some reason.
@@ -28,13 +28,7 @@ let config = dev.getDefaultWebpackConfig({
         'require_optional',
         'gremlin',
         'socket.io',
-        'mongodb-core',
-
-        // Electron fork depends on file at location of original source
-        'vscode-languageclient',
-
-        // contains a binary
-        'clipboardy',
+        'mongodb-core'
     ],
     entries: {
         // Note: Each entry is a completely separate Node.js application that cannot interact with any

@@ -2,6 +2,15 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.10.0 - 2019-02-13
+### Added
+* Improved startup and installation performance
+
+### Fixed
+* Accounts created in portal are not recognized as graph/mongo by the extension [#1018](https://github.com/Microsoft/vscode-cosmosdb/issues/1018)
+* Confusing error message when running 'Import Document into a Collection' with no Workspace opened [#961](https://github.com/Microsoft/vscode-cosmosdb/issues/961)
+* Improve emulator connection error messages [#1016](https://github.com/Microsoft/vscode-cosmosdb/issues/1016)
+
 ## 0.9.1 - 2018-11-28
 ### Added
 - API support for integration with [App Service extension](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-azureappservice)

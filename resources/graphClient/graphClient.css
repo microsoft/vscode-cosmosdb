@@ -16,8 +16,10 @@ html {
     /*
     NOTE:
 
-        var(--background-color) and var(--color)
+        var(--vscode-editor-background) and var(--vscode-editor-foreground)
             - Picked up at runtime and represent the theme background and foreground colors
+            (see defaultCssRules in
+            https://github.com/Microsoft/vscode/blob/master/src/vs/workbench/contrib/webview/electron-browser/webview-pre.js)
         var(--graph-background-color) and var(--graph-color):
             Specifically just for the graph itself, regardless of theme
     */
@@ -57,7 +59,7 @@ body {
 }
 
 h1 {
-    color: var(--color);
+    color: var(--vscode-editor-foreground);
     font-weight: 100;
 }
 
@@ -146,8 +148,8 @@ h1 span {
     padding: 10px 15px;
 
     /* Intentionally inverted*/
-    color: var(--background-color);
-    background-color: var(--color);
+    color: var(--vscode-editor-background);
+    background-color: var(--vscode-editor-foreground);
 }
 
 button {
@@ -175,8 +177,8 @@ button:active {
 textarea {
     resize: none;
     font-size: 14px;
-    color: var(--background-color);
-    background-color: var(--color);
+    color: var(--vscode-editor-background);
+    background-color: var(--vscode-editor-foreground);
 }
 
 #jsonResults {
@@ -216,9 +218,9 @@ textarea {
 }
 
 .toggle-radio-buttons input[type="radio"]:checked:not([disabled]) + label {
-    color: var(--color);
+    color: var(--vscode-editor-foreground);
     padding-bottom: 3px;
-    border-bottom-color: var(--color);
+    border-bottom-color: var(--vscode-editor-foreground);
 }
 
 #initialWatermark, #graphWatermark {

@@ -924,8 +924,8 @@
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.4.0",
 		"vscode-languageserver": "^4.4.0",
-		"vscode-uri": "^1.0.1",
-		"vscode-nls": "^4.0.0"
+		"vscode-nls": "^4.0.0",
+		"vscode-uri": "^1.0.1"
 	},
 	"extensionDependencies": [
 		"ms-vscode.azure-account"

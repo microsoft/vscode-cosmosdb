@@ -23,7 +23,6 @@ export { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from './src/tree/
 export { parseDocDBConnectionString } from './src/docdb/docDBConnectionStrings';
 export { emulatorPassword } from './src/constants';
 export { getDocumentTreeItemLabel } from './src/utils/vscodeUtils';
-export { validOnTimeoutOrException } from './src/utils/inputValidation';
 export { addDatabaseToAccountConnectionString, getDatabaseNameFromConnectionString } from './src/mongo/mongoConnectionStrings';
 export { MongoCommand } from './src/mongo/MongoCommand';
 export { getAllCommandsFromText, getCommandFromTextAtLocation } from './src/mongo/MongoScrapbook';

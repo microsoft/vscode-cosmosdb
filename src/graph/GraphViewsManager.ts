@@ -22,11 +22,9 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
 
   // One server (and one HTML view) per graph, as represented by unique configurations
   private _servers = new Map<number, GraphViewServer>(); // map of id -> map
+  private _panelViewType: string = "GraphExplorer";
 
   public constructor(private _context: vscode.ExtensionContext) {
-    let documentProvider = new GraphViewDocumentContentProvider(this);
-    let registration = vscode.workspace.registerTextDocumentContentProvider(scheme, documentProvider);
-    this._context.subscriptions.push(registration);
   }
 
   public async showGraphViewer(
@@ -38,7 +36,14 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
 
       // Add server ID to the URL so that GraphViewDocumentContentProvider knows which port to use in the HTML
       let serverUri = previewBaseUri + id.toString();
-      await vscode.commands.executeCommand('vscode.previewHtml', vscode.Uri.parse(serverUri), vscode.ViewColumn.One, tabTitle);
+
+      const column = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.viewColumn : undefined;
+      const showOptions: vscode.WebviewOptions & vscode.WebviewPanelOptions = { enableScripts: true, enableCommandUris: true, enableFindWidget: true, retainContextWhenHidden: true };
+      const panel = vscode.window.createWebviewPanel(this._panelViewType, tabTitle, { viewColumn: column, preserveFocus: true }, showOptions);
+      let documentProvider = new GraphViewDocumentContentProvider(this);
+      panel.webview.html = documentProvider.provideHtmlContent(vscode.Uri.parse(serverUri));
+
+      // await vscode.commands.executeCommand('vscode.previewHtml', vscode.Uri.parse(serverUri), vscode.ViewColumn.One, tabTitle);
     } catch (error) {
       vscode.window.showErrorMessage(error.message || error);
     }
@@ -76,7 +81,7 @@ class GraphViewDocumentContentProvider implements vscode.TextDocumentContentProv
 
   public constructor(private _serverProvider: IServerProvider) { }
 
-  public provideTextDocumentContent(uri: vscode.Uri, _token: vscode.CancellationToken): vscode.ProviderResult<string> {
+  public provideHtmlContent(uri: vscode.Uri): string {
     // Figure out which client to attach this to
     // tslint:disable-next-line:no-single-line-block-comment
     let serverId = parseInt(uri.path.slice(1) /* remove '/' from beginning */, 10);

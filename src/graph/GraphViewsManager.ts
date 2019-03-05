@@ -17,7 +17,7 @@ interface IServerProvider {
   findServerById(id: number): GraphViewServer;
 }
 
-export class GraphViewsManager implements IServerProvider {
+export class GraphViewsManager implements IServerProvider { //Graphviews Panel
   private _lastServerId = 0;
 
   // One server (and one HTML view) per graph, as represented by unique configurations

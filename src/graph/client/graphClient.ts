@@ -88,6 +88,7 @@ class SocketWrapper {
   constructor(private _socket: SocketIOClient.Socket) { }
 
   public onServerMessage(message: ServerMessage | "connect" | "disconnect", fn: Function): SocketIOClient.Emitter {
+    //use webview's onDidGetMessage
     return this._socket.on(message, (...args: any[]) => {
       try {
         fn(...args);

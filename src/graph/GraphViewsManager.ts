@@ -22,6 +22,7 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
 
   // One server (and one HTML view) per graph, as represented by unique configurations
   private _servers = new Map<number, GraphViewServer>(); // map of id -> map
+  private _panels = new Map<number, vscode.WebviewPanel>(); // map of id -> map
   private _panelViewType: string = "GraphExplorer";
 
   public constructor(private _context: vscode.ExtensionContext) {
@@ -32,17 +33,9 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
     config: GraphConfiguration
   ): Promise<void> {
     try {
-      let id = await this.getOrCreateServer(config);
 
-      // Add server ID to the URL so that GraphViewDocumentContentProvider knows which port to use in the HTML
-      let serverUri = previewBaseUri + id.toString();
-
-      const column = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.viewColumn : undefined;
-      const showOptions: vscode.WebviewOptions & vscode.WebviewPanelOptions = { enableScripts: true, enableCommandUris: true, enableFindWidget: true, retainContextWhenHidden: true };
-      const panel = vscode.window.createWebviewPanel(this._panelViewType, tabTitle, { viewColumn: column, preserveFocus: true }, showOptions);
-      let documentProvider = new GraphViewDocumentContentProvider(this);
-      panel.webview.html = documentProvider.provideHtmlContent(vscode.Uri.parse(serverUri));
-
+      const panel: vscode.WebviewPanel = await this.getOrCreatePanel(config, tabTitle);
+      panel.reveal();
       // await vscode.commands.executeCommand('vscode.previewHtml', vscode.Uri.parse(serverUri), vscode.ViewColumn.One, tabTitle);
     } catch (error) {
       vscode.window.showErrorMessage(error.message || error);
@@ -74,9 +67,35 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
     this._servers.set(id, server);
     return id;
   }
+
+  public findPanelById(id: number): vscode.WebviewPanel {
+    return this._panels.get(id);
+  }
+
+  private async getOrCreatePanel(config: GraphConfiguration, tabTitle: string): Promise<vscode.WebviewPanel> {
+    let id = await this.getOrCreateServer(config);
+
+    let retpanel: vscode.WebviewPanel;
+    this._panels.forEach((p, key) => {
+      if (key === id) {
+        retpanel = p;
+      }
+    });
+    if (retpanel) {
+      return retpanel;
+    }
+    const column = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.viewColumn : undefined;
+    const showOptions: vscode.WebviewOptions & vscode.WebviewPanelOptions = { enableScripts: true, enableCommandUris: true, enableFindWidget: true, retainContextWhenHidden: true };
+    const panel = vscode.window.createWebviewPanel(this._panelViewType, tabTitle, { viewColumn: column, preserveFocus: true }, showOptions);
+    let documentProvider = new GraphViewDocumentContentProvider(this);
+    panel.webview.html = documentProvider.provideHtmlContent(vscode.Uri.parse(id.toString()));
+    this._panels.set(id, panel);
+    return panel;
+  }
+
 }
 
-class GraphViewDocumentContentProvider implements vscode.TextDocumentContentProvider {
+class GraphViewDocumentContentProvider {
   public onDidChange?: vscode.Event<vscode.Uri>;
 
   public constructor(private _serverProvider: IServerProvider) { }

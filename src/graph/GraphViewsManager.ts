@@ -10,8 +10,8 @@ import { resourcesPath } from "../constants";
 import { areConfigsEqual, GraphConfiguration } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
 
-const scheme = "vscode-cosmosdb-graphresults";
-const previewBaseUri = scheme + '://results/';
+// const scheme = "vscode-cosmosdb-graphresults";
+// const previewBaseUri = scheme + '://results/';
 
 interface IServerProvider {
   findServerById(id: number): GraphViewServer;
@@ -24,9 +24,6 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
   private _servers = new Map<number, GraphViewServer>(); // map of id -> map
   private _panels = new Map<number, vscode.WebviewPanel>(); // map of id -> map
   private _panelViewType: string = "GraphExplorer";
-
-  public constructor(private _context: vscode.ExtensionContext) {
-  }
 
   public async showGraphViewer(
     tabTitle: string,
@@ -75,14 +72,14 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
   private async getOrCreatePanel(config: GraphConfiguration, tabTitle: string): Promise<vscode.WebviewPanel> {
     let id = await this.getOrCreateServer(config);
 
-    let retpanel: vscode.WebviewPanel;
+    let existingPanel: vscode.WebviewPanel;
     this._panels.forEach((p, key) => {
       if (key === id) {
-        retpanel = p;
+        existingPanel = p;
       }
     });
-    if (retpanel) {
-      return retpanel;
+    if (existingPanel) {
+      return existingPanel;
     }
     const column = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.viewColumn : undefined;
     const showOptions: vscode.WebviewOptions & vscode.WebviewPanelOptions = { enableScripts: true, enableCommandUris: true, enableFindWidget: true, retainContextWhenHidden: true };
@@ -101,9 +98,10 @@ class GraphViewDocumentContentProvider {
   public constructor(private _serverProvider: IServerProvider) { }
 
   public provideHtmlContent(uri: vscode.Uri): string {
+    // the uri has format: "1", "2" ...
     // Figure out which client to attach this to
     // tslint:disable-next-line:no-single-line-block-comment
-    let serverId = parseInt(uri.path.slice(1) /* remove '/' from beginning */, 10);
+    let serverId = parseInt(uri.path, 10);
     console.assert(serverId > 0);
     let server = this._serverProvider.findServerById(serverId);
     if (server) {

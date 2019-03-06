@@ -13,8 +13,8 @@ import { GraphCollectionTreeItem } from "./tree/GraphCollectionTreeItem";
 import { GraphDatabaseTreeItem } from "./tree/GraphDatabaseTreeItem";
 import { GraphTreeItem } from "./tree/GraphTreeItem";
 
-export function registerGraphCommands(_context: vscode.ExtensionContext): void {
-    let graphViewsManager = new GraphViewsManager();
+export function registerGraphCommands(context: vscode.ExtensionContext): void {
+    let graphViewsManager = new GraphViewsManager(context);
 
     registerCommand('cosmosDB.createGraphDatabase', async (node?: GraphAccountTreeItem) => {
         if (!node) {

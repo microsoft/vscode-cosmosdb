@@ -67,6 +67,15 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
     let documentProvider = new GraphViewDocumentContentProvider(this, this._context);
     panel.webview.html = documentProvider.provideHtmlContent(vscode.Uri.parse(id.toString()));
     this._panels.set(id, panel);
+    panel.onDidDispose(
+      // dispose the server
+      () => {
+        let server = this._servers.get(id);
+        server.dispose();
+        this._servers.delete(id);
+        this._panels.delete(id);
+      }
+    );
     panel.reveal();
   }
 

@@ -17,5 +17,7 @@
 		"listeners": true,
 		"visitors": false
 	},
-	"tslint.autoFixOnSave": true
+	"editor.codeActionsOnSave": {
+		"source.fixAll.tslint": true,
+	}
 }

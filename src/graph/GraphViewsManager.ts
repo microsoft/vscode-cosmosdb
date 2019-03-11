@@ -26,10 +26,10 @@ interface IGraphClientHtmlPaths {
 export class GraphViewsManager implements IServerProvider { //Graphviews Panel
   private _lastServerId = 0;
 
-  // One server (and one HTML view) per graph, as represented by unique configurations
-  private _servers = new Map<number, GraphViewServer>(); // map of id -> map
-  private _panels = new Map<number, vscode.WebviewPanel>(); // map of id -> map
-  private _panelViewType: string = "GraphExplorer";
+  // One server (and one webview panel) per graph, as represented by unique configurations
+  private readonly _servers = new Map<number, GraphViewServer>(); // map of id -> server
+  private readonly _panels = new Map<number, vscode.WebviewPanel>(); // map of id -> webview panel
+  private readonly _panelViewType: string = "CosmosDB.GraphExplorer";
 
   constructor(private _context: vscode.ExtensionContext) {
 
@@ -64,8 +64,8 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
       localResourceRoots: [vscode.Uri.file(this._context.extensionPath)]
     };
     const panel = vscode.window.createWebviewPanel(this._panelViewType, tabTitle, { viewColumn: column, preserveFocus: true }, options);
-    let documentProvider = new GraphViewDocumentContentProvider(this, this._context);
-    panel.webview.html = documentProvider.provideHtmlContent(vscode.Uri.parse(id.toString()));
+    let contentProvider = new WebviewContentProvider(this, this._context);
+    panel.webview.html = contentProvider.provideHtmlContent(id);
     this._panels.set(id, panel);
     panel.onDidDispose(
       // dispose the server
@@ -111,16 +111,12 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
 
 }
 
-class GraphViewDocumentContentProvider {
+class WebviewContentProvider {
   public onDidChange?: vscode.Event<vscode.Uri>;
 
   public constructor(private _serverProvider: IServerProvider, private _context: vscode.ExtensionContext) { }
 
-  public provideHtmlContent(uri: vscode.Uri): string {
-    // the uri has format: "1", "2" ...
-    // Figure out which client to attach this to
-    // tslint:disable-next-line:no-single-line-block-comment
-    let serverId = parseInt(uri.path, 10);
+  public provideHtmlContent(serverId: number): string {
     console.assert(serverId > 0);
     let server = this._serverProvider.findServerById(serverId);
     if (server) {
@@ -137,8 +133,8 @@ class GraphViewDocumentContentProvider {
     return "This resource is no longer available.";
   }
 
-  private _getVscodeResourceUri(direcotryList: string[]): string {
-    let uri = vscode.Uri.parse(path.join("file:" + this._context.extensionPath, ...direcotryList));
+  private _getVscodeResourceUri(directoryList: string[]): string {
+    let uri = vscode.Uri.parse(path.join("file:" + this._context.extensionPath, ...directoryList));
     return `vscode-resource:${uri.fsPath}`;
   }
 

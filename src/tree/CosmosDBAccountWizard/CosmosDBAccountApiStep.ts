@@ -9,7 +9,7 @@ import { ext } from '../../extensionVariables';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountApiStep extends AzureWizardPromptStep<ICosmosDBWizardContext> {
-    public async prompt(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {
+    public async prompt(wizardContext: ICosmosDBWizardContext): Promise<void> {
         const picks: IAzureQuickPickItem<Experience>[] = getExperienceQuickPicks();
 
         const result: IAzureQuickPickItem<Experience> = await ext.ui.showQuickPick(picks, {
@@ -17,7 +17,9 @@ export class CosmosDBAccountApiStep extends AzureWizardPromptStep<ICosmosDBWizar
         });
 
         wizardContext.defaultExperience = result.data;
+    }
 
-        return wizardContext;
+    public shouldPrompt(wizardContext: ICosmosDBWizardContext): boolean {
+        return !wizardContext.defaultExperience;
     }
 }

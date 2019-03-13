@@ -5,14 +5,17 @@
 
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { Capability } from 'azure-arm-cosmosdb/lib/models';
+import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, createAzureClient } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBWizardContext> {
-    public async execute(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {
+    public async execute(wizardContext: ICosmosDBWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
         const client: CosmosDBManagementClient = createAzureClient(wizardContext, CosmosDBManagementClient);
-        ext.outputChannel.appendLine(`Creating Cosmos DB account "${wizardContext.accountName}" with API "${wizardContext.defaultExperience.shortName}"...`);
+        const creatingMessage: string = `Creating Cosmos DB account "${wizardContext.accountName}" with API "${wizardContext.defaultExperience.shortName}"...`;
+        ext.outputChannel.appendLine(creatingMessage);
+        progress.report({ message: creatingMessage });
         let options = {
             location: wizardContext.location.name,
             locations: [{ locationName: wizardContext.location.name }],
@@ -29,7 +32,9 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
         // createOrUpdate always returns an empty object - so we have to get the DatabaseAccount separately
         wizardContext.databaseAccount = await client.databaseAccounts.get(wizardContext.resourceGroup.name, wizardContext.accountName);
         ext.outputChannel.appendLine(`Successfully created Cosmos DB account "${wizardContext.accountName}".`);
+    }
 
-        return wizardContext;
+    public shouldExecute(wizardContext: ICosmosDBWizardContext): boolean {
+        return !wizardContext.databaseAccount;
     }
 }

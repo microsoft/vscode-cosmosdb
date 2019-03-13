@@ -13,7 +13,7 @@ export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContex
         return await ResourceGroupListStep.isNameAvailable(wizardContext, name);
     }
 
-    public async prompt(wizardContext: ICosmosDBWizardContext): Promise<ICosmosDBWizardContext> {
+    public async prompt(wizardContext: ICosmosDBWizardContext): Promise<void> {
         const client: CosmosDBManagementClient = createAzureClient(wizardContext, CosmosDBManagementClient);
         wizardContext.accountName = (await ext.ui.showInputBox({
             placeHolder: "Account name",
@@ -22,8 +22,10 @@ export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContex
         })).trim();
 
         wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.accountName, resourceGroupNamingRules);
+    }
 
-        return wizardContext;
+    public shouldPrompt(wizardContext: ICosmosDBWizardContext): boolean {
+        return !wizardContext.accountName;
     }
 }
 

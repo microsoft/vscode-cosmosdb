@@ -42,17 +42,19 @@ export class CosmosDBAccountProvider extends SubscriptionTreeItem {
         const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
         const wizardContext: ICosmosDBWizardContext = Object.assign({}, this.root);
 
-        const wizard = new AzureWizard(
-            [
+        const wizard = new AzureWizard(wizardContext, {
+            promptSteps: [
                 new CosmosDBAccountNameStep(),
                 new CosmosDBAccountApiStep(),
                 new ResourceGroupListStep(),
                 new LocationListStep()
             ],
-            [
+            executeSteps: [
                 new CosmosDBAccountCreateStep()
             ],
-            wizardContext);
+            title: 'Create new Cosmos DB account',
+            showExecuteProgress: true
+        });
 
         // https://github.com/Microsoft/vscode-azuretools/issues/120
         actionContext = actionContext || <IActionContext>{ properties: {}, measurements: {} };
@@ -61,11 +63,8 @@ export class CosmosDBAccountProvider extends SubscriptionTreeItem {
 
         actionContext.properties.defaultExperience = wizardContext.defaultExperience.api;
 
-        const creatingMessage: string = `Creating account "${wizardContext.accountName}"...`;
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: creatingMessage }, async () => {
-            showCreatingTreeItem(wizardContext.accountName);
-            await wizard.execute(actionContext);
-        });
+        showCreatingTreeItem(wizardContext.accountName);
+        await wizard.execute(actionContext);
         // don't wait
         vscode.window.showInformationMessage(`Successfully created account "${wizardContext.accountName}".`);
         return await this.initChild(client, wizardContext.databaseAccount);

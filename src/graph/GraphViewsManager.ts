@@ -3,8 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as fse from 'fs-extra';
 import * as path from "path";
 import * as vscode from 'vscode';
+import { resourcesPath } from '../constants';
 import { areConfigsEqual, GraphConfiguration } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
 
@@ -65,7 +67,7 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
     };
     const panel = vscode.window.createWebviewPanel(this._panelViewType, tabTitle, { viewColumn: column, preserveFocus: true }, options);
     let contentProvider = new WebviewContentProvider(this, this._context);
-    panel.webview.html = contentProvider.provideHtmlContent(id);
+    panel.webview.html = await contentProvider.provideHtmlContent(id);
     this._panels.set(id, panel);
     panel.onDidDispose(
       // dispose the server
@@ -116,7 +118,7 @@ class WebviewContentProvider {
 
   public constructor(private _serverProvider: IServerProvider, private _context: vscode.ExtensionContext) { }
 
-  public provideHtmlContent(serverId: number): string {
+  public async provideHtmlContent(serverId: number): Promise<string> {
     console.assert(serverId > 0);
     let server = this._serverProvider.findServerById(serverId);
     if (server) {
@@ -127,7 +129,7 @@ class WebviewContentProvider {
         cosmosIconUri: this._getVscodeResourceUri(['resources', 'cosmos.png']),
         cssUri: this._getVscodeResourceUri(['resources', 'graphClient', 'graphClient.css'])
       };
-      return this._graphClientHtmlAsString(server.port, options);
+      return await this._graphClientHtmlAsString(server.port, options);
     }
 
     return "This resource is no longer available.";
@@ -138,142 +140,17 @@ class WebviewContentProvider {
     return `vscode-resource:${uri.fsPath}`;
   }
 
-  private _graphClientHtmlAsString(port: number, options: IGraphClientHtmlPaths): string {
-    return `
-    <!DOCTYPE html>
-    <html>
+  private async _graphClientHtmlAsString(port: number, options: IGraphClientHtmlPaths): Promise<string> {
+    const graphClientAbsolutePath = path.join(resourcesPath, 'graphClient', 'graphClient.html');
+    let htmlContents: string = await fse.readFile(graphClientAbsolutePath, 'utf8');
+    // the html has placeholders for the local resource URI's and the port. Replace them
+    for (let uriProp of Object.keys(options)) {
+      htmlContents = htmlContents.replace(uriProp, options[uriProp]);
+    }
+    const portPlaceholder: RegExp = /clientPort/g;
+    htmlContents = htmlContents.replace(portPlaceholder, String(port));
 
-    <!--
-    *  Copyright (c) Microsoft Corporation. All rights reserved.
-    *  Licensed under the MIT License. See License.txt in the project root for license information.
-    *-->
-
-    <!--
-        This is the HTML for exploring graphs, and is hosted inside a WebView in a VS HTML preview window
-    -->
-
-    <head>
-        <link rel="stylesheet" type="text/css" href="${options.cssUri}">
-        </link>
-
-        <script src='${options.d3Uri}' charset="UTF-8"></script>
-
-        <script>window.exports = {};</script>
-        <script src="${options.socketUri}"></script>
-        <script>
-            io = exports.io;
-        </script>
-
-        <script src="${options.graphClientUri}"></script>
-    </head>
-
-    <!-- Possible states (set on #states - see "type State" in graphClient.ts)
-        state-initial   (just loaded - user needs to do a query)
-        state-querying
-        state-error
-        // The following have multiple classes set on the #states element:
-        state-results + state-graph-results
-        state-results + state-json-results state-non-graph-results
-        state-results + state-json-results state-empty-results
-    -->
-
-    <body>
-        <div id="states" class="state-initial">
-            </script>
-            <header>
-                <img id="cosmos" src="${options.cosmosIconUri}">
-                <h1 id="title">
-                    &nbsp;
-                    <!-- placeholder -->
-                </h1>
-            </header>
-
-            <div>
-                <div>
-                    <input id="queryInput" type="text" placeholder='Enter gremlin query ("g.V()" for all vertices)'></input>
-                    <button id="executeButton" onclick="onExecuteClick()">Execute</button>
-                </div>
-            </div>
-
-            <div id="radioButtons" class="toggle-radio-buttons">
-                <input type="radio" id="graphRadio" name="resultsToggle" value="graph" checked onclick="selectGraphView()">
-                <label for="graphRadio">Graph</label>
-                <input type="radio" id="jsonRadio" name="resultsToggle" value="json" onclick="selectJsonView()">
-                <label for="jsonRadio">JSON</label>
-            </div>
-
-            <div id="resultsBackground" width="100%">
-                <textarea id="queryError" class="error" readonly="readonly" width="100%"></textarea>
-                <div id="resultsSection">
-                    <div id="graphSection" class="active">
-                        <svg>
-                            <defs></defs>
-                        </svg>
-                        <div id="graphWatermark" class="watermark">
-                            <div id="nonGraphResults">
-                                The results cannot be displayed visually. Please see the JSON tab for detailed results.
-                            </div>
-                            <div id="emptyResults">
-                                The returned results are empty. Please enter a query and click Execute.
-                            </div>
-                        </div>
-                    </div>
-                    <div id="jsonSection">
-                        <textarea id="jsonResults"></textarea>
-                    </div>
-                </div>
-                <div id="initialWatermark" class="watermark">
-                    No data has been loaded. Please enter a query and click Execute.
-                </div>
-                <div id="queryStatus">Querying...</div>
-            </div>
-            <div id="statsBackground">
-                <div id="stats"></div>
-            </div>
-
-
-            <div id="debug" style="display:none">
-                <h2>Debug log</h2>
-                <textarea id="debugLog"></textarea>
-            </div>
-
-            <script>
-                // Retrieve port from query string
-                var graphClient = new GraphClient(${port});
-
-                window.onload = () => {
-                    graphClient.getPageState();
-                    graphClient.copyParentStyleSheets();
-                }
-
-                queryInput.onchange = () => {
-                    graphClient.setQuery(queryInput.value);
-                };
-
-                function onExecuteClick() {
-                    graphClient.query(queryInput.value);
-                }
-
-                function selectGraphView() {
-                    graphClient.selectGraphView();
-                }
-
-                function selectJsonView() {
-                    graphClient.selectJsonView();
-                }
-
-                document.getElementById("queryInput").addEventListener("keydown", function (e) {
-                    if (e.keyCode === 13 /* enter */) {
-                        onExecuteClick();
-                    }
-                })
-            </script>
-        </div>
-    </body>
-
-    </html>
-    `;
-
+    return htmlContents;
   }
 
 }

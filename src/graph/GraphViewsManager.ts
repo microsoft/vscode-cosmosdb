@@ -44,11 +44,7 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
     let id = await this.getOrCreateServer(config);
 
     let existingPanel: vscode.WebviewPanel;
-    this._panels.forEach((p, key) => {
-      if (key === id) {
-        existingPanel = p;
-      }
-    });
+    this._panels.get(id);
     if (existingPanel) {
       try { //existing panel might have been disposed
         existingPanel.reveal();
@@ -107,10 +103,6 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
     return id;
   }
 
-  public findPanelById(id: number): vscode.WebviewPanel {
-    return this._panels.get(id);
-  }
-
 }
 
 class WebviewContentProvider {
@@ -132,7 +124,7 @@ class WebviewContentProvider {
       return await this._graphClientHtmlAsString(server.port, options);
     }
 
-    return "This resource is no longer available.";
+    throw new Error("This resource is no longer available.");
   }
 
   private _getVscodeResourceUri(directoryList: string[]): string {

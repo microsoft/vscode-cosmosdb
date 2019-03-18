@@ -17,7 +17,8 @@ export class GraphViewServerSocket {
 
   // tslint:disable-next-line:no-any
   public emitToClient(message: ServerMessage, ...args: any[]): boolean {
-    // use post message
+    // tslint:disable-next-line:no-suspicious-comment
+    // TODO: use post message
 
     // console.log("Message to client: " + message + " " + args.join(", "));
     return this._socket.emit(message, ...args);

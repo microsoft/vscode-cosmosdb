@@ -10,9 +10,6 @@ import { resourcesPath } from '../constants';
 import { areConfigsEqual, GraphConfiguration } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
 
-// const scheme = "vscode-cosmosdb-graphresults";
-// const previewBaseUri = scheme + '://results/';
-
 interface IServerProvider {
   findServerById(id: number): GraphViewServer;
 }
@@ -43,15 +40,10 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
   ): Promise<void> {
     let id = await this.getOrCreateServer(config);
 
-    let existingPanel: vscode.WebviewPanel;
-    this._panels.get(id);
+    let existingPanel: vscode.WebviewPanel = this._panels.get(id);
     if (existingPanel) {
-      try { //existing panel might have been disposed
-        existingPanel.reveal();
-        return;
-      } catch (_e) {
-        //empty block
-      }
+      existingPanel.reveal();
+      return;
     }
     const column = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.viewColumn : undefined;
     const options: vscode.WebviewOptions & vscode.WebviewPanelOptions = {

@@ -14,14 +14,6 @@ interface IServerProvider {
   findServerById(id: number): GraphViewServer;
 }
 
-interface IGraphClientHtmlPaths {
-  d3Uri: string;
-  socketUri: string;
-  graphClientUri: string;
-  cosmosIconUri: string;
-  cssUri: string;
-}
-
 export class GraphViewsManager implements IServerProvider { //Graphviews Panel
   private _lastServerId = 0;
 
@@ -106,33 +98,21 @@ class WebviewContentProvider {
     console.assert(serverId > 0);
     let server = this._serverProvider.findServerById(serverId);
     if (server) {
-      let options: IGraphClientHtmlPaths = {
-        d3Uri: this._getVscodeResourceUri(['dist', 'node_modules', 'd3', 'd3.js']),
-        socketUri: this._getVscodeResourceUri(['dist', 'node_modules', 'socket.io-client', 'dist', 'socket.io.js']),
-        graphClientUri: this._getVscodeResourceUri(['dist', 'graphClient.js']),
-        cosmosIconUri: this._getVscodeResourceUri(['resources', 'cosmos.png']),
-        cssUri: this._getVscodeResourceUri(['resources', 'graphClient', 'graphClient.css'])
-      };
-      return await this._graphClientHtmlAsString(server.port, options);
+      return await this._graphClientHtmlAsString(server.port);
     }
 
     throw new Error("This resource is no longer available.");
   }
 
-  private _getVscodeResourceUri(directoryList: string[]): string {
-    let uri = vscode.Uri.parse(path.join("file:" + this._context.extensionPath, ...directoryList));
-    return `vscode-resource:${uri.fsPath}`;
-  }
-
-  private async _graphClientHtmlAsString(port: number, options: IGraphClientHtmlPaths): Promise<string> {
+  private async _graphClientHtmlAsString(port: number): Promise<string> {
     const graphClientAbsolutePath = path.join(resourcesPath, 'graphClient', 'graphClient.html');
     let htmlContents: string = await fse.readFile(graphClientAbsolutePath, 'utf8');
-    // the html has placeholders for the local resource URI's and the port. Replace them
-    for (let uriProp of Object.keys(options)) {
-      htmlContents = htmlContents.replace(uriProp, options[uriProp]);
-    }
     const portPlaceholder: RegExp = /clientPort/g;
     htmlContents = htmlContents.replace(portPlaceholder, String(port));
+    const uriPlaceholder: RegExp = /BASEURI/g;
+    let uri = vscode.Uri.parse(path.join("file:" + this._context.extensionPath));
+    const baseUri = `vscode-resource:${uri.fsPath}`;
+    htmlContents = htmlContents.replace(uriPlaceholder, baseUri);
 
     return htmlContents;
   }

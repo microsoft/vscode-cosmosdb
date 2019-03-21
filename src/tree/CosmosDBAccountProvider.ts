@@ -52,8 +52,7 @@ export class CosmosDBAccountProvider extends SubscriptionTreeItem {
             executeSteps: [
                 new CosmosDBAccountCreateStep()
             ],
-            title: 'Create new Cosmos DB account',
-            showExecuteProgress: true
+            title: 'Create new Cosmos DB account'
         });
 
         // https://github.com/Microsoft/vscode-azuretools/issues/120

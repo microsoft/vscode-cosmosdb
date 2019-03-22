@@ -363,7 +363,7 @@ export class GraphViewServer extends EventEmitter {
     client.handleProtocolMessage = function handleProtocolMessage(message) {
       if (!message.binary) {
         // originalHandleProtocolMessage isn't handling non-binary messages, so convert this one back to binary
-        message.data = new Buffer(message.data);
+        message.data = Buffer.from(message.data);
         message.binary = true;
       }
 

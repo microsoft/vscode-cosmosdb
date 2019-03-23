@@ -6,6 +6,7 @@
 import * as fse from 'fs-extra';
 import * as path from "path";
 import * as vscode from 'vscode';
+import { parseError } from 'vscode-azureextensionui';
 import { resourcesPath } from '../constants';
 import { areConfigsEqual, GraphConfiguration } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
@@ -30,8 +31,12 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
     tabTitle: string,
     config: GraphConfiguration
   ): Promise<void> {
-    let id = await this.getOrCreateServer(config);
-
+    let id: number;
+    try {
+      id = await this.getOrCreateServer(config);
+    } catch (err) {
+      vscode.window.showErrorMessage(parseError(err).message);
+    }
     let existingPanel: vscode.WebviewPanel = this._panels.get(id);
     if (existingPanel) {
       existingPanel.reveal();
@@ -107,9 +112,9 @@ class WebviewContentProvider {
   private async _graphClientHtmlAsString(port: number): Promise<string> {
     const graphClientAbsolutePath = path.join(resourcesPath, 'graphClient', 'graphClient.html');
     let htmlContents: string = await fse.readFile(graphClientAbsolutePath, 'utf8');
-    const portPlaceholder: RegExp = /clientPort/g;
+    const portPlaceholder: RegExp = /\$CLIENTPORT/g;
     htmlContents = htmlContents.replace(portPlaceholder, String(port));
-    const uriPlaceholder: RegExp = /BASEURI/g;
+    const uriPlaceholder: RegExp = /\$BASEURI/g;
     let uri = vscode.Uri.parse(path.join("file:" + this._context.extensionPath));
     const baseUri = `vscode-resource:${uri.fsPath}`;
     htmlContents = htmlContents.replace(uriPlaceholder, baseUri);

@@ -13,18 +13,18 @@
 <!--The xyzUri strings in the scripts' and icon's src field will be replaced by the approrpriate strings at runtime when this html file is read -->
 
 <head>
-    <link rel="stylesheet" type="text/css" href="BASEURI/resources/graphClient/graphClient.css">
+    <link rel="stylesheet" type="text/css" href="$BASEURI/resources/graphClient/graphClient.css">
     </link>
 
-    <script src='BASEURI/dist/node_modules/d3/d3.js' charset="UTF-8"></script>
+    <script src='$BASEURI/dist/node_modules/d3/d3.js' charset="UTF-8"></script>
 
     <script>window.exports = {};</script>
-    <script src="BASEURI/dist/node_modules/socket.io-client/dist/socket.io.js"></script>
+    <script src="$BASEURI/dist/node_modules/socket.io-client/dist/socket.io.js"></script>
     <script>
         io = exports.io;
     </script>
 
-    <script src="BASEURI/dist/graphClient.js"></script>
+    <script src="$BASEURI/dist/graphClient.js"></script>
 </head>
 
 <!-- Possible states (set on #states - see "type State" in graphClient.ts)
@@ -41,7 +41,7 @@
     <div id="states" class="state-initial">
         </script>
         <header>
-            <img id="cosmos" src="BASEURI/resources/cosmos.png">
+            <img id="cosmos" src="$BASEURI/resources/cosmos.png">
             <h1 id="title">
                 &nbsp;
                 <!-- placeholder -->
@@ -99,7 +99,7 @@
 
         <script>
             // "clientport" will be replaced with the actual port when the file is read
-            var graphClient = new GraphClient(clientPort);
+            var graphClient = new GraphClient($CLIENTPORT);
 
             window.onload = () => {
                 graphClient.getPageState();

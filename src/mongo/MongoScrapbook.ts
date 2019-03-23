@@ -112,11 +112,11 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 			throw new Error(`Error near line ${err.range.start.line}, column ${err.range.start.character}: '${err.message}'. Please check syntax.`);
 		}
 
-		if (command.name === 'find') {
+		if (command.name === 'find' && !!command.collection && !command.chained) {
 			await editorManager.showDocument(new MongoFindResultEditor(database, command), 'cosmos-result.json', { showInNextColumn: true });
 		} else {
 			const result = await database.executeCommand(command, context);
-			if (command.name === 'findOne') {
+			if (command.name === 'findOne' && !!command.collection) {
 				if (result === "null") {
 					throw new Error(`Could not find any documents`);
 				}

@@ -4,11 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { ObjectID, ObjectId } from '../extension.bundle';
 import { Position } from 'vscode';
 import { parseError } from 'vscode-azureextensionui';
-import { MongoCommand } from '../extension.bundle';
-import { getAllCommandsFromText, getCommandFromTextAtLocation } from '../extension.bundle';
+import { getAllCommandsFromText, getCommandFromTextAtLocation, MongoCommand, ObjectID, ObjectId } from '../extension.bundle';
 
 function expectSingleCommand(text: string): MongoCommand {
     let commands = getAllCommandsFromText(text);
@@ -933,6 +931,23 @@ suite("scrapbook parsing Tests", () => {
             args: []
         });
     });
+
+    test("Chained command where final function call is recognized. Ensure execution is sent to shell - test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/981", () => {
+        testParse(`db.getCollection('my-collection').find({});`, {
+            collection: "",
+            name: "find",
+            args: [{}]
+        });
+    });
+
+    test("Chained command where final function call is recognized as findOne. Ensure execution is sent to shell - test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/981", () => {
+        testParse(`db.getCollection('my-collection').find({});`, {
+            collection: "",
+            name: "find",
+            args: [{}]
+        });
+    });
+
 
     test("Multiple line command, from #489", () => {
         testParse(`

@@ -101,3 +101,7 @@ function getDocumentLabelFields(): string[] {
     let documentLabelFields: string[] | undefined = vscode.workspace.getConfiguration().get(settingKey) || [];
     return documentLabelFields;
 }
+
+export async function openUri(uri: vscode.Uri): Promise<void> {
+    await vscode.env.openExternal(uri);
+}

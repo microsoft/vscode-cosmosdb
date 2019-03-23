@@ -3,45 +3,67 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as fs from "fs";
+import * as fse from 'fs-extra';
 import * as path from "path";
 import * as vscode from 'vscode';
-import { resourcesPath } from "../constants";
+import { parseError } from 'vscode-azureextensionui';
+import { resourcesPath } from '../constants';
 import { areConfigsEqual, GraphConfiguration } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
-
-const scheme = "vscode-cosmosdb-graphresults";
-const previewBaseUri = scheme + '://results/';
 
 interface IServerProvider {
   findServerById(id: number): GraphViewServer;
 }
 
-export class GraphViewsManager implements IServerProvider {
+export class GraphViewsManager implements IServerProvider { //Graphviews Panel
   private _lastServerId = 0;
 
-  // One server (and one HTML view) per graph, as represented by unique configurations
-  private _servers = new Map<number, GraphViewServer>(); // map of id -> map
+  // One server (and one webview panel) per graph, as represented by unique configurations
+  private readonly _servers = new Map<number, GraphViewServer>(); // map of id -> server
+  private readonly _panels = new Map<number, vscode.WebviewPanel>(); // map of id -> webview panel
+  private readonly _panelViewType: string = "CosmosDB.GraphExplorer";
 
-  public constructor(private _context: vscode.ExtensionContext) {
-    let documentProvider = new GraphViewDocumentContentProvider(this);
-    let registration = vscode.workspace.registerTextDocumentContentProvider(scheme, documentProvider);
-    this._context.subscriptions.push(registration);
+  constructor(private _context: vscode.ExtensionContext) {
+
   }
 
   public async showGraphViewer(
     tabTitle: string,
     config: GraphConfiguration
   ): Promise<void> {
+    let id: number;
     try {
-      let id = await this.getOrCreateServer(config);
-
-      // Add server ID to the URL so that GraphViewDocumentContentProvider knows which port to use in the HTML
-      let serverUri = previewBaseUri + id.toString();
-      await vscode.commands.executeCommand('vscode.previewHtml', vscode.Uri.parse(serverUri), vscode.ViewColumn.One, tabTitle);
-    } catch (error) {
-      vscode.window.showErrorMessage(error.message || error);
+      id = await this.getOrCreateServer(config);
+    } catch (err) {
+      vscode.window.showErrorMessage(parseError(err).message);
     }
+    let existingPanel: vscode.WebviewPanel = this._panels.get(id);
+    if (existingPanel) {
+      existingPanel.reveal();
+      return;
+    }
+    const column = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.viewColumn : undefined;
+    const options: vscode.WebviewOptions & vscode.WebviewPanelOptions = {
+      enableScripts: true,
+      enableCommandUris: true,
+      enableFindWidget: true,
+      retainContextWhenHidden: true,
+      localResourceRoots: [vscode.Uri.file(this._context.extensionPath)]
+    };
+    const panel = vscode.window.createWebviewPanel(this._panelViewType, tabTitle, { viewColumn: column, preserveFocus: true }, options);
+    let contentProvider = new WebviewContentProvider(this, this._context);
+    panel.webview.html = await contentProvider.provideHtmlContent(id);
+    this._panels.set(id, panel);
+    panel.onDidDispose(
+      // dispose the server
+      () => {
+        let server = this._servers.get(id);
+        server.dispose();
+        this._servers.delete(id);
+        this._panels.delete(id);
+      }
+    );
+    panel.reveal();
   }
 
   public findServerById(id: number): GraphViewServer {
@@ -69,41 +91,35 @@ export class GraphViewsManager implements IServerProvider {
     this._servers.set(id, server);
     return id;
   }
+
 }
 
-class GraphViewDocumentContentProvider implements vscode.TextDocumentContentProvider {
+class WebviewContentProvider {
   public onDidChange?: vscode.Event<vscode.Uri>;
 
-  public constructor(private _serverProvider: IServerProvider) { }
+  public constructor(private _serverProvider: IServerProvider, private _context: vscode.ExtensionContext) { }
 
-  public provideTextDocumentContent(uri: vscode.Uri, _token: vscode.CancellationToken): vscode.ProviderResult<string> {
-    // Figure out which client to attach this to
-    // tslint:disable-next-line:no-single-line-block-comment
-    let serverId = parseInt(uri.path.slice(1) /* remove '/' from beginning */, 10);
+  public async provideHtmlContent(serverId: number): Promise<string> {
     console.assert(serverId > 0);
     let server = this._serverProvider.findServerById(serverId);
     if (server) {
-      let clientHtmlPath = path.join(resourcesPath, 'graphClient', 'graphClient.html');
-      console.assert(fs.existsSync(clientHtmlPath), `Couldn't find ${clientHtmlPath}`);
-
-      let html = `
-    <!DOCTYPE html>
-    <html>
-      <style>
-        body {
-          padding: 0;
-          margin: 0;
-        }
-      </style>
-      <body>
-        <iframe src="file://${clientHtmlPath}?port=${server.port}" style="width: 100%; height: 100%; position: absolute; padding: 0; margin: 0; border: none"></iframe>
-      </body>
-    </html>
-    `;
-
-      return html;
+      return await this._graphClientHtmlAsString(server.port);
     }
 
-    return "This resource is no longer available.";
+    throw new Error("This resource is no longer available.");
   }
+
+  private async _graphClientHtmlAsString(port: number): Promise<string> {
+    const graphClientAbsolutePath = path.join(resourcesPath, 'graphClient', 'graphClient.html');
+    let htmlContents: string = await fse.readFile(graphClientAbsolutePath, 'utf8');
+    const portPlaceholder: RegExp = /\$CLIENTPORT/g;
+    htmlContents = htmlContents.replace(portPlaceholder, String(port));
+    const uriPlaceholder: RegExp = /\$BASEURI/g;
+    let uri = vscode.Uri.parse(path.join("file:" + this._context.extensionPath));
+    const baseUri = `vscode-resource:${uri.fsPath}`;
+    htmlContents = htmlContents.replace(uriPlaceholder, baseUri);
+
+    return htmlContents;
+  }
+
 }

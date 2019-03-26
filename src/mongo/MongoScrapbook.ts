@@ -117,11 +117,8 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 		} else {
 			const result = await database.executeCommand(command, context);
 			if (command.name === 'findOne' && !!command.collection) {
-				if (result === "null") {
-					throw new Error(`Could not find any documents`);
-				}
 				await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result), 'cosmos-result.json', { showInNextColumn: true });
-			} else {
+			} else { // failover also includes chained commands
 				await vscodeUtil.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
 				await refreshTreeAfterCommand(database, command);
 			}

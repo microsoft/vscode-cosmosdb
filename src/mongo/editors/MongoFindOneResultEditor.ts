@@ -18,6 +18,9 @@ export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
     constructor(databaseNode: MongoDatabaseTreeItem, collectionName: string, data: string) {
         this._databaseNode = databaseNode;
         this._collectionName = collectionName;
+        if (data === "null") {
+            throw new Error(`Could not find any documents`);
+        }
         this._originalDocument = EJSON.parse(data);
     }
 

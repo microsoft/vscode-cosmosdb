@@ -2,6 +2,13 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.10.1 - 2019-03-26
+### Added
+- Wizards are more informative and allow you to redo some steps
+
+### Fixed
+- Graph views moved from using previewHtml (deprecated) to Webview API
+
 ## 0.10.0 - 2019-02-13
 ### Added
 * Improved startup and installation performance

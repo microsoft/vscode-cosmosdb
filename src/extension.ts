@@ -110,7 +110,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 node = await tree.showTreeItemPicker(accountContextValues);
             }
 
-            node.openInPortal();
+            await node.openInPortal();
         });
         registerCommand('cosmosDB.copyConnectionString', async (node?: MongoAccountTreeItem | DocDBAccountTreeItemBase) => {
             if (!node) {

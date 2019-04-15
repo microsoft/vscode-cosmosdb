@@ -18,7 +18,6 @@
 		"visitors": false
 	},
 	"editor.codeActionsOnSave": {
-		"source.fixAll.tslint": true,
-		"source.organizeImports": false
+		"source.fixAll.tslint": true
 	},
 }

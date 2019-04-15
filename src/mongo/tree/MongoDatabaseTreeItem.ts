@@ -5,6 +5,7 @@
 
 import * as fse from 'fs-extra';
 import { Collection, Db } from 'mongodb';
+import opn = require('opn');
 import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
@@ -12,7 +13,6 @@ import { appendExtensionUserAgent, AzureParentTreeItem, DialogResponses, IAction
 import { resourcesPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
-import { openUri } from '../../utils/vscodeUtils';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoCommand } from '../MongoCommand';
 import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings';
@@ -190,7 +190,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 					}
 				} else if (response === browse) {
 					this._cachedShellPathOrCmd = undefined;
-					await openUri(vscode.Uri.parse('https://docs.mongodb.com/manual/installation/'));
+					opn('https://docs.mongodb.com/manual/installation/');
 				}
 
 				throw new UserCancelledError();

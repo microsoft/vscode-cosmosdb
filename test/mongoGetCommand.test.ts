@@ -934,17 +934,17 @@ suite("scrapbook parsing Tests", () => {
 
     test("Chained command where final function call is recognized. Ensure execution is sent to shell - test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/981", () => {
         testParse(`db.getCollection('my-collection').find({});`, {
-            collection: "",
+            collection: undefined,
             name: "find",
-            args: [{}]
+            args: ["my-collection", {}]
         });
     });
 
     test("Chained command where final function call is recognized as findOne. Ensure execution is sent to shell - test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/981", () => {
         testParse(`db.getCollection('my-collection').find({});`, {
-            collection: "",
+            collection: undefined,
             name: "find",
-            args: [{}]
+            args: ["my-collection", {}]
         });
     });
 

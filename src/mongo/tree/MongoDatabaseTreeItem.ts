@@ -9,7 +9,7 @@ import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzureParentTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
-import { resourcesPath } from '../../constants';
+import { getResourcesPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
 import { connectToMongoClient } from '../connectToMongoClient';
@@ -53,8 +53,8 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 
 	public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
 		return {
-			light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Database.svg'),
-			dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Database.svg')
+			light: path.join(getResourcesPath(), 'icons', 'theme-agnostic', 'Database.svg'),
+			dark: path.join(getResourcesPath(), 'icons', 'theme-agnostic', 'Database.svg')
 		};
 	}
 

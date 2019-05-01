@@ -120,7 +120,7 @@ let config = dev.getDefaultWebpackConfig({
         // Copy files to dist folder where the runtime can find them
         new CopyWebpackPlugin([
             // getCoreNodeModule.js -> dist/node_modules/getCoreNodeModule.js
-            { from: './src/utils/getCoreNodeModule.js', to: 'node_modules' },
+            { from: './out/src/utils/getCoreNodeModule.js', to: 'node_modules' },
 
             // graphClient.js -> dist, which is used by graphClient.html
             { from: './out/src/graph/client/graphClient.js', to: 'graphClient.js' }

@@ -7,7 +7,7 @@ import { DocumentClient, FeedOptions, NewDocument, QueryIterator, RetrievedDocum
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { UserCancelledError } from 'vscode-azureextensionui';
-import { resourcesPath } from '../../constants';
+import { getResourcesPath } from '../../constants';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -27,8 +27,8 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
-            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Collection.svg'),
-            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Collection.svg')
+            light: path.join(getResourcesPath(), 'icons', 'theme-agnostic', 'Collection.svg'),
+            dark: path.join(getResourcesPath(), 'icons', 'theme-agnostic', 'Collection.svg')
         };
     }
 

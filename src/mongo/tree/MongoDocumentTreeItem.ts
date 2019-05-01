@@ -8,7 +8,7 @@ import * as path from 'path';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
 import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
-import { resourcesPath } from '../../constants';
+import { getResourcesPath } from '../../constants';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
@@ -51,8 +51,8 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
-            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Document.svg'),
-            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Document.svg')
+            light: path.join(getResourcesPath(), 'icons', 'theme-agnostic', 'Document.svg'),
+            dark: path.join(getResourcesPath(), 'icons', 'theme-agnostic', 'Document.svg')
         };
     }
 

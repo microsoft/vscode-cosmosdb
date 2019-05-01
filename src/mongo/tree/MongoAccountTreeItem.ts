@@ -9,7 +9,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, parseError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
-import { resourcesPath } from '../../constants';
+import { getResourcesPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
@@ -43,8 +43,8 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
-            light: path.join(resourcesPath, 'icons', 'light', 'CosmosDBAccount.svg'),
-            dark: path.join(resourcesPath, 'icons', 'dark', 'CosmosDBAccount.svg')
+            light: path.join(getResourcesPath(), 'icons', 'light', 'CosmosDBAccount.svg'),
+            dark: path.join(getResourcesPath(), 'icons', 'dark', 'CosmosDBAccount.svg')
         };
     }
 

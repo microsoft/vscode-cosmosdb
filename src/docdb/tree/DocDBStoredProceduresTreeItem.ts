@@ -7,7 +7,7 @@ import { DocumentClient, FeedOptions, ProcedureMeta, QueryIterator } from 'docum
 import * as path from 'path';
 import * as vscode from "vscode";
 import { UserCancelledError } from 'vscode-azureextensionui';
-import { defaultStoredProcedure, resourcesPath } from '../../constants';
+import { defaultStoredProcedure, getResourcesPath } from '../../constants';
 import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
@@ -32,8 +32,8 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
-            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'stored procedures.svg'),
-            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'stored procedures.svg')
+            light: path.join(getResourcesPath(), 'icons', 'theme-agnostic', 'stored procedures.svg'),
+            dark: path.join(getResourcesPath(), 'icons', 'theme-agnostic', 'stored procedures.svg')
         };
     }
 

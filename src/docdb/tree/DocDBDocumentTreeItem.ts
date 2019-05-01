@@ -7,7 +7,7 @@ import { DocumentClient, RetrievedDocument } from 'documentdb';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
-import { emptyPartitionKeyValue, resourcesPath } from '../../constants';
+import { emptyPartitionKeyValue, getResourcesPath } from '../../constants';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
@@ -56,8 +56,8 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return {
-            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Document.svg'),
-            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Document.svg')
+            light: path.join(getResourcesPath(), 'icons', 'theme-agnostic', 'Document.svg'),
+            dark: path.join(getResourcesPath(), 'icons', 'theme-agnostic', 'Document.svg')
         };
     }
 

@@ -3,9 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as path from 'path';
+import { ext } from "./extensionVariables";
 
-export const resourcesPath = path.join(__dirname, '..', 'resources'); // (relative to dist folder)
+export function getResourcesPath(): string {
+    return ext.context.asAbsolutePath('resources');
+}
 
 export const defaultBatchSize: number = 50;
 

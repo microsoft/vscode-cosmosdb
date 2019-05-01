@@ -4,7 +4,9 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 
 ## 0.10.2 - 2019-05-01
 ### Fixed
-- Handle opening resources to use native vscode APIs.
+- Handle opening resources to use native vscode APIs
+- Running the extension in older versions of VS Code
+- Report an issue opening a blank webpage due to a large stack frame
 
 ## 0.10.1 - 2019-03-26
 ### Added

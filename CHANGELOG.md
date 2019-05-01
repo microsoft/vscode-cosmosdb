@@ -2,6 +2,10 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.10.2 - 2019-05-01
+### Fixed
+- Handle opening resources to use native vscode APIs.
+
 ## 0.10.1 - 2019-03-26
 ### Added
 - Wizards are more informative and allow you to redo some steps

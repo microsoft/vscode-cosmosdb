@@ -97,6 +97,10 @@
 		"languages": [
 			{
 				"id": "mongo",
+				"aliases": [
+					"Mongo Scrapbook",
+					"mongo"
+				],
 				"extensions": [
 					".mongo"
 				],

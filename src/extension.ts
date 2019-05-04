@@ -5,7 +5,6 @@
 
 'use strict';
 
-import * as clipboardy from 'clipboardy';
 import * as vscode from 'vscode';
 import { AzureTreeDataProvider, AzureTreeItem, AzureUserInput, callWithTelemetryAndErrorHandling, createApiProvider, createTelemetryReporter, IActionContext, registerCommand, registerEvent, registerUIExtensionVariables, SubscriptionTreeItem } from 'vscode-azureextensionui';
 import { AzureExtensionApi, AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
@@ -158,7 +157,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 }
 
 async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase) {
-    await clipboardy.write(node.connectionString);
+    await vscode.env.clipboard.writeText(node.connectionString);
 }
 
 // this method is called when your extension is deactivated

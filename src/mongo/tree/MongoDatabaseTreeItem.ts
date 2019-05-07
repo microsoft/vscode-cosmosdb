@@ -5,7 +5,6 @@
 
 import * as fse from 'fs-extra';
 import { Collection, Db } from 'mongodb';
-import opn = require('opn');
 import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
@@ -190,7 +189,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 					}
 				} else if (response === browse) {
 					this._cachedShellPathOrCmd = undefined;
-					opn('https://docs.mongodb.com/manual/installation/');
+					vscode.commands.executeCommand('vscode.open', vscode.Uri.parse('https://docs.mongodb.com/manual/installation/'));
 				}
 
 				throw new UserCancelledError();

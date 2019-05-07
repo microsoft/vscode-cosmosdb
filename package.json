@@ -1,6 +1,6 @@
 {
 	"name": "vscode-cosmosdb",
-	"version": "0.10.1",
+	"version": "0.10.2",
 	"aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
 	"publisher": "ms-azuretools",
 	"displayName": "Azure Cosmos DB",
@@ -97,6 +97,10 @@
 		"languages": [
 			{
 				"id": "mongo",
+				"aliases": [
+					"Mongo Scrapbook",
+					"mongo"
+				],
 				"extensions": [
 					".mongo"
 				],
@@ -880,7 +884,6 @@
 		"@types/mocha": "^5.2.5",
 		"@types/mongodb": "^2.2.9",
 		"@types/node": "^6.0.40",
-		"@types/opn": "^5.1.0",
 		"@types/socket.io": "^1.4.32",
 		"@types/socket.io-client": "^1.4.32",
 		"antlr4ts-cli": "^0.4.0-alpha.4",
@@ -916,11 +919,10 @@
 		"mongodb-extended-json": "^1.10.0",
 		"ms-rest": "^2.2.1",
 		"node-uuid": "1.4.8",
-		"opn": "^5.4.0",
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "^0.23.1",
+		"vscode-azureextensionui": "^0.23.2",
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.4.0",
 		"vscode-languageserver": "^4.4.0",

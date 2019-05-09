@@ -11,7 +11,7 @@ import { IDisposable, toDisposable } from '../utils/vscodeUtils';
 
 // This is used at the end of each command we send to the console. When we get this string back,
 // we know we've reached the end of that command's result.
-const endOfDataBaseSentinel: string = '$EOD$';
+const endOfDataSentinelBase: string = '$EOD$';
 
 export class Shell {
 	private executionId: number = 0;
@@ -57,7 +57,7 @@ export class Shell {
 		let buffers: string[] = [];
 		on(this.mongoShell.stdout, 'data', b => {
 			let data: string = b.toString();
-			const endOfDataSentinel = `${endOfDataBaseSentinel}${this.executionId}${os.EOL}`;
+			const endOfDataSentinel = `${endOfDataSentinelBase}${this.executionId}${os.EOL}`;
 			if (data.endsWith(endOfDataSentinel)) {
 				const result = buffers.join('') + data.substring(0, data.length - endOfDataSentinel.length);
 				buffers = [];
@@ -89,7 +89,7 @@ export class Shell {
 
 			// Mark end of result by sending the sentinel wrapped in quotes so the console will spit
 			// it back out as a string value
-			this.mongoShell.stdin.write(`"${endOfDataBaseSentinel}${executionId}"`, 'utf8');
+			this.mongoShell.stdin.write(`"${endOfDataSentinelBase}${executionId}"`, 'utf8');
 			this.mongoShell.stdin.write(os.EOL);
 		} catch (error) {
 			window.showErrorMessage(error.toString());

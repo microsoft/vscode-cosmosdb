@@ -14,7 +14,7 @@
 			"sourceMaps": true,
 			// outFiles is used for locating generated JavaScript files, see https://code.visualstudio.com/docs/nodejs/nodejs-debugging#_source-maps
 			"outFiles": [
-				"${workspaceFolder}/**/*.js"
+				"${workspaceFolder}/out/**/*.js"
 			],
 			"preLaunchTask": "npm: webpack",
 			"env": {
@@ -54,7 +54,7 @@
 			"sourceMaps": true,
 			// outFiles is used for locating generated JavaScript files, see https://code.visualstudio.com/docs/nodejs/nodejs-debugging#_source-maps
 			"outFiles": [
-				"${workspaceFolder}/dist/**/*.js"
+				"${workspaceFolder}/out/**/*.js"
 			],
 			"preLaunchTask": "npm: webpack",
 			"env": {

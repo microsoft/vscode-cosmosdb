@@ -7,7 +7,7 @@ import { RetrievedDocument } from 'documentdb';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { AzureTreeItem } from 'vscode-azureextensionui';
+import { AzExtTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../extensionVariables';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
@@ -68,7 +68,7 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
     throw new Error('Could not find unique name for new file.');
 }
 
-export function getNodeEditorLabel(node: AzureTreeItem): string {
+export function getNodeEditorLabel(node: AzExtTreeItem): string {
     let labels = [node.label];
     while (node.parent) {
         node = node.parent;
@@ -80,7 +80,7 @@ export function getNodeEditorLabel(node: AzureTreeItem): string {
     return labels.join('/');
 }
 
-function isAccountTreeItem(treeItem: AzureTreeItem): boolean {
+function isAccountTreeItem(treeItem: AzExtTreeItem): boolean {
     return (treeItem instanceof MongoAccountTreeItem) || (treeItem instanceof DocDBAccountTreeItemBase);
 }
 

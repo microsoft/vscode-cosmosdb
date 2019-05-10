@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureTreeItem } from 'vscode-azureextensionui';
+import { AzExtTreeItem } from 'vscode-azureextensionui';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
@@ -66,7 +66,7 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
     return result;
 }
 
-async function searchDbAccounts(dbAccounts: AzureTreeItem[], expected: ParsedConnectionString, maxTime: number): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
+async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedConnectionString, maxTime: number): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
     for (const dbAccount of dbAccounts) {
         if (Date.now() > maxTime) {
             return undefined;

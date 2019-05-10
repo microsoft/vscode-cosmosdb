@@ -7,13 +7,14 @@ import { ServiceClientCredentials } from 'ms-rest';
 import { AzureEnvironment } from 'ms-rest-azure';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzureTreeItem, GenericTreeItem, ISubscriptionRoot, RootTreeItem, SubscriptionTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionRoot, SubscriptionTreeItem, UserCancelledError } from 'vscode-azureextensionui';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, resourcesPath } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../experiences';
+import { ext } from '../extensionVariables';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
 import { parseMongoConnectionString } from '../mongo/mongoConnectionStrings';
@@ -33,7 +34,7 @@ export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start w
 
 const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
 
-export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
+export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     public static contextValue: string = 'cosmosDBAttachedAccounts' + (process.platform === 'win32' ? 'WithEmulator' : 'WithoutEmulator');
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
     public readonly id: string = 'cosmosDBAttachedAccounts';
@@ -44,12 +45,18 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
     private _attachedAccounts: AzureTreeItem[] | undefined;
     private _keytar: KeyTar;
 
+    private _root: ISubscriptionRoot;
     private _loadPersistedAccountsTask: Promise<AzureTreeItem[]>;
 
-    constructor(private readonly _globalState: vscode.Memento) {
-        super(new AttachedAccountRoot());
+    constructor(parent: AzExtParentTreeItem) {
+        super(parent);
         this._keytar = tryGetKeyTar();
+        this._root = new AttachedAccountRoot();
         this._loadPersistedAccountsTask = this.loadPersistedAccounts();
+    }
+
+    public get root(): ISubscriptionRoot {
+        return this._root;
     }
 
     private async getAttachedAccounts(): Promise<AzureTreeItem[]> {
@@ -76,7 +83,7 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         return false;
     }
 
-    public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzureTreeItem[]> {
+    public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (clearCache) {
             this._attachedAccounts = undefined;
             this._loadPersistedAccountsTask = this.loadPersistedAccounts();
@@ -87,7 +94,8 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
         return attachedAccounts.length > 0 ? attachedAccounts : [new GenericTreeItem(this, {
             contextValue: 'cosmosDBAttachDatabaseAccount',
             label: 'Attach Database Account...',
-            commandId: 'cosmosDB.attachDatabaseAccount'
+            commandId: 'cosmosDB.attachDatabaseAccount',
+            includeInTreeItemPicker: true
         })];
     }
 
@@ -233,7 +241,7 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
 
     private async loadPersistedAccounts(): Promise<AzureTreeItem[]> {
         const persistedAccounts: AzureTreeItem[] = [];
-        const value: string | undefined = this._globalState.get(this._serviceName);
+        const value: string | undefined = ext.context.globalState.get(this._serviceName);
         if (value && this._keytar) {
             const accounts: (string | IPersistedAccount)[] = JSON.parse(value);
             await Promise.all(accounts.map(async account => {
@@ -316,7 +324,7 @@ export class AttachedAccountsTreeItem extends RootTreeItem<ISubscriptionRoot> {
             }
             return { id: node.id, defaultExperience: api, isEmulator: isEmulator };
         });
-        await this._globalState.update(this._serviceName, JSON.stringify(value));
+        await ext.context.globalState.update(this._serviceName, JSON.stringify(value));
     }
 
     static validateMongoConnectionString(value: string): string | undefined {

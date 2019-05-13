@@ -3,15 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, AzureAccountTreeItem } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureAccountTreeItemBase, ISubscriptionRoot } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
 import { AttachedAccountsTreeItem } from './AttachedAccountsTreeItem';
-import { CosmosDBAccountProvider } from './CosmosDBAccountProvider';
+import { SubscriptionTreeItem } from './SubscriptionTreeItem';
 
-export class AzureAccountTreeItemWithAttached extends AzureAccountTreeItem {
+export class AzureAccountTreeItemWithAttached extends AzureAccountTreeItemBase {
     public constructor() {
-        super(undefined, CosmosDBAccountProvider);
+        super();
         ext.attachedAccountsNode = new AttachedAccountsTreeItem(this);
+    }
+
+    public createSubscriptionTreeItem(root: ISubscriptionRoot): SubscriptionTreeItem {
+        return new SubscriptionTreeItem(this, root);
     }
 
     public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {

@@ -12,7 +12,7 @@ import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
-import { CosmosDBAccountProvider } from '../../tree/CosmosDBAccountProvider';
+import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
 import { DatabaseAccountTreeItem, DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
@@ -46,7 +46,7 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
                 break;
             }
 
-            if (rootNode instanceof CosmosDBAccountProvider) {
+            if (rootNode instanceof SubscriptionTreeItem) {
                 const dbAccounts = await rootNode.getCachedChildren();
                 result = await searchDbAccounts(dbAccounts, parsedCS, maxTime);
                 if (result) {

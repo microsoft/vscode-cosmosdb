@@ -19,5 +19,6 @@
 	},
 	"editor.codeActionsOnSave": {
 		"source.fixAll.tslint": true,
-	}
+	},
+	"typescript.preferences.importModuleSpecifier": "relative"
 }

@@ -75,18 +75,19 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         return false;
     }
 
-    public pickTreeItemImpl(expectedContextValue: string): AzureTreeItem<IDocDBTreeRoot> | undefined {
-        switch (expectedContextValue) {
-            case DocDBDocumentsTreeItem.contextValue:
-            case DocDBDocumentTreeItem.contextValue:
-                return this.documentsTreeItem;
-
-            case DocDBStoredProceduresTreeItem.contextValue:
-            case DocDBStoredProcedureTreeItem.contextValue:
-                return this._storedProceduresTreeItem;
-
-            default:
-                return undefined;
+    public pickTreeItemImpl(expectedContextValues: (string | RegExp)[]): AzureTreeItem<IDocDBTreeRoot> | undefined {
+        for (const expectedContextValue of expectedContextValues) {
+            switch (expectedContextValue) {
+                case DocDBDocumentsTreeItem.contextValue:
+                case DocDBDocumentTreeItem.contextValue:
+                    return this.documentsTreeItem;
+                case DocDBStoredProceduresTreeItem.contextValue:
+                case DocDBStoredProcedureTreeItem.contextValue:
+                    return this._storedProceduresTreeItem;
+                default:
+            }
         }
+
+        return undefined;
     }
 }

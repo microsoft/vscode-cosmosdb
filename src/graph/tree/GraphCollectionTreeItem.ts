@@ -71,17 +71,19 @@ export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         }
     }
 
-    public pickTreeItemImpl(expectedContextValue: string): AzureTreeItem<IDocDBTreeRoot> | undefined {
-        switch (expectedContextValue) {
-            case GraphTreeItem.contextValue:
-                return this._graphTreeItem;
+    public pickTreeItemImpl(expectedContextValues: (string | RegExp)[]): AzureTreeItem<IDocDBTreeRoot> | undefined {
+        for (const expectedContextValue of expectedContextValues) {
+            switch (expectedContextValue) {
+                case GraphTreeItem.contextValue:
+                    return this._graphTreeItem;
+                case DocDBStoredProceduresTreeItem.contextValue:
+                case DocDBStoredProcedureTreeItem.contextValue:
+                    return this._storedProceduresTreeItem;
 
-            case DocDBStoredProceduresTreeItem.contextValue:
-            case DocDBStoredProcedureTreeItem.contextValue:
-                return this._storedProceduresTreeItem;
-
-            default:
-                return undefined;
+                default:
+            }
         }
+
+        return undefined;
     }
 }

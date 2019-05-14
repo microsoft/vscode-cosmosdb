@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureTreeItem } from 'vscode-azureextensionui';
+import { AzExtTreeItem } from 'vscode-azureextensionui';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
@@ -12,7 +12,7 @@ import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
-import { CosmosDBAccountProvider } from '../../tree/CosmosDBAccountProvider';
+import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
 import { DatabaseAccountTreeItem, DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
@@ -46,7 +46,7 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
                 break;
             }
 
-            if (rootNode instanceof CosmosDBAccountProvider) {
+            if (rootNode instanceof SubscriptionTreeItem) {
                 const dbAccounts = await rootNode.getCachedChildren();
                 result = await searchDbAccounts(dbAccounts, parsedCS, maxTime);
                 if (result) {
@@ -66,7 +66,7 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
     return result;
 }
 
-async function searchDbAccounts(dbAccounts: AzureTreeItem[], expected: ParsedConnectionString, maxTime: number): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
+async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedConnectionString, maxTime: number): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
     for (const dbAccount of dbAccounts) {
         if (Date.now() > maxTime) {
             return undefined;

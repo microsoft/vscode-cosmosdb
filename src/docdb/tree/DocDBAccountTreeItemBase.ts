@@ -38,7 +38,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         });
     }
 
-    // overrides ISubscriptionRoot with an object that also has DocDB info
+    // overrides ISubscriptionContext with an object that also has DocDB info
     public get root(): IDocDBTreeRoot {
         return this._root;
     }

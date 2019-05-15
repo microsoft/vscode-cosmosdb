@@ -40,9 +40,9 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     context.subscriptions.push(ext.outputChannel);
     registerUIExtensionVariables(ext);
 
-    await callWithTelemetryAndErrorHandling('cosmosDB.activate', async function (this: IActionContext): Promise<void> {
-        this.properties.isActivationEvent = 'true';
-        this.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
+    await callWithTelemetryAndErrorHandling('cosmosDB.activate', (activateContext: IActionContext) => {
+        activateContext.properties.isActivationEvent = 'true';
+        activateContext.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
 
         const azureAccountNode: AzureAccountTreeItemWithAttached = new AzureAccountTreeItemWithAttached();
         context.subscriptions.push(azureAccountNode);
@@ -53,24 +53,24 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         const editorManager: CosmosEditorManager = new CosmosEditorManager(context.globalState);
 
         registerDocDBCommands(editorManager);
-        registerGraphCommands(context);
-        registerMongoCommands(context, editorManager);
+        registerGraphCommands();
+        registerMongoCommands(editorManager);
 
         // Common commands
         const accountContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
 
         registerCommand('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
 
-        registerCommand('cosmosDB.createAccount', async function (this: IActionContext, node?: SubscriptionTreeItem): Promise<void> {
+        registerCommand('cosmosDB.createAccount', async (actionContext: IActionContext, node?: SubscriptionTreeItem) => {
             if (!node) {
-                node = await ext.tree.showTreeItemPicker(SubscriptionTreeItem.contextValue);
+                node = await ext.tree.showTreeItemPicker(SubscriptionTreeItem.contextValue, actionContext);
             }
 
-            await node.createChild(this);
+            await node.createChild(actionContext);
         });
-        registerCommand('cosmosDB.deleteAccount', async (node?: AzureTreeItem) => {
+        registerCommand('cosmosDB.deleteAccount', async (actionContext: IActionContext, node?: AzureTreeItem) => {
             if (!node) {
-                node = await ext.tree.showTreeItemPicker(accountContextValues);
+                node = await ext.tree.showTreeItemPicker(accountContextValues, actionContext);
             }
 
             await node.deleteTreeItem();
@@ -84,63 +84,64 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             await ext.attachedAccountsNode.attachEmulator();
             await ext.tree.refresh(ext.attachedAccountsNode);
         });
-        registerCommand('cosmosDB.refresh', async (node?: AzExtTreeItem) => await ext.tree.refresh(node));
-        registerCommand('cosmosDB.detachDatabaseAccount', async (node?: AzureTreeItem) => {
+        registerCommand('cosmosDB.refresh', async (_actionContext: IActionContext, node?: AzExtTreeItem) => await ext.tree.refresh(node));
+        registerCommand('cosmosDB.detachDatabaseAccount', async (actionContext: IActionContext, node?: AzureTreeItem) => {
             if (!node) {
-                node = await ext.tree.showTreeItemPicker(accountContextValues.map((val: string) => val += AttachedAccountSuffix), ext.attachedAccountsNode);
+                node = await ext.tree.showTreeItemPicker(accountContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
             }
 
             await ext.attachedAccountsNode.detach(node);
             await ext.tree.refresh(ext.attachedAccountsNode);
         });
-        registerCommand('cosmosDB.importDocument', async (selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => //ignore first pass
+        registerCommand('cosmosDB.importDocument', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => //ignore first pass
         {
             if (selectedNode instanceof vscode.Uri) {
-                await importDocuments(uris || [selectedNode], undefined);
+                await importDocuments(actionContext, uris || [selectedNode], undefined);
             } else {
-                await importDocuments(undefined, selectedNode);
+                await importDocuments(actionContext, undefined, selectedNode);
             }
         });
 
-        registerCommand('cosmosDB.openInPortal', async (node?: AzureTreeItem) => {
+        registerCommand('cosmosDB.openInPortal', async (actionContext: IActionContext, node?: AzureTreeItem) => {
             if (!node) {
-                node = await ext.tree.showTreeItemPicker(accountContextValues);
+                node = await ext.tree.showTreeItemPicker(accountContextValues, actionContext);
             }
 
             await node.openInPortal();
         });
-        registerCommand('cosmosDB.copyConnectionString', async (node?: MongoAccountTreeItem | DocDBAccountTreeItemBase) => {
+        registerCommand('cosmosDB.copyConnectionString', async (actionContext: IActionContext, node?: MongoAccountTreeItem | DocDBAccountTreeItemBase) => {
             if (!node) {
-                node = await ext.tree.showTreeItemPicker(accountContextValues);
+                node = await ext.tree.showTreeItemPicker(accountContextValues, actionContext);
             }
 
             await copyConnectionString(node);
         });
-        registerCommand('cosmosDB.openDocument', async (node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
+        registerCommand('cosmosDB.openDocument', async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
             if (!node) {
-                node = await ext.tree.showTreeItemPicker([MongoDocumentTreeItem.contextValue, DocDBDocumentTreeItem.contextValue]);
+                node = await ext.tree.showTreeItemPicker([MongoDocumentTreeItem.contextValue, DocDBDocumentTreeItem.contextValue], actionContext);
             }
 
             const editorTabName = node.label + "-cosmos-document.json";
             if (node instanceof MongoDocumentTreeItem) {
-                await editorManager.showDocument(new MongoDocumentNodeEditor(node), editorTabName);
+                await editorManager.showDocument(actionContext, new MongoDocumentNodeEditor(node), editorTabName);
             } else {
-                await editorManager.showDocument(new DocDBDocumentNodeEditor(node), editorTabName);
+                await editorManager.showDocument(actionContext, new DocDBDocumentNodeEditor(node), editorTabName);
             }
             // tslint:disable-next-line:align
         }, doubleClickDebounceDelay);
-        registerCommand('cosmosDB.update', (filePath: vscode.Uri) => editorManager.updateMatchingNode(filePath));
-        registerCommand('cosmosDB.loadMore', (node?: AzExtTreeItem) => ext.tree.loadMore(node));
-        registerEvent('cosmosDB.CosmosEditorManager.onDidSaveTextDocument', vscode.workspace.onDidSaveTextDocument, async function (
-            this: IActionContext, doc: vscode.TextDocument): Promise<void> {
-            await editorManager.onDidSaveTextDocument(this, doc);
-        });
+        registerCommand('cosmosDB.update', async (actionContext: IActionContext, uri: vscode.Uri) => await editorManager.updateMatchingNode(actionContext, uri));
+        registerCommand('cosmosDB.loadMore', async (actionContext: IActionContext, node?: AzExtTreeItem) => await ext.tree.loadMore(node, actionContext));
+        registerEvent(
+            'cosmosDB.CosmosEditorManager.onDidSaveTextDocument',
+            vscode.workspace.onDidSaveTextDocument,
+            async (actionContext: IActionContext, doc: vscode.TextDocument) => await editorManager.onDidSaveTextDocument(actionContext, doc)
+        );
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',
             vscode.workspace.onDidChangeConfiguration,
-            async function (this: IActionContext, event: vscode.ConfigurationChangeEvent): Promise<void> {
-                this.properties.isActivationEvent = "true";
-                this.suppressErrorDisplay = true;
+            async (actionContext: IActionContext, event: vscode.ConfigurationChangeEvent) => {
+                actionContext.properties.isActivationEvent = "true";
+                actionContext.suppressErrorDisplay = true;
                 if (event.affectsConfiguration(ext.settingsKeys.documentLabelFields)) {
                     await vscode.commands.executeCommand("cosmosDB.refresh");
                 }

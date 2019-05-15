@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as path from 'path';
-import { ExtensionContext } from 'vscode';
 import { appendExtensionUserAgent } from 'vscode-azureextensionui';
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
 import * as nls from 'vscode-nls';
+import { ext } from '../extensionVariables';
 
 const localize = nls.loadMessageBundle();
 
@@ -14,9 +14,9 @@ export class MongoDBLanguageClient {
 
 	public client: LanguageClient;
 
-	constructor(context: ExtensionContext) {
+	constructor() {
 		// The server is implemented in node
-		let serverModule = context.asAbsolutePath(path.join('dist', 'mongo-languageServer.bundle.js'));
+		let serverModule = ext.context.asAbsolutePath(path.join('dist', 'mongo-languageServer.bundle.js'));
 		// The debug options for the server
 		let debugOptions = { execArgv: ['--nolazy', '--debug=6005', '--inspect'] };
 
@@ -42,7 +42,7 @@ export class MongoDBLanguageClient {
 
 		// Push the disposable to the context's subscriptions so that the
 		// client can be deactivated on extension deactivation
-		context.subscriptions.push(disposable);
+		ext.context.subscriptions.push(disposable);
 	}
 
 	async connect(connectionString: string, databaseName: string) {

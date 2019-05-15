@@ -36,7 +36,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         this._root = Object.assign({}, parent.root, { isEmulator });
     }
 
-    // overrides ISubscriptionRoot with an object that also has Mongo info
+    // overrides ISubscriptionContext with an object that also has Mongo info
     public get root(): IMongoTreeRoot {
         return this._root;
     }

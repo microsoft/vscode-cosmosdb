@@ -6,7 +6,7 @@
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from 'azure-arm-cosmosdb/lib/models';
 import * as vscode from 'vscode';
-import { AzureTreeItem, AzureWizard, createAzureClient, createTreeItemsWithErrorHandling, IActionContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItem } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureTreeItem, AzureWizard, createAzureClient, IActionContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { getExperienceLabel, tryGetExperience } from '../experiences';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
@@ -19,18 +19,17 @@ import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccou
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
 
-export class CosmosDBAccountProvider extends SubscriptionTreeItem {
+export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
     public childTypeLabel: string = 'Account';
 
     public hasMoreChildrenImpl(): boolean {
         return false;
     }
 
-    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem[]> {
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
         const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
         const accounts: DatabaseAccountsListResult = await client.databaseAccounts.list();
-        return await createTreeItemsWithErrorHandling(
-            this,
+        return await this.createTreeItemsWithErrorHandling(
             accounts,
             'invalidCosmosDBAccount',
             async (db: DatabaseAccount) => await this.initChild(client, db),
@@ -96,5 +95,9 @@ export class CosmosDBAccountProvider extends SubscriptionTreeItem {
 
             }
         }
+    }
+
+    public isAncestorOfImpl(contextValue: string | RegExp): boolean {
+        return typeof contextValue !== 'string' || !/attached/i.test(contextValue);
     }
 }

@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import { AzureTreeItem, callWithTelemetryAndErrorHandling, IActionContext, registerCommand, registerEvent } from "vscode-azureextensionui";
 import { CosmosEditorManager } from "../CosmosEditorManager";
 import { ext } from "../extensionVariables";
+import { AttachedAccountSuffix } from '../tree/AttachedAccountsTreeItem';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { MongoCollectionNodeEditor } from "./editors/MongoCollectionNodeEditor";
 import { MongoDBLanguageClient } from "./languageClient";
@@ -35,7 +36,7 @@ export function registerMongoCommands(context: vscode.ExtensionContext, editorMa
 
     registerCommand('cosmosDB.createMongoDatabase', async (node?: MongoAccountTreeItem) => {
         if (!node) {
-            node = <MongoAccountTreeItem>await ext.tree.showTreeItemPicker(MongoAccountTreeItem.contextValue);
+            node = <MongoAccountTreeItem>await ext.tree.showTreeItemPicker([MongoAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue + AttachedAccountSuffix]);
         }
         const databaseNode = <MongoDatabaseTreeItem>await node.createChild();
         // reveal the database treeItem in case user cancels collection creation

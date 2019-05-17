@@ -73,7 +73,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 node = await ext.tree.showTreeItemPicker(accountContextValues, actionContext);
             }
 
-            await node.deleteTreeItem();
+            await node.deleteTreeItem(actionContext);
         });
 
         registerCommand('cosmosDB.attachDatabaseAccount', async () => {

@@ -85,7 +85,7 @@ export function registerMongoCommands(editorManager: CosmosEditorManager): void 
         if (!node) {
             node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
         }
-        await node.deleteTreeItem();
+        await node.deleteTreeItem(context);
         if (ext.connectedMongoDB && ext.connectedMongoDB.fullId === node.fullId) {
             setConnectedNode(undefined, codeLensProvider);
             ext.context.globalState.update(connectedDBKey, undefined);
@@ -96,13 +96,13 @@ export function registerMongoCommands(editorManager: CosmosEditorManager): void 
         if (!node) {
             node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
         }
-        await node.deleteTreeItem();
+        await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.deleteMongoDocument', async (context: IActionContext, node?: MongoDocumentTreeItem) => {
         if (!node) {
             node = <MongoDocumentTreeItem>await ext.tree.showTreeItemPicker(MongoDocumentTreeItem.contextValue, context);
         }
-        await node.deleteTreeItem();
+        await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.openCollection', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
         if (!node) {

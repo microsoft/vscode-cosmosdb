@@ -55,13 +55,13 @@ export function registerDocDBCommands(editorManager: CosmosEditorManager): void 
         if (!node) {
             node = <DocDBDatabaseTreeItem>await ext.tree.showTreeItemPicker(DocDBDatabaseTreeItem.contextValue, context);
         }
-        await node.deleteTreeItem();
+        await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.deleteDocDBCollection', async (context: IActionContext, node?: DocDBCollectionTreeItem) => {
         if (!node) {
             node = <DocDBCollectionTreeItem>await ext.tree.showTreeItemPicker(DocDBCollectionTreeItem.contextValue, context);
         }
-        await node.deleteTreeItem();
+        await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.openStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
         if (!node) {
@@ -74,12 +74,12 @@ export function registerDocDBCommands(editorManager: CosmosEditorManager): void 
         if (!node) {
             node = <DocDBDocumentTreeItem>await ext.tree.showTreeItemPicker(DocDBDocumentTreeItem.contextValue, context);
         }
-        await node.deleteTreeItem();
+        await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.deleteDocDBStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
         if (!node) {
             node = <DocDBStoredProcedureTreeItem>await ext.tree.showTreeItemPicker(DocDBStoredProcedureTreeItem.contextValue, context);
         }
-        await node.deleteTreeItem();
+        await node.deleteTreeItem(context);
     });
 }

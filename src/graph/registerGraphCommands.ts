@@ -31,13 +31,13 @@ export function registerGraphCommands(): void {
         if (!node) {
             node = <GraphDatabaseTreeItem>await ext.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
         }
-        await node.deleteTreeItem();
+        await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.deleteGraph', async (context: IActionContext, node?: GraphCollectionTreeItem) => {
         if (!node) {
             node = <GraphCollectionTreeItem>await ext.tree.showTreeItemPicker(GraphCollectionTreeItem.contextValue, context);
         }
-        await node.deleteTreeItem();
+        await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.openGraphExplorer', async (context: IActionContext, node: GraphTreeItem) => {
         if (!node) {

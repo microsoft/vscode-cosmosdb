@@ -15,7 +15,7 @@ export interface MongoCommand {
     arguments?: string[];
     argumentObjects?: Object[];
     errors?: ErrorDescription[];
-    chained?: boolean;
+    sendToShell?: boolean;
 }
 
 export interface ErrorDescription {

@@ -112,7 +112,7 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 			throw new Error(`Error near line ${err.range.start.line}, column ${err.range.start.character}: '${err.message}'. Please check syntax.`);
 		}
 
-		if (command.name === 'find' && !!command.collection && !command.chained) {
+		if (command.name === 'find' && !!command.collection && !command.sendToShell) {
 			await editorManager.showDocument(new MongoFindResultEditor(database, command), 'cosmos-result.json', { showInNextColumn: true });
 		} else {
 			const result = await database.executeCommand(command, context);
@@ -218,7 +218,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			name: '',
 			arguments: [],
 			argumentObjects: [],
-			chained: funcCallCount > 1 ? true : false
+			sendToShell: funcCallCount > 1 ? true : false
 		});
 		return super.visitCommand(ctx);
 	}
@@ -345,7 +345,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		}
 		let argumentContextArray: mongoParser.ArgumentContext[] = filterType(argumentsToken.children, mongoParser.ArgumentContext);
 
-		let functionMap = { "ObjectId": this.objectIdToObject, "ISODate": this.dateToObject, "Date": this.dateToObject };
+		let functionMap = { "ObjectId": this.objectIdToObject, "Date": this.dateToObject };
 		if (argumentContextArray.length > 1) {
 			let err: IParsedError = parseError(`Too many arguments. Expecting 0 or 1 argument(s) to ${constructorCall}`);
 			this.addErrorToCommand(err, ctx);
@@ -355,6 +355,10 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			let args = [ctx, argumentContextArray.length ? argumentContextArray[0].text : undefined];
 			return functionMap[constructorCall.text].apply(this, args);
 		}
+		if (constructorCall.text === "ISODate") {
+			let lastCommand = this.commands[this.commands.length - 1];
+			lastCommand.sendToShell = true;
+		}
 		let unrecognizedNodeErr: IParsedError = parseError(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`);
 		this.addErrorToCommand(unrecognizedNodeErr, ctx);
 		return {};
@@ -362,7 +366,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 
 	private dateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {
 		let constructedObject: Date;
-		if (!tokenText) { // usage : ObjectID()
+		if (!tokenText) { // usage : Date()
 			constructedObject = new Date();
 		} else {
 			try {

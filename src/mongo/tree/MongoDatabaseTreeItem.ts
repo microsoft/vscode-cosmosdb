@@ -97,7 +97,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 	}
 
 	async executeCommand(command: MongoCommand, context: IActionContext): Promise<string> {
-		if (command.collection && !command.chained) {
+		if (command.collection && !command.sendToShell) {
 			let db = await this.getDb();
 			const collection = db.collection(command.collection);
 			if (collection) {

@@ -6,7 +6,7 @@
 import { DocumentClient, FeedOptions, ProcedureMeta, QueryIterator } from 'documentdb';
 import * as path from 'path';
 import * as vscode from "vscode";
-import { UserCancelledError } from 'vscode-azureextensionui';
+import { ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { defaultStoredProcedure, resourcesPath } from '../../constants';
 import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
@@ -37,7 +37,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
         };
     }
 
-    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<DocDBStoredProcedureTreeItem> {
+    public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBStoredProcedureTreeItem> {
         const client = this.root.getDocumentClient();
         let spID = await vscode.window.showInputBox({
             prompt: "Enter a unique stored procedure ID",
@@ -47,7 +47,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
 
         if (spID || spID === "") {
             spID = spID.trim();
-            showCreatingTreeItem(spID);
+            context.showCreatingTreeItem(spID);
             const sproc: ProcedureMeta = await new Promise<ProcedureMeta>((resolve, reject) => {
                 client.createStoredProcedure(this.link, { id: spID, body: defaultStoredProcedure }, (err, result: ProcedureMeta) => {
                     if (err) {

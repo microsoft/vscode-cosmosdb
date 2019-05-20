@@ -6,7 +6,7 @@
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from 'azure-arm-cosmosdb/lib/models';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureTreeItem, AzureWizard, createAzureClient, IActionContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureTreeItem, AzureWizard, createAzureClient, ICreateChildImplContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { getExperienceLabel, tryGetExperience } from '../experiences';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
@@ -37,7 +37,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         );
     }
 
-    public async createChildImpl(showCreatingTreeItem: (label: string) => void, context: IActionContext): Promise<AzureTreeItem> {
+    public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem> {
         const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
         const wizardContext: ICosmosDBWizardContext = Object.assign(context, this.root);
 
@@ -58,7 +58,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
         wizardContext.telemetry.properties.defaultExperience = wizardContext.defaultExperience.api;
 
-        showCreatingTreeItem(wizardContext.accountName);
+        context.showCreatingTreeItem(wizardContext.accountName);
         await wizard.execute();
         // don't wait
         vscode.window.showInformationMessage(`Successfully created account "${wizardContext.accountName}".`);

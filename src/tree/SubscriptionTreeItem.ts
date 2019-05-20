@@ -56,7 +56,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
         await wizard.prompt();
 
-        wizardContext.properties.defaultExperience = wizardContext.defaultExperience.api;
+        wizardContext.telemetry.properties.defaultExperience = wizardContext.defaultExperience.api;
 
         showCreatingTreeItem(wizardContext.accountName);
         await wizard.execute();

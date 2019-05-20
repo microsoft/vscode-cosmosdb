@@ -41,8 +41,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     registerUIExtensionVariables(ext);
 
     await callWithTelemetryAndErrorHandling('cosmosDB.activate', (activateContext: IActionContext) => {
-        activateContext.properties.isActivationEvent = 'true';
-        activateContext.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
+        activateContext.telemetry.properties.isActivationEvent = 'true';
+        activateContext.telemetry.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
 
         const azureAccountNode: AzureAccountTreeItemWithAttached = new AzureAccountTreeItemWithAttached();
         context.subscriptions.push(azureAccountNode);
@@ -140,8 +140,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             'cosmosDB.onDidChangeConfiguration',
             vscode.workspace.onDidChangeConfiguration,
             async (actionContext: IActionContext, event: vscode.ConfigurationChangeEvent) => {
-                actionContext.properties.isActivationEvent = "true";
-                actionContext.suppressErrorDisplay = true;
+                actionContext.telemetry.properties.isActivationEvent = "true";
+                actionContext.errorHandling.suppressDisplay = true;
                 if (event.affectsConfiguration(ext.settingsKeys.documentLabelFields)) {
                     await vscode.commands.executeCommand("cosmosDB.refresh");
                 }

@@ -97,8 +97,8 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 		ext.outputChannel.appendLine(command.text);
 
 		try {
-			context.properties["command"] = command.name;
-			context.properties["argsCount"] = String(command.arguments ? command.arguments.length : 0);
+			context.telemetry.properties["command"] = command.name;
+			context.telemetry.properties["argsCount"] = String(command.arguments ? command.arguments.length : 0);
 		} catch (error) {
 			// Ignore
 		}

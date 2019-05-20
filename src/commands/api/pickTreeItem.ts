@@ -56,8 +56,8 @@ function getAccountContextValue(apiType: CosmosDBApiType) {
 
 export async function pickTreeItem(options: PickTreeItemOptions): Promise<DatabaseTreeItem | DatabaseAccountTreeItem | undefined> {
     return await callWithTelemetryAndErrorHandling('api.pickTreeItem', async (context: IActionContext) => {
-        context.suppressErrorDisplay = true;
-        context.rethrowError = true;
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.rethrow = true;
 
         let contextValuesToFind;
         switch (options.resourceType) {

@@ -129,8 +129,8 @@ export function registerMongoCommands(editorManager: CosmosEditorManager): void 
 async function loadPersistedMongoDB(languageClient: MongoDBLanguageClient, codeLensProvider: MongoCodeLensProvider): Promise<void> {
     // NOTE: We want to make sure this function never throws or returns a rejected promise because it gets awaited multiple times
     await callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', async (context: IActionContext) => {
-        context.suppressErrorDisplay = true;
-        context.properties.isActivationEvent = 'true';
+        context.errorHandling.suppressDisplay = true;
+        context.telemetry.properties.isActivationEvent = 'true';
 
         try {
             const persistedNodeId: string | undefined = ext.context.globalState.get(connectedDBKey);
@@ -177,7 +177,7 @@ function setUpErrorReporting() {
         vscode.workspace.onDidChangeTextDocument,
         async (context: IActionContext, event: vscode.TextDocumentChangeEvent) => {
             // Always suppress success telemetry - event happens on every keystroke
-            context.suppressTelemetry = true;
+            context.telemetry.suppressIfSuccessful = true;
 
             updateErrorsInScrapbook(context, event.document);
         });
@@ -189,7 +189,7 @@ function setUpErrorReporting() {
             if (isScrapbook(document)) {
                 diagnosticsCollection.set(document.uri, []);
             } else {
-                context.suppressTelemetry = true;
+                context.telemetry.suppressIfSuccessful = true;
             }
         });
 }
@@ -203,6 +203,6 @@ function updateErrorsInScrapbook(context: IActionContext, document: vscode.TextD
         let errors = getAllErrorsFromTextDocument(document);
         diagnosticsCollection.set(document.uri, errors);
     } else {
-        context.suppressTelemetry = true;
+        context.telemetry.suppressIfSuccessful = true;
     }
 }

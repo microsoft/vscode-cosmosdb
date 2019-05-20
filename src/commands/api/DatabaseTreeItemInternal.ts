@@ -27,8 +27,8 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
 
     public async reveal(): Promise<void> {
         await callWithTelemetryAndErrorHandling('api.db.reveal', async (context: IActionContext) => {
-            context.suppressErrorDisplay = true;
-            context.rethrowError = true;
+            context.errorHandling.suppressDisplay = true;
+            context.errorHandling.rethrow = true;
 
             const accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase = await this.getAccountNode();
             if (!this._dbNode) {

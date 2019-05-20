@@ -147,13 +147,13 @@ export class CosmosEditorManager {
     }
 
     public async onDidSaveTextDocument(context: IActionContext, doc: vscode.TextDocument): Promise<void> {
-        context.suppressTelemetry = true;
+        context.telemetry.suppressIfSuccessful = true;
         let filePath = Object.keys(this.fileMap).find((fp) => path.relative(doc.uri.fsPath, fp) === '');
         if (!filePath) {
             filePath = await this.loadPersistedEditor(doc.uri, context);
         }
         if (!this.ignoreSave && filePath) {
-            context.suppressTelemetry = false;
+            context.telemetry.suppressIfSuccessful = false;
             const editor: ICosmosEditor = this.fileMap[filePath];
             const showSaveWarning: boolean | undefined = vscode.workspace.getConfiguration().get(this.showSavePromptKey);
             if (showSaveWarning !== false) {

@@ -20,8 +20,8 @@ import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
 export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
     return await callWithTelemetryAndErrorHandling('api.findTreeItem', async (context: IActionContext) => {
-        context.suppressErrorDisplay = true;
-        context.rethrowError = true;
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.rethrow = true;
 
         const connectionString = query.connectionString;
         let parsedCS: ParsedConnectionString;

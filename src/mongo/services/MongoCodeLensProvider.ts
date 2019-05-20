@@ -23,7 +23,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 	public provideCodeLenses(document: vscode.TextDocument, _token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeLens[]> {
 		return callWithTelemetryAndErrorHandling("mongo.provideCodeLenses", (context: IActionContext) => {
 			// Suppress except for errors - this can fire on every keystroke
-			context.suppressTelemetry = true;
+			context.telemetry.suppressIfSuccessful = true;
 
 			let isInitialized = this._connectedDatabaseInitialized;
 			let isConnected = !!this._connectedDatabase;

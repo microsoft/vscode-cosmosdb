@@ -133,8 +133,8 @@ export class GraphViewServer extends EventEmitter {
 
     try {
       await callWithTelemetryAndErrorHandling("cosmosDB.gremlinQuery", async (context: IActionContext) => {
-        context.rethrowError = true;
-        context.suppressErrorDisplay = true;
+        context.errorHandling.rethrow = true;
+        context.errorHandling.suppressDisplay = true;
 
         this._pageState = {
           query: gremlinQuery,
@@ -145,14 +145,14 @@ export class GraphViewServer extends EventEmitter {
           view: this._pageState.view
         };
 
-        context.measurements.gremlinLength = gremlinQuery.length;
+        context.telemetry.measurements.gremlinLength = gremlinQuery.length;
         let stepMatches = gremlinQuery.match(/[.]/g);
-        context.measurements.approxGremlinSteps = stepMatches ? stepMatches.length : 0;
-        context.properties.isDefaultQuery = gremlinQuery === "g.V()" ? "true" : "false";
+        context.telemetry.measurements.approxGremlinSteps = stepMatches ? stepMatches.length : 0;
+        context.telemetry.properties.isDefaultQuery = gremlinQuery === "g.V()" ? "true" : "false";
 
         // Full query results - may contain vertices and/or edges and/or other things
         let fullResults = await this.executeQuery(queryId, gremlinQuery);
-        context.measurements.mainQueryDuration = (Date.now() - start) / 1000;
+        context.telemetry.measurements.mainQueryDuration = (Date.now() - start) / 1000;
         const edgesStart = Date.now();
 
         let vertices = this.getVertices(fullResults);
@@ -164,8 +164,8 @@ export class GraphViewServer extends EventEmitter {
           countUniqueEdges: 0, // Fill in later
           limitedEdges: []   // Fill in later
         };
-        context.measurements.countUniqueVertices = countUniqueVertices;
-        context.measurements.limitedVertices = limitedVertices.length;
+        context.telemetry.measurements.countUniqueVertices = countUniqueVertices;
+        context.telemetry.measurements.limitedVertices = limitedVertices.length;
         this._pageState.results = results;
 
         if (results.limitedVertices.length) {
@@ -176,9 +176,9 @@ export class GraphViewServer extends EventEmitter {
 
             results.countUniqueEdges = countUniqueEdges;
             results.limitedEdges = limitedEdges;
-            context.measurements.countUniqueEdges = countUniqueEdges;
-            context.measurements.limitedEdges = limitedEdges.length;
-            context.measurements.edgesQueryDuration = (Date.now() - edgesStart) / 1000;
+            context.telemetry.measurements.countUniqueEdges = countUniqueEdges;
+            context.telemetry.measurements.limitedEdges = limitedEdges.length;
+            context.telemetry.measurements.edgesQueryDuration = (Date.now() - edgesStart) / 1000;
           } catch (edgesError) {
             throw new EdgeQueryError(`Error querying for edges: ${edgesError.message || edgesError}`);
           }

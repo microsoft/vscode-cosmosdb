@@ -129,7 +129,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 	}
 
 	executeCommandInShell(command: MongoCommand, context: IActionContext): Thenable<string> {
-		context.properties["executeInShell"] = "true";
+		context.telemetry.properties["executeInShell"] = "true";
 		return this.getShell().then(shell => shell.exec(command.text));
 	}
 

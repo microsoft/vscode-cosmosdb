@@ -7,7 +7,7 @@ import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
 import { Db } from 'mongodb';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, parseError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, parseError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { resourcesPath } from '../../constants';
 import { ext } from '../../extensionVariables';
@@ -36,7 +36,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         this._root = Object.assign({}, parent.root, { isEmulator });
     }
 
-    // overrides ISubscriptionRoot with an object that also has Mongo info
+    // overrides ISubscriptionContext with an object that also has Mongo info
     public get root(): IMongoTreeRoot {
         return this._root;
     }
@@ -90,13 +90,13 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         }
     }
 
-    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<MongoDatabaseTreeItem> {
+    public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDatabaseTreeItem> {
         const databaseName = await ext.ui.showInputBox({
             placeHolder: "Database Name",
             prompt: "Enter the name of the database",
             validateInput: validateDatabaseName
         });
-        showCreatingTreeItem(databaseName);
+        context.showCreatingTreeItem(databaseName);
 
         const databaseTreeItem = new MongoDatabaseTreeItem(this, databaseName, this.connectionString);
         return databaseTreeItem;

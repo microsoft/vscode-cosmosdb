@@ -5,9 +5,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DocumentClient } from "documentdb";
-import { ISubscriptionRoot } from "vscode-azureextensionui";
+import { ISubscriptionContext } from "vscode-azureextensionui";
 
-export interface IDocDBTreeRoot extends ISubscriptionRoot {
+export interface IDocDBTreeRoot extends ISubscriptionContext {
     documentEndpoint: string;
     masterKey: string;
     isEmulator: boolean;

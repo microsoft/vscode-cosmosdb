@@ -21,16 +21,13 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 	}
 
 	public provideCodeLenses(document: vscode.TextDocument, _token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeLens[]> {
-		// tslint:disable-next-line:no-var-self
-		const me: MongoCodeLensProvider = this;
-
-		return callWithTelemetryAndErrorHandling("mongo.provideCodeLenses", function (this: IActionContext) {
+		return callWithTelemetryAndErrorHandling("mongo.provideCodeLenses", (context: IActionContext) => {
 			// Suppress except for errors - this can fire on every keystroke
-			this.suppressTelemetry = true;
+			context.telemetry.suppressIfSuccessful = true;
 
-			let isInitialized = me._connectedDatabaseInitialized;
-			let isConnected = !!me._connectedDatabase;
-			let database = isConnected && me._connectedDatabase;
+			let isInitialized = this._connectedDatabaseInitialized;
+			let isConnected = !!this._connectedDatabase;
+			let database = isConnected && this._connectedDatabase;
 			let lenses: vscode.CodeLens[] = [];
 
 			// Allow displaying and changing connected database

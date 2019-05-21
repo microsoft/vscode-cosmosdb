@@ -23,8 +23,8 @@ import * as vscodeUtils from './utils/vscodeUtils';
 export interface ICosmosEditor<T = {}> {
     label: string;
     id: string;
-    getData(): Promise<T>;
-    update(data: T): Promise<T>;
+    getData(context: IActionContext): Promise<T>;
+    update(data: T, context: IActionContext): Promise<T>;
     convertFromString(data: string): T;
     convertToString(data: T): string;
 }
@@ -48,7 +48,7 @@ export class CosmosEditorManager {
         this._globalState = globalState;
     }
 
-    public async showDocument(editor: ICosmosEditor, fileName: string, options?: ShowEditorDocumentOptions): Promise<void> {
+    public async showDocument(context: IActionContext, editor: ICosmosEditor, fileName: string, options?: ShowEditorDocumentOptions): Promise<void> {
         let column: vscode.ViewColumn = vscode.ViewColumn.Active;
         let preserveFocus: boolean = false;
         if (options && options.showInNextColumn) {
@@ -75,23 +75,23 @@ export class CosmosEditorManager {
         Object.keys(this.fileMap).forEach((key) => fileMapLabels[key] = (this.fileMap[key]).id);
         this._globalState.update(this._persistedEditorsKey, fileMapLabels);
 
-        const data = await editor.getData();
+        const data = await editor.getData(context);
         const textEditor = await vscode.window.showTextDocument(document, column, preserveFocus);
         await this.updateEditor(data, textEditor, editor);
     }
 
-    public async updateMatchingNode(documentUri: vscode.Uri): Promise<void> {
+    public async updateMatchingNode(context: IActionContext, documentUri: vscode.Uri): Promise<void> {
         let filePath: string = Object.keys(this.fileMap).find((fp) => path.relative(documentUri.fsPath, fp) === '');
         if (!filePath) {
-            filePath = await this.loadPersistedEditor(documentUri);
+            filePath = await this.loadPersistedEditor(documentUri, context);
         }
         const document = await vscode.workspace.openTextDocument(documentUri.fsPath);
-        await this.updateToCloud(this.fileMap[filePath], document);
+        await this.updateToCloud(this.fileMap[filePath], document, context);
     }
 
-    private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument): Promise<void> {
+    private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument, context: IActionContext): Promise<void> {
         const newContent = editor.convertFromString(doc.getText());
-        const updatedContent: {} = await editor.update(newContent);
+        const updatedContent: {} = await editor.update(newContent, context);
         const timestamp = (new Date()).toLocaleTimeString();
         ext.outputChannel.appendLine(`${timestamp}: Updated entity "${editor.label}"`);
         ext.outputChannel.show();
@@ -115,13 +115,13 @@ export class CosmosEditorManager {
         }
     }
 
-    private async loadPersistedEditor(documentUri: vscode.Uri): Promise<string> {
+    private async loadPersistedEditor(documentUri: vscode.Uri, context: IActionContext): Promise<string> {
         const persistedEditors = this._globalState.get(this._persistedEditorsKey);
         //Based on the documentUri, split just the appropriate key's value on '/'
         if (persistedEditors) {
             const editorFilePath = Object.keys(persistedEditors).find((label) => path.relative(documentUri.fsPath, label) === '');
             if (editorFilePath) {
-                const editorNode: AzureTreeItem | undefined = await ext.tree.findTreeItem(persistedEditors[editorFilePath]);
+                const editorNode: AzureTreeItem | undefined = await ext.tree.findTreeItem(persistedEditors[editorFilePath], context);
                 let editor: ICosmosEditor;
                 if (editorNode) {
                     if (editorNode instanceof MongoCollectionTreeItem) {
@@ -147,13 +147,13 @@ export class CosmosEditorManager {
     }
 
     public async onDidSaveTextDocument(context: IActionContext, doc: vscode.TextDocument): Promise<void> {
-        context.suppressTelemetry = true;
+        context.telemetry.suppressIfSuccessful = true;
         let filePath = Object.keys(this.fileMap).find((fp) => path.relative(doc.uri.fsPath, fp) === '');
         if (!filePath) {
-            filePath = await this.loadPersistedEditor(doc.uri);
+            filePath = await this.loadPersistedEditor(doc.uri, context);
         }
         if (!this.ignoreSave && filePath) {
-            context.suppressTelemetry = false;
+            context.telemetry.suppressIfSuccessful = false;
             const editor: ICosmosEditor = this.fileMap[filePath];
             const showSaveWarning: boolean | undefined = vscode.workspace.getConfiguration().get(this.showSavePromptKey);
             if (showSaveWarning !== false) {
@@ -167,8 +167,7 @@ export class CosmosEditorManager {
                 }
             }
 
-            await this.updateToCloud(editor, doc);
+            await this.updateToCloud(editor, doc, context);
         }
     }
-
 }

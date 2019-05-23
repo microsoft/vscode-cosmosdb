@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem } from 'vscode-azureextensionui';
+import { AzExtTreeItem, callWithTelemetryAndErrorHandling, IActionContext } from 'vscode-azureextensionui';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
@@ -19,54 +19,59 @@ import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemIntern
 import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
 export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
-    const connectionString = query.connectionString;
-    let parsedCS: ParsedConnectionString;
-    if (/^mongodb[^:]*:\/\//i.test(connectionString)) {
-        parsedCS = await parseMongoConnectionString(connectionString);
-    } else {
-        parsedCS = parseDocDBConnectionString(connectionString);
-    }
+    return await callWithTelemetryAndErrorHandling('api.findTreeItem', async (context: IActionContext) => {
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.rethrow = true;
 
-    const maxTime = Date.now() + 10 * 1000; // Give up searching subscriptions after 10 seconds and just attach the account
+        const connectionString = query.connectionString;
+        let parsedCS: ParsedConnectionString;
+        if (/^mongodb[^:]*:\/\//i.test(connectionString)) {
+            parsedCS = await parseMongoConnectionString(connectionString);
+        } else {
+            parsedCS = parseDocDBConnectionString(connectionString);
+        }
 
-    // 1. Get result from cache if possible
-    let result: DatabaseAccountTreeItem | DatabaseTreeItem | undefined = tryGetTreeItemFromCache(parsedCS);
+        const maxTime = Date.now() + 10 * 1000; // Give up searching subscriptions after 10 seconds and just attach the account
 
-    // 2. Search attached accounts (do this before subscriptions because it's faster)
-    if (!result) {
-        const attachedDbAccounts = await ext.attachedAccountsNode.getCachedChildren();
-        result = await searchDbAccounts(attachedDbAccounts, parsedCS, maxTime);
-    }
+        // 1. Get result from cache if possible
+        let result: DatabaseAccountTreeItem | DatabaseTreeItem | undefined = tryGetTreeItemFromCache(parsedCS);
 
-    // 3. Search subscriptions
-    if (!result) {
-        const rootNodes = await ext.tree.getChildren();
-        for (const rootNode of rootNodes) {
-            if (Date.now() > maxTime) {
-                break;
-            }
+        // 2. Search attached accounts (do this before subscriptions because it's faster)
+        if (!result) {
+            const attachedDbAccounts = await ext.attachedAccountsNode.getCachedChildren(context);
+            result = await searchDbAccounts(attachedDbAccounts, parsedCS, context, maxTime);
+        }
 
-            if (rootNode instanceof SubscriptionTreeItem) {
-                const dbAccounts = await rootNode.getCachedChildren();
-                result = await searchDbAccounts(dbAccounts, parsedCS, maxTime);
-                if (result) {
+        // 3. Search subscriptions
+        if (!result) {
+            const rootNodes = await ext.tree.getChildren();
+            for (const rootNode of rootNodes) {
+                if (Date.now() > maxTime) {
                     break;
+                }
+
+                if (rootNode instanceof SubscriptionTreeItem) {
+                    const dbAccounts = await rootNode.getCachedChildren(context);
+                    result = await searchDbAccounts(dbAccounts, parsedCS, context, maxTime);
+                    if (result) {
+                        break;
+                    }
                 }
             }
         }
-    }
 
-    // 4. If all else fails, just attach a new node
-    if (!result) {
-        result = new DatabaseTreeItemInternal(parsedCS);
-    }
+        // 4. If all else fails, just attach a new node
+        if (!result) {
+            result = new DatabaseTreeItemInternal(parsedCS);
+        }
 
-    cacheTreeItem(parsedCS, result);
+        cacheTreeItem(parsedCS, result);
 
-    return result;
+        return result;
+    });
 }
 
-async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedConnectionString, maxTime: number): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
+async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedConnectionString, context: IActionContext, maxTime: number): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
     for (const dbAccount of dbAccounts) {
         if (Date.now() > maxTime) {
             return undefined;
@@ -83,7 +88,7 @@ async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedCon
 
         if (expected.accountId === actual.accountId) {
             if (expected.databaseName) {
-                const dbs = await dbAccount.getCachedChildren();
+                const dbs = await dbAccount.getCachedChildren(context);
                 for (const db of dbs) {
                     if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) && expected.databaseName === db.databaseName) {
                         return new DatabaseTreeItemInternal(expected, dbAccount, db);

@@ -6,7 +6,7 @@
 import { DocumentClient, FeedOptions, NewDocument, QueryIterator, RetrievedDocument } from 'documentdb';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { UserCancelledError } from 'vscode-azureextensionui';
+import { ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { resourcesPath } from '../../constants';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
@@ -52,7 +52,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
         return new DocDBDocumentTreeItem(this, document);
     }
 
-    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<DocDBDocumentTreeItem> {
+    public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBDocumentTreeItem> {
         let docID = await vscode.window.showInputBox({
             prompt: "Enter a document ID or leave blank for a generated ID",
             ignoreFocusOut: true
@@ -62,7 +62,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
             docID = docID.trim();
             let body = { 'id': docID };
             body = <NewDocument>(await this.promptForPartitionKey(body));
-            showCreatingTreeItem(docID);
+            context.showCreatingTreeItem(docID);
             const document = await this.createDocument(body);
 
             return this.initChild(document);

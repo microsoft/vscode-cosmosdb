@@ -132,35 +132,31 @@ export class GraphViewServer extends EventEmitter {
     const start = Date.now();
 
     try {
-      // tslint:disable-next-line:no-var-self
-      const thisServer: GraphViewServer = this;
-      await callWithTelemetryAndErrorHandling("cosmosDB.gremlinQuery", async function (this: IActionContext): Promise<void> {
-        // tslint:disable-next-line:no-var-self
-        const actionContext: IActionContext = this;
-        actionContext.rethrowError = true;
-        actionContext.suppressErrorDisplay = true;
+      await callWithTelemetryAndErrorHandling("cosmosDB.gremlinQuery", async (context: IActionContext) => {
+        context.errorHandling.rethrow = true;
+        context.errorHandling.suppressDisplay = true;
 
-        thisServer._pageState = {
+        this._pageState = {
           query: gremlinQuery,
           results: undefined,
           errorMessage: undefined,
           isQueryRunning: true,
           runningQueryId: queryId,
-          view: thisServer._pageState.view
+          view: this._pageState.view
         };
 
-        actionContext.measurements.gremlinLength = gremlinQuery.length;
+        context.telemetry.measurements.gremlinLength = gremlinQuery.length;
         let stepMatches = gremlinQuery.match(/[.]/g);
-        actionContext.measurements.approxGremlinSteps = stepMatches ? stepMatches.length : 0;
-        actionContext.properties.isDefaultQuery = gremlinQuery === "g.V()" ? "true" : "false";
+        context.telemetry.measurements.approxGremlinSteps = stepMatches ? stepMatches.length : 0;
+        context.telemetry.properties.isDefaultQuery = gremlinQuery === "g.V()" ? "true" : "false";
 
         // Full query results - may contain vertices and/or edges and/or other things
-        let fullResults = await thisServer.executeQuery(queryId, gremlinQuery);
-        actionContext.measurements.mainQueryDuration = (Date.now() - start) / 1000;
+        let fullResults = await this.executeQuery(queryId, gremlinQuery);
+        context.telemetry.measurements.mainQueryDuration = (Date.now() - start) / 1000;
         const edgesStart = Date.now();
 
-        let vertices = thisServer.getVertices(fullResults);
-        let { limitedVertices, countUniqueVertices } = thisServer.limitVertices(vertices);
+        let vertices = this.getVertices(fullResults);
+        let { limitedVertices, countUniqueVertices } = this.limitVertices(vertices);
         results = {
           fullResults,
           countUniqueVertices: countUniqueVertices,
@@ -168,21 +164,21 @@ export class GraphViewServer extends EventEmitter {
           countUniqueEdges: 0, // Fill in later
           limitedEdges: []   // Fill in later
         };
-        actionContext.measurements.countUniqueVertices = countUniqueVertices;
-        actionContext.measurements.limitedVertices = limitedVertices.length;
-        thisServer._pageState.results = results;
+        context.telemetry.measurements.countUniqueVertices = countUniqueVertices;
+        context.telemetry.measurements.limitedVertices = limitedVertices.length;
+        this._pageState.results = results;
 
         if (results.limitedVertices.length) {
           try {
             // If it returned any vertices, we need to also query for edges
-            let edges = await thisServer.queryEdges(queryId, results.limitedVertices);
-            let { countUniqueEdges, limitedEdges } = thisServer.limitEdges(limitedVertices, edges);
+            let edges = await this.queryEdges(queryId, results.limitedVertices);
+            let { countUniqueEdges, limitedEdges } = this.limitEdges(limitedVertices, edges);
 
             results.countUniqueEdges = countUniqueEdges;
             results.limitedEdges = limitedEdges;
-            actionContext.measurements.countUniqueEdges = countUniqueEdges;
-            actionContext.measurements.limitedEdges = limitedEdges.length;
-            actionContext.measurements.edgesQueryDuration = (Date.now() - edgesStart) / 1000;
+            context.telemetry.measurements.countUniqueEdges = countUniqueEdges;
+            context.telemetry.measurements.limitedEdges = limitedEdges.length;
+            context.telemetry.measurements.edgesQueryDuration = (Date.now() - edgesStart) / 1000;
           } catch (edgesError) {
             throw new EdgeQueryError(`Error querying for edges: ${edgesError.message || edgesError}`);
           }

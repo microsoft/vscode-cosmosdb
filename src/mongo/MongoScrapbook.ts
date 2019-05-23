@@ -41,24 +41,24 @@ export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vsc
 	return errors;
 }
 
-export async function executeAllCommandsFromActiveEditor(database: MongoDatabaseTreeItem, extensionPath, editorManager: CosmosEditorManager, context: IActionContext): Promise<void> {
+export async function executeAllCommandsFromActiveEditor(database: MongoDatabaseTreeItem, editorManager: CosmosEditorManager, context: IActionContext): Promise<void> {
 	ext.outputChannel.appendLine("Running all commands in scrapbook...");
 	let commands = getAllCommandsFromActiveEditor();
-	await executeCommands(vscode.window.activeTextEditor, database, extensionPath, editorManager, context, commands);
+	await executeCommands(vscode.window.activeTextEditor, database, editorManager, context, commands);
 }
 
-export async function executeCommandFromActiveEditor(database: MongoDatabaseTreeItem, extensionPath, editorManager: CosmosEditorManager, context: IActionContext): Promise<void> {
+export async function executeCommandFromActiveEditor(database: MongoDatabaseTreeItem, editorManager: CosmosEditorManager, context: IActionContext): Promise<void> {
 	const commands = getAllCommandsFromActiveEditor();
 	const activeEditor = vscode.window.activeTextEditor;
 	const selection = activeEditor.selection;
 	const command = findCommandAtPosition(commands, selection.start);
-	return await executeCommand(activeEditor, database, extensionPath, editorManager, context, command);
+	return await executeCommand(activeEditor, database, editorManager, context, command);
 }
 
-export async function executeCommandFromText(database: MongoDatabaseTreeItem, extensionPath, editorManager: CosmosEditorManager, context: IActionContext, commandText: string): Promise<void> {
+export async function executeCommandFromText(database: MongoDatabaseTreeItem, editorManager: CosmosEditorManager, context: IActionContext, commandText: string): Promise<void> {
 	const activeEditor = vscode.window.activeTextEditor;
 	const command = getCommandFromTextAtLocation(commandText, new vscode.Position(0, 0));
-	return await executeCommand(activeEditor, database, extensionPath, editorManager, context, command);
+	return await executeCommand(activeEditor, database, editorManager, context, command);
 }
 
 function getAllCommandsFromActiveEditor(): MongoCommand[] {
@@ -76,10 +76,10 @@ export function getAllCommandsFromTextDocument(document: vscode.TextDocument): M
 	return getAllCommandsFromText(document.getText());
 }
 
-async function executeCommands(activeEditor: vscode.TextEditor, database: MongoDatabaseTreeItem, extensionPath, editorManager: CosmosEditorManager, context: IActionContext, commands: MongoCommand[]): Promise<void> {
+async function executeCommands(activeEditor: vscode.TextEditor, database: MongoDatabaseTreeItem, editorManager: CosmosEditorManager, context: IActionContext, commands: MongoCommand[]): Promise<void> {
 	for (let command of commands) {
 		try {
-			await executeCommand(activeEditor, database, extensionPath, editorManager, context, command);
+			await executeCommand(activeEditor, database, editorManager, context, command);
 		} catch (e) {
 			const err = parseError(e);
 			if (err.isUserCancelledError) {
@@ -92,13 +92,13 @@ async function executeCommands(activeEditor: vscode.TextEditor, database: MongoD
 	}
 }
 
-async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDatabaseTreeItem, extensionPath, editorManager: CosmosEditorManager, context: IActionContext, command: MongoCommand): Promise<void> {
+async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDatabaseTreeItem, editorManager: CosmosEditorManager, context: IActionContext, command: MongoCommand): Promise<void> {
 	if (command) {
 		ext.outputChannel.appendLine(command.text);
 
 		try {
-			context.properties["command"] = command.name;
-			context.properties["argsCount"] = String(command.arguments ? command.arguments.length : 0);
+			context.telemetry.properties["command"] = command.name;
+			context.telemetry.properties["argsCount"] = String(command.arguments ? command.arguments.length : 0);
 		} catch (error) {
 			// Ignore
 		}
@@ -113,17 +113,17 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 		}
 
 		if (command.name === 'find') {
-			await editorManager.showDocument(new MongoFindResultEditor(database, command), 'cosmos-result.json', { showInNextColumn: true });
+			await editorManager.showDocument(context, new MongoFindResultEditor(database, command), 'cosmos-result.json', { showInNextColumn: true });
 		} else {
 			const result = await database.executeCommand(command, context);
 			if (command.name === 'findOne') {
 				if (result === "null") {
 					throw new Error(`Could not find any documents`);
 				}
-				await editorManager.showDocument(new MongoFindOneResultEditor(database, command.collection, result), 'cosmos-result.json', { showInNextColumn: true });
+				await editorManager.showDocument(context, new MongoFindOneResultEditor(database, command.collection, result), 'cosmos-result.json', { showInNextColumn: true });
 			} else {
-				await vscodeUtil.showNewFile(result, extensionPath, 'result', '.json', activeEditor.viewColumn + 1);
-				await refreshTreeAfterCommand(database, command);
+				await vscodeUtil.showNewFile(result, 'result', '.json', activeEditor.viewColumn + 1);
+				await refreshTreeAfterCommand(database, command, context);
 			}
 		}
 	} else {
@@ -131,12 +131,12 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 	}
 }
 
-async function refreshTreeAfterCommand(database: MongoDatabaseTreeItem, command: MongoCommand) {
+async function refreshTreeAfterCommand(database: MongoDatabaseTreeItem, command: MongoCommand, context: IActionContext) {
 	if (command.name === 'drop') {
 		database.refresh();
 	}
 	else if (command.collection && /^(insert|update|delete|replace|remove|write|bulkWrite)/i.test(command.name)) {
-		const collectionNode = await ext.tree.findTreeItem(database.fullId + "/" + command.collection);
+		const collectionNode = await ext.tree.findTreeItem(database.fullId + "/" + command.collection, context);
 		if (collectionNode) {
 			collectionNode.refresh();
 		}

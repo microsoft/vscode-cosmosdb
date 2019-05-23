@@ -7,7 +7,7 @@ import { Environment } from '@azure/ms-rest-azure-env/lib/azureEnvironment';
 import { ServiceClientCredentials } from "@azure/ms-rest-js";
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionRoot, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, resourcesPath } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
@@ -46,7 +46,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     private _attachedAccounts: AzureTreeItem[] | undefined;
     private _keytar: KeyTar;
 
-    private _root: ISubscriptionRoot;
+    private _root: ISubscriptionContext;
     private _loadPersistedAccountsTask: Promise<AzureTreeItem[]>;
 
     constructor(parent: AzExtParentTreeItem) {
@@ -56,7 +56,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         this._loadPersistedAccountsTask = this.loadPersistedAccounts();
     }
 
-    public get root(): ISubscriptionRoot {
+    public get root(): ISubscriptionContext {
         return this._root;
     }
 
@@ -346,7 +346,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 }
 
-class AttachedAccountRoot implements ISubscriptionRoot {
+class AttachedAccountRoot implements ISubscriptionContext {
     private _error: Error = new Error('Cannot retrieve Azure subscription information for an attached account.');
 
     public get credentials(): ServiceClientCredentials {

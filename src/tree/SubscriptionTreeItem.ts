@@ -6,7 +6,7 @@
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from '@azure/arm-cosmosdb/esm/models';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureTreeItem, AzureWizard, createAzureClient, IActionContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureTreeItem, AzureWizard, createAzureClient, ICreateChildImplContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { getExperienceLabel, tryGetExperience } from '../experiences';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
@@ -37,9 +37,9 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         );
     }
 
-    public async createChildImpl(showCreatingTreeItem: (label: string) => void, actionContext?: IActionContext): Promise<AzureTreeItem> {
+    public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem> {
         const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
-        const wizardContext: ICosmosDBWizardContext = Object.assign({}, this.root);
+        const wizardContext: ICosmosDBWizardContext = Object.assign(context, this.root);
 
         const wizard = new AzureWizard(wizardContext, {
             promptSteps: [
@@ -54,15 +54,12 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             title: 'Create new Cosmos DB account'
         });
 
-        // https://github.com/Microsoft/vscode-azuretools/issues/120
-        actionContext = actionContext || <IActionContext>{ properties: {}, measurements: {} };
+        await wizard.prompt();
 
-        await wizard.prompt(actionContext);
+        wizardContext.telemetry.properties.defaultExperience = wizardContext.defaultExperience.api;
 
-        actionContext.properties.defaultExperience = wizardContext.defaultExperience.api;
-
-        showCreatingTreeItem(wizardContext.accountName);
-        await wizard.execute(actionContext);
+        context.showCreatingTreeItem(wizardContext.accountName);
+        await wizard.execute();
         // don't wait
         vscode.window.showInformationMessage(`Successfully created account "${wizardContext.accountName}".`);
         return await this.initChild(client, wizardContext.databaseAccount);

@@ -7,7 +7,7 @@ import { DatabaseAccount } from '@azure/arm-cosmosdb/esm/models';
 import { DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, AzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { resourcesPath } from '../../constants';
 import { rejectOnTimeout } from '../../utils/timeout';
@@ -38,7 +38,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         });
     }
 
-    // overrides ISubscriptionRoot with an object that also has DocDB info
+    // overrides ISubscriptionContext with an object that also has DocDB info
     public get root(): IDocDBTreeRoot {
         return this._root;
     }
@@ -58,7 +58,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         return await client.readDatabases(feedOptions);
     }
 
-    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<AzureTreeItem<IDocDBTreeRoot>> {
+    public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
         const databaseName = await vscode.window.showInputBox({
             placeHolder: 'Database Name',
             validateInput: DocDBAccountTreeItemBase.validateDatabaseName,
@@ -66,7 +66,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         });
 
         if (databaseName) {
-            showCreatingTreeItem(databaseName);
+            context.showCreatingTreeItem(databaseName);
             const client = this.root.getDocumentClient();
             const database: DatabaseMeta = await new Promise<DatabaseMeta>((resolve, reject) => {
                 client.createDatabase({ id: databaseName }, (err, db: DatabaseMeta) => {

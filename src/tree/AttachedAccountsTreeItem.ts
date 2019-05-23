@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ServiceClientCredentials } from 'ms-rest';
-import { AzureEnvironment } from 'ms-rest-azure';
+import { Environment } from '@azure/ms-rest-azure-env/lib/azureEnvironment';
+import { ServiceClientCredentials } from "@azure/ms-rest-js";
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionRoot, UserCancelledError } from 'vscode-azureextensionui';
@@ -373,7 +373,7 @@ class AttachedAccountRoot implements ISubscriptionRoot {
         throw this._error;
     }
 
-    public get environment(): AzureEnvironment {
+    public get environment(): Environment {
         throw this._error;
     }
 }

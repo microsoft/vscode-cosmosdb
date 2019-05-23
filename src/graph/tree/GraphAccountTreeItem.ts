@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
+import { DatabaseAccount } from '@azure/arm-cosmosdb/esm/models';
 import { DatabaseMeta } from 'documentdb';
 import { AzureParentTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';

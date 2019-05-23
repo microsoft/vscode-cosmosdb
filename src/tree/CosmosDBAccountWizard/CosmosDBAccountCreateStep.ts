@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
-import { Capability } from 'azure-arm-cosmosdb/lib/models';
+import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { Capability } from '@azure/arm-cosmosdb/esm/models';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, createAzureClient } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';

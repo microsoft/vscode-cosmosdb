@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
+import { DatabaseAccount } from '@azure/arm-cosmosdb/esm/models';
 import { Db } from 'mongodb';
 import * as path from 'path';
 import * as vscode from 'vscode';

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
+import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import * as vscode from 'vscode';
 import { AzureTreeItem, createAzureClient, DialogResponses } from 'vscode-azureextensionui';
 import { UserCancelledError } from 'vscode-azureextensionui';

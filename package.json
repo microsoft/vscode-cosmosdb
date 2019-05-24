@@ -310,6 +310,15 @@
 				"title": "Copy Connection String"
 			},
 			{
+				"category": "Cosmos DB",
+				"command": "cosmosDB.update",
+				"title": "Update to Cloud",
+				"icon": {
+					"light": "/resources/icons/theme-agnostic/UpdateOutline.svg",
+					"dark": "/resources/icons/theme-agnostic/UpdateOutline.svg"
+				}
+			},
+			{
 				"category": "SQL (DocumentDB)",
 				"command": "cosmosDB.loadMore",
 				"title": "Load More"
@@ -688,6 +697,10 @@
 				},
 				{
 					"command": "cosmosDB.loadMore",
+					"when": "never"
+				},
+				{
+					"command": "cosmosDB.update",
 					"when": "never"
 				},
 				{

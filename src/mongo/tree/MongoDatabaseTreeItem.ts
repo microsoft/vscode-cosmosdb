@@ -114,6 +114,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 		if (command.name === 'createCollection') {
 			return withProgress(this.createCollection(stripQuotes(command.arguments.join(','))).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
 		} else {
+			command.sendToShell = true;
 			return withProgress(this.executeCommandInShell(command, context), 'Executing command');
 		}
 	}

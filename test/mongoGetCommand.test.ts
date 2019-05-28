@@ -20,7 +20,7 @@ function expectSingleCommand(text: string): MongoCommand {
 
 function testParse(
     text: string,
-    expectedCommand: { collection: string | undefined, name: string | undefined, args: any[], firstErrorText?: string }
+    expectedCommand: { collection: string | undefined, name: string | undefined, args: any[], firstErrorText?: string, sendToShell?: boolean }
 ) {
     function testCore(text) {
         let command = expectSingleCommand(text);
@@ -936,15 +936,17 @@ suite("scrapbook parsing Tests", () => {
         testParse(`db.getCollection('my-collection').find({});`, {
             collection: undefined,
             name: "find",
-            args: ["my-collection", {}]
+            args: ["my-collection", {}],
+            sendToShell: true
         });
     });
 
     test("Chained command where final function call is recognized as findOne. Ensure execution is sent to shell (the command has not collection name) - test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/981", () => {
-        testParse(`db.getCollection('my-collection').find({});`, {
+        testParse(`db.getCollection('my-collection').findOne({});`, {
             collection: undefined,
-            name: "find",
-            args: ["my-collection", {}]
+            name: "findOne",
+            args: ["my-collection", {}],
+            sendToShell: true
         });
     });
 

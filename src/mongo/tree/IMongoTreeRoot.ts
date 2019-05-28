@@ -4,8 +4,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ISubscriptionRoot } from "vscode-azureextensionui";
+import { ISubscriptionContext } from "vscode-azureextensionui";
 
-export interface IMongoTreeRoot extends ISubscriptionRoot {
+export interface IMongoTreeRoot extends ISubscriptionContext {
     isEmulator: boolean;
 }

@@ -7,7 +7,7 @@ import { Collection, CollectionMeta, DatabaseMeta, DocumentClient, FeedOptions, 
 import { DocumentBase } from 'documentdb/lib';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureTreeItem, DialogResponses, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { resourcesPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
@@ -77,7 +77,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     // Create a DB collection
-    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<AzureTreeItem<IDocDBTreeRoot>> {
+    public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
         const collectionName = await ext.ui.showInputBox({
             placeHolder: `Enter an id for your ${this.childTypeLabel}`,
             ignoreFocusOut: true,
@@ -114,7 +114,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
 
         const options = { offerThroughput: throughput };
 
-        showCreatingTreeItem(collectionName);
+        context.showCreatingTreeItem(collectionName);
         const client = this.root.getDocumentClient();
         const collection: CollectionMeta = await new Promise<CollectionMeta>((resolve, reject) => {
             client.createCollection(this.link, collectionDef, options, (err, result) => {

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureTreeItem } from 'vscode-azureextensionui';
+import { AzureTreeItem, callWithTelemetryAndErrorHandling, IActionContext } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
@@ -26,12 +26,17 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
     }
 
     public async reveal(): Promise<void> {
-        const accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase = await this.getAccountNode();
-        if (!this._dbNode) {
-            const databaseId = `${accountNode.fullId}/${this.databaseName}`;
-            this._dbNode = await ext.tree.findTreeItem(databaseId);
-        }
+        await callWithTelemetryAndErrorHandling('api.db.reveal', async (context: IActionContext) => {
+            context.errorHandling.suppressDisplay = true;
+            context.errorHandling.rethrow = true;
 
-        ext.treeView.reveal(this._dbNode || accountNode);
+            const accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase = await this.getAccountNode();
+            if (!this._dbNode) {
+                const databaseId = `${accountNode.fullId}/${this.databaseName}`;
+                this._dbNode = await ext.tree.findTreeItem(databaseId, context);
+            }
+
+            ext.treeView.reveal(this._dbNode || accountNode);
+        });
     }
 }

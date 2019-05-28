@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, AzureAccountTreeItemBase, ISubscriptionRoot } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureAccountTreeItemBase, IActionContext, ISubscriptionContext } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
 import { AttachedAccountsTreeItem } from './AttachedAccountsTreeItem';
 import { SubscriptionTreeItem } from './SubscriptionTreeItem';
@@ -14,12 +14,12 @@ export class AzureAccountTreeItemWithAttached extends AzureAccountTreeItemBase {
         ext.attachedAccountsNode = new AttachedAccountsTreeItem(this);
     }
 
-    public createSubscriptionTreeItem(root: ISubscriptionRoot): SubscriptionTreeItem {
+    public createSubscriptionTreeItem(root: ISubscriptionContext): SubscriptionTreeItem {
         return new SubscriptionTreeItem(this, root);
     }
 
-    public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
-        const children: AzExtTreeItem[] = await super.loadMoreChildrenImpl(clearCache);
+    public async loadMoreChildrenImpl(clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
+        const children: AzExtTreeItem[] = await super.loadMoreChildrenImpl(clearCache, context);
         return children.concat(ext.attachedAccountsNode);
     }
 

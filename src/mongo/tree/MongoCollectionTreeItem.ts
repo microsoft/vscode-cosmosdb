@@ -8,7 +8,7 @@ import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Curso
 import * as path from 'path';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureParentTreeItem, DialogResponses, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { defaultBatchSize, resourcesPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
@@ -104,8 +104,8 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 		return docTreeItems;
 	}
 
-	public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<MongoDocumentTreeItem> {
-		showCreatingTreeItem("");
+	public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDocumentTreeItem> {
+		context.showCreatingTreeItem("");
 		const result: InsertOneWriteOpResult = await this.collection.insertOne({});
 		const newDocument: IMongoDocument = await this.collection.findOne({ _id: result.insertedId });
 		return new MongoDocumentTreeItem(this, newDocument);

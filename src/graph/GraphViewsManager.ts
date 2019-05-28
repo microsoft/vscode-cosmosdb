@@ -8,6 +8,7 @@ import * as path from "path";
 import * as vscode from 'vscode';
 import { parseError } from 'vscode-azureextensionui';
 import { resourcesPath } from '../constants';
+import { ext } from '../extensionVariables';
 import { areConfigsEqual, GraphConfiguration } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
 
@@ -22,10 +23,6 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
   private readonly _servers = new Map<number, GraphViewServer>(); // map of id -> server
   private readonly _panels = new Map<number, vscode.WebviewPanel>(); // map of id -> webview panel
   private readonly _panelViewType: string = "CosmosDB.GraphExplorer";
-
-  constructor(private _context: vscode.ExtensionContext) {
-
-  }
 
   public async showGraphViewer(
     tabTitle: string,
@@ -48,10 +45,10 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
       enableCommandUris: true,
       enableFindWidget: true,
       retainContextWhenHidden: true,
-      localResourceRoots: [vscode.Uri.file(this._context.extensionPath)]
+      localResourceRoots: [vscode.Uri.file(ext.context.extensionPath)]
     };
     const panel = vscode.window.createWebviewPanel(this._panelViewType, tabTitle, { viewColumn: column, preserveFocus: true }, options);
-    let contentProvider = new WebviewContentProvider(this, this._context);
+    let contentProvider = new WebviewContentProvider(this);
     panel.webview.html = await contentProvider.provideHtmlContent(id);
     this._panels.set(id, panel);
     panel.onDidDispose(
@@ -97,7 +94,7 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
 class WebviewContentProvider {
   public onDidChange?: vscode.Event<vscode.Uri>;
 
-  public constructor(private _serverProvider: IServerProvider, private _context: vscode.ExtensionContext) { }
+  public constructor(private _serverProvider: IServerProvider) { }
 
   public async provideHtmlContent(serverId: number): Promise<string> {
     console.assert(serverId > 0);
@@ -115,7 +112,7 @@ class WebviewContentProvider {
     const portPlaceholder: RegExp = /\$CLIENTPORT/g;
     htmlContents = htmlContents.replace(portPlaceholder, String(port));
     const uriPlaceholder: RegExp = /\$BASEURI/g;
-    let uri = vscode.Uri.parse(path.join("file:" + this._context.extensionPath));
+    let uri = vscode.Uri.parse(path.join("file:" + ext.context.extensionPath));
     const baseUri = `vscode-resource:${uri.fsPath}`;
     htmlContents = htmlContents.replace(uriPlaceholder, baseUri);
 

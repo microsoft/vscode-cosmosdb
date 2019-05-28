@@ -6,12 +6,12 @@
 import { NewDocument } from 'documentdb';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
-import { parseError } from 'vscode-azureextensionui';
+import { IActionContext, parseError } from 'vscode-azureextensionui';
 import { DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
 import { MongoCollectionTreeItem } from '../mongo/tree/MongoCollectionTreeItem';
 
-export async function importDocuments(uris: vscode.Uri[] | undefined, collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | undefined): Promise<void> {
+export async function importDocuments(actionContext: IActionContext, uris: vscode.Uri[] | undefined, collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | undefined): Promise<void> {
     if (!uris) {
         uris = await askForDocuments();
     }
@@ -30,7 +30,7 @@ export async function importDocuments(uris: vscode.Uri[] | undefined, collection
         ext.outputChannel.show();
     }
     if (!collectionNode) {
-        collectionNode = <MongoCollectionTreeItem | DocDBCollectionTreeItem>await ext.tree.showTreeItemPicker([MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue]);
+        collectionNode = <MongoCollectionTreeItem | DocDBCollectionTreeItem>await ext.tree.showTreeItemPicker([MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue], actionContext);
     }
     let result: string;
     result = await vscode.window.withProgress(

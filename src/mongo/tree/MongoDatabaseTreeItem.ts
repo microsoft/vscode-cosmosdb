@@ -8,7 +8,7 @@ import { Collection, Db } from 'mongodb';
 import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzureParentTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzureParentTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { resourcesPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
@@ -68,7 +68,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 		return collections.map(collection => new MongoCollectionTreeItem(this, collection));
 	}
 
-	public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<MongoCollectionTreeItem> {
+	public async createChildImpl(context: ICreateChildImplContext): Promise<MongoCollectionTreeItem> {
 		const collectionName = await ext.ui.showInputBox({
 			placeHolder: "Collection Name",
 			prompt: "Enter the name of the collection",
@@ -76,7 +76,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 			ignoreFocusOut: true
 		});
 
-		showCreatingTreeItem(collectionName);
+		context.showCreatingTreeItem(collectionName);
 		return await this.createCollection(collectionName);
 	}
 
@@ -129,7 +129,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 	}
 
 	executeCommandInShell(command: MongoCommand, context: IActionContext): Thenable<string> {
-		context.properties["executeInShell"] = "true";
+		context.telemetry.properties["executeInShell"] = "true";
 		return this.getShell().then(shell => shell.exec(command.text));
 	}
 

@@ -19,6 +19,7 @@ export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
     constructor(databaseNode: MongoDatabaseTreeItem, collectionName: string, data: string) {
         this._databaseNode = databaseNode;
         this._collectionName = collectionName;
+        // Intentionally checking against string of "null", which can be returned by mongo shell when no documents are found matching the query
         if (data === "null") {
             throw new Error(`Could not find any documents`);
         }

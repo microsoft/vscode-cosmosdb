@@ -19,7 +19,9 @@ mongoCommands: commands EOF;
 
 commands: ( command | emptyCommand | comment)*;
 
-command: DB (DOT collection)? (DOT functionCall)+ SEMICOLON?;
+command: ((DB (DOT collection)?) | 'rs' | 'sh' | 'BULK') (
+		DOT functionCall
+	)+ SEMICOLON?;
 
 emptyCommand: SEMICOLON;
 

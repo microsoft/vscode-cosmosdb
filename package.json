@@ -700,6 +700,10 @@
 					"when": "never"
 				},
 				{
+					"command": "cosmosDB.update",
+					"when": "never"
+				},
+				{
 					"command": "cosmosDB.executeAllMongoCommands",
 					"when": "editorLangId == 'mongo'"
 				},

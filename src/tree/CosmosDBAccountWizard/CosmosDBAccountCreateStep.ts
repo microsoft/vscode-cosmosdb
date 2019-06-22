@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { Capability } from '@azure/arm-cosmosdb/esm/models';
+import { CosmosDBManagementClient, CosmosDBManagementModels as CosmosModels } from '@azure/arm-cosmosdb';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, createAzureClient } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
@@ -27,7 +26,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             capabilities: []
         };
         if (wizardContext.defaultExperience.capability) {
-            options.capabilities.push(<Capability>{ name: wizardContext.defaultExperience.capability });
+            options.capabilities.push(<CosmosModels.Capability>{ name: wizardContext.defaultExperience.capability });
         }
         wizardContext.databaseAccount = await client.databaseAccounts.createOrUpdate(wizardContext.resourceGroup.name, wizardContext.accountName, options);
 

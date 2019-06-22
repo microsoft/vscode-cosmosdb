@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccount } from '@azure/arm-cosmosdb/esm/models';
+import { CosmosDBManagementModels as CosmosModels } from '@azure/arm-cosmosdb';
 import { IResourceGroupWizardContext } from 'vscode-azureextensionui';
 import { Experience } from '../../experiences';
 
@@ -18,7 +18,7 @@ export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
      * The newly created Cosmos DB account
      * This will be defined after `CosmosDBAccountStep.execute` occurs.
      */
-    databaseAccount?: DatabaseAccount;
+    databaseAccount?: CosmosModels.DatabaseAccount;
 
     /**
      * The defaultExperience to use

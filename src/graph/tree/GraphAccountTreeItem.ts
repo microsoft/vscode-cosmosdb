@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccount } from '@azure/arm-cosmosdb/esm/models';
+import { CosmosDBManagementModels as CosmosModels } from '@azure/arm-cosmosdb';
 import { DatabaseMeta } from 'documentdb';
 import { AzureParentTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
@@ -18,7 +18,7 @@ export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBGraphAccount";
     public contextValue: string = GraphAccountTreeItem.contextValue;
 
-    constructor(parent: AzureParentTreeItem, id: string, label: string, documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, isEmulator: boolean, readonly databaseAccount?: DatabaseAccount) {
+    constructor(parent: AzureParentTreeItem, id: string, label: string, documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, isEmulator: boolean, readonly databaseAccount?: CosmosModels.DatabaseAccount) {
         super(parent, id, label, documentEndpoint, masterKey, isEmulator, databaseAccount);
     }
 

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccount } from '@azure/arm-cosmosdb/esm/models';
+import { CosmosDBManagementModels as CosmosModels } from '@azure/arm-cosmosdb';
 import { IAzureQuickPickItem } from 'vscode-azureextensionui';
 
 export enum API {
@@ -28,7 +28,7 @@ export function getExperienceFromApi(api: API): Experience {
     return info;
 }
 
-export function getExperienceLabel(account: DatabaseAccount): string {
+export function getExperienceLabel(account: CosmosModels.DatabaseAccount): string {
     const experience: Experience | undefined = tryGetExperience(account);
     if (experience) {
         return experience.shortName;
@@ -41,7 +41,7 @@ export function getExperienceLabel(account: DatabaseAccount): string {
     return defaultExperience || firstCapabilityName || account.kind;
 }
 
-export function tryGetExperience(account: DatabaseAccount): Experience | undefined {
+export function tryGetExperience(account: CosmosModels.DatabaseAccount): Experience | undefined {
     // defaultExperience in the account doesn't really mean anything, we can't depend on its value for determining account type
     if (account.kind === DBAccountKind.MongoDB) {
         return MongoExperience;

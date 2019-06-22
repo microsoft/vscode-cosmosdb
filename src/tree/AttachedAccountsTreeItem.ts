@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Environment } from '@azure/ms-rest-azure-env/lib/azureEnvironment';
+import { Environment } from '@azure/ms-rest-azure-env';
 import { ServiceClientCredentials } from "@azure/ms-rest-js";
 import * as path from 'path';
 import * as vscode from 'vscode';

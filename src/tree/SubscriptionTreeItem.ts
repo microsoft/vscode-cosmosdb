@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from '@azure/arm-cosmosdb/esm/models';
+import { CosmosDBManagementClient, CosmosDBManagementModels as CosmosModels } from '@azure/arm-cosmosdb';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, createAzureClient, ICreateChildImplContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
@@ -28,12 +27,12 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
         const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
-        const accounts: DatabaseAccountsListResult = await client.databaseAccounts.list();
+        const accounts: CosmosModels.DatabaseAccountsListResult = await client.databaseAccounts.list();
         return await this.createTreeItemsWithErrorHandling(
             accounts,
             'invalidCosmosDBAccount',
-            async (db: DatabaseAccount) => await this.initChild(client, db),
-            (db: DatabaseAccount) => db.name
+            async (db: CosmosModels.DatabaseAccount) => await this.initChild(client, db),
+            (db: CosmosModels.DatabaseAccount) => db.name
         );
     }
 
@@ -65,7 +64,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         return await this.initChild(client, wizardContext.databaseAccount);
     }
 
-    private async initChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<AzureTreeItem> {
+    private async initChild(client: CosmosDBManagementClient, databaseAccount: CosmosModels.DatabaseAccount): Promise<AzureTreeItem> {
         const experience = tryGetExperience(databaseAccount);
         const resourceGroup: string = azureUtils.getResourceGroupFromId(databaseAccount.id);
         const accountKindLabel = getExperienceLabel(databaseAccount);
@@ -77,7 +76,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             // Use the default connection string
             return new MongoAccountTreeItem(this, databaseAccount.id, label, result.connectionStrings[0].connectionString, isEmulator, databaseAccount);
         } else {
-            const keyResult: DatabaseAccountListKeysResult = await client.databaseAccounts.listKeys(resourceGroup, databaseAccount.name);
+            const keyResult: CosmosModels.DatabaseAccountListKeysResult = await client.databaseAccounts.listKeys(resourceGroup, databaseAccount.name);
             switch (experience && experience.api) {
                 case "Table":
                     return new TableAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator, databaseAccount);

@@ -932,7 +932,7 @@ suite("scrapbook parsing Tests", () => {
         });
     });
 
-    test("Chained command where final function call is recognized. Ensure execution is sent to shell (the command has not collection name) - test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/981", () => {
+    test("Chained command where final function call is recognized as 'find'. Tests collection names containing hyphen. Verify usage of getCollection results in no collection name being parsed - test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/981", () => {
         testParse(`db.getCollection('my-collection').find({});`, {
             collection: undefined,
             name: "find",
@@ -941,7 +941,7 @@ suite("scrapbook parsing Tests", () => {
         });
     });
 
-    test("Chained command where final function call is recognized as findOne. Ensure execution is sent to shell (the command has not collection name) - test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/981", () => {
+    test("Chained command where final function call is recognized as 'findOne'. Tests collection names containing hyphen. Verify usage of getCollection results in no collection name being parsed - test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/981", () => {
         testParse(`db.getCollection('my-collection').findOne({});`, {
             collection: undefined,
             name: "findOne",

@@ -97,26 +97,23 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 	}
 
 	async executeCommand(command: MongoCommand, context: IActionContext): Promise<string> {
-		if (command.collection && !command.sendToShell) {
-			let db = await this.getDb();
-			const collection = db.collection(command.collection);
-			if (collection) {
-				const collectionTreeItem = new MongoCollectionTreeItem(this, collection, command.arguments);
-				const result = await collectionTreeItem.executeCommand(command.name, command.arguments);
-				if (result) {
-					return result;
+		if (!command.sendToShell) {
+			if (command.collection) {
+				let db = await this.getDb();
+				const collection = db.collection(command.collection);
+				if (collection) {
+					const collectionTreeItem = new MongoCollectionTreeItem(this, collection, command.arguments);
+					const result = await collectionTreeItem.executeCommand(command.name, command.arguments);
+					if (result) {
+						return result;
+					}
 				}
+			} else if (command.name === 'createCollection') {
+				return withProgress(this.createCollection(stripQuotes(command.arguments.join(','))).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
 			}
-			return withProgress(this.executeCommandInShell(command, context), 'Executing command');
-
 		}
 
-		if (command.name === 'createCollection') {
-			return withProgress(this.createCollection(stripQuotes(command.arguments.join(','))).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
-		} else {
-			command.sendToShell = true;
-			return withProgress(this.executeCommandInShell(command, context), 'Executing command');
-		}
+		return withProgress(this.executeCommandInShell(command, context), 'Executing command');
 	}
 
 	async createCollection(collectionName: string): Promise<MongoCollectionTreeItem> {

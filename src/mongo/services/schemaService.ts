@@ -104,9 +104,13 @@ export class SchemaService {
 		});
 	}
 
+
+	private getMongoDocumentType(document: any) {
+		return Array.isArray(document) ? 'array' : (document === null ? 'null' : typeof document);
+	}
+
 	private setSchemaForDocument(parent: string, document: any, schema: JSONSchema): void {
-		const type = Array.isArray(document) ? 'array' : typeof document;
-		if (type === 'object') {
+		if (this.getMongoDocumentType(document) === 'object') {
 			for (const property of Object.keys(document)) {
 				if (!parent &&
 					['_id'].indexOf(property) !== -1) {
@@ -120,7 +124,7 @@ export class SchemaService {
 	private setSchemaForDocumentProperty(parent: string, property: string, document: any, schema: JSONSchema): void {
 		const scopedProperty = parent ? `${parent}.${property}` : property;
 		const value = document[property];
-		const type = Array.isArray(value) ? 'array' : typeof value;
+		const type = this.getMongoDocumentType(value);
 
 		const propertySchema: JSONSchema = {
 			type: [type, 'object']

@@ -5,11 +5,10 @@
 
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
 import { DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
-import { resourcesPath } from '../../constants';
+import { getThemedIconPath } from '../../constants';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { getDocumentClient } from '../getDocumentClient';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -48,10 +47,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return {
-            light: path.join(resourcesPath, 'icons', 'light', 'CosmosDBAccount.svg'),
-            dark: path.join(resourcesPath, 'icons', 'dark', 'CosmosDBAccount.svg')
-        };
+        return getThemedIconPath('CosmosDBAccount.svg');
     }
 
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<DatabaseMeta>> {

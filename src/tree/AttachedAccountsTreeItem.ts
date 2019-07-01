@@ -5,11 +5,10 @@
 
 import { ServiceClientCredentials } from 'ms-rest';
 import { AzureEnvironment } from 'ms-rest-azure';
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
-import { emulatorPassword, resourcesPath } from '../constants';
+import { emulatorPassword, getThemedIconPath } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
@@ -74,10 +73,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return {
-            light: path.join(resourcesPath, 'icons', 'light', 'ConnectPlugged.svg'),
-            dark: path.join(resourcesPath, 'icons', 'dark', 'ConnectPlugged.svg')
-        };
+        return getThemedIconPath('ConnectPlugged.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {

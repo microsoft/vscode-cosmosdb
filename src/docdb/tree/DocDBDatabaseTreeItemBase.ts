@@ -5,10 +5,9 @@
 
 import { Collection, CollectionMeta, DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { AzureTreeItem, DialogResponses, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
-import { resourcesPath } from '../../constants';
+import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -32,10 +31,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return {
-            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Database.svg'),
-            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Database.svg')
-        };
+        return getThemeAgnosticIconPath('Database.svg');
     }
 
     public get id(): string {

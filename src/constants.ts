@@ -3,9 +3,37 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as assert from 'assert';
+import * as fs from 'fs';
 import * as path from 'path';
+import { ext } from './extensionVariables';
 
-export const resourcesPath = path.join(__dirname, '..', 'resources'); // (relative to dist folder)
+export interface IThemedIconPath {
+    light: string;
+    dark: string;
+}
+
+export function getThemedIconPath(iconName: string): IThemedIconPath {
+    let a = {
+        light: path.join(getResourcesPath(), 'icons', 'light', iconName),
+        dark: path.join(getResourcesPath(), 'icons', 'dark', iconName)
+    };
+    assert(fs.existsSync(a.light));
+    return a;
+}
+
+export function getThemeAgnosticIconPath(iconName: string): IThemedIconPath {
+    let a = {
+        light: path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName),
+        dark: path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName)
+    };
+    assert(fs.existsSync(a.light));
+    return a;
+}
+
+export function getResourcesPath(): string {
+    return ext.context.asAbsolutePath('resources');
+}
 
 export const defaultBatchSize: number = 50;
 

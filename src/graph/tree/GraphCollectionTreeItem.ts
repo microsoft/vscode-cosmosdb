@@ -4,10 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CollectionMeta } from 'documentdb';
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
-import { resourcesPath } from '../../constants';
+import { getThemeAgnosticIconPath } from '../../constants';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from '../../docdb/tree/DocDBStoredProcedureTreeItem';
 import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
@@ -44,10 +43,7 @@ export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return {
-            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Collection.svg'),
-            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Collection.svg')
-        };
+        return getThemeAgnosticIconPath('Collection.svg');
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem<IDocDBTreeRoot>[]> {

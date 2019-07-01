@@ -4,10 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DocumentClient, FeedOptions, ProcedureMeta, QueryIterator } from 'documentdb';
-import * as path from 'path';
 import * as vscode from "vscode";
 import { ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
-import { defaultStoredProcedure, resourcesPath } from '../../constants';
+import { defaultStoredProcedure, getThemeAgnosticIconPath } from '../../constants';
 import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
@@ -31,10 +30,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return {
-            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'stored procedures.svg'),
-            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'stored procedures.svg')
-        };
+        return getThemeAgnosticIconPath('stored procedures.svg');
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBStoredProcedureTreeItem> {

@@ -18,7 +18,7 @@
 			],
 			"preLaunchTask": "npm: compile",
 			"env": {
-				"AZCODE_DOCKER_IGNORE_BUNDLE": "1",
+				"AZCODE_COSMOSDB_IGNORE_BUNDLE": "1",
 				"DEBUGTELEMETRY": "1",
 				"NODE_DEBUG": ""
 			}
@@ -50,7 +50,7 @@
 			"runtimeExecutable": "${execPath}",
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
-				"--extensionTestsPath=${workspaceFolder}/dist/test"
+				"--extensionTestsPath=${workspaceFolder}/out/test"
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
@@ -62,7 +62,7 @@
 			"env": {
 				"MOCHA_grep": "", // RegExp of tests to run (empty for all)
 				"MOCHA_enableTimeouts": "0", // Disable time-outs
-				"AZCODE_DOCKER_IGNORE_BUNDLE": "1",
+				"AZCODE_COSMOSDB_IGNORE_BUNDLE": "1",
 				"DEBUGTELEMETRY": "1",
 				"NODE_DEBUG": ""
 			}
@@ -80,7 +80,7 @@
 			"sourceMaps": true,
 			// outFiles is used for locating generated JavaScript files, see https://code.visualstudio.com/docs/nodejs/nodejs-debugging#_source-maps
 			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
+				"${workspaceFolder}/dist/**/*.js"
 			],
 			"preLaunchTask": "npm: webpack",
 			"env": {

@@ -16,7 +16,7 @@ export class MongoDBLanguageClient {
 
 	constructor() {
 		// The server is implemented in node
-		const ignoreBundle = !/^(false|0)?$/i.test(process.env.AZCODE_DOCKER_IGNORE_BUNDLE || '');
+		const ignoreBundle = !/^(false|0)?$/i.test(process.env.AZCODE_COSMOSDB_IGNORE_BUNDLE || '');
 		let serverModule = ignoreBundle ?
 			ext.context.asAbsolutePath(path.join('out', 'src', 'mongo', 'languageServer.js')) :
 			ext.context.asAbsolutePath(path.join('dist', 'mongo-languageServer.bundle.js'));

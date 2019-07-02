@@ -39,7 +39,6 @@
 			],
 			"preLaunchTask": "npm: webpack",
 			"env": {
-				"AZCODE_DOCKER_IGNORE_BUNDLE": "1",
 				"DEBUGTELEMETRY": "1",
 				"NODE_DEBUG": ""
 			}
@@ -59,10 +58,11 @@
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js"
 			],
-			"preLaunchTask": "npm: webpack",
+			"preLaunchTask": "npm: compile",
 			"env": {
 				"MOCHA_grep": "", // RegExp of tests to run (empty for all)
 				"MOCHA_enableTimeouts": "0", // Disable time-outs
+				"AZCODE_DOCKER_IGNORE_BUNDLE": "1",
 				"DEBUGTELEMETRY": "1",
 				"NODE_DEBUG": ""
 			}
@@ -87,8 +87,7 @@
 				"MOCHA_grep": "ongo shell", // RegExp of tests to run (empty for all)
 				"MOCHA_enableTimeouts": "0", // Disable time-outs
 				"DEBUGTELEMETRY": "1",
-				"NODE_DEBUG": "",
-				"AZCODE_COSMOS_IGNORE_BUNDLE": "1"
+				"NODE_DEBUG": ""
 			}
 		},
 		{

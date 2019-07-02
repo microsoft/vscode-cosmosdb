@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ExtensionContext, OutputChannel, TreeView } from "vscode";
-import { AzureTreeDataProvider, AzureTreeItem, IAzureUserInput, ISubscriptionRoot, ITelemetryReporter } from "vscode-azureextensionui";
+import { AzExtTreeDataProvider, AzExtTreeItem, IAzureUserInput, ITelemetryReporter } from "vscode-azureextensionui";
 import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 import { AttachedAccountsTreeItem } from "./tree/AttachedAccountsTreeItem";
 
@@ -17,12 +17,13 @@ export namespace ext {
     export let context: ExtensionContext;
     export let outputChannel: OutputChannel;
     export let reporter: ITelemetryReporter;
-    export let tree: AzureTreeDataProvider;
-    export let treeView: TreeView<AzureTreeItem<ISubscriptionRoot>>;
+    export let tree: AzExtTreeDataProvider;
+    export let treeView: TreeView<AzExtTreeItem>;
     export let attachedAccountsNode: AttachedAccountsTreeItem;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';
+        export const mongoShellArgs = 'mongo.shell.args';
         export const documentLabelFields = 'cosmosDB.documentLabelFields';
         export const mongoShellTimeout = 'mongo.shell.timeout';
 

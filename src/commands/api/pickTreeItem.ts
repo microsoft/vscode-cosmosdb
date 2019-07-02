@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { callWithTelemetryAndErrorHandling, IActionContext } from 'vscode-azureextensionui';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItem } from '../../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
@@ -54,43 +55,48 @@ function getAccountContextValue(apiType: CosmosDBApiType) {
 }
 
 export async function pickTreeItem(options: PickTreeItemOptions): Promise<DatabaseTreeItem | DatabaseAccountTreeItem | undefined> {
-    let contextValuesToFind;
-    switch (options.resourceType) {
-        case 'Database':
-            contextValuesToFind = options.apiType ? options.apiType.map(getDatabaseContextValue) : databaseContextValues;
-            break;
-        case 'DatabaseAccount':
-            contextValuesToFind = options.apiType ? options.apiType.map(getAccountContextValue) : accountContextValues;
-            contextValuesToFind = contextValuesToFind.concat(contextValuesToFind.map((val: string) => val + AttachedAccountSuffix));
-            break;
-        default:
-            throw new RangeError(`Unsupported resource type "${options.resourceType}".`);
-    }
+    return await callWithTelemetryAndErrorHandling('api.pickTreeItem', async (context: IActionContext) => {
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.rethrow = true;
 
-    const pickedItem = await ext.tree.showTreeItemPicker(contextValuesToFind);
+        let contextValuesToFind;
+        switch (options.resourceType) {
+            case 'Database':
+                contextValuesToFind = options.apiType ? options.apiType.map(getDatabaseContextValue) : databaseContextValues;
+                break;
+            case 'DatabaseAccount':
+                contextValuesToFind = options.apiType ? options.apiType.map(getAccountContextValue) : accountContextValues;
+                contextValuesToFind = contextValuesToFind.concat(contextValuesToFind.map((val: string) => val + AttachedAccountSuffix));
+                break;
+            default:
+                throw new RangeError(`Unsupported resource type "${options.resourceType}".`);
+        }
 
-    let parsedCS: ParsedConnectionString;
-    let accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase;
-    let databaseNode: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase | undefined;
-    if (pickedItem instanceof MongoAccountTreeItem) {
-        parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
-        accountNode = pickedItem;
-    } else if (pickedItem instanceof DocDBAccountTreeItemBase) {
-        parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
-        accountNode = pickedItem;
-    } else if (pickedItem instanceof MongoDatabaseTreeItem) {
-        parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
-        accountNode = pickedItem.parent;
-        databaseNode = pickedItem;
-    } else if (pickedItem instanceof DocDBDatabaseTreeItemBase) {
-        parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
-        accountNode = pickedItem.parent;
-        databaseNode = pickedItem;
-    }
+        const pickedItem = await ext.tree.showTreeItemPicker(contextValuesToFind, context);
 
-    const result = databaseNode ?
-        new DatabaseTreeItemInternal(parsedCS, accountNode, databaseNode) :
-        new DatabaseAccountTreeItemInternal(parsedCS, accountNode);
-    cacheTreeItem(parsedCS, result);
-    return result;
+        let parsedCS: ParsedConnectionString;
+        let accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase;
+        let databaseNode: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase | undefined;
+        if (pickedItem instanceof MongoAccountTreeItem) {
+            parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
+            accountNode = pickedItem;
+        } else if (pickedItem instanceof DocDBAccountTreeItemBase) {
+            parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
+            accountNode = pickedItem;
+        } else if (pickedItem instanceof MongoDatabaseTreeItem) {
+            parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
+            accountNode = pickedItem.parent;
+            databaseNode = pickedItem;
+        } else if (pickedItem instanceof DocDBDatabaseTreeItemBase) {
+            parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
+            accountNode = pickedItem.parent;
+            databaseNode = pickedItem;
+        }
+
+        const result = databaseNode ?
+            new DatabaseTreeItemInternal(parsedCS, accountNode, databaseNode) :
+            new DatabaseAccountTreeItemInternal(parsedCS, accountNode);
+        cacheTreeItem(parsedCS, result);
+        return result;
+    });
 }

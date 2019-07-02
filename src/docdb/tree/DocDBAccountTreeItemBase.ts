@@ -5,11 +5,10 @@
 
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
 import { DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
-import * as path from 'path';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, AzureTreeItem, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
-import { resourcesPath } from '../../constants';
+import { getThemedIconPath } from '../../constants';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { getDocumentClient } from '../getDocumentClient';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -38,7 +37,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         });
     }
 
-    // overrides ISubscriptionRoot with an object that also has DocDB info
+    // overrides ISubscriptionContext with an object that also has DocDB info
     public get root(): IDocDBTreeRoot {
         return this._root;
     }
@@ -48,17 +47,14 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return {
-            light: path.join(resourcesPath, 'icons', 'light', 'CosmosDBAccount.svg'),
-            dark: path.join(resourcesPath, 'icons', 'dark', 'CosmosDBAccount.svg')
-        };
+        return getThemedIconPath('CosmosDBAccount.svg');
     }
 
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<DatabaseMeta>> {
         return await client.readDatabases(feedOptions);
     }
 
-    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<AzureTreeItem<IDocDBTreeRoot>> {
+    public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
         const databaseName = await vscode.window.showInputBox({
             placeHolder: 'Database Name',
             validateInput: DocDBAccountTreeItemBase.validateDatabaseName,
@@ -66,7 +62,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         });
 
         if (databaseName) {
-            showCreatingTreeItem(databaseName);
+            context.showCreatingTreeItem(databaseName);
             const client = this.root.getDocumentClient();
             const database: DatabaseMeta = await new Promise<DatabaseMeta>((resolve, reject) => {
                 client.createDatabase({ id: databaseName }, (err, db: DatabaseMeta) => {

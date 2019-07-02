@@ -5,10 +5,9 @@
 
 import { Collection, CollectionMeta, DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
 import { DocumentBase } from 'documentdb/lib';
-import * as path from 'path';
 import * as vscode from 'vscode';
-import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
-import { resourcesPath } from '../../constants';
+import { AzureTreeItem, DialogResponses, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
+import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -32,10 +31,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return {
-            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Database.svg'),
-            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Database.svg')
-        };
+        return getThemeAgnosticIconPath('Database.svg');
     }
 
     public get id(): string {
@@ -77,7 +73,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     // Create a DB collection
-    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<AzureTreeItem<IDocDBTreeRoot>> {
+    public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
         const collectionName = await ext.ui.showInputBox({
             placeHolder: `Enter an id for your ${this.childTypeLabel}`,
             ignoreFocusOut: true,
@@ -114,7 +110,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
 
         const options = { offerThroughput: throughput };
 
-        showCreatingTreeItem(collectionName);
+        context.showCreatingTreeItem(collectionName);
         const client = this.root.getDocumentClient();
         const collection: CollectionMeta = await new Promise<CollectionMeta>((resolve, reject) => {
             client.createCollection(this.link, collectionDef, options, (err, result) => {

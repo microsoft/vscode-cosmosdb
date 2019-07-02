@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DocumentClient, FeedOptions, QueryError, QueryIterator } from 'documentdb';
-import { AzureParentTreeItem, AzureTreeItem } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, AzureTreeItem } from 'vscode-azureextensionui';
 import { defaultBatchSize } from '../../constants';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
@@ -29,7 +29,7 @@ export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTre
 
     public abstract getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<T>>;
 
-    public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzureTreeItem<IDocDBTreeRoot>[]> {
+    public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (clearCache || this._iterator === undefined) {
             this._hasMoreChildren = true;
             const client = this.root.getDocumentClient();

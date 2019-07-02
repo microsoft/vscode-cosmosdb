@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { IActionContext } from "vscode-azureextensionui";
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { ext } from "../../extensionVariables";
 import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
@@ -30,15 +31,15 @@ export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
         return this._originalDocument;
     }
 
-    public async update(newDocument: IMongoDocument): Promise<IMongoDocument> {
-        const node = <MongoDocumentTreeItem | undefined>await ext.tree.findTreeItem(this.id);
+    public async update(newDocument: IMongoDocument, context: IActionContext): Promise<IMongoDocument> {
+        const node = <MongoDocumentTreeItem | undefined>await ext.tree.findTreeItem(this.id, context);
         let result: IMongoDocument;
         if (node) {
             result = await node.update(newDocument);
             node.refresh();
         } else {
             // If the node isn't cached already, just update it to Mongo directly (without worrying about updating the tree)
-            const db = await this._databaseNode.getDb();
+            const db = await this._databaseNode.connectToDb();
             result = await MongoDocumentTreeItem.update(db.collection(this._collectionName), newDocument);
         }
         return result;

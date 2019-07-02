@@ -7,7 +7,7 @@ import { RetrievedDocument } from 'documentdb';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { AzureTreeItem } from 'vscode-azureextensionui';
+import { AzExtTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../extensionVariables';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
@@ -27,9 +27,9 @@ export function toDisposable(dispose: () => void): IDisposable {
     return { dispose };
 }
 
-export async function showNewFile(data: string, extensionPath: string, fileName: string, fileExtension: string, column?: vscode.ViewColumn): Promise<void> {
+export async function showNewFile(data: string, fileName: string, fileExtension: string, column?: vscode.ViewColumn): Promise<void> {
     let uri: vscode.Uri;
-    const folderPath: string = vscode.workspace.rootPath || extensionPath;
+    const folderPath: string = vscode.workspace.rootPath || ext.context.extensionPath;
     const fullFileName: string | undefined = await getUniqueFileName(folderPath, fileName, fileExtension);
     uri = vscode.Uri.file(path.join(folderPath, fullFileName)).with({ scheme: 'untitled' });
     const textDocument = await vscode.workspace.openTextDocument(uri);
@@ -68,7 +68,7 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
     throw new Error('Could not find unique name for new file.');
 }
 
-export function getNodeEditorLabel(node: AzureTreeItem): string {
+export function getNodeEditorLabel(node: AzExtTreeItem): string {
     let labels = [node.label];
     while (node.parent) {
         node = node.parent;
@@ -80,7 +80,7 @@ export function getNodeEditorLabel(node: AzureTreeItem): string {
     return labels.join('/');
 }
 
-function isAccountTreeItem(treeItem: AzureTreeItem): boolean {
+function isAccountTreeItem(treeItem: AzExtTreeItem): boolean {
     return (treeItem instanceof MongoAccountTreeItem) || (treeItem instanceof DocDBAccountTreeItemBase);
 }
 

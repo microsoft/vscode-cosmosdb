@@ -5,120 +5,201 @@
 import * as cp from 'child_process';
 import * as os from 'os';
 import * as vscode from "vscode";
-import { EventEmitter, window } from 'vscode';
+import { EventEmitter } from 'vscode';
+import { parseError } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
-import { IDisposable, toDisposable } from '../utils/vscodeUtils';
+import { splitArguments } from '../utils/splitArguments';
+
+type CommandResult = {
+	result?: string;
+	errorMessage?: string;
+};
+
+// This is used at the end of each command we send to the console. When we get this string back,
+// we know we've reached the end of that command's result.
+const endOfDataSentinelBase: string = '$EOD$';
+
+const mongoShowMoreMessage: string = 'Type "it" for more';
+const prematureExitMessage: string = `The Mongo console exited prematurely. Check the output window for possible additional data, and check your mongo.shell.path and mongo.shell.args settings.`;
 
 export class Shell {
+	private _executionId: number = 0;
+	private _stdoutData: string = "";
+	private _stderrData: string = "";
+	private _exited: boolean;
 
-	private executionId: number = 0;
-	private disposables: IDisposable[] = [];
+	private _onResult: EventEmitter<CommandResult> = new EventEmitter<CommandResult>();
 
-	private onResult: EventEmitter<{ exitCode, result, stderr, code?: string, message?: string }> = new EventEmitter<{ exitCode, result, stderr, code?: string, message?: string }>();
-
-	public static create(execPath: string, connectionString: string, isEmulator: boolean): Promise<Shell> {
-		return new Promise((c, e) => {
+	public static create(execPath: string, execArgs: string, connectionString: string, isEmulator: boolean): Promise<Shell> {
+		return new Promise((resolve, reject) => {
+			let args: string[] = [];
 			try {
-				let args = ['--quiet', connectionString];
+				args = splitArguments(execArgs);
+				args = args.concat(['--quiet', connectionString]);
 				if (isEmulator) {
 					// Without this the connection will fail due to the self-signed DocDB certificate
 					args.push("--ssl");
 					args.push("--sslAllowInvalidCertificates");
 				}
 				const shellProcess = cp.spawn(execPath, args);
-				return c(new Shell(execPath, shellProcess));
+				return resolve(new Shell(execPath, args, shellProcess));
 			} catch (error) {
-				e(`Error while creating mongo shell with path '${execPath}': ${error}`);
+				reject(`Error while creating mongo shell with path '${execPath}' and arguments ${JSON.stringify(args)}: ${error}`);
 			}
 		});
 	}
 
-	constructor(private execPath: string, private mongoShell: cp.ChildProcess) {
-		this.initialize();
-	}
+	constructor(private _execPath: string, private _execArgs: string[], private _mongoShell: cp.ChildProcess) {
+		this._mongoShell.on('error', (error: unknown) => {
+			this.fireError(error);
+		});
+		this._mongoShell.on('exit', (exitCode: number, signal: string) => {
+			this._exited = true;
 
-	private initialize() {
-		const once = (ee: NodeJS.EventEmitter, name: string, fn: Function) => {
-			ee.once(name, fn);
-			this.disposables.push(toDisposable(() => ee.removeListener(name, fn)));
-		};
+			// One of exitCode/signal will always be non-null
+			let message = signal ? `Mongo shell exited with signal '${signal}.'` : `Mongo shell exited with code ${exitCode}.`;
+			this.fireError(message);
+		});
 
-		const on = (ee: NodeJS.EventEmitter, name: string, fn: Function) => {
-			ee.on(name, fn);
-			this.disposables.push(toDisposable(() => ee.removeListener(name, fn)));
-		};
-
-		once(this.mongoShell, 'error', result => this.onResult.fire(result));
-		once(this.mongoShell, 'exit', result => this.onResult.fire(result));
-
-		let buffers: string[] = [];
-		on(this.mongoShell.stdout, 'data', b => {
-			let data: string = b.toString();
-			const delimitter = `${this.executionId}${os.EOL}`;
-			if (data.endsWith(delimitter)) {
-				const result = buffers.join('') + data.substring(0, data.length - delimitter.length);
-				buffers = [];
-				this.onResult.fire({
-					exitCode: void 0,
-					result,
-					stderr: void 0
-				});
+		// Monitor STDOUT
+		this._mongoShell.stdout.on('data', (chunk: Buffer) => {
+			let data: string = chunk.toString();
+			this._stdoutData += data;
+			const endOfDataSentinel = `${endOfDataSentinelBase}${this._executionId}${os.EOL}`;
+			if (this._stdoutData.endsWith(endOfDataSentinel)) {
+				const result: string = this._stdoutData.substring(0, this._stdoutData.length - endOfDataSentinel.length);
+				this.fireResult(result);
 			} else {
-				buffers.push(b);
+				this._stdoutData += data;
 			}
 		});
 
-		on(this.mongoShell.stderr, 'data', result => this.onResult.fire(result));
-		once(this.mongoShell.stderr, 'close', result => this.onResult.fire(result));
+		// Monitor STDERR
+		this._mongoShell.stderr.on('data', (buffer: Buffer) => {
+			this._stderrData += buffer.toString();
+		});
+		this._mongoShell.stderr.on('end', () => {
+			if (this._stderrData) {
+				this.fireError(this._stderrData);
+			}
+		});
 	}
 
-	async useDatabase(database: string): Promise<string> {
-		return this.exec(`use ${database}`);
+	private fireResult(result: string): void {
+		this._onResult.fire(<CommandResult>{ result });
 	}
 
-	async exec(script: string): Promise<string> {
-		script = this.convertToSingleLine(script);
-		const executionId = this._generateExecutionSequenceId();
+	private fireError(error: string | unknown): void {
+		let message: string = typeof error === 'string' ? error : parseError(error).message;
+		if (typeof error === "object" && error["code"] === 'ERR_STREAM_DESTROYED') {
+			message = prematureExitMessage;
+		}
+		this._onResult.fire(<CommandResult>{ errorMessage: message });
+	}
 
-		try {
-			this.mongoShell.stdin.write(script, 'utf8');
-			this.mongoShell.stdin.write(os.EOL);
-			this.mongoShell.stdin.write(executionId, 'utf8');
-			this.mongoShell.stdin.write(os.EOL);
-		} catch (error) {
-			window.showErrorMessage(error.toString());
+	public async useDatabase(database: string): Promise<string> {
+		return await this.executeScript(`use ${database}`);
+	}
+
+	public async executeScript(script: string): Promise<string> {
+		if (this._mongoShell.killed || this._exited) {
+			throw new Error(prematureExitMessage);
 		}
 
-		return await new Promise<string>((c, e) => {
-			let executed = false;
-			// timeout setting specified in seconds. Convert to ms for setTimeout
-			const timeout: number = 1000 * vscode.workspace.getConfiguration().get<number>(ext.settingsKeys.mongoShellTimeout);
-			const handler = setTimeout(
+		this._stdoutData = "";
+		this._stderrData = "";
+		script = this.convertToSingleLine(script);
+		const executionId = this._generateExecutionSequenceId();
+		const shellDetails = `Shell path: "${this._execPath}", arguments: ${JSON.stringify(this._execArgs)}`;
+
+		try {
+			this._mongoShell.stdin.write(script, 'utf8');
+			this._mongoShell.stdin.write(os.EOL);
+
+			// Mark end of result by sending the sentinel wrapped in quotes so the console will spit
+			// it back out as a string value
+			this._mongoShell.stdin.write(`"${endOfDataSentinelBase}${executionId}"`, 'utf8');
+			this._mongoShell.stdin.write(os.EOL);
+		} catch (error) {
+			// Generally if writing to the process' stdin fails it has already exited
+			// with an error, and we will get notification via its stdout. So delay this long
+			// enough for other notifications to be a given a to fire first.
+			setTimeout(() => this.fireError(error), 500);
+		}
+
+		return await new Promise<string>((resolve, reject) => {
+			// Start timeout timer
+			let timeout: number = 1000 * vscode.workspace.getConfiguration().get<number>(ext.settingsKeys.mongoShellTimeout);
+			if (timeout <= 0) {
+				// No timeout (Number.MAX_SAFE_INTEGER apparently is not valid, so use a full day)
+				timeout = 24 * 60 * 60 * 1000;
+			}
+			const timeoutHandler = setTimeout(
 				() => {
-					if (!executed) {
-						e(`Timed out executing MongoDB command "${script}"`);
-					}
+					reject(`Timed out executing MongoDB command "${script}". To use a longer timeout, modify the VS Code 'mongo.shell.timeout' setting.`);
 				},
 				timeout);
-			const disposable = this.onResult.event(result => {
+
+			// Handle result or error from the console (via fireOnResultOrError)
+			const disposable = this._onResult.event((result: CommandResult) => {
+				clearTimeout(timeoutHandler);
+
+				// Only the first result or error will be processed, all others ignored
 				disposable.dispose();
 
-				if (result && result.code) {
-					if (result.code === 'ENOENT') {
-						result.message = `This functionality requires the Mongo DB shell, but we could not find it. Please make sure it is on your path or you have set the '${ext.settingsKeys.mongoShellPath}' VS Code setting to point to the Mongo shell executable file (not folder). Attempted command: "${this.execPath}"`;
-					}
+				// Give STDOUT/STDERR a chance to empty
+				setTimeout(
+					() => {
+						if (result.result !== undefined && !this._stderrData) {
+							if (this._mongoShell.killed || this._exited) {
+								throw new Error(prematureExitMessage);
+							}
 
-					e(result);
-				} else {
-					let lines = (<string>result.result).split(os.EOL).filter(line => !!line && line !== 'Type "it" for more');
-					lines = lines[lines.length - 1] === 'Type "it" for more' ? lines.splice(lines.length - 1, 1) : lines;
-					executed = true;
-					c(lines.join(os.EOL));
-				}
+							let lines = result.result.split(os.EOL).filter(line => !!line);
+							if (lines[lines.length - 1] === mongoShowMoreMessage) {
+								// CONSIDER: Ideally we would ask or allow the user to ask for more data
+								lines = lines.splice(0, lines.length - 1);
+								lines.push("(More)");
+							}
 
-				if (handler) {
-					clearTimeout(handler);
-				}
+							let text = lines.join(os.EOL);
+							resolve(text);
+						} else {
+							// An error occurred
+							let errorDetails = result.errorMessage || "";
+							if (errorDetails.includes('ENOENT')) {
+								reject(`This functionality requires the Mongo DB shell, but we could not find it. Please make sure it is on your path or you have set the '${ext.settingsKeys.mongoShellPath}' VS Code setting to point to the Mongo shell executable folder and file path.`
+									+ ` ${shellDetails}`
+								);
+								return;
+							}
+
+							if (!errorDetails) {
+								if (this._stderrData) {
+									errorDetails = this._stderrData;
+									this._stderrData = "";
+								} else {
+									errorDetails = "Unknown error";
+								}
+							}
+
+							ext.outputChannel.appendLine(`Shell execution details: ${shellDetails}`);
+
+							// Add some STDOUT/STDERR context if available
+							const maxOutputLengthInMessage = 500;
+							if (this._stderrData) {
+								errorDetails += `${os.EOL}${os.EOL}${this._stderrData}`.slice(0, maxOutputLengthInMessage);
+							}
+							if (this._stdoutData) {
+								errorDetails += `${os.EOL}${os.EOL}${this._stdoutData}`.slice(0, maxOutputLengthInMessage);
+							}
+
+							let message = `An error occurred executing the MongoDB command "${script}". ${errorDetails}`;
+
+							reject(message);
+						}
+					},
+					100);
 			});
 		});
 	}
@@ -132,6 +213,6 @@ export class Shell {
 	}
 
 	private _generateExecutionSequenceId(): string {
-		return `${++this.executionId}`;
+		return `${++this._executionId}`;
 	}
 }

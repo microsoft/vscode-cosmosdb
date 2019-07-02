@@ -4,11 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Collection, DeleteWriteOpResultObject, ObjectID, UpdateWriteOpResult } from 'mongodb';
-import * as path from 'path';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
 import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
-import { resourcesPath } from '../../constants';
+import { getThemeAgnosticIconPath } from '../../constants';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
@@ -50,10 +49,7 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return {
-            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Document.svg'),
-            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Document.svg')
-        };
+        return getThemeAgnosticIconPath('Document.svg');
     }
 
     public async deleteTreeItemImpl(): Promise<void> {

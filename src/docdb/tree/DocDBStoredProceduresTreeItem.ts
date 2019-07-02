@@ -4,10 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DocumentClient, FeedOptions, ProcedureMeta, QueryIterator } from 'documentdb';
-import * as path from 'path';
 import * as vscode from "vscode";
-import { UserCancelledError } from 'vscode-azureextensionui';
-import { defaultStoredProcedure, resourcesPath } from '../../constants';
+import { ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
+import { defaultStoredProcedure, getThemeAgnosticIconPath } from '../../constants';
 import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
@@ -31,13 +30,10 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return {
-            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'stored procedures.svg'),
-            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'stored procedures.svg')
-        };
+        return getThemeAgnosticIconPath('stored procedures.svg');
     }
 
-    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<DocDBStoredProcedureTreeItem> {
+    public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBStoredProcedureTreeItem> {
         const client = this.root.getDocumentClient();
         let spID = await vscode.window.showInputBox({
             prompt: "Enter a unique stored procedure ID",
@@ -47,7 +43,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
 
         if (spID || spID === "") {
             spID = spID.trim();
-            showCreatingTreeItem(spID);
+            context.showCreatingTreeItem(spID);
             const sproc: ProcedureMeta = await new Promise<ProcedureMeta>((resolve, reject) => {
                 client.createStoredProcedure(this.link, { id: spID, body: defaultStoredProcedure }, (err, result: ProcedureMeta) => {
                     if (err) {

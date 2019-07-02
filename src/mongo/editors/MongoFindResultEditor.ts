@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Collection } from "mongodb";
+import { IActionContext } from "vscode-azureextensionui";
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { ext } from "../../extensionVariables";
 import { MongoCommand } from "../MongoCommand";
@@ -29,21 +30,33 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
         return `${accountNode.label}/${this._databaseNode.label}/${this._command.collection}`;
     }
 
-    public async getData(): Promise<IMongoDocument[]> {
-        const db = await this._databaseNode.getDb();
+    //     <<<<<<< HEAD
+    //     public async getData(): Promise<IMongoDocument[]> {
+    //         const dbTreeItem: MongoDatabaseTreeItem = this._databaseNode;
+    //         const db = await dbTreeItem.connectToDb();
+    // ||||||| merged common ancestors
+    //     public async getData(): Promise<IMongoDocument[]> {
+    //         const db = await this._databaseNode.getDb();
+    // =======
+    //     public async getData(context: IActionContext): Promise<IMongoDocument[]> {
+    //         const db = await this._databaseNode.getDb();
+    // >>>>>>> master
+    public async getData(context: IActionContext): Promise<IMongoDocument[]> {
+        const dbTreeItem: MongoDatabaseTreeItem = this._databaseNode;
+        const db = await dbTreeItem.connectToDb();
         const collection: Collection = db.collection(this._command.collection);
         // NOTE: Intentionally creating a _new_ tree item rather than searching for a cached node in the tree because
         // the executed 'find' command could have a filter or projection that is not handled by a cached tree node
         this._collectionTreeItem = new MongoCollectionTreeItem(this._databaseNode, collection, this._command.argumentObjects);
-        const documents: MongoDocumentTreeItem[] = <MongoDocumentTreeItem[]>await this._collectionTreeItem.getCachedChildren();
+        const documents: MongoDocumentTreeItem[] = <MongoDocumentTreeItem[]>await this._collectionTreeItem.getCachedChildren(context);
         return documents.map((docTreeItem) => docTreeItem.document);
     }
 
-    public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
+    public async update(documents: IMongoDocument[], context: IActionContext): Promise<IMongoDocument[]> {
         const updatedDocs = await this._collectionTreeItem.update(documents);
-        const cachedCollectionNode = await ext.tree.findTreeItem(this.id);
+        const cachedCollectionNode = await ext.tree.findTreeItem(this.id, context);
         if (cachedCollectionNode) {
-            await MongoCollectionNodeEditor.updateCachedDocNodes(updatedDocs, <MongoCollectionTreeItem>cachedCollectionNode);
+            await MongoCollectionNodeEditor.updateCachedDocNodes(updatedDocs, <MongoCollectionTreeItem>cachedCollectionNode, context);
         }
         return updatedDocs;
     }

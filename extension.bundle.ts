@@ -27,6 +27,7 @@ export { addDatabaseToAccountConnectionString, getDatabaseNameFromConnectionStri
 export { MongoCommand } from './src/mongo/MongoCommand';
 export { getAllCommandsFromText, getCommandFromTextAtLocation } from './src/mongo/MongoScrapbook';
 export { rejectOnTimeout, valueOnTimeout } from './src/utils/timeout';
+export { splitArguments } from './src/utils/splitArguments';
 
 // The tests use instanceof against these and therefore we need to make sure we're using the same version of the bson module in the tests as in the bundle,
 //   so export it from the bundle itself.

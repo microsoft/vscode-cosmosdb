@@ -4,10 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DocumentClient, FeedOptions, NewDocument, QueryIterator, RetrievedDocument } from 'documentdb';
-import * as path from 'path';
 import * as vscode from 'vscode';
-import { UserCancelledError } from 'vscode-azureextensionui';
-import { resourcesPath } from '../../constants';
+import { ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
+import { getThemeAgnosticIconPath } from '../../constants';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -26,10 +25,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return {
-            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Collection.svg'),
-            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Collection.svg')
-        };
+        return getThemeAgnosticIconPath('Collection.svg');
     }
 
     public get id(): string {
@@ -52,7 +48,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
         return new DocDBDocumentTreeItem(this, document);
     }
 
-    public async createChildImpl(showCreatingTreeItem: (label: string) => void): Promise<DocDBDocumentTreeItem> {
+    public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBDocumentTreeItem> {
         let docID = await vscode.window.showInputBox({
             prompt: "Enter a document ID or leave blank for a generated ID",
             ignoreFocusOut: true
@@ -62,7 +58,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
             docID = docID.trim();
             let body = { 'id': docID };
             body = <NewDocument>(await this.promptForPartitionKey(body));
-            showCreatingTreeItem(docID);
+            context.showCreatingTreeItem(docID);
             const document = await this.createDocument(body);
 
             return this.initChild(document);

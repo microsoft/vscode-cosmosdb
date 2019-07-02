@@ -4,10 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CollectionMeta, CollectionPartitionKey } from 'documentdb';
-import * as path from "path";
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
-import { resourcesPath } from '../../constants';
+import { getThemeAgnosticIconPath } from '../../constants';
 import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
@@ -40,10 +39,7 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return {
-            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Collection.svg'),
-            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Collection.svg')
-        };
+        return getThemeAgnosticIconPath('Collection.svg');
     }
 
     public get link(): string {
@@ -75,18 +71,19 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         return false;
     }
 
-    public pickTreeItemImpl(expectedContextValue: string): AzureTreeItem<IDocDBTreeRoot> | undefined {
-        switch (expectedContextValue) {
-            case DocDBDocumentsTreeItem.contextValue:
-            case DocDBDocumentTreeItem.contextValue:
-                return this.documentsTreeItem;
-
-            case DocDBStoredProceduresTreeItem.contextValue:
-            case DocDBStoredProcedureTreeItem.contextValue:
-                return this._storedProceduresTreeItem;
-
-            default:
-                return undefined;
+    public pickTreeItemImpl(expectedContextValues: (string | RegExp)[]): AzureTreeItem<IDocDBTreeRoot> | undefined {
+        for (const expectedContextValue of expectedContextValues) {
+            switch (expectedContextValue) {
+                case DocDBDocumentsTreeItem.contextValue:
+                case DocDBDocumentTreeItem.contextValue:
+                    return this.documentsTreeItem;
+                case DocDBStoredProceduresTreeItem.contextValue:
+                case DocDBStoredProcedureTreeItem.contextValue:
+                    return this._storedProceduresTreeItem;
+                default:
+            }
         }
+
+        return undefined;
     }
 }

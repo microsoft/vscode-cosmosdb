@@ -6,7 +6,7 @@
 	"displayName": "Azure Cosmos DB",
 	"description": "Create, browse, and update globally distributed, multi-model databases in Azure.",
 	"engines": {
-		"vscode": "^1.26.0"
+		"vscode": "^1.31.0"
 	},
 	"galleryBanner": {
 		"color": "#3c3c3c",
@@ -97,6 +97,10 @@
 		"languages": [
 			{
 				"id": "mongo",
+				"aliases": [
+					"Mongo Scrapbook",
+					"mongo"
+				],
 				"extensions": [
 					".mongo"
 				],
@@ -696,6 +700,10 @@
 					"when": "never"
 				},
 				{
+					"command": "cosmosDB.update",
+					"when": "never"
+				},
+				{
 					"command": "cosmosDB.executeAllMongoCommands",
 					"when": "editorLangId == 'mongo'"
 				},
@@ -732,8 +740,13 @@
 						"string",
 						"null"
 					],
-					"description": "Command to execute or full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. If empty, will search in the system path for 'mongo'.",
+					"description": "Full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. If empty, will search in the system path for 'mongo'.",
 					"default": null
+				},
+				"mongo.shell.args": {
+					"type": "string",
+					"description": "Arguments to pass when starting the Mongo shell.",
+					"default": ""
 				},
 				"mongo.shell.timeout": {
 					"type": "number",
@@ -871,7 +884,6 @@
 		"all": "npm i && npm run lint && npm test"
 	},
 	"devDependencies": {
-		"@types/clipboardy": "^1.1.0",
 		"@types/d3": "5.0.0",
 		"@types/documentdb": "^1.10.2",
 		"@types/fs-extra": "^4.0.3",
@@ -905,7 +917,6 @@
 		"antlr4ts": "^0.4.1-alpha.0",
 		"azure-arm-cosmosdb": "^1.1.2",
 		"azure-arm-resource": "^3.0.0-preview",
-		"clipboardy": "^1.2.3",
 		"d3": "^3.0.0",
 		"documentdb": "^1.14.2",
 		"event-stream": "3.3.4",
@@ -918,7 +929,7 @@
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "^0.23.2",
+		"vscode-azureextensionui": "^0.25.0",
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.4.0",
 		"vscode-languageserver": "^4.4.0",

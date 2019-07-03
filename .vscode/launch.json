@@ -8,7 +8,7 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"--extensionDevelopmentPath=${workspaceRoot}"
+				"--extensionDevelopmentPath=${workspaceFolder}"
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
@@ -16,26 +16,28 @@
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js"
 			],
-			"preLaunchTask": "npm: webpack",
+			"preLaunchTask": "npm: compile",
 			"env": {
+				"AZCODE_COSMOSDB_IGNORE_BUNDLE": "1",
 				"DEBUGTELEMETRY": "1",
 				"NODE_DEBUG": ""
 			}
 		},
 		{
-			"name": "Launch Extension (no build)",
+			"name": "Launch Extension (Webpack)",
 			"type": "extensionHost",
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"--extensionDevelopmentPath=${workspaceRoot}"
+				"--extensionDevelopmentPath=${workspaceFolder}"
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
 			// outFiles is used for locating generated JavaScript files, see https://code.visualstudio.com/docs/nodejs/nodejs-debugging#_source-maps
 			"outFiles": [
-				"${workspaceFolder}/**/*.js"
+				"${workspaceFolder}/dist/**/*.js"
 			],
+			"preLaunchTask": "npm: webpack",
 			"env": {
 				"DEBUGTELEMETRY": "1",
 				"NODE_DEBUG": ""
@@ -47,14 +49,38 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"--extensionDevelopmentPath=${workspaceRoot}",
-				"--extensionTestsPath=${workspaceRoot}/dist/test"
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--extensionTestsPath=${workspaceFolder}/out/test"
 			],
 			"stopOnEntry": false,
 			"sourceMaps": true,
 			// outFiles is used for locating generated JavaScript files, see https://code.visualstudio.com/docs/nodejs/nodejs-debugging#_source-maps
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js"
+			],
+			"preLaunchTask": "npm: compile",
+			"env": {
+				"MOCHA_grep": "", // RegExp of tests to run (empty for all)
+				"MOCHA_enableTimeouts": "0", // Disable time-outs
+				"AZCODE_COSMOSDB_IGNORE_BUNDLE": "1",
+				"DEBUGTELEMETRY": "1",
+				"NODE_DEBUG": ""
+			}
+		},
+		{
+			"name": "Launch Tests (Webpack)",
+			"type": "extensionHost",
+			"request": "launch",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--extensionTestsPath=${workspaceFolder}/dist/test"
+			],
+			"stopOnEntry": false,
+			"sourceMaps": true,
+			// outFiles is used for locating generated JavaScript files, see https://code.visualstudio.com/docs/nodejs/nodejs-debugging#_source-maps
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
 			],
 			"preLaunchTask": "npm: webpack",
 			"env": {
@@ -72,7 +98,7 @@
 			"port": 6005,
 			"sourceMaps": true,
 			"outFiles": [
-				"${workspaceRoot}/dist/**/*.js"
+				"${workspaceFolder}/dist/**/*.js"
 			]
 		},
 		{
@@ -84,7 +110,7 @@
 			"sourceMaps": true,
 			"restart": true,
 			"outFiles": [
-				"${workspaceRoot}/out/src"
+				"${workspaceFolder}/out/src"
 			]
 		},
 		{
@@ -98,7 +124,7 @@
 			"name": "Debug Mongo grammar",
 			"type": "antlr-debug",
 			"request": "launch",
-			// This doesn't seem to work: "input": "${workspaceRoot}/${command:AskForTestInput}",
+			// This doesn't seem to work: "input": "${workspaceFolder}/${command:AskForTestInput}",
 			"input": "c:/temp/debugger-input.mongo",
 			"grammar": "grammar/mongo.g4",
 			"startRule": "mongoCommands",

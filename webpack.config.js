@@ -58,7 +58,7 @@ let config = dev.getDefaultWebpackConfig({
         // Fix "module not found" error in node_modules/es6-promise/dist/es6-promise.js
         'vertx': 'commonjs vertx',
 
-        // ./getCoreNodeModule.js (path from keytar.ts) uses a dynamic require which can't be webpacked
+        // ./getCoreNodeModule.js (path from keytar.ts) uses a dynamic require which can't be webpacked		        // ./getCoreNodeModule.js (path from keytar.ts) uses a dynamic require which can't be webpacked
         './getCoreNodeModule': 'commonjs getCoreNodeModule',
     }, // end of externals
 
@@ -120,7 +120,7 @@ let config = dev.getDefaultWebpackConfig({
         // Copy files to dist folder where the runtime can find them
         new CopyWebpackPlugin([
             // getCoreNodeModule.js -> dist/node_modules/getCoreNodeModule.js
-            { from: './src/utils/getCoreNodeModule.js', to: 'node_modules' },
+            { from: './out/src/utils/getCoreNodeModule.js', to: 'node_modules' },
 
             // graphClient.js -> dist, which is used by graphClient.html
             { from: './out/src/graph/client/graphClient.js', to: 'graphClient.js' }

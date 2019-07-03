@@ -7,7 +7,7 @@ import * as fse from 'fs-extra';
 import * as path from "path";
 import * as vscode from 'vscode';
 import { parseError } from 'vscode-azureextensionui';
-import { resourcesPath } from '../constants';
+import { getResourcesPath } from '../constants';
 import { ext } from '../extensionVariables';
 import { areConfigsEqual, GraphConfiguration } from './GraphConfiguration';
 import { GraphViewServer } from './GraphViewServer';
@@ -107,7 +107,7 @@ class WebviewContentProvider {
   }
 
   private async _graphClientHtmlAsString(port: number): Promise<string> {
-    const graphClientAbsolutePath = path.join(resourcesPath, 'graphClient', 'graphClient.html');
+    const graphClientAbsolutePath = path.join(getResourcesPath(), 'graphClient', 'graphClient.html');
     let htmlContents: string = await fse.readFile(graphClientAbsolutePath, 'utf8');
     const portPlaceholder: RegExp = /\$CLIENTPORT/g;
     htmlContents = htmlContents.replace(portPlaceholder, String(port));

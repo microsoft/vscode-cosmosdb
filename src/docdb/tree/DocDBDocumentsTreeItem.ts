@@ -4,10 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DocumentClient, FeedOptions, NewDocument, QueryIterator, RetrievedDocument } from 'documentdb';
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
-import { resourcesPath } from '../../constants';
+import { getThemeAgnosticIconPath } from '../../constants';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -26,10 +25,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return {
-            light: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Collection.svg'),
-            dark: path.join(resourcesPath, 'icons', 'theme-agnostic', 'Collection.svg')
-        };
+        return getThemeAgnosticIconPath('Collection.svg');
     }
 
     public get id(): string {

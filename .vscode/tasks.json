@@ -10,14 +10,14 @@
 			},
 			"isBackground": true,
 			"presentation": {
-				"reveal": "silent"
+				"reveal": "never"
 			},
 			"problemMatcher": "$tsc-watch"
 		},
 		{
 			"type": "npm",
 			"script": "lint",
-			"problemMatcher": "$tslint5"
+			"problemMatcher": "$eslint-stylish"
 		}
 	]
 }

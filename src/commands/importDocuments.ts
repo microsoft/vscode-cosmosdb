@@ -43,7 +43,7 @@ export async function importDocuments(actionContext: IActionContext, uris: vscod
             const documents = await parseDocuments(uris);
             progress.report({ increment: 30, message: "Parsed documents. Importing" });
             if (collectionNode instanceof MongoCollectionTreeItem) {
-                result = processMongoResults(await collectionNode.executeCommand('insertMany', [JSON.stringify(documents)]));
+                result = processMongoResults(await collectionNode.tryExecuteCommandDirectly('insertMany', [JSON.stringify(documents)]));
             } else {
                 result = await insertDocumentsIntoDocdb(collectionNode, documents, uris);
             }

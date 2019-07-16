@@ -107,7 +107,8 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 		return new MongoDocumentTreeItem(this, newDocument);
 	}
 
-	executeCommand(name: string, args?: string[]): Thenable<string> | null {
+	// TODO:make async
+	public tryExecuteCommandDirectly(name: string, args?: string[]): Thenable<string> | undefined {
 		const parameters = args ? args.map(parseJSContent) : undefined;
 		const deferToShell = null; //The value executeCommand returns to instruct the caller function to run the same command in the Mongo shell.
 

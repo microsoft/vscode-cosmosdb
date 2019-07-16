@@ -24,3 +24,4 @@ grammar/*.g4
 build
 *.ts
 *.zip
+*.mongo

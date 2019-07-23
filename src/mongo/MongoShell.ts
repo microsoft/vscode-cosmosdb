@@ -56,7 +56,7 @@ export class MongoShell extends vscode.Disposable {
 
 		this._process.resetState();
 		let stdOut = "";
-		//let stdErr = "";
+		let stdErr = "";
 
 		const sentinel = `$EXECUTION SENTINEL ${randomUtils.getRandomHexString(10)}$`;
 
@@ -79,13 +79,12 @@ export class MongoShell extends vscode.Disposable {
 					}));
 				disposables.push(
 					this._process.onStdErr(args => {
-						// Mongo shell uses STDERR for things like authentication failed and invalid arguments, not for
-						//   query errors, so consider STDERR output to be a failure.
+						stdErr += args.line + os.EOL;
+						// Prefix output with ERR>
 						args.line = stdErrPrefix + args.line;
-						reject("The process has returned an error. Please see the output window.");
 					}));
 
-				// Write out the code
+				// Write the script to STDIN
 				await this._process.writeLine(script, stdInPrefix + script);
 
 				// Mark end of result by sending the sentinel wrapped in quotes so the console will spit
@@ -93,6 +92,13 @@ export class MongoShell extends vscode.Disposable {
 				let quotedSentinel = `"${sentinel}"`;
 				await this._process.writeLine(quotedSentinel, ""); // (Don't display the sentinel)
 			});
+
+			if (stdErr) {
+				// Mongo shell uses STDERR for things like authentication failed and invalid arguments, not for
+				//   query errors, so consider any STDERR output to be a failure.
+				ext.outputChannel.show();
+				throw new Error(stdOut);
+			}
 
 			return result;
 		}

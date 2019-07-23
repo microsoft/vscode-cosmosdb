@@ -10,6 +10,7 @@ import { Event, EventEmitter } from 'vscode';
 import { parseError } from 'vscode-azureextensionui';
 import { delay } from './delay';
 import { improveError } from './improveError';
+import { isNumber } from 'util';
 
 export interface IInteractiveChildProcessOptions {
     command: string;
@@ -55,6 +56,7 @@ export class InteractiveChildProcess {
     public async flushAll(): Promise<void> {
         this.flushStdOut(true);
         this.flushStdErr(true);
+        await this.processErrors();
     }
 
     public resetState(): void {
@@ -135,7 +137,7 @@ export class InteractiveChildProcess {
         this._childProc.on('close', (code: number) => {
             this.flushAll();
 
-            if (code !== 0) {
+            if (isNumber(code) && code !== 0) {
                 this.setError(`Process exited with code ${code}. The output may contain additional information.`);
             }
         });
@@ -163,7 +165,7 @@ export class InteractiveChildProcess {
     }
 
     private flush(data: string, event: EventEmitter<IOutputEventArgs>, force?: boolean): string {
-        let { lines, remaining } = getLines(data);
+        let { lines, remaining } = getFullLines(data);
         if (force && remaining) {
             lines.push(remaining);
             remaining = "";
@@ -197,7 +199,7 @@ function wrapError(outer?: unknown, innerError?: unknown): unknown {
     return new Error(`${parseError(outer).message}${os.EOL}${innerMessage}`);
 }
 
-function getLines(data: string): { lines: string[]; remaining: string } {
+function getFullLines(data: string): { lines: string[]; remaining: string } {
     let lines: string[] = [];
 
     // tslint:disable-next-line:no-constant-condition

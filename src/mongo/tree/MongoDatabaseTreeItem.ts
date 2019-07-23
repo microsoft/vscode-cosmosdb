@@ -100,8 +100,8 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 			if (collection) {
 				const collectionTreeItem = new MongoCollectionTreeItem(this, collection, command.arguments);
 				const result = await collectionTreeItem.tryExecuteCommandDirectly(command.name, command.arguments);
-				if (result) {
-					return result;
+				if (!result.deferToShell) {
+					return result.result;
 				}
 			}
 			return withProgress(this.executeCommandInShell(command, context), 'Executing command in Mongo shell');

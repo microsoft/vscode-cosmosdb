@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { parseError } from "vscode-azureextensionui";
 import * as os from 'os';
+import { parseError } from "vscode-azureextensionui";
 
 export function wrapError(outer?: unknown, innerError?: unknown): unknown {
     if (!innerError) {

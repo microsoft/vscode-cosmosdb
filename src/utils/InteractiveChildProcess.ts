@@ -5,11 +5,11 @@
 
 import * as cp from 'child_process';
 import * as os from 'os';
+import { isNumber } from 'util';
 import * as vscode from 'vscode';
 import { Event, EventEmitter } from 'vscode';
 import { parseError } from 'vscode-azureextensionui';
 import { improveError } from './improveError';
-import { isNumber } from 'util';
 
 // We add these when we display to the output window
 const stdInPrefix = '> ';

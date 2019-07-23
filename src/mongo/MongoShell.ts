@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// TODO: process "show more" in output (mongoShowMoreMessage)
+// CONSIDER asdf: process "show more" in output (mongoShowMoreMessage)
 
 import * as os from 'os';
 import * as path from 'path';
@@ -81,7 +81,7 @@ export class MongoShell extends vscode.Disposable {
 				disposables.push(
 					this._process.onError(error => {
 						ext.outputChannel.show();
-						reject(error)
+						reject(error);
 					}));
 
 				// Write the script to STDIN

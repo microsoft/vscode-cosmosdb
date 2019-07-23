@@ -7,6 +7,10 @@ steps:
   displayName: 'Start X Virtual Frame Buffer'
   condition: eq(variables['Agent.OS'], 'Linux')
 
+- script: |
+     choco install mongodb
+  condition: eq(variables['Agent.OS'], 'Windows')
+
 - task: Npm@1
   displayName: 'Test'
   inputs:

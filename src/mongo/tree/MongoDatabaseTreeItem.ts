@@ -15,10 +15,10 @@ import * as cpUtils from '../../utils/cp';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoCommand } from '../MongoCommand';
 import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings';
-import { MongoShell } from '../MongoShell';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoAccountTreeItem } from './MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
+import { MongoShell } from '../MongoShell';
 
 const mongoExecutableFileName = process.platform === 'win32' ? 'mongo.exe' : 'mongo';
 
@@ -151,7 +151,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 			await this._determineShellPathOrCmd(shellPath);
 		}
 
-		return MongoShell.create(this._cachedShellPathOrCmd, shellArgs, this.connectionString, this.root.isEmulator);
+		return MongoShell.create(shellPath, shellArgs, this.connectionString, this.root.isEmulator);
 	}
 
 	private async _determineShellPathOrCmd(shellPathSetting: string): Promise<void> {

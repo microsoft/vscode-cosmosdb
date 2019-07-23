@@ -7,7 +7,7 @@ import * as assert from 'assert';
 import { improveError } from '../extension.bundle';
 import { parseError } from 'vscode-azureextensionui';
 
-suite("improveErrorMessage", () => {
+suite("improveError", () => {
     test("spawn ENOENT", () => {
         let msg: string = "spawn c:\\Program Files\\MongoDB\Server\\4.0\\bin\\mongo.exe ENOENT";
         let improved: unknown = improveError(msg);

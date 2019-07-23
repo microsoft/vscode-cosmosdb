@@ -14,9 +14,9 @@ import { randomUtils } from '../utils/randomUtils';
 
 const timeoutMessage = "Timed out trying to execute Mongo script. To use a longer timeout, modify the VS Code 'mongo.shell.timeout' setting.";
 
-// We add these when we display to the output window
-const stdInPrefix = "> ";
-const stdErrPrefix = "ERR> ";
+const sentinelBase = 'EXECUTION COMPLETED';
+const sentinelRegex = /\"?EXECUTION COMPLETED [0-9a-fA-F]{10}\"?/;
+function createSentinel(): string { return `${sentinelBase} ${randomUtils.getRandomHexString(10)}`; }
 
 export class MongoShell extends vscode.Disposable {
 	public static async create(execPath: string, execArgs: string[], connectionString: string, isEmulator: boolean): Promise<MongoShell> {
@@ -29,13 +29,20 @@ export class MongoShell extends vscode.Disposable {
 			args.push("--sslAllowInvalidCertificates");
 		}
 
-		let process: InteractiveChildProcess = await InteractiveChildProcess.start({
+		let process: InteractiveChildProcess = await InteractiveChildProcess.create({
 			outputChannel: ext.outputChannel,
 			workingDirectory: path.dirname(execPath),
 			command: execPath,
-			args
+			args,
+			outputFilterSearch: sentinelRegex,
+			outputFilterReplace: ''
 		});
 		let shell: MongoShell = new MongoShell(process);
+
+		// Try writing an empty script to verify the process is running correctly and allow us
+		// to catch any errors related to the start-up of the process before trying to write to it.
+		await shell.executeScript("");
+
 		return shell;
 	}
 
@@ -54,57 +61,44 @@ export class MongoShell extends vscode.Disposable {
 	public async executeScript(script: string): Promise<string> {
 		script = convertToSingleLine(script);
 
-		this._process.resetState();
 		let stdOut = "";
-		let stdErr = "";
 
-		const sentinel = `$EXECUTION SENTINEL ${randomUtils.getRandomHexString(10)}$`;
+		const sentinel = createSentinel();
 
 		let disposables: vscode.Disposable[] = [];
 		try {
 			let result = await new Promise<string>(async (resolve, reject) => {
 				startScriptTimeout(reject);
 				disposables.push(
-					this._process.onStdOut(args => {
-						//stdOut += args.line;
-						let { line, removed } = removeSentinel(args.line, sentinel);
-						args.line = line;
+					this._process.onStdOut(text => {
+						stdOut += text;
+						let { text: stdOutNoSentinel, removed } = removeSentinel(stdOut, sentinel);
 						if (removed) {
 							// The sentinel was found, which means we are done.
-							args.line = undefined; // Don't output sentinel
-							resolve(stdOut);
-						} else {
-							stdOut += line + os.EOL;
+							resolve(stdOutNoSentinel);
 						}
 					}));
 				disposables.push(
-					this._process.onStdErr(args => {
-						stdErr += args.line + os.EOL;
-						// Prefix output with ERR>
-						args.line = stdErrPrefix + args.line;
+					this._process.onError(error => {
+						ext.outputChannel.show();
+						reject(error)
 					}));
 
 				// Write the script to STDIN
-				await this._process.writeLine(script, stdInPrefix + script);
+				if (script) {
+					await this._process.writeLine(script);
+				}
 
 				// Mark end of result by sending the sentinel wrapped in quotes so the console will spit
 				// it back out as a string value after it's done processing the script
 				let quotedSentinel = `"${sentinel}"`;
-				await this._process.writeLine(quotedSentinel, ""); // (Don't display the sentinel)
+				await this._process.writeLine(quotedSentinel); // (Don't display the sentinel)
 			});
-
-			if (stdErr) {
-				// Mongo shell uses STDERR for things like authentication failed and invalid arguments, not for
-				//   query errors, so consider any STDERR output to be a failure.
-				ext.outputChannel.show();
-				throw new Error(stdOut);
-			}
 
 			return result;
 		}
 		finally {
-			this._process.flushAll(); // Allow all current output to be processed and sent to output channel
-
+			// Dispose event handlers
 			for (let d of disposables) {
 				d.dispose();
 			}
@@ -131,11 +125,11 @@ function convertToSingleLine(script: string): string {
 
 }
 
-function removeSentinel(line: string, sentinel: string): { line: string; removed: boolean } {
-	let index = line.indexOf(sentinel);
+function removeSentinel(text: string, sentinel: string): { text: string; removed: boolean } {
+	let index = text.indexOf(sentinel);
 	if (index >= 0) {
-		return { line: line.slice(0, index), removed: true };
+		return { text: text.slice(0, index), removed: true };
 	} else {
-		return { line, removed: false };
+		return { text, removed: false };
 	}
 }

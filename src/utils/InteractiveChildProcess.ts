@@ -8,9 +8,13 @@ import * as os from 'os';
 import * as vscode from 'vscode';
 import { Event, EventEmitter } from 'vscode';
 import { parseError } from 'vscode-azureextensionui';
-import { delay } from './delay';
 import { improveError } from './improveError';
 import { isNumber } from 'util';
+
+// We add these when we display to the output window
+const stdInPrefix = '> ';
+const stdErrPrefix = 'ERR> ';
+const errorPrefix = 'Error: ';
 
 export interface IInteractiveChildProcessOptions {
     command: string;
@@ -18,32 +22,29 @@ export interface IInteractiveChildProcessOptions {
     outputChannel?: vscode.OutputChannel;
     workingDirectory?: string;
     showTimeInOutputChannel?: boolean;
-}
-
-export interface IOutputEventArgs {
-    // We fire the event with a single complete line at a time
-    line: string | undefined;  // May be modified - what exists in this property after the event is fired will go to output channel
+    outputFilterSearch?: RegExp;
+    outputFilterReplace?: string;
 }
 
 export class InteractiveChildProcess {
     private _childProc: cp.ChildProcess;
     private readonly _options: IInteractiveChildProcessOptions;
-    private _error: unknown | undefined;
     private _startTime: number;
-    private _stdOut: string;
-    private _stdErr: string;
 
     private constructor(options: IInteractiveChildProcessOptions) {
         this._options = options;
     }
 
-    private readonly _onStdOut: EventEmitter<IOutputEventArgs> = new EventEmitter<IOutputEventArgs>();
-    public readonly onStdOut: Event<IOutputEventArgs> = this._onStdOut.event;
+    private readonly _onStdOutEmitter: EventEmitter<string> = new EventEmitter<string>();
+    public readonly onStdOut: Event<string> = this._onStdOutEmitter.event;
 
-    private readonly _onStdErr: EventEmitter<IOutputEventArgs> = new EventEmitter<IOutputEventArgs>();
-    public readonly onStdErr: Event<IOutputEventArgs> = this._onStdErr.event;
+    private readonly _onStdErrEmitter: EventEmitter<string> = new EventEmitter<string>();
+    public readonly onStdErr: Event<string> = this._onStdErrEmitter.event;
 
-    public static async start(options: IInteractiveChildProcessOptions): Promise<InteractiveChildProcess> {
+    private readonly _onErrorEmitter: EventEmitter<unknown> = new EventEmitter<unknown>();
+    public readonly onError: Event<unknown> = this._onErrorEmitter.event;
+
+    public static async create(options: IInteractiveChildProcessOptions): Promise<InteractiveChildProcess> {
         let child: InteractiveChildProcess = new InteractiveChildProcess(options);
         await child.startCore();
         return child;
@@ -53,54 +54,12 @@ export class InteractiveChildProcess {
         this._childProc.kill();
     }
 
-    public async flushAll(): Promise<void> {
-        this.flushStdOut(true);
-        this.flushStdErr(true);
-        await this.processErrors();
-    }
-
-    public resetState(): void {
-        this._stdOut = "";
-        this._stdErr = "";
-    }
-
-    public async writeLine(text: string, textForDisplay?: string): Promise<void> {
-        textForDisplay = textForDisplay === undefined ? text : textForDisplay;
-
-        await this.processErrors();
-
-        if (textForDisplay) {
-            this.writeLineToOutputChannel(textForDisplay);
-        }
+    public writeLine(text: string): void {
+        this.writeLineToOutputChannel(text, stdInPrefix);
         this._childProc.stdin.write(text + os.EOL);
-
-        await this.processErrors();
     }
 
-    private setError(error: unknown): void {
-        if (!this._error) {
-            this._error = error;
-            let parsed = parseError(error);
-            this.writeLineToOutputChannel("Error: " + parsed.message);
-        }
-    }
-
-    private async processErrors(outerError?: unknown): Promise<void> {
-        // Wait for next event loop to give any current error events a chance to be processed.
-        // For instance, if the executable fails to start, it will fire an "error" event, but
-        //   we won't see it until the event is processed in the event loop
-        await delay(0);
-
-        if (this._error) {
-            throw wrapError(outerError, improveError(this._error));
-        }
-
-        if (this._childProc.killed) {
-            throw new Error("The process exited prematurely");
-        }
-    }
-
-    private async startCore(): Promise<void> {
+    private async startCore(): Promise<void> {//asdf async?
         this._startTime = Date.now();
         const formattedArgs: string = this._options.args.join(' ');
 
@@ -119,101 +78,55 @@ export class InteractiveChildProcess {
 
         this._childProc.stdout.on('data', (data: string | Buffer) => {
             let text = data.toString();
-            this._stdOut += text;
-            this.flushStdOut();
+            this.writeLineToOutputChannel(text);
+            this._onStdOutEmitter.fire(text);
         });
 
         this._childProc.stderr.on('data', (data: string | Buffer) => {
             let text = data.toString();
-            this._stdErr += text;
-
-            this.flushStdErr();
+            this._onStdErrEmitter.fire(text);
+            this.writeLineToOutputChannel(text, stdErrPrefix);
         });
 
         this._childProc.on('error', (error: unknown) => {
-            this.setError(error);
+            let improvedError = improveError(error);
+            this.writeLineToOutputChannel(parseError(improvedError).message, errorPrefix);
+            this._onErrorEmitter.fire(improvedError);
         });
 
         this._childProc.on('close', (code: number) => {
-            this.flushAll();
-
             if (isNumber(code) && code !== 0) {
-                this.setError(`Process exited with code ${code}. The output may contain additional information.`);
+                let msg = `The process exited with code ${code}. The output window may contain additional information.`;
+                this.writeLineToOutputChannel(msg, errorPrefix);
+                this._onErrorEmitter.fire(msg);
             }
         });
-
-        await this.processErrors(`Unable to start the executable.`);
     }
 
-    private flushStdOut(force?: boolean): void {
-        this._stdOut = this.flush(this._stdOut, this._onStdOut, force);
-    }
+    private writeLineToOutputChannel(text: string, displayPrefix?: string): void {
+        let filteredText = this.filterText(text);
+        let changedIntoEmptyString = (filteredText !== text && filteredText === '');
 
-    private flushStdErr(force?: boolean): void {
-        this._stdErr = this.flush(this._stdErr, this._onStdErr, force);
-    }
+        if (!changedIntoEmptyString) {
+            text = filteredText;
+            if (this._options.outputChannel) {
+                if (this._options.showTimeInOutputChannel) {
+                    let ms = Date.now() - this._startTime;
+                    text = `${ms}ms: ${text}`;
+                }
 
-    private writeLineToOutputChannel(text: string): void {
-        if (this._options.outputChannel) {
-            if (this._options.showTimeInOutputChannel) {
-                let ms = Date.now() - this._startTime;
-                text = `${ms}ms: ${text}`;
-            }
-
-            this._options.outputChannel.appendLine(text);
-        }
-    }
-
-    private flush(data: string, event: EventEmitter<IOutputEventArgs>, force?: boolean): string {
-        let { lines, remaining } = getFullLines(data);
-        if (force && remaining) {
-            lines.push(remaining);
-            remaining = "";
-        }
-
-        for (let line of lines) {
-            let eventArgs: IOutputEventArgs = { line };
-            event.fire(eventArgs);
-            if (eventArgs.line !== undefined) {
-                this.writeLineToOutputChannel(eventArgs.line);
+                text = displayPrefix + text;
+                this._options.outputChannel.appendLine(text);
             }
         }
-
-        return remaining;
-    }
-}
-
-function wrapError(outer?: unknown, innerError?: unknown): unknown {
-    if (!innerError) {
-        return outer;
-    } else if (!outer) {
-        return innerError;
     }
 
-    let innerMessage = parseError(innerError).message;
-    if (outer instanceof Error) {
-        outer.message = `${outer.message}${os.EOL}${innerMessage}`;
-        return outer;
-    }
-
-    return new Error(`${parseError(outer).message}${os.EOL}${innerMessage}`);
-}
-
-function getFullLines(data: string): { lines: string[]; remaining: string } {
-    let lines: string[] = [];
-
-    // tslint:disable-next-line:no-constant-condition
-    while (true) {
-        const match: RegExpMatchArray | null = data.match(/(.*)(\r\n|\n)/);
-        if (match) {
-            let line = match[1];
-            let eol = match[2];
-            data = data.slice(line.length + eol.length);
-            lines.push(line);
-        } else {
-            break;
+    private filterText(text: string): string {
+        if (this._options.outputFilterSearch) {
+            let filtered = text.replace(this._options.outputFilterSearch, this._options.outputFilterReplace || "");
+            return filtered;
         }
-    }
 
-    return { lines, remaining: data };
+        return text;
+    }
 }

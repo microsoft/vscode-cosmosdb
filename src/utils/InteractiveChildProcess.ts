@@ -6,16 +6,10 @@
 import * as cp from 'child_process';
 import * as os from 'os';
 import * as vscode from 'vscode';
-import { EventEmitter, Event } from 'vscode';
+import { Event, EventEmitter } from 'vscode';
 import { parseError } from 'vscode-azureextensionui';
 import { delay } from './delay';
 import { improveError } from './improveError';
-
-const debounceDelay = 100;
-
-export interface IProcessResult {
-    code: number;
-}
 
 export interface IInteractiveChildProcessOptions {
     command: string;
@@ -26,13 +20,13 @@ export interface IInteractiveChildProcessOptions {
 }
 
 export interface IOutputEventArgs {
-    text: string;
-    textForOutputChannel: string; // May be modified
-};
+    // We fire the event with a single complete line at a time
+    line: string | undefined;  // May be modified - what exists in this property after the event is fired will go to output channel
+}
 
 export class InteractiveChildProcess {
-    private _childProc: cp.ChildProcess
-    private readonly _options: IInteractiveChildProcessOptions
+    private _childProc: cp.ChildProcess;
+    private readonly _options: IInteractiveChildProcessOptions;
     private _error: unknown | undefined;
     private _startTime: number;
     private _stdOut: string;
@@ -58,33 +52,43 @@ export class InteractiveChildProcess {
         this._childProc.kill();
     }
 
+    public async flushAll(): Promise<void> {
+        this.flushStdOut(true);
+        this.flushStdErr(true);
+    }
+
     public resetState(): void {
         this._stdOut = "";
         this._stdErr = "";
     }
 
     public async writeLine(text: string, textForDisplay?: string): Promise<void> {
-        textForDisplay = textForDisplay || text;
+        textForDisplay = textForDisplay === undefined ? text : textForDisplay;
 
-        await delay(0);
-        this.ThrowIfError();
+        await this.processErrors();
 
-        this.writeToOutputChannel(textForDisplay + os.EOL);
+        if (textForDisplay) {
+            this.writeLineToOutputChannel(textForDisplay);
+        }
         this._childProc.stdin.write(text + os.EOL);
 
-        await delay(0);
-        this.ThrowIfError();
+        await this.processErrors();
     }
 
     private setError(error: unknown): void {
         if (!this._error) {
             this._error = error;
             let parsed = parseError(error);
-            this.writeToOutputChannel("Error: " + parsed.message + os.EOL);
+            this.writeLineToOutputChannel("Error: " + parsed.message);
         }
     }
 
-    private ThrowIfError(outerError?: unknown): void {
+    private async processErrors(outerError?: unknown): Promise<void> {
+        // Wait for next event loop to give any current error events a chance to be processed.
+        // For instance, if the executable fails to start, it will fire an "error" event, but
+        //   we won't see it until the event is processed in the event loop
+        await delay(0);
+
         if (this._error) {
             throw wrapError(outerError, improveError(this._error));
         }
@@ -108,37 +112,20 @@ export class InteractiveChildProcess {
             shell: false
         };
 
-        this.writeToOutputChannel(`Starting executable: ${this._options.command} ${formattedArgs}${os.EOL}`);
+        this.writeLineToOutputChannel(`Starting executable: ${this._options.command} ${formattedArgs}`);
         this._childProc = cp.spawn(this._options.command, this._options.args, options);
 
         this._childProc.stdout.on('data', (data: string | Buffer) => {
             let text = data.toString();
             this._stdOut += text;
-
-            // Debounce to string consecutive data events together as much as possible
-            setTimeout(() => {
-                if (this._stdOut) {
-                    let eventArgs: IOutputEventArgs = { text: this._stdOut, textForOutputChannel: this._stdOut };
-                    this._stdOut = "";
-                    this._onStdOut.fire(eventArgs);
-                    this.writeToOutputChannel(eventArgs.textForOutputChannel);
-                }
-            }, debounceDelay);
+            this.flushStdOut();
         });
 
         this._childProc.stderr.on('data', (data: string | Buffer) => {
             let text = data.toString();
             this._stdErr += text;
 
-            // Allow all current text to drain to reduce chances of getting data split
-            setTimeout(() => {
-                if (this._stdErr) {
-                    let eventArgs: IOutputEventArgs = { text: this._stdErr, textForOutputChannel: this._stdErr };
-                    this._stdErr = "";
-                    this._onStdErr.fire(eventArgs);
-                    this.writeToOutputChannel(eventArgs.textForOutputChannel);
-                }
-            }, debounceDelay);
+            this.flushStdErr();
         });
 
         this._childProc.on('error', (error: unknown) => {
@@ -146,33 +133,52 @@ export class InteractiveChildProcess {
         });
 
         this._childProc.on('close', (code: number) => {
-            if (code > 0) {
-                this.setError(`Process exited with code ${code}`);
+            this.flushAll();
+
+            if (code !== 0) {
+                this.setError(`Process exited with code ${code}. The output may contain additional information.`);
             }
         });
 
-        // Give "error" event a chance to fire
-        await delay(0);
-        this.ThrowIfError(`Unable to start the executable`);
+        await this.processErrors(`Unable to start the executable.`);
     }
 
-    private writeToOutputChannel(text: string): void {
+    private flushStdOut(force?: boolean): void {
+        this._stdOut = this.flush(this._stdOut, this._onStdOut, force);
+    }
+
+    private flushStdErr(force?: boolean): void {
+        this._stdErr = this.flush(this._stdErr, this._onStdErr, force);
+    }
+
+    private writeLineToOutputChannel(text: string): void {
         if (this._options.outputChannel) {
             if (this._options.showTimeInOutputChannel) {
                 let ms = Date.now() - this._startTime;
-                text = `${ms}ms: ${text}`
+                text = `${ms}ms: ${text}`;
             }
 
-            this._options.outputChannel.append(text);
+            this._options.outputChannel.appendLine(text);
         }
     }
-}
 
-export interface ICommandResult {
-    code: number;
-    cmdOutput: string;
-    cmdOutputIncludingStderr: string;
-    formattedArgs: string;
+    private flush(data: string, event: EventEmitter<IOutputEventArgs>, force?: boolean): string {
+        let { lines, remaining } = getLines(data);
+        if (force && remaining) {
+            lines.push(remaining);
+            remaining = "";
+        }
+
+        for (let line of lines) {
+            let eventArgs: IOutputEventArgs = { line };
+            event.fire(eventArgs);
+            if (eventArgs.line !== undefined) {
+                this.writeLineToOutputChannel(eventArgs.line);
+            }
+        }
+
+        return remaining;
+    }
 }
 
 function wrapError(outer?: unknown, innerError?: unknown): unknown {
@@ -189,4 +195,23 @@ function wrapError(outer?: unknown, innerError?: unknown): unknown {
     }
 
     return new Error(`${parseError(outer).message}${os.EOL}${innerMessage}`);
+}
+
+function getLines(data: string): { lines: string[]; remaining: string } {
+    let lines: string[] = [];
+
+    // tslint:disable-next-line:no-constant-condition
+    while (true) {
+        const match: RegExpMatchArray | null = data.match(/(.*)(\r\n|\n)/);
+        if (match) {
+            let line = match[1];
+            let eol = match[2];
+            data = data.slice(line.length + eol.length);
+            lines.push(line);
+        } else {
+            break;
+        }
+    }
+
+    return { lines, remaining: data };
 }

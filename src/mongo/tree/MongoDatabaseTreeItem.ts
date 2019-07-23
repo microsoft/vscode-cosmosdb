@@ -15,7 +15,7 @@ import * as cpUtils from '../../utils/cp';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoCommand } from '../MongoCommand';
 import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings';
-import { Shell } from '../shell';
+import { MongoShell } from '../MongoShell';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoAccountTreeItem } from './MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
@@ -141,7 +141,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 		}
 	}
 
-	private async createShell(): Promise<Shell> {
+	private async createShell(): Promise<MongoShell> {
 		let shellPath: string | undefined = vscode.workspace.getConfiguration().get<string>(ext.settingsKeys.mongoShellPath);
 		let shellArgs: string[] | undefined = vscode.workspace.getConfiguration().get<string[]>(ext.settingsKeys.mongoShellArgs);
 
@@ -151,7 +151,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 			await this._determineShellPathOrCmd(shellPath);
 		}
 
-		return Shell.create(shellPath, shellArgs, this.connectionString, this.root.isEmulator);
+		return MongoShell.create(this._cachedShellPathOrCmd, shellArgs, this.connectionString, this.root.isEmulator);
 	}
 
 	private async _determineShellPathOrCmd(shellPathSetting: string): Promise<void> {

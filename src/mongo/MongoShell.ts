@@ -6,8 +6,8 @@
 // TODO: process "show more" in output (mongoShowMoreMessage)
 
 import * as os from 'os';
-import * as vscode from 'vscode';
 import * as path from 'path';
+import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { InteractiveChildProcess } from '../utils/InteractiveChildProcess';
 import { randomUtils } from '../utils/randomUtils';
@@ -18,8 +18,8 @@ const timeoutMessage = "Timed out trying to execute Mongo script. To use a longe
 const stdInPrefix = "> ";
 const stdErrPrefix = "ERR> ";
 
-export class Shell extends vscode.Disposable {
-	public static async create(execPath: string, execArgs: string[], connectionString: string, isEmulator: boolean): Promise<Shell> {
+export class MongoShell extends vscode.Disposable {
+	public static async create(execPath: string, execArgs: string[], connectionString: string, isEmulator: boolean): Promise<MongoShell> {
 		let args: string[] = execArgs.slice() || []; // Snapshot since we modify it
 		args.push(connectionString);
 
@@ -35,7 +35,7 @@ export class Shell extends vscode.Disposable {
 			command: execPath,
 			args
 		});
-		let shell: Shell = new Shell(process);
+		let shell: MongoShell = new MongoShell(process);
 		return shell;
 	}
 
@@ -56,7 +56,7 @@ export class Shell extends vscode.Disposable {
 
 		this._process.resetState();
 		let stdOut = "";
-		let stdErr = "";
+		//let stdErr = "";
 
 		const sentinel = `$EXECUTION SENTINEL ${randomUtils.getRandomHexString(10)}$`;
 
@@ -66,24 +66,23 @@ export class Shell extends vscode.Disposable {
 				startScriptTimeout(reject);
 				disposables.push(
 					this._process.onStdOut(args => {
-						stdOut += args.text;
-						let { text: finalStdOut, removed } = removeSentinel(stdOut, sentinel);
+						//stdOut += args.line;
+						let { line, removed } = removeSentinel(args.line, sentinel);
+						args.line = line;
 						if (removed) {
-							// The sentinel was found in the full stdOut string, which means we are done
-
-							// Remove sentinel from string to be displayed (which is a subset of the full stdout)
-							args.textForOutputChannel = removeSentinel(args.text, sentinel).text;
-
-							resolve(finalStdOut);
+							// The sentinel was found, which means we are done.
+							args.line = undefined; // Don't output sentinel
+							resolve(stdOut);
+						} else {
+							stdOut += line + os.EOL;
 						}
 					}));
 				disposables.push(
 					this._process.onStdErr(args => {
 						// Mongo shell uses STDERR for things like authentication failed and invalid arguments, not for
-						//   query errors, so consider STDERR output to be a failure
-						stdErr += args.text;
-						args.textForOutputChannel = stdErrPrefix + args.textForOutputChannel;
-						reject(stdErr);
+						//   query errors, so consider STDERR output to be a failure.
+						args.line = stdErrPrefix + args.line;
+						reject("The process has returned an error. Please see the output window.");
 					}));
 
 				// Write out the code
@@ -92,12 +91,14 @@ export class Shell extends vscode.Disposable {
 				// Mark end of result by sending the sentinel wrapped in quotes so the console will spit
 				// it back out as a string value after it's done processing the script
 				let quotedSentinel = `"${sentinel}"`;
-				await this._process.writeLine(quotedSentinel, "") // (Don't display the sentinel)
+				await this._process.writeLine(quotedSentinel, ""); // (Don't display the sentinel)
 			});
 
 			return result;
 		}
 		finally {
+			this._process.flushAll(); // Allow all current output to be processed and sent to output channel
+
 			for (let d of disposables) {
 				d.dispose();
 			}
@@ -124,11 +125,11 @@ function convertToSingleLine(script: string): string {
 
 }
 
-function removeSentinel(text: string, sentinel: string): { text: string; removed: boolean } {
-	let index = text.indexOf(sentinel);
+function removeSentinel(line: string, sentinel: string): { line: string; removed: boolean } {
+	let index = line.indexOf(sentinel);
 	if (index >= 0) {
-		return { text: text.slice(0, index), removed: true };
+		return { line: line.slice(0, index), removed: true };
 	} else {
-		return { text: text, removed: false };
+		return { line, removed: false };
 	}
 }

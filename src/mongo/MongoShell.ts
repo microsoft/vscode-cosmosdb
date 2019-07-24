@@ -95,7 +95,7 @@ export class MongoShell extends vscode.Disposable {
 				await this._process.writeLine(quotedSentinel); // (Don't display the sentinel)
 			});
 
-			return result;
+			return result.trim();
 		}
 		finally {
 			// Dispose event handlers

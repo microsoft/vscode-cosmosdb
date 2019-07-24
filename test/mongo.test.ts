@@ -11,27 +11,33 @@ import { isNumber } from 'util';
 suite("MongoShell", () => {
     let mongodCP: cp.ChildProcess;
     let mongodPath = "c:\\Program Files\\MongoDB\\Server\\4.0\\bin\\mongod.exe";
+    let mongoPath = "c:\\Program Files\\MongoDB\\Server\\4.0\\bin\\mongo.exe";
     let output = "";
     let errors = "";
     let isClosed = false;
+
+    function log(text: string, linePrefix: string): void {
+        text = text.replace(/(^|[\r\n]+)/g, "$1" + linePrefix)
+        console.log(text);
+    }
 
     suiteSetup(() => {
         mongodCP = cp.spawn(mongodPath, ['--quiet']);
 
         mongodCP.stdout.on("data", (buffer: Buffer) => {
-            console.log("mongod STDOUT: " + buffer.toString());
+            log(buffer.toString(), "mongod: ");
             output += buffer.toString();
         });
         mongodCP.stderr.on("data", (buffer: Buffer) => {
-            console.log("mongod STDERR: " + buffer.toString());
+            log(buffer.toString(), "mongod STDERR: ");
             errors += buffer.toString();
         });
         mongodCP.on("error", (error: unknown) => {
-            console.log("mongod Error: " + parseError(error).message);
+            log(parseError(error).message, "mongod Error: ");
             errors += parseError(error).message;
         });
         mongodCP.on("close", (code?: number) => {
-            console.log("mongod: Close " + code);
+            console.log("mongod: Close code=" + code);
             isClosed = true;
             if (isNumber(code) && code !== 0) {
                 errors += "Closed with code " + code;
@@ -51,8 +57,9 @@ suite("MongoShell", () => {
         assert(!isClosed);
         assert(errors === "");
 
-        let shell = await MongoShell.create(mongodPath, [], '', false);
-        await shell.useDatabase('abc');
+        let shell = await MongoShell.create(mongoPath, [], '', false);
+        let result = await shell.useDatabase('abc');
+        assert.equal(result, 'switched to db abc');
     }
 
     test("a", async () => {

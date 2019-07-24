@@ -9,6 +9,7 @@ steps:
 
 - script: |
      choco install mongodb
+     type C:\ProgramData\chocolatey\logs\chocolatey.log
   condition: eq(variables['Agent.OS'], 'Windows_NT')
 
 - task: Npm@1

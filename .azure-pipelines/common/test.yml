@@ -12,6 +12,10 @@ steps:
      type C:\ProgramData\chocolatey\logs\chocolatey.log
      where mongo.exe
      where mongod.exe
+     mongo
+     dir C:\ProgramData\chocolatey\
+     dir C:\ProgramData\chocolatey\bin
+     dir C:\ProgramData\chocolatey\bin\mongo --version
   condition: eq(variables['Agent.OS'], 'Windows_NT')
 
 - task: Npm@1

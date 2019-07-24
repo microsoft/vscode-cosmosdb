@@ -7,6 +7,7 @@ import * as assert from 'assert';
 import { parseError, MongoShell } from '../extension.bundle';
 import * as cp from "child_process";
 import { isNumber } from 'util';
+//import * as fse from 'fs-extra';
 
 suite("MongoShell", () => {
     let mongodCP: cp.ChildProcess;
@@ -22,7 +23,10 @@ suite("MongoShell", () => {
     }
 
     suiteSetup(() => {
-        mongodCP = cp.spawn(mongodPath, ['--quiet']);
+        // assert(fs.existsSync(mongodPath), "Couldn't find mongod.exe at " + mongodPath);
+        // assert(fs.existsSync(mongodPath), "Couldn't find mongo.exe at " + mongoPath);
+
+        mongodCP = cp.spawn(`\"${mongodPath}\"`, ['--quiet'], { shell: true });
 
         mongodCP.stdout.on("data", (buffer: Buffer) => {
             log(buffer.toString(), "mongod: ");
@@ -53,17 +57,38 @@ suite("MongoShell", () => {
         }
     });
 
-    async function testShellCommand(_script: string): Promise<void> {
-        assert(!isClosed);
-        assert(errors === "");
+    function testShellCommand(options: {
+        script: string;
+        expected?: string;
+        expectedError?: string;
+        title?: string; // Defaults to script
+        args?: string[]; // Defaults to []
+        incorrectPath?: string; // Defaults to the correct mongo path
+    }): void {
+        test(options.script, async () => {
+            assert(!isClosed);
+            assert(errors === "");
 
-        let shell = await MongoShell.create(mongoPath, [], '', false);
-        let result = await shell.useDatabase('abc');
-        assert.equal(result, 'switched to db abc');
+            let shell = await MongoShell.create(options.incorrectPath || mongoPath, options.args || [], '', false);
+            let result = await shell.executeScript(options.script);
+            try {
+                assert(options.expectedError === undefined, `Expected error '${options.expectedError}'`);
+                assert.equal(result, options.expected);
+            } catch (error) {
+                assert.equal(parseError(error).message, options.expectedError);
+            }
+        });
     }
 
-    test("a", async () => {
-        await testShellCommand('use db');
+    testShellCommand({
+        script: 'use abc',
+        expected: 'switched to db abc'
+    });
+
+    testShellCommand({
+        title: "Incorrect path",
+        script: 'use abc',
+        expectedError: 'switched to db abc'
     });
 
     suiteTeardown(() => {

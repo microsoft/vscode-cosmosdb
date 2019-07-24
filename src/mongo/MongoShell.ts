@@ -6,11 +6,11 @@
 // CONSIDER asdf: process "show more" in output (mongoShowMoreMessage)
 
 import * as os from 'os';
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { InteractiveChildProcess } from '../utils/InteractiveChildProcess';
 import { randomUtils } from '../utils/randomUtils';
+import { wrapError } from '../utils/wrapError';
 
 const timeoutMessage = "Timed out trying to execute Mongo script. To use a longer timeout, modify the VS Code 'mongo.shell.timeout' setting.";
 
@@ -19,6 +19,8 @@ const sentinelRegex = /\"?EXECUTION COMPLETED [0-9a-fA-F]{10}\"?/;
 function createSentinel(): string { return `${sentinelBase} ${randomUtils.getRandomHexString(10)}`; }
 
 export class MongoShell extends vscode.Disposable {
+	private _isDisposed: boolean = false;
+
 	public static async create(execPath: string, execArgs: string[], connectionString: string, isEmulator: boolean): Promise<MongoShell> {
 		let args: string[] = execArgs.slice() || []; // Snapshot since we modify it
 		args.push(connectionString);
@@ -31,7 +33,7 @@ export class MongoShell extends vscode.Disposable {
 
 		let process: InteractiveChildProcess = await InteractiveChildProcess.create({
 			outputChannel: ext.outputChannel,
-			workingDirectory: path.dirname(execPath),
+			//workingDirectory: path.dirname(execPath),
 			command: execPath,
 			args,
 			outputFilterSearch: sentinelRegex,
@@ -51,14 +53,15 @@ export class MongoShell extends vscode.Disposable {
 	}
 
 	public dispose(): void {
+		this._isDisposed = true;
 		this._process.kill();
 	}
 
 	public async useDatabase(database: string): Promise<string> {
-		return await this.executeScript(`use ${database}`);
+		return (await this.executeScript(`use ${database}`)).result;
 	}
 
-	public async executeScript(script: string): Promise<string> {
+	public async executeScript(script: string): Promise<{ result: string; stdOut: string; stdErr: string }> {
 		script = convertToSingleLine(script);
 
 		let stdOut = "";
@@ -69,6 +72,8 @@ export class MongoShell extends vscode.Disposable {
 		try {
 			let result = await new Promise<string>(async (resolve, reject) => {
 				startScriptTimeout(reject);
+
+				// Hook up events
 				disposables.push(
 					this._process.onStdOut(text => {
 						stdOut += text;
@@ -77,6 +82,13 @@ export class MongoShell extends vscode.Disposable {
 							// The sentinel was found, which means we are done.
 							resolve(stdOutNoSentinel);
 						}
+					}));
+				disposables.push(
+					this._process.onStdErr(text => {
+						// Mongo shell only writes to STDERR for errors relating to starting up. Script errors go to STDOUT.
+						//   So consider this an error.
+						// (It's okay if we fire this multiple times, the first one wins.)
+						reject(wrapError("There was an error executing the mongo shell. Check the output window for additional information.", text.trim()));
 					}));
 				disposables.push(
 					this._process.onError(error => {
@@ -95,7 +107,7 @@ export class MongoShell extends vscode.Disposable {
 				await this._process.writeLine(quotedSentinel); // (Don't display the sentinel)
 			});
 
-			return result.trim();
+			return { result: result.trim(), stdOut, stdErr: "" }; //asdf
 		}
 		finally {
 			// Dispose event handlers

@@ -135,7 +135,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 		try {
 			await shell.useDatabase(this.databaseName);
 			let result = await shell.executeScript(command.text);
-			return result;
+			return result.result;
 		} finally {
 			shell.dispose();
 		}

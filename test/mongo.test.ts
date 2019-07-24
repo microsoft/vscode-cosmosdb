@@ -51,8 +51,8 @@ suite("MongoShell", () => {
 
     test("Verify mongod running", async () => {
         while (!output.includes('waiting for connections on port 27017')) {
-            assert(!isClosed);
             assert.equal(errors, "", "Expected no errors");
+            assert(!isClosed);
             await delay(50);
         }
     });

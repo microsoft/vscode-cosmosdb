@@ -15,7 +15,12 @@ steps:
      mongo
      dir C:\ProgramData\chocolatey\
      dir C:\ProgramData\chocolatey\bin
+     dir C:\ProgramData\chocolatey\mongodb
+     dir C:\ProgramData\chocolatey\mongodb\lib
+     dir C:\ProgramData\chocolatey\mongodb\lib\tools
      dir C:\ProgramData\chocolatey\bin\mongo --version
+     dir C:\ProgramData\chocolatey\mongodb\lib\mongod --version
+     dir C:\ProgramData\chocolatey\mongodb\lib\tools\mongod --version
   condition: eq(variables['Agent.OS'], 'Windows_NT')
 
 - task: Npm@1

@@ -5,7 +5,7 @@
 
 import * as assert from 'assert';
 import * as os from 'os';
-import { wrapError } from '../src/utils/wrappError';
+import { wrapError } from '../extension.bundle';
 import { parseError } from 'vscode-azureextensionui';
 
 suite("wrapError", () => {

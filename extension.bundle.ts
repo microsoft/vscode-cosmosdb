@@ -28,6 +28,9 @@ export { MongoCommand } from './src/mongo/MongoCommand';
 export { getAllCommandsFromText, getCommandFromTextAtLocation } from './src/mongo/MongoScrapbook';
 export { rejectOnTimeout, valueOnTimeout } from './src/utils/timeout';
 export { improveError } from './src/utils/improveError';
+export { parseError } from 'vscode-azureextensionui';
+export { MongoShell } from './src/mongo/MongoShell';
+export { wrapError } from './src/utils/wrapError';
 
 // The tests use instanceof against these and therefore we need to make sure we're using the same version of the bson module in the tests as in the bundle,
 //   so export it from the bundle itself.

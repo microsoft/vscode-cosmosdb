@@ -8,20 +8,23 @@ steps:
   condition: eq(variables['Agent.OS'], 'Linux')
 
 - script: |
-     choco install mongodb
-     type C:\ProgramData\chocolatey\logs\chocolatey.log
-     where mongo.exe
-     where mongod.exe
-     mongo
-     dir C:\ProgramData\mongodb
-     dir C:\ProgramData\chocolatey\
-     dir C:\ProgramData\chocolatey\bin
-     dir C:\ProgramData\chocolatey\mongodb
-     dir C:\ProgramData\chocolatey\mongodb\lib
-     dir C:\ProgramData\chocolatey\mongodb\lib\tools
-     C:\ProgramData\chocolatey\bin\mongo --version
-     dir C:\ProgramData\chocolatey\mongodb\lib\mongod --version
-     dir C:\ProgramData\chocolatey\mongodb\lib\tools\mongod --version
+    curl https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.10-signed.msi -o mongodb-win32-x86_64-2008plus-ssl-4.0.10-signed.msi
+    msiexec.exe /l*v mdbinstall.log  /qb /i mongodb-win32-x86_64-2008plus-ssl-4.0.10-signed.msi SHOULD_INSTALL_COMPASS="0"
+
+#     choco install mongodb
+ #    type C:\ProgramData\chocolatey\logs\chocolatey.log
+     #where mongo.exe
+     #where mongod.exe
+     #mongo
+     #dir C:\ProgramData\mongodb
+     #dir C:\ProgramData\chocolatey\
+     #dir C:\ProgramData\chocolatey\bin
+     #dir C:\ProgramData\chocolatey\mongodb
+     #dir C:\ProgramData\chocolatey\mongodb\lib
+     #dir C:\ProgramData\chocolatey\mongodb\lib\tools
+     #C:\ProgramData\chocolatey\bin\mongo --version
+     #dir C:\ProgramData\chocolatey\mongodb\lib\mongod --version
+     #dir C:\ProgramData\chocolatey\mongodb\lib\tools\mongod --version
   condition: eq(variables['Agent.OS'], 'Windows_NT')
 
 - task: Npm@1

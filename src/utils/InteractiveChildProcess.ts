@@ -93,22 +93,14 @@ export class InteractiveChildProcess {
 
         this._childProc.on('error', (error: unknown) => {
             let improvedError = improveError(error);
-            this._error = this._error || improvedError;
-            this.writeLineToOutputChannel(parseError(improvedError).message, errorPrefix);
-            this._onErrorEmitter.fire(improvedError);
+            this.setError(improvedError);
         });
 
         this._childProc.on('close', (code: number | null) => {
             if (isNumber(code) && code !== 0) {
-                let msg = `The process exited with code ${code}.`; //asdf refactor
-                this.writeLineToOutputChannel(msg, errorPrefix);
-                this._error = this._error || msg;
-                this._onErrorEmitter.fire(msg);
+                this.setError(`The process exited with code ${code}.`);
             } else if (!this._isKilling) {
-                let msg = `The process exited prematurely.`;
-                this.writeLineToOutputChannel(msg, errorPrefix);
-                this._error = this._error || msg;
-                this._onErrorEmitter.fire(msg);
+                this.setError(`The process exited prematurely.`);
             }
         });
 
@@ -116,7 +108,7 @@ export class InteractiveChildProcess {
         await new Promise<void>(async (resolve, reject) => {
             // tslint:disable-next-line:promise-must-complete no-constant-condition // asdf
             while (true) {
-                if (!!this._error) {
+                if (!!this._error || this._isKilling) {
                     reject(this._error);
                     break;
                 } else if (!!this._childProc.pid) {
@@ -145,6 +137,12 @@ export class InteractiveChildProcess {
                 this._options.outputChannel.appendLine(text);
             }
         }
+    }
+
+    private setError(error: unknown): void {
+        this.writeLineToOutputChannel(parseError(error).message, errorPrefix);
+        this._error = this._error || error;
+        this._onErrorEmitter.fire(error);
     }
 
     private filterText(text: string): string {

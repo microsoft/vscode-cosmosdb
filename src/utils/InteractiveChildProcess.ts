@@ -10,7 +10,6 @@ import * as vscode from 'vscode';
 import { Event, EventEmitter } from 'vscode';
 import { parseError } from 'vscode-azureextensionui';
 import { improveError } from './improveError';
-import * as assert from 'assert';
 
 // We add these when we display to the output window
 const stdInPrefix = '> ';
@@ -115,6 +114,7 @@ export class InteractiveChildProcess {
 
         // Wait for the process to start up
         await new Promise<void>(async (resolve, reject) => {
+            // tslint:disable-next-line:promise-must-complete no-constant-condition // asdf
             while (true) {
                 if (!!this._error) {
                     reject(this._error);
@@ -159,6 +159,7 @@ export class InteractiveChildProcess {
 
 async function delay(milliseconds: number): Promise<void> { //asdf
     return new Promise(resolve => {
+        // tslint:disable-next-line:no-string-based-set-timeout // false positive
         setTimeout(resolve, milliseconds);
-    })
+    });
 }

@@ -7,11 +7,11 @@
 
 import * as os from 'os';
 import * as vscode from 'vscode';
+import { parseError } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
 import { InteractiveChildProcess } from '../utils/InteractiveChildProcess';
 import { randomUtils } from '../utils/randomUtils';
 import { wrapError } from '../utils/wrapError';
-import { parseError } from 'vscode-azureextensionui';
 
 const timeoutMessage = "Timed out trying to execute Mongo script. To use a longer timeout, modify the VS Code 'mongo.shell.timeout' setting.";
 
@@ -172,8 +172,9 @@ function removeSentinel(text: string, sentinel: string): { text: string; removed
 
 async function delay(milliseconds: number): Promise<void> { //asdf
 	return new Promise(resolve => {
+		// tslint:disable-next-line:no-string-based-set-timeout // false positive
 		setTimeout(resolve, milliseconds);
-	})
+	});
 }
 
 function wrapCheckOutputWindow(error: unknown): unknown {

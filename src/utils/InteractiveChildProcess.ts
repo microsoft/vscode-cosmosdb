@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import { Event, EventEmitter } from 'vscode';
 import { parseError } from 'vscode-azureextensionui';
 import { improveError } from './improveError';
+import * as assert from 'assert';
 
 // We add these when we display to the output window
 const stdInPrefix = '> ';
@@ -30,6 +31,8 @@ export class InteractiveChildProcess {
     private _childProc: cp.ChildProcess;
     private readonly _options: IInteractiveChildProcessOptions;
     private _startTime: number;
+    private _error: unknown;
+    private _isKilling: boolean;
 
     private constructor(options: IInteractiveChildProcessOptions) {
         this._options = options;
@@ -51,6 +54,7 @@ export class InteractiveChildProcess {
     }
 
     public kill(): void {
+        this._isKilling = true;
         this._childProc.kill();
     }
 
@@ -73,7 +77,7 @@ export class InteractiveChildProcess {
             shell: false
         };
 
-        this.writeLineToOutputChannel(`Starting executable: ${this._options.command} ${formattedArgs}`);
+        this.writeLineToOutputChannel(`Starting executable: "${this._options.command}" ${formattedArgs}`);
         this._childProc = cp.spawn(this._options.command, this._options.args, options);
 
         this._childProc.stdout.on('data', (data: string | Buffer) => {
@@ -90,15 +94,37 @@ export class InteractiveChildProcess {
 
         this._childProc.on('error', (error: unknown) => {
             let improvedError = improveError(error);
+            this._error = this._error || improvedError;
             this.writeLineToOutputChannel(parseError(improvedError).message, errorPrefix);
             this._onErrorEmitter.fire(improvedError);
         });
 
-        this._childProc.on('close', (code: number) => {
+        this._childProc.on('close', (code: number | null) => {
             if (isNumber(code) && code !== 0) {
-                let msg = `The process exited with code ${code}. The output window may contain additional information.`;
+                let msg = `The process exited with code ${code}.`; //asdf refactor
                 this.writeLineToOutputChannel(msg, errorPrefix);
+                this._error = this._error || msg;
                 this._onErrorEmitter.fire(msg);
+            } else if (!this._isKilling) {
+                let msg = `The process exited prematurely.`;
+                this.writeLineToOutputChannel(msg, errorPrefix);
+                this._error = this._error || msg;
+                this._onErrorEmitter.fire(msg);
+            }
+        });
+
+        // Wait for the process to start up
+        await new Promise<void>(async (resolve, reject) => {
+            while (true) {
+                if (!!this._error) {
+                    reject(this._error);
+                    break;
+                } else if (!!this._childProc.pid) {
+                    resolve();
+                    break;
+                } else {
+                    await delay(50); // todo asdf timeout
+                }
             }
         });
     }
@@ -115,7 +141,7 @@ export class InteractiveChildProcess {
                     text = `${ms}ms: ${text}`;
                 }
 
-                text = displayPrefix + text;
+                text = (displayPrefix || "") + text;
                 this._options.outputChannel.appendLine(text);
             }
         }
@@ -129,4 +155,10 @@ export class InteractiveChildProcess {
 
         return text;
     }
+}
+
+async function delay(milliseconds: number): Promise<void> { //asdf
+    return new Promise(resolve => {
+        setTimeout(resolve, milliseconds);
+    })
 }

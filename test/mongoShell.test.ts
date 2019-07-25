@@ -12,6 +12,7 @@ import * as path from 'path';
 import { setEnvironmentVariables } from './util/setEnvironmentVariables';
 import { IDisposable } from '../src/utils/vscodeUtils';
 import * as fse from 'fs-extra';
+import * as vscode from 'vscode';
 
 suite("MongoShell", () => {
     let mongodCP: cp.ChildProcess;
@@ -21,9 +22,28 @@ suite("MongoShell", () => {
     let errors = "";
     let isClosed = false;
 
+    class FakeOutputChannel implements vscode.OutputChannel {
+        name: string;
+        append(value: string): void {
+            assert(value !== undefined);
+            assert(!value.includes('undefined'));
+            log(value, "Output channel: ");
+        }
+        appendLine(value: string): void {
+            assert(value !== undefined);
+            this.append(value + os.EOL);
+        }
+        clear(): void { }
+        show(preserveFocus?: boolean): void;
+        show(column?: vscode.ViewColumn, preserveFocus?: boolean): void;
+        show(_column?: any, _preserveFocus?: any) { }
+        hide(): void { }
+        dispose(): void { }
+    }
+
     function log(text: string, linePrefix: string): void {
         text = text.replace(/(^|[\r\n]+)/g, "$1" + linePrefix)
-        console.log(text);
+        //console.log(text);
     }
 
     async function delay(milliseconds: number): Promise<void> {
@@ -55,22 +75,22 @@ suite("MongoShell", () => {
         mongodCP = cp.spawn(mongodPath, ['--quiet']);
 
         mongodCP.stdout.on("data", (buffer: Buffer) => {
-            log(buffer.toString(), "mongod: ");
+            log(buffer.toString(), "mongo server: ");
             output += buffer.toString();
         });
         mongodCP.stderr.on("data", (buffer: Buffer) => {
-            log(buffer.toString(), "mongod STDERR: ");
+            log(buffer.toString(), "mongo server STDERR: ");
             errors += buffer.toString();
         });
         mongodCP.on("error", (error: unknown) => {
-            log(parseError(error).message, "mongod Error: ");
+            log(parseError(error).message, "mongo server Error: ");
             errors += parseError(error).message + os.EOL;
         });
         mongodCP.on("close", (code?: number) => {
-            console.log("mongod: Close code=" + code);
+            console.log("mongo server: Close code=" + code);
             isClosed = true;
             if (isNumber(code) && code !== 0) {
-                errors += "Closed with code " + code + os.EOL;
+                errors += "mongo server: Closed with code " + code + os.EOL;
             }
         });
     });
@@ -105,10 +125,10 @@ suite("MongoShell", () => {
 
             try {
                 previousEnv = setEnvironmentVariables(options.env || {});
-                shell = await MongoShell.create(options.mongoPath || mongoPath, options.args || [], '', false);
+                shell = await MongoShell.create(options.mongoPath || mongoPath, options.args || [], '', false, new FakeOutputChannel());
                 let result = await shell.executeScript(options.script);
                 if (options.expectedError) {
-                    assert(false, `Expected error '${options.expectedError}'`);
+                    assert(false, `Expected error: '${options.expectedError}'`);
                 }
                 assert.equal(result.result, options.expected);
             } catch (error) {
@@ -141,7 +161,7 @@ suite("MongoShell", () => {
         title: "Incorrect path",
         script: 'use abc',
         mongoPath: "/notfound/mongo.exe",
-        expectedError: 'Could not find /notfound/mongo.exe',
+        expectedError: /Could not find .*notfound.*mongo.exe/
     });
 
     testShellCommand({
@@ -169,11 +189,33 @@ suite("MongoShell", () => {
     });
 
     testShellCommand({
+        title: "Output window may contain additional information",
+        script: '',
+        args: ["-u", "baduser", "-p", "badpassword"],
+        expectedError: /The output window may contain additional information/
+    });
+
+    testShellCommand({
         title: "With bad credentials",
         script: '',
         args: ["-u", "baduser", "-p", "badpassword"],
-        expectedError: `There was an error executing the mongo shell. Check the output window for additional information.${os.EOL}exception: connect failed`
+        expectedError: /exception: connect failed/
+    });
+
+    testShellCommand({
+        title: "Process exits immediately",
+        script: '',
+        args: ["--version"],
+        expectedError: /The process exited prematurely/
     });
 
     test("timeout");
+
+    test("asdf", async () => {
+        let shell = await MongoShell.create(mongoPath, [], '', false, new FakeOutputChannel());
+        await shell.executeScript('db.mongoShellTest.drop()');
+        await shell.executeScript('db.mongoShellTest.insert({a:1})');
+        let result = await shell.executeScript('db.mongoShellTest.find().pretty()');
+        result = result;
+    });
 });

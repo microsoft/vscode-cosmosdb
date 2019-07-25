@@ -15,6 +15,9 @@ import { parseError } from 'vscode-azureextensionui';
 
 const timeoutMessage = "Timed out trying to execute Mongo script. To use a longer timeout, modify the VS Code 'mongo.shell.timeout' setting.";
 
+const mongoShellMoreMessage = 'Type "it" for more';
+const extensionMoreMessage = '(More)';
+
 const sentinelBase = 'EXECUTION COMPLETED';
 const sentinelRegex = /\"?EXECUTION COMPLETED [0-9a-fA-F]{10}\"?/;
 function createSentinel(): string { return `${sentinelBase} ${randomUtils.getRandomHexString(10)}`; }
@@ -61,10 +64,10 @@ export class MongoShell extends vscode.Disposable {
 	}
 
 	public async useDatabase(database: string): Promise<string> {
-		return (await this.executeScript(`use ${database}`)).result;
+		return await this.executeScript(`use ${database}`);
 	}
 
-	public async executeScript(script: string): Promise<{ result: string; stdOut: string; stdErr: string }> {
+	public async executeScript(script: string): Promise<string> {
 		script = convertToSingleLine(script);
 
 		let stdOut = "";
@@ -83,6 +86,13 @@ export class MongoShell extends vscode.Disposable {
 							let { text: stdOutNoSentinel, removed } = removeSentinel(stdOut, sentinel);
 							if (removed) {
 								// The sentinel was found, which means we are done.
+
+								// Change the "type 'it' for more" message to one that doesn't ask users to type anything,
+								//   since we're not currently interactive like that.
+								// CONSIDER: Ideally we would allow users to click a button to iterate through more data,
+								//   or even just do it for them
+								stdOutNoSentinel = stdOutNoSentinel.replace(mongoShellMoreMessage, extensionMoreMessage);
+
 								resolve(stdOutNoSentinel);
 							}
 						}));
@@ -121,7 +131,7 @@ export class MongoShell extends vscode.Disposable {
 				}
 			});
 
-			return { result: result.trim(), stdOut, stdErr: "" }; //asdf
+			return result.trim();
 		}
 		finally {
 			// Dispose event handlers

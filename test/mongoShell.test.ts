@@ -130,7 +130,7 @@ suite("MongoShell", () => {
                 if (options.expectedError) {
                     assert(false, `Expected error: '${options.expectedError}'`);
                 }
-                assert.equal(result.result, options.expected);
+                assert.equal(result, options.expected);
             } catch (error) {
                 let message = parseError(error).message;
 
@@ -214,8 +214,13 @@ suite("MongoShell", () => {
     test("asdf", async () => {
         let shell = await MongoShell.create(mongoPath, [], '', false, new FakeOutputChannel());
         await shell.executeScript('db.mongoShellTest.drop()');
-        await shell.executeScript('db.mongoShellTest.insert({a:1})');
+        await shell.executeScript('for (var i = 0; i < 50; ++i) { db.mongoShellTest.insert({a:i}); }');
+
         let result = await shell.executeScript('db.mongoShellTest.find().pretty()');
-        result = result;
+
+        assert(!result.includes('Type "it" for more'));
+        assert(result.includes('(More)'));
+
+        shell.dispose();
     });
 });

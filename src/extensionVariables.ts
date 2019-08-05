@@ -20,6 +20,8 @@ export namespace ext {
     export let tree: AzExtTreeDataProvider;
     export let treeView: TreeView<AzExtTreeItem>;
     export let attachedAccountsNode: AttachedAccountsTreeItem;
+    // tslint:disable-next-line: strict-boolean-expressions
+    export let ignoreBundle: boolean = !/^(false|0)?$/i.test(process.env.AZCODE_COSMOSDB_IGNORE_BUNDLE || '');
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

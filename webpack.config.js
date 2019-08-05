@@ -124,7 +124,10 @@ let config = dev.getDefaultWebpackConfig({
 
             // graphClient.js -> dist, which is used by graphClient.html
             { from: './out/src/graph/client/graphClient.js', to: 'graphClient.js' }
-        ])
+        ]),
+
+        // An instance of the StringReplacePlugin plugin must be present for it to work (its use is configured in modules).
+        new StringReplacePlugin()
     ]
 });
 

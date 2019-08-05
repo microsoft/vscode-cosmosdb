@@ -904,7 +904,7 @@
 		"typescript": "^3.2.2",
 		"vsce": "^1.37.5",
 		"vscode": "^1.1.18",
-		"vscode-azureextensiondev": "0.2.0",
+		"vscode-azureextensiondev": "^0.2.1",
 		"webpack": "4.28.1",
 		"webpack-cli": "^3.1.2"
 	},

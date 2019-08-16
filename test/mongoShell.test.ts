@@ -16,8 +16,8 @@ import * as vscode from 'vscode';
 
 suite("MongoShell", () => {
     let mongodCP: cp.ChildProcess;
-    let mongodPath = "c:\\Program Files\\MongoDB\\Server\\4.0\\bin\\mongod.exe";
-    let mongoPath = "c:\\Program Files\\MongoDB\\Server\\4.0\\bin\\mongo.exe";
+    let mongodPath = "c:\\Program Files\\MongoDB\\Server\\4.2\\bin\\mongod.exe";
+    let mongoPath = "c:\\Program Files\\MongoDB\\Server\\4.2\\bin\\mongo.exe";
     let output = "";
     let errors = "";
     let isClosed = false;

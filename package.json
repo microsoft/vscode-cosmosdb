@@ -1,6 +1,6 @@
 {
 	"name": "vscode-cosmosdb",
-	"version": "0.10.2",
+	"version": "0.10.3-alpha",
 	"aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
 	"publisher": "ms-azuretools",
 	"displayName": "Azure Cosmos DB",
@@ -914,7 +914,7 @@
 		"typescript": "^3.2.2",
 		"vsce": "^1.37.5",
 		"vscode": "^1.1.18",
-		"vscode-azureextensiondev": "0.1.8",
+		"vscode-azureextensiondev": "^0.2.1",
 		"webpack": "4.28.1",
 		"webpack-cli": "^3.1.2"
 	},
@@ -934,7 +934,7 @@
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "^0.25.0",
+		"vscode-azureextensionui": "^0.26.3",
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.4.0",
 		"vscode-languageserver": "^4.4.0",

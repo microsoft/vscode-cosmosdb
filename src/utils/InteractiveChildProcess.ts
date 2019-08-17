@@ -121,7 +121,7 @@ export class InteractiveChildProcess {
                     if (Date.now() > started + processStartupTimeout) {
                         reject("The process did not start in a timely manner");
                     }
-                    await delay(50); // todo asdf timeout
+                    await delay(50);
                 }
             }
         });

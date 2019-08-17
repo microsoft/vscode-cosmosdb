@@ -740,8 +740,18 @@
 						"string",
 						"null"
 					],
-					"description": "Command to execute or full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. If empty, will search in the system path for 'mongo'.",
+					"description": "Full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. If empty, will search in the system path for 'mongo'.",
 					"default": null
+				},
+				"mongo.shell.args": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Arguments to pass when starting the Mongo shell.",
+					"default": [
+						"--quiet"
+					]
 				},
 				"mongo.shell.timeout": {
 					"type": "number",
@@ -924,7 +934,7 @@
 		"socket.io": "^1.7.3",
 		"socket.io-client": "^1.7.3",
 		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "^0.26.3",
+		"vscode-azureextensionui": "0.26.5",
 		"vscode-json-languageservice": "^3.0.8",
 		"vscode-languageclient": "^4.4.0",
 		"vscode-languageserver": "^4.4.0",

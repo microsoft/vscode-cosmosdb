@@ -266,3 +266,6 @@ dist
 stats.json
 *.tgz
 *.zip
+
+# Scrapbooks
+*.mongo

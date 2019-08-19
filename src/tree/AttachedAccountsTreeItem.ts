@@ -30,7 +30,7 @@ interface IPersistedAccount {
 }
 
 export const AttachedAccountSuffix: string = 'Attached';
-export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start with "mongodb://" or "mongodb+srv://"';
+export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start with "mongodb://" or "mongodb+srv://" and cannot contain spaces';
 
 const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
 
@@ -149,7 +149,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 
             if (connectionString) {
                 let treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);
-                await this.attachAccount(treeItem, connectionString);
+                await this.attachAccount(treeItem, connectionString.trim());
             }
         } else {
             throw new UserCancelledError();
@@ -325,7 +325,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     static validateMongoConnectionString(value: string): string | undefined {
-        if (value && value.match(/^mongodb(\+srv)?:\/\//)) {
+        if (value && value.match(/^mongodb(\+srv)?:\/\//) && !value.match(" ")) {
             return undefined;
         }
         return MONGO_CONNECTION_EXPECTED;
@@ -336,7 +336,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             parseDocDBConnectionString(value);
             return undefined;
         } catch (error) {
-            return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..."';
+            return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..." and contain no spaces';
         }
 
     }

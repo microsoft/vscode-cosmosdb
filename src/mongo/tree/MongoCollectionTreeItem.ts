@@ -107,7 +107,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 		return new MongoDocumentTreeItem(this, newDocument);
 	}
 
-	public async tryExecuteCommandDirectly(name: string, args?: string[]): Promise<{ deferToShell?: boolean; result?: string }> {
+	public async tryExecuteCommandDirectly(name: string, args?: string[]): Promise<{ deferToShell: true; result: undefined } | { deferToShell: false; result: string }> {
 		const parameters = args ? args.map(parseJSContent) : undefined;
 
 		const functions = {
@@ -132,11 +132,11 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 				throw new Error(`Too many arguments passed to command ${name}`);
 			}
 			if (parameters.length > descriptor.maxHandledArgs) { //this function won't handle these arguments, but the shell will
-				return { deferToShell: true };
+				return { deferToShell: true, result: undefined };
 			}
 			return await reportProgress(descriptor.mongoFunction.apply(this, parameters), descriptor.text);
 		}
-		return { deferToShell: true };
+		return { deferToShell: true, result: undefined };
 	}
 
 	public async deleteTreeItemImpl(): Promise<void> {

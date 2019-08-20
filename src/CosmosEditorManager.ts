@@ -157,7 +157,7 @@ export class CosmosEditorManager {
             const editor: ICosmosEditor = this.fileMap[filePath];
             const showSaveWarning: boolean | undefined = vscode.workspace.getConfiguration().get(this.showSavePromptKey);
             if (showSaveWarning !== false) {
-                const message: string = `Saving 'cosmos-editor.json' will update the entity "${editor.label}" to the Cloud.`;
+                const message: string = `Saving '${path.parse(doc.fileName).base}' will update the entity "${editor.label}" to the Cloud.`;
                 const result: MessageItem | undefined = await vscode.window.showWarningMessage(message, DialogResponses.upload, DialogResponses.alwaysUpload, DialogResponses.cancel);
 
                 if (result === DialogResponses.alwaysUpload) {

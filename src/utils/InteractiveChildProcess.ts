@@ -83,8 +83,8 @@ export class InteractiveChildProcess {
 
         this._childProc.stdout.on('data', (data: string | Buffer) => {
             let text = data.toString();
-            this.writeLineToOutputChannel(text);
             this._onStdOutEmitter.fire(text);
+            this.writeLineToOutputChannel(text);
         });
 
         this._childProc.stderr.on('data', (data: string | Buffer) => {
@@ -120,6 +120,7 @@ export class InteractiveChildProcess {
                 } else {
                     if (Date.now() > started + processStartupTimeout) {
                         reject("The process did not start in a timely manner");
+                        break;
                     }
                     await delay(50);
                 }

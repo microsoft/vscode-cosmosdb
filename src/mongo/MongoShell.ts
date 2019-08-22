@@ -27,14 +27,17 @@ export class MongoShell extends vscode.Disposable {
 			args.push(connectionString);
 
 			if (isEmulator) {
-				// Without this the connection will fail due to the self-signed DocDB certificate
-				args.push("--ssl");
-				args.push("--sslAllowInvalidCertificates");
+				// Without these the connection will fail due to the self-signed DocDB certificate
+				if (args.indexOf("--ssl") < 0) {
+					args.push("--ssl");
+				}
+				if (args.indexOf("--sslAllowInvalidCertificates") < 0) {
+					args.push("--sslAllowInvalidCertificates");
+				}
 			}
 
 			let process: InteractiveChildProcess = await InteractiveChildProcess.create({
 				outputChannel: outputChannel,
-				//workingDirectory: path.dirname(execPath),
 				command: execPath,
 				args,
 				outputFilterSearch: sentinelRegex,
@@ -152,8 +155,7 @@ function startScriptTimeout(timeoutSeconds: number | 0, reject: (unknown) => voi
 function convertToSingleLine(script: string): string {
 	return script.split(os.EOL)
 		.map(line => line.trim())
-		.join('')
-		.trim();
+		.join('');
 
 }
 

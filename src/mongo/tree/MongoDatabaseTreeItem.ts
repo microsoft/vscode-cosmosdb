@@ -15,12 +15,13 @@ import * as cpUtils from '../../utils/cp';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoCommand } from '../MongoCommand';
 import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings';
-import { Shell } from '../shell';
+import { MongoShell } from '../MongoShell';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoAccountTreeItem } from './MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 
 const mongoExecutableFileName = process.platform === 'win32' ? 'mongo.exe' : 'mongo';
+const executingInShellMsg = "Executing command in Mongo shell";
 
 export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 	public static contextValue: string = "mongoDb";
@@ -60,7 +61,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 	}
 
 	public async loadMoreChildrenImpl(_clearCache: boolean): Promise<MongoCollectionTreeItem[]> {
-		const db: Db = await this.getDb();
+		const db: Db = await this.connectToDb();
 		const collections: Collection[] = await db.collections();
 		return collections.map(collection => new MongoCollectionTreeItem(this, collection));
 	}
@@ -81,42 +82,42 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 		const message: string = `Are you sure you want to delete database '${this.label}'?`;
 		const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
 		if (result === DialogResponses.deleteResponse) {
-			const db = await this.getDb();
+			const db = await this.connectToDb();
 			await db.dropDatabase();
 		} else {
 			throw new UserCancelledError();
 		}
 	}
 
-	public async getDb(): Promise<Db> {
+	public async connectToDb(): Promise<Db> {
 		const accountConnection = await connectToMongoClient(this.connectionString, appendExtensionUserAgent());
 		return accountConnection.db(this.databaseName);
 	}
 
-	async executeCommand(command: MongoCommand, context: IActionContext): Promise<string> {
+	public async executeCommand(command: MongoCommand, context: IActionContext): Promise<string> {
 		if (command.collection) {
-			let db = await this.getDb();
+			let db = await this.connectToDb();
 			const collection = db.collection(command.collection);
 			if (collection) {
 				const collectionTreeItem = new MongoCollectionTreeItem(this, collection, command.arguments);
-				const result = await collectionTreeItem.executeCommand(command.name, command.arguments);
-				if (result) {
-					return result;
+				const result = await collectionTreeItem.tryExecuteCommandDirectly(command.name, command.arguments);
+				if (!result.deferToShell) {
+					return result.result;
 				}
 			}
-			return withProgress(this.executeCommandInShell(command, context), 'Executing command');
+			return withProgress(this.executeCommandInShell(command, context), executingInShellMsg);
 
 		}
 
 		if (command.name === 'createCollection') {
 			return withProgress(this.createCollection(stripQuotes(command.arguments.join(','))).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
 		} else {
-			return withProgress(this.executeCommandInShell(command, context), 'Executing command');
+			return withProgress(this.executeCommandInShell(command, context), executingInShellMsg);
 		}
 	}
 
-	async createCollection(collectionName: string): Promise<MongoCollectionTreeItem> {
-		const db: Db = await this.getDb();
+	public async createCollection(collectionName: string): Promise<MongoCollectionTreeItem> {
+		const db: Db = await this.connectToDb();
 		const newCollection: Collection = db.collection(collectionName);
 		// db.createCollection() doesn't create empty collections for some reason
 		// However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
@@ -125,20 +126,33 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 		return new MongoCollectionTreeItem(this, newCollection);
 	}
 
-	executeCommandInShell(command: MongoCommand, context: IActionContext): Thenable<string> {
+	private async executeCommandInShell(command: MongoCommand, context: IActionContext): Promise<string> {
 		context.telemetry.properties["executeInShell"] = "true";
-		return this.getShell().then(shell => shell.exec(command.text));
+
+		// CONSIDER: Re-using the shell instead of disposing it each time would allow us to keep state
+		//  (JavaScript variables, etc.), but we would need to deal with concurrent requests, or timed-out
+		//  requests.
+		let shell = await this.createShell();
+		try {
+			await shell.useDatabase(this.databaseName);
+			return await shell.executeScript(command.text);
+		} finally {
+			shell.dispose();
+		}
 	}
 
-	private async getShell(): Promise<Shell> {
-		let shellPathSetting: string | undefined = vscode.workspace.getConfiguration().get(ext.settingsKeys.mongoShellPath);
-		if (!this._cachedShellPathOrCmd || this._previousShellPathSetting !== shellPathSetting) {
+	private async createShell(): Promise<MongoShell> {
+		let shellPath: string | undefined = vscode.workspace.getConfiguration().get<string>(ext.settingsKeys.mongoShellPath);
+		let shellArgs: string[] | undefined = vscode.workspace.getConfiguration().get<string[]>(ext.settingsKeys.mongoShellArgs);
+
+		if (!this._cachedShellPathOrCmd || this._previousShellPathSetting !== shellPath) {
 			// Only do this if setting changed since last time
-			this._previousShellPathSetting = shellPathSetting;
-			await this._determineShellPathOrCmd(shellPathSetting);
+			this._previousShellPathSetting = shellPath;
+			await this._determineShellPathOrCmd(shellPath);
 		}
 
-		return await this.createShell(this._cachedShellPathOrCmd);
+		let timeout = 1000 * vscode.workspace.getConfiguration().get<number>(ext.settingsKeys.mongoShellTimeout);
+		return MongoShell.create(shellPath, shellArgs, this.connectionString, this.root.isEmulator, ext.outputChannel, timeout);
 	}
 
 	private async _determineShellPathOrCmd(shellPathSetting: string): Promise<void> {
@@ -200,15 +214,6 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 				}
 			}
 		}
-	}
-
-	private async createShell(shellPath: string): Promise<Shell> {
-		return <Promise<null>>Shell.create(shellPath, this.connectionString, this.root.isEmulator)
-			.then(
-				shell => {
-					return shell.useDatabase(this.databaseName).then(() => shell);
-				},
-				error => vscode.window.showErrorMessage(error));
 	}
 }
 

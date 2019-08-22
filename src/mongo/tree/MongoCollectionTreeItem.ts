@@ -107,41 +107,36 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 		return new MongoDocumentTreeItem(this, newDocument);
 	}
 
-	executeCommand(name: string, args?: string[]): Thenable<string> | null {
+	public async tryExecuteCommandDirectly(name: string, args?: string[]): Promise<{ deferToShell: true; result: undefined } | { deferToShell: false; result: string }> {
 		const parameters = args ? args.map(parseJSContent) : undefined;
-		const deferToShell = null; //The value executeCommand returns to instruct the caller function to run the same command in the Mongo shell.
 
-		try {
-			const functions = {
-				drop: new FunctionDescriptor(this.drop, 'Dropping collection', 0, 0, 0),
-				count: new FunctionDescriptor(this.count, 'Counting documents', 0, 2, 2),
-				findOne: new FunctionDescriptor(this.findOne, 'Finding document', 0, 2, 2),
-				insert: new FunctionDescriptor(this.insert, 'Inserting document', 1, 1, 1),
-				insertMany: new FunctionDescriptor(this.insertMany, 'Inserting documents', 1, 2, 2),
-				insertOne: new FunctionDescriptor(this.insertOne, 'Inserting document', 1, 2, 2),
-				deleteMany: new FunctionDescriptor(this.deleteMany, 'Deleting documents', 1, 2, 1),
-				deleteOne: new FunctionDescriptor(this.deleteOne, 'Deleting document', 1, 2, 1),
-				remove: new FunctionDescriptor(this.remove, 'Deleting document(s)', 1, 2, 1)
-			};
+		const functions = {
+			drop: new FunctionDescriptor(this.drop, 'Dropping collection', 0, 0, 0),
+			count: new FunctionDescriptor(this.count, 'Counting documents', 0, 2, 2),
+			findOne: new FunctionDescriptor(this.findOne, 'Finding document', 0, 2, 2),
+			insert: new FunctionDescriptor(this.insert, 'Inserting document', 1, 1, 1),
+			insertMany: new FunctionDescriptor(this.insertMany, 'Inserting documents', 1, 2, 2),
+			insertOne: new FunctionDescriptor(this.insertOne, 'Inserting document', 1, 2, 2),
+			deleteMany: new FunctionDescriptor(this.deleteMany, 'Deleting documents', 1, 2, 1),
+			deleteOne: new FunctionDescriptor(this.deleteOne, 'Deleting document', 1, 2, 1),
+			remove: new FunctionDescriptor(this.remove, 'Deleting document(s)', 1, 2, 1)
+		};
 
-			if (functions.hasOwnProperty(name)) {
-				let descriptor: FunctionDescriptor = functions[name];
+		if (functions.hasOwnProperty(name)) {
+			let descriptor: FunctionDescriptor = functions[name];
 
-				if (parameters.length < descriptor.minShellArgs) {
-					return Promise.reject(new Error(`Too few arguments passed to command ${name}.`));
-				}
-				if (parameters.length > descriptor.maxShellArgs) {
-					return Promise.reject(new Error(`Too many arguments passed to command ${name}`));
-				}
-				if (parameters.length > descriptor.maxHandledArgs) { //this function won't handle these arguments, but the shell will
-					return deferToShell;
-				}
-				return reportProgress(descriptor.mongoFunction.apply(this, parameters), descriptor.text);
+			if (parameters.length < descriptor.minShellArgs) {
+				throw new Error(`Too few arguments passed to command ${name}.`);
 			}
-			return deferToShell;
-		} catch (error) {
-			return Promise.reject(error);
+			if (parameters.length > descriptor.maxShellArgs) {
+				throw new Error(`Too many arguments passed to command ${name}`);
+			}
+			if (parameters.length > descriptor.maxHandledArgs) { //this function won't handle these arguments, but the shell will
+				return { deferToShell: true, result: undefined };
+			}
+			return await reportProgress(descriptor.mongoFunction.apply(this, parameters), descriptor.text);
 		}
+		return { deferToShell: true, result: undefined };
 	}
 
 	public async deleteTreeItemImpl(): Promise<void> {

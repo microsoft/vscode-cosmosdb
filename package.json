@@ -756,7 +756,7 @@
 				"mongo.shell.timeout": {
 					"type": "number",
 					"description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 5 seconds",
-					"default": 5
+					"default": 30
 				},
 				"cosmosDB.showExplorer": {
 					"type": "boolean",

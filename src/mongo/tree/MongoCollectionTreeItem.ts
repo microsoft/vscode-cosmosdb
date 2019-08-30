@@ -134,7 +134,8 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 			if (parameters.length > descriptor.maxHandledArgs) { //this function won't handle these arguments, but the shell will
 				return { deferToShell: true, result: undefined };
 			}
-			return await reportProgress(descriptor.mongoFunction.apply(this, parameters), descriptor.text);
+			let result = await reportProgress<string>(descriptor.mongoFunction.apply(this, parameters), descriptor.text);
+			return { deferToShell: false, result };
 		}
 		return { deferToShell: true, result: undefined };
 	}

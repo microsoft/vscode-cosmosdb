@@ -12,6 +12,7 @@ import { appendExtensionUserAgent, AzureParentTreeItem, DialogResponses, IAction
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
+import { getWorkspaceArrayConfiguration, getWorkspaceConfiguration } from '../../utils/getWorkspaceConfiguration';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoCommand } from '../MongoCommand';
 import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings';
@@ -142,26 +143,26 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 	}
 
 	private async createShell(): Promise<MongoShell> {
-		let shellPath: string | undefined = vscode.workspace.getConfiguration().get<string>(ext.settingsKeys.mongoShellPath);
-		let shellArgs: string[] | undefined = vscode.workspace.getConfiguration().get<string[]>(ext.settingsKeys.mongoShellArgs);
+		let shellPath: string | undefined = getWorkspaceConfiguration(ext.settingsKeys.mongoShellPath, "string");
+		let shellArgs: string[] = getWorkspaceArrayConfiguration(ext.settingsKeys.mongoShellArgs, "string", []);
 
 		if (!this._cachedShellPathOrCmd || this._previousShellPathSetting !== shellPath) {
 			// Only do this if setting changed since last time
+			shellPath = await this._determineShellPathOrCmd(shellPath);
 			this._previousShellPathSetting = shellPath;
-			await this._determineShellPathOrCmd(shellPath);
 		}
+		this._cachedShellPathOrCmd = shellPath;
 
 		let timeout = 1000 * vscode.workspace.getConfiguration().get<number>(ext.settingsKeys.mongoShellTimeout);
 		return MongoShell.create(shellPath, shellArgs, this.connectionString, this.root.isEmulator, ext.outputChannel, timeout);
 	}
 
-	private async _determineShellPathOrCmd(shellPathSetting: string): Promise<void> {
-		this._cachedShellPathOrCmd = shellPathSetting;
+	private async _determineShellPathOrCmd(shellPathSetting: string): Promise<string> {
 		if (!shellPathSetting) {
 			// User hasn't specified the path
 			if (await cpUtils.commandSucceeds('mongo', '--version')) {
 				// If the user already has mongo in their system path, just use that
-				this._cachedShellPathOrCmd = 'mongo';
+				return 'mongo';
 			} else {
 				// If all else fails, prompt the user for the mongo path
 
@@ -191,16 +192,15 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 								}
 							}
 
-							this._cachedShellPathOrCmd = fsPath;
-							await vscode.workspace.getConfiguration().update(ext.settingsKeys.mongoShellPath, this._cachedShellPathOrCmd, vscode.ConfigurationTarget.Global);
-							return;
+							await vscode.workspace.getConfiguration().update(ext.settingsKeys.mongoShellPath, fsPath, vscode.ConfigurationTarget.Global);
+							return fsPath;
 						} else {
 							throw new UserCancelledError();
 						}
 					}
 				} else if (response === browse) {
-					this._cachedShellPathOrCmd = undefined;
 					vscode.commands.executeCommand('vscode.open', vscode.Uri.parse('https://docs.mongodb.com/manual/installation/'));
+					return undefined;
 				}
 
 				throw new UserCancelledError();
@@ -210,9 +210,11 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 			if (await fse.pathExists(shellPathSetting)) {
 				let stat = await fse.stat(shellPathSetting);
 				if (stat.isDirectory()) {
-					this._cachedShellPathOrCmd = path.join(shellPathSetting, mongoExecutableFileName);
+					return path.join(shellPathSetting, mongoExecutableFileName);
 				}
 			}
+
+			return shellPathSetting;
 		}
 	}
 }

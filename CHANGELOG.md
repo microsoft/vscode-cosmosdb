@@ -2,6 +2,11 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.10.3 - 2019-09-03
+### Fixed
+- Better shell error handling, add mongo.shell.args setting [#1101](https://github.com/Microsoft/vscode-cosmosdb/issues1101), [#1092](https://github.com/Microsoft/vscode-cosmosdb/issues1092), [#1071](https://github.com/Microsoft/vscode-cosmosdb/issues1071), [#998](https://github.com/Microsoft/vscode-cosmosdb/issues998), [#83](https://github.com/Microsoft/vscode-cosmosdb/issues83), [#820](https://github.com/Microsoft/vscode-cosmosdb/issues820), [#1126](https://github.com/Microsoft/vscode-cosmosdb/issues1126), [#1104](https://github.com/Microsoft/vscode-cosmosdb/issues1104)
+- Change prompt message in onDidSaveTextDocument [#1021](https://github.com/Microsoft/vscode-cosmosdb/issues/1021)
+
 ## 0.10.2 - 2019-05-01
 ### Fixed
 - Handle opening resources to use native vscode APIs

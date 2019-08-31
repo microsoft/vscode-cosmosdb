@@ -157,7 +157,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 		return MongoShell.create(shellPath, shellArgs, this.connectionString, this.root.isEmulator, ext.outputChannel, timeout);
 	}
 
-	private async _determineShellPathOrCmd(shellPathSetting: string): Promise<string> {
+	private async _determineShellPathOrCmd(shellPathSetting: string): Promise<string | undefined> {
 		if (!shellPathSetting) {
 			// User hasn't specified the path
 			if (await cpUtils.commandSucceeds('mongo', '--version')) {

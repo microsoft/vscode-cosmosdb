@@ -4,8 +4,11 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 
 ## 0.10.3 - 2019-09-03
 ### Fixed
-- Better shell error handling, add mongo.shell.args setting [#1101](https://github.com/Microsoft/vscode-cosmosdb/issues/1101), [#1092](https://github.com/Microsoft/vscode-cosmosdb/issues/1092), [#1071](https://github.com/Microsoft/vscode-cosmosdb/issues/1071), [#998](https://github.com/Microsoft/vscode-cosmosdb/issues/998), [#83](https://github.com/Microsoft/vscode-cosmosdb/issues/83), [#820](https://github.com/Microsoft/vscode-cosmosdb/issues/820), [#1126](https://github.com/Microsoft/vscode-cosmosdb/issues/1126), [#1104](https://github.com/Microsoft/vscode-cosmosdb/issues/1104), [#1176](https://github.com/Microsoft/vscode-cosmosdb/issues/1176), [#1149](https://github.com/Microsoft/vscode-cosmosdb/issues/1149), [#1115](https://github.com/Microsoft/vscode-cosmosdb/issues/1115)
+- Better shell error handling, add mongo.shell.args setting [#1101](https://github.com/Microsoft/vscode-cosmosdb/issues/1101), [#1092](https://github.com/Microsoft/vscode-cosmosdb/issues/1092), [#1071](https://github.com/Microsoft/vscode-cosmosdb/issues/1071), [#988](https://github.com/Microsoft/vscode-cosmosdb/issues/988), [#838](https://github.com/Microsoft/vscode-cosmosdb/issues/838), [#820](https://github.com/Microsoft/vscode-cosmosdb/issues/820)
+- Increase mongo.shell.timeout default value [#1115](https://github.com/Microsoft/vscode-cosmosdb/issues/1115)
 - Change prompt message in onDidSaveTextDocument [#1021](https://github.com/Microsoft/vscode-cosmosdb/issues/1021)
+### Added
+- Allow users to pass arguments when starting mongo shell [#1104](https://github.com/Microsoft/vscode-cosmosdb/issues/1104), [#1126](https://github.com/Microsoft/vscode-cosmosdb/issues/1126)
 
 ## 0.10.2 - 2019-05-01
 ### Fixed

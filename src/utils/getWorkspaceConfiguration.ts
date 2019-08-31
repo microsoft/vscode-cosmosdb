@@ -6,9 +6,19 @@
 import { isArray } from 'util';
 import * as vscode from 'vscode';
 
+/**
+ * Retrieve a string setting, and throw an error if the value is not a string
+ */
 export function getWorkspaceConfiguration<T extends string>(key: string, expectedTypeOf: 'string', defaultValue?: T): T | typeof defaultValue;
+
+/**
+ * Retrieve a numeric setting, and throw an error if the value is not a number
+ */
 export function getWorkspaceConfiguration<T extends number>(key: string, expectedTypeOf: 'number', defaultValue?: 'number'): T | typeof defaultValue;
 
+/**
+ * Retrieve a string setting, and throw an error if the value is not a string
+ */
 export function getWorkspaceConfiguration<T>(key: string, expectedTypeOf: string, defaultValue?: unknown): unknown | undefined {
     let anyValue: unknown = vscode.workspace.getConfiguration().get<T>(key);
     if (typeof anyValue === expectedTypeOf) {
@@ -22,7 +32,14 @@ export function getWorkspaceConfiguration<T>(key: string, expectedTypeOf: string
     throw new Error(`Unexpected value for configuration setting '${key}'. Expecting value of type '${expectedTypeOf}', but found: ${String(anyValue)}`);
 }
 
+/**
+ * Retrieve a numeric array setting, and throw an error if the value is not an array of numbers
+ */
 export function getWorkspaceArrayConfiguration<T extends number>(key: string, expectedElementTypeOf?: 'number', defaultValue?: (T | undefined)[]): T | typeof defaultValue;
+
+/**
+ * Retrieve a string array setting, and throw an error if the value is not an array of strings
+ */
 export function getWorkspaceArrayConfiguration<T extends string>(key: string, expectedElementTypeOf: 'string', defaultValue?: T[]): (T | undefined)[] | typeof defaultValue;
 
 export function getWorkspaceArrayConfiguration<T>(key: string, expectedElementTypeOf: string, defaultValue?: T[]): unknown[] | undefined {

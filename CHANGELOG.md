@@ -10,7 +10,7 @@ All notable changes to the "azure-cosmosdb" extension will be documented in this
 ### Added
 - Add `mongo.shell.args` setting to allow passing arguments to mongo shell [#1104](https://github.com/Microsoft/vscode-cosmosdb/issues/1104), [#1126](https://github.com/Microsoft/vscode-cosmosdb/issues/1126)
 ### Changed
-- Due to a change in the Azure Cosmos DB Emulator, users must explicitly enable the Mongo DB port when starting the emulator. Updated error messages to point to debugging tips at https://aka.ms/AA5zah5.
+- Due to a change in the Azure Cosmos DB Emulator, users must explicitly enable the Mongo DB port when starting the emulator. Updated error messages to point to debugging tips at https://aka.ms/AA5zah5. [#1137](https://github.com/microsoft/vscode-cosmosdb/issues/1137), [#1000](https://github.com/microsoft/vscode-cosmosdb/issues/1000)
 
 ## 0.10.2 - 2019-05-01
 ### Fixed

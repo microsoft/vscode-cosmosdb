@@ -8,7 +8,7 @@ import { Db } from 'mongodb';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, parseError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
-import { getThemedIconPath } from '../../constants';
+import { getThemedIconPath, Links } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
@@ -75,7 +75,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         } catch (error) {
             let message = parseError(error).message;
             if (this._root.isEmulator && message.includes("ECONNREFUSED")) {
-                error.message = "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.mongoPort' setting, then try again.\n" + message;
+                error.message = `Unable to reach emulator. See ${Links.LocalConnectionDebuggingTips} for debugging tips.\n${message}`;
             }
             throw error;
         }

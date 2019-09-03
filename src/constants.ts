@@ -10,6 +10,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ext } from './extensionVariables';
 
+export namespace Links {
+    export const LocalConnectionDebuggingTips: string = 'https://aka.ms/AA5zah5';
+}
+
 export interface IThemedIconPath {
     light: string;
     dark: string;

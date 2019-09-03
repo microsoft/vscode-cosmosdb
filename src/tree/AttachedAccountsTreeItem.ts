@@ -194,6 +194,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 const label = `${defaultExperience.shortName} Emulator`;
                 let treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api, label);
                 if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem || treeItem instanceof MongoAccountTreeItem) {
+                    // CONSIDER: Why isn't this passed in to createTreeItem above?
                     treeItem.root.isEmulator = true;
                 }
                 await this.attachAccount(treeItem, connectionString);

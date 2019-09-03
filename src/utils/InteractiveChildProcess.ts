@@ -14,7 +14,7 @@ import { improveError } from './improveError';
 // We add these when we display to the output window
 const stdInPrefix = '> ';
 const stdErrPrefix = 'ERR> ';
-const errorPrefix = 'Error: ';
+const errorPrefix = 'Error running process: ';
 
 const processStartupTimeout = 60;
 

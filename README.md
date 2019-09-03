@@ -30,7 +30,7 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 ### Run Mongo Commands with Rich Intellisense
 
 - View your MongoDB database account by [signing in to Azure](#managing-azure-subscriptions) or using "Attach Database Account" to connect via a connection string
-- Optionally configure the setting `mongo.shell.path` if your mongo executable is not already on your system's PATH (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
+- Optionally configure the settings `mongo.shell.path` and `mongo.shell.args` if your mongo executable is not already on your system's PATH (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
 - Click on "New Mongo Scrapbook" in the tree title bar
 - Click on "Connect to a database" to indicate which database to run the commands against
 - Enter your commands and/or comments, eg: `db.<collectionName>.find()`

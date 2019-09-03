@@ -748,7 +748,7 @@
 					"items": {
 						"type": "string"
 					},
-					"description": "Arguments to pass when starting the Mongo shell. Default is [\"--quiet\"].",
+					"description": "Arguments to pass when starting the Mongo shell.",
 					"default": [
 						"--quiet"
 					]

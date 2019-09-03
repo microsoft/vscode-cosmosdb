@@ -740,7 +740,7 @@
 						"string",
 						"null"
 					],
-					"description": "Full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. If empty, will search in the system path for 'mongo'.",
+					"description": "Full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. The default is to search in the system path for 'mongo'.",
 					"default": null
 				},
 				"mongo.shell.args": {
@@ -748,14 +748,14 @@
 					"items": {
 						"type": "string"
 					},
-					"description": "Arguments to pass when starting the Mongo shell.",
+					"description": "Arguments to pass when starting the Mongo shell. Default is [\"--quiet\"].",
 					"default": [
 						"--quiet"
 					]
 				},
 				"mongo.shell.timeout": {
 					"type": "number",
-					"description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 5 seconds",
+					"description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 30 seconds.",
 					"default": 30
 				},
 				"cosmosDB.showExplorer": {

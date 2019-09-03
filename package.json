@@ -1,6 +1,6 @@
 {
 	"name": "vscode-cosmosdb",
-	"version": "0.10.3-alpha",
+	"version": "0.10.3",
 	"aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
 	"publisher": "ms-azuretools",
 	"displayName": "Azure Cosmos DB",
@@ -740,7 +740,7 @@
 						"string",
 						"null"
 					],
-					"description": "Full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. If empty, will search in the system path for 'mongo'.",
+					"description": "Full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. The default is to search in the system path for 'mongo'.",
 					"default": null
 				},
 				"mongo.shell.args": {
@@ -755,7 +755,7 @@
 				},
 				"mongo.shell.timeout": {
 					"type": "number",
-					"description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 5 seconds",
+					"description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 30 seconds.",
 					"default": 30
 				},
 				"cosmosDB.showExplorer": {

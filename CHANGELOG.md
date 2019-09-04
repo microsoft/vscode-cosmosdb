@@ -2,7 +2,7 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
-## 0.10.3 - 2019-09-03
+## 0.11.0 - 2019-09-03
 ### Fixed
 - Better shell error handling, add mongo.shell.args setting [#1101](https://github.com/Microsoft/vscode-cosmosdb/issues/1101), [#1092](https://github.com/Microsoft/vscode-cosmosdb/issues/1092), [#1071](https://github.com/Microsoft/vscode-cosmosdb/issues/1071), [#988](https://github.com/Microsoft/vscode-cosmosdb/issues/988), [#838](https://github.com/Microsoft/vscode-cosmosdb/issues/838), [#820](https://github.com/Microsoft/vscode-cosmosdb/issues/820)
 - Increase mongo.shell.timeout default value from 5 to 30 [#1115](https://github.com/Microsoft/vscode-cosmosdb/issues/1115)

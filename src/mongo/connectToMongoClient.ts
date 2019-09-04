@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Db, MongoClient, MongoClientOptions } from 'mongodb';
+import { Links } from '../constants';
 
 // Can't call appendExtensionUserAgent() here because languageClient.ts can't take a dependency on vscode-azureextensionui and hence vscode, so have
 //   to pass the user agent string in
@@ -13,5 +14,19 @@ export async function connectToMongoClient(connectionString: string, extensionUs
         appname: extensionUserAgent
     };
 
-    return await MongoClient.connect(connectionString, options);
+    try {
+        return await MongoClient.connect(connectionString, options);
+    } catch (err) {
+        let error = <{ message?: string, name?: string }>err;
+        let name = error && error.name;
+        let message = error && error.message;
+
+        // Example error: "failed to connect to server [localhost:10255] on first connect [MongoError: connect ECONNREFUSED 127.0.0.1:10255]"
+        // Example error: "failed to connect to server [127.0.0.1:27017] on first connect [MongoError: connect ECONNREFUSED 127.0.0.1:27017]"
+        if (name === 'MongoError' && /ECONNREFUSED/.test(message) && /(localhost|127\.0\.0\.1)/.test(message)) {
+            throw new Error(`Unable to connect to local Mongo DB instance. Make sure it is started correctly. See ${Links.LocalConnectionDebuggingTips} for tips.\n${message}`);
+        }
+
+        throw error;
+    }
 }

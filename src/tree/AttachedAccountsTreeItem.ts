@@ -139,7 +139,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 validateInput = AttachedAccountsTreeItem.validateDocDBConnectionString;
             }
 
-            const connectionString = await vscode.window.showInputBox({
+            let connectionString = await vscode.window.showInputBox({
                 placeHolder: placeholder,
                 prompt: 'Enter the connection string for your database account',
                 validateInput: validateInput,
@@ -148,8 +148,9 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             });
 
             if (connectionString) {
+                connectionString = connectionString.trim();
                 let treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);
-                await this.attachAccount(treeItem, connectionString.trim());
+                await this.attachAccount(treeItem, connectionString);
             }
         } else {
             throw new UserCancelledError();

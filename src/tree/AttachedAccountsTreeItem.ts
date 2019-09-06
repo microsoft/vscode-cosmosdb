@@ -326,7 +326,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     static validateMongoConnectionString(value: string): string | undefined {
-        if (value && value.match(/^mongodb(\+srv)?:\/\//) && !value.match(" ")) {
+        if (value && value.match(/^mongodb(\+srv)?:\/\//) && !value.includes(" ")) {
             return undefined;
         }
         return MONGO_CONNECTION_EXPECTED;

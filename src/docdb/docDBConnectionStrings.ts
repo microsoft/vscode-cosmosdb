@@ -10,7 +10,7 @@ export function parseDocDBConnectionString(connectionString: string): ParsedDocD
     const endpoint = getPropertyFromConnectionString(connectionString, 'AccountEndpoint');
     const masterKey = getPropertyFromConnectionString(connectionString, 'AccountKey');
     const databaseName = getPropertyFromConnectionString(connectionString, 'Database');
-    if (!endpoint || !masterKey || connectionString.match(" ")) {
+    if (!endpoint || !masterKey || connectionString.includes(" ")) {
         throw new Error('Invalid Document DB connection string.');
     }
     return new ParsedDocDBConnectionString(connectionString, endpoint, masterKey, databaseName);

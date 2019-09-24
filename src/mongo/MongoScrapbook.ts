@@ -42,7 +42,7 @@ export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vsc
 }
 
 export async function executeAllCommandsFromActiveEditor(database: MongoDatabaseTreeItem, editorManager: CosmosEditorManager, context: IActionContext): Promise<void> {
-	ext.outputChannel.appendLine("Executing all commands in scrapbook...");
+	ext.outputChannel.appendLog("Executing all commands in scrapbook...");
 	let commands = getAllCommandsFromActiveEditor();
 	await executeCommands(vscode.window.activeTextEditor, database, editorManager, context, commands);
 }

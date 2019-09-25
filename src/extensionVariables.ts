@@ -7,6 +7,7 @@ import { ExtensionContext, OutputChannel, TreeView } from "vscode";
 import { AzExtTreeDataProvider, AzExtTreeItem, IAzureUserInput, ITelemetryReporter } from "vscode-azureextensionui";
 import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 import { AttachedAccountsTreeItem } from "./tree/AttachedAccountsTreeItem";
+import { AzureAccountTreeItemWithAttached } from "./tree/AzureAccountTreeItemWithAttached";
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -22,6 +23,7 @@ export namespace ext {
     export let attachedAccountsNode: AttachedAccountsTreeItem;
     // tslint:disable-next-line: strict-boolean-expressions
     export let ignoreBundle: boolean = !/^(false|0)?$/i.test(process.env.AZCODE_COSMOSDB_IGNORE_BUNDLE || '');
+    export let azureAccountTreeItem: AzureAccountTreeItemWithAttached;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

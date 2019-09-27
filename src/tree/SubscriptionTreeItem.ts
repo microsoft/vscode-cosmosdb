@@ -6,7 +6,7 @@
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from 'azure-arm-cosmosdb/lib/models';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureTreeItem, AzureWizard, createAzureClient, ICreateChildImplContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { getExperienceLabel, tryGetExperience } from '../experiences';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
@@ -41,13 +41,15 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
         const wizardContext: ICosmosDBWizardContext = Object.assign(context, this.root);
 
+        const promptSteps: AzureWizardPromptStep<ILocationWizardContext>[] = [
+            new CosmosDBAccountNameStep(),
+            new CosmosDBAccountApiStep(),
+            new ResourceGroupListStep()
+        ];
+        LocationListStep.addStep(wizardContext, promptSteps);
+
         const wizard = new AzureWizard(wizardContext, {
-            promptSteps: [
-                new CosmosDBAccountNameStep(),
-                new CosmosDBAccountApiStep(),
-                new ResourceGroupListStep(),
-                new LocationListStep()
-            ],
+            promptSteps,
             executeSteps: [
                 new CosmosDBAccountCreateStep()
             ],

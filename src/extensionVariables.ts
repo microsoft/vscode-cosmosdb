@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ExtensionContext, OutputChannel, TreeView } from "vscode";
-import { AzExtTreeDataProvider, AzExtTreeItem, IAzureUserInput, ITelemetryReporter } from "vscode-azureextensionui";
+import { ExtensionContext, TreeView } from "vscode";
+import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel, IAzureUserInput, ITelemetryReporter } from "vscode-azureextensionui";
 import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 import { AttachedAccountsTreeItem } from "./tree/AttachedAccountsTreeItem";
 
@@ -15,7 +15,7 @@ export namespace ext {
     export let connectedMongoDB: MongoDatabaseTreeItem | undefined;
     export let ui: IAzureUserInput;
     export let context: ExtensionContext;
-    export let outputChannel: OutputChannel;
+    export let outputChannel: IAzExtOutputChannel;
     export let reporter: ITelemetryReporter;
     export let tree: AzExtTreeDataProvider;
     export let treeView: TreeView<AzExtTreeItem>;

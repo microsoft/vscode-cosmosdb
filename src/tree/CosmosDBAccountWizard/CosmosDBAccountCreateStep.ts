@@ -16,7 +16,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
     public async execute(wizardContext: ICosmosDBWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
         const client: CosmosDBManagementClient = createAzureClient(wizardContext, CosmosDBManagementClient);
         const creatingMessage: string = `Creating Cosmos DB account "${wizardContext.accountName}" with API "${wizardContext.defaultExperience.shortName}"...`;
-        ext.outputChannel.appendLine(creatingMessage);
+        ext.outputChannel.appendLog(creatingMessage);
         progress.report({ message: creatingMessage });
         let options = {
             location: wizardContext.location.name,
@@ -33,7 +33,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
 
         // createOrUpdate always returns an empty object - so we have to get the DatabaseAccount separately
         wizardContext.databaseAccount = await client.databaseAccounts.get(wizardContext.resourceGroup.name, wizardContext.accountName);
-        ext.outputChannel.appendLine(`Successfully created Cosmos DB account "${wizardContext.accountName}".`);
+        ext.outputChannel.appendLog(`Successfully created Cosmos DB account "${wizardContext.accountName}".`);
     }
 
     public shouldExecute(wizardContext: ICosmosDBWizardContext): boolean {

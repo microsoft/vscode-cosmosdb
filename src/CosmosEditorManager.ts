@@ -92,8 +92,7 @@ export class CosmosEditorManager {
     private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument, context: IActionContext): Promise<void> {
         const newContent = editor.convertFromString(doc.getText());
         const updatedContent: {} = await editor.update(newContent, context);
-        const timestamp = (new Date()).toLocaleTimeString();
-        ext.outputChannel.appendLine(`${timestamp}: Updated entity "${editor.label}"`);
+        ext.outputChannel.appendLog(`Updated entity "${editor.label}"`);
         ext.outputChannel.show();
         if (doc.isClosed !== true) {
             const firstRelatedEditor = vscode.window.visibleTextEditors.find((ed) => ed.document === doc);

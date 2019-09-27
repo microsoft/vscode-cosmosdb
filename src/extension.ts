@@ -6,7 +6,7 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import { AzExtTreeDataProvider, AzExtTreeItem, AzureTreeItem, AzureUserInput, callWithTelemetryAndErrorHandling, createApiProvider, createTelemetryReporter, IActionContext, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
+import { AzExtTreeDataProvider, AzExtTreeItem, AzureTreeItem, AzureUserInput, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, createTelemetryReporter, IActionContext, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
 import { AzureExtensionApi, AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
@@ -36,7 +36,9 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     ext.context = context;
     ext.reporter = createTelemetryReporter(context);
     ext.ui = new AzureUserInput(context.globalState);
-    ext.outputChannel = vscode.window.createOutputChannel("Azure Cosmos DB");
+
+    const extensionPrefix: string = 'cosmosDB';
+    ext.outputChannel = createAzExtOutputChannel("Azure Cosmos DB", extensionPrefix);
     context.subscriptions.push(ext.outputChannel);
     registerUIExtensionVariables(ext);
 

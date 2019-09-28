@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Db, MongoClient, MongoClientOptions } from 'mongodb';
+import { MongoClient, MongoClientOptions } from 'mongodb';
 import { Links } from '../constants';
 
 // Can't call appendExtensionUserAgent() here because languageClient.ts can't take a dependency on vscode-azureextensionui and hence vscode, so have

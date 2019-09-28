@@ -3,8 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ReplSet } from "mongodb";
+import { MongoClient, Mongos, ReplSet, Server } from "mongodb";
 import { appendExtensionUserAgent } from "vscode-azureextensionui";
+import { testDb } from "../constants";
 import { ParsedConnectionString } from "../ParsedConnectionString";
 import { connectToMongoClient } from "./connectToMongoClient";
 
@@ -48,18 +49,18 @@ export async function parseMongoConnectionString(connectionString: string): Prom
     let host: string;
     let port: string;
 
-    const db = await connectToMongoClient(connectionString, appendExtensionUserAgent());
-    const serverConfig = db.serverConfig;
+    const mongoClient: MongoClient = await connectToMongoClient(connectionString, appendExtensionUserAgent());
+    const serverConfig: Server | ReplSet | Mongos = mongoClient.db(testDb).serverConfig;
     // Azure CosmosDB comes back as a ReplSet
     if (serverConfig instanceof ReplSet) {
-        // get the first connection string from the seedlist for the ReplSet
+        // get the first connection string from the servers for the ReplSet
         // this may not be best solution, but the connection (below) gives
         // the replicaset host name, which is different than what is in the connection string
         // "s" is not part of ReplSet static definition but can't find any official documentation on it. Yet it is definitely there at runtime. Grandfathering in.
         // tslint:disable-next-line:no-any
         let rs: any = serverConfig;
-        host = rs.s.replset.s.seedlist[0].host;
-        port = rs.s.replset.s.seedlist[0].port;
+        host = rs.s.options.servers[0].host;
+        port = rs.s.options.servers[0].port;
     } else {
         host = serverConfig['host'];
         port = serverConfig['port'];

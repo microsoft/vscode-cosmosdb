@@ -12,6 +12,7 @@ export async function connectToMongoClient(connectionString: string, extensionUs
     // appname appears to be the correct equivalent to user-agent for mongo
     let options: MongoClientOptions = <MongoClientOptions>{
         appname: extensionUserAgent,
+        // https://github.com/lmammino/mongo-uri-builder/issues/2
         useNewUrlParser: true
     };
 

@@ -6,6 +6,7 @@
 import { EventEmitter } from 'events';
 import * as gremlin from "gremlin";
 import * as http from 'http';
+import { AddressInfo } from 'net';
 import * as io from 'socket.io';
 import * as vscode from 'vscode';
 import { callWithTelemetryAndErrorHandling, IActionContext } from 'vscode-azureextensionui';
@@ -96,7 +97,7 @@ export class GraphViewServer extends EventEmitter {
       this._httpServer.listen(
         0, // dynamnically pick an unused port
         () => {
-          this._port = this._httpServer.address().port;
+          this._port = (<AddressInfo>this._httpServer.address()).port;
           console.log(`** GraphViewServer listening to port ${this._port} for ${this.configuration.gremlinEndpoint ? this.configuration.gremlinEndpoint.host : this.configuration.documentEndpoint}/${this._configuration.databaseName}/${this._configuration.graphName}`);
           resolve();
         });

@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
-import { Db } from 'mongodb';
+import { MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, parseError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
-import { getThemedIconPath, Links } from '../../constants';
+import { getThemedIconPath, Links, testDb } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
@@ -49,7 +49,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem<IMongoTreeRoot>[]> {
-        let db: Db | undefined;
+        let mongoClient: MongoClient | undefined;
         try {
             let databases: IDatabaseInfo[];
 
@@ -57,7 +57,8 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
                 throw new Error('Missing connection string');
             }
 
-            db = await connectToMongoClient(this.connectionString, appendExtensionUserAgent());
+            mongoClient = await connectToMongoClient(this.connectionString, appendExtensionUserAgent());
+
             let databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);
             if (databaseInConnectionString && !this.root.isEmulator) { // emulator violates the connection string format
                 // If the database is in the connection string, that's all we connect to (we might not even have permissions to list databases)
@@ -66,7 +67,8 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
                     empty: false
                 }];
             } else {
-                let result: { databases: IDatabaseInfo[] } = await db.admin().listDatabases();
+                // https://mongodb.github.io/node-mongodb-native/3.1/api/index.html
+                let result: { databases: IDatabaseInfo[] } = await mongoClient.db(testDb).admin().listDatabases();
                 databases = result.databases;
             }
             return databases
@@ -80,8 +82,8 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
             throw error;
         }
         finally {
-            if (db) {
-                db.close();
+            if (mongoClient) {
+                mongoClient.close();
             }
         }
     }

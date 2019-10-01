@@ -28,7 +28,7 @@ let config = dev.getDefaultWebpackConfig({
         'require_optional',
         'gremlin',
         'socket.io',
-        'mongodb-core',
+        'mongodb',
 
         // Needed by graphClient.html
         'd3'

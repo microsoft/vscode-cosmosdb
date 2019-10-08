@@ -5,7 +5,7 @@
 
 import { IHookCallbackContext } from 'mocha';
 import * as vscode from 'vscode';
-import { TestUserInput } from 'vscode-azureextensiondev';
+import { TestUserInput, TestOutputChannel } from 'vscode-azureextensiondev';
 import { ext } from '../extension.bundle';
 
 // tslint:disable-next-line:strict-boolean-expressions export-name
@@ -14,7 +14,8 @@ export const testUserInput: TestUserInput = new TestUserInput(vscode);
 
 // Runs before all tests
 suiteSetup(async function (this: IHookCallbackContext): Promise<void> {
-    this.timeout(120 * 1000);
+    this.timeout(2 * 60 * 1000);
     await vscode.commands.executeCommand('cosmosDB.refresh'); // activate the extension before tests begin
+    ext.outputChannel = new TestOutputChannel();
     ext.ui = testUserInput;
 });

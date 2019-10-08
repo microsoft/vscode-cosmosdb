@@ -11,15 +11,14 @@ import { randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { resourceGroupsToDelete, client } from './global.resource.test';
 
-// tslint:disable-next-line:max-func-body-length
 suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<void> {
-    this.timeout(1200 * 1000);
+    this.timeout(20 * 60 * 1000);
 
     suiteSetup(async function (this: IHookCallbackContext): Promise<void> {
         if (!longRunningTestsEnabled) {
             this.skip();
         }
-        this.timeout(120 * 1000);
+        this.timeout(2 * 60 * 1000);
     });
 
     test('create Cosmos DB account', async () => {

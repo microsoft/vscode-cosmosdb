@@ -21,7 +21,7 @@ suiteSetup(async function (this: IHookCallbackContext): Promise<void> {
         this.skip();
     }
 
-    this.timeout(120 * 1000);
+    this.timeout(2 * 60 * 1000);
     testAccount = new TestAzureAccount(vscode);
     await testAccount.signIn();
     ext.azureAccountTreeItem = new AzureAccountTreeItemWithAttached(testAccount);
@@ -33,7 +33,7 @@ suiteTeardown(async function (this: IHookCallbackContext): Promise<void> {
     if (!longRunningTestsEnabled) {
         this.skip();
     }
-    this.timeout(1200 * 1000);
+    this.timeout(10 * 60 * 1000);
     await deleteResourceGroups();
     ext.azureAccountTreeItem.dispose();
 });

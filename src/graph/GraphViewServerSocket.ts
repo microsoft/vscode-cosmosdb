@@ -11,7 +11,7 @@ import * as io from 'socket.io';
 export class GraphViewServerSocket {
   constructor(private _socket: io.Socket) { }
 
-  public onClientMessage(event: ClientMessage, listener: Function): void {
+  public onClientMessage(event: ClientMessage, listener: (...args) => unknown): void {
     this._socket.on(event, listener);
   }
 

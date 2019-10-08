@@ -26,7 +26,7 @@ export async function importDocuments(actionContext: IActionContext, uris: vscod
         }
     });
     if (ignoredUris.length) {
-        ext.outputChannel.appendLine(`Ignoring the following files which are not json:`);
+        ext.outputChannel.appendLog(`Ignoring the following files which are not json:`);
         ignoredUris.forEach(uri => ext.outputChannel.appendLine(`${uri.fsPath}`));
         ext.outputChannel.show();
     }
@@ -85,7 +85,7 @@ async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
         } catch (e) {
             if (!errorFoundFlag) {
                 errorFoundFlag = true;
-                ext.outputChannel.appendLine("Errors found in documents listed below. Please fix these.");
+                ext.outputChannel.appendLog("Errors found in documents listed below. Please fix these.");
                 ext.outputChannel.show();
             }
             const err = parseError(e);
@@ -119,7 +119,7 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
         }
     }
     if (erroneousFiles.length) {
-        ext.outputChannel.appendLine(`The following documents do not contain the required partition key:`);
+        ext.outputChannel.appendLog(`The following documents do not contain the required partition key:`);
         erroneousFiles.forEach(file => ext.outputChannel.appendLine(file.path));
         ext.outputChannel.show();
         throw new Error(`See output for list of documents that do not contain the partition key '${collectionNode.partitionKey.paths[0]}' required by collection '${collectionNode.label}'`);

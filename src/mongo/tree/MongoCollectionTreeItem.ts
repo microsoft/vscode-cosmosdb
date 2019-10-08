@@ -54,7 +54,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 		});
 
 		const result: BulkWriteOpResultObject = await this.collection.bulkWrite(operations);
-		ext.outputChannel.appendLine(`Successfully updated ${result.modifiedCount} document(s), inserted ${result.insertedCount} document(s)`);
+		ext.outputChannel.appendLog(`Successfully updated ${result.modifiedCount} document(s), inserted ${result.insertedCount} document(s)`);
 		return documents;
 	}
 

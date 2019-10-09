@@ -9,8 +9,8 @@ import { AttachedAccountsTreeItem } from './AttachedAccountsTreeItem';
 import { SubscriptionTreeItem } from './SubscriptionTreeItem';
 
 export class AzureAccountTreeItemWithAttached extends AzureAccountTreeItemBase {
-    public constructor() {
-        super();
+    public constructor(testAccount?: {}) {
+        super(undefined, testAccount);
         ext.attachedAccountsNode = new AttachedAccountsTreeItem(this);
     }
 

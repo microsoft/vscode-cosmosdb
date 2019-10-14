@@ -157,7 +157,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 		return MongoShell.create(shellPath, shellArgs, this.connectionString, this.root.isEmulator, ext.outputChannel, timeout);
 	}
 
-	private async _determineShellPathOrCmd(shellPathSetting: string): Promise<string | undefined> {
+	private async _determineShellPathOrCmd(shellPathSetting: string): Promise<string> {
 		if (!shellPathSetting) {
 			// User hasn't specified the path
 			if (await cpUtils.commandSucceeds('mongo', '--version')) {
@@ -169,7 +169,8 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 				// tslint:disable-next-line:no-constant-condition
 				const openFile: vscode.MessageItem = { title: `Browse to ${mongoExecutableFileName}` };
 				const browse: vscode.MessageItem = { title: 'Open installation page' };
-				let response = await vscode.window.showErrorMessage('This functionality requires the Mongo DB shell, but we could not find it in the path or using the mongo.shell.path setting.', browse, openFile);
+				const noMongoError: string = 'This functionality requires the Mongo DB shell, but we could not find it in the path or using the mongo.shell.path setting.';
+				let response = await vscode.window.showErrorMessage(noMongoError, browse, openFile);
 				if (response === openFile) {
 					// tslint:disable-next-line:no-constant-condition
 					while (true) {
@@ -200,7 +201,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 					}
 				} else if (response === browse) {
 					vscode.commands.executeCommand('vscode.open', vscode.Uri.parse('https://docs.mongodb.com/manual/installation/'));
-					return undefined;
+					// default down to cancel error because MongoShell.create errors out if undefined is passed as the shellPath
 				}
 
 				throw new UserCancelledError();

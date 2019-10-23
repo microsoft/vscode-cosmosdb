@@ -42,13 +42,13 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     context.subscriptions.push(ext.outputChannel);
     registerUIExtensionVariables(ext);
 
-    await callWithTelemetryAndErrorHandling('cosmosDB.activate', (activateContext: IActionContext) => {
+    await callWithTelemetryAndErrorHandling('cosmosDB.activate', async (activateContext: IActionContext) => {
         activateContext.telemetry.properties.isActivationEvent = 'true';
         activateContext.telemetry.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
 
-        const azureAccountNode: AzureAccountTreeItemWithAttached = new AzureAccountTreeItemWithAttached();
-        context.subscriptions.push(azureAccountNode);
-        ext.tree = new AzExtTreeDataProvider(azureAccountNode, 'cosmosDB.loadMore');
+        ext.azureAccountTreeItem = new AzureAccountTreeItemWithAttached();
+        context.subscriptions.push(ext.azureAccountTreeItem);
+        ext.tree = new AzExtTreeDataProvider(ext.azureAccountTreeItem, 'cosmosDB.loadMore');
         ext.treeView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: ext.tree });
         context.subscriptions.push(ext.treeView);
 

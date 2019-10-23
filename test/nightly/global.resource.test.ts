@@ -7,10 +7,9 @@ import { ResourceManagementClient } from 'azure-arm-resource';
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { IHookCallbackContext } from 'mocha';
 import * as vscode from 'vscode';
-import { ext, AzureAccountTreeItemWithAttached } from '../../extension.bundle';
-import { longRunningTestsEnabled } from '../global.test';
-import { AzExtTreeDataProvider, createAzureClient } from 'vscode-azureextensionui';
 import { TestAzureAccount } from 'vscode-azureextensiondev';
+import { AzExtTreeDataProvider, AzureAccountTreeItemWithAttached, createAzureClient, ext } from '../../extension.bundle';
+import { longRunningTestsEnabled } from '../global.test';
 
 export let testAccount: TestAzureAccount;
 export let client: CosmosDBManagementClient;

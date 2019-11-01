@@ -129,7 +129,7 @@ function validateDatabaseName(database: string): string | undefined | null {
     return undefined;
 }
 
-interface IDatabaseInfo {
+export interface IDatabaseInfo {
     name?: string;
     empty?: boolean;
 }

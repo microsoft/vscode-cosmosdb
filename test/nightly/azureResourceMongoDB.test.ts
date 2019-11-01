@@ -7,11 +7,10 @@ import * as assert from 'assert';
 import { CosmosDBManagementModels } from 'azure-arm-cosmosdb';
 import { IHookCallbackContext, ISuiteCallbackContext } from 'mocha';
 import * as vscode from 'vscode';
-import * as request from 'request-promise';
-import { randomUtils } from '../../extension.bundle';
+import { randomUtils, appendExtensionUserAgent, connectToMongoClient, IDatabaseInfo } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
-import { WebResource, ServiceClientCredentials } from "ms-rest";
 import { resourceGroupsToDelete, client, testAccount } from './global.resource.test';
+import { MongoClient } from 'mongodb';
 
 suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<void> {
     this.timeout(20 * 60 * 1000);
@@ -38,43 +37,22 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         assert.ok(createAccount);
     });
 
-    test('Create MongoDB Database', async () => {
+    test('Create Mongo Database', async () => {
         const databaseName: string = randomUtils.getRandomHexString(12);
         const collectionName: string = randomUtils.getRandomHexString(12);
         const testInputs: string[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (MongoDB)`, databaseName, collectionName];
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createMongoDatabase');
         });
-        const response: string = await getMongoDBDatabase(await getUrl(databaseName));
-        assert.equal(JSON.parse(response).properties.id, databaseName);
-    });
-
-    async function getUrl(Path: string): Promise<string> {
-        let baseUrl: string = testAccount.getSubscriptionContext().environment.resourceManagerEndpointUrl;
-        return baseUrl + (baseUrl.endsWith('/') ? '' : '/') + `subscriptions/${client.subscriptionId}/resourceGroups/${resourceGroupName}/providers/Microsoft.DocumentDB/databaseAccounts/${accountName}/apis/mongodb/databases/${Path}?api-version=2015-04-08`;
-    }
-});
-
-async function signRequest(req: WebResource, cred: ServiceClientCredentials): Promise<void> {
-    await new Promise((resolve: () => void, reject: (err: Error) => void): void => {
-        cred.signRequest(req, (err: Error | undefined) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve();
-            }
+        await vscode.env.clipboard.writeText('');
+        await testUserInput.runWithInputs([`${accountName} (MongoDB)`], async () => {
+            await vscode.commands.executeCommand('cosmosDB.copyConnectionString');
         });
+        const connectionString: string = await vscode.env.clipboard.readText();
+        const mongoClient: MongoClient | undefined = await connectToMongoClient(connectionString, appendExtensionUserAgent())
+        let listDatabases: { databases: IDatabaseInfo[] } = await mongoClient.db(accountName).admin().listDatabases();
+        const MongoDatabase: IDatabaseInfo[] = listDatabases.databases.filter((database: IDatabaseInfo) => (database.name == databaseName));
+        assert.ok(MongoDatabase[0].name == databaseName, `Mongo Database should be ${databaseName} rather than ${MongoDatabase[0].name}.`);
     });
-}
-
-async function getMongoDBDatabase(url: string): Promise<string> {
-    const requestOptions: WebResource = new WebResource();
-    requestOptions.method = 'GET';
-    requestOptions.url = url;
-    await signRequest(requestOptions, testAccount.getSubscriptionContext().credentials)
-    return await <Thenable<string>>request(requestOptions);
-}
-
-
-
+});
 

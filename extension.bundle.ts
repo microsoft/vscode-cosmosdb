@@ -28,6 +28,8 @@ export { getDocumentTreeItemLabel } from './src/utils/vscodeUtils';
 export { addDatabaseToAccountConnectionString, getDatabaseNameFromConnectionString } from './src/mongo/mongoConnectionStrings';
 export { MongoCommand } from './src/mongo/MongoCommand';
 export { getAllCommandsFromText, getCommandFromTextAtLocation } from './src/mongo/MongoScrapbook';
+export { connectToMongoClient } from './src/mongo/connectToMongoClient';
+export { IDatabaseInfo } from './src/mongo/tree/MongoAccountTreeItem';
 export { rejectOnTimeout, valueOnTimeout } from './src/utils/timeout';
 export { improveError } from './src/utils/improveError';
 export { randomUtils } from './src/utils/randomUtils';

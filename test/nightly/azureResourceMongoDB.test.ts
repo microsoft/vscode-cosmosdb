@@ -50,9 +50,9 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         });
         const connectionString: string = await vscode.env.clipboard.readText();
         const mongoClient: MongoClient | undefined = await connectToMongoClient(connectionString, appendExtensionUserAgent())
-        let listDatabases: { databases: IDatabaseInfo[] } = await mongoClient.db(accountName).admin().listDatabases();
-        const MongoDatabase: IDatabaseInfo[] = listDatabases.databases.filter((database: IDatabaseInfo) => (database.name == databaseName));
-        assert.ok(MongoDatabase[0].name == databaseName, `Mongo Database should be ${databaseName} rather than ${MongoDatabase[0].name}.`);
+        const listDatabases: { databases: IDatabaseInfo[] } = await mongoClient.db(accountName).admin().listDatabases();
+        const mongoDatabase: IDatabaseInfo | undefined = listDatabases.databases.find((database: IDatabaseInfo) => database.name === databaseName);
+        assert.ok(mongoDatabase);
     });
 });
 

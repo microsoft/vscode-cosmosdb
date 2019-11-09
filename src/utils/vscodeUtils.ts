@@ -12,6 +12,7 @@ import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase
 import { ext } from '../extensionVariables';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { IMongoDocument } from '../mongo/tree/MongoDocumentTreeItem';
+import { getRootPath } from './workspacUtils';
 
 export interface IDisposable {
     dispose(): void;
@@ -29,7 +30,7 @@ export function toDisposable(dispose: () => void): IDisposable {
 
 export async function showNewFile(data: string, fileName: string, fileExtension: string, column?: vscode.ViewColumn): Promise<void> {
     let uri: vscode.Uri;
-    const folderPath: string = vscode.workspace.rootPath || ext.context.extensionPath;
+    const folderPath: string = getRootPath() || ext.context.extensionPath;
     const fullFileName: string | undefined = await getUniqueFileName(folderPath, fileName, fileExtension);
     uri = vscode.Uri.file(path.join(folderPath, fullFileName)).with({ scheme: 'untitled' });
     const textDocument = await vscode.workspace.openTextDocument(uri);

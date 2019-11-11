@@ -11,6 +11,7 @@ import { IActionContext, parseError } from 'vscode-azureextensionui';
 import { DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
 import { MongoCollectionTreeItem } from '../mongo/tree/MongoCollectionTreeItem';
+import { getRootPath } from '../utils/workspacUtils';
 
 export async function importDocuments(actionContext: IActionContext, uris: vscode.Uri[] | undefined, collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | undefined): Promise<void> {
     if (!uris) {
@@ -67,7 +68,7 @@ async function askForDocuments(): Promise<vscode.Uri[]> {
             "JSON": ["json"]
         }
     };
-    let rootPath = vscode.workspace.rootPath;
+    let rootPath: string | undefined = getRootPath();
     if (rootPath) {
         openDialogOptions.defaultUri = vscode.Uri.file(rootPath);
     }

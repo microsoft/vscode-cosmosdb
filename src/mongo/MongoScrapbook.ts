@@ -109,7 +109,8 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 		if (command.errors && command.errors.length > 0) {
 			//Currently, we take the first error pushed. Tests correlate that the parser visits errors in left-to-right, top-to-bottom.
 			const err = command.errors[0];
-			throw new Error(`Error near line ${err.range.start.line}, column ${err.range.start.character}: '${err.message}'. Please check syntax.`);
+			// don't await intentionally
+			ext.ui.showWarningMessage(`Error near line ${err.range.start.line}, column ${err.range.start.character}: '${err.message}'. Please check syntax.`);
 		}
 
 		if (command.name === 'find') {

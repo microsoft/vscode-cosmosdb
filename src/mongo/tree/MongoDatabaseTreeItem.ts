@@ -112,7 +112,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 
 		if (command.name === 'createCollection') {
 			// arguments are always string (ie collection name) whereas arguementObjects will be an Object (where as in arguments, it's a JSON string)
-			return withProgress(this.createCollection(command.arguments[0], command.argumentObjects[1]).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
+			return withProgress(this.createCollection(stripQuotes(command.arguments[0]), command.argumentObjects[1]).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
 		} else {
 			return withProgress(this.executeCommandInShell(command, context), executingInShellMsg);
 		}
@@ -120,7 +120,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 
 	public async createCollection(collectionName: string, options?: DbCollectionOptions): Promise<MongoCollectionTreeItem> {
 		const db: Db = await this.connectToDb();
-		const newCollection: Collection = db.collection(collectionName, options);
+		const newCollection: Collection = await db.createCollection(collectionName, options);
 		// db.createCollection() doesn't create empty collections for some reason
 		// However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
 		const result = await newCollection.insertOne({});

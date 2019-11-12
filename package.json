@@ -1,948 +1,947 @@
 {
-	"name": "vscode-cosmosdb",
-	"version": "0.11.0",
-	"aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
-	"publisher": "ms-azuretools",
-	"displayName": "Azure Cosmos DB",
-	"description": "Create, browse, and update globally distributed, multi-model databases in Azure.",
-	"engines": {
-		"vscode": "^1.31.0"
-	},
-	"galleryBanner": {
-		"color": "#3c3c3c",
-		"theme": "dark"
-	},
-	"icon": "resources/cosmos.png",
-	"categories": [
-		"Azure"
-	],
-	"keywords": [
-		"Cosmos DB",
-		"DocumentDB",
-		"Graph",
-		"Gremlin",
-		"MongoDB"
-	],
-	"preview": true,
-	"homepage": "https://github.com/microsoft/vscode-cosmosdb/blob/master/README.md",
-	"bugs": {
-		"url": "https://github.com/microsoft/vscode-cosmosdb/issues"
-	},
-	"license": "SEE LICENSE IN LICENSE.md",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/microsoft/vscode-cosmosdb"
-	},
-	"main": "./main",
-	"activationEvents": [
-		"onLanguage:mongo",
-		"onView:cosmosDBExplorer",
-		"onCommand:cosmosDB.attachDatabaseAccount",
-		"onCommand:cosmosDB.attachEmulator",
-		"onCommand:cosmosDB.createAccount",
-		"onCommand:cosmosDB.deleteAccount",
-		"onCommand:cosmosDB.detachDatabaseAccount",
-		"onCommand:cosmosDB.createMongoDatabase",
-		"onCommand:cosmosDB.createMongoCollection",
-		"onCommand:cosmosDB.createMongoDocument",
-		"onCommand:cosmosDB.createDocDBDatabase",
-		"onCommand:cosmosDB.createDocDBCollection",
-		"onCommand:cosmosDB.createDocDBDocument",
-		"onCommand:cosmosDB.createDocDBStoredProcedure",
-		"onCommand:cosmosDB.createGraphDatabase",
-		"onCommand:cosmosDB.createGraph",
-		"onCommand:cosmosDB.connectMongoDB",
-		"onCommand:cosmosDB.deleteMongoDB",
-		"onCommand:cosmosDB.deleteMongoCollection",
-		"onCommand:cosmosDB.deleteMongoDocument",
-		"onCommand:cosmosDB.deleteDocDBDatabase",
-		"onCommand:cosmosDB.deleteDocDBCollection",
-		"onCommand:cosmosDB.deleteDocDBDocument",
-		"onCommand:cosmosDB.deleteGraphDatabase",
-		"onCommand:cosmosDB.deleteGraph",
-		"onCommand:cosmosDB.executeAllMongoCommands",
-		"onCommand:cosmosDB.executeMongoCommand",
-		"onCommand:cosmosDB.importDocument",
-		"onCommand:cosmosDB.newMongoScrapbook",
-		"onCommand:cosmosDB.update",
-		"onCommand:cosmosDB.openDocument",
-		"onCommand:cosmosDB.openStoredProcedure",
-		"onCommand:cosmosDB.openCollection",
-		"onCommand:cosmosDB.loadMore",
-		"onCommand:cosmosDB.refresh",
-		"onCommand:cosmosDB.openInPortal",
-		"onCommand:cosmosDB.copyConnectionString",
-		"onCommand:cosmosDB.launchMongoShell",
-		"onCommand:cosmosDB.openGraphExplorer"
-	],
-	"contributes": {
-		"viewsContainers": {
-			"activitybar": [
-				{
-					"id": "azure",
-					"title": "Azure",
-					"icon": "resources/azure.svg"
-				}
-			]
-		},
-		"views": {
-			"azure": [
-				{
-					"id": "cosmosDBExplorer",
-					"name": "Cosmos DB",
-					"when": "config.cosmosDB.showExplorer == true"
-				}
-			]
-		},
-		"languages": [
-			{
-				"id": "mongo",
-				"aliases": [
-					"Mongo Scrapbook",
-					"mongo"
-				],
-				"extensions": [
-					".mongo"
-				],
-				"firstLine": "^#!/.*\\bmongo*\\b",
-				"configuration": "./grammar/configuration.json"
-			}
-		],
-		"grammars": [
-			{
-				"language": "mongo",
-				"scopeName": "source.mongo.js",
-				"path": "./grammar/JavaScript.tmLanguage.json"
-			},
-			{
-				"scopeName": "source.mongo.js.regexp",
-				"path": "./grammar/Regular Expressions (JavaScript).tmLanguage"
-			}
-		],
-		"commands": [
-			{
-				"command": "cosmosDB.selectSubscriptions",
-				"title": "Select Subscriptions...",
-				"icon": {
-					"light": "resources/icons/light/filter.svg",
-					"dark": "resources/icons/dark/filter.svg"
-				}
-			},
-			{
-				"category": "MongoDB",
-				"command": "cosmosDB.executeMongoCommand",
-				"title": "Execute MongoDB Command"
-			},
-			{
-				"category": "MongoDB",
-				"command": "cosmosDB.executeAllMongoCommands",
-				"title": "Execute All MongoDB Commands"
-			},
-			{
-				"category": "MongoDB",
-				"command": "cosmosDB.launchMongoShell",
-				"title": "Launch Shell"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.attachDatabaseAccount",
-				"title": "Attach Database Account",
-				"icon": {
-					"light": "resources/icons/light/Connect.svg",
-					"dark": "resources/icons/dark/Connect.svg"
-				}
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.attachEmulator",
-				"title": "Attach Emulator"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.createAccount",
-				"title": "Create Account",
-				"icon": {
-					"light": "resources/icons/light/add.svg",
-					"dark": "resources/icons/dark/add.svg"
-				}
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.deleteAccount",
-				"title": "Delete Account"
-			},
-			{
-				"category": "MongoDB",
-				"command": "cosmosDB.createMongoDatabase",
-				"title": "Create Database"
-			},
-			{
-				"category": "MongoDB",
-				"command": "cosmosDB.createMongoCollection",
-				"title": "Create Collection"
-			},
-			{
-				"category": "MongoDB",
-				"command": "cosmosDB.createMongoDocument",
-				"title": "Create Document"
-			},
-			{
-				"category": "SQL (DocumentDB)",
-				"command": "cosmosDB.createDocDBDatabase",
-				"title": "Create Database"
-			},
-			{
-				"category": "MongoDB",
-				"command": "cosmosDB.openCollection",
-				"title": "Open Collection"
-			},
-			{
-				"category": "SQL (DocumentDB)",
-				"command": "cosmosDB.createDocDBCollection",
-				"title": "Create Collection"
-			},
-			{
-				"category": "SQL (DocumentDB)",
-				"command": "cosmosDB.createDocDBDocument",
-				"title": "Create Document"
-			},
-			{
-				"category": "SQL (DocumentDB)",
-				"command": "cosmosDB.createDocDBStoredProcedure",
-				"title": "Create Stored Procedure"
-			},
-			{
-				"category": "Graph (Gremlin)",
-				"command": "cosmosDB.createGraphDatabase",
-				"title": "Create Database"
-			},
-			{
-				"category": "Graph (Gremlin)",
-				"command": "cosmosDB.createGraph",
-				"title": "Create Graph"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.detachDatabaseAccount",
-				"title": "Detach"
-			},
-			{
-				"category": "MongoDB",
-				"command": "cosmosDB.connectMongoDB",
-				"title": "Connect"
-			},
-			{
-				"category": "MongoDB",
-				"command": "cosmosDB.deleteMongoDB",
-				"title": "Delete Database"
-			},
-			{
-				"category": "MongoDB",
-				"command": "cosmosDB.deleteMongoCollection",
-				"title": "Delete Collection"
-			},
-			{
-				"category": "MongoDB",
-				"command": "cosmosDB.deleteMongoDocument",
-				"title": "Delete Document"
-			},
-			{
-				"category": "SQL (DocumentDB)",
-				"command": "cosmosDB.deleteDocDBDatabase",
-				"title": "Delete Database"
-			},
-			{
-				"category": "SQL (DocumentDB)",
-				"command": "cosmosDB.deleteDocDBCollection",
-				"title": "Delete Collection"
-			},
-			{
-				"category": "SQL (DocumentDB)",
-				"command": "cosmosDB.deleteDocDBDocument",
-				"title": "Delete Document"
-			},
-			{
-				"category": "SQL (DocumentDB)",
-				"command": "cosmosDB.deleteDocDBStoredProcedure",
-				"title": "Delete Stored Procedure"
-			},
-			{
-				"category": "Graph (Gremlin)",
-				"command": "cosmosDB.deleteGraphDatabase",
-				"title": "Delete Database"
-			},
-			{
-				"category": "Graph (Gremlin)",
-				"command": "cosmosDB.deleteGraph",
-				"title": "Delete Graph"
-			},
-			{
-				"category": "Graph (Gremlin)",
-				"command": "cosmosDB.openGraphExplorer",
-				"title": "Open Graph Explorer"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.newMongoScrapbook",
-				"title": "New Mongo Scrapbook",
-				"icon": {
-					"light": "resources/icons/light/addFile.svg",
-					"dark": "resources/icons/dark/addFile.svg"
-				}
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.refresh",
-				"title": "Refresh",
-				"icon": {
-					"light": "resources/icons/light/refresh.svg",
-					"dark": "resources/icons/dark/refresh.svg"
-				}
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.openInPortal",
-				"title": "Open in Portal"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.copyConnectionString",
-				"title": "Copy Connection String"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.update",
-				"title": "Update to Cloud",
-				"icon": {
-					"light": "/resources/icons/theme-agnostic/UpdateOutline.svg",
-					"dark": "/resources/icons/theme-agnostic/UpdateOutline.svg"
-				}
-			},
-			{
-				"category": "SQL (DocumentDB)",
-				"command": "cosmosDB.loadMore",
-				"title": "Load More"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.openDocument",
-				"title": "Open Document"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.importDocument",
-				"title": "Import Document into a Collection"
-			},
-			{
-				"category": "Cosmos DB",
-				"command": "cosmosDB.openStoredProcedure",
-				"title": "Open Stored Procedure"
-			}
-		],
-		"menus": {
-			"editor/context": [
-				{
-					"command": "cosmosDB.executeMongoCommand",
-					"when": "resourceLangId==mongo"
-				},
-				{
-					"command": "cosmosDB.executeAllMongoCommands",
-					"when": "resourceLangId==mongo"
-				},
-				{
-					"command": "cosmosDB.update",
-					"when": "resourceFilename==cosmos-result.json"
-				},
-				{
-					"command": "cosmosDB.update",
-					"when": "resourceFilename=~/(.*cosmos-document[.]json)/"
-				},
-				{
-					"command": "cosmosDB.update",
-					"when": "resourceFilename=~/(.*cosmos-collection[.]json)/"
-				},
-				{
-					"command": "cosmosDB.update",
-					"when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)/"
-				},
-				{
-					"command": "cosmosDB.importDocument",
-					"when": "resourceLangId==json"
-				}
-			],
-			"editor/title": [
-				{
-					"command": "cosmosDB.update",
-					"when": "resourceFilename==cosmos-result.json",
-					"group": "navigation"
-				},
-				{
-					"command": "cosmosDB.update",
-					"when": "resourceFilename=~/(.*cosmos-document[.]json)/",
-					"group": "navigation"
-				},
-				{
-					"command": "cosmosDB.update",
-					"when": "resourceFilename=~/(.*cosmos-collection[.]json)/",
-					"group": "navigation"
-				},
-				{
-					"command": "cosmosDB.update",
-					"when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)/",
-					"group": "navigation"
-				}
-			],
-			"view/title": [
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer",
-					"group": "navigation"
-				},
-				{
-					"command": "cosmosDB.createAccount",
-					"when": "view == cosmosDBExplorer",
-					"group": "navigation"
-				},
-				{
-					"command": "cosmosDB.attachDatabaseAccount",
-					"when": "view == cosmosDBExplorer",
-					"group": "navigation"
-				},
-				{
-					"command": "cosmosDB.newMongoScrapbook",
-					"when": "view == cosmosDBExplorer",
-					"group": "navigation"
-				}
-			],
-			"view/item/context": [
-				{
-					"command": "cosmosDB.selectSubscriptions",
-					"when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
-					"group": "inline"
-				},
-				{
-					"command": "cosmosDB.createAccount",
-					"when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
-					"group": "1@1"
-				},
-				{
-					"command": "cosmosDB.openInPortal",
-					"when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
-					"group": "1@2"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
-					"group": "2@1"
-				},
-				{
-					"command": "cosmosDB.deleteAccount",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
-				},
-				{
-					"command": "cosmosDB.deleteAccount",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
-				},
-				{
-					"command": "cosmosDB.deleteAccount",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
-				},
-				{
-					"command": "cosmosDB.deleteAccount",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
-				},
-				{
-					"command": "cosmosDB.createMongoDatabase",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
-				},
-				{
-					"command": "cosmosDB.createMongoDatabase",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
-				},
-				{
-					"command": "cosmosDB.createMongoDocument",
-					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
-				},
-				{
-					"command": "cosmosDB.createMongoCollection",
-					"when": "view == cosmosDBExplorer && viewItem == mongoDb"
-				},
-				{
-					"command": "cosmosDB.createDocDBDocument",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentsGroup"
-				},
-				{
-					"command": "cosmosDB.createDocDBStoredProcedure",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProceduresGroup"
-				},
-				{
-					"command": "cosmosDB.createDocDBCollection",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
-				},
-				{
-					"command": "cosmosDB.createDocDBDatabase",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
-				},
-				{
-					"command": "cosmosDB.createDocDBDatabase",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
-				},
-				{
-					"command": "cosmosDB.createGraphDatabase",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
-				},
-				{
-					"command": "cosmosDB.createGraphDatabase",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
-				},
-				{
-					"command": "cosmosDB.createGraph",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
-				},
-				{
-					"command": "cosmosDB.detachDatabaseAccount",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
-				},
-				{
-					"command": "cosmosDB.detachDatabaseAccount",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
-				},
-				{
-					"command": "cosmosDB.detachDatabaseAccount",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
-				},
-				{
-					"command": "cosmosDB.detachDatabaseAccount",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccountAttached"
-				},
-				{
-					"command": "cosmosDB.connectMongoDB",
-					"when": "view == cosmosDBExplorer && viewItem == mongoDb"
-				},
-				{
-					"command": "cosmosDB.deleteMongoDB",
-					"when": "view == cosmosDBExplorer && viewItem == mongoDb"
-				},
-				{
-					"command": "cosmosDB.deleteMongoCollection",
-					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
-				},
-				{
-					"command": "cosmosDB.deleteMongoDocument",
-					"when": "view == cosmosDBExplorer && viewItem == MongoDocument"
-				},
-				{
-					"command": "cosmosDB.deleteDocDBCollection",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
-				},
-				{
-					"command": "cosmosDB.deleteDocDBDocument",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocument"
-				},
-				{
-					"command": "cosmosDB.deleteDocDBStoredProcedure",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProcedure"
-				},
-				{
-					"command": "cosmosDB.deleteDocDBDatabase",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
-				},
-				{
-					"command": "cosmosDB.deleteGraphDatabase",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
-				},
-				{
-					"command": "cosmosDB.deleteGraph",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraph"
-				},
-				{
-					"command": "cosmosDB.attachDatabaseAccount",
-					"when": "view == cosmosDBExplorer && viewItem =~ /^cosmosDBAttachedAccounts/"
-				},
-				{
-					"command": "cosmosDB.attachEmulator",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccountsWithEmulator"
-				},
-				{
-					"command": "cosmosDB.openInPortal",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
-				},
-				{
-					"command": "cosmosDB.openInPortal",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
-				},
-				{
-					"command": "cosmosDB.openInPortal",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
-				},
-				{
-					"command": "cosmosDB.openInPortal",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
-				},
-				{
-					"command": "cosmosDB.openCollection",
-					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
-				},
-				{
-					"command": "cosmosDB.copyConnectionString",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
-				},
-				{
-					"command": "cosmosDB.copyConnectionString",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
-				},
-				{
-					"command": "cosmosDB.copyConnectionString",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
-				},
-				{
-					"command": "cosmosDB.copyConnectionString",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
-				},
-				{
-					"command": "cosmosDB.copyConnectionString",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
-				},
-				{
-					"command": "cosmosDB.copyConnectionString",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
-				},
-				{
-					"command": "cosmosDB.copyConnectionString",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
-				},
-				{
-					"command": "cosmosDB.copyConnectionString",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccountAttached"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentsGroup"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProceduresGroup"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == mongoDb"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "view == cosmosDBExplorer && viewItem =~ /^cosmosDBAttachedAccounts/"
-				},
-				{
-					"command": "cosmosDB.importDocument",
-					"when": "view == cosmosDBExplorer && viewItem == MongoCollection"
-				},
-				{
-					"command": "cosmosDB.importDocument",
-					"when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
-				}
-			],
-			"explorer/context": [
-				{
-					"command": "cosmosDB.importDocument",
-					"when": "resourceLangId == json"
-				}
-			],
-			"commandPalette": [
-				{
-					"command": "cosmosDB.selectSubscriptions",
-					"when": "never"
-				},
-				{
-					"command": "cosmosDB.refresh",
-					"when": "never"
-				},
-				{
-					"command": "cosmosDB.loadMore",
-					"when": "never"
-				},
-				{
-					"command": "cosmosDB.update",
-					"when": "never"
-				},
-				{
-					"command": "cosmosDB.executeAllMongoCommands",
-					"when": "editorLangId == 'mongo'"
-				},
-				{
-					"command": "cosmosDB.executeMongoCommand",
-					"when": "editorLangId == 'mongo'"
-				}
-			]
-		},
-		"keybindings": [
-			{
-				"command": "cosmosDB.executeMongoCommand",
-				"key": "ctrl+shift+'",
-				"mac": "cmd+shift+'",
-				"when": "editorLangId == 'mongo' && editorTextFocus"
-			},
-			{
-				"command": "cosmosDB.executeAllMongoCommands",
-				"key": "ctrl+shift+;",
-				"mac": "cmd+shift+;",
-				"when": "editorLangId == 'mongo' && editorTextFocus"
-			},
-			{
-				"command": "workbench.view.extension.azure",
-				"key": "ctrl+shift+a",
-				"mac": "cmd+shift+a"
-			}
-		],
-		"configuration": {
-			"title": "Cosmos DB",
-			"properties": {
-				"mongo.shell.path": {
-					"type": [
-						"string",
-						"null"
-					],
-					"description": "Full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. The default is to search in the system path for 'mongo'.",
-					"default": null
-				},
-				"mongo.shell.args": {
-					"type": "array",
-					"items": {
-						"type": "string"
-					},
-					"description": "Arguments to pass when starting the Mongo shell.",
-					"default": [
-						"--quiet"
-					]
-				},
-				"mongo.shell.timeout": {
-					"type": "number",
-					"description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 30 seconds.",
-					"default": 30
-				},
-				"cosmosDB.showExplorer": {
-					"type": "boolean",
-					"default": true,
-					"description": "Show or hide the Cosmos DB Explorer"
-				},
-				"cosmosDB.documentLabelFields": {
-					"type": "array",
-					"default": [
-						"name",
-						"Name",
-						"NAME",
-						"ID",
-						"UUID",
-						"Id",
-						"id",
-						"_id",
-						"uuid"
-					],
-					"description": "The field values to display as labels in the treeview for Cosmos DB and MongoDB documents, in priority order"
-				},
-				"cosmosDB.showSavePrompt": {
-					"type": "boolean",
-					"default": true,
-					"description": "Show warning dialog when uploading a document to the cloud."
-				},
-				"cosmosDB.emulator.mongoPort": {
-					"type": "integer",
-					"default": 10255,
-					"description": "Port to use when connecting to a CosmosDB Mongo Emulator instance"
-				},
-				"cosmosDB.emulator.port": {
-					"type": "integer",
-					"default": 8081,
-					"description": "Port to use when connecting to a CosmosDB Emulator instance"
-				},
-				"cosmosDB.graph.maxVertices": {
-					"type": "integer",
-					"default": 300,
-					"description": "Set a limit for number of vertices displayed in a graph visualization"
-				},
-				"cosmosDB.graph.maxEdges": {
-					"type": "integer",
-					"default": 500,
-					"description": "Set a limit for number of edges displayed in a graph visualization"
-				},
-				"cosmosDB.graph.viewSettings": {
-					"type": "array",
-					"description": "Settings for CosmosDB graph visualization.",
-					"maxItems": 1,
-					"items": {
-						"type": "object",
-						"description": "A group of view settings",
-						"additionalProperties": false,
-						"properties": {
-							"vertexSettings": {
-								"type": "array",
-								"description": "Groups of vertex display settings",
-								"items": {
-									"type": "object",
-									"additionalProperties": false,
-									"properties": {
-										"appliesToLabel": {
-											"type": "string",
-											"description": "Specify a label value to restrict this settings group to only vertices with that label."
-										},
-										"displayProperty": {
-											"type": "array",
-											"description": "The vertex property to display for the text. The first one found to have a non-empty value on the vertex is used. The default is the vertex id.",
-											"items": {
-												"type": "string"
-											}
-										},
-										"color": {
-											"type": "string",
-											"description": "The vertex color, either 'auto', a CSS color name or a CSS RGB value (e.g., '#0088FF')",
-											"pattern": "^(auto)|([a-zA-Z]+)|(#[0-9a-fA-F]{3})|(#[0-9a-fA-F]{6})$",
-											"default": "auto"
-										},
-										"showLabel": {
-											"type": "boolean",
-											"description": "If true, the label will be displayed along with the specified display property",
-											"default": true
-										}
-									}
-								}
-							}
-						}
-					},
-					"default": [
-						{
-							"vertexSettings": [
-								{
-									"displayProperty": [
-										"name"
-									],
-									"color": "auto",
-									"showLabel": true
-								},
-								{
-									"appliesToLabel": "person",
-									"displayProperty": [
-										"fullName",
-										"lastName",
-										"firstName",
-										"name"
-									]
-								}
-							]
-						}
-					]
-				}
-			}
-		}
-	},
-	"scripts": {
-		"vscode:prepublish": "npm run webpack-prod",
-		"build": "tsc -p ./",
-		"compile": "tsc -watch -p ./",
-		"package": "vsce package",
-		"lint": "tslint --project tsconfig.json -t verbose",
-		"lint-fix": "tslint --project tsconfig.json -t verbose --fix",
-		"postinstall": "node ./node_modules/vscode/bin/install",
-		"pretest": "npm run webpack-prod",
-		"test": "gulp test",
-		"update-grammar": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src/mongo/grammar",
-		"webpack": "npm run build && gulp webpack-dev",
-		"webpack-prod": "npm run build && gulp webpack-prod",
-		"webpack-profile": "webpack --profile --json --mode production > webpack-stats.json && echo Use http://webpack.github.io/analyse to analyze the stats",
-		"all": "npm i && npm run lint && npm test"
-	},
-	"devDependencies": {
-		"@types/d3": "5.0.0",
-		"@types/documentdb": "^1.10.2",
-		"@types/fs-extra": "^4.0.3",
-		"@types/glob": "^7.1.1",
-		"@types/keytar": "4.0.1",
-		"@types/mocha": "^5.2.5",
-		"@types/mongodb": "^2.2.9",
-		"@types/node": "^6.0.40",
-		"@types/socket.io": "^1.4.32",
-		"@types/socket.io-client": "^1.4.32",
-		"antlr4ts-cli": "^0.4.0-alpha.4",
-		"copy-webpack-plugin": "^4.5.4",
-		"glob": "^7.1.3",
-		"gulp": "^4.0.0",
-		"mocha": "^5.2.0",
-		"mocha-junit-reporter": "^1.18.0",
-		"mocha-multi-reporters": "^1.1.7",
-		"string-replace-webpack-plugin": "^0.1.3",
-		"ts-loader": "^5.3.0",
-		"ts-node": "^7.0.1",
-		"tslint": "^5.7.0",
-		"tslint-microsoft-contrib": "5.0.1",
-		"typescript": "^3.2.2",
-		"vsce": "^1.37.5",
-		"vscode": "^1.1.18",
-		"vscode-azureextensiondev": "^0.2.1",
-		"webpack": "4.28.1",
-		"webpack-cli": "^3.1.2"
-	},
-	"dependencies": {
-		"antlr4ts": "^0.4.1-alpha.0",
-		"azure-arm-cosmosdb": "^1.1.2",
-		"azure-arm-resource": "^3.0.0-preview",
-		"d3": "^3.0.0",
-		"documentdb": "^1.14.2",
-		"event-stream": "3.3.4",
-		"filenamify": "^4.1.0",
-		"fs-extra": "^4.0.2",
-		"gremlin": "^2.6.0",
-		"mongodb": "^2.2.25",
-		"mongodb-extended-json": "^1.10.0",
-		"ms-rest": "^2.2.1",
-		"node-uuid": "1.4.8",
-		"socket.io": "^1.7.3",
-		"socket.io-client": "^1.7.3",
-		"underscore": "^1.8.3",
-		"vscode-azureextensionui": "0.26.5",
-		"vscode-json-languageservice": "^3.0.8",
-		"vscode-languageclient": "^4.4.0",
-		"vscode-languageserver": "^4.4.0",
-		"vscode-nls": "^4.0.0",
-		"vscode-uri": "^1.0.1"
-	},
-	"extensionDependencies": [
-		"ms-vscode.azure-account"
-	]
+    "name": "vscode-cosmosdb",
+    "version": "0.11.0",
+    "aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
+    "publisher": "ms-azuretools",
+    "displayName": "Azure Cosmos DB",
+    "description": "Create, browse, and update globally distributed, multi-model databases in Azure.",
+    "engines": {
+        "vscode": "^1.31.0"
+    },
+    "galleryBanner": {
+        "color": "#3c3c3c",
+        "theme": "dark"
+    },
+    "icon": "resources/cosmos.png",
+    "categories": [
+        "Azure"
+    ],
+    "keywords": [
+        "Cosmos DB",
+        "DocumentDB",
+        "Graph",
+        "Gremlin",
+        "MongoDB"
+    ],
+    "preview": true,
+    "homepage": "https://github.com/microsoft/vscode-cosmosdb/blob/master/README.md",
+    "bugs": {
+        "url": "https://github.com/microsoft/vscode-cosmosdb/issues"
+    },
+    "license": "SEE LICENSE IN LICENSE.md",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/microsoft/vscode-cosmosdb"
+    },
+    "main": "./main",
+    "activationEvents": [
+        "onLanguage:mongo",
+        "onView:cosmosDBExplorer",
+        "onCommand:cosmosDB.attachDatabaseAccount",
+        "onCommand:cosmosDB.attachEmulator",
+        "onCommand:cosmosDB.createAccount",
+        "onCommand:cosmosDB.deleteAccount",
+        "onCommand:cosmosDB.detachDatabaseAccount",
+        "onCommand:cosmosDB.createMongoDatabase",
+        "onCommand:cosmosDB.createMongoCollection",
+        "onCommand:cosmosDB.createMongoDocument",
+        "onCommand:cosmosDB.createDocDBDatabase",
+        "onCommand:cosmosDB.createDocDBCollection",
+        "onCommand:cosmosDB.createDocDBDocument",
+        "onCommand:cosmosDB.createDocDBStoredProcedure",
+        "onCommand:cosmosDB.createGraphDatabase",
+        "onCommand:cosmosDB.createGraph",
+        "onCommand:cosmosDB.connectMongoDB",
+        "onCommand:cosmosDB.deleteMongoDB",
+        "onCommand:cosmosDB.deleteMongoCollection",
+        "onCommand:cosmosDB.deleteMongoDocument",
+        "onCommand:cosmosDB.deleteDocDBDatabase",
+        "onCommand:cosmosDB.deleteDocDBCollection",
+        "onCommand:cosmosDB.deleteDocDBDocument",
+        "onCommand:cosmosDB.deleteGraphDatabase",
+        "onCommand:cosmosDB.deleteGraph",
+        "onCommand:cosmosDB.executeAllMongoCommands",
+        "onCommand:cosmosDB.executeMongoCommand",
+        "onCommand:cosmosDB.importDocument",
+        "onCommand:cosmosDB.newMongoScrapbook",
+        "onCommand:cosmosDB.update",
+        "onCommand:cosmosDB.openDocument",
+        "onCommand:cosmosDB.openStoredProcedure",
+        "onCommand:cosmosDB.openCollection",
+        "onCommand:cosmosDB.loadMore",
+        "onCommand:cosmosDB.refresh",
+        "onCommand:cosmosDB.openInPortal",
+        "onCommand:cosmosDB.copyConnectionString",
+        "onCommand:cosmosDB.launchMongoShell",
+        "onCommand:cosmosDB.openGraphExplorer"
+    ],
+    "contributes": {
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "azure",
+                    "title": "Azure",
+                    "icon": "resources/azure.svg"
+                }
+            ]
+        },
+        "views": {
+            "azure": [
+                {
+                    "id": "cosmosDBExplorer",
+                    "name": "Cosmos DB",
+                    "when": "config.cosmosDB.showExplorer == true"
+                }
+            ]
+        },
+        "languages": [
+            {
+                "id": "mongo",
+                "aliases": [
+                    "Mongo Scrapbook",
+                    "mongo"
+                ],
+                "extensions": [
+                    ".mongo"
+                ],
+                "firstLine": "^#!/.*\\bmongo*\\b",
+                "configuration": "./grammar/configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "mongo",
+                "scopeName": "source.mongo.js",
+                "path": "./grammar/JavaScript.tmLanguage.json"
+            },
+            {
+                "scopeName": "source.mongo.js.regexp",
+                "path": "./grammar/Regular Expressions (JavaScript).tmLanguage"
+            }
+        ],
+        "commands": [
+            {
+                "command": "cosmosDB.selectSubscriptions",
+                "title": "Select Subscriptions...",
+                "icon": {
+                    "light": "resources/icons/light/filter.svg",
+                    "dark": "resources/icons/dark/filter.svg"
+                }
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.executeMongoCommand",
+                "title": "Execute MongoDB Command"
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.executeAllMongoCommands",
+                "title": "Execute All MongoDB Commands"
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.launchMongoShell",
+                "title": "Launch Shell"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.attachDatabaseAccount",
+                "title": "Attach Database Account",
+                "icon": {
+                    "light": "resources/icons/light/Connect.svg",
+                    "dark": "resources/icons/dark/Connect.svg"
+                }
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.attachEmulator",
+                "title": "Attach Emulator"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.createAccount",
+                "title": "Create Account",
+                "icon": {
+                    "light": "resources/icons/light/add.svg",
+                    "dark": "resources/icons/dark/add.svg"
+                }
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.deleteAccount",
+                "title": "Delete Account"
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.createMongoDatabase",
+                "title": "Create Database"
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.createMongoCollection",
+                "title": "Create Collection"
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.createMongoDocument",
+                "title": "Create Document"
+            },
+            {
+                "category": "SQL (DocumentDB)",
+                "command": "cosmosDB.createDocDBDatabase",
+                "title": "Create Database"
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.openCollection",
+                "title": "Open Collection"
+            },
+            {
+                "category": "SQL (DocumentDB)",
+                "command": "cosmosDB.createDocDBCollection",
+                "title": "Create Collection"
+            },
+            {
+                "category": "SQL (DocumentDB)",
+                "command": "cosmosDB.createDocDBDocument",
+                "title": "Create Document"
+            },
+            {
+                "category": "SQL (DocumentDB)",
+                "command": "cosmosDB.createDocDBStoredProcedure",
+                "title": "Create Stored Procedure"
+            },
+            {
+                "category": "Graph (Gremlin)",
+                "command": "cosmosDB.createGraphDatabase",
+                "title": "Create Database"
+            },
+            {
+                "category": "Graph (Gremlin)",
+                "command": "cosmosDB.createGraph",
+                "title": "Create Graph"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.detachDatabaseAccount",
+                "title": "Detach"
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.connectMongoDB",
+                "title": "Connect"
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.deleteMongoDB",
+                "title": "Delete Database"
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.deleteMongoCollection",
+                "title": "Delete Collection"
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.deleteMongoDocument",
+                "title": "Delete Document"
+            },
+            {
+                "category": "SQL (DocumentDB)",
+                "command": "cosmosDB.deleteDocDBDatabase",
+                "title": "Delete Database"
+            },
+            {
+                "category": "SQL (DocumentDB)",
+                "command": "cosmosDB.deleteDocDBCollection",
+                "title": "Delete Collection"
+            },
+            {
+                "category": "SQL (DocumentDB)",
+                "command": "cosmosDB.deleteDocDBDocument",
+                "title": "Delete Document"
+            },
+            {
+                "category": "SQL (DocumentDB)",
+                "command": "cosmosDB.deleteDocDBStoredProcedure",
+                "title": "Delete Stored Procedure"
+            },
+            {
+                "category": "Graph (Gremlin)",
+                "command": "cosmosDB.deleteGraphDatabase",
+                "title": "Delete Database"
+            },
+            {
+                "category": "Graph (Gremlin)",
+                "command": "cosmosDB.deleteGraph",
+                "title": "Delete Graph"
+            },
+            {
+                "category": "Graph (Gremlin)",
+                "command": "cosmosDB.openGraphExplorer",
+                "title": "Open Graph Explorer"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.newMongoScrapbook",
+                "title": "New Mongo Scrapbook",
+                "icon": {
+                    "light": "resources/icons/light/addFile.svg",
+                    "dark": "resources/icons/dark/addFile.svg"
+                }
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.refresh",
+                "title": "Refresh",
+                "icon": {
+                    "light": "resources/icons/light/refresh.svg",
+                    "dark": "resources/icons/dark/refresh.svg"
+                }
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.openInPortal",
+                "title": "Open in Portal"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.copyConnectionString",
+                "title": "Copy Connection String"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.update",
+                "title": "Update to Cloud",
+                "icon": {
+                    "light": "/resources/icons/theme-agnostic/UpdateOutline.svg",
+                    "dark": "/resources/icons/theme-agnostic/UpdateOutline.svg"
+                }
+            },
+            {
+                "category": "SQL (DocumentDB)",
+                "command": "cosmosDB.loadMore",
+                "title": "Load More"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.openDocument",
+                "title": "Open Document"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.importDocument",
+                "title": "Import Document into a Collection"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.openStoredProcedure",
+                "title": "Open Stored Procedure"
+            }
+        ],
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "cosmosDB.executeMongoCommand",
+                    "when": "resourceLangId==mongo"
+                },
+                {
+                    "command": "cosmosDB.executeAllMongoCommands",
+                    "when": "resourceLangId==mongo"
+                },
+                {
+                    "command": "cosmosDB.update",
+                    "when": "resourceFilename==cosmos-result.json"
+                },
+                {
+                    "command": "cosmosDB.update",
+                    "when": "resourceFilename=~/(.*cosmos-document[.]json)/"
+                },
+                {
+                    "command": "cosmosDB.update",
+                    "when": "resourceFilename=~/(.*cosmos-collection[.]json)/"
+                },
+                {
+                    "command": "cosmosDB.update",
+                    "when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)/"
+                },
+                {
+                    "command": "cosmosDB.importDocument",
+                    "when": "resourceLangId==json"
+                }
+            ],
+            "editor/title": [
+                {
+                    "command": "cosmosDB.update",
+                    "when": "resourceFilename==cosmos-result.json",
+                    "group": "navigation"
+                },
+                {
+                    "command": "cosmosDB.update",
+                    "when": "resourceFilename=~/(.*cosmos-document[.]json)/",
+                    "group": "navigation"
+                },
+                {
+                    "command": "cosmosDB.update",
+                    "when": "resourceFilename=~/(.*cosmos-collection[.]json)/",
+                    "group": "navigation"
+                },
+                {
+                    "command": "cosmosDB.update",
+                    "when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)/",
+                    "group": "navigation"
+                }
+            ],
+            "view/title": [
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer",
+                    "group": "navigation"
+                },
+                {
+                    "command": "cosmosDB.createAccount",
+                    "when": "view == cosmosDBExplorer",
+                    "group": "navigation"
+                },
+                {
+                    "command": "cosmosDB.attachDatabaseAccount",
+                    "when": "view == cosmosDBExplorer",
+                    "group": "navigation"
+                },
+                {
+                    "command": "cosmosDB.newMongoScrapbook",
+                    "when": "view == cosmosDBExplorer",
+                    "group": "navigation"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "cosmosDB.selectSubscriptions",
+                    "when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+                    "group": "inline"
+                },
+                {
+                    "command": "cosmosDB.createAccount",
+                    "when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+                    "group": "1@1"
+                },
+                {
+                    "command": "cosmosDB.openInPortal",
+                    "when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+                    "group": "1@2"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+                    "group": "2@1"
+                },
+                {
+                    "command": "cosmosDB.deleteAccount",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+                },
+                {
+                    "command": "cosmosDB.deleteAccount",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+                },
+                {
+                    "command": "cosmosDB.deleteAccount",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+                },
+                {
+                    "command": "cosmosDB.deleteAccount",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
+                },
+                {
+                    "command": "cosmosDB.createMongoDatabase",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
+                },
+                {
+                    "command": "cosmosDB.createMongoDatabase",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+                },
+                {
+                    "command": "cosmosDB.createMongoDocument",
+                    "when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+                },
+                {
+                    "command": "cosmosDB.createMongoCollection",
+                    "when": "view == cosmosDBExplorer && viewItem == mongoDb"
+                },
+                {
+                    "command": "cosmosDB.createDocDBDocument",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentsGroup"
+                },
+                {
+                    "command": "cosmosDB.createDocDBStoredProcedure",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProceduresGroup"
+                },
+                {
+                    "command": "cosmosDB.createDocDBCollection",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
+                },
+                {
+                    "command": "cosmosDB.createDocDBDatabase",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+                },
+                {
+                    "command": "cosmosDB.createDocDBDatabase",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
+                },
+                {
+                    "command": "cosmosDB.createGraphDatabase",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+                },
+                {
+                    "command": "cosmosDB.createGraphDatabase",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
+                },
+                {
+                    "command": "cosmosDB.createGraph",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
+                },
+                {
+                    "command": "cosmosDB.detachDatabaseAccount",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
+                },
+                {
+                    "command": "cosmosDB.detachDatabaseAccount",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
+                },
+                {
+                    "command": "cosmosDB.detachDatabaseAccount",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
+                },
+                {
+                    "command": "cosmosDB.detachDatabaseAccount",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccountAttached"
+                },
+                {
+                    "command": "cosmosDB.connectMongoDB",
+                    "when": "view == cosmosDBExplorer && viewItem == mongoDb"
+                },
+                {
+                    "command": "cosmosDB.deleteMongoDB",
+                    "when": "view == cosmosDBExplorer && viewItem == mongoDb"
+                },
+                {
+                    "command": "cosmosDB.deleteMongoCollection",
+                    "when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+                },
+                {
+                    "command": "cosmosDB.deleteMongoDocument",
+                    "when": "view == cosmosDBExplorer && viewItem == MongoDocument"
+                },
+                {
+                    "command": "cosmosDB.deleteDocDBCollection",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
+                },
+                {
+                    "command": "cosmosDB.deleteDocDBDocument",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocument"
+                },
+                {
+                    "command": "cosmosDB.deleteDocDBStoredProcedure",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProcedure"
+                },
+                {
+                    "command": "cosmosDB.deleteDocDBDatabase",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
+                },
+                {
+                    "command": "cosmosDB.deleteGraphDatabase",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
+                },
+                {
+                    "command": "cosmosDB.deleteGraph",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraph"
+                },
+                {
+                    "command": "cosmosDB.attachDatabaseAccount",
+                    "when": "view == cosmosDBExplorer && viewItem =~ /^cosmosDBAttachedAccounts/"
+                },
+                {
+                    "command": "cosmosDB.attachEmulator",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccountsWithEmulator"
+                },
+                {
+                    "command": "cosmosDB.openInPortal",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+                },
+                {
+                    "command": "cosmosDB.openInPortal",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
+                },
+                {
+                    "command": "cosmosDB.openInPortal",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+                },
+                {
+                    "command": "cosmosDB.openInPortal",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+                },
+                {
+                    "command": "cosmosDB.openCollection",
+                    "when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+                },
+                {
+                    "command": "cosmosDB.copyConnectionString",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+                },
+                {
+                    "command": "cosmosDB.copyConnectionString",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+                },
+                {
+                    "command": "cosmosDB.copyConnectionString",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+                },
+                {
+                    "command": "cosmosDB.copyConnectionString",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
+                },
+                {
+                    "command": "cosmosDB.copyConnectionString",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
+                },
+                {
+                    "command": "cosmosDB.copyConnectionString",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
+                },
+                {
+                    "command": "cosmosDB.copyConnectionString",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
+                },
+                {
+                    "command": "cosmosDB.copyConnectionString",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccountAttached"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentsGroup"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProceduresGroup"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == mongoDb"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "view == cosmosDBExplorer && viewItem =~ /^cosmosDBAttachedAccounts/"
+                },
+                {
+                    "command": "cosmosDB.importDocument",
+                    "when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+                },
+                {
+                    "command": "cosmosDB.importDocument",
+                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
+                }
+            ],
+            "explorer/context": [
+                {
+                    "command": "cosmosDB.importDocument",
+                    "when": "resourceLangId == json"
+                }
+            ],
+            "commandPalette": [
+                {
+                    "command": "cosmosDB.selectSubscriptions",
+                    "when": "never"
+                },
+                {
+                    "command": "cosmosDB.refresh",
+                    "when": "never"
+                },
+                {
+                    "command": "cosmosDB.loadMore",
+                    "when": "never"
+                },
+                {
+                    "command": "cosmosDB.update",
+                    "when": "never"
+                },
+                {
+                    "command": "cosmosDB.executeAllMongoCommands",
+                    "when": "editorLangId == 'mongo'"
+                },
+                {
+                    "command": "cosmosDB.executeMongoCommand",
+                    "when": "editorLangId == 'mongo'"
+                }
+            ]
+        },
+        "keybindings": [
+            {
+                "command": "cosmosDB.executeMongoCommand",
+                "key": "ctrl+shift+'",
+                "mac": "cmd+shift+'",
+                "when": "editorLangId == 'mongo' && editorTextFocus"
+            },
+            {
+                "command": "cosmosDB.executeAllMongoCommands",
+                "key": "ctrl+shift+;",
+                "mac": "cmd+shift+;",
+                "when": "editorLangId == 'mongo' && editorTextFocus"
+            },
+            {
+                "command": "workbench.view.extension.azure",
+                "key": "ctrl+shift+a",
+                "mac": "cmd+shift+a"
+            }
+        ],
+        "configuration": {
+            "title": "Cosmos DB",
+            "properties": {
+                "mongo.shell.path": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. The default is to search in the system path for 'mongo'.",
+                    "default": null
+                },
+                "mongo.shell.args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Arguments to pass when starting the Mongo shell.",
+                    "default": [
+                        "--quiet"
+                    ]
+                },
+                "mongo.shell.timeout": {
+                    "type": "number",
+                    "description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 30 seconds.",
+                    "default": 30
+                },
+                "cosmosDB.showExplorer": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show or hide the Cosmos DB Explorer"
+                },
+                "cosmosDB.documentLabelFields": {
+                    "type": "array",
+                    "default": [
+                        "name",
+                        "Name",
+                        "NAME",
+                        "ID",
+                        "UUID",
+                        "Id",
+                        "id",
+                        "_id",
+                        "uuid"
+                    ],
+                    "description": "The field values to display as labels in the treeview for Cosmos DB and MongoDB documents, in priority order"
+                },
+                "cosmosDB.showSavePrompt": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show warning dialog when uploading a document to the cloud."
+                },
+                "cosmosDB.emulator.mongoPort": {
+                    "type": "integer",
+                    "default": 10255,
+                    "description": "Port to use when connecting to a CosmosDB Mongo Emulator instance"
+                },
+                "cosmosDB.emulator.port": {
+                    "type": "integer",
+                    "default": 8081,
+                    "description": "Port to use when connecting to a CosmosDB Emulator instance"
+                },
+                "cosmosDB.graph.maxVertices": {
+                    "type": "integer",
+                    "default": 300,
+                    "description": "Set a limit for number of vertices displayed in a graph visualization"
+                },
+                "cosmosDB.graph.maxEdges": {
+                    "type": "integer",
+                    "default": 500,
+                    "description": "Set a limit for number of edges displayed in a graph visualization"
+                },
+                "cosmosDB.graph.viewSettings": {
+                    "type": "array",
+                    "description": "Settings for CosmosDB graph visualization.",
+                    "maxItems": 1,
+                    "items": {
+                        "type": "object",
+                        "description": "A group of view settings",
+                        "additionalProperties": false,
+                        "properties": {
+                            "vertexSettings": {
+                                "type": "array",
+                                "description": "Groups of vertex display settings",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "appliesToLabel": {
+                                            "type": "string",
+                                            "description": "Specify a label value to restrict this settings group to only vertices with that label."
+                                        },
+                                        "displayProperty": {
+                                            "type": "array",
+                                            "description": "The vertex property to display for the text. The first one found to have a non-empty value on the vertex is used. The default is the vertex id.",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "color": {
+                                            "type": "string",
+                                            "description": "The vertex color, either 'auto', a CSS color name or a CSS RGB value (e.g., '#0088FF')",
+                                            "pattern": "^(auto)|([a-zA-Z]+)|(#[0-9a-fA-F]{3})|(#[0-9a-fA-F]{6})$",
+                                            "default": "auto"
+                                        },
+                                        "showLabel": {
+                                            "type": "boolean",
+                                            "description": "If true, the label will be displayed along with the specified display property",
+                                            "default": true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "default": [
+                        {
+                            "vertexSettings": [
+                                {
+                                    "displayProperty": [
+                                        "name"
+                                    ],
+                                    "color": "auto",
+                                    "showLabel": true
+                                },
+                                {
+                                    "appliesToLabel": "person",
+                                    "displayProperty": [
+                                        "fullName",
+                                        "lastName",
+                                        "firstName",
+                                        "name"
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run webpack-prod",
+        "build": "tsc -p ./",
+        "compile": "tsc -watch -p ./",
+        "package": "vsce package",
+        "lint": "tslint --project tsconfig.json -t verbose",
+        "lint-fix": "tslint --project tsconfig.json -t verbose --fix",
+        "postinstall": "node ./node_modules/vscode/bin/install",
+        "pretest": "npm run webpack-prod",
+        "test": "gulp test",
+        "update-grammar": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src/mongo/grammar",
+        "webpack": "npm run build && gulp webpack-dev",
+        "webpack-prod": "npm run build && gulp webpack-prod",
+        "webpack-profile": "webpack --profile --json --mode production > webpack-stats.json && echo Use http://webpack.github.io/analyse to analyze the stats",
+        "all": "npm i && npm run lint && npm test"
+    },
+    "devDependencies": {
+        "@types/d3": "5.0.0",
+        "@types/documentdb": "^1.10.2",
+        "@types/fs-extra": "^4.0.3",
+        "@types/glob": "^7.1.1",
+        "@types/keytar": "4.0.1",
+        "@types/mocha": "^5.2.5",
+        "@types/mongodb": "^2.2.9",
+        "@types/node": "^6.0.40",
+        "@types/socket.io": "^1.4.32",
+        "@types/socket.io-client": "^1.4.32",
+        "antlr4ts-cli": "^0.4.0-alpha.4",
+        "copy-webpack-plugin": "^4.5.4",
+        "glob": "^7.1.3",
+        "gulp": "^4.0.0",
+        "mocha": "^5.2.0",
+        "mocha-junit-reporter": "^1.18.0",
+        "mocha-multi-reporters": "^1.1.7",
+        "string-replace-webpack-plugin": "^0.1.3",
+        "ts-loader": "^5.3.0",
+        "ts-node": "^7.0.1",
+        "tslint": "^5.7.0",
+        "tslint-microsoft-contrib": "5.0.1",
+        "typescript": "^3.2.2",
+        "vsce": "^1.37.5",
+        "vscode": "^1.1.18",
+        "vscode-azureextensiondev": "^0.2.1",
+        "webpack": "4.28.1",
+        "webpack-cli": "^3.1.2"
+    },
+    "dependencies": {
+        "antlr4ts": "^0.4.1-alpha.0",
+        "azure-arm-cosmosdb": "^1.1.2",
+        "azure-arm-resource": "^3.0.0-preview",
+        "d3": "^3.0.0",
+        "documentdb": "^1.14.2",
+        "event-stream": "3.3.4",
+        "fs-extra": "^4.0.2",
+        "gremlin": "^2.6.0",
+        "mongodb": "^2.2.25",
+        "mongodb-extended-json": "^1.10.0",
+        "ms-rest": "^2.2.1",
+        "node-uuid": "1.4.8",
+        "socket.io": "^1.7.3",
+        "socket.io-client": "^1.7.3",
+        "underscore": "^1.8.3",
+        "vscode-azureextensionui": "0.26.5",
+        "vscode-json-languageservice": "^3.0.8",
+        "vscode-languageclient": "^4.4.0",
+        "vscode-languageserver": "^4.4.0",
+        "vscode-nls": "^4.0.0",
+        "vscode-uri": "^1.0.1"
+    },
+    "extensionDependencies": [
+        "ms-vscode.azure-account"
+    ]
 }

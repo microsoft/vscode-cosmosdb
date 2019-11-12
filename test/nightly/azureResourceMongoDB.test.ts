@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { randomUtils, appendExtensionUserAgent, connectToMongoClient, IDatabaseInfo } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { resourceGroupsToDelete, client, testAccount } from './global.resource.test';
-import { MongoClient } from 'mongodb';
+import { MongoClient, Collection } from 'mongodb';
 
 suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<void> {
     this.timeout(20 * 60 * 1000);
@@ -44,15 +44,32 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createMongoDatabase');
         });
+        const mongoClient: MongoClient | undefined = await getMongoClient();
+        const listDatabases: { databases: IDatabaseInfo[] } = await mongoClient.db(accountName).admin().listDatabases();
+        const mongoDatabase: IDatabaseInfo | undefined = listDatabases.databases.find((database: IDatabaseInfo) => database.name === databaseName);
+        assert.ok(mongoDatabase);
+    });
+
+    test('Create Mongo Collection', async () => {
+        const databaseName: string = randomUtils.getRandomHexString(12);
+        const collectionName: string = randomUtils.getRandomHexString(12);
+        const testInputs: string[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (MongoDB)`, '$(plus) Create new Database...', databaseName, collectionName];
+        await testUserInput.runWithInputs(testInputs, async () => {
+            await vscode.commands.executeCommand('cosmosDB.createMongoCollection');
+        });
+        const mongoClient: MongoClient | undefined = await getMongoClient();
+        const listCollections: Collection[] = await mongoClient.db(databaseName).collections();
+        const collection: Collection | undefined = listCollections.find((collection: Collection) => collection.collectionName === collectionName);
+        assert.ok(collection);
+    });
+
+    async function getMongoClient(): Promise<MongoClient> {
         await vscode.env.clipboard.writeText('');
         await testUserInput.runWithInputs([`${accountName} (MongoDB)`], async () => {
             await vscode.commands.executeCommand('cosmosDB.copyConnectionString');
         });
         const connectionString: string = await vscode.env.clipboard.readText();
-        const mongoClient: MongoClient | undefined = await connectToMongoClient(connectionString, appendExtensionUserAgent())
-        const listDatabases: { databases: IDatabaseInfo[] } = await mongoClient.db(accountName).admin().listDatabases();
-        const mongoDatabase: IDatabaseInfo | undefined = listDatabases.databases.find((database: IDatabaseInfo) => database.name === databaseName);
-        assert.ok(mongoDatabase);
-    });
+        return await connectToMongoClient(connectionString, appendExtensionUserAgent());
+    }
 });
 

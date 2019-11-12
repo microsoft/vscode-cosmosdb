@@ -63,7 +63,7 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         assert.ok(collection);
     });
 
-    async function getMongoClient(): Promise<MongoClient | undefined> {
+    async function getMongoClient(): Promise<MongoClient> {
         await vscode.env.clipboard.writeText('');
         await testUserInput.runWithInputs([`${accountName} (MongoDB)`], async () => {
             await vscode.commands.executeCommand('cosmosDB.copyConnectionString');

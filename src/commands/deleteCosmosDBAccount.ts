@@ -7,11 +7,12 @@ import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import * as vscode from 'vscode';
 import { AzureTreeItem, createAzureClient, DialogResponses } from 'vscode-azureextensionui';
 import { UserCancelledError } from 'vscode-azureextensionui';
+import { ext } from '../extensionVariables';
 import { azureUtils } from '../utils/azureUtils';
 
 export async function deleteCosmosDBAccount(node: AzureTreeItem): Promise<void> {
     const message: string = `Are you sure you want to delete account '${node.label}' and its contents?`;
-    const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+    const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
     if (result === DialogResponses.deleteResponse) {
         const client: CosmosDBManagementClient = createAzureClient(node.root, CosmosDBManagementClient);
         const resourceGroup: string = azureUtils.getResourceGroupFromId(node.fullId);

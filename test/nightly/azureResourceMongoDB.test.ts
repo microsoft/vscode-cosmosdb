@@ -7,7 +7,7 @@ import * as assert from 'assert';
 import { CosmosDBManagementModels } from 'azure-arm-cosmosdb';
 import { IHookCallbackContext, ISuiteCallbackContext } from 'mocha';
 import * as vscode from 'vscode';
-import { randomUtils, appendExtensionUserAgent, connectToMongoClient, IDatabaseInfo } from '../../extension.bundle';
+import { randomUtils, appendExtensionUserAgent, connectToMongoClient, IDatabaseInfo, DialogResponses } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { resourceGroupsToDelete, client, testAccount } from './global.resource.test';
 import { MongoClient, Collection } from 'mongodb';
@@ -63,6 +63,16 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         assert.ok(collection);
     });
 
+    test('Delete account', async () => {
+        const createAccount: CosmosDBManagementModels.DatabaseAccount = await client.databaseAccounts.get(resourceGroupName, accountName);
+        assert.ok(createAccount);
+        const testInputs: string[] = [`${accountName} (MongoDB)`, DialogResponses.deleteResponse.title];
+        await testUserInput.runWithInputs(testInputs, async () => {
+            await vscode.commands.executeCommand('cosmosDB.deleteAccount');
+        });
+        await assertThrowsAsync(async () => await client.databaseAccounts.get(resourceGroupName, accountName), /Error/);
+    });
+
     async function getMongoClient(): Promise<MongoClient> {
         await vscode.env.clipboard.writeText('');
         await testUserInput.runWithInputs([`${accountName} (MongoDB)`], async () => {
@@ -73,3 +83,13 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
     }
 });
 
+async function assertThrowsAsync(fn: { (): Promise<CosmosDBManagementModels.DatabaseAccount>; (): void; }, regExp: RegExp): Promise<void> {
+    let f = () => { return undefined };
+    try {
+        await fn();
+    } catch (e) {
+        f = () => { throw e; };
+    } finally {
+        assert.throws(f, regExp);
+    }
+}

@@ -35,7 +35,7 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 - Click on "Connect to a database" to indicate which database to run the commands against
 - Enter your commands and/or comments, eg: `db.<collectionName>.find()`
 - IntelliSense (auto-completions) will be provided
-- Click on "Execute" above a command to execute it, or press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to execute the line with the cursor.
+- Click on "Execute" above a command to execute it, or press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to execute the line with the cursor
 - To run all commands, click on "Execute All", or press `CMD+:` or `Ctrl+:`
 - Save and re-use later
 ![Mongo Scrapbook](resources/Scrapbook.gif)

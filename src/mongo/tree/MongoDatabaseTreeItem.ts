@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as fse from 'fs-extra';
-import { Collection, Db } from 'mongodb';
+import { Collection, Db, DbCollectionOptions } from 'mongodb';
 import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
@@ -111,15 +111,16 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 		}
 
 		if (command.name === 'createCollection') {
-			return withProgress(this.createCollection(stripQuotes(command.arguments.join(','))).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
+			// arguments  are all strings so DbCollectionOptions is represented as a JSON string which is why we pass argumentObjects instead
+			return withProgress(this.createCollection(stripQuotes(command.arguments[0]), command.argumentObjects[1]).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
 		} else {
 			return withProgress(this.executeCommandInShell(command, context), executingInShellMsg);
 		}
 	}
 
-	public async createCollection(collectionName: string): Promise<MongoCollectionTreeItem> {
+	public async createCollection(collectionName: string, options?: DbCollectionOptions): Promise<MongoCollectionTreeItem> {
 		const db: Db = await this.connectToDb();
-		const newCollection: Collection = db.collection(collectionName);
+		const newCollection: Collection = await db.createCollection(collectionName, options);
 		// db.createCollection() doesn't create empty collections for some reason
 		// However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
 		const result = await newCollection.insertOne({});

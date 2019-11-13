@@ -111,7 +111,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 		}
 
 		if (command.name === 'createCollection') {
-			// arguments are always string (ie collection name) whereas arguementObjects will be an Object (where as in arguments, it's a JSON string)
+			// arguments  are all strings so DbCollectionOptions is represented as a JSON string which is why we pass argumentObjects instead
 			return withProgress(this.createCollection(stripQuotes(command.arguments[0]), command.argumentObjects[1]).then(() => JSON.stringify({ 'Created': 'Ok' })), 'Creating collection');
 		} else {
 			return withProgress(this.executeCommandInShell(command, context), executingInShellMsg);

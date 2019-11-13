@@ -70,7 +70,9 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.deleteAccount');
         });
-        await assertThrowsAsync(async () => await client.databaseAccounts.get(resourceGroupName, accountName), /Error/);
+        const listAccounts: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupName);
+        const accountExists: CosmosDBManagementModels.DatabaseAccount | undefined = listAccounts.find((account: CosmosDBManagementModels.DatabaseAccount) => account.name === accountName);
+        assert.ifError(accountExists);
     });
 
     async function getMongoClient(): Promise<MongoClient> {
@@ -82,14 +84,3 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         return await connectToMongoClient(connectionString, appendExtensionUserAgent());
     }
 });
-
-async function assertThrowsAsync(fn: { (): Promise<CosmosDBManagementModels.DatabaseAccount>; (): void; }, regExp: RegExp): Promise<void> {
-    let f = () => { return undefined };
-    try {
-        await fn();
-    } catch (e) {
-        f = () => { throw e; };
-    } finally {
-        assert.throws(f, regExp);
-    }
-}

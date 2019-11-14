@@ -7,7 +7,7 @@ import * as assert from 'assert';
 import { CosmosDBManagementModels } from 'azure-arm-cosmosdb';
 import { IHookCallbackContext, ISuiteCallbackContext } from 'mocha';
 import * as vscode from 'vscode';
-import { randomUtils, appendExtensionUserAgent, connectToMongoClient, IDatabaseInfo } from '../../extension.bundle';
+import { randomUtils, appendExtensionUserAgent, connectToMongoClient, IDatabaseInfo, DialogResponses } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { resourceGroupsToDelete, client, testAccount } from './global.resource.test';
 import { MongoClient, Collection } from 'mongodb';
@@ -63,6 +63,18 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         assert.ok(collection);
     });
 
+    test('Delete account', async () => {
+        const mongoAccount: CosmosDBManagementModels.DatabaseAccount = await client.databaseAccounts.get(resourceGroupName, accountName);
+        assert.ok(mongoAccount);
+        const testInputs: string[] = [`${accountName} (MongoDB)`, DialogResponses.deleteResponse.title];
+        await testUserInput.runWithInputs(testInputs, async () => {
+            await vscode.commands.executeCommand('cosmosDB.deleteAccount');
+        });
+        const listAccounts: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupName);
+        const accountExists: CosmosDBManagementModels.DatabaseAccount | undefined = listAccounts.find((account: CosmosDBManagementModels.DatabaseAccount) => account.name === accountName);
+        assert.ifError(accountExists);
+    });
+
     async function getMongoClient(): Promise<MongoClient> {
         await vscode.env.clipboard.writeText('');
         await testUserInput.runWithInputs([`${accountName} (MongoDB)`], async () => {
@@ -72,4 +84,3 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         return await connectToMongoClient(connectionString, appendExtensionUserAgent());
     }
 });
-

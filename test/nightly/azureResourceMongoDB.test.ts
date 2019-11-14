@@ -64,8 +64,8 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
     });
 
     test('Delete account', async () => {
-        const createAccount: CosmosDBManagementModels.DatabaseAccount = await client.databaseAccounts.get(resourceGroupName, accountName);
-        assert.ok(createAccount);
+        const mongoAccount: CosmosDBManagementModels.DatabaseAccount = await client.databaseAccounts.get(resourceGroupName, accountName);
+        assert.ok(mongoAccount);
         const testInputs: string[] = [`${accountName} (MongoDB)`, DialogResponses.deleteResponse.title];
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.deleteAccount');

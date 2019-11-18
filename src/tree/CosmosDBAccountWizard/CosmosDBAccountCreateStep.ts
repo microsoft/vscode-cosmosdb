@@ -15,7 +15,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
 
     public async execute(wizardContext: ICosmosDBWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
         const client: CosmosDBManagementClient = createAzureClient(wizardContext, CosmosDBManagementClient);
-        const creatingMessage: string = `Creating Cosmos DB account "${wizardContext.accountName}" with API "${wizardContext.defaultExperience.shortName}"...`;
+        const creatingMessage: string = `Creating Cosmos DB account "${wizardContext.accountName}" with the "${wizardContext.defaultExperience.shortName}" API...`;
         ext.outputChannel.appendLog(creatingMessage);
         progress.report({ message: creatingMessage });
         let options = {

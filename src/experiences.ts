@@ -85,10 +85,10 @@ export function getExperienceQuickPick(api: API): IAzureQuickPickItem<Experience
 
 // Mongo is distinguished by having kind="MongoDB". All others have kind="GlobalDocumentDB"
 // Table and Gremlin are distinguished from SQL by their capabilities
-const SQLExperience: Experience = { api: API.DocumentDB, longName: "SQL", description: "(DocumentDB)", shortName: "SQL", kind: DBAccountKind.GlobalDocumentDB, tag: "Core (SQL)" };
-const MongoExperience: Experience = { api: API.MongoDB, longName: "MongoDB", shortName: "MongoDB", kind: DBAccountKind.MongoDB, tag: "Azure Cosmos DB for MongoDB API" };
-const TableExperience: Experience = { api: API.Table, longName: "Azure Table", shortName: "Table", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableTable', tag: "Azure Table" };
-const GremlinExperience: Experience = { api: API.Graph, longName: "Gremlin", description: "(Graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableGremlin', tag: "Gremlin (graph)" };
+const SQLExperience: Experience = { api: API.DocumentDB, longName: "Core", description: "(SQL)", shortName: "Core (SQL)", kind: DBAccountKind.GlobalDocumentDB, tag: "Core (SQL)" };
+const MongoExperience: Experience = { api: API.MongoDB, longName: "Azure Cosmos DB for MongoDB API", shortName: "MongoDB", kind: DBAccountKind.MongoDB, tag: "Azure Cosmos DB for MongoDB API" };
+const TableExperience: Experience = { api: API.Table, longName: "Azure Table", shortName: "Azure Table", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableTable', tag: "Azure Table" };
+const GremlinExperience: Experience = { api: API.Graph, longName: "Gremlin", description: "(graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableGremlin', tag: "Gremlin (graph)" };
 
 const experiencesArray: Experience[] = [SQLExperience, MongoExperience, TableExperience, GremlinExperience];
 const experiencesMap = new Map<API, Experience>(experiencesArray.map((info: Experience): [API, Experience] => [info.api, info]));

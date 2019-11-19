@@ -101,7 +101,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 			const collection = db.collection(command.collection);
 			if (collection) {
 				const collectionTreeItem = new MongoCollectionTreeItem(this, collection, command.arguments);
-				const result = await collectionTreeItem.tryExecuteCommandDirectly(command.name, command.arguments);
+				const result = await collectionTreeItem.tryExecuteCommandDirectly(command);
 				if (!result.deferToShell) {
 					return result.result;
 				}

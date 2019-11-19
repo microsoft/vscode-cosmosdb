@@ -126,7 +126,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 
 		if (functions.hasOwnProperty(command.name)) {
 
-			// we don't know how to handle chained commands so just defer to the shell right away
+			// currently no logic to handle chained commands so just defer to the shell right away
 			if (command.chained) {
 				return { deferToShell: true, result: undefined };
 			}

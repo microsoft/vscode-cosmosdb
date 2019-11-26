@@ -45,7 +45,7 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createMongoDatabase');
         });
-        assert.ok(await doesMongoDatabaseExist());
+        assert.ok(await doesMongoDatabaseExist(databaseName1));
     });
 
     test('Create Mongo Collection', async () => {
@@ -62,12 +62,12 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
     });
 
     test('Delete Mongo Database', async () => {
-        assert.ok(await doesMongoDatabaseExist());
+        assert.ok(await doesMongoDatabaseExist(databaseName1));
         const testInputs: string[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (MongoDB)`, databaseName1, DialogResponses.deleteResponse.title];
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.deleteMongoDB');
         });
-        const mongoDatabase: IDatabaseInfo | undefined = await doesMongoDatabaseExist();
+        const mongoDatabase: IDatabaseInfo | undefined = await doesMongoDatabaseExist(databaseName1);
         assert.ifError(mongoDatabase);
     });
 
@@ -92,9 +92,9 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         return await connectToMongoClient(connectionString, appendExtensionUserAgent());
     }
 
-    async function doesMongoDatabaseExist(): Promise<IDatabaseInfo | undefined> {
+    async function doesMongoDatabaseExist(dbName: string): Promise<IDatabaseInfo | undefined> {
         const mongoClient: MongoClient | undefined = await getMongoClient();
         const listDatabases: { databases: IDatabaseInfo[] } = await mongoClient.db(accountName).admin().listDatabases();
-        return listDatabases.databases.find((database: IDatabaseInfo) => database.name === databaseName1);
+        return listDatabases.databases.find((database: IDatabaseInfo) => database.name === dbName);
     }
 });

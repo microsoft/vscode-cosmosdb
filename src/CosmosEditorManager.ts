@@ -59,7 +59,8 @@ export class CosmosEditorManager {
             }
         }
 
-        const localDocPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', fileName);
+        const localFilename = fileName.replace(/[<>:"\/\\|?*]/g, "-");
+        const localDocPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', localFilename);
         await fse.ensureFile(localDocPath);
 
         const document = await vscode.workspace.openTextDocument(localDocPath);

@@ -156,7 +156,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
     }
 
-    public async attachConnectionString(connectionString: string, api: API.MongoDB | API.DocumentDB): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase> {
+    public async attachConnectionString(connectionString: string, api: API.MongoDB | API.Core): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase> {
         const treeItem = <MongoAccountTreeItem | DocDBAccountTreeItemBase>await this.createTreeItem(connectionString, api);
         await this.attachAccount(treeItem, connectionString);
         this.refresh();
@@ -168,7 +168,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         const defaultExperiencePick = await vscode.window.showQuickPick(
             [
                 getExperienceQuickPick(API.MongoDB),
-                getExperienceQuickPick(API.DocumentDB)
+                getExperienceQuickPick(API.Core)
             ],
             {
                 placeHolder: "Select a Database Account API...",
@@ -290,7 +290,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 case API.Graph:
                     treeItem = new GraphAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, undefined, parsedCS.masterKey, isEmulator);
                     break;
-                case API.DocumentDB:
+                case API.Core:
                     treeItem = new DocDBAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, parsedCS.masterKey, isEmulator);
                     break;
                 default:
@@ -316,7 +316,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             } else if (node instanceof TableAccountTreeItem) {
                 api = API.Table;
             } else if (node instanceof DocDBAccountTreeItem) {
-                api = API.DocumentDB;
+                api = API.Core;
             } else {
                 throw new Error(`Unexpected account node "${node.constructor.name}".`);
             }

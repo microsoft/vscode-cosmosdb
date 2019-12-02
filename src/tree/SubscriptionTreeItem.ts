@@ -87,7 +87,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
                     const gremlinEndpoint = await TryGetGremlinEndpointFromAzure(client, resourceGroup, databaseAccount.name);
                     return new GraphAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, gremlinEndpoint, keyResult.primaryMasterKey, isEmulator, databaseAccount);
                 }
-                case "DocumentDB":
+                case "Core":
                 default:
                     // Default to DocumentDB, the base type for all Cosmos DB Accounts
                     return new DocDBAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator, databaseAccount);

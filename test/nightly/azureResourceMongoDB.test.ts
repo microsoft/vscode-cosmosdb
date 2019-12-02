@@ -29,7 +29,7 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
     });
 
     test('Create MongoDB account', async () => {
-        const testInputs: string[] = [accountName, 'MongoDB', '$(plus) Create new resource group', resourceGroupName, 'West US'];
+        const testInputs: (string | RegExp)[] = [accountName, /MongoDB/, '$(plus) Create new resource group', resourceGroupName, 'West US'];
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createAccount');
         });

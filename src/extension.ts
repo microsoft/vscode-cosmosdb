@@ -112,11 +112,13 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             await node.openInPortal();
         });
         registerCommand('cosmosDB.copyConnectionString', async (actionContext: IActionContext, node?: MongoAccountTreeItem | DocDBAccountTreeItemBase) => {
+            const message = 'The connection string has been copied to the clipboard';
             if (!node) {
                 node = await ext.tree.showTreeItemPicker(accountContextValues, actionContext);
             }
 
             await copyConnectionString(node);
+            await vscode.window.showInformationMessage(message);
         });
         registerCommand('cosmosDB.openDocument', async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
             if (!node) {

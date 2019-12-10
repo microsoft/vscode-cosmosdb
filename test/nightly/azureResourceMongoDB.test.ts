@@ -45,7 +45,7 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createMongoDatabase');
         });
-        assert.ok(await doesMongoDatabaseExist(`${accountName} (MongoDB)`, databaseName1));
+        assert.ok(await doesMongoDatabaseExist(accountName, databaseName1));
     });
 
     test('Create Mongo Collection', async () => {
@@ -55,19 +55,19 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createMongoCollection');
         });
-        const mongoClient: MongoClient | undefined = await getMongoClient(`${accountName} (MongoDB)`);
+        const mongoClient: MongoClient | undefined = await getMongoClient(accountName);
         const listCollections: Collection[] = await mongoClient.db(databaseName2).collections();
         const collection: Collection | undefined = listCollections.find((collection: Collection) => collection.collectionName === collectionName);
         assert.ok(collection);
     });
 
     test('Delete Mongo Database', async () => {
-        assert.ok(await doesMongoDatabaseExist(`${accountName} (MongoDB)`, databaseName1));
+        assert.ok(await doesMongoDatabaseExist(accountName, databaseName1));
         const testInputs: string[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (MongoDB)`, databaseName1, DialogResponses.deleteResponse.title];
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.deleteMongoDB');
         });
-        const mongoDatabase: IDatabaseInfo | undefined = await doesMongoDatabaseExist(`${accountName} (MongoDB)`, databaseName1);
+        const mongoDatabase: IDatabaseInfo | undefined = await doesMongoDatabaseExist(accountName, databaseName1);
         assert.ifError(mongoDatabase);
     });
 
@@ -85,7 +85,7 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
 
     async function getMongoClient(resourceName: string): Promise<MongoClient> {
         await vscode.env.clipboard.writeText('');
-        await testUserInput.runWithInputs([resourceName], async () => {
+        await testUserInput.runWithInputs([new RegExp(resourceName)], async () => {
             await vscode.commands.executeCommand('cosmosDB.copyConnectionString');
         });
         const connectionString: string = await vscode.env.clipboard.readText();
@@ -94,7 +94,7 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
 
     async function doesMongoDatabaseExist(mongodbAccountName: string, databasebName: string): Promise<IDatabaseInfo | undefined> {
         const mongoClient: MongoClient | undefined = await getMongoClient(mongodbAccountName);
-        const listDatabases: { databases: IDatabaseInfo[] } = await mongoClient.db(mongodbAccountName.split('(')[0].trim()).admin().listDatabases();
+        const listDatabases: { databases: IDatabaseInfo[] } = await mongoClient.db(mongodbAccountName).admin().listDatabases();
         return listDatabases.databases.find((database: IDatabaseInfo) => database.name === databasebName);
     }
 });

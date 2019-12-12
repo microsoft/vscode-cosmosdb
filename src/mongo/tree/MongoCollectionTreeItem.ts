@@ -142,7 +142,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 
 	public async deleteTreeItemImpl(): Promise<void> {
 		const message: string = `Are you sure you want to delete collection '${this.label}'?`;
-		const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+		const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
 		if (result === DialogResponses.deleteResponse) {
 			await this.drop();
 		} else {

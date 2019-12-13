@@ -57,10 +57,7 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createMongoCollection');
         });
-        const mongoClient: MongoClient | undefined = await getMongoClient(accountName);
-        const listCollections: Collection[] = await mongoClient.db(databaseName2).collections();
-        const collection: Collection | undefined = listCollections.find((collection: Collection) => collection.collectionName === collectionName1);
-        assert.ok(collection);
+        assert.ok(await doesMongoCollectionExist(accountName, databaseName2, collectionName1));
     });
 
     test('Delete Mongo Collection', async () => {

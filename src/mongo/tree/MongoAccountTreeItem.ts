@@ -57,6 +57,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
                 throw new Error('Missing connection string');
             }
 
+            // Azure MongoDB accounts need to have the name passed in for private endpoints
             mongoClient = await connectToMongoClient(this.connectionString, this.databaseAccount ? this.databaseAccount.name : appendExtensionUserAgent());
 
             let databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);

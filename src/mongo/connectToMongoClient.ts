@@ -6,15 +6,15 @@
 import { MongoClient, MongoClientOptions } from 'mongodb';
 import { Links } from '../constants';
 
-// Can't call appendExtensionUserAgent() here because languageClient.ts can't take a dependency on vscode-azureextensionui and hence vscode, so have
-//   to pass the user agent string in
-export async function connectToMongoClient(connectionString: string, extensionUserAgent: string): Promise<MongoClient> {
+export async function connectToMongoClient(connectionString: string, dbAccountName: string): Promise<MongoClient> {
     // appname appears to be the correct equivalent to user-agent for mongo
     let options: MongoClientOptions = <MongoClientOptions>{
-        appname: extensionUserAgent,
+        appName: `@${dbAccountName}@`,
         // https://github.com/lmammino/mongo-uri-builder/issues/2
         useNewUrlParser: true
     };
+
+    options.ssl = true;
 
     try {
         return await MongoClient.connect(connectionString, options);

@@ -57,7 +57,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
                 throw new Error('Missing connection string');
             }
 
-            mongoClient = await connectToMongoClient(this.connectionString, appendExtensionUserAgent());
+            mongoClient = await connectToMongoClient(this.connectionString, this.databaseAccount ? this.databaseAccount.name : appendExtensionUserAgent());
 
             let databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);
             if (databaseInConnectionString && !this.root.isEmulator) { // emulator violates the connection string format

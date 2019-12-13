@@ -15,8 +15,6 @@ export async function connectToMongoClient(connectionString: string, appName: st
         useNewUrlParser: true
     };
 
-    options.ssl = true;
-
     try {
         return await MongoClient.connect(connectionString, options);
     } catch (err) {

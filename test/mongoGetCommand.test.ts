@@ -459,6 +459,15 @@ suite("scrapbook parsing Tests", () => {
         });
     });
 
+    test("test chained command: chain command ends with find", () => {
+
+        testParse('db.getCollection("timesheets").find();', {
+            collection: "",
+            name: "find",
+            args: ['timesheets']
+        });
+    });
+
     // test("ISODate", () => {
     //     testParse('db.c1.insertOne({ "_id": ObjectId("5aecf1a63d8af732f07e4275"), "name": "Stephen", "date": ISODate("2018-05-01T00:00:00Z") });', {
     //         collection: "c1",
@@ -478,20 +487,20 @@ suite("scrapbook parsing Tests", () => {
             }
             });
         `, {
-                collection: "timesheets",
-                name: "update",
-                args: [
-                    {
-                        year: 2018,
-                        month: "06"
-                    },
-                    {
-                        "$set": {
-                            "workers.0.days.0.something": "yupy!"
-                        }
+            collection: "timesheets",
+            name: "update",
+            args: [
+                {
+                    year: 2018,
+                    month: "06"
+                },
+                {
+                    "$set": {
+                        "workers.0.days.0.something": "yupy!"
                     }
-                ]
-            });
+                }
+            ]
+        });
     });
 
     test("nested objects", () => {
@@ -502,21 +511,21 @@ suite("scrapbook parsing Tests", () => {
             }
             }
             })`, {
-                collection: "users",
-                name: "update",
-                args: [
-                    {},
-                    {
-                        "$pull": {
-                            proposals: {
-                                "$elemMatch": {
-                                    _id: "4qsBHLDCb755c3vPH"
-                                }
+            collection: "users",
+            name: "update",
+            args: [
+                {},
+                {
+                    "$pull": {
+                        proposals: {
+                            "$elemMatch": {
+                                _id: "4qsBHLDCb755c3vPH"
                             }
                         }
                     }
-                ]
-            });
+                }
+            ]
+        });
     });
     test("test function call with and without quotes", () => {
         for (let q = 0; q <= 2; q++) {
@@ -1020,4 +1029,3 @@ suite("scrapbook parsing Tests", () => {
         }
     });
 });
-

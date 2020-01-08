@@ -118,7 +118,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             }
 
             await copyConnectionString(node);
-            await vscode.window.showInformationMessage(message);
+            vscode.window.showInformationMessage(message);
         });
         registerCommand('cosmosDB.openDocument', async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
             if (!node) {

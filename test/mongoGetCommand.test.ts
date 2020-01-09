@@ -459,15 +459,6 @@ suite("scrapbook parsing Tests", () => {
         });
     });
 
-    test("test chained command: chain command ends with find", () => {
-
-        testParse('db.getCollection("timesheets").find();', {
-            collection: "",
-            name: "find",
-            args: ['timesheets']
-        });
-    });
-
     // test("ISODate", () => {
     //     testParse('db.c1.insertOne({ "_id": ObjectId("5aecf1a63d8af732f07e4275"), "name": "Stephen", "date": ISODate("2018-05-01T00:00:00Z") });', {
     //         collection: "c1",

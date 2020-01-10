@@ -45,7 +45,7 @@ export async function importDocuments(actionContext: IActionContext, uris: vscod
             const documents = await parseDocuments(uris);
             progress.report({ increment: 30, message: "Parsed documents. Importing" });
             if (collectionNode instanceof MongoCollectionTreeItem) {
-                let { deferToShell, result: tryExecuteResult } = await collectionNode.tryExecuteCommandDirectly('insertMany', [JSON.stringify(documents)]);
+                let { deferToShell, result: tryExecuteResult } = await collectionNode.tryExecuteCommandDirectly({ name: 'insertMany', arguments: [JSON.stringify(documents)] });
                 assert(!deferToShell, "This command should not need to be sent to the shell");
                 result = processMongoResults(tryExecuteResult);
             } else {

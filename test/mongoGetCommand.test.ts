@@ -478,20 +478,20 @@ suite("scrapbook parsing Tests", () => {
             }
             });
         `, {
-                collection: "timesheets",
-                name: "update",
-                args: [
-                    {
-                        year: 2018,
-                        month: "06"
-                    },
-                    {
-                        "$set": {
-                            "workers.0.days.0.something": "yupy!"
-                        }
+            collection: "timesheets",
+            name: "update",
+            args: [
+                {
+                    year: 2018,
+                    month: "06"
+                },
+                {
+                    "$set": {
+                        "workers.0.days.0.something": "yupy!"
                     }
-                ]
-            });
+                }
+            ]
+        });
     });
 
     test("nested objects", () => {
@@ -502,21 +502,21 @@ suite("scrapbook parsing Tests", () => {
             }
             }
             })`, {
-                collection: "users",
-                name: "update",
-                args: [
-                    {},
-                    {
-                        "$pull": {
-                            proposals: {
-                                "$elemMatch": {
-                                    _id: "4qsBHLDCb755c3vPH"
-                                }
+            collection: "users",
+            name: "update",
+            args: [
+                {},
+                {
+                    "$pull": {
+                        proposals: {
+                            "$elemMatch": {
+                                _id: "4qsBHLDCb755c3vPH"
                             }
                         }
                     }
-                ]
-            });
+                }
+            ]
+        });
     });
     test("test function call with and without quotes", () => {
         for (let q = 0; q <= 2; q++) {
@@ -1020,4 +1020,3 @@ suite("scrapbook parsing Tests", () => {
         }
     });
 });
-

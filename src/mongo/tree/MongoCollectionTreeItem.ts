@@ -176,7 +176,9 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 		if (!document) {
 			throw new Error("The insert command requires at least one argument");
 		}
-		const insertResult = await this.collection.insert(document);
+
+		// insert is deprecated, so use insertOne instead
+		const insertResult = await this.collection.insertOne(document);
 		return this.stringify(insertResult);
 	}
 

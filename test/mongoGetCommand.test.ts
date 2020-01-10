@@ -459,14 +459,50 @@ suite("scrapbook parsing Tests", () => {
         });
     });
 
-    // test("ISODate", () => {
-    //     testParse('db.c1.insertOne({ "_id": ObjectId("5aecf1a63d8af732f07e4275"), "name": "Stephen", "date": ISODate("2018-05-01T00:00:00Z") });', {
-    //         collection: "c1",
-    //         name: "insertOne",
-    //         args: [],
-    //         firstErrorText: "Unexpected token O in JSON at position 7"
-    //     });
-    // });
+    test("ISODate", () => {
+        testParse('db.c1.insertOne({ "_id": ObjectId("5aecf1a63d8af732f07e4275"), "name": "Stephen", "date": ISODate("2018-05-01T00:00:00Z") });', {
+            collection: "c1",
+            name: "insertOne",
+            args: [
+                {
+                    "_id": {
+                        "$oid": "5aecf1a63d8af732f07e4275"
+                    },
+                    "date": {
+                        "$date": "2018-05-01T00:00:00.000Z"
+                    },
+                    "name": "Stephen"
+                }
+            ]
+        });
+    });
+
+    test("ISODate 2", () => {
+        testParse('db.c1.insertOne({ "_id": ObjectId("5aecf1a63d8af732f07e4275"), "name": "Stephen", "date": ISODate("2018-05-01T00:00:00") });', {
+            collection: "c1",
+            name: "insertOne",
+            args: [
+                {
+                    "_id": {
+                        "$oid": "5aecf1a63d8af732f07e4275"
+                    },
+                    "date": {
+                        "$date": "2018-05-01T00:00:00.000Z"
+                    },
+                    "name": "Stephen"
+                }
+            ]
+        });
+    });
+
+    test("ISODate 3", () => {
+        testParse('db.c1.insertOne({ "_id": ObjectId("5aecf1a63d8af732f07e4275"), "name": "Stephen", "date": ISODate("2018-05-01T00:00:00z") });', {
+            collection: "c1",
+            name: "insertOne",
+            args: [],
+            firstErrorText: "Invalid time value"
+        });
+    });
 
     test("Keys with periods", () => {
         testParse(`db.timesheets.update( {
@@ -478,20 +514,20 @@ suite("scrapbook parsing Tests", () => {
             }
             });
         `, {
-                collection: "timesheets",
-                name: "update",
-                args: [
-                    {
-                        year: 2018,
-                        month: "06"
-                    },
-                    {
-                        "$set": {
-                            "workers.0.days.0.something": "yupy!"
-                        }
+            collection: "timesheets",
+            name: "update",
+            args: [
+                {
+                    year: 2018,
+                    month: "06"
+                },
+                {
+                    "$set": {
+                        "workers.0.days.0.something": "yupy!"
                     }
-                ]
-            });
+                }
+            ]
+        });
     });
 
     test("nested objects", () => {
@@ -502,21 +538,21 @@ suite("scrapbook parsing Tests", () => {
             }
             }
             })`, {
-                collection: "users",
-                name: "update",
-                args: [
-                    {},
-                    {
-                        "$pull": {
-                            proposals: {
-                                "$elemMatch": {
-                                    _id: "4qsBHLDCb755c3vPH"
-                                }
+            collection: "users",
+            name: "update",
+            args: [
+                {},
+                {
+                    "$pull": {
+                        proposals: {
+                            "$elemMatch": {
+                                _id: "4qsBHLDCb755c3vPH"
                             }
                         }
                     }
-                ]
-            });
+                }
+            ]
+        });
     });
     test("test function call with and without quotes", () => {
         for (let q = 0; q <= 2; q++) {
@@ -1020,4 +1056,3 @@ suite("scrapbook parsing Tests", () => {
         }
     });
 });
-

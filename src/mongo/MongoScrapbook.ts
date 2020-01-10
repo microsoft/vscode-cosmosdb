@@ -373,9 +373,11 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			try {
 				tokenText = stripQuotes(tokenText);
 
-				// if the tokenText was an isodate, it needs a Z suffix for indication
+				// if the tokenText was an isodate, the last char must be Z
 				if (isIsodate) {
-					tokenText += 'Z';
+					if (tokenText[tokenText.length - 1] !== 'Z') {
+						tokenText += 'Z';
+					}
 				}
 
 				constructedObject = new Date(tokenText);

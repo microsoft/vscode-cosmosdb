@@ -370,22 +370,23 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 		}
 	}
 
-	private dateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): { $date: Date | {} } {
-		let stringDate: Date | {} = this.tryToConstructDate(ctx, tokenText);
-		if (stringDate instanceof Date) {
-			return { $date: stringDate.toISOString() };
+	private dateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): { $date: string } | {} {
+		let date: Date | {} = this.tryToConstructDate(ctx, tokenText);
+		if (date instanceof Date) {
+			return { $date: date.toString() };
+		} else {
+			return date;
 		}
-
-		return { $date: stringDate };
 	}
 
-	private isodateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): { $date: Date | {} } {
-		let stringDate: Date | {} = this.tryToConstructDate(ctx, tokenText, true);
-		if (stringDate instanceof Date) {
-			return { $date: stringDate.toISOString() };
-		}
+	private isodateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): { $date: string } | {} {
+		let date: Date | {} = this.tryToConstructDate(ctx, tokenText, true);
 
-		return { $date: stringDate };
+		if (date instanceof Date) {
+			return { $date: date.toISOString() };
+		} else {
+			return date;
+		}
 	}
 
 	private tryToConstructDate(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string, isIsodate: boolean = false): Date | {} {

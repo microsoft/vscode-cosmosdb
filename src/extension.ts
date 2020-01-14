@@ -49,7 +49,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         ext.azureAccountTreeItem = new AzureAccountTreeItemWithAttached();
         context.subscriptions.push(ext.azureAccountTreeItem);
         ext.tree = new AzExtTreeDataProvider(ext.azureAccountTreeItem, 'cosmosDB.loadMore');
-        ext.treeView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: ext.tree });
+        ext.treeView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: ext.tree, showCollapseAll: true });
         context.subscriptions.push(ext.treeView);
 
         const editorManager: CosmosEditorManager = new CosmosEditorManager(context.globalState);

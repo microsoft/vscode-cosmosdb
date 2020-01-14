@@ -347,37 +347,69 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 			this.addErrorToCommand(err, ctx);
 			return {};
 		}
-		let argumentContextArray: mongoParser.ArgumentContext[] = filterType(argumentsToken.children, mongoParser.ArgumentContext);
 
-		let functionMap = { "ObjectId": this.objectIdToObject, "ISODate": this.dateToObject, "Date": this.dateToObject };
+		let argumentContextArray: mongoParser.ArgumentContext[] = filterType(argumentsToken.children, mongoParser.ArgumentContext);
 		if (argumentContextArray.length > 1) {
 			let err: IParsedError = parseError(`Too many arguments. Expecting 0 or 1 argument(s) to ${constructorCall}`);
 			this.addErrorToCommand(err, ctx);
 			return {};
 		}
-		if (constructorCall.text in functionMap) {
-			let args = [ctx, argumentContextArray.length ? argumentContextArray[0].text : undefined];
-			return functionMap[constructorCall.text].apply(this, args);
+
+		const tokenText: string | undefined = argumentContextArray.length ? argumentContextArray[0].text : undefined;
+		switch (constructorCall.text) {
+			case 'ObjectId':
+				return this.objectIdToObject(ctx, tokenText);
+			case 'ISODate':
+				return this.isodateToObject(ctx, tokenText);
+			case 'Date':
+				return this.dateToObject(ctx, tokenText);
+			default:
+				let unrecognizedNodeErr: IParsedError = parseError(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`);
+				this.addErrorToCommand(unrecognizedNodeErr, ctx);
+				return {};
 		}
-		let unrecognizedNodeErr: IParsedError = parseError(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`);
-		this.addErrorToCommand(unrecognizedNodeErr, ctx);
-		return {};
 	}
 
-	private dateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {
-		let constructedObject: Date;
+	private dateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): { $date: string } | {} {
+		let date: Date | {} = this.tryToConstructDate(ctx, tokenText);
+		if (date instanceof Date) {
+			return { $date: date.toString() };
+		} else {
+			return date;
+		}
+	}
+
+	private isodateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): { $date: string } | {} {
+		let date: Date | {} = this.tryToConstructDate(ctx, tokenText, true);
+
+		if (date instanceof Date) {
+			return { $date: date.toISOString() };
+		} else {
+			return date;
+		}
+	}
+
+	private tryToConstructDate(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string, isIsodate: boolean = false): Date | {} {
 		if (!tokenText) { // usage : ObjectID()
-			constructedObject = new Date();
+			return new Date();
 		} else {
 			try {
-				constructedObject = new Date(stripQuotes(tokenText));
+				tokenText = stripQuotes(tokenText);
+
+				// if the tokenText was an isodate, the last char must be Z
+				if (isIsodate) {
+					if (tokenText[tokenText.length - 1] !== 'Z') {
+						tokenText += 'Z';
+					}
+				}
+
+				return new Date(tokenText);
 			} catch (error) {
 				let err: IParsedError = parseError(error);
 				this.addErrorToCommand(err, ctx);
 				return {};
 			}
 		}
-		return { $date: constructedObject.toString() };
 	}
 
 	private objectIdToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {

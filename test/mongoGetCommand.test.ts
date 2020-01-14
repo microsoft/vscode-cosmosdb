@@ -515,7 +515,7 @@ suite("scrapbook parsing Tests", () => {
                         "$oid": "5aecf1a63d8af732f07e4275"
                     },
                     "date": {
-                        "$date": date.toISOString()
+                        "$date": date.toString()
                     },
                     "name": "Stephen"
                 }

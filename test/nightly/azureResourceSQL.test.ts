@@ -11,7 +11,7 @@ import { randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { resourceGroupsToDelete, client } from './global.resource.test';
 
-suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<void> {
+suite('SQL action', async function (this: ISuiteCallbackContext): Promise<void> {
     this.timeout(20 * 60 * 1000);
     let resourceGroupName: string;
     let accountName: string;

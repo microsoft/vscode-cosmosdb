@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import { AzureParentTreeItem, DialogResponses, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { defaultBatchSize, getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
+import { MongoCommand } from '../MongoCommand';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 // tslint:disable:no-var-requires
@@ -107,8 +108,9 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 		return new MongoDocumentTreeItem(this, newDocument);
 	}
 
-	public async tryExecuteCommandDirectly(name: string, args?: string[]): Promise<{ deferToShell: true; result: undefined } | { deferToShell: false; result: string }> {
-		const parameters = args ? args.map(parseJSContent) : undefined;
+	public async tryExecuteCommandDirectly(command: Partial<MongoCommand>): Promise<{ deferToShell: true; result: undefined } | { deferToShell: false; result: string }> {
+		// range and text are not neccessary properties for this function so partial should suffice
+		const parameters = command.arguments ? command.arguments.map(parseJSContent) : undefined;
 
 		const functions = {
 			drop: new FunctionDescriptor(this.drop, 'Dropping collection', 0, 0, 0),
@@ -122,14 +124,19 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 			remove: new FunctionDescriptor(this.remove, 'Deleting document(s)', 1, 2, 1)
 		};
 
-		if (functions.hasOwnProperty(name)) {
-			let descriptor: FunctionDescriptor = functions[name];
+		if (functions.hasOwnProperty(command.name)) {
+
+			// currently no logic to handle chained commands so just defer to the shell right away
+			if (command.chained) {
+				return { deferToShell: true, result: undefined };
+			}
+			let descriptor: FunctionDescriptor = functions[command.name];
 
 			if (parameters.length < descriptor.minShellArgs) {
-				throw new Error(`Too few arguments passed to command ${name}.`);
+				throw new Error(`Too few arguments passed to command ${command.name}.`);
 			}
 			if (parameters.length > descriptor.maxShellArgs) {
-				throw new Error(`Too many arguments passed to command ${name}`);
+				throw new Error(`Too many arguments passed to command ${command.name}`);
 			}
 			if (parameters.length > descriptor.maxHandledArgs) { //this function won't handle these arguments, but the shell will
 				return { deferToShell: true, result: undefined };
@@ -142,7 +149,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 
 	public async deleteTreeItemImpl(): Promise<void> {
 		const message: string = `Are you sure you want to delete collection '${this.label}'?`;
-		const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+		const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
 		if (result === DialogResponses.deleteResponse) {
 			await this.drop();
 		} else {

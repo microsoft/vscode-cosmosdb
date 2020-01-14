@@ -187,7 +187,7 @@
 				"title": "Create Document"
 			},
 			{
-				"category": "SQL (DocumentDB)",
+				"category": "Core (SQL)",
 				"command": "cosmosDB.createDocDBDatabase",
 				"title": "Create Database"
 			},
@@ -197,17 +197,17 @@
 				"title": "Open Collection"
 			},
 			{
-				"category": "SQL (DocumentDB)",
+				"category": "Core (SQL)",
 				"command": "cosmosDB.createDocDBCollection",
 				"title": "Create Collection"
 			},
 			{
-				"category": "SQL (DocumentDB)",
+				"category": "Core (SQL)",
 				"command": "cosmosDB.createDocDBDocument",
 				"title": "Create Document"
 			},
 			{
-				"category": "SQL (DocumentDB)",
+				"category": "Core (SQL)",
 				"command": "cosmosDB.createDocDBStoredProcedure",
 				"title": "Create Stored Procedure"
 			},
@@ -247,22 +247,22 @@
 				"title": "Delete Document"
 			},
 			{
-				"category": "SQL (DocumentDB)",
+				"category": "Core (SQL)",
 				"command": "cosmosDB.deleteDocDBDatabase",
 				"title": "Delete Database"
 			},
 			{
-				"category": "SQL (DocumentDB)",
+				"category": "Core (SQL)",
 				"command": "cosmosDB.deleteDocDBCollection",
 				"title": "Delete Collection"
 			},
 			{
-				"category": "SQL (DocumentDB)",
+				"category": "Core (SQL)",
 				"command": "cosmosDB.deleteDocDBDocument",
 				"title": "Delete Document"
 			},
 			{
-				"category": "SQL (DocumentDB)",
+				"category": "Core (SQL)",
 				"command": "cosmosDB.deleteDocDBStoredProcedure",
 				"title": "Delete Stored Procedure"
 			},
@@ -319,7 +319,7 @@
 				}
 			},
 			{
-				"category": "SQL (DocumentDB)",
+				"category": "Core (SQL)",
 				"command": "cosmosDB.loadMore",
 				"title": "Load More"
 			},

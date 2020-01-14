@@ -7,7 +7,7 @@ import * as assert from 'assert';
 import { CosmosDBManagementModels } from 'azure-arm-cosmosdb';
 import { IHookCallbackContext, ISuiteCallbackContext } from 'mocha';
 import * as vscode from 'vscode';
-import { randomUtils } from '../../extension.bundle';
+import { randomUtils, DialogResponses } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { resourceGroupsToDelete, client } from './global.resource.test';
 
@@ -34,5 +34,17 @@ suite('SQL action', async function (this: ISuiteCallbackContext): Promise<void> 
         });
         const getAccount: CosmosDBManagementModels.DatabaseAccount | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
         assert.ok(getAccount);
+    });
+
+    test('Delete account', async () => {
+        const SQLAccount: CosmosDBManagementModels.DatabaseAccount = await client.databaseAccounts.get(resourceGroupName, accountName);
+        assert.ok(SQLAccount);
+        const testInputs: string[] = [`${accountName} (SQL)`, DialogResponses.deleteResponse.title];
+        await testUserInput.runWithInputs(testInputs, async () => {
+            await vscode.commands.executeCommand('cosmosDB.deleteAccount');
+        });
+        const listAccounts: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupName);
+        const accountExists: CosmosDBManagementModels.DatabaseAccount | undefined = listAccounts.find((account: CosmosDBManagementModels.DatabaseAccount) => account.name === accountName);
+        assert.ifError(accountExists);
     });
 });

@@ -19,7 +19,7 @@ export async function importDocuments(actionContext: IActionContext, uris: vscod
     }
     let ignoredUris: vscode.Uri[] = []; //account for https://github.com/Microsoft/vscode/issues/59782
     uris = uris.filter((uri) => {
-        if (uri.fsPath.endsWith('.json')) {
+        if (uri.fsPath.toLocaleLowerCase().endsWith('.json')) {
             return true;
         } else {
             ignoredUris.push(uri);

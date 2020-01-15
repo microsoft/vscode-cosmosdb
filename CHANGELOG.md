@@ -2,15 +2,26 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.12.0 - 2020-01-16
+### Added
+- Support for Private Endpoint Connections
+- Collapse All button for Cosmos DB explorer
+
+### Fixed
+- When using `find()` in MongoScrapbooks, it would not work properly with chained commands [#981](https://github.com/microsoft/vscode-cosmosdb/issues/981)
+- [Bugs fixed](https://github.com/microsoft/vscode-cosmosdb/milestone/18?closed=1)
+
 ## 0.11.0 - 2019-09-03
+### Added
+- Add `mongo.shell.args` setting to allow passing arguments to mongo shell [#1104](https://github.com/Microsoft/vscode-cosmosdb/issues/1104), [#1126](https://github.com/Microsoft/vscode-cosmosdb/issues/1126)
+
+### Changed
+- Due to a change in the Azure Cosmos DB Emulator, users must explicitly enable the Mongo DB port when starting the emulator. Updated error messages to point to debugging tips at https://aka.ms/AA5zah5. [#1137](https://github.com/microsoft/vscode-cosmosdb/issues/1137), [#1000](https://github.com/microsoft/vscode-cosmosdb/issues/1000)
+
 ### Fixed
 - Better shell error handling, add mongo.shell.args setting [#1101](https://github.com/Microsoft/vscode-cosmosdb/issues/1101), [#1092](https://github.com/Microsoft/vscode-cosmosdb/issues/1092), [#1071](https://github.com/Microsoft/vscode-cosmosdb/issues/1071), [#988](https://github.com/Microsoft/vscode-cosmosdb/issues/988), [#838](https://github.com/Microsoft/vscode-cosmosdb/issues/838), [#820](https://github.com/Microsoft/vscode-cosmosdb/issues/820)
 - Increase mongo.shell.timeout default value from 5 to 30 [#1115](https://github.com/Microsoft/vscode-cosmosdb/issues/1115)
 - Fix document save prompt message [#1021](https://github.com/Microsoft/vscode-cosmosdb/issues/1021)
-### Added
-- Add `mongo.shell.args` setting to allow passing arguments to mongo shell [#1104](https://github.com/Microsoft/vscode-cosmosdb/issues/1104), [#1126](https://github.com/Microsoft/vscode-cosmosdb/issues/1126)
-### Changed
-- Due to a change in the Azure Cosmos DB Emulator, users must explicitly enable the Mongo DB port when starting the emulator. Updated error messages to point to debugging tips at https://aka.ms/AA5zah5. [#1137](https://github.com/microsoft/vscode-cosmosdb/issues/1137), [#1000](https://github.com/microsoft/vscode-cosmosdb/issues/1000)
 
 ## 0.10.2 - 2019-05-01
 ### Fixed

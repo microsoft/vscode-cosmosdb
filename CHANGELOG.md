@@ -2,6 +2,11 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.12.1 - 2020-01-22
+### Fixed
+- When updating a Mongo document, the operation would fail with the following error: `update operation document must contain atomic operators.` [#1298](https://github.com/microsoft/vscode-cosmosdb/issues/1298)
+- When importing a `.json` document into a Mongo collection, it would throw the following error: `Error: r.insertedIds is not iterable` [#1307](https://github.com/microsoft/vscode-cosmosdb/issues/1307)
+
 ## 0.12.0 - 2020-01-16
 ### Added
 - Support for Private Endpoint Connections

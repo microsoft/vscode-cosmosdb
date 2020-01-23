@@ -80,7 +80,7 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
         assert.ifError(mongoDatabase);
     });
 
-    test('Delete account', async () => {
+    test('Delete Mongo account', async () => {
         const mongoAccount: CosmosDBManagementModels.DatabaseAccount = await client.databaseAccounts.get(resourceGroupName, accountName);
         assert.ok(mongoAccount);
         const testInputs: string[] = [`${accountName} (MongoDB)`, DialogResponses.deleteResponse.title];

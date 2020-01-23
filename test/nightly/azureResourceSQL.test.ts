@@ -36,7 +36,7 @@ suite('SQL action', async function (this: ISuiteCallbackContext): Promise<void> 
         assert.ok(getAccount);
     });
 
-    test('Delete account', async () => {
+    test('Delete SQL account', async () => {
         const SQLAccount: CosmosDBManagementModels.DatabaseAccount = await client.databaseAccounts.get(resourceGroupName, accountName);
         assert.ok(SQLAccount);
         const testInputs: string[] = [`${accountName} (SQL)`, DialogResponses.deleteResponse.title];

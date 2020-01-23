@@ -139,7 +139,7 @@ function processMongoResults(result: string): string {
     let parsed = JSON.parse(result);
     if (parsed.result && parsed.result.ok) {
         output = `Import into mongo successful. Inserted ${parsed.insertedCount} document(s). See output for more details.`;
-        for (let inserted of parsed.insertedIds) {
+        for (let inserted of Object.values(parsed.insertedIds)) {
             ext.outputChannel.appendLine(`Inserted document: ${inserted}`);
         }
     }

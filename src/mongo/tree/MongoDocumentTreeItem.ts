@@ -75,7 +75,7 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
             throw new Error(`The "_id" field is required to update a document.`);
         }
         const filter: object = { _id: newDocument._id };
-        const result: UpdateWriteOpResult = await collection.updateOne(filter, _.omit(newDocument, '_id'));
+        const result: UpdateWriteOpResult = await collection.replaceOne(filter, _.omit(newDocument, '_id'));
         if (result.modifiedCount !== 1) {
             throw new Error(`Failed to update document with _id '${newDocument._id}'.`);
         }

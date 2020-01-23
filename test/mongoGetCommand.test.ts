@@ -459,14 +459,70 @@ suite("scrapbook parsing Tests", () => {
         });
     });
 
-    // test("ISODate", () => {
-    //     testParse('db.c1.insertOne({ "_id": ObjectId("5aecf1a63d8af732f07e4275"), "name": "Stephen", "date": ISODate("2018-05-01T00:00:00Z") });', {
-    //         collection: "c1",
-    //         name: "insertOne",
-    //         args: [],
-    //         firstErrorText: "Unexpected token O in JSON at position 7"
-    //     });
-    // });
+    test("ISODate with standard date string", () => {
+        testParse('db.c1.insertOne({ "_id": ObjectId("5aecf1a63d8af732f07e4275"), "name": "Stephen", "date": ISODate("2018-05-01T00:00:00Z") });', {
+            collection: "c1",
+            name: "insertOne",
+            args: [
+                {
+                    "_id": {
+                        "$oid": "5aecf1a63d8af732f07e4275"
+                    },
+                    "date": {
+                        "$date": "2018-05-01T00:00:00.000Z"
+                    },
+                    "name": "Stephen"
+                }
+            ]
+        });
+    });
+
+    test("ISODate without Z in date string", () => {
+        testParse('db.c1.insertOne({ "_id": ObjectId("5aecf1a63d8af732f07e4275"), "name": "Stephen", "date": ISODate("2018-05-01T00:00:00") });', {
+            collection: "c1",
+            name: "insertOne",
+            args: [
+                {
+                    "_id": {
+                        "$oid": "5aecf1a63d8af732f07e4275"
+                    },
+                    "date": {
+                        "$date": "2018-05-01T00:00:00.000Z"
+                    },
+                    "name": "Stephen"
+                }
+            ]
+        });
+    });
+
+    test("Invalid ISODate", () => {
+        testParse('db.c1.insertOne({ "_id": ObjectId("5aecf1a63d8af732f07e4275"), "name": "Stephen", "date": ISODate("2018-05-01T00:00:00z") });', {
+            collection: "c1",
+            name: "insertOne",
+            args: [],
+            firstErrorText: "Invalid time value"
+        });
+    });
+
+    test("Date", () => {
+        const date: Date = new Date("2018-05-01T00:00:00");
+        testParse(`db.c1.insertOne({ "_id": ObjectId("5aecf1a63d8af732f07e4275"), "name": "Stephen", "date": Date("${date.toUTCString()}") });`, {
+            collection: "c1",
+            name: "insertOne",
+            args: [
+                {
+                    "_id": {
+                        "$oid": "5aecf1a63d8af732f07e4275"
+                    },
+                    "date": {
+                        "$date": date.toString()
+                    },
+                    "name": "Stephen"
+                }
+            ]
+        });
+    });
+
 
     test("Keys with periods", () => {
         testParse(`db.timesheets.update( {

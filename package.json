@@ -1,6 +1,6 @@
 {
 	"name": "vscode-cosmosdb",
-	"version": "0.11.1-alpha",
+	"version": "0.12.1",
 	"aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
 	"publisher": "ms-azuretools",
 	"displayName": "Azure Cosmos DB",
@@ -146,7 +146,7 @@
 			{
 				"category": "Cosmos DB",
 				"command": "cosmosDB.attachDatabaseAccount",
-				"title": "Attach Database Account",
+				"title": "Attach Database Account...",
 				"icon": {
 					"light": "resources/icons/light/Connect.svg",
 					"dark": "resources/icons/dark/Connect.svg"
@@ -155,12 +155,12 @@
 			{
 				"category": "Cosmos DB",
 				"command": "cosmosDB.attachEmulator",
-				"title": "Attach Emulator"
+				"title": "Attach Emulator..."
 			},
 			{
 				"category": "Cosmos DB",
 				"command": "cosmosDB.createAccount",
-				"title": "Create Account",
+				"title": "Create Account...",
 				"icon": {
 					"light": "resources/icons/light/add.svg",
 					"dark": "resources/icons/dark/add.svg"
@@ -169,17 +169,17 @@
 			{
 				"category": "Cosmos DB",
 				"command": "cosmosDB.deleteAccount",
-				"title": "Delete Account"
+				"title": "Delete Account..."
 			},
 			{
 				"category": "MongoDB",
 				"command": "cosmosDB.createMongoDatabase",
-				"title": "Create Database"
+				"title": "Create Database..."
 			},
 			{
 				"category": "MongoDB",
 				"command": "cosmosDB.createMongoCollection",
-				"title": "Create Collection"
+				"title": "Create Collection..."
 			},
 			{
 				"category": "MongoDB",
@@ -189,7 +189,7 @@
 			{
 				"category": "Core (SQL)",
 				"command": "cosmosDB.createDocDBDatabase",
-				"title": "Create Database"
+				"title": "Create Database..."
 			},
 			{
 				"category": "MongoDB",
@@ -199,27 +199,27 @@
 			{
 				"category": "Core (SQL)",
 				"command": "cosmosDB.createDocDBCollection",
-				"title": "Create Collection"
+				"title": "Create Collection..."
 			},
 			{
 				"category": "Core (SQL)",
 				"command": "cosmosDB.createDocDBDocument",
-				"title": "Create Document"
+				"title": "Create Document..."
 			},
 			{
 				"category": "Core (SQL)",
 				"command": "cosmosDB.createDocDBStoredProcedure",
-				"title": "Create Stored Procedure"
+				"title": "Create Stored Procedure..."
 			},
 			{
 				"category": "Graph (Gremlin)",
 				"command": "cosmosDB.createGraphDatabase",
-				"title": "Create Database"
+				"title": "Create Database..."
 			},
 			{
 				"category": "Graph (Gremlin)",
 				"command": "cosmosDB.createGraph",
-				"title": "Create Graph"
+				"title": "Create Graph..."
 			},
 			{
 				"category": "Cosmos DB",
@@ -234,47 +234,47 @@
 			{
 				"category": "MongoDB",
 				"command": "cosmosDB.deleteMongoDB",
-				"title": "Delete Database"
+				"title": "Delete Database..."
 			},
 			{
 				"category": "MongoDB",
 				"command": "cosmosDB.deleteMongoCollection",
-				"title": "Delete Collection"
+				"title": "Delete Collection..."
 			},
 			{
 				"category": "MongoDB",
 				"command": "cosmosDB.deleteMongoDocument",
-				"title": "Delete Document"
+				"title": "Delete Document..."
 			},
 			{
 				"category": "Core (SQL)",
 				"command": "cosmosDB.deleteDocDBDatabase",
-				"title": "Delete Database"
+				"title": "Delete Database..."
 			},
 			{
 				"category": "Core (SQL)",
 				"command": "cosmosDB.deleteDocDBCollection",
-				"title": "Delete Collection"
+				"title": "Delete Collection..."
 			},
 			{
 				"category": "Core (SQL)",
 				"command": "cosmosDB.deleteDocDBDocument",
-				"title": "Delete Document"
+				"title": "Delete Document..."
 			},
 			{
 				"category": "Core (SQL)",
 				"command": "cosmosDB.deleteDocDBStoredProcedure",
-				"title": "Delete Stored Procedure"
+				"title": "Delete Stored Procedure..."
 			},
 			{
 				"category": "Graph (Gremlin)",
 				"command": "cosmosDB.deleteGraphDatabase",
-				"title": "Delete Database"
+				"title": "Delete Database..."
 			},
 			{
 				"category": "Graph (Gremlin)",
 				"command": "cosmosDB.deleteGraph",
-				"title": "Delete Graph"
+				"title": "Delete Graph..."
 			},
 			{
 				"category": "Graph (Gremlin)",
@@ -331,7 +331,7 @@
 			{
 				"category": "Cosmos DB",
 				"command": "cosmosDB.importDocument",
-				"title": "Import Document into a Collection"
+				"title": "Import Document into a Collection..."
 			},
 			{
 				"category": "Cosmos DB",

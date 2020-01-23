@@ -46,7 +46,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 	public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
 		const operations = documents.map((document) => {
 			return {
-				updateOne: {
+				replaceOne: {
 					filter: { _id: document._id },
 					update: _.omit(document, '_id'),
 					upsert: false
@@ -183,6 +183,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 		if (!document) {
 			throw new Error("The insert command requires at least one argument");
 		}
+
 		const insertResult = await this.collection.insert(document);
 		return this.stringify(insertResult);
 	}

@@ -21,8 +21,9 @@ import { MongoDocumentTreeItem } from "./tree/MongoDocumentTreeItem";
 const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 let diagnosticsCollection: vscode.DiagnosticCollection;
 
+// tslint:disable-next-line: max-func-body-length
 export function registerMongoCommands(editorManager: CosmosEditorManager): void {
-    let languageClient: MongoDBLanguageClient = new MongoDBLanguageClient();
+    const languageClient: MongoDBLanguageClient = new MongoDBLanguageClient();
 
     const codeLensProvider = new MongoCodeLensProvider();
     ext.context.subscriptions.push(vscode.languages.registerCodeLensProvider('mongo', codeLensProvider));
@@ -158,12 +159,13 @@ function launchMongoShell() {
 
 function setConnectedNode(node: MongoDatabaseTreeItem | undefined, codeLensProvider: MongoCodeLensProvider) {
     ext.connectedMongoDB = node;
-    let dbName = node && node.label;
+    const dbName = node && node.label;
     codeLensProvider.setConnectedDatabase(dbName);
 }
 
 function setUpErrorReporting() {
     // Update errors immediately in case a scrapbook is already open
+    // tslint:disable-next-line: no-floating-promises
     callWithTelemetryAndErrorHandling(
         "initialUpdateErrorsInActiveDocument",
         async (context: IActionContext) => {
@@ -200,7 +202,7 @@ function isScrapbook(document: vscode.TextDocument): boolean {
 
 function updateErrorsInScrapbook(context: IActionContext, document: vscode.TextDocument): void {
     if (isScrapbook(document)) {
-        let errors = getAllErrorsFromTextDocument(document);
+        const errors = getAllErrorsFromTextDocument(document);
         diagnosticsCollection.set(document.uri, errors);
     } else {
         context.telemetry.suppressIfSuccessful = true;

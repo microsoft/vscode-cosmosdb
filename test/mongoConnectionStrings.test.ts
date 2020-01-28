@@ -4,16 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { emulatorPassword } from '../extension.bundle';
-import { addDatabaseToAccountConnectionString, getDatabaseNameFromConnectionString } from '../extension.bundle';
+import { addDatabaseToAccountConnectionString, emulatorPassword, getDatabaseNameFromConnectionString } from '../extension.bundle';
 
 function testDatabaseToAccountConnectionString(connectionString: string, databaseName: string, expectedConnectionString: string | undefined) {
-    let databaseConnectionString = addDatabaseToAccountConnectionString(connectionString, databaseName);
+    const databaseConnectionString = addDatabaseToAccountConnectionString(connectionString, databaseName);
     assert.equal(databaseConnectionString, expectedConnectionString);
 }
 
 function testDatabaseNameFromConectionString(connectionString: string, expectedDatabaseName: string | undefined) {
-    let databaseName = getDatabaseNameFromConnectionString(connectionString);
+    const databaseName = getDatabaseNameFromConnectionString(connectionString);
     assert.equal(databaseName, expectedDatabaseName);
 }
 
@@ -67,7 +66,7 @@ suite(`mongoCollectionStrings`, () => {
 
     test('addDatabaseToAccountConnectionString', () => {
         testDatabaseToAccountConnectionString(`mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`, 'somedatabase', 'mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/somedatabase?ssl=true&replicaSet=globaldb');
-        testDatabaseToAccountConnectionString(`mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/our-mongo?ssl=true&replicaSet=globaldb`, 'our-mongo', 'mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/our-mongo?ssl=true&replicaSet=globaldb')
+        testDatabaseToAccountConnectionString(`mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/our-mongo?ssl=true&replicaSet=globaldb`, 'our-mongo', 'mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/our-mongo?ssl=true&replicaSet=globaldb');
 
         testDatabaseToAccountConnectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118`, 'mydata', 'mongodb://dbuser:dbpassword@dbname.mlab.com:14118/mydata');
         testDatabaseToAccountConnectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118/`, 'database', 'mongodb://dbuser:dbpassword@dbname.mlab.com:14118/database');
@@ -109,4 +108,3 @@ suite(`mongoCollectionStrings`, () => {
         testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin!@#%^*()-_,[]', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin!@#%^*()-_,[]?ssl=true`);
     });
 });
-

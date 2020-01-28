@@ -26,7 +26,7 @@ const mongoConnectionStringRegExp = new RegExp(parsePrefix + parseDatabaseName);
 
 export function getDatabaseNameFromConnectionString(connectionString: string): string | undefined {
     try {
-        let [, , databaseName] = connectionString.match(mongoConnectionStringRegExp);
+        const [, , databaseName] = connectionString.match(mongoConnectionStringRegExp);
         return databaseName;
     } catch (error) {
         // Shouldn't happen, but ignore if does
@@ -58,12 +58,14 @@ export async function parseMongoConnectionString(connectionString: string): Prom
         // the replicaset host name, which is different than what is in the connection string
         // "s" is not part of ReplSet static definition but can't find any official documentation on it. Yet it is definitely there at runtime. Grandfathering in.
         // tslint:disable-next-line:no-any
-        let rs: any = serverConfig;
+        const rs: any = serverConfig;
         host = rs.s.options.servers[0].host;
         port = rs.s.options.servers[0].port;
     } else {
-        host = serverConfig['host'];
-        port = serverConfig['port'];
+        // tslint:disable-next-line: no-any
+        host = (<any>serverConfig).host;
+        // tslint:disable-next-line: no-any
+        port = (<any>serverConfig).port;
     }
 
     return new ParsedMongoConnectionString(connectionString, host, port, getDatabaseNameFromConnectionString(connectionString));

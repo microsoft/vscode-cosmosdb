@@ -27,9 +27,9 @@ export class ParserErrorListener implements ANTLRErrorListener<Token> {
         e: RecognitionException | undefined): void {
 
         const position = new vscode.Position(line - 1, charPositionInLine); // Symbol lines are 1-indexed. Position lines are 0-indexed
-        let range = new vscode.Range(position, position);
+        const range = new vscode.Range(position, position);
 
-        let error: ErrorDescription = {
+        const error: ErrorDescription = {
             message: msg,
             range: range,
             exception: e
@@ -55,9 +55,9 @@ export class LexerErrorListener implements ANTLRErrorListener<number> {
         e: RecognitionException | undefined): void {
 
         const position = new vscode.Position(line - 1, charPositionInLine); // Symbol lines are 1-indexed. Position lines are 0-indexed
-        let range = new vscode.Range(position, position);
+        const range = new vscode.Range(position, position);
 
-        let error: ErrorDescription = {
+        const error: ErrorDescription = {
             message: msg,
             range: range,
             exception: e

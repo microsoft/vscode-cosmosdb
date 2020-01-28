@@ -90,6 +90,31 @@ export class CosmosEditorManager {
         await this.updateToCloud(this.fileMap[filePath], document, context);
     }
 
+    public async onDidSaveTextDocument(context: IActionContext, doc: vscode.TextDocument): Promise<void> {
+        context.telemetry.suppressIfSuccessful = true;
+        let filePath = Object.keys(this.fileMap).find((fp) => path.relative(doc.uri.fsPath, fp) === '');
+        if (!filePath) {
+            filePath = await this.loadPersistedEditor(doc.uri, context);
+        }
+        if (!this.ignoreSave && filePath) {
+            context.telemetry.suppressIfSuccessful = false;
+            const editor: ICosmosEditor = this.fileMap[filePath];
+            const showSaveWarning: boolean | undefined = vscode.workspace.getConfiguration().get(this.showSavePromptKey);
+            if (showSaveWarning !== false) {
+                const message: string = `Saving '${path.parse(doc.fileName).base}' will update the entity "${editor.label}" to the Cloud.`;
+                const result: MessageItem | undefined = await vscode.window.showWarningMessage(message, DialogResponses.upload, DialogResponses.alwaysUpload, DialogResponses.cancel);
+
+                if (result === DialogResponses.alwaysUpload) {
+                    await vscode.workspace.getConfiguration().update(this.showSavePromptKey, false, vscode.ConfigurationTarget.Global);
+                } else if (result !== DialogResponses.upload) {
+                    throw new UserCancelledError();
+                }
+            }
+
+            await this.updateToCloud(editor, doc, context);
+        }
+    }
+
     private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument, context: IActionContext): Promise<void> {
         const newContent = editor.convertFromString(doc.getText());
         const updatedContent: {} = await editor.update(newContent, context);
@@ -143,31 +168,6 @@ export class CosmosEditorManager {
             return editorFilePath;
         } else {
             return undefined;
-        }
-    }
-
-    public async onDidSaveTextDocument(context: IActionContext, doc: vscode.TextDocument): Promise<void> {
-        context.telemetry.suppressIfSuccessful = true;
-        let filePath = Object.keys(this.fileMap).find((fp) => path.relative(doc.uri.fsPath, fp) === '');
-        if (!filePath) {
-            filePath = await this.loadPersistedEditor(doc.uri, context);
-        }
-        if (!this.ignoreSave && filePath) {
-            context.telemetry.suppressIfSuccessful = false;
-            const editor: ICosmosEditor = this.fileMap[filePath];
-            const showSaveWarning: boolean | undefined = vscode.workspace.getConfiguration().get(this.showSavePromptKey);
-            if (showSaveWarning !== false) {
-                const message: string = `Saving '${path.parse(doc.fileName).base}' will update the entity "${editor.label}" to the Cloud.`;
-                const result: MessageItem | undefined = await vscode.window.showWarningMessage(message, DialogResponses.upload, DialogResponses.alwaysUpload, DialogResponses.cancel);
-
-                if (result === DialogResponses.alwaysUpload) {
-                    await vscode.workspace.getConfiguration().update(this.showSavePromptKey, false, vscode.ConfigurationTarget.Global);
-                } else if (result !== DialogResponses.upload) {
-                    throw new UserCancelledError();
-                }
-            }
-
-            await this.updateToCloud(editor, doc, context);
         }
     }
 }

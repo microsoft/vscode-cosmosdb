@@ -12,7 +12,7 @@ import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
 import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 import { MongoCollectionNodeEditor } from "./MongoCollectionNodeEditor";
-// tslint:disable:no-var-requires
+// tslint:disable:no-var-requires no-require-imports
 const EJSON = require("mongodb-extended-json");
 
 export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {

@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-
 import * as assert from 'assert';
 import { getDocumentTreeItemLabel } from '../extension.bundle';
 
@@ -27,6 +26,4 @@ suite("Document Label Tests", () => {
         const doc = { name: null, _id: "12345678901234567890123456789012" };
         assert.equal(getDocumentTreeItemLabel(doc), doc._id);
     });
-
-
 });

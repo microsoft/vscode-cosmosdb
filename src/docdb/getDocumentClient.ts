@@ -11,18 +11,18 @@ import { ext } from "../extensionVariables";
 
 export function getDocumentClient(documentEndpoint: string, masterKey: string, isEmulator: boolean): DocumentClient {
     const documentBase = DocDBLib.DocumentBase;
-    let connectionPolicy = new documentBase.ConnectionPolicy();
+    const connectionPolicy = new documentBase.ConnectionPolicy();
 
-    let vscodeStrictSSL: boolean | undefined = vscode.workspace.getConfiguration().get<boolean>(ext.settingsKeys.vsCode.proxyStrictSSL);
-    let strictSSL = !isEmulator && vscodeStrictSSL;
+    const vscodeStrictSSL: boolean | undefined = vscode.workspace.getConfiguration().get<boolean>(ext.settingsKeys.vsCode.proxyStrictSSL);
+    const strictSSL = !isEmulator && vscodeStrictSSL;
     connectionPolicy.DisableSSLVerification = !strictSSL;
     const client = new DocumentClient(documentEndpoint, { masterKey: masterKey }, connectionPolicy);
 
     // User agent isn't formally exposed on the client (https://github.com/Azure/azure-documentdb-node/issues/244) but nevertheless can be accessed via defaultHeaders
     // tslint:disable-next-line:no-any
-    let defaultHeaders = (<{ defaultHeaders: { "User-Agent"?: string } }><any>client).defaultHeaders;
+    const defaultHeaders = (<{ defaultHeaders: { "User-Agent"?: string } }><any>client).defaultHeaders;
     if (defaultHeaders) {
-        let userAgent = appendExtensionUserAgent(defaultHeaders['User-Agent']);
+        const userAgent = appendExtensionUserAgent(defaultHeaders['User-Agent']);
         defaultHeaders['User-Agent'] = userAgent;
     }
 

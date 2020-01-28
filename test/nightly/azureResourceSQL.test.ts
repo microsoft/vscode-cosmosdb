@@ -7,9 +7,9 @@ import * as assert from 'assert';
 import { CosmosDBManagementModels } from 'azure-arm-cosmosdb';
 import { IHookCallbackContext, ISuiteCallbackContext } from 'mocha';
 import * as vscode from 'vscode';
-import { randomUtils, DialogResponses } from '../../extension.bundle';
+import { DialogResponses, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
-import { resourceGroupsToDelete, client } from './global.resource.test';
+import { client, resourceGroupsToDelete } from './global.resource.test';
 
 suite('SQL action', async function (this: ISuiteCallbackContext): Promise<void> {
     this.timeout(20 * 60 * 1000);

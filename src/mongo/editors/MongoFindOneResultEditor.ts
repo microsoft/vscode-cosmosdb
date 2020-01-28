@@ -8,7 +8,7 @@ import { ICosmosEditor } from "../../CosmosEditorManager";
 import { ext } from "../../extensionVariables";
 import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
-// tslint:disable:no-var-requires
+// tslint:disable:no-var-requires no-require-imports
 const EJSON = require("mongodb-extended-json");
 
 export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
@@ -36,7 +36,7 @@ export class MongoFindOneResultEditor implements ICosmosEditor<IMongoDocument> {
         let result: IMongoDocument;
         if (node) {
             result = await node.update(newDocument);
-            node.refresh();
+            await node.refresh();
         } else {
             // If the node isn't cached already, just update it to Mongo directly (without worrying about updating the tree)
             const db = await this._databaseNode.connectToDb();

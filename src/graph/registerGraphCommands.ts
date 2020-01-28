@@ -13,7 +13,7 @@ import { GraphDatabaseTreeItem } from "./tree/GraphDatabaseTreeItem";
 import { GraphTreeItem } from "./tree/GraphTreeItem";
 
 export function registerGraphCommands(): void {
-    let graphViewsManager = new GraphViewsManager();
+    const graphViewsManager = new GraphViewsManager();
 
     registerCommand('cosmosDB.createGraphDatabase', async (context: IActionContext, node?: GraphAccountTreeItem) => {
         if (!node) {

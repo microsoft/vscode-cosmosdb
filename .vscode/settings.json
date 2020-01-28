@@ -1,24 +1,27 @@
-// Place your settings in this file to overwrite default and user settings.
 {
-	"editor.formatOnSave": true,
-	"files.exclude": {
-		"out": false, // set this to true to hide the "out" folder with the compiled JS files
-		".vscode-test": true
-	},
-	"files.trimTrailingWhitespace": true,
-	"files.insertFinalNewline": true,
-	"search.exclude": {
-		"out": true // set this to false to include "out" folder in search results
-	},
-	"typescript.tsdk": "./node_modules/typescript/lib", // we want to use the TS server from our node_modules folder to control its version,
-	"antlr4.generation": {
-		// Settings for "ANTLR4 grammar syntax support" extension
-		"mode": "internal",
-		"listeners": true,
-		"visitors": false
-	},
-	"editor.codeActionsOnSave": {
-		"source.fixAll.tslint": true,
-	},
-	"typescript.preferences.importModuleSpecifier": "relative"
+    "editor.formatOnSave": true,
+    "files.exclude": {
+        ".vscode-test": true
+    },
+    "files.trimTrailingWhitespace": true,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false,
+    "editor.tabSize": 4,
+    "files.insertFinalNewline": true,
+    "search.exclude": {
+        "out": true,
+        "**/node_modules": true,
+        ".vscode-test": true
+    },
+    "antlr4.generation": {
+        // Settings for "ANTLR4 grammar syntax support" extension
+        "mode": "internal",
+        "listeners": true,
+        "visitors": false
+    },
+    "editor.codeActionsOnSave": {
+        "source.fixAll.tslint": true,
+    },
+    "tslint.ignoreDefinitionFiles": true,
+    "typescript.preferences.importModuleSpecifier": "relative"
 }

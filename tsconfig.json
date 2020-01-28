@@ -1,32 +1,32 @@
 {
-	"compilerOptions": {
-		"module": "commonjs",
-		"target": "es6",
-		"outDir": "out",
-		"lib": [
-			"es6",
-			"dom"
-		],
-		"sourceMap": true,
-		"noImplicitThis": true,
-		"noImplicitReturns": true,
-		"noUnusedLocals": true,
-		"strictNullChecks": false,
-		"noUnusedParameters": true,
-		"rootDir": ".",
-		"experimentalDecorators": true,
-		"baseUrl": "./",
-		"alwaysStrict": true,
-		"paths": {
-			"*": [
-				"node_modules/vscode/*",
-				"*"
-			]
-		}
-	},
-	"exclude": [
-		"node_modules",
-		".vscode-test",
-		"gulpfile.ts"
-	]
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "es6",
+        "outDir": "out",
+        "lib": [
+            "es6",
+            "dom"
+        ],
+        "sourceMap": true,
+        "noImplicitThis": true,
+        "noImplicitReturns": true,
+        "noUnusedLocals": true,
+        "strictNullChecks": false,
+        "noUnusedParameters": true,
+        "rootDir": ".",
+        "experimentalDecorators": true,
+        "baseUrl": "./",
+        "alwaysStrict": true,
+        "paths": {
+            "*": [
+                "node_modules/vscode/*",
+                "*"
+            ]
+        }
+    },
+    "exclude": [
+        "node_modules",
+        ".vscode-test",
+        "gulpfile.ts"
+    ]
 }

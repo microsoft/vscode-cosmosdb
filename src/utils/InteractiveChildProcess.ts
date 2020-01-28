@@ -35,21 +35,28 @@ export class InteractiveChildProcess {
     private _error: unknown;
     private _isKilling: boolean;
 
+    private readonly _onStdOutEmitter: EventEmitter<string> = new EventEmitter<string>();
+    private readonly _onStdErrEmitter: EventEmitter<string> = new EventEmitter<string>();
+    private readonly _onErrorEmitter: EventEmitter<unknown> = new EventEmitter<unknown>();
+
     private constructor(options: IInteractiveChildProcessOptions) {
         this._options = options;
     }
 
-    private readonly _onStdOutEmitter: EventEmitter<string> = new EventEmitter<string>();
-    public readonly onStdOut: Event<string> = this._onStdOutEmitter.event;
+    public get onStdOut(): Event<string> {
+        return this._onStdOutEmitter.event;
+    }
 
-    private readonly _onStdErrEmitter: EventEmitter<string> = new EventEmitter<string>();
-    public readonly onStdErr: Event<string> = this._onStdErrEmitter.event;
+    public get onStdErr(): Event<string> {
+        return this._onStdErrEmitter.event;
+    }
 
-    private readonly _onErrorEmitter: EventEmitter<unknown> = new EventEmitter<unknown>();
-    public readonly onError: Event<unknown> = this._onErrorEmitter.event;
+    public get onError(): Event<unknown> {
+        return this._onErrorEmitter.event;
+    }
 
     public static async create(options: IInteractiveChildProcessOptions): Promise<InteractiveChildProcess> {
-        let child: InteractiveChildProcess = new InteractiveChildProcess(options);
+        const child: InteractiveChildProcess = new InteractiveChildProcess(options);
         await child.startCore();
         return child;
     }
@@ -68,7 +75,7 @@ export class InteractiveChildProcess {
         this._startTime = Date.now();
         const formattedArgs: string = this._options.args.join(' ');
 
-        let workingDirectory = this._options.workingDirectory || os.tmpdir();
+        const workingDirectory = this._options.workingDirectory || os.tmpdir();
         const options: cp.SpawnOptions = {
             cwd: workingDirectory,
 
@@ -82,19 +89,19 @@ export class InteractiveChildProcess {
         this._childProc = cp.spawn(this._options.command, this._options.args, options);
 
         this._childProc.stdout.on('data', (data: string | Buffer) => {
-            let text = data.toString();
+            const text = data.toString();
             this._onStdOutEmitter.fire(text);
             this.writeLineToOutputChannel(text);
         });
 
         this._childProc.stderr.on('data', (data: string | Buffer) => {
-            let text = data.toString();
+            const text = data.toString();
             this._onStdErrEmitter.fire(text);
             this.writeLineToOutputChannel(text, stdErrPrefix);
         });
 
         this._childProc.on('error', (error: unknown) => {
-            let improvedError = improveError(error);
+            const improvedError = improveError(error);
             this.setError(improvedError);
         });
 
@@ -129,14 +136,14 @@ export class InteractiveChildProcess {
     }
 
     private writeLineToOutputChannel(text: string, displayPrefix?: string): void {
-        let filteredText = this.filterText(text);
-        let changedIntoEmptyString = (filteredText !== text && filteredText === '');
+        const filteredText = this.filterText(text);
+        const changedIntoEmptyString = (filteredText !== text && filteredText === '');
 
         if (!changedIntoEmptyString) {
             text = filteredText;
             if (this._options.outputChannel) {
                 if (this._options.showTimeInOutputChannel) {
-                    let ms = Date.now() - this._startTime;
+                    const ms = Date.now() - this._startTime;
                     text = `${ms}ms: ${text}`;
                 }
 
@@ -154,8 +161,7 @@ export class InteractiveChildProcess {
 
     private filterText(text: string): string {
         if (this._options.outputFilterSearch) {
-            let filtered = text.replace(this._options.outputFilterSearch, this._options.outputFilterReplace || "");
-            return filtered;
+            return text.replace(this._options.outputFilterSearch, this._options.outputFilterReplace || "");
         }
 
         return text;

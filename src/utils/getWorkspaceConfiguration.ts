@@ -20,7 +20,7 @@ export function getWorkspaceConfiguration<T extends number>(key: string, expecte
  * Retrieve a string setting, and throw an error if the value is not a string
  */
 export function getWorkspaceConfiguration<T>(key: string, expectedTypeOf: string, defaultValue?: unknown): unknown | undefined {
-    let anyValue: unknown = vscode.workspace.getConfiguration().get<T>(key);
+    const anyValue: unknown = vscode.workspace.getConfiguration().get<T>(key);
     if (typeof anyValue === expectedTypeOf) {
         return <T>anyValue;
     }
@@ -43,20 +43,20 @@ export function getWorkspaceArrayConfiguration<T extends number>(key: string, ex
 export function getWorkspaceArrayConfiguration<T extends string>(key: string, expectedElementTypeOf: 'string', defaultValue?: T[]): (T | undefined)[] | typeof defaultValue;
 
 export function getWorkspaceArrayConfiguration<T>(key: string, expectedElementTypeOf: string, defaultValue?: T[]): unknown[] | undefined {
-    let anyValue: unknown = vscode.workspace.getConfiguration().get<T[]>(key);
+    const anyValue: unknown = vscode.workspace.getConfiguration().get<T[]>(key);
     if (anyValue === undefined || anyValue === null) {
         return defaultValue;
     }
 
     if (isArray(anyValue)) {
-        let anyArray = <unknown[]>anyValue;
+        const anyArray = <unknown[]>anyValue;
         if (!anyArray.length) {
             // Array is empty
             return [];
         }
 
         // Check type of each element
-        for (let element of anyArray) {
+        for (const element of anyArray) {
             if (element === undefined || element === null || typeof element !== expectedElementTypeOf) {
                 throw new Error(`Unexpected value for configuration setting '${key}'.  One of the array elements was not of the expected type: ${String(element)}`);
             }

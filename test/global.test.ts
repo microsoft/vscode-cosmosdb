@@ -5,7 +5,7 @@
 
 import { IHookCallbackContext } from 'mocha';
 import * as vscode from 'vscode';
-import { TestUserInput, TestOutputChannel } from 'vscode-azureextensiondev';
+import { TestOutputChannel, TestUserInput } from 'vscode-azureextensiondev';
 import { ext } from '../extension.bundle';
 
 // tslint:disable-next-line:strict-boolean-expressions export-name

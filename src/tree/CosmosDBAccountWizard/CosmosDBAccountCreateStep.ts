@@ -18,7 +18,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
         const creatingMessage: string = `Creating Cosmos DB account "${wizardContext.accountName}" with the "${wizardContext.defaultExperience.shortName}" API...`;
         ext.outputChannel.appendLog(creatingMessage);
         progress.report({ message: creatingMessage });
-        let options = {
+        const options = {
             location: wizardContext.location.name,
             locations: [{ locationName: wizardContext.location.name }],
             kind: wizardContext.defaultExperience.kind,

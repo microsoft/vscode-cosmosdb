@@ -6,7 +6,7 @@
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
-// tslint:disable:no-var-requires
+// tslint:disable:no-var-requires no-require-imports
 const EJSON = require("mongodb-extended-json");
 
 export class MongoDocumentNodeEditor implements ICosmosEditor<IMongoDocument> {

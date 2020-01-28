@@ -21,7 +21,7 @@ import * as path from 'path';
 const testRunner = require('vscode/lib/testrunner');
 
 const options: { [key: string]: string | boolean | number | object } = {
-    ui: 'tdd', 		// the TDD UI is being used in extension.test.ts (suite, test, etc.)
+    ui: 'tdd', // the TDD UI is being used in extension.test.ts (suite, test, etc.)
     useColors: true // colored output from test results
 };
 

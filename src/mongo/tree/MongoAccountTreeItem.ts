@@ -60,7 +60,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
             // Azure MongoDB accounts need to have the name passed in for private endpoints
             mongoClient = await connectToMongoClient(this.connectionString, this.databaseAccount ? this.databaseAccount.name : appendExtensionUserAgent());
 
-            let databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);
+            const databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);
             if (databaseInConnectionString && !this.root.isEmulator) { // emulator violates the connection string format
                 // If the database is in the connection string, that's all we connect to (we might not even have permissions to list databases)
                 databases = [{
@@ -69,14 +69,14 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
                 }];
             } else {
                 // https://mongodb.github.io/node-mongodb-native/3.1/api/index.html
-                let result: { databases: IDatabaseInfo[] } = await mongoClient.db(testDb).admin().listDatabases();
+                const result: { databases: IDatabaseInfo[] } = await mongoClient.db(testDb).admin().listDatabases();
                 databases = result.databases;
             }
             return databases
                 .filter((database: IDatabaseInfo) => !(database.name && database.name.toLowerCase() === "admin" && database.empty)) // Filter out the 'admin' database if it's empty
                 .map(database => new MongoDatabaseTreeItem(this, database.name, this.connectionString));
         } catch (error) {
-            let message = parseError(error).message;
+            const message = parseError(error).message;
             if (this._root.isEmulator && message.includes("ECONNREFUSED")) {
                 error.message = `Unable to reach emulator. See ${Links.LocalConnectionDebuggingTips} for debugging tips.\n${message}`;
             }
@@ -84,6 +84,8 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         }
         finally {
             if (mongoClient) {
+                // grandfathered in
+                // tslint:disable-next-line: no-floating-promises
                 mongoClient.close();
             }
         }
@@ -97,8 +99,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         });
         context.showCreatingTreeItem(databaseName);
 
-        const databaseTreeItem = new MongoDatabaseTreeItem(this, databaseName, this.connectionString);
-        return databaseTreeItem;
+        return new MongoDatabaseTreeItem(this, databaseName, this.connectionString);
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {

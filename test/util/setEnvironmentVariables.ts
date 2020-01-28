@@ -9,7 +9,7 @@ import { IDisposable } from "../../extension.bundle";
  * Add a set of environment variables, and return to the previous values after disposing the result
  */
 export function setEnvironmentVariables(env: { [key: string]: string }): IDisposable {
-    let setRestoreEnv = new SetRestoreEnv();
+    const setRestoreEnv = new SetRestoreEnv();
     setRestoreEnv.set(env);
     return setRestoreEnv;
 }
@@ -17,15 +17,16 @@ export function setEnvironmentVariables(env: { [key: string]: string }): IDispos
 class SetRestoreEnv implements IDisposable {
     private _previousValues: { [key: string]: string } = {};
 
+    // tslint:disable-next-line: no-reserved-keywords
     public set(env: { [key: string]: string }): void {
-        for (let key of Object.keys(env || {})) {
+        for (const key of Object.keys(env || {})) {
             [this._previousValues[key], process.env[key]] = [process.env[key], env[key]];
         }
 
     }
 
     public restore(): void {
-        for (let key of Object.keys(this._previousValues)) {
+        for (const key of Object.keys(this._previousValues)) {
             process.env[key] = this._previousValues[key];
         }
     }

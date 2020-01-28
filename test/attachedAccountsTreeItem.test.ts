@@ -4,14 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-
 import { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from '../extension.bundle';
 
 function assertConnectionValid(connectionString: string, expected: string | undefined) {
     const actual = AttachedAccountsTreeItem.validateMongoConnectionString(connectionString);
     assert.equal(actual, expected);
 }
-
 
 suite(`attachedAccountsTreeItem`, () => {
     suite(`validateDocDBConnectionString`, () => {
@@ -22,9 +20,9 @@ suite(`attachedAccountsTreeItem`, () => {
 
         test('allows "mongodb+srv://"', () => assertConnectionValid(`mongodb+srv://usr:pwd@mongodb.net:27017`, undefined));
 
+        // tslint:disable-next-line: no-http-string
         test('rejects bad prefix', () => assertConnectionValid(`http://localhost/`, MONGO_CONNECTION_EXPECTED));
 
         test('rejects null', () => assertConnectionValid(null, MONGO_CONNECTION_EXPECTED));
     });
 });
-

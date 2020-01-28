@@ -9,9 +9,6 @@ import { ext } from '../../extensionVariables';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContext> {
-    protected async isRelatedNameAvailable(wizardContext: ICosmosDBWizardContext, name: string): Promise<boolean> {
-        return await ResourceGroupListStep.isNameAvailable(wizardContext, name);
-    }
 
     public async prompt(wizardContext: ICosmosDBWizardContext): Promise<void> {
         const client: CosmosDBManagementClient = createAzureClient(wizardContext, CosmosDBManagementClient);
@@ -26,6 +23,10 @@ export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContex
 
     public shouldPrompt(wizardContext: ICosmosDBWizardContext): boolean {
         return !wizardContext.accountName;
+    }
+
+    protected async isRelatedNameAvailable(wizardContext: ICosmosDBWizardContext, name: string): Promise<boolean> {
+        return await ResourceGroupListStep.isNameAvailable(wizardContext, name);
     }
 }
 

@@ -34,7 +34,7 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
     } catch (err) {
       vscode.window.showErrorMessage(parseError(err).message);
     }
-    let existingPanel: vscode.WebviewPanel = this._panels.get(id);
+    const existingPanel: vscode.WebviewPanel = this._panels.get(id);
     if (existingPanel) {
       existingPanel.reveal();
       return;
@@ -48,13 +48,13 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
       localResourceRoots: [vscode.Uri.file(ext.context.extensionPath)]
     };
     const panel = vscode.window.createWebviewPanel(this._panelViewType, tabTitle, { viewColumn: column, preserveFocus: true }, options);
-    let contentProvider = new WebviewContentProvider(this);
+    const contentProvider = new WebviewContentProvider(this);
     panel.webview.html = await contentProvider.provideHtmlContent(id);
     this._panels.set(id, panel);
     panel.onDidDispose(
       // dispose the server
       () => {
-        let server = this._servers.get(id);
+        const server = this._servers.get(id);
         server.dispose();
         this._servers.delete(id);
         this._panels.delete(id);
@@ -80,11 +80,11 @@ export class GraphViewsManager implements IServerProvider { //Graphviews Panel
       return existingId;
     }
 
-    let server = new GraphViewServer(config);
+    const server = new GraphViewServer(config);
     await server.start();
 
     this._lastServerId += 1;
-    let id = this._lastServerId;
+    const id = this._lastServerId;
     this._servers.set(id, server);
     return id;
   }
@@ -98,7 +98,7 @@ class WebviewContentProvider {
 
   public async provideHtmlContent(serverId: number): Promise<string> {
     console.assert(serverId > 0);
-    let server = this._serverProvider.findServerById(serverId);
+    const server = this._serverProvider.findServerById(serverId);
     if (server) {
       return await this._graphClientHtmlAsString(server.port);
     }
@@ -112,7 +112,7 @@ class WebviewContentProvider {
     const portPlaceholder: RegExp = /\$CLIENTPORT/g;
     htmlContents = htmlContents.replace(portPlaceholder, String(port));
     const uriPlaceholder: RegExp = /\$BASEURI/g;
-    let uri = vscode.Uri.parse(path.join("file:" + ext.context.extensionPath));
+    const uri = vscode.Uri.parse(path.join("file:" + ext.context.extensionPath));
     const baseUri = `vscode-resource:${uri.fsPath}`;
     htmlContents = htmlContents.replace(uriPlaceholder, baseUri);
 

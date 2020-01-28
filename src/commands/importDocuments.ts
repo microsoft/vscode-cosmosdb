@@ -17,7 +17,7 @@ export async function importDocuments(actionContext: IActionContext, uris: vscod
     if (!uris) {
         uris = await askForDocuments();
     }
-    let ignoredUris: vscode.Uri[] = []; //account for https://github.com/Microsoft/vscode/issues/59782
+    const ignoredUris: vscode.Uri[] = []; //account for https://github.com/Microsoft/vscode/issues/59782
     uris = uris.filter((uri) => {
         if (uri.fsPath.toLocaleLowerCase().endsWith('.json')) {
             return true;
@@ -45,7 +45,7 @@ export async function importDocuments(actionContext: IActionContext, uris: vscod
             const documents = await parseDocuments(uris);
             progress.report({ increment: 30, message: "Parsed documents. Importing" });
             if (collectionNode instanceof MongoCollectionTreeItem) {
-                let { deferToShell, result: tryExecuteResult } = await collectionNode.tryExecuteCommandDirectly({ name: 'insertMany', arguments: [JSON.stringify(documents)] });
+                const { deferToShell, result: tryExecuteResult } = await collectionNode.tryExecuteCommandDirectly({ name: 'insertMany', arguments: [JSON.stringify(documents)] });
                 assert(!deferToShell, "This command should not need to be sent to the shell");
                 result = processMongoResults(tryExecuteResult);
             } else {
@@ -61,14 +61,14 @@ export async function importDocuments(actionContext: IActionContext, uris: vscod
 }
 
 async function askForDocuments(): Promise<vscode.Uri[]> {
-    let openDialogOptions: vscode.OpenDialogOptions = {
+    const openDialogOptions: vscode.OpenDialogOptions = {
         canSelectMany: true,
         openLabel: "Import",
         filters: {
-            "JSON": ["json"]
+            JSON: ["json"]
         }
     };
-    let rootPath: string | undefined = getRootPath();
+    const rootPath: string | undefined = getRootPath();
     if (rootPath) {
         openDialogOptions.defaultUri = vscode.Uri.file(rootPath);
     }
@@ -79,7 +79,7 @@ async function askForDocuments(): Promise<vscode.Uri[]> {
 async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
     let documents = [];
     let errorFoundFlag: boolean = false;
-    for (let uri of uris) {
+    for (const uri of uris) {
         let parsed;
         try {
             parsed = await fse.readJSON(uri.fsPath);
@@ -110,11 +110,11 @@ async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
 // tslint:disable-next-line:no-any
 async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem, documents: any[], uris: vscode.Uri[]): Promise<string> {
     let result;
-    let ids = [];
+    const ids = [];
     let i = 0;
-    let erroneousFiles: vscode.Uri[] = [];
+    const erroneousFiles: vscode.Uri[] = [];
     for (i = 0; i < documents.length; i++) {
-        let document: NewDocument = documents[i];
+        const document: NewDocument = documents[i];
         if (!collectionNode.documentsTreeItem.documentHasPartitionKey(document)) {
             erroneousFiles.push(uris[i]);
         }
@@ -125,7 +125,7 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
         ext.outputChannel.show();
         throw new Error(`See output for list of documents that do not contain the partition key '${collectionNode.partitionKey.paths[0]}' required by collection '${collectionNode.label}'`);
     }
-    for (let document of documents) {
+    for (const document of documents) {
         const retrieved = await collectionNode.documentsTreeItem.createDocument(document);
         ids.push(retrieved.id);
     }
@@ -136,10 +136,10 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
 // tslint:disable-next-line:no-any
 function processMongoResults(result: string): string {
     let output = "";
-    let parsed = JSON.parse(result);
+    const parsed = JSON.parse(result);
     if (parsed.result && parsed.result.ok) {
         output = `Import into mongo successful. Inserted ${parsed.insertedCount} document(s). See output for more details.`;
-        for (let inserted of Object.values(parsed.insertedIds)) {
+        for (const inserted of Object.values(parsed.insertedIds)) {
             ext.outputChannel.appendLine(`Inserted document: ${inserted}`);
         }
     }

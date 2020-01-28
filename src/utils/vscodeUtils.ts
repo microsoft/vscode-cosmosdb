@@ -70,7 +70,7 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
 }
 
 export function getNodeEditorLabel(node: AzExtTreeItem): string {
-    let labels = [node.label];
+    const labels = [node.label];
     while (node.parent) {
         node = node.parent;
         labels.unshift(node.label);
@@ -86,19 +86,18 @@ function isAccountTreeItem(treeItem: AzExtTreeItem): boolean {
 }
 
 export function getDocumentTreeItemLabel(document: IMongoDocument | RetrievedDocument): string {
-    for (let field of getDocumentLabelFields()) {
+    for (const field of getDocumentLabelFields()) {
         if (document.hasOwnProperty(field)) {
-            let value = document[field];
+            const value = document[field];
             if (value !== undefined && typeof value !== 'object') {
                 return String(value);
             }
         }
     }
-    return String(document["_id"]);
+    return String(document._id);
 }
 
 function getDocumentLabelFields(): string[] {
     const settingKey: string = ext.settingsKeys.documentLabelFields;
-    let documentLabelFields: string[] | undefined = vscode.workspace.getConfiguration().get(settingKey) || [];
-    return documentLabelFields;
+    return vscode.workspace.getConfiguration().get(settingKey) || [];
 }

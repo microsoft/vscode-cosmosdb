@@ -20,7 +20,7 @@ export interface IThemedIconPath {
 }
 
 export function getThemedIconPath(iconName: string): IThemedIconPath {
-    let a = {
+    const a = {
         light: path.join(getResourcesPath(), 'icons', 'light', iconName),
         dark: path.join(getResourcesPath(), 'icons', 'dark', iconName)
     };
@@ -29,7 +29,7 @@ export function getThemedIconPath(iconName: string): IThemedIconPath {
 }
 
 export function getThemeAgnosticIconPath(iconName: string): IThemedIconPath {
-    let a = {
+    const a = {
         light: path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName),
         dark: path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName)
     };

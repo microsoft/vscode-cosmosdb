@@ -7,9 +7,8 @@ import * as assert from 'assert';
 import { parseDocDBConnectionString } from '../extension.bundle';
 import { emulatorPassword } from '../extension.bundle';
 
-
 function testConnectionString(connectionString: string, expectedEndpoint: string, expectedKey: string, expectedDatabaseName: string | undefined) {
-    let parsedCS = parseDocDBConnectionString(connectionString);
+    const parsedCS = parseDocDBConnectionString(connectionString);
     assert.equal(parsedCS.documentEndpoint, expectedEndpoint);
     assert.equal(parsedCS.masterKey, expectedKey);
     assert.equal(parsedCS.databaseName, expectedDatabaseName);
@@ -32,7 +31,7 @@ suite(`docDBConnectionStrings`, () => {
         testConnectionString(`AccountEndpoint=https://localhost:10255/;AccountKey=${emulatorPassword};`, 'https://localhost:10255/', emulatorPassword, undefined);
 
         // Testing other properties
-        let parsedCS = parseDocDBConnectionString('AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==;');
+        const parsedCS = parseDocDBConnectionString('AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==;');
         assert.equal(parsedCS.hostName, 'abcdef.documents.azure.com');
         assert.equal(parsedCS.port, '443');
         assert.equal(parsedCS.accountId, 'abcdef.documents.azure.com:443');
@@ -47,7 +46,7 @@ suite(`docDBConnectionStrings`, () => {
         testConnectionString('Database=abcd;AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==;', 'https://abcdef.documents.azure.com:443/', 'abcdef==', 'abcd');
 
         // Testing other properties
-        let parsedCS = parseDocDBConnectionString('AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==;Database=abcd');
+        const parsedCS = parseDocDBConnectionString('AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==;Database=abcd');
         assert.equal(parsedCS.hostName, 'abcdef.documents.azure.com');
         assert.equal(parsedCS.port, '443');
         assert.equal(parsedCS.accountId, 'abcdef.documents.azure.com:443');
@@ -61,4 +60,3 @@ suite(`docDBConnectionStrings`, () => {
         assert.throws(() => parseDocDBConnectionString('mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb'));
     });
 });
-

@@ -6,11 +6,11 @@
 import * as assert from 'assert';
 import { CosmosDBManagementModels } from 'azure-arm-cosmosdb';
 import { IHookCallbackContext, ISuiteCallbackContext } from 'mocha';
+import { Collection, MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
-import { randomUtils, appendExtensionUserAgent, connectToMongoClient, IDatabaseInfo, DialogResponses } from '../../extension.bundle';
+import { appendExtensionUserAgent, connectToMongoClient, DialogResponses, IDatabaseInfo, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
-import { resourceGroupsToDelete, client, testAccount } from './global.resource.test';
-import { MongoClient, Collection } from 'mongodb';
+import { client, resourceGroupsToDelete, testAccount } from './global.resource.test';
 
 suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<void> {
     this.timeout(20 * 60 * 1000);
@@ -18,7 +18,7 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
     let accountName: string;
     let databaseName1: string;
     let databaseName2: string;
-    let collectionName1: string
+    let collectionName1: string;
 
     suiteSetup(async function (this: IHookCallbackContext): Promise<void> {
         if (!longRunningTestsEnabled) {

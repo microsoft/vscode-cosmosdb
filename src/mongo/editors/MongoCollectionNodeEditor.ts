@@ -8,7 +8,7 @@ import { ICosmosEditor } from "../../CosmosEditorManager";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
 import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
-// tslint:disable:no-var-requires
+// tslint:disable:no-var-requires no-require-imports
 const EJSON = require("mongodb-extended-json");
 
 export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]> {
@@ -21,15 +21,8 @@ export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]
         return getNodeEditorLabel(this._collectionNode);
     }
 
-    public async getData(context: IActionContext): Promise<IMongoDocument[]> {
-        const children = <MongoDocumentTreeItem[]>await this._collectionNode.getCachedChildren(context);
-        return children.map((child) => child.document);
-    }
-
-    public async update(documents: IMongoDocument[], context: IActionContext): Promise<IMongoDocument[]> {
-        const updatedDocs = await this._collectionNode.update(documents);
-        await MongoCollectionNodeEditor.updateCachedDocNodes(updatedDocs, this._collectionNode, context);
-        return updatedDocs;
+    public get id(): string {
+        return this._collectionNode.fullId;
     }
 
     public static async updateCachedDocNodes(updatedDocs: IMongoDocument[], collectionNode: MongoCollectionTreeItem, context: IActionContext): Promise<void> {
@@ -43,8 +36,15 @@ export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]
         }
     }
 
-    public get id(): string {
-        return this._collectionNode.fullId;
+    public async getData(context: IActionContext): Promise<IMongoDocument[]> {
+        const children = <MongoDocumentTreeItem[]>await this._collectionNode.getCachedChildren(context);
+        return children.map((child) => child.document);
+    }
+
+    public async update(documents: IMongoDocument[], context: IActionContext): Promise<IMongoDocument[]> {
+        const updatedDocs = await this._collectionNode.update(documents);
+        await MongoCollectionNodeEditor.updateCachedDocNodes(updatedDocs, this._collectionNode, context);
+        return updatedDocs;
     }
 
     public convertFromString(data: string): IMongoDocument[] {
@@ -54,5 +54,4 @@ export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]
     public convertToString(data: IMongoDocument[]): string {
         return EJSON.stringify(data, null, 2);
     }
-
 }

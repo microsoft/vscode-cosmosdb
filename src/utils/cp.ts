@@ -5,6 +5,7 @@
 
 import * as cp from 'child_process';
 
+// tslint:disable-next-line: export-name
 export async function commandSucceeds(command: string, ...args: string[]): Promise<boolean> {
     return await new Promise<boolean>(resolve => {
         cp.spawn(command, args)

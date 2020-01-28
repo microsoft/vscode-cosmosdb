@@ -12,7 +12,7 @@ export async function valueOnTimeout<T>(timeoutMs: number, timeoutValue: T, acti
     try {
         return await rejectOnTimeout(timeoutMs, action);
     } catch (err) {
-        let error = <{ message?: string }>err;
+        const error = <{ message?: string }>err;
         if (error && error.message === timedOutMessage) {
             return timeoutValue;
         }

@@ -18,8 +18,8 @@ export async function TryGetGremlinEndpointFromAzure(client: CosmosDBManagementC
             if (error) {
                 reject(error);
             } else {
-                let body = <{ properties: { gremlinEndpoint: string } }>JSON.parse((<{ body?: string }>response).body);
-                let endpointUri = body.properties.gremlinEndpoint;
+                const body = <{ properties: { gremlinEndpoint: string } }>JSON.parse((<{ body?: string }>response).body);
+                const endpointUri = body.properties.gremlinEndpoint;
                 if (endpointUri) {
                     resolve(parseEndpointUrl(endpointUri));
                 } else {
@@ -54,9 +54,9 @@ export function getPossibleGremlinEndpoints(documentEndpoint: string): IGremlinE
  * @param url An account URL such as 'https://<graphname>.documents.azure.com:443/'
  */
 function parseEndpointUrl(url: string): IGremlinEndpoint {
-    let [, protocol, host, , portString] = url.match(/^([^:]+):\/\/([^:]+)(:([0-9]+))?\/?$/);
+    const [, protocol, host, , portString] = url.match(/^([^:]+):\/\/([^:]+)(:([0-9]+))?\/?$/);
     console.assert(!!protocol && !!host, "Unexpected endpoint format");
-    let port = parseInt(portString || "443", 10);
+    const port = parseInt(portString || "443", 10);
     console.assert(port > 0, "Unexpected port");
     return { host, port, ssl: protocol.toLowerCase() === "https" };
 }

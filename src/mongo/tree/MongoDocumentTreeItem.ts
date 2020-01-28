@@ -35,16 +35,12 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
         this._label = getDocumentTreeItemLabel(this.document);
     }
 
-    get id(): string {
+    public get id(): string {
         // tslint:disable-next-line:no-non-null-assertion
         return String(this.document!._id);
     }
 
-    public async refreshImpl(): Promise<void> {
-        this._label = getDocumentTreeItemLabel(this.document);
-    }
-
-    get label(): string {
+    public get label(): string {
         return this._label;
     }
 
@@ -52,11 +48,27 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
         return getThemeAgnosticIconPath('Document.svg');
     }
 
+    public static async update(collection: Collection, newDocument: IMongoDocument): Promise<IMongoDocument> {
+        if (!newDocument._id) {
+            throw new Error(`The "_id" field is required to update a document.`);
+        }
+        const filter: object = { _id: newDocument._id };
+        const result: UpdateWriteOpResult = await collection.replaceOne(filter, _.omit(newDocument, '_id'));
+        if (result.modifiedCount !== 1) {
+            throw new Error(`Failed to update document with _id '${newDocument._id}'.`);
+        }
+        return newDocument;
+    }
+
+    public async refreshImpl(): Promise<void> {
+        this._label = getDocumentTreeItemLabel(this.document);
+    }
+
     public async deleteTreeItemImpl(): Promise<void> {
         const message: string = `Are you sure you want to delete document '${this._label}'?`;
         const dialogResult = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (dialogResult === DialogResponses.deleteResponse) {
-            const deleteResult: DeleteWriteOpResultObject = await this.parent.collection.deleteOne({ "_id": this.document._id });
+            const deleteResult: DeleteWriteOpResultObject = await this.parent.collection.deleteOne({ _id: this.document._id });
             if (deleteResult.deletedCount !== 1) {
                 throw new Error(`Failed to delete document with _id '${this.document._id}'.`);
             }
@@ -68,17 +80,5 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
     public async update(newDocument: IMongoDocument): Promise<IMongoDocument> {
         this.document = await MongoDocumentTreeItem.update(this.parent.collection, newDocument);
         return this.document;
-    }
-
-    public static async update(collection: Collection, newDocument: IMongoDocument): Promise<IMongoDocument> {
-        if (!newDocument["_id"]) {
-            throw new Error(`The "_id" field is required to update a document.`);
-        }
-        const filter: object = { _id: newDocument._id };
-        const result: UpdateWriteOpResult = await collection.replaceOne(filter, _.omit(newDocument, '_id'));
-        if (result.modifiedCount !== 1) {
-            throw new Error(`Failed to update document with _id '${newDocument._id}'.`);
-        }
-        return newDocument;
     }
 }

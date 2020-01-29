@@ -58,6 +58,7 @@ export async function executeCommandFromActiveEditor(database: MongoDatabaseTree
 export async function executeCommandFromText(database: MongoDatabaseTreeItem, editorManager: CosmosEditorManager, context: IActionContext, commandText: string): Promise<void> {
 	const activeEditor = vscode.window.activeTextEditor;
 	const command = getCommandFromTextAtLocation(commandText, new vscode.Position(0, 0));
+	console.log(database);
 	return await executeCommand(activeEditor, database, editorManager, context, command);
 }
 

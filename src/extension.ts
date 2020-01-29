@@ -93,7 +93,19 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             }
 
             await ext.attachedAccountsNode.detach(node);
+
+            // Additions
+            console.log("Before Refresh")
+            console.log(ext.attachedAccountsNode);
+            // Additions
+
             await ext.tree.refresh(ext.attachedAccountsNode);
+            await ext.tree.refresh(ext.attachedAccountsNode);
+            // Additions
+            console.log("After Refresh")
+            console.log(ext.attachedAccountsNode);
+            // Additions
+
         });
         registerCommand('cosmosDB.importDocument', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => //ignore first pass
         {

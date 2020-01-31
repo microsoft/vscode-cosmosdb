@@ -91,18 +91,30 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             if (!node) {
                 node = await ext.tree.showTreeItemPicker(accountContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
             }
+            console.log(node.contextValue);
+            if (node instanceof MongoAccountTreeItem) {
+                console.log("YES");
+                await vscode.commands.executeCommand('cosmosDB.disconnectMongoDB');
+            }
+
+            // Additions
+            console.log("Before detach");
+            console.log(ext.attachedAccountsNode);
+            //
 
             await ext.attachedAccountsNode.detach(node);
 
             // Additions
-            console.log("Before Refresh")
+            console.log("After detach");
+            console.log(ext.attachedAccountsNode);
+            console.log("Before Refresh");
             console.log(ext.attachedAccountsNode);
             // Additions
 
             await ext.tree.refresh(ext.attachedAccountsNode);
-            await ext.tree.refresh(ext.attachedAccountsNode);
+
             // Additions
-            console.log("After Refresh")
+            console.log("After Refresh");
             console.log(ext.attachedAccountsNode);
             // Additions
 

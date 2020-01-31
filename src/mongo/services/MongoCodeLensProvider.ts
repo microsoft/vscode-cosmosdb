@@ -27,6 +27,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 
 			let isInitialized = this._connectedDatabaseInitialized;
 			let isConnected = !!this._connectedDatabase;
+
 			let database = isConnected && this._connectedDatabase;
 			let lenses: vscode.CodeLens[] = [];
 

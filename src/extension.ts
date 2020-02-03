@@ -26,6 +26,7 @@ import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor
 import { registerMongoCommands } from './mongo/registerMongoCommands';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
+import { MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
@@ -60,7 +61,6 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         registerGraphCommands();
         registerMongoCommands(editorManager);
 
-
         const accountContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
 
         registerCommand('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
@@ -93,19 +93,14 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             if (!node) {
                 node = await ext.tree.showTreeItemPicker(accountContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
             }
-
             if (node instanceof MongoAccountTreeItem) {
-
-                await vscode.commands.executeCommand('cosmosDB.disconnectMongoDB');
+                const nodes = await node.getCachedChildren(actionContext);
+                for (const childNode of nodes) {
+                    await vscode.commands.executeCommand('cosmosDB.disconnectMongoDB', childNode);
+                }
             }
-
-
             await ext.attachedAccountsNode.detach(node);
-
-
             await ext.tree.refresh(ext.attachedAccountsNode);
-
-
         });
         registerCommand('cosmosDB.importDocument', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => {
             if (selectedNode instanceof vscode.Uri) {
@@ -114,7 +109,6 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 await importDocuments(actionContext, undefined, selectedNode);
             }
         });
-
         registerCommand('cosmosDB.openInPortal', async (actionContext: IActionContext, node?: AzureTreeItem) => {
             if (!node) {
                 node = await ext.tree.showTreeItemPicker(accountContextValues, actionContext);

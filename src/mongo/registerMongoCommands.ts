@@ -93,19 +93,15 @@ export function registerMongoCommands(editorManager: CosmosEditorManager): void 
             languageClient.disconnect();
         }
     });
-
     registerCommand('cosmosDB.disconnectMongoDB', async (context: IActionContext, node?: MongoDatabaseTreeItem) => {
         if (!node) {
             node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
         }
-
         if (ext.connectedMongoDB && ext.connectedMongoDB.fullId === node.fullId) {
             setConnectedNode(undefined, codeLensProvider);
             await node.refresh();
-
         }
     });
-    // NEW//
     registerCommand('cosmosDB.deleteMongoCollection', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
         if (!node) {
             node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);

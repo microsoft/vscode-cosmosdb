@@ -232,7 +232,7 @@
             {
                 "category": "MongoDB",
                 "command": "cosmosDB.disconnectMongoDB",
-                "title": "Disconnect Database..."
+                "title": "Disconnect"
             },
             {
                 "category": "MongoDB",

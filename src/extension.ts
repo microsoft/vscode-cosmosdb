@@ -58,7 +58,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         registerGraphCommands();
         registerMongoCommands(editorManager);
 
-        // Common commands
+
         const accountContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
 
         registerCommand('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
@@ -91,32 +91,18 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             if (!node) {
                 node = await ext.tree.showTreeItemPicker(accountContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
             }
-            console.log(node.contextValue);
+
             if (node instanceof MongoAccountTreeItem) {
-                console.log("YES");
+
                 await vscode.commands.executeCommand('cosmosDB.disconnectMongoDB');
             }
 
-            // Additions
-            console.log("Before detach");
-            console.log(ext.attachedAccountsNode);
-            //
 
             await ext.attachedAccountsNode.detach(node);
 
-            // Additions
-            console.log("After detach");
-            console.log(ext.attachedAccountsNode);
-            console.log("Before Refresh");
-            console.log(ext.attachedAccountsNode);
-            // Additions
 
             await ext.tree.refresh(ext.attachedAccountsNode);
 
-            // Additions
-            console.log("After Refresh");
-            console.log(ext.attachedAccountsNode);
-            // Additions
 
         });
         registerCommand('cosmosDB.importDocument', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => //ignore first pass

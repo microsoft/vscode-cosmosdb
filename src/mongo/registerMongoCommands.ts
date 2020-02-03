@@ -92,17 +92,16 @@ export function registerMongoCommands(editorManager: CosmosEditorManager): void 
             languageClient.disconnect();
         }
     });
-    // NEW//
+
     registerCommand('cosmosDB.disconnectMongoDB', async (context: IActionContext, node?: MongoDatabaseTreeItem) => {
         if (!node) {
             node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
         }
-        // await node.deleteTreeItem(context);
+
         if (ext.connectedMongoDB && ext.connectedMongoDB.fullId === node.fullId) {
             setConnectedNode(undefined, codeLensProvider);
             await node.refresh();
-            // ext.context.globalState.update(connectedDBKey, undefined);
-            // languageClient.disconnect();
+
         }
     });
     // NEW//

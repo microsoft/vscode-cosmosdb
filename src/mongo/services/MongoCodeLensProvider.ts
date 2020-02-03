@@ -12,9 +12,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
     private _connectedDatabase: string;
     private _connectedDatabaseInitialized: boolean;
 
-    public get onDidChangeCodeLenses(): vscode.Event<void> {
-        return this._onDidChangeEmitter.event;
-    }
+    public onDidChangeCodeLenses = this._onDidChangeEmitter.event;
 
     public setConnectedDatabase(database: string | undefined) {
         this._connectedDatabase = database;
@@ -27,10 +25,11 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
             // Suppress except for errors - this can fire on every keystroke
             context.telemetry.suppressIfSuccessful = true;
 
-            const isInitialized = this._connectedDatabaseInitialized;
-            const isConnected = !!this._connectedDatabase;
-            const database = isConnected && this._connectedDatabase;
-            const lenses: vscode.CodeLens[] = [];
+            let isInitialized = this._connectedDatabaseInitialized;
+            let isConnected = !!this._connectedDatabase;
+
+            let database = isConnected && this._connectedDatabase;
+            let lenses: vscode.CodeLens[] = [];
 
             // Allow displaying and changing connected database
             lenses.push(<vscode.CodeLens>{
@@ -55,8 +54,8 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
                     range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0))
                 });
 
-                const commands = getAllCommandsFromTextDocument(document);
-                for (const cmd of commands) {
+                let commands = getAllCommandsFromTextDocument(document);
+                for (let cmd of commands) {
                     // run individual
                     lenses.push(<vscode.CodeLens>{
                         command: {

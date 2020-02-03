@@ -10,7 +10,7 @@ suite("arrayUtil Tests", () => {
 
     test("removeDuplicatesById", () => {
         type Elem = { id: string, data: string };
-        var array1: Elem[] = [
+        const array1: Elem[] = [
             { id: "id1", data: "data1" },
             { id: "id2", data: "data2" },
             { id: "id2", data: "data2" },
@@ -18,14 +18,14 @@ suite("arrayUtil Tests", () => {
             { id: "id2", data: "data2" }
         ];
 
-        var result = arrayUtil.removeDuplicatesById(array1);
+        const result = arrayUtil.removeDuplicatesById(array1);
         assert.deepEqual(result, [{ id: "id1", data: "data1" }, { id: "id2", data: "data2" }]);
     });
 
     test("removeDuplicatesById_Empty", () => {
         type Elem = { id: string, data: string };
-        var array1: Elem[] = [];
-        var result = arrayUtil.removeDuplicatesById(array1);
+        const array1: Elem[] = [];
+        const result = arrayUtil.removeDuplicatesById(array1);
         assert.deepEqual(result, []);
     });
 });

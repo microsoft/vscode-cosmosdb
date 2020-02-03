@@ -59,21 +59,25 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         return this._root;
     }
 
-    private async getAttachedAccounts(): Promise<AzureTreeItem[]> {
-        if (!this._attachedAccounts) {
-            try {
-                this._attachedAccounts = await this._loadPersistedAccountsTask;
-            } catch {
-                this._attachedAccounts = [];
-                throw new Error('Failed to load persisted Database Accounts. Reattach the accounts manually.');
-            }
-        }
-
-        return this._attachedAccounts;
-    }
-
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return getThemedIconPath('ConnectPlugged.svg');
+    }
+
+    public static validateMongoConnectionString(value: string): string | undefined {
+        if (value && value.match(/^mongodb(\+srv)?:\/\//)) {
+            return undefined;
+        }
+        return MONGO_CONNECTION_EXPECTED;
+    }
+
+    private static validateDocDBConnectionString(value: string): string | undefined {
+        try {
+            parseDocDBConnectionString(value);
+            return undefined;
+        } catch (error) {
+            return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..."';
+        }
+
     }
 
     public hasMoreChildrenImpl(): boolean {
@@ -111,16 +115,6 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
     }
 
-    private async canConnectToLocalMongoDB(): Promise<boolean> {
-        try {
-            let db = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent());
-            db.close();
-            return true;
-        } catch (error) {
-            return false;
-        }
-    }
-
     public async attachNewAccount(): Promise<void> {
         const defaultExperiencePick = await vscode.window.showQuickPick(getExperienceQuickPicks(), { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
         if (defaultExperiencePick) {
@@ -148,7 +142,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             });
 
             if (connectionString) {
-                let treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);
+                const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);
                 await this.attachAccount(treeItem, connectionString);
             }
         } else {
@@ -159,7 +153,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     public async attachConnectionString(connectionString: string, api: API.MongoDB | API.Core): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase> {
         const treeItem = <MongoAccountTreeItem | DocDBAccountTreeItemBase>await this.createTreeItem(connectionString, api);
         await this.attachAccount(treeItem, connectionString);
-        this.refresh();
+        await this.refresh();
         return treeItem;
     }
 
@@ -179,39 +173,23 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             let port: number;
             if (defaultExperience.api === API.MongoDB) {
                 port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.mongoPort");
-            }
-            else {
+            } else {
                 port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.port");
             }
             if (port) {
                 if (defaultExperience.api === API.MongoDB) {
                     // Mongo shell doesn't parse passwords with slashes, so we need to URI encode it. The '/' before the options is required by mongo conventions
                     connectionString = `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:${port}/?ssl=true`;
-                }
-                else {
+                } else {
                     connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=${emulatorPassword};`;
                 }
                 const label = `${defaultExperience.shortName} Emulator`;
-                let treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api, label);
+                const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api, label);
                 if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem || treeItem instanceof MongoAccountTreeItem) {
                     // CONSIDER: Why isn't this passed in to createTreeItem above?
                     treeItem.root.isEmulator = true;
                 }
                 await this.attachAccount(treeItem, connectionString);
-            }
-        }
-    }
-
-    private async attachAccount(treeItem: AzureTreeItem, connectionString: string): Promise<void> {
-        const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
-
-        if (attachedAccounts.find(s => s.id === treeItem.id)) {
-            vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`);
-        } else {
-            attachedAccounts.push(treeItem);
-            if (this._keytar) {
-                await this._keytar.setPassword(this._serviceName, treeItem.id, connectionString);
-                await this.persistIds(attachedAccounts);
             }
         }
     }
@@ -232,8 +210,47 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 const parsedCS = await parseMongoConnectionString(node.connectionString);
                 removeTreeItemFromCache(parsedCS);
             } else if (node instanceof DocDBAccountTreeItemBase) {
-                const parsedCS = await parseDocDBConnectionString(node.connectionString);
+                const parsedCS = parseDocDBConnectionString(node.connectionString);
                 removeTreeItemFromCache(parsedCS);
+            }
+        }
+    }
+
+    private async getAttachedAccounts(): Promise<AzureTreeItem[]> {
+        if (!this._attachedAccounts) {
+            try {
+                this._attachedAccounts = await this._loadPersistedAccountsTask;
+            } catch {
+                this._attachedAccounts = [];
+                throw new Error('Failed to load persisted Database Accounts. Reattach the accounts manually.');
+            }
+        }
+
+        return this._attachedAccounts;
+    }
+
+    private async canConnectToLocalMongoDB(): Promise<boolean> {
+        try {
+            const db = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent());
+            // grandfathered in
+            // tslint:disable-next-line: no-floating-promises
+            db.close();
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    private async attachAccount(treeItem: AzureTreeItem, connectionString: string): Promise<void> {
+        const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
+
+        if (attachedAccounts.find(s => s.id === treeItem.id)) {
+            vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`);
+        } else {
+            attachedAccounts.push(treeItem);
+            if (this._keytar) {
+                await this._keytar.setPassword(this._serviceName, treeItem.id, connectionString);
+                await this.persistIds(attachedAccounts);
             }
         }
     }
@@ -324,23 +341,6 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             return { id: node.id, defaultExperience: api, isEmulator: isEmulator };
         });
         await ext.context.globalState.update(this._serviceName, JSON.stringify(value));
-    }
-
-    static validateMongoConnectionString(value: string): string | undefined {
-        if (value && value.match(/^mongodb(\+srv)?:\/\//)) {
-            return undefined;
-        }
-        return MONGO_CONNECTION_EXPECTED;
-    }
-
-    private static validateDocDBConnectionString(value: string): string | undefined {
-        try {
-            parseDocDBConnectionString(value);
-            return undefined;
-        } catch (error) {
-            return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..."';
-        }
-
     }
 }
 

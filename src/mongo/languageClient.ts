@@ -10,48 +10,49 @@ import { ext } from '../extensionVariables';
 
 const localize = nls.loadMessageBundle();
 
+// tslint:disable-next-line: export-name
 export class MongoDBLanguageClient {
 
-	public client: LanguageClient;
+    public client: LanguageClient;
 
-	constructor() {
-		// The server is implemented in node
-		let serverModule = ext.ignoreBundle ?
-			ext.context.asAbsolutePath(path.join('out', 'src', 'mongo', 'languageServer.js')) :
-			ext.context.asAbsolutePath(path.join('dist', 'mongo-languageServer.bundle.js'));
-		// The debug options for the server
-		let debugOptions = { execArgv: ['--nolazy', '--debug=6005', '--inspect'] };
+    constructor() {
+        // The server is implemented in node
+        const serverModule = ext.ignoreBundle ?
+            ext.context.asAbsolutePath(path.join('out', 'src', 'mongo', 'languageServer.js')) :
+            ext.context.asAbsolutePath(path.join('dist', 'mongo-languageServer.bundle.js'));
+        // The debug options for the server
+        const debugOptions = { execArgv: ['--nolazy', '--debug=6005', '--inspect'] };
 
-		// If the extension is launch in debug mode the debug server options are use
-		// Otherwise the run options are used
-		let serverOptions: ServerOptions = {
-			run: { module: serverModule, transport: TransportKind.ipc, options: debugOptions },
-			debug: { module: serverModule, transport: TransportKind.ipc, options: debugOptions }
-		};
+        // If the extension is launch in debug mode the debug server options are use
+        // Otherwise the run options are used
+        const serverOptions: ServerOptions = {
+            run: { module: serverModule, transport: TransportKind.ipc, options: debugOptions },
+            debug: { module: serverModule, transport: TransportKind.ipc, options: debugOptions }
+        };
 
-		// Options to control the language client
-		let clientOptions: LanguageClientOptions = {
-			// Register the server for mongo javascript documents
-			documentSelector: [
-				{ language: 'mongo', scheme: 'file' },
-				{ language: 'mongo', scheme: 'untitled' }
-			]
-		};
+        // Options to control the language client
+        const clientOptions: LanguageClientOptions = {
+            // Register the server for mongo javascript documents
+            documentSelector: [
+                { language: 'mongo', scheme: 'file' },
+                { language: 'mongo', scheme: 'untitled' }
+            ]
+        };
 
-		// Create the language client and start the client.
-		this.client = new LanguageClient('mongo', localize('mongo.server.name', 'Mongo Language Server'), serverOptions, clientOptions);
-		let disposable = this.client.start();
+        // Create the language client and start the client.
+        this.client = new LanguageClient('mongo', localize('mongo.server.name', 'Mongo Language Server'), serverOptions, clientOptions);
+        const disposable = this.client.start();
 
-		// Push the disposable to the context's subscriptions so that the
-		// client can be deactivated on extension deactivation
-		ext.context.subscriptions.push(disposable);
-	}
+        // Push the disposable to the context's subscriptions so that the
+        // client can be deactivated on extension deactivation
+        ext.context.subscriptions.push(disposable);
+    }
 
-	async connect(connectionString: string, databaseName: string) {
-		await this.client.sendRequest('connect', <IConnectionParams>{ connectionString: connectionString, databaseName: databaseName, extensionUserAgent: appendExtensionUserAgent() });
-	}
+    public async connect(connectionString: string, databaseName: string) {
+        await this.client.sendRequest('connect', <IConnectionParams>{ connectionString: connectionString, databaseName: databaseName, extensionUserAgent: appendExtensionUserAgent() });
+    }
 
-	disconnect(): void {
-		this.client.sendRequest('disconnect');
-	}
+    public disconnect(): void {
+        this.client.sendRequest('disconnect');
+    }
 }

@@ -41,7 +41,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
     }
 
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<RetrievedDocument>> {
-        return await client.readDocuments(this.link, feedOptions);
+        return client.readDocuments(this.link, feedOptions);
     }
 
     public initChild(document: RetrievedDocument): DocDBDocumentTreeItem {
@@ -56,7 +56,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
 
         if (docID || docID === "") {
             docID = docID.trim();
-            let body = { 'id': docID };
+            let body = { id: docID };
             body = <NewDocument>(await this.promptForPartitionKey(body));
             context.showCreatingTreeItem(docID);
             const document = await this.createDocument(body);
@@ -68,7 +68,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
     }
 
     public async createDocument(body: NewDocument): Promise<RetrievedDocument> {
-        const document: RetrievedDocument = await new Promise<RetrievedDocument>((resolve, reject) => {
+        return await new Promise<RetrievedDocument>((resolve, reject) => {
             this.root.getDocumentClient().createDocument(this.link, body, (err, result: RetrievedDocument) => {
                 if (err) {
                     reject(err);
@@ -77,7 +77,6 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
                 }
             });
         });
-        return document;
     }
 
     public documentHasPartitionKey(doc: Object): boolean {
@@ -89,7 +88,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
         if (partitionKey[0] === '/') {
             partitionKey = partitionKey.slice(1);
         }
-        let keyPath = partitionKey.split('/');
+        const keyPath = partitionKey.split('/');
         let i: number;
         for (i = 0; i < keyPath.length - 1; i++) {
             if (interim.hasOwnProperty(keyPath[i])) {
@@ -123,8 +122,8 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
         if (partitionKey[0] === '/') {
             partitionKey = partitionKey.slice(1);
         }
-        let keyPath = partitionKey.split('/');
-        let PartitionPath: Object = {};
+        const keyPath = partitionKey.split('/');
+        const PartitionPath: Object = {};
         let interim: Object = PartitionPath;
         let i: number;
         for (i = 0; i < keyPath.length - 1; i++) {

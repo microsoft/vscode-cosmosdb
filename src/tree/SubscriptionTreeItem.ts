@@ -67,6 +67,10 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         return await this.initChild(client, wizardContext.databaseAccount);
     }
 
+    public isAncestorOfImpl(contextValue: string | RegExp): boolean {
+        return typeof contextValue !== 'string' || !/attached/i.test(contextValue);
+    }
+
     private async initChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<AzureTreeItem> {
         const experience = tryGetExperience(databaseAccount);
         const resourceGroup: string = azureUtils.getResourceGroupFromId(databaseAccount.id);
@@ -94,9 +98,5 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
             }
         }
-    }
-
-    public isAncestorOfImpl(contextValue: string | RegExp): boolean {
-        return typeof contextValue !== 'string' || !/attached/i.test(contextValue);
     }
 }

@@ -5,15 +5,18 @@
 
 // CONSIDER: Run in pipeline
 import * as assert from 'assert';
-import { parseError, MongoShell, isWindows } from '../extension.bundle';
 import * as cp from "child_process";
-import { isNumber } from 'util';
+import * as fse from 'fs-extra';
 import * as os from 'os';
 import * as path from 'path';
-import { setEnvironmentVariables } from './util/setEnvironmentVariables';
-import { IDisposable } from '../src/utils/vscodeUtils';
-import * as fse from 'fs-extra';
+import { isNumber } from 'util';
 import * as vscode from 'vscode';
+import { isWindows, MongoShell, parseError } from '../extension.bundle';
+import { IDisposable } from '../src/utils/vscodeUtils';
+import { setEnvironmentVariables } from './util/setEnvironmentVariables';
+
+// grandfathered in
+// tslint:disable: no-octal-literal
 
 const VERBOSE = false; // If true, the output from the Mongo server and shell will be sent to the console for debugging purposes
 
@@ -36,8 +39,8 @@ suite("MongoShell", function (this: Mocha.Suite) {
 
     // CONSIDER: Make more generic
     let mongodCP: cp.ChildProcess;
-    let mongodPath = "c:\\Program Files\\MongoDB\\Server\\4.2\\bin\\mongod.exe";
-    let mongoPath = "c:\\Program Files\\MongoDB\\Server\\4.2\\bin\\mongo.exe";
+    const mongodPath = "c:\\Program Files\\MongoDB\\Server\\4.2\\bin\\mongod.exe";
+    const mongoPath = "c:\\Program Files\\MongoDB\\Server\\4.2\\bin\\mongo.exe";
     let mongoDOutput = "";
     let mongoDErrors = "";
     let isClosed = false;
@@ -54,26 +57,26 @@ suite("MongoShell", function (this: Mocha.Suite) {
         public name: string;
         public output: string;
 
-        append(value: string): void {
+        public append(value: string): void {
             assert(value !== undefined);
             assert(!value.includes('undefined'));
             this.output = this.output ? this.output + os.EOL + value : value;
             log(value, "Output channel: ");
         }
-        appendLine(value: string): void {
+        public appendLine(value: string): void {
             assert(value !== undefined);
             this.append(value + os.EOL);
         }
-        clear(): void { }
-        show(preserveFocus?: boolean): void;
-        show(column?: vscode.ViewColumn, preserveFocus?: boolean): void;
-        show(_column?: any, _preserveFocus?: any) { }
-        hide(): void { }
-        dispose(): void { }
+        public clear(): void { }
+        public show(preserveFocus?: boolean): void;
+        public show(column?: vscode.ViewColumn, preserveFocus?: boolean): void;
+        public show(_column?: any, _preserveFocus?: any) { }
+        public hide(): void { }
+        public dispose(): void { }
     }
 
     function log(text: string, linePrefix: string): void {
-        text = text.replace(/(^|[\r\n]+)/g, "$1" + linePrefix)
+        text = text.replace(/(^|[\r\n]+)/g, "$1" + linePrefix);
         if (VERBOSE) {
             console.log(text);
         }
@@ -81,14 +84,14 @@ suite("MongoShell", function (this: Mocha.Suite) {
 
     async function delay(milliseconds: number): Promise<void> {
         return new Promise(resolve => {
+            // grandfathered in
+            // tslint:disable-next-line: no-string-based-set-timeout
             setTimeout(resolve, milliseconds);
-        })
+        });
     }
 
     function executeInShell(command: string): string {
-        return cp.execSync(command,
-            {
-            }).toString();
+        return cp.execSync(command, {}).toString();
     }
 
     suiteSetup(() => {
@@ -118,10 +121,10 @@ suite("MongoShell", function (this: Mocha.Suite) {
                 mongoDErrors += parseError(error).message + os.EOL;
             });
             mongodCP.on("close", (code?: number) => {
-                console.log("mongo server: Close code=" + code);
+                console.log(`mongo server: Close code=${code}`);
                 isClosed = true;
                 if (isNumber(code) && code !== 0) {
-                    mongoDErrors += "mongo server: Closed with code " + code + os.EOL;
+                    mongoDErrors += `mongo server: Closed with code "${code}"${os.EOL}`;
                 }
             });
         }
@@ -158,12 +161,12 @@ suite("MongoShell", function (this: Mocha.Suite) {
 
             let previousEnv: IDisposable;
             let shell: MongoShell | undefined;
-            let outputChannel = new FakeOutputChannel();
+            const outputChannel = new FakeOutputChannel();
 
             try {
                 previousEnv = setEnvironmentVariables(options.env || {});
                 shell = await MongoShell.create(options.mongoPath || mongoPath, options.args || [], '', false, outputChannel, options.timeoutSeconds || 5);
-                let result = await shell.executeScript(options.script);
+                const result = await shell.executeScript(options.script);
                 if (options.expectedError) {
                     assert(false, `Expected error did not occur: '${options.expectedError}'`);
                 }
@@ -171,10 +174,10 @@ suite("MongoShell", function (this: Mocha.Suite) {
                     assert.equal(result, options.expectedResult);
                 }
             } catch (error) {
-                let message = parseError(error).message;
+                const message = parseError(error).message;
 
                 if (options.expectedError instanceof RegExp) {
-                    assert(options.expectedError.test(message), `Actual error did not match expected error regex. Actual error: ${message}`)
+                    assert(options.expectedError.test(message), `Actual error did not match expected error regex. Actual error: ${message}`);
                 } else if (typeof options.expectedError === 'string') {
                     assert.equal(message, options.expectedError);
                 } else {
@@ -182,7 +185,7 @@ suite("MongoShell", function (this: Mocha.Suite) {
                 }
 
                 if (options.expectedOutput instanceof RegExp) {
-                    assert(options.expectedOutput.test(outputChannel.output), `Actual contents written to output channel did not match expected regex. Actual output channel contents: ${outputChannel.output}`)
+                    assert(options.expectedOutput.test(outputChannel.output), `Actual contents written to output channel did not match expected regex. Actual output channel contents: ${outputChannel.output}`);
                 }
             } finally {
                 if (shell) {
@@ -213,7 +216,7 @@ suite("MongoShell", function (this: Mocha.Suite) {
         mongoPath: "mongo",
         expectedResult: 'switched to db abc',
         env: {
-            PATH: process.env["path"] + ";" + path.dirname(mongoPath)
+            PATH: process.env.path + ";" + path.dirname(mongoPath)
         }
     });
 
@@ -267,11 +270,11 @@ suite("MongoShell", function (this: Mocha.Suite) {
     });
 
     testIfSupported("More results than displayed (type 'it' for more -> (More))", async () => {
-        let shell = await MongoShell.create(mongoPath, [], '', false, new FakeOutputChannel(), 5);
+        const shell = await MongoShell.create(mongoPath, [], '', false, new FakeOutputChannel(), 5);
         await shell.executeScript('db.mongoShellTest.drop()');
         await shell.executeScript('for (var i = 0; i < 50; ++i) { db.mongoShellTest.insert({a:i}); }');
 
-        let result = await shell.executeScript('db.mongoShellTest.find().pretty()');
+        const result = await shell.executeScript('db.mongoShellTest.find().pretty()');
 
         assert(!result.includes('Type "it" for more'));
         assert(result.includes('(More)'));

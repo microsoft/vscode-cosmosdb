@@ -51,13 +51,13 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<DatabaseMeta>> {
-        return await client.readDatabases(feedOptions);
+        return client.readDatabases(feedOptions);
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
         const databaseName = await vscode.window.showInputBox({
             placeHolder: 'Database Name',
-            validateInput: DocDBAccountTreeItemBase.validateDatabaseName,
+            validateInput: validateDatabaseName,
             ignoreFocusOut: true
         });
 
@@ -82,27 +82,27 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
 
     public async loadMoreChildrenImpl(clearCache: boolean) {
         if (this._root.isEmulator) {
-            let unableToReachEmulatorMessage: string = "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.";
+            const unableToReachEmulatorMessage: string = "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.";
             return await rejectOnTimeout(2000, () => super.loadMoreChildrenImpl(clearCache), unableToReachEmulatorMessage);
         } else {
             return await super.loadMoreChildrenImpl(clearCache);
         }
     }
 
-    private static validateDatabaseName(name: string): string | undefined | null {
-        if (!name || name.length < 1 || name.length > 255) {
-            return "Name has to be between 1 and 255 chars long";
-        }
-        if (name.endsWith(" ")) {
-            return "Database name cannot end with space";
-        }
-        if (/[/\\?#]/.test(name)) {
-            return `Database name cannot contain the characters '\\', '/', '#', '?'`;
-        }
-        return undefined;
-    }
-
     public async deleteTreeItemImpl(): Promise<void> {
         await deleteCosmosDBAccount(this);
     }
+}
+
+function validateDatabaseName(name: string): string | undefined | null {
+    if (!name || name.length < 1 || name.length > 255) {
+        return "Name has to be between 1 and 255 chars long";
+    }
+    if (name.endsWith(" ")) {
+        return "Database name cannot end with space";
+    }
+    if (/[/\\?#]/.test(name)) {
+        return `Database name cannot contain the characters '\\', '/', '#', '?'`;
+    }
+    return undefined;
 }

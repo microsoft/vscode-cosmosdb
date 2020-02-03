@@ -4,20 +4,23 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { improveError } from '../extension.bundle';
 import { parseError } from 'vscode-azureextensionui';
+import { improveError } from '../extension.bundle';
+
+// grandfathered in
+// tslint:disable: no-octal-literal
 
 suite("improveError", () => {
     test("no change", () => {
-        let msg: string = "where is c:\\Program Files\\MongoDB\Server\\4.0\\bin\\mongo.exe?";
-        let improved: unknown = improveError(msg);
+        const msg: string = "where is c:\\Program Files\\MongoDB\Server\\4.0\\bin\\mongo.exe?";
+        const improved: unknown = improveError(msg);
 
         assert.equal(parseError(improved).message, msg);
     });
 
     test("spawn ENOENT", () => {
-        let msg: string = "spawn c:\\Program Files\\MongoDB\Server\\4.0\\bin\\mongo.exe ENOENT";
-        let improved: unknown = improveError(msg);
+        const msg: string = "spawn c:\\Program Files\\MongoDB\Server\\4.0\\bin\\mongo.exe ENOENT";
+        const improved: unknown = improveError(msg);
 
         assert.equal(parseError(improved).message, "Could not find c:\\Program Files\\MongoDB\Server\\4.0\\bin\\mongo.exe");
     });

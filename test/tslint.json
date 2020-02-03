@@ -1,0 +1,17 @@
+{
+    "extends": "../tslint.json",
+    "rules": {
+        "no-console": false,
+        "no-implicit-dependencies": [
+            true,
+            "dev"
+        ],
+        "typedef": false,
+        "no-unexternalized-strings": false,
+        "no-multiline-string": false,
+        "no-any": false,
+        "no-empty": false,
+        "max-func-body-length": false,
+        "no-non-null-assertion": false
+    }
+}

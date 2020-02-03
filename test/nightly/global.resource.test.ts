@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ResourceManagementClient } from 'azure-arm-resource';
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
+import { ResourceManagementClient } from 'azure-arm-resource';
 import { IHookCallbackContext } from 'mocha';
 import * as vscode from 'vscode';
 import { TestAzureAccount } from 'vscode-azureextensiondev';
@@ -38,11 +38,11 @@ suiteTeardown(async function (this: IHookCallbackContext): Promise<void> {
 });
 
 async function deleteResourceGroups(): Promise<void> {
-    const client: ResourceManagementClient = createAzureClient(testAccount.getSubscriptionContext(), ResourceManagementClient);
+    const rmClient: ResourceManagementClient = createAzureClient(testAccount.getSubscriptionContext(), ResourceManagementClient);
     await Promise.all(resourceGroupsToDelete.map(async resourceGroup => {
-        if (await client.resourceGroups.checkExistence(resourceGroup)) {
+        if (await rmClient.resourceGroups.checkExistence(resourceGroup)) {
             console.log(`Deleting resource group "${resourceGroup}"...`);
-            await client.resourceGroups.beginDeleteMethod(resourceGroup);
+            await rmClient.resourceGroups.beginDeleteMethod(resourceGroup);
             console.log(`Resource group "${resourceGroup}" deleted.`);
         } else {
             // If the test failed, the resource group might not actually exist

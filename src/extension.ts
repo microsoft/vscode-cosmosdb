@@ -32,6 +32,7 @@ import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
 
+// tslint:disable-next-line: max-func-body-length
 export async function activateInternal(context: vscode.ExtensionContext, perfStats: { loadStartTime: number, loadEndTime: number }): Promise<AzureExtensionApiProvider> {
     ext.context = context;
     ext.reporter = createTelemetryReporter(context);
@@ -42,6 +43,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     context.subscriptions.push(ext.outputChannel);
     registerUIExtensionVariables(ext);
 
+    // tslint:disable-next-line: max-func-body-length
     await callWithTelemetryAndErrorHandling('cosmosDB.activate', async (activateContext: IActionContext) => {
         activateContext.telemetry.properties.isActivationEvent = 'true';
         activateContext.telemetry.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
@@ -105,8 +107,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
 
         });
-        registerCommand('cosmosDB.importDocument', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => //ignore first pass
-        {
+        registerCommand('cosmosDB.importDocument', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => {
             if (selectedNode instanceof vscode.Uri) {
                 await importDocuments(actionContext, uris || [selectedNode], undefined);
             } else {

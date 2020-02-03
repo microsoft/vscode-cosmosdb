@@ -72,7 +72,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
     }
 
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<ProcedureMeta>> {
-        return await client.readStoredProcedures(this.link, feedOptions);
+        return client.readStoredProcedures(this.link, feedOptions);
     }
 
     private validateName(name: string): string | null | undefined {

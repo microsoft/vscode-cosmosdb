@@ -83,9 +83,8 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
         const _self: string = this.document._self;
         if (["_self", "_etag"].some((element) => !newData[element])) {
             throw new Error(`The "_self" and "_etag" fields are required to update a document`);
-        }
-        else {
-            let options = { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this._partitionKeyValue };
+        } else {
+            const options = { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this._partitionKeyValue };
             this._document = await new Promise<RetrievedDocument>((resolve, reject) => {
                 client.replaceDocument(
                     _self,
@@ -114,7 +113,7 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
             fields.shift();
         }
         let value;
-        for (let field of fields) {
+        for (const field of fields) {
             value = value ? value[field] : this.document[field];
             if (!value) { //Partition Key exists, but this document doesn't have a value
                 return emptyPartitionKeyValue;

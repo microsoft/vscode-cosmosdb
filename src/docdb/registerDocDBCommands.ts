@@ -38,7 +38,7 @@ export function registerDocDBCommands(editorManager: CosmosEditorManager): void 
         if (!node) {
             node = <DocDBDocumentsTreeItem>await ext.tree.showTreeItemPicker(DocDBDocumentsTreeItem.contextValue, context);
         }
-        let documentNode = <DocDBDocumentTreeItem>await node.createChild(context);
+        const documentNode = <DocDBDocumentTreeItem>await node.createChild(context);
         await ext.treeView.reveal(documentNode);
         await commands.executeCommand("cosmosDB.openDocument", documentNode);
 
@@ -47,7 +47,7 @@ export function registerDocDBCommands(editorManager: CosmosEditorManager): void 
         if (!node) {
             node = <DocDBStoredProceduresTreeItem>await ext.tree.showTreeItemPicker(DocDBStoredProceduresTreeItem.contextValue, context);
         }
-        let childNode = await node.createChild(context);
+        const childNode = await node.createChild(context);
         await commands.executeCommand("cosmosDB.openStoredProcedure", childNode);
 
     });

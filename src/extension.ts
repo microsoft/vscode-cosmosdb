@@ -26,7 +26,6 @@ import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor
 import { registerMongoCommands } from './mongo/registerMongoCommands';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
-import { MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';

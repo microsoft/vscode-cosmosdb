@@ -201,8 +201,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         if (index !== -1) {
             attachedAccounts.splice(index, 1);
             if (this._keytar) {
-                //await this._keytar.deletePassword(this._serviceName, node.id); // intentionally using 'id' instead of 'fullId' for the sake of backwards compatability
-                await this._keytar.deletePassword(this._serviceName, node.id);
+                await this._keytar.deletePassword(this._serviceName, node.id); // intentionally using 'id' instead of 'fullId' for the sake of backwards compatability
                 await this.persistIds(attachedAccounts);
             }
 

@@ -24,6 +24,7 @@ import { registerGraphCommands } from './graph/registerGraphCommands';
 import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
 import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
 import { registerMongoCommands } from './mongo/registerMongoCommands';
+import { setConnectedNode } from './mongo/setConnectedNode';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
@@ -58,7 +59,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
         registerDocDBCommands(editorManager);
         registerGraphCommands();
-        registerMongoCommands(editorManager);
+        const codeLensProvider = registerMongoCommands(editorManager);
 
         const accountContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
 
@@ -95,7 +96,10 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             if (node instanceof MongoAccountTreeItem) {
                 const nodes = await node.getCachedChildren(actionContext);
                 for (const childNode of nodes) {
-                    await vscode.commands.executeCommand('cosmosDB.disconnectMongoDB', childNode);
+                    if (childNode && ext.connectedMongoDB.fullId === childNode.fullId) {
+                        setConnectedNode(undefined, codeLensProvider);
+                        await node.refresh();
+                    }
                 }
             }
             await ext.attachedAccountsNode.detach(node);

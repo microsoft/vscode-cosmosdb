@@ -53,7 +53,6 @@
         "onCommand:cosmosDB.createGraph",
         "onCommand:cosmosDB.connectMongoDB",
         "onCommand:cosmosDB.deleteMongoDB",
-        "onCommand:cosmosDB.disconnectMongoDB",
         "onCommand:cosmosDB.deleteMongoCollection",
         "onCommand:cosmosDB.deleteMongoDocument",
         "onCommand:cosmosDB.deleteDocDBDatabase",
@@ -78,32 +77,39 @@
     ],
     "contributes": {
         "viewsContainers": {
-            "activitybar": [{
-                "id": "azure",
-                "title": "Azure",
-                "icon": "resources/azure.svg"
-            }]
+            "activitybar": [
+                {
+                    "id": "azure",
+                    "title": "Azure",
+                    "icon": "resources/azure.svg"
+                }
+            ]
         },
         "views": {
-            "azure": [{
-                "id": "cosmosDBExplorer",
-                "name": "Cosmos DB",
-                "when": "config.cosmosDB.showExplorer == true"
-            }]
+            "azure": [
+                {
+                    "id": "cosmosDBExplorer",
+                    "name": "Cosmos DB",
+                    "when": "config.cosmosDB.showExplorer == true"
+                }
+            ]
         },
-        "languages": [{
-            "id": "mongo",
-            "aliases": [
-                "Mongo Scrapbook",
-                "mongo"
-            ],
-            "extensions": [
-                ".mongo"
-            ],
-            "firstLine": "^#!/.*\\bmongo*\\b",
-            "configuration": "./grammar/configuration.json"
-        }],
-        "grammars": [{
+        "languages": [
+            {
+                "id": "mongo",
+                "aliases": [
+                    "Mongo Scrapbook",
+                    "mongo"
+                ],
+                "extensions": [
+                    ".mongo"
+                ],
+                "firstLine": "^#!/.*\\bmongo*\\b",
+                "configuration": "./grammar/configuration.json"
+            }
+        ],
+        "grammars": [
+            {
                 "language": "mongo",
                 "scopeName": "source.mongo.js",
                 "path": "./grammar/JavaScript.tmLanguage.json"
@@ -113,7 +119,8 @@
                 "path": "./grammar/Regular Expressions (JavaScript).tmLanguage"
             }
         ],
-        "commands": [{
+        "commands": [
+            {
                 "command": "cosmosDB.selectSubscriptions",
                 "title": "Select Subscriptions...",
                 "icon": {
@@ -231,11 +238,6 @@
             },
             {
                 "category": "MongoDB",
-                "command": "cosmosDB.disconnectMongoDB",
-                "title": "Disconnect"
-            },
-            {
-                "category": "MongoDB",
                 "command": "cosmosDB.deleteMongoCollection",
                 "title": "Delete Collection..."
             },
@@ -338,7 +340,8 @@
             }
         ],
         "menus": {
-            "editor/context": [{
+            "editor/context": [
+                {
                     "command": "cosmosDB.executeMongoCommand",
                     "when": "resourceLangId==mongo"
                 },
@@ -367,7 +370,8 @@
                     "when": "resourceLangId==json"
                 }
             ],
-            "editor/title": [{
+            "editor/title": [
+                {
                     "command": "cosmosDB.update",
                     "when": "resourceFilename==cosmos-result.json",
                     "group": "navigation"
@@ -388,7 +392,8 @@
                     "group": "navigation"
                 }
             ],
-            "view/title": [{
+            "view/title": [
+                {
                     "command": "cosmosDB.refresh",
                     "when": "view == cosmosDBExplorer",
                     "group": "navigation"
@@ -409,7 +414,8 @@
                     "group": "navigation"
                 }
             ],
-            "view/item/context": [{
+            "view/item/context": [
+                {
                     "command": "cosmosDB.selectSubscriptions",
                     "when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
                     "group": "inline"
@@ -515,10 +521,6 @@
                 },
                 {
                     "command": "cosmosDB.deleteMongoDB",
-                    "when": "view == cosmosDBExplorer && viewItem == mongoDb"
-                },
-                {
-                    "command": "cosmosDB.disconnectMongoDB",
                     "when": "view == cosmosDBExplorer && viewItem == mongoDb"
                 },
                 {
@@ -678,11 +680,14 @@
                     "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
                 }
             ],
-            "explorer/context": [{
-                "command": "cosmosDB.importDocument",
-                "when": "resourceLangId == json"
-            }],
-            "commandPalette": [{
+            "explorer/context": [
+                {
+                    "command": "cosmosDB.importDocument",
+                    "when": "resourceLangId == json"
+                }
+            ],
+            "commandPalette": [
+                {
                     "command": "cosmosDB.selectSubscriptions",
                     "when": "never"
                 },
@@ -708,7 +713,8 @@
                 }
             ]
         },
-        "keybindings": [{
+        "keybindings": [
+            {
                 "command": "cosmosDB.executeMongoCommand",
                 "key": "ctrl+shift+'",
                 "mac": "cmd+shift+'",
@@ -845,25 +851,28 @@
                             }
                         }
                     },
-                    "default": [{
-                        "vertexSettings": [{
-                                "displayProperty": [
-                                    "name"
-                                ],
-                                "color": "auto",
-                                "showLabel": true
-                            },
-                            {
-                                "appliesToLabel": "person",
-                                "displayProperty": [
-                                    "fullName",
-                                    "lastName",
-                                    "firstName",
-                                    "name"
-                                ]
-                            }
-                        ]
-                    }]
+                    "default": [
+                        {
+                            "vertexSettings": [
+                                {
+                                    "displayProperty": [
+                                        "name"
+                                    ],
+                                    "color": "auto",
+                                    "showLabel": true
+                                },
+                                {
+                                    "appliesToLabel": "person",
+                                    "displayProperty": [
+                                        "fullName",
+                                        "lastName",
+                                        "firstName",
+                                        "name"
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
                 }
             }
         }

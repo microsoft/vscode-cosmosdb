@@ -129,7 +129,7 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
         const retrieved = await collectionNode.documentsTreeItem.createDocument(document);
         ids.push(retrieved.id);
     }
-    result = `Imported ${ids.length} documents`;
+    result = `Imported ${ids.length} document(s)`;
     return result;
 }
 

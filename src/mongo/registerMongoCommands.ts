@@ -13,6 +13,7 @@ import { MongoCollectionNodeEditor } from "./editors/MongoCollectionNodeEditor";
 import { MongoDBLanguageClient } from "./languageClient";
 import { executeAllCommandsFromActiveEditor, executeCommandFromActiveEditor, executeCommandFromText, getAllErrorsFromTextDocument } from "./MongoScrapbook";
 import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
+import { setConnectedNode } from "./setConnectedNode";
 import { MongoAccountTreeItem } from "./tree/MongoAccountTreeItem";
 import { MongoCollectionTreeItem } from "./tree/MongoCollectionTreeItem";
 import { MongoDatabaseTreeItem } from "./tree/MongoDatabaseTreeItem";
@@ -22,7 +23,7 @@ const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 let diagnosticsCollection: vscode.DiagnosticCollection;
 
 // tslint:disable-next-line: max-func-body-length
-export function registerMongoCommands(editorManager: CosmosEditorManager): void {
+export function registerMongoCommands(editorManager: CosmosEditorManager): MongoCodeLensProvider {
     const languageClient: MongoDBLanguageClient = new MongoDBLanguageClient();
 
     const codeLensProvider = new MongoCodeLensProvider();
@@ -125,6 +126,8 @@ export function registerMongoCommands(editorManager: CosmosEditorManager): void 
         await loadPersistedMongoDBTask;
         await executeAllCommandsFromActiveEditor(ext.connectedMongoDB, editorManager, context);
     });
+
+    return codeLensProvider;
 }
 
 async function loadPersistedMongoDB(languageClient: MongoDBLanguageClient, codeLensProvider: MongoCodeLensProvider): Promise<void> {
@@ -155,12 +158,6 @@ function launchMongoShell() {
     const terminal: vscode.Terminal = vscode.window.createTerminal('Mongo Shell');
     terminal.sendText(`mongo`);
     terminal.show();
-}
-
-function setConnectedNode(node: MongoDatabaseTreeItem | undefined, codeLensProvider: MongoCodeLensProvider) {
-    ext.connectedMongoDB = node;
-    const dbName = node && node.label;
-    codeLensProvider.setConnectedDatabase(dbName);
 }
 
 function setUpErrorReporting() {

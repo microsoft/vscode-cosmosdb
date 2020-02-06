@@ -94,7 +94,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 node = await ext.tree.showTreeItemPicker(accountContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
             }
             if (node instanceof MongoAccountTreeItem) {
-                if (node.fullId === ext.connectedMongoDB.parent.fullId) {
+                if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
                     setConnectedNode(undefined, codeLensProvider);
                     await node.refresh();
                 }

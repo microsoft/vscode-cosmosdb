@@ -129,7 +129,10 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
         const retrieved = await collectionNode.documentsTreeItem.createDocument(document);
         ids.push(retrieved.id);
     }
-    result = `Imported ${ids.length} document(s)`;
+    result = `Import into SQL successful. Inserted ${ids.length} document(s). See output for more details.`;
+    for (const id of ids) {
+        ext.outputChannel.appendLine(`Inserted document: ${id}`);
+    }
     return result;
 }
 

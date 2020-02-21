@@ -8,7 +8,7 @@ import { MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, parseError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
-import { getThemedIconPath, Links, testDb } from '../../constants';
+import { getThemeAgnosticIconPath, Links, testDb } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
@@ -41,7 +41,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemedIconPath('CosmosDBAccount.svg');
+        return getThemeAgnosticIconPath('CosmosDBAccount.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {

@@ -148,8 +148,8 @@
                 "command": "cosmosDB.attachDatabaseAccount",
                 "title": "Attach Database Account...",
                 "icon": {
-                    "light": "resources/icons/light/Connect.svg",
-                    "dark": "resources/icons/dark/Connect.svg"
+                    "light": "resources/icons/light/plug.svg",
+                    "dark": "resources/icons/dark/plug.svg"
                 }
             },
             {
@@ -286,8 +286,8 @@
                 "command": "cosmosDB.newMongoScrapbook",
                 "title": "New Mongo Scrapbook",
                 "icon": {
-                    "light": "resources/icons/light/addFile.svg",
-                    "dark": "resources/icons/dark/addFile.svg"
+                    "light": "resources/icons/light/new-file.svg",
+                    "dark": "resources/icons/dark/new-file.svg"
                 }
             },
             {

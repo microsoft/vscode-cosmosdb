@@ -93,8 +93,6 @@ async function executeCommands(activeEditor: vscode.TextEditor, database: MongoD
 
 async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDatabaseTreeItem, editorManager: CosmosEditorManager, context: IActionContext, command: MongoCommand): Promise<void> {
     if (command) {
-        ext.outputChannel.appendLine(`Executing command: ${command.text}`);
-
         try {
             context.telemetry.properties.command = command.name;
             context.telemetry.properties.argsCount = String(command.arguments ? command.arguments.length : 0);

@@ -28,9 +28,9 @@ import { setConnectedNode } from './mongo/setConnectedNode';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
-import { PostgreSQLTableNodeEditor } from './postgres/editors/PostgreSQLTableNodeEditor';
+// import { PostgreSQLTableNodeEditor } from './postgres/editors/PostgreSQLTableNodeEditor';
 import { PostgreSQLAccountTreeItem } from './postgres/tree/PostgreSQLAccountTreeItem';
-import { PostgreSQLTableTreeItem } from './postgres/tree/PostgreSQLTableTreeItem';
+// import { PostgreSQLTableTreeItem } from './postgres/tree/PostgreSQLTableTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
@@ -128,7 +128,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             await copyConnectionString(node);
             vscode.window.showInformationMessage(message);
         });
-        registerCommand('cosmosDB.openDocument', async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem | PostgreSQLTableTreeItem) => {
+        registerCommand('cosmosDB.openDocument', async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
             if (!node) {
                 node = await ext.tree.showTreeItemPicker([MongoDocumentTreeItem.contextValue, DocDBDocumentTreeItem.contextValue], actionContext);
             }
@@ -136,8 +136,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             const editorTabName = node.label + "-cosmos-document.json";
             if (node instanceof MongoDocumentTreeItem) {
                 await editorManager.showDocument(actionContext, new MongoDocumentNodeEditor(node), editorTabName);
-            } else if (node instanceof PostgreSQLTableTreeItem) {
-                await editorManager.showDocument(actionContext, new PostgreSQLTableNodeEditor(node), editorTabName);
+                // } else if (node instanceof PostgreSQLTableTreeItem) {
+                //     await editorManager.showDocument(actionContext, new PostgreSQLTableNodeEditor(node), editorTabName);
             } else {
                 await editorManager.showDocument(actionContext, new DocDBDocumentNodeEditor(node), editorTabName);
             }

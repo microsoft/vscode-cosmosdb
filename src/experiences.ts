@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
-import { Server } from 'azure-arm-postgresql/lib/models';
 import { IAzureQuickPickItem } from 'vscode-azureextensionui';
 
 export enum API {

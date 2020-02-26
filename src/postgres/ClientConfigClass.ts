@@ -13,13 +13,29 @@ export class ClientConfigClass implements ClientConfig {
     public user: string;
     public ssl: boolean;
 
-    constructor(config) {
-        this.database = config.database;
-        this.host = config.host;
-        this.password = config.password;
-        this.port = config.port;
+    constructor(host) {
+        this.host = host;
+        this.port = 5432;
+    }
+    public setDatabase(databaseName) {
+        this.database = databaseName;
+    }
+    public setCredentials(config) {
         this.user = config.user;
-        this.ssl = config.ssl;
+        this.password = config.password;
+    }
+    public setSSLConfig(ssl) {
+        this.ssl = ssl;
+    }
+    public getConfig(): Object {
+        return {
+            database: this.database,
+            host: this.host,
+            password: this.password,
+            port: this.port,
+            user: this.user,
+            ssl: this.ssl
+        };
     }
 
 }

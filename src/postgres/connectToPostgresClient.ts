@@ -8,7 +8,6 @@ import { Client } from 'pg';
 export async function connectToPostgresClient(clientConfig): Promise<Client> {
 
     const client = new Client(clientConfig);
-    console.log(clientConfig.database);
     try {
         return client;
     } catch (err) {

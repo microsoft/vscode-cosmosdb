@@ -10,6 +10,7 @@ import { AzExtTreeDataProvider, AzExtTreeItem, AzureTreeItem, AzureUserInput, ca
 import { AzureExtensionApi, AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
+import { revealTreeItem } from './commands/api/revealTreeItem';
 import { importDocuments } from './commands/importDocuments';
 import { doubleClickDebounceDelay } from './constants';
 import { CosmosEditorManager } from './CosmosEditorManager';
@@ -165,7 +166,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     return createApiProvider([<AzureExtensionApi>{
         findTreeItem,
         pickTreeItem,
-        apiVersion: '1.0.0'
+        revealTreeItem,
+        apiVersion: '1.1.0'
     }]);
 }
 

@@ -21,6 +21,11 @@ export interface CosmosDBExtensionApi {
      */
     pickTreeItem(options: PickTreeItemOptions & { resourceType: 'DatabaseAccount' }): Promise<DatabaseAccountTreeItem | undefined>;
     pickTreeItem(options: PickTreeItemOptions & { resourceType: 'Database' }): Promise<DatabaseTreeItem | undefined>;
+
+    /**
+     * Simpler version of `CosmosDBTreeItem.reveal` based on the `resourceId` instead of querying based on a connection string
+     */
+    revealTreeItem(resourceId: string): Promise<void>;
 }
 
 export interface CosmosDBTreeItem {

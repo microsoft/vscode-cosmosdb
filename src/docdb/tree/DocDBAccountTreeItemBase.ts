@@ -8,7 +8,7 @@ import { DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'docume
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
-import { getThemedIconPath } from '../../constants';
+import { getThemeAgnosticIconPath } from '../../constants';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { getDocumentClient } from '../getDocumentClient';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -47,7 +47,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemedIconPath('CosmosDBAccount.svg');
+        return getThemeAgnosticIconPath('CosmosDBAccount.svg');
     }
 
     public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<DatabaseMeta>> {

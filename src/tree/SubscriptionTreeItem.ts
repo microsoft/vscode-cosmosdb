@@ -6,7 +6,7 @@
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from 'azure-arm-cosmosdb/lib/models';
 import { PostgreSQLManagementClient } from 'azure-arm-postgresql';
-import { ServerListResult } from 'azure-arm-postgresql/lib/models';
+import { Database, ServerListResult } from 'azure-arm-postgresql/lib/models';
 import { Server } from 'azure-arm-postgresql/lib/models';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
@@ -42,7 +42,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         treeItemPostgres = await this.createTreeItemsWithErrorHandling(
             accountsPostgres,
             'invalidPostgreSQLAccount',
-            async (server: Server) => await this.initChild(clientPostgres, server, databasesPostgres),
+            async (server: Server) => await this.initChild(clientPostgres, null, server, databasesPostgres),
             (server: Server) => server.name
         );
 
@@ -51,7 +51,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         treeItem = await this.createTreeItemsWithErrorHandling(
             accounts,
             'invalidCosmosDBAccount',
-            async (db: DatabaseAccount) => await this.initChild(client, db),
+            async (db: DatabaseAccount) => await this.initChild(client, db, null),
             (db: DatabaseAccount) => db.name
         );
 
@@ -86,21 +86,27 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         await wizard.execute();
         // don't wait
         vscode.window.showInformationMessage(`Successfully created account "${wizardContext.accountName}".`);
-        return await this.initChild(client, wizardContext.databaseAccount);
+        return await this.initChild(client, wizardContext.databaseAccount, null);
     }
 
     public isAncestorOfImpl(contextValue: string | RegExp): boolean {
         return typeof contextValue !== 'string' || !/attached/i.test(contextValue);
     }
 
-    private async initChild(client: CosmosDBManagementClient | PostgreSQLManagementClient, databaseAccount?: any, databasesPostgres?: any): Promise<AzureTreeItem> {
+    private async initChild(client: CosmosDBManagementClient | PostgreSQLManagementClient, databaseAccount: DatabaseAccount, server: Server, databasesPostgres?: Database[]): Promise<AzureTreeItem> {
         let experience: Experience | undefined;
         let resourceGroup: string;
         let accountKindLabel;
         let label: string;
         const isEmulator: boolean = false;
 
-        if (client instanceof CosmosDBManagementClient && databaseAccount) {
+        if (client instanceof PostgreSQLManagementClient) {
+            experience = tryGetExperience(server);
+            resourceGroup = azureUtils.getResourceGroupFromId(server.id);
+            accountKindLabel = getExperienceLabel(server);
+            label = server.name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
+            return new PostgreSQLAccountTreeItem(this, server.id, label, isEmulator, server, databasesPostgres);
+        } else {
             experience = tryGetExperience(databaseAccount);
             resourceGroup = azureUtils.getResourceGroupFromId(databaseAccount.id);
             accountKindLabel = getExperienceLabel(databaseAccount);
@@ -125,12 +131,6 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
                 }
             }
-        } else if (client instanceof PostgreSQLManagementClient) {
-            experience = tryGetExperience(databaseAccount);
-            resourceGroup = azureUtils.getResourceGroupFromId(databaseAccount.id);
-            accountKindLabel = getExperienceLabel(databaseAccount);
-            label = databaseAccount.name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
-            return new PostgreSQLAccountTreeItem(this, databaseAccount.id, label, isEmulator, databaseAccount, databasesPostgres);
         }
     }
 }

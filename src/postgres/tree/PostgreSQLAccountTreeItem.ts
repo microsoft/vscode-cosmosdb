@@ -6,7 +6,7 @@
 import { Database, Server } from 'azure-arm-postgresql/lib/models';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, AzureTreeItem, parseError } from 'vscode-azureextensionui';
-import { getThemedIconPath, Links } from '../../constants';
+import { getThemeAgnosticIconPath, Links } from '../../constants';
 import { ClientConfigClass } from '../ClientConfigClass';
 import { IPostgreSQLTreeRoot } from './IPostgreSQLTreeRoot';
 import { PostgreSQLDatabaseTreeItem } from './PostgreSQLDatabaseTreeItem';
@@ -40,7 +40,7 @@ export class PostgreSQLAccountTreeItem extends AzureParentTreeItem<IPostgreSQLTr
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemedIconPath('CosmosDBAccount.svg');
+        return getThemeAgnosticIconPath('CosmosDBAccount.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {

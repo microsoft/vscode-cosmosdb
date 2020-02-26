@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
-import { Server } from 'azure-arm-postgresql/lib/models';
 import { IAzureQuickPickItem } from 'vscode-azureextensionui';
 
 export enum API {
@@ -31,45 +29,43 @@ export function getExperienceFromApi(api: API): Experience {
     return info;
 }
 
-export function getExperienceLabel(databaseAccount?: DatabaseAccount, server?: Server): string {
-    let experience: Experience | undefined;
-    let defaultExperience: string;
+export function getExperienceLabel(account?): string {
+    let experience: Experience | undefined = tryGetExperience(account);
+    experience = tryGetExperience(account);
+
+    if (experience) {
+        return experience.shortName;
+    }
+
+    const defaultExperience: string = <API>(account && account.tags && account.tags.defaultExperience);
     let firstCapability;
     let firstCapabilityName;
-    if (databaseAccount) {
-        experience = tryGetExperience(databaseAccount);
-        defaultExperience = <API>(databaseAccount && databaseAccount.tags && databaseAccount.tags.defaultExperience);
-        if (experience) {
-            return experience.shortName;
-        }
-        firstCapability = databaseAccount.capabilities && databaseAccount.capabilities[0];
-        firstCapabilityName = firstCapability && firstCapability.name.replace(/^Enable/, '');
 
-        return defaultExperience || firstCapabilityName || databaseAccount.kind;
-    } else {
-        experience = tryGetExperience(server);
-        if (experience) {
-            return experience.shortName;
-        }
-        defaultExperience = <API>(server && server.tags && server.tags.defaultExperience);
-        return defaultExperience;
+    // Must be some new kind of account that we aren't aware of.  Try to get a decent label
+    if (account.type !== "Microsoft.DBforPostgreSQL/servers") {
+
+        firstCapability = account.capabilities && account.capabilities[0];
+        firstCapabilityName = firstCapability && firstCapability.name.replace(/^Enable/, '');
     }
+
+    return defaultExperience || firstCapabilityName || account.kind;
 }
 
-export function tryGetExperience(databaseAccount?: DatabaseAccount, server?: Server): Experience | undefined {
+export function tryGetExperience(account?): Experience | undefined {
 
-    if (server) {
+    if (account && account.type === "Microsoft.DBforPostgreSQL/servers") {
+
         return PostgresExperience;
-    } else if (databaseAccount) {
+    } else if (account) {
 
         // defaultExperience in the account doesn't really mean anything, we can't depend on its value for determining account type
-        if (databaseAccount.kind === DBAccountKind.MongoDB) {
+        if (account.kind === DBAccountKind.MongoDB) {
             return MongoExperience;
-        } else if (databaseAccount.capabilities.find(cap => cap.name === 'EnableGremlin')) {
+        } else if (account.capabilities.find(cap => cap.name === 'EnableGremlin')) {
             return GremlinExperience;
-        } else if (databaseAccount.capabilities.find(cap => cap.name === 'EnableTable')) {
+        } else if (account.capabilities.find(cap => cap.name === 'EnableTable')) {
             return TableExperience;
-        } else if (databaseAccount.capabilities.length === 0) {
+        } else if (account.capabilities.length === 0) {
             return CoreExperience;
         }
     }

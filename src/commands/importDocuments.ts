@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as assert from 'assert';
 import { NewDocument } from 'documentdb';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
@@ -45,9 +44,7 @@ export async function importDocuments(actionContext: IActionContext, uris: vscod
             const documents = await parseDocuments(uris);
             progress.report({ increment: 30, message: "Parsed documents. Importing" });
             if (collectionNode instanceof MongoCollectionTreeItem) {
-                const { deferToShell, result: tryExecuteResult } = await collectionNode.tryExecuteCommandDirectly({ name: 'insertMany', arguments: [JSON.stringify(documents)] });
-                assert(!deferToShell, "This command should not need to be sent to the shell");
-                result = processMongoResults(tryExecuteResult);
+                result = await insertDocumentsIntoMongo(collectionNode, documents);
             } else {
                 result = await insertDocumentsIntoDocdb(collectionNode, documents, uris);
             }
@@ -129,14 +126,17 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
         const retrieved = await collectionNode.documentsTreeItem.createDocument(document);
         ids.push(retrieved.id);
     }
-    result = `Imported ${ids.length} documents`;
+    result = `Import into SQL successful. Inserted ${ids.length} document(s). See output for more details.`;
+    for (const id of ids) {
+        ext.outputChannel.appendLine(`Inserted document: ${id}`);
+    }
     return result;
 }
 
 // tslint:disable-next-line:no-any
-function processMongoResults(result: string): string {
+async function insertDocumentsIntoMongo(node: MongoCollectionTreeItem, documents: any[]): Promise<string> {
     let output = "";
-    const parsed = JSON.parse(result);
+    const parsed = await node.collection.insertMany(documents);
     if (parsed.result && parsed.result.ok) {
         output = `Import into mongo successful. Inserted ${parsed.insertedCount} document(s). See output for more details.`;
         for (const inserted of Object.values(parsed.insertedIds)) {

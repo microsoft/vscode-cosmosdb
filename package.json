@@ -148,8 +148,8 @@
                 "command": "cosmosDB.attachDatabaseAccount",
                 "title": "Attach Database Account...",
                 "icon": {
-                    "light": "resources/icons/light/Connect.svg",
-                    "dark": "resources/icons/dark/Connect.svg"
+                    "light": "resources/icons/light/plug.svg",
+                    "dark": "resources/icons/dark/plug.svg"
                 }
             },
             {
@@ -286,8 +286,8 @@
                 "command": "cosmosDB.newMongoScrapbook",
                 "title": "New Mongo Scrapbook",
                 "icon": {
-                    "light": "resources/icons/light/addFile.svg",
-                    "dark": "resources/icons/dark/addFile.svg"
+                    "light": "resources/icons/light/new-file.svg",
+                    "dark": "resources/icons/dark/new-file.svg"
                 }
             },
             {
@@ -943,7 +943,7 @@
         "socket.io": "^1.7.3",
         "socket.io-client": "^1.7.3",
         "underscore": "^1.8.3",
-        "vscode-azureextensionui": "0.28.2",
+        "vscode-azureextensionui": "^0.29.9",
         "vscode-json-languageservice": "^3.0.8",
         "vscode-languageclient": "^4.4.0",
         "vscode-languageserver": "^4.4.0",

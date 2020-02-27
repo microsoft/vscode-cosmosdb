@@ -10,6 +10,7 @@ import { AzExtTreeDataProvider, AzExtTreeItem, AzureTreeItem, AzureUserInput, ca
 import { AzureExtensionApi, AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
+import { revealTreeItem } from './commands/api/revealTreeItem';
 import { importDocuments } from './commands/importDocuments';
 import { doubleClickDebounceDelay } from './constants';
 import { CosmosEditorManager } from './CosmosEditorManager';
@@ -24,6 +25,7 @@ import { registerGraphCommands } from './graph/registerGraphCommands';
 import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
 import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
 import { registerMongoCommands } from './mongo/registerMongoCommands';
+import { setConnectedNode } from './mongo/setConnectedNode';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
@@ -58,9 +60,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
         registerDocDBCommands(editorManager);
         registerGraphCommands();
-        registerMongoCommands(editorManager);
+        const codeLensProvider = registerMongoCommands(editorManager);
 
-        // Common commands
         const accountContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
 
         registerCommand('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
@@ -93,7 +94,12 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             if (!node) {
                 node = await ext.tree.showTreeItemPicker(accountContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
             }
-
+            if (node instanceof MongoAccountTreeItem) {
+                if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
+                    setConnectedNode(undefined, codeLensProvider);
+                    await node.refresh();
+                }
+            }
             await ext.attachedAccountsNode.detach(node);
             await ext.tree.refresh(ext.attachedAccountsNode);
         });
@@ -104,7 +110,6 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 await importDocuments(actionContext, undefined, selectedNode);
             }
         });
-
         registerCommand('cosmosDB.openInPortal', async (actionContext: IActionContext, node?: AzureTreeItem) => {
             if (!node) {
                 node = await ext.tree.showTreeItemPicker(accountContextValues, actionContext);
@@ -156,7 +161,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     return createApiProvider([<AzureExtensionApi>{
         findTreeItem,
         pickTreeItem,
-        apiVersion: '1.0.0'
+        revealTreeItem,
+        apiVersion: '1.1.0'
     }]);
 }
 

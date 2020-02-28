@@ -6,7 +6,7 @@
 import { Database, Server } from 'azure-arm-postgresql/lib/models';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, AzureTreeItem, parseError } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath, getThemedIconPath, Links } from '../../constants';
+import { getThemeAgnosticIconPath, Links } from '../../constants';
 import { ClientConfigClass } from '../ClientConfigClass';
 import { IPostgreSQLTreeRoot } from './IPostgreSQLTreeRoot';
 import { PostgreSQLDatabaseTreeItem } from './PostgreSQLDatabaseTreeItem';

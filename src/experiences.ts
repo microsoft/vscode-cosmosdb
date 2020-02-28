@@ -29,6 +29,7 @@ export function getExperienceFromApi(api: API): Experience {
     return info;
 }
 
+// tslint:disable-next-line:no-any
 export function getExperienceLabel(account?: any): string {
     let experience: Experience | undefined = tryGetExperience(account);
     experience = tryGetExperience(account);
@@ -51,6 +52,7 @@ export function getExperienceLabel(account?: any): string {
     return defaultExperience || firstCapabilityName || account.kind;
 }
 
+// tslint:disable-next-line:no-any
 export function tryGetExperience(account?: any): Experience | undefined {
 
     if (account && account.type === "Microsoft.DBforPostgreSQL/servers") {

@@ -940,6 +940,7 @@
     },
     "dependencies": {
         "antlr4ts": "^0.4.1-alpha.0",
+        "assert-plus": "^1.0.0",
         "azure-arm-cosmosdb": "^1.1.2",
         "azure-arm-postgresql": "^4.3.0",
         "azure-arm-resource": "^3.0.0-preview",
@@ -960,6 +961,7 @@
         "pg-connection-string": "^2.1.0",
         "pg-pool": "^2.0.10",
         "pg-structure": "^5.10.7",
+        "safer-buffer": "^2.1.2",
         "socket.io": "^1.7.3",
         "socket.io-client": "^1.7.3",
         "underscore": "^1.8.3",

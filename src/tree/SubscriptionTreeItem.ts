@@ -93,6 +93,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         return typeof contextValue !== 'string' || !/attached/i.test(contextValue);
     }
 
+    // tslint:disable-next-line:no-any
     private async initChild(client: CosmosDBManagementClient | PostgreSQLManagementClient, databaseAccount?: any, databasesPostgres?: any): Promise<AzureTreeItem> {
         let experience: Experience | undefined;
         let resourceGroup: string;
@@ -104,7 +105,8 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             experience = tryGetExperience(databaseAccount);
             resourceGroup = azureUtils.getResourceGroupFromId(databaseAccount.id);
             accountKindLabel = getExperienceLabel(databaseAccount);
-            label = databaseAccount.name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
+            const databaseName: string = databaseAccount.name;
+            label = databaseName + (accountKindLabel ? ` (${accountKindLabel})` : ``);
             if (experience && experience.api === "MongoDB") {
                 const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, databaseAccount.name);
                 // Use the default connection string
@@ -125,11 +127,12 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
                 }
             }
-        } else if (client instanceof PostgreSQLManagementClient) {
+        } else {
             experience = tryGetExperience(databaseAccount);
             resourceGroup = azureUtils.getResourceGroupFromId(databaseAccount.id);
             accountKindLabel = getExperienceLabel(databaseAccount);
-            label = databaseAccount.name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
+            const databaseName: string = databaseAccount.name;
+            label = databaseName + (accountKindLabel ? ` (${accountKindLabel})` : ``);
             return new PostgreSQLAccountTreeItem(this, databaseAccount.id, label, isEmulator, databaseAccount, databasesPostgres);
         }
     }

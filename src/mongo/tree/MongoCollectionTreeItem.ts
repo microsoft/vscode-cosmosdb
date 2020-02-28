@@ -102,7 +102,8 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDocumentTreeItem> {
         context.showCreatingTreeItem("");
-        const result: InsertOneWriteOpResult = await this.collection.insertOne({});
+        // tslint:disable-next-line:no-any
+        const result: InsertOneWriteOpResult<any> = await this.collection.insertOne({});
         const newDocument: IMongoDocument = await this.collection.findOne({ _id: result.insertedId });
         return new MongoDocumentTreeItem(this, newDocument);
     }
@@ -189,7 +190,8 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 
     // tslint:disable-next-line:no-any
     private async insertOne(document: Object, options?: any): Promise<string> {
-        const insertOneResult: InsertOneWriteOpResult = await this.collection.insertOne(document, { w: options && options.writeConcern });
+        // tslint:disable-next-line:no-any
+        const insertOneResult: InsertOneWriteOpResult<any> = await this.collection.insertOne(document, { w: options && options.writeConcern });
         return this.stringify(insertOneResult);
     }
 
@@ -206,7 +208,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
             }
         }
 
-        const insertManyResult: InsertWriteOpResult = await this.collection.insertMany(documents, insertManyOptions);
+        const insertManyResult: InsertWriteOpResult<any> = await this.collection.insertMany(documents, insertManyOptions);
         return this.stringify(insertManyResult);
     }
 

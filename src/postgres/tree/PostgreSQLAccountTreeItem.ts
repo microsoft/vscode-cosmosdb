@@ -10,8 +10,6 @@ import { getThemeAgnosticIconPath, Links } from '../../constants';
 import { ClientConfigClass } from '../ClientConfigClass';
 import { IPostgreSQLTreeRoot } from './IPostgreSQLTreeRoot';
 import { PostgreSQLDatabaseTreeItem } from './PostgreSQLDatabaseTreeItem';
-// import { PostgreSQLSchemaTreeItem } from './PostgreSQLSchemaTreeItem';
-// import { PostgreSQLTableTreeItem } from './PostgreSQLTableTreeItem';
 
 export class PostgreSQLAccountTreeItem extends AzureParentTreeItem<IPostgreSQLTreeRoot> {
     public static contextValue: string = "cosmosDBPostgresServer";

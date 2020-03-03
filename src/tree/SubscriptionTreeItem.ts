@@ -93,8 +93,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         return typeof contextValue !== 'string' || !/attached/i.test(contextValue);
     }
 
-    // tslint:disable-next-line:no-any
-    private async initChild(client: CosmosDBManagementClient | PostgreSQLManagementClient, databaseAccount?: any, databasesPostgres?: any): Promise<AzureTreeItem> {
+    private async initChild(client: CosmosDBManagementClient | PostgreSQLManagementClient, databaseAccount?, databasesPostgres?): Promise<AzureTreeItem> {
         let experience: Experience | undefined;
         let resourceGroup: string;
         let accountKindLabel;
@@ -105,8 +104,8 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             experience = tryGetExperience(databaseAccount);
             resourceGroup = azureUtils.getResourceGroupFromId(databaseAccount.id);
             accountKindLabel = getExperienceLabel(databaseAccount);
-            const databaseName: string = databaseAccount.name;
-            label = databaseName + (accountKindLabel ? ` (${accountKindLabel})` : ``);
+            const dbName: string = databaseAccount.name;
+            label = dbName + (accountKindLabel ? ` (${accountKindLabel})` : ``);
             if (experience && experience.api === "MongoDB") {
                 const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, databaseAccount.name);
                 // Use the default connection string

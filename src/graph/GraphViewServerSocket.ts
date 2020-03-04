@@ -5,26 +5,29 @@
 
 import * as io from 'socket.io';
 
+// grandfathered in
+// tslint:disable:typedef
+
 /**
  * Wraps SocketIO.Socket to provide type safety
  */
 export class GraphViewServerSocket {
-  constructor(private _socket: io.Socket) { }
+    constructor(private _socket: io.Socket) { }
 
-  public onClientMessage(event: ClientMessage, listener: (...args) => unknown): void {
-    this._socket.on(event, listener);
-  }
+    public onClientMessage(event: ClientMessage, listener: (...args) => unknown): void {
+        this._socket.on(event, listener);
+    }
 
-  // tslint:disable-next-line:no-any
-  public emitToClient(message: ServerMessage, ...args: any[]): boolean {
-    // tslint:disable-next-line:no-suspicious-comment
-    // TODO: use post message
+    // tslint:disable-next-line:no-any
+    public emitToClient(message: ServerMessage, ...args: any[]): boolean {
+        // tslint:disable-next-line:no-suspicious-comment
+        // TODO: use post message
 
-    // console.log("Message to client: " + message + " " + args.join(", "));
-    return this._socket.emit(message, ...args);
-  }
+        // console.log("Message to client: " + message + " " + args.join(", "));
+        return this._socket.emit(message, ...args);
+    }
 
-  public disconnect(): void {
-    this._socket.disconnect();
-  }
+    public disconnect(): void {
+        this._socket.disconnect();
+    }
 }

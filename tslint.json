@@ -71,13 +71,13 @@
             }
         ],
         "typedef": [
-            false, // todo
+            true,
             "call-signature",
             // "arrow-call-signature",
             "parameter",
             // "arrow-parameter",
             "property-declaration",
-            "variable-declaration",
+            // todo "variable-declaration",
             "member-variable-declaration"
         ],
         "prefer-template": [

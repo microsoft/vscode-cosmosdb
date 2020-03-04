@@ -41,7 +41,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     public readonly label: string = 'Attached Database Accounts';
     public childTypeLabel: string = 'Account';
 
-    private readonly _serviceName = "ms-azuretools.vscode-cosmosdb.connectionStrings";
+    private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.connectionStrings";
     private _attachedAccounts: AzureTreeItem[] | undefined;
     private _keytar: KeyTar;
 
@@ -319,7 +319,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         return treeItem;
     }
 
-    private async persistIds(attachedAccounts: AzureTreeItem[]) {
+    private async persistIds(attachedAccounts: AzureTreeItem[]): Promise<void> {
         const value: IPersistedAccount[] = attachedAccounts.map((node: AzureTreeItem) => {
             let api: API;
             let isEmulator: boolean;

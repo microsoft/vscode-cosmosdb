@@ -48,7 +48,7 @@ export class MongoDBLanguageClient {
         ext.context.subscriptions.push(disposable);
     }
 
-    public async connect(connectionString: string, databaseName: string) {
+    public async connect(connectionString: string, databaseName: string): Promise<void> {
         await this.client.sendRequest('connect', <IConnectionParams>{ connectionString: connectionString, databaseName: databaseName, extensionUserAgent: appendExtensionUserAgent() });
     }
 

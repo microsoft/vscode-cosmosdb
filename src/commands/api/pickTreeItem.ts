@@ -26,7 +26,7 @@ import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 const databaseContextValues = [MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue, GraphDatabaseTreeItem.contextValue];
 const accountContextValues = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
 
-function getDatabaseContextValue(apiType: CosmosDBApiType) {
+function getDatabaseContextValue(apiType: CosmosDBApiType): string {
     switch (apiType) {
         case 'Mongo':
             return MongoDatabaseTreeItem.contextValue;
@@ -39,7 +39,7 @@ function getDatabaseContextValue(apiType: CosmosDBApiType) {
     }
 }
 
-function getAccountContextValue(apiType: CosmosDBApiType) {
+function getAccountContextValue(apiType: CosmosDBApiType): string {
     switch (apiType) {
         case 'Mongo':
             return MongoAccountTreeItem.contextValue;

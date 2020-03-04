@@ -154,13 +154,13 @@ async function loadPersistedMongoDB(languageClient: MongoDBLanguageClient, codeL
     });
 }
 
-function launchMongoShell() {
+function launchMongoShell(): void {
     const terminal: vscode.Terminal = vscode.window.createTerminal('Mongo Shell');
     terminal.sendText(`mongo`);
     terminal.show();
 }
 
-function setUpErrorReporting() {
+function setUpErrorReporting(): void {
     // Update errors immediately in case a scrapbook is already open
     // tslint:disable-next-line: no-floating-promises
     callWithTelemetryAndErrorHandling(

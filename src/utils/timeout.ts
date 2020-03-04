@@ -8,7 +8,7 @@ const timedOutMessage = "Execution timed out";
 /**
  * Returns the result of awaiting a specified action. Rejects if the action throws. Returns timeoutValue if a time-out occurs.
  */
-export async function valueOnTimeout<T>(timeoutMs: number, timeoutValue: T, action: () => Promise<T> | T) {
+export async function valueOnTimeout<T>(timeoutMs: number, timeoutValue: T, action: () => Promise<T> | T): Promise<T> {
     try {
         return await rejectOnTimeout(timeoutMs, action);
     } catch (err) {
@@ -24,7 +24,7 @@ export async function valueOnTimeout<T>(timeoutMs: number, timeoutValue: T, acti
 /**
  * Returns the result of awaiting a specified action. Rejects if the action throws or if the time-out occurs.
  */
-export async function rejectOnTimeout<T>(timeoutMs: number, action: () => Promise<T> | T, callerTimeOutMessage?: string) {
+export async function rejectOnTimeout<T>(timeoutMs: number, action: () => Promise<T> | T, callerTimeOutMessage?: string): Promise<T> {
     return await new Promise<T>(async (resolve, reject) => {
         let timer: NodeJS.Timer | undefined = setTimeout(
             () => {

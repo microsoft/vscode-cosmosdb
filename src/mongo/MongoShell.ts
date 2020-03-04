@@ -143,7 +143,7 @@ export class MongoShell extends vscode.Disposable {
     }
 }
 
-function startScriptTimeout(timeoutSeconds: number | 0, reject: (unknown) => void): void {
+function startScriptTimeout(timeoutSeconds: number | 0, reject: (err: unknown) => void): void {
     if (timeoutSeconds > 0) {
         setTimeout(
             () => {

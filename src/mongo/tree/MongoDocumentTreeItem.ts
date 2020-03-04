@@ -27,7 +27,7 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
     public document: IMongoDocument;
     public readonly parent: MongoCollectionTreeItem;
 
-    private _label;
+    private _label: string;
 
     constructor(parent: MongoCollectionTreeItem, document: IMongoDocument) {
         super(parent);

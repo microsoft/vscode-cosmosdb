@@ -77,7 +77,7 @@ export class LanguageService {
         return mongoScriptDocument.provideCompletionItemsAt(positionParams.position);
     }
 
-    public resetSchema(uri: string) {
+    public resetSchema(uri: string): void {
         this.jsonLanguageService.resetSchema(uri);
     }
 

@@ -129,7 +129,7 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
     }
 }
 
-async function refreshTreeAfterCommand(database: MongoDatabaseTreeItem, command: MongoCommand, context: IActionContext) {
+async function refreshTreeAfterCommand(database: MongoDatabaseTreeItem, command: MongoCommand, context: IActionContext): Promise<void> {
     if (command.name === 'drop') {
         await database.refresh();
     } else if (command.collection && /^(insert|update|delete|replace|remove|write|bulkWrite)/i.test(command.name)) {
@@ -322,6 +322,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         }
     }
 
+    // grandfathered in
+    // tslint:disable-next-line: typedef
     private arrayLiteralContextToObject(child: mongoParser.ArrayLiteralContext) {
         const elementList = findType(child.children, mongoParser.ElementListContext);
         if (elementList) {
@@ -455,7 +457,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         return pattern.replace(/\\([0-9a-z.*])/i, '\\\\$1');
     }
 
-    private deduplicateEscapesForRegex(argAsString: string) {
+    private deduplicateEscapesForRegex(argAsString: string): string {
         const removeDuplicatedBackslash = /\\{4}([0-9a-z.*])/gi;
         /*
         We remove duplicate backslashes due the behavior of '\b' - \b in a regex denotes word boundary, while \b in a string denotes backspace.

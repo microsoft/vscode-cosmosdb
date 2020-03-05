@@ -6,7 +6,7 @@
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
 import { DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { rejectOnTimeout } from '../../utils/timeout';
@@ -80,7 +80,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         throw new UserCancelledError();
     }
 
-    public async loadMoreChildrenImpl(clearCache: boolean) {
+    public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (this._root.isEmulator) {
             const unableToReachEmulatorMessage: string = "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.";
             return await rejectOnTimeout(2000, () => super.loadMoreChildrenImpl(clearCache), unableToReachEmulatorMessage);

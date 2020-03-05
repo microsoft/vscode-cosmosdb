@@ -105,7 +105,7 @@ export class SchemaService {
         });
     }
 
-    private getMongoDocumentType(document: any) {
+    private getMongoDocumentType(document: any): string {
         return Array.isArray(document) ? 'array' : (document === null ? 'null' : typeof document);
     }
 

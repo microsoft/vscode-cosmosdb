@@ -8,7 +8,7 @@ import { callWithTelemetryAndErrorHandling, IActionContext } from "vscode-azuree
 import { getAllCommandsFromTextDocument } from "../MongoScrapbook";
 
 export class MongoCodeLensProvider implements vscode.CodeLensProvider {
-    private _onDidChangeEmitter = new vscode.EventEmitter<void>();
+    private _onDidChangeEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     private _connectedDatabase: string;
     private _connectedDatabaseInitialized: boolean;
 
@@ -16,7 +16,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
         return this._onDidChangeEmitter.event;
     }
 
-    public setConnectedDatabase(database: string | undefined) {
+    public setConnectedDatabase(database: string | undefined): void {
         this._connectedDatabase = database;
         this._connectedDatabaseInitialized = true;
         this._onDidChangeEmitter.fire();

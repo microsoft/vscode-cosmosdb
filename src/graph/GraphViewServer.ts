@@ -15,6 +15,9 @@ import { GraphConfiguration } from './GraphConfiguration';
 import { GraphViewServerSocket } from "./GraphViewServerSocket";
 import { IGremlinEndpoint } from "./gremlinEndpoints";
 
+// grandfathered in
+// tslint:disable:typedef
+
 class GremlinParseError extends Error {
     constructor(err: Error) {
         super(err.message);

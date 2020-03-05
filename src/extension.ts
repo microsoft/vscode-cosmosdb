@@ -166,11 +166,11 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     }]);
 }
 
-async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase) {
+async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase): Promise<void> {
     await vscode.env.clipboard.writeText(node.connectionString);
 }
 
 // this method is called when your extension is deactivated
-export function deactivateInternal() {
+export function deactivateInternal(): void {
     // NOOP
 }

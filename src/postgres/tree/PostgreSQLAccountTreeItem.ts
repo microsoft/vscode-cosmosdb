@@ -23,7 +23,7 @@ export class PostgreSQLAccountTreeItem extends AzureParentTreeItem<IPostgreSQLTr
 
     private _root: IPostgreSQLTreeRoot;
 
-    constructor(parent: AzureParentTreeItem, id: string, label: string, isEmulator: boolean, readonly databaseAccount?: Server, readonly databases?: Database[], connectionString?: string) {
+    constructor(parent: AzureParentTreeItem, id: string, label: string, isEmulator: boolean, readonly account?: Server, readonly databases?: Database[], connectionString?: string) {
         super(parent);
         this.id = id;
         this.label = label;
@@ -31,7 +31,7 @@ export class PostgreSQLAccountTreeItem extends AzureParentTreeItem<IPostgreSQLTr
             this.connectionString = connectionString;
         }
         this._root = Object.assign({}, parent.root, { isEmulator });
-        this.host = databaseAccount.fullyQualifiedDomainName;
+        this.host = account.fullyQualifiedDomainName;
     }
 
     // overrides ISubscriptionContext with an object that also has Mongo info

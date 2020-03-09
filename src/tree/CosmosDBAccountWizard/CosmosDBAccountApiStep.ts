@@ -4,13 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep, IAzureQuickPickItem } from 'vscode-azureextensionui';
-import { Experience, getExperienceQuickPicks } from '../../experiences';
+import { Experience } from '../../experience';
+import { getExperienceQuickPicks_cosmosdb } from '../../experienceCosmosDB';
 import { ext } from '../../extensionVariables';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountApiStep extends AzureWizardPromptStep<ICosmosDBWizardContext> {
     public async prompt(wizardContext: ICosmosDBWizardContext): Promise<void> {
-        const picks: IAzureQuickPickItem<Experience>[] = getExperienceQuickPicks();
+        const picks: IAzureQuickPickItem<Experience>[] = getExperienceQuickPicks_cosmosdb();
 
         const result: IAzureQuickPickItem<Experience> = await ext.ui.showQuickPick(picks, {
             placeHolder: "Select an API for your Cosmos DB account..."

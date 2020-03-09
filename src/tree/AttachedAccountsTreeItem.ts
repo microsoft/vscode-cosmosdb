@@ -12,7 +12,8 @@ import { emulatorPassword, getThemedIconPath } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
-import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../experiences';
+import { API } from '../experience';
+import { getExperienceFromApi_cosmosdb, getExperienceQuickPick_cosmosdb, getExperienceQuickPicks_cosmosdb } from '../experienceCosmosDB';
 import { ext } from '../extensionVariables';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
@@ -116,7 +117,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     public async attachNewAccount(): Promise<void> {
-        const defaultExperiencePick = await vscode.window.showQuickPick(getExperienceQuickPicks(), { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
+        const defaultExperiencePick = await vscode.window.showQuickPick(getExperienceQuickPicks_cosmosdb(), { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
         if (defaultExperiencePick) {
             const defaultExperience = defaultExperiencePick.data;
             let placeholder: string;
@@ -161,8 +162,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         let connectionString: string;
         const defaultExperiencePick = await vscode.window.showQuickPick(
             [
-                getExperienceQuickPick(API.MongoDB),
-                getExperienceQuickPick(API.Core)
+                getExperienceQuickPick_cosmosdb(API.MongoDB),
+                getExperienceQuickPick_cosmosdb(API.Core)
             ],
             {
                 placeHolder: "Select a Database Account API...",
@@ -269,13 +270,13 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                     // (Mongo was originally the only account type that could be attached)
                     id = account;
                     api = API.MongoDB;
-                    label = `${account} (${getExperienceFromApi(api).shortName})`;
+                    label = `${account} (${getExperienceFromApi_cosmosdb(api).shortName})`;
                     isEmulator = false;
                 } else {
                     id = (<IPersistedAccount>account).id;
                     api = (<IPersistedAccount>account).defaultExperience;
                     isEmulator = (<IPersistedAccount>account).isEmulator;
-                    label = isEmulator ? `${getExperienceFromApi(api).shortName} Emulator` : `${id} (${getExperienceFromApi(api).shortName})`;
+                    label = isEmulator ? `${getExperienceFromApi_cosmosdb(api).shortName} Emulator` : `${id} (${getExperienceFromApi_cosmosdb(api).shortName})`;
                 }
                 const connectionString: string = await this._keytar.getPassword(this._serviceName, id);
                 persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
@@ -294,12 +295,12 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 id = parsedCS.fullId;
             }
 
-            label = label || `${id} (${getExperienceFromApi(api).shortName})`;
+            label = label || `${id} (${getExperienceFromApi_cosmosdb(api).shortName})`;
             treeItem = new MongoAccountTreeItem(this, id, label, connectionString, isEmulator);
         } else {
             const parsedCS = parseDocDBConnectionString(connectionString);
 
-            label = label || `${parsedCS.accountId} (${getExperienceFromApi(api).shortName})`;
+            label = label || `${parsedCS.accountId} (${getExperienceFromApi_cosmosdb(api).shortName})`;
             switch (api) {
                 case API.Table:
                     treeItem = new TableAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, parsedCS.masterKey, isEmulator);

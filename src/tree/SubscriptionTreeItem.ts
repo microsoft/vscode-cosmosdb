@@ -6,12 +6,14 @@
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from 'azure-arm-cosmosdb/lib/models';
 import { PostgreSQLManagementClient } from 'azure-arm-postgresql';
-import { ServerListResult } from 'azure-arm-postgresql/lib/models';
+import { DatabaseListResult, ServerListResult } from 'azure-arm-postgresql/lib/models';
 import { Server } from 'azure-arm-postgresql/lib/models';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
-import { Experience, getExperienceLabel, tryGetExperience } from '../experiences';
+import { Experience } from '../experience';
+import { getExperienceLabel_cosmosdb, tryGetExperience_cosmosdb } from '../experienceCosmosDB';
+import { getExperienceLabel_postgres, tryGetExperience_postgres } from '../experiencePostgres';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
@@ -38,11 +40,11 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         //Postgres
         const clientPostgres: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const accountsPostgres: ServerListResult = await clientPostgres.servers.list();
-        const databasesPostgres = await clientPostgres.databases.listByServer("myResourceGroup", accountsPostgres[0].name);
+        const databasesPostgres: DatabaseListResult = await clientPostgres.databases.listByServer("myResourceGroup", accountsPostgres[0].name);
         treeItemPostgres = await this.createTreeItemsWithErrorHandling(
             accountsPostgres,
             'invalidPostgreSQLAccount',
-            async (server: Server) => await this.initChild(clientPostgres, server, databasesPostgres),
+            async (server: Server) => await this.initChild(clientPostgres, null, server, databasesPostgres),
             (server: Server) => server.name
         );
 
@@ -93,7 +95,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         return typeof contextValue !== 'string' || !/attached/i.test(contextValue);
     }
 
-    private async initChild(client: CosmosDBManagementClient | PostgreSQLManagementClient, databaseAccount?, databasesPostgres?): Promise<AzureTreeItem> {
+    private async initChild(client: CosmosDBManagementClient | PostgreSQLManagementClient, databaseAccount?: DatabaseAccount, serverAccount?: Server, databasesPostgres?: DatabaseListResult): Promise<AzureTreeItem> {
         let experience: Experience | undefined;
         let resourceGroup: string;
         let accountKindLabel;
@@ -101,9 +103,9 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const isEmulator: boolean = false;
 
         if (client instanceof CosmosDBManagementClient && databaseAccount) {
-            experience = tryGetExperience(databaseAccount);
+            experience = tryGetExperience_cosmosdb(databaseAccount);
             resourceGroup = azureUtils.getResourceGroupFromId(databaseAccount.id);
-            accountKindLabel = getExperienceLabel(databaseAccount);
+            accountKindLabel = getExperienceLabel_cosmosdb(databaseAccount);
             const dbName: string = databaseAccount.name;
             label = dbName + (accountKindLabel ? ` (${accountKindLabel})` : ``);
             if (experience && experience.api === "MongoDB") {
@@ -127,12 +129,12 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
                 }
             }
         } else {
-            experience = tryGetExperience(databaseAccount);
-            resourceGroup = azureUtils.getResourceGroupFromId(databaseAccount.id);
-            accountKindLabel = getExperienceLabel(databaseAccount);
-            const databaseName: string = databaseAccount.name;
+            experience = tryGetExperience_postgres(serverAccount);
+            resourceGroup = azureUtils.getResourceGroupFromId(serverAccount.id);
+            accountKindLabel = getExperienceLabel_postgres(serverAccount);
+            const databaseName: string = serverAccount.name;
             label = databaseName + (accountKindLabel ? ` (${accountKindLabel})` : ``);
-            return new PostgreSQLAccountTreeItem(this, databaseAccount.id, label, isEmulator, databaseAccount, databasesPostgres);
+            return new PostgreSQLAccountTreeItem(this, serverAccount.id, label, isEmulator, serverAccount, databasesPostgres);
         }
     }
 }

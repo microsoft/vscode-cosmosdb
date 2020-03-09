@@ -12,8 +12,8 @@ import { IPostgreSQLTreeRoot } from './IPostgreSQLTreeRoot';
 import { PostgreSQLSchemaTreeItem } from './PostgreSQLSchemaTreeItem';
 
 export class IPostgresTable {
-    public _id: string;
-    constructor(id) {
+    public _id: number;
+    constructor(id: number) {
         this._id = id;
     }
 }
@@ -24,8 +24,7 @@ export class PostgreSQLTableTreeItem extends AzureTreeItem<IPostgreSQLTreeRoot> 
     // public readonly commandId: string = 'cosmosDB.openDocument';
     public document: IPostgresTable;
     public readonly parent: PostgreSQLSchemaTreeItem;
-
-    private _label;
+    private _label: string;
 
     constructor(parent: PostgreSQLSchemaTreeItem, document: IPostgresTable) {
         super(parent);

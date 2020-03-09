@@ -29,6 +29,7 @@ import { setConnectedNode } from './mongo/setConnectedNode';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
+import { PostgreSQLAccountTreeItem } from './postgres/tree/PostgreSQLAccountTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
@@ -62,7 +63,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         registerGraphCommands();
         const codeLensProvider = registerMongoCommands(editorManager);
 
-        const accountContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
+        const accountContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue, PostgreSQLAccountTreeItem.contextValue];
 
         registerCommand('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
 
@@ -134,6 +135,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             const editorTabName = node.label + "-cosmos-document.json";
             if (node instanceof MongoDocumentTreeItem) {
                 await editorManager.showDocument(actionContext, new MongoDocumentNodeEditor(node), editorTabName);
+                // } else if (node instanceof PostgreSQLTableTreeItem) {
+                //     await editorManager.showDocument(actionContext, new PostgreSQLTableNodeEditor(node), editorTabName);
             } else {
                 await editorManager.showDocument(actionContext, new DocDBDocumentNodeEditor(node), editorTabName);
             }

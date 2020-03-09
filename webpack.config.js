@@ -31,7 +31,9 @@ let config = dev.getDefaultWebpackConfig({
         'mongodb',
 
         // Needed by graphClient.html
-        'd3'
+        'd3',
+        'pg',
+        'pg-structure'
     ],
     entries: {
         // Note: Each entry is a completely separate Node.js application that cannot interact with any

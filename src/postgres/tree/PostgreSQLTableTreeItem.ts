@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as _ from 'underscore';
 import * as vscode from 'vscode';
 import { AzureTreeItem } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -11,17 +10,13 @@ import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { IPostgreSQLTreeRoot } from './IPostgreSQLTreeRoot';
 import { PostgreSQLSchemaTreeItem } from './PostgreSQLSchemaTreeItem';
 
-export class IPostgresTable {
-    public _id: number;
-    constructor(id: number) {
-        this._id = id;
-    }
+export interface IPostgresTable {
+    _id: number;
 }
 
 export class PostgreSQLTableTreeItem extends AzureTreeItem<IPostgreSQLTreeRoot> {
     public static contextValue: string = "PostgresTable";
     public readonly contextValue: string = PostgreSQLTableTreeItem.contextValue;
-    // public readonly commandId: string = 'cosmosDB.openDocument';
     public document: IPostgresTable;
     public readonly parent: PostgreSQLSchemaTreeItem;
     private _label: string;

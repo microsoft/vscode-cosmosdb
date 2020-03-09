@@ -3,14 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { Client } from 'pg';
 import pgStructure, { Schema } from 'pg-structure';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { ext } from '../../extensionVariables';
 import { ClientConfigClass } from '../ClientConfigClass';
 import { config } from '../config';
-import { connectToPostgresClient } from '../connectToPostgresClient';
 import { IPostgreSQLTreeRoot } from './IPostgreSQLTreeRoot';
 import { PostgreSQLAccountTreeItem } from './PostgreSQLAccountTreeItem';
 import { PostgreSQLSchemaTreeItem } from './PostgreSQLSchemaTreeItem';
@@ -24,7 +23,7 @@ export class PostgreSQLDatabaseTreeItem extends AzureParentTreeItem<IPostgreSQLT
     public readonly parent: PostgreSQLAccountTreeItem;
     public clientConfig: ClientConfigClass;
 
-    constructor(parent: PostgreSQLAccountTreeItem, databaseName: string, host?: string, connectionString?: string) {
+    constructor(parent: PostgreSQLAccountTreeItem, databaseName: string, host: string, connectionString?: string) {
         super(parent);
         this.databaseName = databaseName;
         this.clientConfig = new ClientConfigClass(host);
@@ -38,10 +37,6 @@ export class PostgreSQLDatabaseTreeItem extends AzureParentTreeItem<IPostgreSQLT
 
     public get label(): string {
         return this.databaseName;
-    }
-
-    public get description(): string {
-        return ext.connectedPostgreSQL && ext.connectedPostgreSQL.fullId === this.fullId ? 'Connected' : '';
     }
 
     public get id(): string {
@@ -62,7 +57,7 @@ export class PostgreSQLDatabaseTreeItem extends AzureParentTreeItem<IPostgreSQLT
     }
 
     public async connectToDb(): Promise<Schema[]> {
-        const accountConnection = await connectToPostgresClient(this.clientConfig);
+        const accountConnection = new Client(this.clientConfig);
         const db = await pgStructure(accountConnection);
         return db.schemas;
     }

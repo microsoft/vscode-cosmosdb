@@ -6,14 +6,14 @@
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from 'azure-arm-cosmosdb/lib/models';
 import { PostgreSQLManagementClient } from 'azure-arm-postgresql';
-import { DatabaseListResult, ServerListResult } from 'azure-arm-postgresql/lib/models';
+import { ServerListResult } from 'azure-arm-postgresql/lib/models';
 import { Server } from 'azure-arm-postgresql/lib/models';
+import { Databases } from 'azure-arm-postgresql/lib/operations';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
-import { Experience } from '../experience';
 import { getExperienceLabel_cosmosdb, tryGetExperience_cosmosdb } from '../experienceCosmosDB';
-import { getExperienceLabel_postgres, tryGetExperience_postgres } from '../experiencePostgres';
+import { getExperienceLabel_postgres } from '../experiencePostgres';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
@@ -40,11 +40,11 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         //Postgres
         const clientPostgres: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const accountsPostgres: ServerListResult = await clientPostgres.servers.list();
-        const databasesPostgres: DatabaseListResult = await clientPostgres.databases.listByServer("myResourceGroup", accountsPostgres[0].name);
+        const databases: Databases = clientPostgres.databases;
         treeItemPostgres = await this.createTreeItemsWithErrorHandling(
             accountsPostgres,
             'invalidPostgreSQLAccount',
-            async (server: Server) => await this.initChild(clientPostgres, null, server, databasesPostgres),
+            async (server: Server) => await this.initChild(server, databases),
             (server: Server) => server.name
         );
 
@@ -53,11 +53,11 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         treeItem = await this.createTreeItemsWithErrorHandling(
             accounts,
             'invalidCosmosDBAccount',
-            async (db: DatabaseAccount) => await this.initChild(client, db),
+            async (db: DatabaseAccount) => await this.initCosmosDBChild(client, db),
             (db: DatabaseAccount) => db.name
         );
 
-        treeItem.push(treeItemPostgres.pop());
+        treeItem.push(...treeItemPostgres);
         return treeItem;
     }
 
@@ -88,53 +88,47 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         await wizard.execute();
         // don't wait
         vscode.window.showInformationMessage(`Successfully created account "${wizardContext.accountName}".`);
-        return await this.initChild(client, wizardContext.databaseAccount);
+        return await this.initCosmosDBChild(client, wizardContext.databaseAccount);
     }
 
     public isAncestorOfImpl(contextValue: string | RegExp): boolean {
         return typeof contextValue !== 'string' || !/attached/i.test(contextValue);
     }
 
-    private async initChild(client: CosmosDBManagementClient | PostgreSQLManagementClient, databaseAccount?: DatabaseAccount, serverAccount?: Server, databasesPostgres?: DatabaseListResult): Promise<AzureTreeItem> {
-        let experience: Experience | undefined;
-        let resourceGroup: string;
-        let accountKindLabel;
-        let label: string;
+    private async initCosmosDBChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<AzureTreeItem> {
+        const experience = tryGetExperience_cosmosdb(databaseAccount);
+        const resourceGroup: string = azureUtils.getResourceGroupFromId(databaseAccount.id);
+        const accountKindLabel = getExperienceLabel_cosmosdb(databaseAccount);
+        const label: string = databaseAccount.name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
         const isEmulator: boolean = false;
 
-        if (client instanceof CosmosDBManagementClient && databaseAccount) {
-            experience = tryGetExperience_cosmosdb(databaseAccount);
-            resourceGroup = azureUtils.getResourceGroupFromId(databaseAccount.id);
-            accountKindLabel = getExperienceLabel_cosmosdb(databaseAccount);
-            const dbName: string = databaseAccount.name;
-            label = dbName + (accountKindLabel ? ` (${accountKindLabel})` : ``);
-            if (experience && experience.api === "MongoDB") {
-                const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, databaseAccount.name);
-                // Use the default connection string
-                return new MongoAccountTreeItem(this, databaseAccount.id, label, result.connectionStrings[0].connectionString, isEmulator, databaseAccount);
-            } else {
-                const keyResult: DatabaseAccountListKeysResult = await client.databaseAccounts.listKeys(resourceGroup, databaseAccount.name);
-                switch (experience && experience.api) {
-                    case "Table":
-                        return new TableAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator, databaseAccount);
-                    case "Graph": {
-                        const gremlinEndpoint = await TryGetGremlinEndpointFromAzure(client, resourceGroup, databaseAccount.name);
-                        return new GraphAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, gremlinEndpoint, keyResult.primaryMasterKey, isEmulator, databaseAccount);
-                    }
-                    case "Core":
-                    default:
-                        // Default to DocumentDB, the base type for all Cosmos DB Accounts
-                        return new DocDBAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator, databaseAccount);
-
-                }
-            }
+        if (experience && experience.api === "MongoDB") {
+            const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, databaseAccount.name);
+            // Use the default connection string
+            return new MongoAccountTreeItem(this, databaseAccount.id, label, result.connectionStrings[0].connectionString, isEmulator, databaseAccount);
         } else {
-            experience = tryGetExperience_postgres(serverAccount);
-            resourceGroup = azureUtils.getResourceGroupFromId(serverAccount.id);
-            accountKindLabel = getExperienceLabel_postgres(serverAccount);
-            const databaseName: string = serverAccount.name;
-            label = databaseName + (accountKindLabel ? ` (${accountKindLabel})` : ``);
-            return new PostgreSQLAccountTreeItem(this, serverAccount.id, label, isEmulator, serverAccount, databasesPostgres);
+            const keyResult: DatabaseAccountListKeysResult = await client.databaseAccounts.listKeys(resourceGroup, databaseAccount.name);
+            switch (experience && experience.api) {
+                case "Table":
+                    return new TableAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator, databaseAccount);
+                case "Graph": {
+                    const gremlinEndpoint = await TryGetGremlinEndpointFromAzure(client, resourceGroup, databaseAccount.name);
+                    return new GraphAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, gremlinEndpoint, keyResult.primaryMasterKey, isEmulator, databaseAccount);
+                }
+                case "Core":
+                default:
+                    // Default to DocumentDB, the base type for all Cosmos DB Accounts
+                    return new DocDBAccountTreeItem(this, databaseAccount.id, label, databaseAccount.documentEndpoint, keyResult.primaryMasterKey, isEmulator, databaseAccount);
+
+            }
         }
+    }
+
+    private async initChild(server: Server, databases: Databases): Promise<AzureTreeItem> {
+        const accountKindLabel = getExperienceLabel_postgres(server);
+        const resourceGroup = azureUtils.getResourceGroupFromId(server.id);
+        const accountName: string = server.name;
+        const label: string = accountName + (accountKindLabel ? ` (${accountKindLabel})` : ``);
+        return new PostgreSQLAccountTreeItem(this, server.id, label, server, databases, resourceGroup);
     }
 }

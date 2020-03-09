@@ -135,8 +135,6 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             const editorTabName = node.label + "-cosmos-document.json";
             if (node instanceof MongoDocumentTreeItem) {
                 await editorManager.showDocument(actionContext, new MongoDocumentNodeEditor(node), editorTabName);
-                // } else if (node instanceof PostgreSQLTableTreeItem) {
-                //     await editorManager.showDocument(actionContext, new PostgreSQLTableNodeEditor(node), editorTabName);
             } else {
                 await editorManager.showDocument(actionContext, new DocDBDocumentNodeEditor(node), editorTabName);
             }
@@ -169,7 +167,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     }]);
 }
 
-async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase): Promise<void> {
+async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgreSQLAccountTreeItem): Promise<void> {
     await vscode.env.clipboard.writeText(node.connectionString);
 }
 

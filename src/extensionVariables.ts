@@ -6,7 +6,6 @@
 import { ExtensionContext, TreeView } from "vscode";
 import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel, IAzureUserInput, ITelemetryReporter } from "vscode-azureextensionui";
 import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
-import { PostgreSQLDatabaseTreeItem } from "./postgres/tree/PostgreSQLDatabaseTreeItem";
 import { AttachedAccountsTreeItem } from "./tree/AttachedAccountsTreeItem";
 import { AzureAccountTreeItemWithAttached } from "./tree/AzureAccountTreeItemWithAttached";
 
@@ -15,7 +14,6 @@ import { AzureAccountTreeItemWithAttached } from "./tree/AzureAccountTreeItemWit
  */
 export namespace ext {
     export let connectedMongoDB: MongoDatabaseTreeItem | undefined;
-    export let connectedPostgreSQL: PostgreSQLDatabaseTreeItem | undefined;
     export let ui: IAzureUserInput;
     export let context: ExtensionContext;
     export let outputChannel: IAzExtOutputChannel;

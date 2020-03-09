@@ -6,6 +6,7 @@
 
 import { ISubscriptionContext } from "vscode-azureextensionui";
 
+// tslint:disable-next-line:no-empty-interface
 export interface IPostgreSQLTreeRoot extends ISubscriptionContext {
-    isEmulator: boolean;
+
 }

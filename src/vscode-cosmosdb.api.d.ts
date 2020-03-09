@@ -59,7 +59,7 @@ export interface DatabaseTreeItem extends DatabaseAccountTreeItem {
 
 export type CosmosDBResourceType = 'DatabaseAccount' | 'Database';
 
-export type CosmosDBApiType = 'Mongo' | 'SQL' | 'Graph' | 'Table' | 'Postgres';
+export type CosmosDBApiType = 'Mongo' | 'SQL' | 'Graph' | 'Table';
 
 export interface PickTreeItemOptions {
     /**

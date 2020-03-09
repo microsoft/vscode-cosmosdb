@@ -41,6 +41,6 @@ export class PostgreSQLSchemaTreeItem extends AzureParentTreeItem<IPostgreSQLTre
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgreSQLTableTreeItem[]> {
         const tables: Table[] = this.schema.tables;
-        return tables.map(table => new PostgreSQLTableTreeItem(this, new IPostgresTable(table.oid)));
+        return tables.map(table => new PostgreSQLTableTreeItem(this, <IPostgresTable>{ _id: table.oid }));
     }
 }

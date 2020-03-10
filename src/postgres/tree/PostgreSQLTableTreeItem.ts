@@ -4,32 +4,31 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { AzureTreeItem } from 'vscode-azureextensionui';
+import { AzureTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
-import { IPostgreSQLTreeRoot } from './IPostgreSQLTreeRoot';
 import { PostgreSQLSchemaTreeItem } from './PostgreSQLSchemaTreeItem';
 
 export interface IPostgresTable {
     _id: number;
+    _name: string;
 }
 
-export class PostgreSQLTableTreeItem extends AzureTreeItem<IPostgreSQLTreeRoot> {
+export class PostgreSQLTableTreeItem extends AzureTreeItem<ISubscriptionContext> {
     public static contextValue: string = "PostgresTable";
     public readonly contextValue: string = PostgreSQLTableTreeItem.contextValue;
-    public document: IPostgresTable;
+    public table: IPostgresTable;
     public readonly parent: PostgreSQLSchemaTreeItem;
     private _label: string;
 
-    constructor(parent: PostgreSQLSchemaTreeItem, document: IPostgresTable) {
+    constructor(parent: PostgreSQLSchemaTreeItem, table: IPostgresTable) {
         super(parent);
-        this.document = document;
-        this._label = getDocumentTreeItemLabel(this.document);
+        this.table = table;
+        this._label = table._name;
     }
 
     public get id(): string {
         // tslint:disable-next-line:no-non-null-assertion
-        return String(this.document!._id);
+        return String(this.table!._id);
     }
 
     public get label(): string {

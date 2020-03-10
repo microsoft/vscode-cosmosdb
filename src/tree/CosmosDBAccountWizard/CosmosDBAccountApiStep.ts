@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep, IAzureQuickPickItem } from 'vscode-azureextensionui';
+import { getExperienceQuickPicks_cosmosdb } from '../../CosmosDBExperiences';
 import { Experience } from '../../experience';
-import { getExperienceQuickPicks_cosmosdb } from '../../experienceCosmosDB';
 import { ext } from '../../extensionVariables';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 

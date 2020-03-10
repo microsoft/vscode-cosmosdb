@@ -18,7 +18,7 @@ export function getExperienceLabel_postgres(account: Server): string {
 
 export function tryGetExperience_postgres(account: Server): Experience | undefined {
 
-    if (account && account.type === "Microsoft.DBforPostgreSQL/servers") {
+    if (account) {
 
         return PostgresExperience;
     }

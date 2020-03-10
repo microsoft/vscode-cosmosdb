@@ -6,12 +6,11 @@
 import { Schema, Table } from 'pg-structure';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem } from 'vscode-azureextensionui';
+import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { IPostgreSQLTreeRoot } from './IPostgreSQLTreeRoot';
 import { IPostgresTable, PostgreSQLTableTreeItem } from './PostgreSQLTableTreeItem';
 
-export class PostgreSQLSchemaTreeItem extends AzureParentTreeItem<IPostgreSQLTreeRoot> {
+export class PostgreSQLSchemaTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "PostgresSchema";
     public readonly contextValue: string = PostgreSQLSchemaTreeItem.contextValue;
     public readonly childTypeLabel: string = "Table";
@@ -41,6 +40,6 @@ export class PostgreSQLSchemaTreeItem extends AzureParentTreeItem<IPostgreSQLTre
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgreSQLTableTreeItem[]> {
         const tables: Table[] = this.schema.tables;
-        return tables.map(table => new PostgreSQLTableTreeItem(this, <IPostgresTable>{ _id: table.oid }));
+        return tables.map(table => new PostgreSQLTableTreeItem(this, <IPostgresTable>{ _id: table.oid, _name: table.name }));
     }
 }

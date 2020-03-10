@@ -11,13 +11,13 @@ import { Server } from 'azure-arm-postgresql/lib/models';
 import { Databases } from 'azure-arm-postgresql/lib/operations';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
+import { getExperienceLabel_cosmosdb, tryGetExperience_cosmosdb } from '../CosmosDBExperiences';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
-import { getExperienceLabel_cosmosdb, tryGetExperience_cosmosdb } from '../experienceCosmosDB';
-import { getExperienceLabel_postgres } from '../experiencePostgres';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { PostgreSQLAccountTreeItem } from '../postgres/tree/PostgreSQLAccountTreeItem';
+import { getExperienceLabel_postgres } from '../PostgresExperiences';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { azureUtils } from '../utils/azureUtils';
 import { CosmosDBAccountApiStep } from './CosmosDBAccountWizard/CosmosDBAccountApiStep';
@@ -44,10 +44,11 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         treeItemPostgres = await this.createTreeItemsWithErrorHandling(
             accountsPostgres,
             'invalidPostgreSQLAccount',
-            async (server: Server) => await this.initChild(server, databases),
-            (server: Server) => server.name
+            async (account: Server) => await this.initPostgresChild(account, databases),
+            (account: Server) => account.name
         );
 
+        //CosmosDB
         const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
         const accounts: DatabaseAccountsListResult = await client.databaseAccounts.list();
         treeItem = await this.createTreeItemsWithErrorHandling(
@@ -124,11 +125,11 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         }
     }
 
-    private async initChild(server: Server, databases: Databases): Promise<AzureTreeItem> {
-        const accountKindLabel = getExperienceLabel_postgres(server);
-        const resourceGroup = azureUtils.getResourceGroupFromId(server.id);
-        const accountName: string = server.name;
+    private async initPostgresChild(account: Server, databases: Databases): Promise<AzureTreeItem> {
+        const accountKindLabel = getExperienceLabel_postgres(account);
+        const resourceGroup = azureUtils.getResourceGroupFromId(account.id);
+        const accountName: string = account.name;
         const label: string = accountName + (accountKindLabel ? ` (${accountKindLabel})` : ``);
-        return new PostgreSQLAccountTreeItem(this, server.id, label, server, databases, resourceGroup);
+        return new PostgreSQLAccountTreeItem(this, label, account, databases, resourceGroup);
     }
 }

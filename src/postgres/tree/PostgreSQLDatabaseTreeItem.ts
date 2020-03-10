@@ -4,32 +4,33 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Client } from 'pg';
+import { ClientConfig } from 'pg';
 import pgStructure, { Schema } from 'pg-structure';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem } from 'vscode-azureextensionui';
+import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { ClientConfigClass } from '../ClientConfigClass';
-import { config } from '../config';
-import { IPostgreSQLTreeRoot } from './IPostgreSQLTreeRoot';
 import { PostgreSQLAccountTreeItem } from './PostgreSQLAccountTreeItem';
 import { PostgreSQLSchemaTreeItem } from './PostgreSQLSchemaTreeItem';
 
-export class PostgreSQLDatabaseTreeItem extends AzureParentTreeItem<IPostgreSQLTreeRoot> {
+export class PostgreSQLDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgres";
     public readonly contextValue: string = PostgreSQLDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = "Schema";
     public readonly connectionString: string;
     public readonly databaseName: string;
     public readonly parent: PostgreSQLAccountTreeItem;
-    public clientConfig: ClientConfigClass;
+    public readonly host: string;
+    public readonly port: number;
 
     constructor(parent: PostgreSQLAccountTreeItem, databaseName: string, host: string, connectionString?: string) {
         super(parent);
         this.databaseName = databaseName;
-        this.clientConfig = new ClientConfigClass(host);
-        this.clientConfig.setDatabase(this.databaseName);
-        this.clientConfig.setCredentials(config);
-        this.clientConfig.setSSLConfig(config.ssl);
+        this.host = host;
+        this.port = 5432;
+        // this.clientConfig = new ClientConfigClass(host);
+        // this.clientConfig.setDatabase(this.databaseName);
+        // this.clientConfig.setCredentials(config);
+        // this.clientConfig.setSSLConfig(config.ssl);
         if (connectionString) {
             this.connectionString = connectionString;
         }
@@ -57,7 +58,12 @@ export class PostgreSQLDatabaseTreeItem extends AzureParentTreeItem<IPostgreSQLT
     }
 
     public async connectToDb(): Promise<Schema[]> {
-        const accountConnection = new Client(this.clientConfig);
+        const username: string = process.env.POSTGRES_USERNAME;
+        const password: string = process.env.POSTGRES_PASSWORD;
+        const sslString = process.env.POSTGRES_SSL;
+        const ssl: boolean = sslString === 'true';
+        const clientConfig: ClientConfig = { user: username, password: password, ssl: ssl, host: this.host, port: this.port, database: this.databaseName };
+        const accountConnection = new Client(clientConfig);
         const db = await pgStructure(accountConnection);
         return db.schemas;
     }

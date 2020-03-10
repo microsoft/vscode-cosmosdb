@@ -20,12 +20,12 @@ export class MongoDBLanguageClient {
 			ext.context.asAbsolutePath(path.join('out', 'src', 'mongo', 'languageServer.js')) :
 			ext.context.asAbsolutePath(path.join('dist', 'mongo-languageServer.bundle.js'));
 		// The debug options for the server
-		let debugOptions = { execArgv: ['--nolazy', '--debug=6005', '--inspect'] };
+		const debugOptions = { execArgv: ['--nolazy', '--inspect=6005'] };
 
 		// If the extension is launch in debug mode the debug server options are use
 		// Otherwise the run options are used
-		let serverOptions: ServerOptions = {
-			run: { module: serverModule, transport: TransportKind.ipc, options: debugOptions },
+		const serverOptions: ServerOptions = {
+			run: { module: serverModule, transport: TransportKind.ipc },
 			debug: { module: serverModule, transport: TransportKind.ipc, options: debugOptions }
 		};
 

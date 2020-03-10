@@ -2,6 +2,10 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.12.2 - 2020-03-10
+### Fixed
+- Language client is not ready yet [#1334](https://github.com/microsoft/vscode-cosmosdb/issues/1334)
+
 ## 0.12.1 - 2020-01-22
 ### Fixed
 - When updating a Mongo document, the operation would fail with the following error: `update operation document must contain atomic operators.` [#1298](https://github.com/microsoft/vscode-cosmosdb/issues/1298)

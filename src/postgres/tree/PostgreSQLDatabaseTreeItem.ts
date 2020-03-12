@@ -9,7 +9,7 @@ import pgStructure, { Schema } from 'pg-structure';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { PostgreSQLAccountTreeItem } from './PostgreSQLAccountTreeItem';
+import { PostgreSQLServerTreeItem } from './PostgreSQLServerTreeItem';
 import { PostgreSQLSchemaTreeItem } from './PostgreSQLSchemaTreeItem';
 
 export class PostgreSQLDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
@@ -18,19 +18,15 @@ export class PostgreSQLDatabaseTreeItem extends AzureParentTreeItem<ISubscriptio
     public readonly childTypeLabel: string = "Schema";
     public readonly connectionString: string;
     public readonly databaseName: string;
-    public readonly parent: PostgreSQLAccountTreeItem;
+    public readonly parent: PostgreSQLServerTreeItem;
     public readonly host: string;
     public readonly port: number;
 
-    constructor(parent: PostgreSQLAccountTreeItem, databaseName: string, host: string, connectionString?: string) {
+    constructor(parent: PostgreSQLServerTreeItem, databaseName: string, host: string, connectionString?: string) {
         super(parent);
         this.databaseName = databaseName;
         this.host = host;
         this.port = 5432;
-        // this.clientConfig = new ClientConfigClass(host);
-        // this.clientConfig.setDatabase(this.databaseName);
-        // this.clientConfig.setCredentials(config);
-        // this.clientConfig.setSSLConfig(config.ssl);
         if (connectionString) {
             this.connectionString = connectionString;
         }

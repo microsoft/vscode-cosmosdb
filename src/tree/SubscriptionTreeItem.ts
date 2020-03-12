@@ -16,7 +16,7 @@ import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { PostgreSQLAccountTreeItem } from '../postgres/tree/PostgreSQLAccountTreeItem';
+import { PostgreSQLServerTreeItem } from '../postgres/tree/PostgreSQLServerTreeItem';
 import { getExperienceLabel_postgres } from '../PostgresExperiences';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { azureUtils } from '../utils/azureUtils';
@@ -130,6 +130,6 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const resourceGroup = azureUtils.getResourceGroupFromId(account.id);
         const accountName: string = account.name;
         const label: string = accountName + (accountKindLabel ? ` (${accountKindLabel})` : ``);
-        return new PostgreSQLAccountTreeItem(this, label, account, databases, resourceGroup);
+        return new PostgreSQLServerTreeItem(this, label, account, databases, resourceGroup);
     }
 }

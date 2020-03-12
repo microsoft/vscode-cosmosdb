@@ -10,9 +10,9 @@ import { AzureParentTreeItem, AzureTreeItem, ISubscriptionContext } from 'vscode
 import { getThemeAgnosticIconPath } from '../../constants';
 import { PostgreSQLDatabaseTreeItem } from './PostgreSQLDatabaseTreeItem';
 
-export class PostgreSQLAccountTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
-    public static contextValue: string = "cosmosDBPostgresServer";
-    public readonly contextValue: string = PostgreSQLAccountTreeItem.contextValue;
+export class PostgreSQLServerTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
+    public static contextValue: string = "postgresServer";
+    public readonly contextValue: string = PostgreSQLServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
     public readonly id: string;
     public readonly label: string;

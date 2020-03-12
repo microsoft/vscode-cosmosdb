@@ -29,7 +29,7 @@ import { setConnectedNode } from './mongo/setConnectedNode';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
-import { PostgreSQLAccountTreeItem } from './postgres/tree/PostgreSQLAccountTreeItem';
+import { PostgreSQLServerTreeItem } from './postgres/tree/PostgreSQLServerTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
@@ -63,7 +63,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         registerGraphCommands();
         const codeLensProvider = registerMongoCommands(editorManager);
 
-        const accountContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue, PostgreSQLAccountTreeItem.contextValue];
+        const accountContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue, PostgreSQLServerTreeItem.contextValue];
 
         registerCommand('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
 
@@ -167,7 +167,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     }]);
 }
 
-async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgreSQLAccountTreeItem): Promise<void> {
+async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgreSQLServerTreeItem): Promise<void> {
     await vscode.env.clipboard.writeText(node.connectionString);
 }
 

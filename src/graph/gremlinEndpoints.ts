@@ -4,12 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
-
-export interface IGremlinEndpoint {
-    host: string;
-    port: number;
-    ssl: boolean;
-}
+import { IGremlinEndpoint } from '../vscode-cosmosdbgraph.api';
 
 export async function TryGetGremlinEndpointFromAzure(client: CosmosDBManagementClient, resourceGroup: string, account: string): Promise<IGremlinEndpoint | undefined> {
     return new Promise<IGremlinEndpoint>((resolve, reject) => {

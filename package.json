@@ -797,82 +797,6 @@
                     "type": "integer",
                     "default": 8081,
                     "description": "Port to use when connecting to a CosmosDB Emulator instance"
-                },
-                "cosmosDB.graph.maxVertices": {
-                    "type": "integer",
-                    "default": 300,
-                    "description": "Set a limit for number of vertices displayed in a graph visualization"
-                },
-                "cosmosDB.graph.maxEdges": {
-                    "type": "integer",
-                    "default": 500,
-                    "description": "Set a limit for number of edges displayed in a graph visualization"
-                },
-                "cosmosDB.graph.viewSettings": {
-                    "type": "array",
-                    "description": "Settings for CosmosDB graph visualization.",
-                    "maxItems": 1,
-                    "items": {
-                        "type": "object",
-                        "description": "A group of view settings",
-                        "additionalProperties": false,
-                        "properties": {
-                            "vertexSettings": {
-                                "type": "array",
-                                "description": "Groups of vertex display settings",
-                                "items": {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "appliesToLabel": {
-                                            "type": "string",
-                                            "description": "Specify a label value to restrict this settings group to only vertices with that label."
-                                        },
-                                        "displayProperty": {
-                                            "type": "array",
-                                            "description": "The vertex property to display for the text. The first one found to have a non-empty value on the vertex is used. The default is the vertex id.",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "color": {
-                                            "type": "string",
-                                            "description": "The vertex color, either 'auto', a CSS color name or a CSS RGB value (e.g., '#0088FF')",
-                                            "pattern": "^(auto)|([a-zA-Z]+)|(#[0-9a-fA-F]{3})|(#[0-9a-fA-F]{6})$",
-                                            "default": "auto"
-                                        },
-                                        "showLabel": {
-                                            "type": "boolean",
-                                            "description": "If true, the label will be displayed along with the specified display property",
-                                            "default": true
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "default": [
-                        {
-                            "vertexSettings": [
-                                {
-                                    "displayProperty": [
-                                        "name"
-                                    ],
-                                    "color": "auto",
-                                    "showLabel": true
-                                },
-                                {
-                                    "appliesToLabel": "person",
-                                    "displayProperty": [
-                                        "fullName",
-                                        "lastName",
-                                        "firstName",
-                                        "name"
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
                 }
             }
         }
@@ -894,27 +818,20 @@
         "all": "npm i && npm run lint && npm test"
     },
     "devDependencies": {
-        "@types/d3": "5.0.0",
         "@types/documentdb": "^1.10.2",
         "@types/fs-extra": "^4.0.3",
-        "@types/glob": "^7.1.1",
         "@types/keytar": "4.0.1",
         "@types/mocha": "^5.2.5",
         "@types/mongodb": "^3.3.2",
         "@types/node": "^10.0.0",
-        "@types/request-promise": "^4.1.44",
-        "@types/socket.io": "^1.4.32",
-        "@types/socket.io-client": "^1.4.32",
         "antlr4ts-cli": "^0.4.0-alpha.4",
+        "azure-arm-resource": "^3.0.0-preview",
         "copy-webpack-plugin": "^4.5.4",
-        "glob": "^7.1.3",
         "gulp": "^4.0.0",
         "mocha": "^5.2.0",
         "mocha-junit-reporter": "^1.18.0",
         "mocha-multi-reporters": "^1.1.7",
-        "request-promise": "^4.2.4",
         "string-replace-webpack-plugin": "^0.1.3",
-        "ts-loader": "^5.3.0",
         "ts-node": "^7.0.1",
         "tslint": "^5.7.0",
         "tslint-microsoft-contrib": "5.0.1",
@@ -928,20 +845,13 @@
     "dependencies": {
         "antlr4ts": "^0.4.1-alpha.0",
         "azure-arm-cosmosdb": "^1.1.2",
-        "azure-arm-resource": "^3.0.0-preview",
         "bson": "^1.1.3",
-        "d3": "^3.0.0",
         "documentdb": "^1.14.2",
-        "event-stream": "3.3.4",
         "fs-extra": "^4.0.2",
-        "gremlin": "^2.6.0",
         "mongodb": "^3.3.2",
         "mongodb-extended-json": "^1.10.0",
         "ms-rest": "^2.2.1",
         "ms-rest-azure": "^2.3.1",
-        "node-uuid": "1.4.8",
-        "socket.io": "^1.7.3",
-        "socket.io-client": "^1.7.3",
         "underscore": "^1.8.3",
         "vscode-azureextensionui": "^0.29.9",
         "vscode-json-languageservice": "^3.0.8",

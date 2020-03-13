@@ -6,15 +6,12 @@
 import { IActionContext, registerCommand } from "vscode-azureextensionui";
 import { doubleClickDebounceDelay } from '../constants';
 import { ext } from '../extensionVariables';
-import { GraphViewsManager } from "./GraphViewsManager";
 import { GraphAccountTreeItem } from "./tree/GraphAccountTreeItem";
 import { GraphCollectionTreeItem } from "./tree/GraphCollectionTreeItem";
 import { GraphDatabaseTreeItem } from "./tree/GraphDatabaseTreeItem";
 import { GraphTreeItem } from "./tree/GraphTreeItem";
 
 export function registerGraphCommands(): void {
-    const graphViewsManager = new GraphViewsManager();
-
     registerCommand('cosmosDB.createGraphDatabase', async (context: IActionContext, node?: GraphAccountTreeItem) => {
         if (!node) {
             node = <GraphAccountTreeItem>await ext.tree.showTreeItemPicker(GraphAccountTreeItem.contextValue, context);
@@ -43,7 +40,7 @@ export function registerGraphCommands(): void {
         if (!node) {
             node = <GraphTreeItem>await ext.tree.showTreeItemPicker(GraphTreeItem.contextValue, context);
         }
-        await node.showExplorer(graphViewsManager);
+        await node.showExplorer(context);
         // tslint:disable-next-line:align
     }, doubleClickDebounceDelay);
 }

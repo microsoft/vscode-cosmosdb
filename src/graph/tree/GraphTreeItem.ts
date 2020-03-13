@@ -5,11 +5,13 @@
 
 import { CollectionMeta } from 'documentdb';
 import * as vscode from 'vscode';
-import { AzureTreeItem } from 'vscode-azureextensionui';
+import { AzureTreeItem, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
-import { GraphConfiguration } from '../GraphConfiguration';
-import { GraphViewsManager } from '../GraphViewsManager';
+import { ext } from '../../extensionVariables';
+import { localize } from '../../utils/localize';
+import { CosmosDBGraphExtensionApi } from '../../vscode-cosmosdbgraph.api';
 import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 
@@ -20,6 +22,7 @@ export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
     public readonly parent: GraphCollectionTreeItem;
 
     private readonly _collection: CollectionMeta;
+    private _graphApi: CosmosDBGraphExtensionApi | undefined;
 
     constructor(parent: GraphCollectionTreeItem, collection: CollectionMeta) {
         super(parent);
@@ -42,15 +45,42 @@ export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
         return getThemeAgnosticIconPath('Collection.svg');
     }
 
-    public async showExplorer(graphViewsManager: GraphViewsManager): Promise<void> {
+    public async showExplorer(context: IActionContext): Promise<void> {
+        const graphApi: CosmosDBGraphExtensionApi = await this.getGraphApi(context);
         const databaseTreeItem: GraphDatabaseTreeItem = this.parent.parent;
-        await graphViewsManager.showGraphViewer(this._collection.id, <GraphConfiguration>{
+        await graphApi.openGraphExplorer({
             documentEndpoint: databaseTreeItem.root.documentEndpoint,
             gremlinEndpoint: databaseTreeItem.gremlinEndpoint,
             possibleGremlinEndpoints: databaseTreeItem.possibleGremlinEndpoints,
             databaseName: databaseTreeItem.label,
             graphName: this._collection.id,
-            key: databaseTreeItem.root.masterKey
+            key: databaseTreeItem.root.masterKey,
+            tabTitle: this._collection.id
         });
+    }
+
+    private async getGraphApi(context: IActionContext): Promise<CosmosDBGraphExtensionApi> {
+        if (this._graphApi) {
+            return this._graphApi;
+        } else {
+            const graphExtId: string = 'ms-azuretools.vscode-cosmosdbgraph';
+            const graphExtension: vscode.Extension<AzureExtensionApiProvider | undefined> | undefined = vscode.extensions.getExtension(graphExtId);
+            if (graphExtension) {
+                if (!graphExtension.isActive) {
+                    await graphExtension.activate();
+                }
+
+                this._graphApi = graphExtension.exports.getApi<CosmosDBGraphExtensionApi>('^1.0.0');
+                return this._graphApi;
+            } else {
+                const viewExt: vscode.MessageItem = { title: localize('viewExt', 'View Extension') };
+                const message: string = localize('mustInstallGraph', 'You must install the Cosmos DB Graph extension to view a graph.');
+                context.telemetry.properties.cancelStep = 'installGraphExtPreMessage';
+                await ext.ui.showWarningMessage(message, { modal: true }, viewExt);
+                context.telemetry.properties.cancelStep = 'installGraphExtPostMessage';
+                await vscode.commands.executeCommand('extension.open', graphExtId);
+                throw new UserCancelledError();
+            }
+        }
     }
 }

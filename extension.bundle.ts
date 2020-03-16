@@ -19,7 +19,6 @@ export { ObjectID, ObjectId } from 'bson';
 // The tests should import '../extension.bundle.ts'. At design-time they live in tests/ and so will pick up this file (extension.bundle.ts).
 // At runtime the tests live in dist/tests and will therefore pick up the main webpack bundle at dist/extension.bundle.js.
 export * from 'vscode-azureextensionui';
-export { parseError } from 'vscode-azureextensionui';
 export { emulatorPassword, isWindows } from './src/constants';
 export { parseDocDBConnectionString } from './src/docdb/docDBConnectionStrings';
 export { activateInternal, deactivateInternal } from './src/extension';
@@ -32,7 +31,6 @@ export { MongoShell } from './src/mongo/MongoShell';
 export { IDatabaseInfo } from './src/mongo/tree/MongoAccountTreeItem';
 export { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from './src/tree/AttachedAccountsTreeItem';
 export { AzureAccountTreeItemWithAttached } from './src/tree/AzureAccountTreeItemWithAttached';
-export * from './src/utils/array';
 export { improveError } from './src/utils/improveError';
 export { randomUtils } from './src/utils/randomUtils';
 export { rejectOnTimeout, valueOnTimeout } from './src/utils/timeout';

@@ -5,7 +5,8 @@
 
 import { CollectionMeta, DatabaseMeta } from 'documentdb';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
-import { getPossibleGremlinEndpoints, IGremlinEndpoint } from '../gremlinEndpoints';
+import { IGremlinEndpoint } from '../../vscode-cosmosdbgraph.api';
+import { getPossibleGremlinEndpoints } from '../gremlinEndpoints';
 import { GraphAccountTreeItem } from './GraphAccountTreeItem';
 import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 

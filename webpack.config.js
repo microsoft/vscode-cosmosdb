@@ -26,9 +26,6 @@ let config = dev.getDefaultWebpackConfig({
         // These and their dependencies will be copied into node_modules rather than placed in the bundle
         // Keep this list small, because all the subdependencies will also be excluded
         'mongodb',
-
-        // Needed by graphClient.html
-        'd3',
         'pg',
         'pg-structure'
     ],
@@ -41,12 +38,14 @@ let config = dev.getDefaultWebpackConfig({
         './mongo-languageServer.bundle': './src/mongo/languageServer.ts'
     },
 
-    externals: {
+    externals:
+    {
         // ./getCoreNodeModule.js (path from keytar.ts) uses a dynamic require which can't be webpacked
         './getCoreNodeModule': 'commonjs getCoreNodeModule',
     }, // end of externals
 
-    loaderRules: [], // end of loaderRules
+    loaderRules: [
+    ], // end of loaderRules
 
 
     plugins: [
@@ -60,10 +59,7 @@ let config = dev.getDefaultWebpackConfig({
         // Copy files to dist folder where the runtime can find them
         new CopyWebpackPlugin([
             // getCoreNodeModule.js -> dist/node_modules/getCoreNodeModule.js
-            {
-                from: './out/src/utils/getCoreNodeModule.js',
-                to: 'node_modules'
-            },
+            { from: './out/src/utils/getCoreNodeModule.js', to: 'node_modules' },
         ]),
 
         // An instance of the StringReplacePlugin plugin must be present for it to work (its use is configured in modules).

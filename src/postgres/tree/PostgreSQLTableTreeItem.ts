@@ -3,36 +3,29 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { Table } from 'pg-structure';
 import * as vscode from 'vscode';
 import { AzureTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { PostgreSQLSchemaTreeItem } from './PostgreSQLSchemaTreeItem';
 
-export interface IPostgresTable {
-    _id: number;
-    _name: string;
-}
-
 export class PostgreSQLTableTreeItem extends AzureTreeItem<ISubscriptionContext> {
-    public static contextValue: string = "PostgresTable";
+    public static contextValue: string = "postgresTable";
     public readonly contextValue: string = PostgreSQLTableTreeItem.contextValue;
-    public table: IPostgresTable;
+    public readonly table: Table;
     public readonly parent: PostgreSQLSchemaTreeItem;
-    private _label: string;
 
-    constructor(parent: PostgreSQLSchemaTreeItem, table: IPostgresTable) {
+    constructor(parent: PostgreSQLSchemaTreeItem, table: Table) {
         super(parent);
         this.table = table;
-        this._label = table._name;
     }
 
     public get id(): string {
-        // tslint:disable-next-line:no-non-null-assertion
-        return String(this.table!._id);
+        return String(this.table.oid);
     }
 
     public get label(): string {
-        return this._label;
+        return this.table.name;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {

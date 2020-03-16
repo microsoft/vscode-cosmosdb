@@ -12,7 +12,6 @@ import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase
 import { ext } from '../extensionVariables';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { IMongoDocument } from '../mongo/tree/MongoDocumentTreeItem';
-import { IPostgresTable } from '../postgres/tree/PostgreSQLTableTreeItem';
 import { getRootPath } from './workspacUtils';
 
 export interface IDisposable {
@@ -86,7 +85,7 @@ function isAccountTreeItem(treeItem: AzExtTreeItem): boolean {
     return (treeItem instanceof MongoAccountTreeItem) || (treeItem instanceof DocDBAccountTreeItemBase);
 }
 
-export function getDocumentTreeItemLabel(document: IMongoDocument | RetrievedDocument | IPostgresTable): string {
+export function getDocumentTreeItemLabel(document: IMongoDocument | RetrievedDocument): string {
     for (const field of getDocumentLabelFields()) {
         if (document.hasOwnProperty(field)) {
             const value = document[field];

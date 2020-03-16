@@ -5,9 +5,22 @@
 
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
 import { IAzureQuickPickItem } from 'vscode-azureextensionui';
-import { API, DBAccountKind, Experience } from './experience';
 
-export function getExperienceFromApi_cosmosdb(api: API): Experience {
+export enum API {
+    MongoDB = 'MongoDB',
+    Graph = 'Graph',
+    Table = 'Table',
+    Core = 'Core'
+}
+
+export enum DBAccountKind {
+    MongoDB = 'MongoDB',
+    GlobalDocumentDB = 'GlobalDocumentDB'
+}
+
+export type CapabilityName = 'EnableGremlin' | 'EnableTable';
+
+export function getExperienceFromApi(api: API): Experience {
     let info = experiencesMap.get(api);
     if (!info) {
         info = { api: api, shortName: api, longName: api, kind: DBAccountKind.GlobalDocumentDB, tag: api };
@@ -15,8 +28,8 @@ export function getExperienceFromApi_cosmosdb(api: API): Experience {
     return info;
 }
 
-export function getExperienceLabel_cosmosdb(account: DatabaseAccount): string {
-    const experience: Experience | undefined = tryGetExperience_cosmosdb(account);
+export function getExperienceLabel(account: DatabaseAccount): string {
+    const experience: Experience | undefined = tryGetExperience(account);
     if (experience) {
         return experience.shortName;
     }
@@ -28,7 +41,7 @@ export function getExperienceLabel_cosmosdb(account: DatabaseAccount): string {
     return defaultExperience || firstCapabilityName || account.kind;
 }
 
-export function tryGetExperience_cosmosdb(account: DatabaseAccount): Experience | undefined {
+export function tryGetExperience(account: DatabaseAccount): Experience | undefined {
     // defaultExperience in the account doesn't really mean anything, we can't depend on its value for determining account type
     if (account.kind === DBAccountKind.MongoDB) {
         return MongoExperience;
@@ -43,12 +56,30 @@ export function tryGetExperience_cosmosdb(account: DatabaseAccount): Experience 
     return undefined;
 }
 
-export function getExperienceQuickPicks_cosmosdb(): IAzureQuickPickItem<Experience>[] {
-    return experiencesArray.map(exp => getExperienceQuickPick_cosmosdb(exp.api));
+export interface Experience {
+    /**
+     * Programmatic name used internally by us for historical reasons. Doesn't actually affect anything in Azure (maybe UI?)
+     */
+    api: API;
+
+    longName: string;
+    shortName: string;
+    description?: string;
+
+    // These properties are what the portal actually looks at to determine the difference between APIs
+    kind: DBAccountKind;
+    capability?: CapabilityName;
+
+    // The defaultExperience tag to place into the resource (has no actual effect in Azure, just imitating the portal)
+    tag: string;
 }
 
-export function getExperienceQuickPick_cosmosdb(api: API): IAzureQuickPickItem<Experience> {
-    const exp = getExperienceFromApi_cosmosdb(api);
+export function getExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
+    return experiencesArray.map(exp => getExperienceQuickPick(exp.api));
+}
+
+export function getExperienceQuickPick(api: API): IAzureQuickPickItem<Experience> {
+    const exp = getExperienceFromApi(api);
     return { label: exp.longName, description: exp.description, data: exp };
 }
 

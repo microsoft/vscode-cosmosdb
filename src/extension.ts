@@ -167,7 +167,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     }]);
 }
 
-async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgreSQLServerTreeItem): Promise<void> {
+async function copyConnectionString(node: MongoAccountTreeItem | DocDBAccountTreeItemBase): Promise<void> {
     await vscode.env.clipboard.writeText(node.connectionString);
 }
 

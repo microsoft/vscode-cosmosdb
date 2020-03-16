@@ -5,31 +5,23 @@
 
 import { Client } from 'pg';
 import { ClientConfig } from 'pg';
-import pgStructure, { Schema } from 'pg-structure';
+import pgStructure from 'pg-structure';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { PostgreSQLServerTreeItem } from './PostgreSQLServerTreeItem';
 import { PostgreSQLSchemaTreeItem } from './PostgreSQLSchemaTreeItem';
+import { PostgreSQLServerTreeItem } from './PostgreSQLServerTreeItem';
 
 export class PostgreSQLDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
-    public static contextValue: string = "postgres";
+    public static contextValue: string = "postgresDatabase";
     public readonly contextValue: string = PostgreSQLDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = "Schema";
-    public readonly connectionString: string;
     public readonly databaseName: string;
     public readonly parent: PostgreSQLServerTreeItem;
-    public readonly host: string;
-    public readonly port: number;
 
-    constructor(parent: PostgreSQLServerTreeItem, databaseName: string, host: string, connectionString?: string) {
+    constructor(parent: PostgreSQLServerTreeItem, databaseName: string) {
         super(parent);
         this.databaseName = databaseName;
-        this.host = host;
-        this.port = 5432;
-        if (connectionString) {
-            this.connectionString = connectionString;
-        }
     }
 
     public get label(): string {
@@ -49,19 +41,14 @@ export class PostgreSQLDatabaseTreeItem extends AzureParentTreeItem<ISubscriptio
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgreSQLSchemaTreeItem[]> {
-        const schemas: Schema[] = await this.connectToDb();
-        return schemas.map(schema => new PostgreSQLSchemaTreeItem(this, schema));
-    }
-
-    public async connectToDb(): Promise<Schema[]> {
         const username: string = process.env.POSTGRES_USERNAME;
         const password: string = process.env.POSTGRES_PASSWORD;
         const sslString = process.env.POSTGRES_SSL;
         const ssl: boolean = sslString === 'true';
-        const clientConfig: ClientConfig = { user: username, password: password, ssl: ssl, host: this.host, port: this.port, database: this.databaseName };
+        const host: string = this.parent.server.fullyQualifiedDomainName;
+        const clientConfig: ClientConfig = { user: username, password: password, ssl: ssl, host: host, port: 5432, database: this.databaseName };
         const accountConnection = new Client(clientConfig);
         const db = await pgStructure(accountConnection);
-        return db.schemas;
+        return db.schemas.map(schema => new PostgreSQLSchemaTreeItem(this, schema));
     }
-
 }

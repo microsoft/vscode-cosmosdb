@@ -8,16 +8,14 @@ import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListRes
 import { PostgreSQLManagementClient } from 'azure-arm-postgresql';
 import { ServerListResult } from 'azure-arm-postgresql/lib/models';
 import { Server } from 'azure-arm-postgresql/lib/models';
-import { Databases } from 'azure-arm-postgresql/lib/operations';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
-import { getExperienceLabel_cosmosdb, tryGetExperience_cosmosdb } from '../CosmosDBExperiences';
+import { getExperienceLabel, tryGetExperience } from '../CosmosDBExperiences';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { PostgreSQLServerTreeItem } from '../postgres/tree/PostgreSQLServerTreeItem';
-import { getExperienceLabel_postgres } from '../PostgresExperiences';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { azureUtils } from '../utils/azureUtils';
 import { CosmosDBAccountApiStep } from './CosmosDBAccountWizard/CosmosDBAccountApiStep';
@@ -38,14 +36,13 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         let treeItem: AzExtTreeItem[];
 
         //Postgres
-        const clientPostgres: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-        const accountsPostgres: ServerListResult = await clientPostgres.servers.list();
-        const databases: Databases = clientPostgres.databases;
+        const pgClient: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        const pgServers: ServerListResult = await pgClient.servers.list();
         treeItemPostgres = await this.createTreeItemsWithErrorHandling(
-            accountsPostgres,
+            pgServers,
             'invalidPostgreSQLAccount',
-            async (account: Server) => await this.initPostgresChild(account, databases),
-            (account: Server) => account.name
+            async (server: Server) => new PostgreSQLServerTreeItem(this, pgClient, server),
+            (server: Server) => server.name
         );
 
         //CosmosDB
@@ -97,9 +94,9 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
     }
 
     private async initCosmosDBChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<AzureTreeItem> {
-        const experience = tryGetExperience_cosmosdb(databaseAccount);
+        const experience = tryGetExperience(databaseAccount);
         const resourceGroup: string = azureUtils.getResourceGroupFromId(databaseAccount.id);
-        const accountKindLabel = getExperienceLabel_cosmosdb(databaseAccount);
+        const accountKindLabel = getExperienceLabel(databaseAccount);
         const label: string = databaseAccount.name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
         const isEmulator: boolean = false;
 
@@ -123,13 +120,5 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
             }
         }
-    }
-
-    private async initPostgresChild(account: Server, databases: Databases): Promise<AzureTreeItem> {
-        const accountKindLabel = getExperienceLabel_postgres(account);
-        const resourceGroup = azureUtils.getResourceGroupFromId(account.id);
-        const accountName: string = account.name;
-        const label: string = accountName + (accountKindLabel ? ` (${accountKindLabel})` : ``);
-        return new PostgreSQLServerTreeItem(this, label, account, databases, resourceGroup);
     }
 }

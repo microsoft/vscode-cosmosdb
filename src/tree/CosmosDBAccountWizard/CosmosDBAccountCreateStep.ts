@@ -8,6 +8,7 @@ import { Capability } from 'azure-arm-cosmosdb/lib/models';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, createAzureClient } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
+import { localize } from '../../utils/localize';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBWizardContext> {
@@ -15,7 +16,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
 
     public async execute(wizardContext: ICosmosDBWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
         const client: CosmosDBManagementClient = createAzureClient(wizardContext, CosmosDBManagementClient);
-        const creatingMessage: string = `Creating Cosmos DB account "${wizardContext.accountName}" with the "${wizardContext.defaultExperience.shortName}" API...`;
+        const creatingMessage: string = localize('creatingCosmosDBAccount', 'Creating Cosmos DB account "{0}" with the "{1}" API... It should be ready in several minutes.', wizardContext.accountName, wizardContext.defaultExperience.shortName);
         ext.outputChannel.appendLog(creatingMessage);
         progress.report({ message: creatingMessage });
         const options = {

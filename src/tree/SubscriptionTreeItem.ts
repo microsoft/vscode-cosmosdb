@@ -41,7 +41,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         treeItemPostgres = await this.createTreeItemsWithErrorHandling(
             postgresServers,
             'invalidPostgreSQLAccount',
-            async (server: Server) => new PostgresServerTreeItem(this, postgresClient, server),
+            async (server: Server) => new PostgresServerTreeItem(this, server),
             (server: Server) => server.name
         );
 

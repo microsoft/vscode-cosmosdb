@@ -5,9 +5,8 @@
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { DatabaseListResult, Server } from 'azure-arm-postgresql/lib/models';
-import { Databases } from 'azure-arm-postgresql/lib/operations';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, AzureTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
+import { AzureParentTreeItem, AzureTreeItem, createAzureClient, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { azureUtils } from '../../utils/azureUtils';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
@@ -18,14 +17,11 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public static contextValue: string = "postgresServer";
     public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
-    public readonly client: PostgreSQLManagementClient;
-    public readonly databases: Databases;
     public readonly label: string;
     public readonly server: Server;
 
-    constructor(parent: AzureParentTreeItem, client: PostgreSQLManagementClient, server: Server) {
+    constructor(parent: AzureParentTreeItem, server: Server) {
         super(parent);
-        this.client = client;
         this.server = server;
         this.label = server.name + ` (PostgreSQL)`;
     }
@@ -40,7 +36,8 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem<ISubscriptionContext>[]> {
         const resourceGroup: string = azureUtils.getResourceGroupFromId(this.server.id);
-        let listOfDatabases: DatabaseListResult = await this.client.databases.listByServer(resourceGroup, this.server.name);
+        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        let listOfDatabases: DatabaseListResult = await client.databases.listByServer(resourceGroup, this.server.name);
         listOfDatabases = listOfDatabases.filter(database => !['azure_maintenance', 'azure_sys'].includes(database.name));
         return listOfDatabases.map(database => new PostgresDatabaseTreeItem(this, database.name));
     }

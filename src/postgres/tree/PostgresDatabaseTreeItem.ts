@@ -41,12 +41,13 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresSchemaTreeItem[]> {
-        const username: string = process.env.POSTGRES_USERNAME;
+        const user: string = process.env.POSTGRES_USERNAME;
+        const fullUsername = user + "@" + this.parent.server.name;
         const password: string = process.env.POSTGRES_PASSWORD;
         const sslString = process.env.POSTGRES_SSL;
         const ssl: boolean = sslString === 'true';
         const host: string = this.parent.server.fullyQualifiedDomainName;
-        const clientConfig: ClientConfig = { user: username, password: password, ssl: ssl, host: host, port: 5432, database: this.databaseName };
+        const clientConfig: ClientConfig = { user: fullUsername, password: password, ssl: ssl, host: host, port: 5432, database: this.databaseName };
         const accountConnection = new Client(clientConfig);
         const db = await pgStructure(accountConnection);
         return db.schemas.map(schema => new PostgresSchemaTreeItem(this, schema));

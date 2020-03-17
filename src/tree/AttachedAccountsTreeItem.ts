@@ -64,20 +64,24 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     public static validateMongoConnectionString(value: string): string | undefined {
+        value = value ? value.trim() : '';
+
         if (value && value.match(/^mongodb(\+srv)?:\/\//)) {
             return undefined;
         }
+
         return MONGO_CONNECTION_EXPECTED;
     }
 
     private static validateDocDBConnectionString(value: string): string | undefined {
+        value = value ? value.trim() : '';
+
         try {
             parseDocDBConnectionString(value);
             return undefined;
         } catch (error) {
             return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..."';
         }
-
     }
 
     public hasMoreChildrenImpl(): boolean {
@@ -133,13 +137,13 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 validateInput = AttachedAccountsTreeItem.validateDocDBConnectionString;
             }
 
-            const connectionString = await vscode.window.showInputBox({
+            const connectionString = (await ext.ui.showInputBox({
                 placeHolder: placeholder,
                 prompt: 'Enter the connection string for your database account',
                 validateInput: validateInput,
                 ignoreFocusOut: true,
                 value: defaultValue
-            });
+            })).trim();
 
             if (connectionString) {
                 const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);

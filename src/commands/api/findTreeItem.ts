@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, callWithTelemetryAndErrorHandling, IActionContext } from 'vscode-azureextensionui';
+import { AzExtTreeItem, callWithTelemetryAndErrorHandling, IActionContext, IParsedError, parseError } from 'vscode-azureextensionui';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
@@ -39,7 +39,18 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
         // 2. Search attached accounts (do this before subscriptions because it's faster)
         if (!result) {
             const attachedDbAccounts = await ext.attachedAccountsNode.getCachedChildren(context);
-            result = await searchDbAccounts(attachedDbAccounts, parsedCS, context, maxTime);
+
+            try {
+                result = await searchDbAccounts(attachedDbAccounts, parsedCS, context, maxTime);
+            } catch (error) {
+                const parsedError: IParsedError = parseError(error);
+                if (!parsedCS.accountId.includes('127.0.0.1') && parsedError.message.includes('127.0.0.1') && parsedError.errorType === 'MongoNetworkError') {
+                    // Ignore this error since the emulated account isn't being searched for
+                    // https://github.com/microsoft/vscode-cosmosdb/issues/966
+                } else {
+                    throw error;
+                }
+            }
         }
 
         // 3. Search subscriptions

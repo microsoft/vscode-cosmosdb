@@ -20,7 +20,6 @@ import { parseMongoConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { KeyTar, tryGetKeyTar } from '../utils/keytar';
-import { localize } from '../utils/localize';
 import { SubscriptionTreeItem } from './SubscriptionTreeItem';
 
 interface IPersistedAccount {
@@ -32,7 +31,7 @@ interface IPersistedAccount {
 
 export const AttachedAccountSuffix: string = 'Attached';
 export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start with "mongodb://" or "mongodb+srv://"';
-const NO_TRAILING_WHITESPACE: string = localize('noTrailingWhitespace', 'Trailing whitespace is not allowed.');
+
 const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
 
 export class AttachedAccountsTreeItem extends AzureParentTreeItem {
@@ -65,33 +64,24 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     public static validateMongoConnectionString(value: string): string | undefined {
-        if (!value || !value.match(/^mongodb(\+srv)?:\/\//)) {
-            return MONGO_CONNECTION_EXPECTED;
+        value = value.trim();
+
+        if (value && value.match(/^mongodb(\+srv)?:\/\//)) {
+            return undefined;
         }
 
-        if (AttachedAccountsTreeItem.containsTrailingWhitespace(value)) {
-            return NO_TRAILING_WHITESPACE;
-        }
-
-        return undefined;
+        return MONGO_CONNECTION_EXPECTED;
     }
 
     private static validateDocDBConnectionString(value: string): string | undefined {
+        value = value.trim();
+
         try {
             parseDocDBConnectionString(value);
-
-            if (AttachedAccountsTreeItem.containsTrailingWhitespace(value)) {
-                return NO_TRAILING_WHITESPACE;
-            }
-
             return undefined;
         } catch (error) {
             return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..."';
         }
-    }
-
-    private static containsTrailingWhitespace(connectionString: string): boolean {
-        return /.*\s$/.test(connectionString);
     }
 
     public hasMoreChildrenImpl(): boolean {
@@ -147,13 +137,13 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 validateInput = AttachedAccountsTreeItem.validateDocDBConnectionString;
             }
 
-            const connectionString = await vscode.window.showInputBox({
+            const connectionString = (await vscode.window.showInputBox({
                 placeHolder: placeholder,
                 prompt: 'Enter the connection string for your database account',
                 validateInput: validateInput,
                 ignoreFocusOut: true,
                 value: defaultValue
-            });
+            })).trim();
 
             if (connectionString) {
                 const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);

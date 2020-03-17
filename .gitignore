@@ -269,3 +269,4 @@ stats.json
 
 # Scrapbooks
 *.mongo
+.DS_Store

@@ -452,10 +452,6 @@
                     "when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
                 },
                 {
-                    "command": "cosmosDB.deleteAccount",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBPostgresServer"
-                },
-                {
                     "command": "cosmosDB.createMongoDatabase",
                     "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
                 },
@@ -585,7 +581,7 @@
                 },
                 {
                     "command": "cosmosDB.openInPortal",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBPostgresServer"
+                    "when": "view == cosmosDBExplorer && viewItem == postgresServer"
                 },
                 {
                     "command": "cosmosDB.openCollection",
@@ -649,7 +645,7 @@
                 },
                 {
                     "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBPostgresServer"
+                    "when": "view == cosmosDBExplorer && viewItem == postgresServer"
                 },
                 {
                     "command": "cosmosDB.refresh",

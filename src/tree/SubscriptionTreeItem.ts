@@ -15,7 +15,7 @@ import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { PostgreSQLServerTreeItem } from '../postgres/tree/PostgreSQLServerTreeItem';
+import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { azureUtils } from '../utils/azureUtils';
 import { CosmosDBAccountApiStep } from './CosmosDBAccountWizard/CosmosDBAccountApiStep';
@@ -36,12 +36,12 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         let treeItem: AzExtTreeItem[];
 
         //Postgres
-        const pgClient: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-        const pgServers: ServerListResult = await pgClient.servers.list();
+        const postgresClient: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        const postgresServers: ServerListResult = await postgresClient.servers.list();
         treeItemPostgres = await this.createTreeItemsWithErrorHandling(
-            pgServers,
+            postgresServers,
             'invalidPostgreSQLAccount',
-            async (server: Server) => new PostgreSQLServerTreeItem(this, pgClient, server),
+            async (server: Server) => new PostgresServerTreeItem(this, postgresClient, server),
             (server: Server) => server.name
         );
 

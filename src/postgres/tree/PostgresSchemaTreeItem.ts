@@ -8,11 +8,11 @@ import * as _ from 'underscore';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { PostgreSQLTableTreeItem } from './PostgreSQLTableTreeItem';
+import { PostgresTableTreeItem } from './PostgresTableTreeItem';
 
-export class PostgreSQLSchemaTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
+export class PostgresSchemaTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresSchema";
-    public readonly contextValue: string = PostgreSQLSchemaTreeItem.contextValue;
+    public readonly contextValue: string = PostgresSchemaTreeItem.contextValue;
     public readonly childTypeLabel: string = "Table";
     public readonly schema: Schema;
 
@@ -37,8 +37,8 @@ export class PostgreSQLSchemaTreeItem extends AzureParentTreeItem<ISubscriptionC
         return false;
     }
 
-    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgreSQLTableTreeItem[]> {
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresTableTreeItem[]> {
         const tables: Table[] = this.schema.tables;
-        return tables.map(table => new PostgreSQLTableTreeItem(this, table));
+        return tables.map(table => new PostgresTableTreeItem(this, table));
     }
 }

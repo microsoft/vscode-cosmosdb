@@ -10,13 +10,13 @@ import * as vscode from 'vscode';
 import { AzureParentTreeItem, AzureTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { azureUtils } from '../../utils/azureUtils';
-import { PostgreSQLDatabaseTreeItem } from './PostgreSQLDatabaseTreeItem';
-import { PostgreSQLSchemaTreeItem } from './PostgreSQLSchemaTreeItem';
-import { PostgreSQLTableTreeItem } from './PostgreSQLTableTreeItem';
+import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
+import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
+import { PostgresTableTreeItem } from './PostgresTableTreeItem';
 
-export class PostgreSQLServerTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
+export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresServer";
-    public readonly contextValue: string = PostgreSQLServerTreeItem.contextValue;
+    public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
     public readonly client: PostgreSQLManagementClient;
     public readonly databases: Databases;
@@ -27,11 +27,11 @@ export class PostgreSQLServerTreeItem extends AzureParentTreeItem<ISubscriptionC
         super(parent);
         this.client = client;
         this.server = server;
-        this.label = server.name + ` (Postgres)`;
+        this.label = server.name + ` (PostgreSQL)`;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('PostgreSQLAccount.svg');
+        return getThemeAgnosticIconPath('PostgresServer.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {
@@ -42,14 +42,14 @@ export class PostgreSQLServerTreeItem extends AzureParentTreeItem<ISubscriptionC
         const resourceGroup: string = azureUtils.getResourceGroupFromId(this.server.id);
         let listOfDatabases: DatabaseListResult = await this.client.databases.listByServer(resourceGroup, this.server.name);
         listOfDatabases = listOfDatabases.filter(database => !['azure_maintenance', 'azure_sys'].includes(database.name));
-        return listOfDatabases.map(database => new PostgreSQLDatabaseTreeItem(this, database.name));
+        return listOfDatabases.map(database => new PostgresDatabaseTreeItem(this, database.name));
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {
         switch (contextValue) {
-            case PostgreSQLDatabaseTreeItem.contextValue:
-            case PostgreSQLSchemaTreeItem.contextValue:
-            case PostgreSQLTableTreeItem.contextValue:
+            case PostgresDatabaseTreeItem.contextValue:
+            case PostgresSchemaTreeItem.contextValue:
+            case PostgresTableTreeItem.contextValue:
                 return true;
             default:
                 return false;

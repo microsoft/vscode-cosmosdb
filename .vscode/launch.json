@@ -18,7 +18,6 @@
             ],
             "preLaunchTask": "npm: compile",
             "env": {
-                "AZCODE_COSMOSDB_IGNORE_BUNDLE": "1",
                 "DEBUGTELEMETRY": "1",
                 "NODE_DEBUG": ""
             }
@@ -43,7 +42,6 @@
                 "MOCHA_fgrep": "", // Search string of tests to run (empty for all)
                 "MOCHA_grep": "", // RegExp of tests to run (empty for all)
                 "MOCHA_enableTimeouts": "0", // Disable time-outs
-                "AZCODE_COSMOSDB_IGNORE_BUNDLE": "1",
                 "DEBUGTELEMETRY": "1",
                 "NODE_DEBUG": ""
             }

@@ -137,7 +137,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 validateInput = AttachedAccountsTreeItem.validateDocDBConnectionString;
             }
 
-            const connectionString = (await vscode.window.showInputBox({
+            const connectionString = (await ext.ui.showInputBox({
                 placeHolder: placeholder,
                 prompt: 'Enter the connection string for your database account',
                 validateInput: validateInput,

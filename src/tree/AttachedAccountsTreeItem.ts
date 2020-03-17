@@ -64,7 +64,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     public static validateMongoConnectionString(value: string): string | undefined {
-        value = value.trim();
+        value = value ? value.trim() : '';
 
         if (value && value.match(/^mongodb(\+srv)?:\/\//)) {
             return undefined;
@@ -74,7 +74,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     private static validateDocDBConnectionString(value: string): string | undefined {
-        value = value.trim();
+        value = value ? value.trim() : '';
 
         try {
             parseDocDBConnectionString(value);

@@ -17,17 +17,23 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public static contextValue: string = "postgresServer";
     public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
-    public readonly label: string;
     public readonly server: Server;
 
     constructor(parent: AzureParentTreeItem, server: Server) {
         super(parent);
         this.server = server;
-        this.label = server.name + ` (PostgreSQL)`;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return getThemeAgnosticIconPath('PostgresServer.svg');
+    }
+
+    public get label(): string | undefined {
+        return this.server.name;
+    }
+
+    public get description(): string | undefined {
+        return "PostgreSQL";
     }
 
     public hasMoreChildrenImpl(): boolean {

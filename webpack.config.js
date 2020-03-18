@@ -26,6 +26,8 @@ let config = dev.getDefaultWebpackConfig({
         // These and their dependencies will be copied into node_modules rather than placed in the bundle
         // Keep this list small, because all the subdependencies will also be excluded
         'mongodb',
+        'pg',
+        'pg-structure'
     ],
     entries: {
         // Note: Each entry is a completely separate Node.js application that cannot interact with any

@@ -29,6 +29,7 @@ import { setConnectedNode } from './mongo/setConnectedNode';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
+import { PostgresServerTreeItem } from './postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
@@ -63,7 +64,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         registerGraphCommands();
         const codeLensProvider = registerMongoCommands(editorManager);
 
-        const accountContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
+        const cosmosDBTopLevelContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
+        const allAccountsTopLevelContextValues: string[] = [...cosmosDBTopLevelContextValues, PostgresServerTreeItem.contextValue];
 
         registerCommand('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
 
@@ -76,7 +78,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         });
         registerCommand('cosmosDB.deleteAccount', async (actionContext: IActionContext, node?: AzureTreeItem) => {
             if (!node) {
-                node = await ext.tree.showTreeItemPicker(accountContextValues, actionContext);
+                node = await ext.tree.showTreeItemPicker(cosmosDBTopLevelContextValues, actionContext);
             }
 
             await node.deleteTreeItem(actionContext);
@@ -93,7 +95,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         registerCommand('cosmosDB.refresh', async (_actionContext: IActionContext, node?: AzExtTreeItem) => await ext.tree.refresh(node));
         registerCommand('cosmosDB.detachDatabaseAccount', async (actionContext: IActionContext, node?: AzureTreeItem) => {
             if (!node) {
-                node = await ext.tree.showTreeItemPicker(accountContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
+                node = await ext.tree.showTreeItemPicker(cosmosDBTopLevelContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
             }
             if (node instanceof MongoAccountTreeItem) {
                 if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
@@ -113,7 +115,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         });
         registerCommand('cosmosDB.openInPortal', async (actionContext: IActionContext, node?: AzureTreeItem) => {
             if (!node) {
-                node = await ext.tree.showTreeItemPicker(accountContextValues, actionContext);
+                node = await ext.tree.showTreeItemPicker(allAccountsTopLevelContextValues, actionContext);
             }
 
             await node.openInPortal();
@@ -121,7 +123,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         registerCommand('cosmosDB.copyConnectionString', async (actionContext: IActionContext, node?: MongoAccountTreeItem | DocDBAccountTreeItemBase) => {
             const message = 'The connection string has been copied to the clipboard';
             if (!node) {
-                node = await ext.tree.showTreeItemPicker(accountContextValues, actionContext);
+                node = await ext.tree.showTreeItemPicker(cosmosDBTopLevelContextValues, actionContext);
             }
 
             await copyConnectionString(node);

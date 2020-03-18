@@ -5,13 +5,17 @@
 
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from 'azure-arm-cosmosdb/lib/models';
+import { PostgreSQLManagementClient } from 'azure-arm-postgresql';
+import { ServerListResult } from 'azure-arm-postgresql/lib/models';
+import { Server } from 'azure-arm-postgresql/lib/models';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
+import { getExperienceLabel, tryGetExperience } from '../CosmosDBExperiences';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
-import { getExperienceLabel, tryGetExperience } from '../experiences';
 import { TryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
+import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { azureUtils } from '../utils/azureUtils';
 import { CosmosDBAccountApiStep } from './CosmosDBAccountWizard/CosmosDBAccountApiStep';
@@ -27,14 +31,32 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
+
+        let treeItemPostgres: AzExtTreeItem[];
+        let treeItem: AzExtTreeItem[];
+
+        //Postgres
+        const postgresClient: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        const postgresServers: ServerListResult = await postgresClient.servers.list();
+        treeItemPostgres = await this.createTreeItemsWithErrorHandling(
+            postgresServers,
+            'invalidPostgreSQLAccount',
+            async (server: Server) => new PostgresServerTreeItem(this, server),
+            (server: Server) => server.name
+        );
+
+        //CosmosDB
         const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
         const accounts: DatabaseAccountsListResult = await client.databaseAccounts.list();
-        return await this.createTreeItemsWithErrorHandling(
+        treeItem = await this.createTreeItemsWithErrorHandling(
             accounts,
             'invalidCosmosDBAccount',
-            async (db: DatabaseAccount) => await this.initChild(client, db),
+            async (db: DatabaseAccount) => await this.initCosmosDBChild(client, db),
             (db: DatabaseAccount) => db.name
         );
+
+        treeItem.push(...treeItemPostgres);
+        return treeItem;
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem> {
@@ -64,14 +86,14 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         await wizard.execute();
         // don't wait
         vscode.window.showInformationMessage(`Successfully created account "${wizardContext.accountName}".`);
-        return await this.initChild(client, wizardContext.databaseAccount);
+        return await this.initCosmosDBChild(client, wizardContext.databaseAccount);
     }
 
     public isAncestorOfImpl(contextValue: string | RegExp): boolean {
         return typeof contextValue !== 'string' || !/attached/i.test(contextValue);
     }
 
-    private async initChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<AzureTreeItem> {
+    private async initCosmosDBChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<AzureTreeItem> {
         const experience = tryGetExperience(databaseAccount);
         const resourceGroup: string = azureUtils.getResourceGroupFromId(databaseAccount.id);
         const accountKindLabel = getExperienceLabel(databaseAccount);

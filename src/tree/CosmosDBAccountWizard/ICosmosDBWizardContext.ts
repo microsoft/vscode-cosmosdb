@@ -5,7 +5,7 @@
 
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
 import { IResourceGroupWizardContext } from 'vscode-azureextensionui';
-import { Experience } from '../../experiences';
+import { Experience } from '../../CosmosDBExperiences';
 
 export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
     /**

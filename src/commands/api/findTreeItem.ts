@@ -44,8 +44,8 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
                 result = await searchDbAccounts(attachedDbAccounts, parsedCS, context, maxTime);
             } catch (error) {
                 const parsedError: IParsedError = parseError(error);
-                if (!parsedCS.accountId.includes('127.0.0.1') && parsedError.message.includes('127.0.0.1') && parsedError.errorType === 'MongoNetworkError') {
-                    // Ignore this error since the emulated account isn't being searched for
+                if (parsedError.errorType === 'MongoNetworkError' && !parsedError.message.includes(parsedCS.accountId)) {
+                    // Ignore this error since it doesn't pertain to the account we're searching for
                     // https://github.com/microsoft/vscode-cosmosdb/issues/966
                 } else {
                     throw error;

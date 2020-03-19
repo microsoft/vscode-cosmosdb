@@ -39,18 +39,7 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
         // 2. Search attached accounts (do this before subscriptions because it's faster)
         if (!result) {
             const attachedDbAccounts = await ext.attachedAccountsNode.getCachedChildren(context);
-
-            try {
-                result = await searchDbAccounts(attachedDbAccounts, parsedCS, context, maxTime);
-            } catch (error) {
-                const parsedError: IParsedError = parseError(error);
-                if (parsedError.errorType === 'MongoNetworkError' && !parsedError.message.includes(parsedCS.accountId)) {
-                    // Ignore this error since it doesn't pertain to the account we're searching for
-                    // https://github.com/microsoft/vscode-cosmosdb/issues/966
-                } else {
-                    throw error;
-                }
-            }
+            result = await searchDbAccounts(attachedDbAccounts, parsedCS, context, maxTime);
         }
 
         // 3. Search subscriptions
@@ -83,34 +72,44 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
 }
 
 async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedConnectionString, context: IActionContext, maxTime: number): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
-    for (const dbAccount of dbAccounts) {
-        if (Date.now() > maxTime) {
-            return undefined;
-        }
-
-        let actual: ParsedConnectionString;
-        if (dbAccount instanceof MongoAccountTreeItem) {
-            actual = await parseMongoConnectionString(dbAccount.connectionString);
-        } else if (dbAccount instanceof DocDBAccountTreeItemBase) {
-            actual = parseDocDBConnectionString(dbAccount.connectionString);
-        } else {
-            return undefined;
-        }
-
-        if (expected.accountId === actual.accountId) {
-            if (expected.databaseName) {
-                const dbs = await dbAccount.getCachedChildren(context);
-                for (const db of dbs) {
-                    if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) && expected.databaseName === db.databaseName) {
-                        return new DatabaseTreeItemInternal(expected, dbAccount, db);
-                    }
-                }
-
-                // We found the right account - just not the db. In this case we can still 'reveal' the account
-                return new DatabaseTreeItemInternal(expected, dbAccount);
+    try {
+        for (const dbAccount of dbAccounts) {
+            if (Date.now() > maxTime) {
+                return undefined;
             }
 
-            return new DatabaseAccountTreeItemInternal(expected, dbAccount);
+            let actual: ParsedConnectionString;
+            if (dbAccount instanceof MongoAccountTreeItem) {
+                actual = await parseMongoConnectionString(dbAccount.connectionString);
+            } else if (dbAccount instanceof DocDBAccountTreeItemBase) {
+                actual = parseDocDBConnectionString(dbAccount.connectionString);
+            } else {
+                return undefined;
+            }
+
+            if (expected.accountId === actual.accountId) {
+                if (expected.databaseName) {
+                    const dbs = await dbAccount.getCachedChildren(context);
+                    for (const db of dbs) {
+                        if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) && expected.databaseName === db.databaseName) {
+                            return new DatabaseTreeItemInternal(expected, dbAccount, db);
+                        }
+                    }
+
+                    // We found the right account - just not the db. In this case we can still 'reveal' the account
+                    return new DatabaseTreeItemInternal(expected, dbAccount);
+                }
+
+                return new DatabaseAccountTreeItemInternal(expected, dbAccount);
+            }
+        }
+    } catch (error) {
+        const parsedError: IParsedError = parseError(error);
+        if (parsedError.errorType === 'MongoNetworkError' && !parsedError.message.includes(expected.accountId)) {
+            // Ignore this error since it doesn't pertain to the account we're searching for
+            // https://github.com/microsoft/vscode-cosmosdb/issues/966
+        } else {
+            throw error;
         }
     }
 

@@ -9,7 +9,7 @@ import { getAllCommandsFromTextDocument } from "../MongoScrapbook";
 
 export class MongoCodeLensProvider implements vscode.CodeLensProvider {
     private _onDidChangeEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
-    private _connectedDatabase: string;
+    private _connectedDatabase: string | undefined;
     private _connectedDatabaseInitialized: boolean;
 
     public get onDidChangeCodeLenses(): vscode.Event<void> {

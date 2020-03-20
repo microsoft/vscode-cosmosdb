@@ -10,6 +10,6 @@ import { ISubscriptionContext } from "vscode-azureextensionui";
 export interface IDocDBTreeRoot extends ISubscriptionContext {
     documentEndpoint: string;
     masterKey: string;
-    isEmulator: boolean;
+    isEmulator: boolean | undefined;
     getDocumentClient(): DocumentClient;
 }

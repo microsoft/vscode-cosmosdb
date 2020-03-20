@@ -6,9 +6,10 @@
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { DatabaseListResult, Server } from 'azure-arm-postgresql/lib/models';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, AzureTreeItem, createAzureClient, ISubscriptionContext } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { azureUtils } from '../../utils/azureUtils';
+import { nonNullProp } from '../../utils/nonNull';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
 import { PostgresTableTreeItem } from './PostgresTableTreeItem';
@@ -28,8 +29,16 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         return getThemeAgnosticIconPath('PostgresServer.svg');
     }
 
-    public get label(): string | undefined {
-        return this.server.name;
+    public get label(): string {
+        return this.name;
+    }
+
+    public get name(): string {
+        return nonNullProp(this.server, 'name');
+    }
+
+    public get id(): string {
+        return nonNullProp(this.server, 'id');
     }
 
     public get description(): string | undefined {
@@ -40,12 +49,18 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         return false;
     }
 
-    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem<ISubscriptionContext>[]> {
-        const resourceGroup: string = azureUtils.getResourceGroupFromId(this.server.id);
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
+        const resourceGroup: string = azureUtils.getResourceGroupFromId(this.id);
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-        let listOfDatabases: DatabaseListResult = await client.databases.listByServer(resourceGroup, this.server.name);
-        listOfDatabases = listOfDatabases.filter(database => !['azure_maintenance', 'azure_sys'].includes(database.name));
-        return listOfDatabases.map(database => new PostgresDatabaseTreeItem(this, database.name));
+        const listOfDatabases: DatabaseListResult = await client.databases.listByServer(resourceGroup, this.name);
+        return this.createTreeItemsWithErrorHandling(
+            listOfDatabases,
+            'invalidPostgresServer',
+            (database) => {
+                return database.name && !['azure_maintenance', 'azure_sys'].includes(database.name) ? new PostgresDatabaseTreeItem(this, database.name) : undefined;
+            },
+            (database) => database.name
+        );
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {

@@ -62,7 +62,11 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
 
         // 4. If all else fails, just attach a new node
         if (!result) {
-            result = new DatabaseTreeItemInternal(parsedCS);
+            if (parsedCS.databaseName) {
+                result = new DatabaseTreeItemInternal(parsedCS, parsedCS.databaseName);
+            } else {
+                result = new DatabaseAccountTreeItemInternal(parsedCS);
+            }
         }
 
         cacheTreeItem(parsedCS, result);
@@ -91,12 +95,12 @@ async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedCon
                 const dbs = await dbAccount.getCachedChildren(context);
                 for (const db of dbs) {
                     if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) && expected.databaseName === db.databaseName) {
-                        return new DatabaseTreeItemInternal(expected, dbAccount, db);
+                        return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
                     }
                 }
 
                 // We found the right account - just not the db. In this case we can still 'reveal' the account
-                return new DatabaseTreeItemInternal(expected, dbAccount);
+                return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount);
             }
 
             return new DatabaseAccountTreeItemInternal(expected, dbAccount);

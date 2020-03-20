@@ -5,6 +5,7 @@
 
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
 import { IAzureQuickPickItem } from 'vscode-azureextensionui';
+import { nonNullProp } from './utils/nonNull';
 
 export enum API {
     MongoDB = 'MongoDB',
@@ -37,19 +38,19 @@ export function getExperienceLabel(account: DatabaseAccount): string {
     // Must be some new kind of account that we aren't aware of.  Try to get a decent label
     const defaultExperience: string = <API>(account && account.tags && account.tags.defaultExperience);
     const firstCapability = account.capabilities && account.capabilities[0];
-    const firstCapabilityName = firstCapability && firstCapability.name.replace(/^Enable/, '');
-    return defaultExperience || firstCapabilityName || account.kind;
+    const firstCapabilityName = firstCapability?.name?.replace(/^Enable/, '');
+    return defaultExperience || firstCapabilityName || nonNullProp(account, 'kind');
 }
 
 export function tryGetExperience(account: DatabaseAccount): Experience | undefined {
     // defaultExperience in the account doesn't really mean anything, we can't depend on its value for determining account type
     if (account.kind === DBAccountKind.MongoDB) {
         return MongoExperience;
-    } else if (account.capabilities.find(cap => cap.name === 'EnableGremlin')) {
+    } else if (account.capabilities?.find(cap => cap.name === 'EnableGremlin')) {
         return GremlinExperience;
-    } else if (account.capabilities.find(cap => cap.name === 'EnableTable')) {
+    } else if (account.capabilities?.find(cap => cap.name === 'EnableTable')) {
         return TableExperience;
-    } else if (account.capabilities.length === 0) {
+    } else if (account.capabilities?.length === 0) {
         return CoreExperience;
     }
 

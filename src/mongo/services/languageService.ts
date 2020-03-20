@@ -12,6 +12,9 @@ import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoScriptDocumentManager } from './mongoScript';
 import { SchemaService } from './schemaService';
 
+// grandfathered-in
+// tslint:disable: no-non-null-assertion
+
 // tslint:disable-next-line: export-name
 export class LanguageService {
 
@@ -57,7 +60,7 @@ export class LanguageService {
         });
 
         connection.onRequest('disconnect', () => {
-            this.db = null;
+            this.db = null!;
             for (const schema of this.schemas) {
                 this.jsonLanguageService.resetSchema(schema.uri);
             }
@@ -73,7 +76,7 @@ export class LanguageService {
 
     public provideCompletionItems(positionParams: TextDocumentPositionParams): Promise<CompletionItem[]> {
         const textDocument = this.textDocuments.get(positionParams.textDocument.uri);
-        const mongoScriptDocument = this.mongoDocumentsManager.getDocument(textDocument, this.db);
+        const mongoScriptDocument = this.mongoDocumentsManager.getDocument(textDocument!, this.db);
         return mongoScriptDocument.provideCompletionItemsAt(positionParams.position);
     }
 

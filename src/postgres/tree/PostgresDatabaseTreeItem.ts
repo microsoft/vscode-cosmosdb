@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Client } from 'pg';
-import { ClientConfig } from 'pg';
+import { Client, ClientConfig } from 'pg';
 import pgStructure from 'pg-structure';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
+import { nonNullProp } from '../../utils/nonNull';
 import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
 
@@ -41,12 +41,12 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresSchemaTreeItem[]> {
-        const user: string = process.env.POSTGRES_USERNAME;
-        const fullUsername = user + "@" + this.parent.server.name;
-        const password: string = process.env.POSTGRES_PASSWORD;
+        const user: string = nonNullProp(process.env, 'POSTGRES_USERNAME');
+        const fullUsername = user + "@" + nonNullProp(this.parent.server, 'name');
+        const password: string = nonNullProp(process.env, 'POSTGRES_PASSWORD');
         const sslString = process.env.POSTGRES_SSL;
         const ssl: boolean = sslString === 'true';
-        const host: string = this.parent.server.fullyQualifiedDomainName;
+        const host: string = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
         const clientConfig: ClientConfig = { user: fullUsername, password: password, ssl: ssl, host: host, port: 5432, database: this.databaseName };
         const accountConnection = new Client(clientConfig);
         const db = await pgStructure(accountConnection);

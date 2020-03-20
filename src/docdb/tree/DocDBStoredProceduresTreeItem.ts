@@ -5,8 +5,9 @@
 
 import { DocumentClient, FeedOptions, ProcedureMeta, QueryIterator } from 'documentdb';
 import * as vscode from "vscode";
-import { ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
+import { ICreateChildImplContext } from 'vscode-azureextensionui';
 import { defaultStoredProcedure, getThemeAgnosticIconPath } from '../../constants';
+import { ext } from '../../extensionVariables';
 import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
@@ -35,28 +36,23 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBStoredProcedureTreeItem> {
         const client = this.root.getDocumentClient();
-        let spID = await vscode.window.showInputBox({
+        const spID = (await ext.ui.showInputBox({
             prompt: "Enter a unique stored procedure ID",
-            validateInput: this.validateName,
-            ignoreFocusOut: true
+            validateInput: this.validateName
+        })).trim();
+
+        context.showCreatingTreeItem(spID);
+        const sproc: ProcedureMeta = await new Promise<ProcedureMeta>((resolve, reject) => {
+            client.createStoredProcedure(this.link, { id: spID, body: defaultStoredProcedure }, (err, result: ProcedureMeta) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(result);
+                }
+            });
         });
 
-        if (spID || spID === "") {
-            spID = spID.trim();
-            context.showCreatingTreeItem(spID);
-            const sproc: ProcedureMeta = await new Promise<ProcedureMeta>((resolve, reject) => {
-                client.createStoredProcedure(this.link, { id: spID, body: defaultStoredProcedure }, (err, result: ProcedureMeta) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(result);
-                    }
-                });
-            });
-
-            return this.initChild(sproc);
-        }
-        throw new UserCancelledError();
+        return this.initChild(sproc);
     }
 
     public get id(): string {

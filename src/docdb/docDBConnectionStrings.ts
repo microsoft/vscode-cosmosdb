@@ -5,6 +5,7 @@
 
 import * as url from 'url';
 import { ParsedConnectionString } from '../ParsedConnectionString';
+import { nonNullProp } from '../utils/nonNull';
 
 export function parseDocDBConnectionString(connectionString: string): ParsedDocDBConnectionString {
     const endpoint = getPropertyFromConnectionString(connectionString, 'AccountEndpoint');
@@ -19,7 +20,7 @@ export function parseDocDBConnectionString(connectionString: string): ParsedDocD
 function getPropertyFromConnectionString(connectionString: string, property: string): string | undefined {
     const regexp = new RegExp(`(?:^|;)\\s*${property}=([^;]+)(?:;|$)`, 'i');
     const match = connectionString.match(regexp);
-    return match && match[1];
+    return match ? match[1] : undefined;
 }
 
 export class ParsedDocDBConnectionString extends ParsedConnectionString {
@@ -35,7 +36,7 @@ export class ParsedDocDBConnectionString extends ParsedConnectionString {
         this.masterKey = masterKey;
 
         const parsedEndpoint = url.parse(endpoint);
-        this.hostName = parsedEndpoint.hostname;
-        this.port = parsedEndpoint.port;
+        this.hostName = nonNullProp(parsedEndpoint, 'hostname');
+        this.port = nonNullProp(parsedEndpoint, 'port');
     }
 }

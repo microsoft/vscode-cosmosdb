@@ -32,6 +32,7 @@ export { IDatabaseInfo } from './src/mongo/tree/MongoAccountTreeItem';
 export { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from './src/tree/AttachedAccountsTreeItem';
 export { AzureAccountTreeItemWithAttached } from './src/tree/AzureAccountTreeItemWithAttached';
 export { improveError } from './src/utils/improveError';
+export * from './src/utils/nonNull';
 export { randomUtils } from './src/utils/randomUtils';
 export { rejectOnTimeout, valueOnTimeout } from './src/utils/timeout';
 export { getDocumentTreeItemLabel, IDisposable } from './src/utils/vscodeUtils';

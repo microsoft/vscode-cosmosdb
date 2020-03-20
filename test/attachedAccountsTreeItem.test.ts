@@ -23,6 +23,6 @@ suite(`attachedAccountsTreeItem`, () => {
         // tslint:disable-next-line: no-http-string
         test('rejects bad prefix', () => assertConnectionValid(`http://localhost/`, MONGO_CONNECTION_EXPECTED));
 
-        test('rejects null', () => assertConnectionValid(null, MONGO_CONNECTION_EXPECTED));
+        test('rejects null', () => assertConnectionValid(null!, MONGO_CONNECTION_EXPECTED));
     });
 });

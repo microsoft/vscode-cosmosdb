@@ -11,7 +11,7 @@
         "noImplicitThis": true,
         "noImplicitReturns": true,
         "noUnusedLocals": true,
-        "strictNullChecks": false,
+        "strictNullChecks": true,
         "noUnusedParameters": true,
         "rootDir": ".",
         "experimentalDecorators": true,

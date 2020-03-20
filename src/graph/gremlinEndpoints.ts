@@ -4,26 +4,25 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
+import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { IGremlinEndpoint } from '../vscode-cosmosdbgraph.api';
 
-export async function TryGetGremlinEndpointFromAzure(client: CosmosDBManagementClient, resourceGroup: string, account: string): Promise<IGremlinEndpoint | undefined> {
-    return new Promise<IGremlinEndpoint>((resolve, reject) => {
+export async function tryGetGremlinEndpointFromAzure(client: CosmosDBManagementClient, resourceGroup: string, account: string): Promise<IGremlinEndpoint | undefined> {
+    const response = await new Promise((resolve, reject) => {
         // Use the callback version of get because the Promise one currently doesn't expose gremlinEndpoint (https://github.com/Azure/azure-documentdb-node/issues/227)
-        client.databaseAccounts.get(resourceGroup, account, (error, _result, _httpRequest, response) => {
+        client.databaseAccounts.get(resourceGroup, account, (error, _result, _httpRequest, innerResponse) => {
             if (error) {
                 reject(error);
             } else {
-                const body = <{ properties: { gremlinEndpoint: string } }>JSON.parse((<{ body?: string }>response).body);
-                const endpointUri = body.properties.gremlinEndpoint;
-                if (endpointUri) {
-                    resolve(parseEndpointUrl(endpointUri));
-                } else {
-                    // If it doesn't have gremlinEndpoint in its properties, it must be a pre-GA endpoint
-                    resolve(undefined);
-                }
+                resolve(innerResponse);
             }
         });
     });
+
+    const body: string = nonNullProp(<{ body?: string }>response, 'body');
+    const endpointUri = JSON.parse(body).properties?.gremlinEndpoint;
+    // If it doesn't have gremlinEndpoint in its properties, it must be a pre-GA endpoint
+    return endpointUri ? parseEndpointUrl(endpointUri) : undefined;
 }
 
 export function getPossibleGremlinEndpoints(documentEndpoint: string): IGremlinEndpoint[] {
@@ -49,7 +48,7 @@ export function getPossibleGremlinEndpoints(documentEndpoint: string): IGremlinE
  * @param url An account URL such as 'https://<graphname>.documents.azure.com:443/'
  */
 function parseEndpointUrl(url: string): IGremlinEndpoint {
-    const [, protocol, host, , portString] = url.match(/^([^:]+):\/\/([^:]+)(:([0-9]+))?\/?$/);
+    const [, protocol, host, , portString] = nonNullValue(url.match(/^([^:]+):\/\/([^:]+)(:([0-9]+))?\/?$/), 'urlMatch');
     console.assert(!!protocol && !!host, "Unexpected endpoint format");
     const port = parseInt(portString || "443", 10);
     console.assert(port > 0, "Unexpected port");

@@ -25,7 +25,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
 
     private _root: IDocDBTreeRoot;
 
-    constructor(parent: AzureParentTreeItem, id: string, label: string, documentEndpoint: string, masterKey: string, isEmulator: boolean, readonly databaseAccount?: DatabaseAccount) {
+    constructor(parent: AzureParentTreeItem, id: string, label: string, documentEndpoint: string, masterKey: string, isEmulator: boolean | undefined, readonly databaseAccount?: DatabaseAccount) {
         super(parent);
         this.id = id;
         this.label = label;

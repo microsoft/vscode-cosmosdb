@@ -10,6 +10,7 @@ import { IActionContext, parseError } from 'vscode-azureextensionui';
 import { DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
 import { MongoCollectionTreeItem } from '../mongo/tree/MongoCollectionTreeItem';
+import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { getRootPath } from '../utils/workspacUtils';
 
 export async function importDocuments(actionContext: IActionContext, uris: vscode.Uri[] | undefined, collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | undefined): Promise<void> {
@@ -40,6 +41,9 @@ export async function importDocuments(actionContext: IActionContext, uris: vscod
             title: "Importing documents..."
         },
         async (progress) => {
+            uris = nonNullValue(uris, 'uris');
+            collectionNode = nonNullValue(collectionNode, 'collectionNode');
+
             progress.report({ increment: 20, message: "Parsing documents for errors" });
             const documents = await parseDocuments(uris);
             progress.report({ increment: 30, message: "Parsed documents. Importing" });
@@ -74,7 +78,8 @@ async function askForDocuments(): Promise<vscode.Uri[]> {
 
 // tslint:disable-next-line:no-any
 async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
-    let documents = [];
+    // tslint:disable-next-line:no-any
+    let documents: any[] = [];
     let errorFoundFlag: boolean = false;
     for (const uri of uris) {
         let parsed;
@@ -106,8 +111,8 @@ async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
 
 // tslint:disable-next-line:no-any
 async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem, documents: any[], uris: vscode.Uri[]): Promise<string> {
-    let result;
-    const ids = [];
+    let result: string;
+    const ids: string[] = [];
     let i = 0;
     const erroneousFiles: vscode.Uri[] = [];
     for (i = 0; i < documents.length; i++) {
@@ -120,7 +125,7 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
         ext.outputChannel.appendLog(`The following documents do not contain the required partition key:`);
         erroneousFiles.forEach(file => ext.outputChannel.appendLine(file.path));
         ext.outputChannel.show();
-        throw new Error(`See output for list of documents that do not contain the partition key '${collectionNode.partitionKey.paths[0]}' required by collection '${collectionNode.label}'`);
+        throw new Error(`See output for list of documents that do not contain the partition key '${nonNullProp(collectionNode, 'partitionKey').paths[0]}' required by collection '${collectionNode.label}'`);
     }
     for (const document of documents) {
         const retrieved = await collectionNode.documentsTreeItem.createDocument(document);

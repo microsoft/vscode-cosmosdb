@@ -10,13 +10,14 @@ import * as vscode from 'vscode';
 import { AzureParentTreeItem, DialogResponses, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { defaultBatchSize, getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
+import { nonNullValue } from '../../utils/nonNull';
 import { MongoCommand } from '../MongoCommand';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 // tslint:disable:no-var-requires no-require-imports
 const EJSON = require("mongodb-extended-json");
 
-type MongoFunction = (...args: Object[]) => Thenable<string>;
+type MongoFunction = (...args: ({} | {}[] | undefined)[]) => Thenable<string>;
 class FunctionDescriptor {
     public constructor(public mongoFunction: MongoFunction, public text: string, public minShellArgs: number, public maxShellArgs: number, public maxHandledArgs: number) {
     }
@@ -39,7 +40,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
         this.collection = collection;
         if (query && query.length) {
             this._query = query[0];
-            this._projection = query.length > 1 && query[1];
+            this._projection = query.length > 1 ? query[1] : undefined;
         }
     }
 
@@ -103,13 +104,13 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
     public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDocumentTreeItem> {
         context.showCreatingTreeItem("");
         const result: InsertOneWriteOpResult = await this.collection.insertOne({});
-        const newDocument: IMongoDocument = await this.collection.findOne({ _id: result.insertedId });
+        const newDocument: IMongoDocument = nonNullValue(await this.collection.findOne({ _id: result.insertedId }), 'newDocument');
         return new MongoDocumentTreeItem(this, newDocument);
     }
 
     public async tryExecuteCommandDirectly(command: Partial<MongoCommand>): Promise<{ deferToShell: true; result: undefined } | { deferToShell: false; result: string }> {
         // range and text are not neccessary properties for this function so partial should suffice
-        const parameters = command.arguments ? command.arguments.map(parseJSContent) : undefined;
+        const parameters = command.arguments ? command.arguments.map(parseJSContent) : [];
 
         const functions = {
             drop: new FunctionDescriptor(this.drop, 'Dropping collection', 0, 0, 0),
@@ -123,8 +124,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
             remove: new FunctionDescriptor(this.remove, 'Deleting document(s)', 1, 2, 1)
         };
 
-        if (functions.hasOwnProperty(command.name)) {
-
+        if (command.name && functions.hasOwnProperty(command.name)) {
             // currently no logic to handle chained commands so just defer to the shell right away
             if (command.chained) {
                 return { deferToShell: true, result: undefined };
@@ -210,7 +210,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
         return this.stringify(insertManyResult);
     }
 
-    private async remove(filter?: Object): Promise<string> {
+    private async remove(filter: Object): Promise<string> {
         const removeResult = await this.collection.remove(filter);
         return this.stringify(removeResult);
     }

@@ -21,13 +21,14 @@ import { MongoDocumentTreeItem } from "./tree/MongoDocumentTreeItem";
 
 const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 let diagnosticsCollection: vscode.DiagnosticCollection;
+const mongoLanguageId: string = 'mongo';
 
 // tslint:disable-next-line: max-func-body-length
 export function registerMongoCommands(editorManager: CosmosEditorManager): MongoCodeLensProvider {
     const languageClient: MongoDBLanguageClient = new MongoDBLanguageClient();
 
     const codeLensProvider = new MongoCodeLensProvider();
-    ext.context.subscriptions.push(vscode.languages.registerCodeLensProvider('mongo', codeLensProvider));
+    ext.context.subscriptions.push(vscode.languages.registerCodeLensProvider(mongoLanguageId, codeLensProvider));
 
     diagnosticsCollection = vscode.languages.createDiagnosticCollection('cosmosDB.mongo');
     ext.context.subscriptions.push(diagnosticsCollection);
@@ -117,14 +118,14 @@ export function registerMongoCommands(editorManager: CosmosEditorManager): Mongo
     registerCommand('cosmosDB.executeMongoCommand', async (context: IActionContext, commandText: object) => {
         await loadPersistedMongoDBTask;
         if (typeof commandText === "string") {
-            await executeCommandFromText(ext.connectedMongoDB, editorManager, context, <string>commandText);
+            await executeCommandFromText(editorManager, context, <string>commandText);
         } else {
-            await executeCommandFromActiveEditor(ext.connectedMongoDB, editorManager, context);
+            await executeCommandFromActiveEditor(editorManager, context);
         }
     });
     registerCommand('cosmosDB.executeAllMongoCommands', async (context: IActionContext) => {
         await loadPersistedMongoDBTask;
-        await executeAllCommandsFromActiveEditor(ext.connectedMongoDB, editorManager, context);
+        await executeAllCommandsFromActiveEditor(editorManager, context);
     });
 
     return codeLensProvider;
@@ -166,7 +167,7 @@ function setUpErrorReporting(): void {
     callWithTelemetryAndErrorHandling(
         "initialUpdateErrorsInActiveDocument",
         async (context: IActionContext) => {
-            updateErrorsInScrapbook(context, vscode.window.activeTextEditor && vscode.window.activeTextEditor.document);
+            updateErrorsInScrapbook(context, vscode.window.activeTextEditor?.document);
         });
 
     // Update errors when document opened/changed
@@ -185,7 +186,7 @@ function setUpErrorReporting(): void {
         vscode.workspace.onDidCloseTextDocument,
         async (context: IActionContext, document: vscode.TextDocument) => {
             // Remove errors when closed
-            if (isScrapbook(document)) {
+            if (document?.languageId === mongoLanguageId) {
                 diagnosticsCollection.set(document.uri, []);
             } else {
                 context.telemetry.suppressIfSuccessful = true;
@@ -193,12 +194,8 @@ function setUpErrorReporting(): void {
         });
 }
 
-function isScrapbook(document: vscode.TextDocument): boolean {
-    return document && document.languageId === 'mongo';
-}
-
-function updateErrorsInScrapbook(context: IActionContext, document: vscode.TextDocument): void {
-    if (isScrapbook(document)) {
+function updateErrorsInScrapbook(context: IActionContext, document: vscode.TextDocument | undefined): void {
+    if (document?.languageId === mongoLanguageId) {
         const errors = getAllErrorsFromTextDocument(document);
         diagnosticsCollection.set(document.uri, errors);
     } else {

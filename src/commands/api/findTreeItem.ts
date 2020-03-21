@@ -104,13 +104,8 @@ async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedCon
             }
         }
     } catch (error) {
-        const parsedError: IParsedError = parseError(error);
-        if (parsedError.errorType === 'MongoNetworkError' && !parsedError.message.includes(expected.accountId)) {
-            // Ignore this error since it doesn't pertain to the account we're searching for
-            // https://github.com/microsoft/vscode-cosmosdb/issues/966
-        } else {
-            throw error;
-        }
+        // Swallow all errors to avoid blocking the db account search
+        // https://github.com/microsoft/vscode-cosmosdb/issues/966
     }
 
     return undefined;

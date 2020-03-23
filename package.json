@@ -73,7 +73,8 @@
         "onCommand:cosmosDB.openInPortal",
         "onCommand:cosmosDB.copyConnectionString",
         "onCommand:cosmosDB.launchMongoShell",
-        "onCommand:cosmosDB.openGraphExplorer"
+        "onCommand:cosmosDB.openGraphExplorer",
+        "onCommand:cosmosDB.getPostgresCredentials"
     ],
     "contributes": {
         "viewsContainers": {
@@ -337,6 +338,11 @@
                 "category": "Cosmos DB",
                 "command": "cosmosDB.openStoredProcedure",
                 "title": "Open Stored Procedure"
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "cosmosDB.getPostgresCredentials",
+                "title": "Enter PostgreSQL Server Credentials"
             }
         ],
         "menus": {

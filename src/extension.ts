@@ -29,6 +29,7 @@ import { setConnectedNode } from './mongo/setConnectedNode';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
+import { getPostgresCredentials } from './postgres/getPostgresCredentials';
 import { PostgresServerTreeItem } from './postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
@@ -144,6 +145,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         }, doubleClickDebounceDelay);
         registerCommand('cosmosDB.update', async (actionContext: IActionContext, uri: vscode.Uri) => await editorManager.updateMatchingNode(actionContext, uri));
         registerCommand('cosmosDB.loadMore', async (actionContext: IActionContext, node?: AzExtTreeItem) => await ext.tree.loadMore(node, actionContext));
+        registerCommand('cosmosDB.getPostgresCredentials', getPostgresCredentials);
         registerEvent(
             'cosmosDB.CosmosEditorManager.onDidSaveTextDocument',
             vscode.workspace.onDidSaveTextDocument,

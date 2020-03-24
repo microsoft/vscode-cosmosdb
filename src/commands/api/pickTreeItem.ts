@@ -18,6 +18,8 @@ import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
 import { TableAccountTreeItem } from '../../table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from '../../tree/AttachedAccountsTreeItem';
+import { localize } from '../../utils/localize';
+import { nonNullProp } from '../../utils/nonNull';
 import { CosmosDBApiType, DatabaseAccountTreeItem, DatabaseTreeItem, PickTreeItemOptions } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem } from './apiCache';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
@@ -91,10 +93,12 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
             parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
             accountNode = pickedItem.parent;
             databaseNode = pickedItem;
+        } else {
+            throw new RangeError(localize('invalidItem', 'Invalid item "{0}".', pickedItem.constructor.name));
         }
 
         const result = databaseNode ?
-            new DatabaseTreeItemInternal(parsedCS, accountNode, databaseNode) :
+            new DatabaseTreeItemInternal(parsedCS, nonNullProp(parsedCS, 'databaseName'), accountNode, databaseNode) :
             new DatabaseAccountTreeItemInternal(parsedCS, accountNode);
         cacheTreeItem(parsedCS, result);
         return result;

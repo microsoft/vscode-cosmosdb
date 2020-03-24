@@ -10,6 +10,7 @@ import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, ICreateCh
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { getThemeAgnosticIconPath, Links, testDb } from '../../constants';
 import { ext } from '../../extensionVariables';
+import { nonNullProp } from '../../utils/nonNull';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
@@ -27,7 +28,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 
     private _root: IMongoTreeRoot;
 
-    constructor(parent: AzureParentTreeItem, id: string, label: string, connectionString: string, isEmulator: boolean, readonly databaseAccount?: DatabaseAccount) {
+    constructor(parent: AzureParentTreeItem, id: string, label: string, connectionString: string, isEmulator: boolean | undefined, readonly databaseAccount?: DatabaseAccount) {
         super(parent);
         this.id = id;
         this.label = label;
@@ -58,7 +59,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
             }
 
             // Azure MongoDB accounts need to have the name passed in for private endpoints
-            mongoClient = await connectToMongoClient(this.connectionString, this.databaseAccount ? this.databaseAccount.name : appendExtensionUserAgent());
+            mongoClient = await connectToMongoClient(this.connectionString, this.databaseAccount ? nonNullProp(this.databaseAccount, 'name') : appendExtensionUserAgent());
 
             const databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);
             if (databaseInConnectionString && !this.root.isEmulator) { // emulator violates the connection string format
@@ -74,7 +75,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
             }
             return databases
                 .filter((database: IDatabaseInfo) => !(database.name && database.name.toLowerCase() === "admin" && database.empty)) // Filter out the 'admin' database if it's empty
-                .map(database => new MongoDatabaseTreeItem(this, database.name, this.connectionString));
+                .map(database => new MongoDatabaseTreeItem(this, nonNullProp(database, 'name'), this.connectionString));
         } catch (error) {
             const message = parseError(error).message;
             if (this._root.isEmulator && message.includes("ECONNREFUSED")) {

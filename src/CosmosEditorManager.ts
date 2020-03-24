@@ -18,6 +18,7 @@ import { MongoCollectionNodeEditor } from './mongo/editors/MongoCollectionNodeEd
 import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
+import { nonNullValue } from './utils/nonNull';
 import * as vscodeUtils from './utils/vscodeUtils';
 
 export interface ICosmosEditor<T = {}> {
@@ -36,6 +37,8 @@ export interface ShowEditorDocumentOptions {
     showInNextColumn?: boolean;
 }
 
+type PersistedEditors = { [key: string]: string };
+
 export class CosmosEditorManager {
     private fileMap: { [key: string]: ICosmosEditor } = {};
     private ignoreSave: boolean = false;
@@ -53,9 +56,9 @@ export class CosmosEditorManager {
         let preserveFocus: boolean = false;
         if (options && options.showInNextColumn) {
             preserveFocus = true;
-            const activeEditor = vscode.window.activeTextEditor;
-            if (activeEditor && activeEditor.viewColumn >= vscode.ViewColumn.One) {
-                column = activeEditor.viewColumn < ViewColumn.Three ? activeEditor.viewColumn + 1 : ViewColumn.One;
+            const viewColumn = vscode.window.activeTextEditor?.viewColumn;
+            if (typeof viewColumn === 'number' && viewColumn >= vscode.ViewColumn.One) {
+                column = viewColumn < ViewColumn.Three ? viewColumn + 1 : ViewColumn.One;
             }
         }
 
@@ -72,7 +75,7 @@ export class CosmosEditorManager {
         }
 
         this.fileMap[localDocPath] = editor;
-        const fileMapLabels = this._globalState.get(this._persistedEditorsKey, {});
+        const fileMapLabels: PersistedEditors = this._globalState.get(this._persistedEditorsKey, {});
         Object.keys(this.fileMap).forEach((key) => fileMapLabels[key] = (this.fileMap[key]).id);
         this._globalState.update(this._persistedEditorsKey, fileMapLabels);
 
@@ -82,9 +85,9 @@ export class CosmosEditorManager {
     }
 
     public async updateMatchingNode(context: IActionContext, documentUri: vscode.Uri): Promise<void> {
-        let filePath: string = Object.keys(this.fileMap).find((fp) => path.relative(documentUri.fsPath, fp) === '');
+        let filePath: string | undefined = Object.keys(this.fileMap).find((fp) => path.relative(documentUri.fsPath, fp) === '');
         if (!filePath) {
-            filePath = await this.loadPersistedEditor(documentUri, context);
+            filePath = nonNullValue(await this.loadPersistedEditor(documentUri, context), 'filePath');
         }
         const document = await vscode.workspace.openTextDocument(documentUri.fsPath);
         await this.updateToCloud(this.fileMap[filePath], document, context);
@@ -140,34 +143,32 @@ export class CosmosEditorManager {
         }
     }
 
-    private async loadPersistedEditor(documentUri: vscode.Uri, context: IActionContext): Promise<string> {
-        const persistedEditors = this._globalState.get(this._persistedEditorsKey);
+    private async loadPersistedEditor(documentUri: vscode.Uri, context: IActionContext): Promise<string | undefined> {
+        const persistedEditors: PersistedEditors = this._globalState.get(this._persistedEditorsKey, {});
         //Based on the documentUri, split just the appropriate key's value on '/'
-        if (persistedEditors) {
-            const editorFilePath = Object.keys(persistedEditors).find((label) => path.relative(documentUri.fsPath, label) === '');
-            if (editorFilePath) {
-                const editorNode: AzureTreeItem | undefined = await ext.tree.findTreeItem(persistedEditors[editorFilePath], context);
-                let editor: ICosmosEditor;
-                if (editorNode) {
-                    if (editorNode instanceof MongoCollectionTreeItem) {
-                        editor = new MongoCollectionNodeEditor(editorNode);
-                    } else if (editorNode instanceof DocDBDocumentTreeItem) {
-                        editor = new DocDBDocumentNodeEditor(editorNode);
-                    } else if (editorNode instanceof MongoDocumentTreeItem) {
-                        editor = new MongoDocumentNodeEditor(editorNode);
-                    } else if (editorNode instanceof DocDBStoredProcedureTreeItem) {
-                        editor = new DocDBStoredProcedureNodeEditor(editorNode);
-                    } else {
-                        throw new Error("Unexpected type of Editor treeItem");
-                    }
-                    this.fileMap[editorFilePath] = editor;
+        const editorFilePath = Object.keys(persistedEditors).find((label) => path.relative(documentUri.fsPath, label) === '');
+        if (editorFilePath) {
+            const editorNode: AzureTreeItem | undefined = await ext.tree.findTreeItem(persistedEditors[editorFilePath], context);
+            let editor: ICosmosEditor;
+            if (editorNode) {
+                if (editorNode instanceof MongoCollectionTreeItem) {
+                    editor = new MongoCollectionNodeEditor(editorNode);
+                } else if (editorNode instanceof DocDBDocumentTreeItem) {
+                    editor = new DocDBDocumentNodeEditor(editorNode);
+                } else if (editorNode instanceof MongoDocumentTreeItem) {
+                    editor = new MongoDocumentNodeEditor(editorNode);
+                } else if (editorNode instanceof DocDBStoredProcedureTreeItem) {
+                    editor = new DocDBStoredProcedureNodeEditor(editorNode);
                 } else {
-                    throw new Error("Failed to find entity on the tree. Please check the explorer to confirm that the entity exists, and that permissions are intact.");
+                    throw new Error("Unexpected type of Editor treeItem");
                 }
+                this.fileMap[editorFilePath] = editor;
+                return editorFilePath;
+            } else {
+                throw new Error("Failed to find entity on the tree. Please check the explorer to confirm that the entity exists, and that permissions are intact.");
             }
-            return editorFilePath;
-        } else {
-            return undefined;
         }
+
+        return undefined;
     }
 }

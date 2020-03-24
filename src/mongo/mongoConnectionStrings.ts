@@ -7,6 +7,7 @@ import { MongoClient, Mongos, ReplSet, Server } from "mongodb";
 import { appendExtensionUserAgent } from "vscode-azureextensionui";
 import { testDb } from "../constants";
 import { ParsedConnectionString } from "../ParsedConnectionString";
+import { nonNullValue } from "../utils/nonNull";
 import { connectToMongoClient } from "./connectToMongoClient";
 
 // Connection strings follow the following format (https://docs.mongodb.com/manual/reference/connection-string/):
@@ -26,7 +27,7 @@ const mongoConnectionStringRegExp = new RegExp(parsePrefix + parseDatabaseName);
 
 export function getDatabaseNameFromConnectionString(connectionString: string): string | undefined {
     try {
-        const [, , databaseName] = connectionString.match(mongoConnectionStringRegExp);
+        const [, , databaseName] = nonNullValue(connectionString.match(mongoConnectionStringRegExp), 'databaseNameMatch');
         return databaseName;
     } catch (error) {
         // Shouldn't happen, but ignore if does
@@ -35,14 +36,13 @@ export function getDatabaseNameFromConnectionString(connectionString: string): s
     return undefined;
 }
 
-export function addDatabaseToAccountConnectionString(connectionString: string, databaseName: string): string | undefined {
+export function addDatabaseToAccountConnectionString(connectionString: string, databaseName: string): string {
     try {
         return connectionString.replace(mongoConnectionStringRegExp, `$1\/${databaseName}`);
     } catch (error) {
-        // Shouldn't happen, but ignore if does
+        // Shouldn't happen, but ignore if does. Original connection string could be in a format we don't expect, but might already have the db name or might still work without it
+        return connectionString;
     }
-
-    return undefined;
 }
 
 export async function parseMongoConnectionString(connectionString: string): Promise<ParsedMongoConnectionString> {

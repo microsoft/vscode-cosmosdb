@@ -12,7 +12,7 @@ import { appendExtensionUserAgent, AzureParentTreeItem, DialogResponses, IAction
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
-import { getWorkspaceArrayConfiguration, getWorkspaceConfiguration } from '../../utils/getWorkspaceConfiguration';
+import { nonNullProp, nonNullValue } from '../../utils/nonNull';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoCommand } from '../MongoCommand';
 import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings';
@@ -112,7 +112,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 
         if (command.name === 'createCollection') {
             // arguments  are all strings so DbCollectionOptions is represented as a JSON string which is why we pass argumentObjects instead
-            return withProgress(this.createCollection(stripQuotes(command.arguments[0]), command.argumentObjects[1]).then(() => JSON.stringify({ Created: 'Ok' })), 'Creating collection');
+            return withProgress(this.createCollection(stripQuotes(nonNullProp(command, 'arguments')[0]), nonNullProp(command, 'argumentObjects')[1]).then(() => JSON.stringify({ Created: 'Ok' })), 'Creating collection');
         } else {
             return withProgress(this.executeCommandInShell(command, context), executingInShellMsg);
         }
@@ -144,21 +144,22 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
     }
 
     private async createShell(): Promise<MongoShell> {
-        let shellPath: string | undefined = getWorkspaceConfiguration(ext.settingsKeys.mongoShellPath, "string");
-        const shellArgs: string[] = getWorkspaceArrayConfiguration(ext.settingsKeys.mongoShellArgs, "string", []);
+        const config = vscode.workspace.getConfiguration();
+        let shellPath: string | undefined = config.get(ext.settingsKeys.mongoShellPath);
+        const shellArgs: string[] = config.get(ext.settingsKeys.mongoShellArgs, []);
 
-        if (!this._cachedShellPathOrCmd || this._previousShellPathSetting !== shellPath) {
+        if (!shellPath || !this._cachedShellPathOrCmd || this._previousShellPathSetting !== shellPath) {
             // Only do this if setting changed since last time
             shellPath = await this._determineShellPathOrCmd(shellPath);
             this._previousShellPathSetting = shellPath;
         }
         this._cachedShellPathOrCmd = shellPath;
 
-        const timeout = 1000 * vscode.workspace.getConfiguration().get<number>(ext.settingsKeys.mongoShellTimeout);
+        const timeout = 1000 * nonNullValue(config.get<number>(ext.settingsKeys.mongoShellTimeout), 'mongoShellTimeout');
         return MongoShell.create(shellPath, shellArgs, this.connectionString, this.root.isEmulator, ext.outputChannel, timeout);
     }
 
-    private async _determineShellPathOrCmd(shellPathSetting: string): Promise<string> {
+    private async _determineShellPathOrCmd(shellPathSetting: string | undefined): Promise<string> {
         if (!shellPathSetting) {
             // User hasn't specified the path
             if (await cpUtils.commandSucceeds('mongo', '--version')) {
@@ -175,7 +176,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
                 if (response === openFile) {
                     // tslint:disable-next-line:no-constant-condition
                     while (true) {
-                        const newPath: vscode.Uri[] = await vscode.window.showOpenDialog({
+                        const newPath: vscode.Uri[] | undefined = await vscode.window.showOpenDialog({
                             filters: { 'Executable Files': [process.platform === 'win32' ? 'exe' : ''] },
                             openLabel: `Select ${mongoExecutableFileName}`
                         });

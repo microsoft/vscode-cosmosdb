@@ -7,5 +7,5 @@
 import { ISubscriptionContext } from "vscode-azureextensionui";
 
 export interface IMongoTreeRoot extends ISubscriptionContext {
-    isEmulator: boolean;
+    isEmulator: boolean | undefined;
 }

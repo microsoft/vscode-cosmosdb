@@ -14,15 +14,13 @@ import { DatabaseTreeItem } from '../../vscode-cosmosdb.api';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 
 export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal implements DatabaseTreeItem {
+    public databaseName: string;
     private _dbNode: AzureTreeItem | undefined;
 
-    constructor(parsedCS: ParsedConnectionString & { databaseName: string }, accountNode?: MongoAccountTreeItem | DocDBAccountTreeItemBase, dbNode?: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase) {
+    constructor(parsedCS: ParsedConnectionString, databaseName: string, accountNode?: MongoAccountTreeItem | DocDBAccountTreeItemBase, dbNode?: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase) {
         super(parsedCS, accountNode);
+        this.databaseName = databaseName;
         this._dbNode = dbNode;
-    }
-
-    public get databaseName(): string {
-        return this._parsedCS.databaseName;
     }
 
     public async reveal(): Promise<void> {

@@ -11,6 +11,7 @@ import { getThemeAgnosticIconPath } from '../../constants';
 import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
+import { nonNullProp } from '../../utils/nonNull';
 import { CosmosDBGraphExtensionApi } from '../../vscode-cosmosdbgraph.api';
 import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
@@ -70,7 +71,7 @@ export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
                     await graphExtension.activate();
                 }
 
-                this._graphApi = graphExtension.exports.getApi<CosmosDBGraphExtensionApi>('^1.0.0');
+                this._graphApi = nonNullProp(graphExtension, 'exports').getApi<CosmosDBGraphExtensionApi>('^1.0.0');
                 return this._graphApi;
             } else {
                 const viewExt: vscode.MessageItem = { title: localize('viewExt', 'View Extension') };

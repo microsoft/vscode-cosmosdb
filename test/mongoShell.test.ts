@@ -159,7 +159,7 @@ suite("MongoShell", function (this: Mocha.Suite) {
             assert(!isClosed);
             assert(mongoDErrors === "");
 
-            let previousEnv: IDisposable;
+            let previousEnv: IDisposable | undefined;
             let shell: MongoShell | undefined;
             const outputChannel = new FakeOutputChannel();
 
@@ -216,7 +216,7 @@ suite("MongoShell", function (this: Mocha.Suite) {
         mongoPath: "mongo",
         expectedResult: 'switched to db abc',
         env: {
-            PATH: process.env.path + ";" + path.dirname(mongoPath)
+            PATH: process.env.path! + ";" + path.dirname(mongoPath)
         }
     });
 

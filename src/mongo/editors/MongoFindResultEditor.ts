@@ -7,6 +7,7 @@ import { Collection } from "mongodb";
 import { IActionContext } from "vscode-azureextensionui";
 import { ICosmosEditor } from "../../CosmosEditorManager";
 import { ext } from "../../extensionVariables";
+import { nonNullProp } from "../../utils/nonNull";
 import { MongoCommand } from "../MongoCommand";
 import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
 import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
@@ -32,7 +33,7 @@ export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
 
     public async getData(context: IActionContext): Promise<IMongoDocument[]> {
         const db = await this._databaseNode.connectToDb();
-        const collection: Collection = db.collection(this._command.collection);
+        const collection: Collection = db.collection(nonNullProp(this._command, 'collection'));
         // NOTE: Intentionally creating a _new_ tree item rather than searching for a cached node in the tree because
         // the executed 'find' command could have a filter or projection that is not handled by a cached tree node
         this._collectionTreeItem = new MongoCollectionTreeItem(this._databaseNode, collection, this._command.argumentObjects);

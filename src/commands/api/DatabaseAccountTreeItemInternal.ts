@@ -3,12 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { API } from '../../CosmosDBExperiences';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
-import { API } from '../../experiences';
 import { ext } from '../../extensionVariables';
 import { ParsedMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
+import { nonNullProp } from '../../utils/nonNull';
 import { DatabaseAccountTreeItem } from '../../vscode-cosmosdb.api';
 
 export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem {
@@ -33,9 +34,9 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
     }
 
     public get azureData(): { accountName: string; } | undefined {
-        if (this._accountNode && this._accountNode.databaseAccount) {
+        if (this._accountNode?.databaseAccount) {
             return {
-                accountName: this._accountNode.databaseAccount.name
+                accountName: nonNullProp(this._accountNode.databaseAccount, 'name')
             };
         } else {
             return undefined;

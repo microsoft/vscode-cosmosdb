@@ -9,7 +9,7 @@ import * as vscode from "vscode";
 import { appendExtensionUserAgent } from "vscode-azureextensionui";
 import { ext } from "../extensionVariables";
 
-export function getDocumentClient(documentEndpoint: string, masterKey: string, isEmulator: boolean): DocumentClient {
+export function getDocumentClient(documentEndpoint: string, masterKey: string, isEmulator: boolean | undefined): DocumentClient {
     const documentBase = DocDBLib.DocumentBase;
     const connectionPolicy = new documentBase.ConnectionPolicy();
 

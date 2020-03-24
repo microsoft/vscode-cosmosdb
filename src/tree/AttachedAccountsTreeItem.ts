@@ -9,10 +9,10 @@ import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, getThemedIconPath } from '../constants';
+import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../CosmosDBExperiences';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
-import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../experiences';
 import { ext } from '../extensionVariables';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
@@ -20,13 +20,14 @@ import { parseMongoConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { KeyTar, tryGetKeyTar } from '../utils/keytar';
+import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { SubscriptionTreeItem } from './SubscriptionTreeItem';
 
 interface IPersistedAccount {
     id: string;
     // defaultExperience is not the same as API but we can't change the name due to backwards compatibility
     defaultExperience: API;
-    isEmulator: boolean;
+    isEmulator: boolean | undefined;
 }
 
 export const AttachedAccountSuffix: string = 'Attached';
@@ -43,7 +44,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 
     private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.connectionStrings";
     private _attachedAccounts: AzureTreeItem[] | undefined;
-    private _keytar: KeyTar;
+    private _keytar: KeyTar | undefined;
 
     private _root: ISubscriptionContext;
     private _loadPersistedAccountsTask: Promise<AzureTreeItem[]>;
@@ -64,20 +65,24 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     public static validateMongoConnectionString(value: string): string | undefined {
+        value = value ? value.trim() : '';
+
         if (value && value.match(/^mongodb(\+srv)?:\/\//)) {
             return undefined;
         }
+
         return MONGO_CONNECTION_EXPECTED;
     }
 
     private static validateDocDBConnectionString(value: string): string | undefined {
+        value = value ? value.trim() : '';
+
         try {
             parseDocDBConnectionString(value);
             return undefined;
         } catch (error) {
             return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..."';
         }
-
     }
 
     public hasMoreChildrenImpl(): boolean {
@@ -120,7 +125,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         if (defaultExperiencePick) {
             const defaultExperience = defaultExperiencePick.data;
             let placeholder: string;
-            let defaultValue: string;
+            let defaultValue: string | undefined;
             let validateInput: (value: string) => string | undefined | null;
             if (defaultExperience.api === API.MongoDB) {
                 placeholder = 'mongodb://host:port';
@@ -133,13 +138,13 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 validateInput = AttachedAccountsTreeItem.validateDocDBConnectionString;
             }
 
-            const connectionString = await vscode.window.showInputBox({
+            const connectionString = (await ext.ui.showInputBox({
                 placeHolder: placeholder,
                 prompt: 'Enter the connection string for your database account',
                 validateInput: validateInput,
                 ignoreFocusOut: true,
                 value: defaultValue
-            });
+            })).trim();
 
             if (connectionString) {
                 const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);
@@ -170,7 +175,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             });
         if (defaultExperiencePick) {
             const defaultExperience = defaultExperiencePick.data;
-            let port: number;
+            let port: number | undefined;
             if (defaultExperience.api === API.MongoDB) {
                 port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.mongoPort");
             } else {
@@ -201,7 +206,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         if (index !== -1) {
             attachedAccounts.splice(index, 1);
             if (this._keytar) {
-                await this._keytar.deletePassword(this._serviceName, node.id); // intentionally using 'id' instead of 'fullId' for the sake of backwards compatability
+                await this._keytar.deletePassword(this._serviceName, nonNullProp(node, 'id')); // intentionally using 'id' instead of 'fullId' for the sake of backwards compatability
                 await this.persistIds(attachedAccounts);
             }
 
@@ -248,7 +253,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         } else {
             attachedAccounts.push(treeItem);
             if (this._keytar) {
-                await this._keytar.setPassword(this._serviceName, treeItem.id, connectionString);
+                await this._keytar.setPassword(this._serviceName, nonNullProp(treeItem, 'id'), connectionString);
                 await this.persistIds(attachedAccounts);
             }
         }
@@ -257,13 +262,14 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     private async loadPersistedAccounts(): Promise<AzureTreeItem[]> {
         const persistedAccounts: AzureTreeItem[] = [];
         const value: string | undefined = ext.context.globalState.get(this._serviceName);
-        if (value && this._keytar) {
+        const keytar = this._keytar;
+        if (value && keytar) {
             const accounts: (string | IPersistedAccount)[] = JSON.parse(value);
             await Promise.all(accounts.map(async account => {
                 let id: string;
                 let label: string;
                 let api: API;
-                let isEmulator: boolean;
+                let isEmulator: boolean | undefined;
                 if (typeof (account) === 'string') {
                     // Default to Mongo if the value is a string for the sake of backwards compatiblity
                     // (Mongo was originally the only account type that could be attached)
@@ -277,7 +283,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                     isEmulator = (<IPersistedAccount>account).isEmulator;
                     label = isEmulator ? `${getExperienceFromApi(api).shortName} Emulator` : `${id} (${getExperienceFromApi(api).shortName})`;
                 }
-                const connectionString: string = await this._keytar.getPassword(this._serviceName, id);
+                const connectionString: string = nonNullValue(await keytar.getPassword(this._serviceName, id), 'connectionString');
                 persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
             }));
         }
@@ -322,7 +328,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     private async persistIds(attachedAccounts: AzureTreeItem[]): Promise<void> {
         const value: IPersistedAccount[] = attachedAccounts.map((node: AzureTreeItem) => {
             let api: API;
-            let isEmulator: boolean;
+            let isEmulator: boolean | undefined;
             if (node instanceof MongoAccountTreeItem || node instanceof DocDBAccountTreeItem || node instanceof GraphAccountTreeItem || node instanceof TableAccountTreeItem) {
                 isEmulator = node.root.isEmulator;
             }

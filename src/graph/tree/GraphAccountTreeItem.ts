@@ -18,7 +18,7 @@ export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBGraphAccount";
     public contextValue: string = GraphAccountTreeItem.contextValue;
 
-    constructor(parent: AzureParentTreeItem, id: string, label: string, documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, isEmulator: boolean, readonly databaseAccount?: DatabaseAccount) {
+    constructor(parent: AzureParentTreeItem, id: string, label: string, documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, isEmulator: boolean | undefined, readonly databaseAccount?: DatabaseAccount) {
         super(parent, id, label, documentEndpoint, masterKey, isEmulator, databaseAccount);
     }
 

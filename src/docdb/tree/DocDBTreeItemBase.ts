@@ -41,7 +41,8 @@ export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTre
         let count: number = 0;
         while (count < this._batchSize) {
             const resource: T | undefined = await new Promise<T | undefined>((resolve, reject) => {
-                this._iterator.nextItem((error: QueryError, rsrc: T | undefined) => {
+                // tslint:disable-next-line: no-non-null-assertion
+                this._iterator!.nextItem((error: QueryError, rsrc: T | undefined) => {
                     error ? reject(error) : resolve(rsrc);
                 });
             });

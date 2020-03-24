@@ -40,7 +40,7 @@ export function addDatabaseToAccountConnectionString(connectionString: string, d
     try {
         return connectionString.replace(mongoConnectionStringRegExp, `$1\/${databaseName}`);
     } catch (error) {
-        // Shouldn't happen, but ignore if does
+        // Shouldn't happen, but ignore if does. Original connection string could be in a format we don't expect, but might already have the db name or might still work without it
         return connectionString;
     }
 }

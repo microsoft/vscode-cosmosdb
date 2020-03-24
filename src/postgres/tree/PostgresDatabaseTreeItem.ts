@@ -6,12 +6,11 @@
 import { Client, ClientConfig } from 'pg';
 import pgStructure, { Db } from 'pg-structure';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, IParsedError, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IParsedError, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
 import { localize } from '../../utils/localize';
-import { PostgresEnterCredentialsTreeItem } from './PostgresEnterCredentialsTreeItem';
 import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
 
@@ -79,7 +78,11 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
             }
 
-            return [new PostgresEnterCredentialsTreeItem(this)];
+            return [new GenericTreeItem(this, {
+                contextValue: 'postgresCredentials',
+                label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
+                commandId: 'cosmosDB.getPostgresCredentials'
+            })];
         }
     }
 

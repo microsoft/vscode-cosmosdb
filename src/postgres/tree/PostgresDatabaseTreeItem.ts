@@ -11,6 +11,7 @@ import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
 import { localize } from '../../utils/localize';
+import { nonNullProp } from '../../utils/nonNull';
 import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
 
@@ -27,7 +28,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     public readonly parent: PostgresServerTreeItem;
 
     private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.postgresPasswords";
-    private _keytar: KeyTar;
+    private _keytar: KeyTar | undefined;
     private _usernameSuffix: string;
     private _usernamePlaceholder: string;
     private _usernameRegex: RegExp;
@@ -40,7 +41,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         this._usernameSuffix = `@${this.parent.server.name}`;
         this._usernamePlaceholder = `user${this._usernameSuffix}`;
         this._usernameRegex = new RegExp(`(.+)${this._usernameSuffix}`);
-        this._serverId = this.parent.server.id;
+        this._serverId = nonNullProp(this.parent.server, 'id');
     }
 
     public get label(): string {
@@ -63,9 +64,9 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         try {
             const { username, password } = await this.getCredentials(false, true);
 
-            const sslString: string = process.env.POSTGRES_SSL;
+            const sslString: string | undefined = process.env.POSTGRES_SSL;
             const ssl: boolean = sslString === 'true';
-            const host: string = this.parent.server.fullyQualifiedDomainName;
+            const host: string = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
             const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
             const accountConnection: Client = new Client(clientConfig);
             const db: Db = await pgStructure(accountConnection);
@@ -97,7 +98,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 for (const server of servers) {
                     if (server.id === this._serverId) {
                         username = server.username;
-                        password = await this._keytar.getPassword(this._serviceName, this._serverId);
+                        password = await this._keytar.getPassword(this._serviceName, this._serverId) || undefined;
                         break;
                     }
                 }

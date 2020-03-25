@@ -25,7 +25,7 @@ export class MongoShell extends vscode.Disposable {
         super(() => this.dispose());
     }
 
-    public static async create(execPath: string, execArgs: string[], connectionString: string, isEmulator: boolean, outputChannel: vscode.OutputChannel, timeoutSeconds: number): Promise<MongoShell> {
+    public static async create(execPath: string, execArgs: string[], connectionString: string, isEmulator: boolean | undefined, outputChannel: vscode.OutputChannel, timeoutSeconds: number): Promise<MongoShell> {
         try {
             const args: string[] = execArgs.slice() || []; // Snapshot since we modify it
             args.push(connectionString);

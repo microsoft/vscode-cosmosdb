@@ -7,6 +7,7 @@ import { DocumentClient, FeedOptions, NewDocument, QueryIterator, RetrievedDocum
 import * as vscode from 'vscode';
 import { ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
+import { ext } from '../../extensionVariables';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -103,15 +104,12 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
     public async promptForPartitionKey(body: Object): Promise<Object> {
         const partitionKey: string | undefined = this.parent.partitionKey && this.parent.partitionKey.paths[0];
         if (partitionKey) {
-            const partitionKeyValue: string = await vscode.window.showInputBox({
-                prompt: `Enter a value for the partition key ("${partitionKey}")`,
-                ignoreFocusOut: true
+            const partitionKeyValue: string = await ext.ui.showInputBox({
+                prompt: `Enter a value for the partition key ("${partitionKey}")`
             });
-            if (partitionKeyValue) {
-                // Unlike delete/replace, createDocument does not accept a partition key value via an options parameter.
-                // We need to present the partitionKey value as part of the document contents
-                Object.assign(body, this.createPartitionPathObject(partitionKey, partitionKeyValue));
-            }
+            // Unlike delete/replace, createDocument does not accept a partition key value via an options parameter.
+            // We need to present the partitionKey value as part of the document contents
+            Object.assign(body, this.createPartitionPathObject(partitionKey, partitionKeyValue));
         }
         return body;
     }

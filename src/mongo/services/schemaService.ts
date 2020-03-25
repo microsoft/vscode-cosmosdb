@@ -9,6 +9,9 @@ import { JSONSchema } from 'vscode-json-languageservice/lib/umd/jsonSchema';
 // tslint:disable:no-reserved-keywords // Grandfathered in ("type")
 // tslint:disable:no-any
 
+// grandfathered-in
+// tslint:disable: no-non-null-assertion
+
 // tslint:disable-next-line: export-name
 export class SchemaService {
 
@@ -82,7 +85,7 @@ export class SchemaService {
                     properties: {}
                 };
                 for (const document of result) {
-                    this.setSchemaForDocument(null, document, schema);
+                    this.setSchemaForDocument(null!, document, schema);
                 }
                 this.setGlobalOperatorProperties(schema);
                 this.setLogicalOperatorProperties(schema, schemaUri);
@@ -130,7 +133,7 @@ export class SchemaService {
             type: [type, 'object']
         };
         this.setOperatorProperties(type, propertySchema);
-        schema.properties[scopedProperty] = propertySchema;
+        schema.properties![scopedProperty] = propertySchema;
 
         if (type === 'object') {
             this.setSchemaForDocument(scopedProperty, value, schema);
@@ -144,7 +147,7 @@ export class SchemaService {
     }
 
     private setGlobalOperatorProperties(schema: JSONSchema): void {
-        schema.properties.$text = <JSONSchema>{
+        schema.properties!.$text = <JSONSchema>{
             type: 'object',
             description: 'Performs text search',
             properties: {
@@ -169,33 +172,33 @@ Text searches against earlier versions of the text index are inherently diacriti
             required: ['$search']
         };
 
-        schema.properties.$where = {
+        schema.properties!.$where = {
             type: 'string',
             description: `Matches documents that satisfy a JavaScript expression.
 Use the $where operator to pass either a string containing a JavaScript expression or a full JavaScript function to the query system`
         };
-        schema.properties.$comment = {
+        schema.properties!.$comment = {
             type: 'string',
             description: 'Adds a comment to a query predicate'
         };
     }
 
     private setLogicalOperatorProperties(schema: JSONSchema, schemaUri: string): void {
-        schema.properties.$or = {
+        schema.properties!.$or = {
             type: 'array',
             description: 'Joins query clauses with a logical OR returns all documents that match the conditions of either clause',
             items: <JSONSchema>{
                 $ref: schemaUri
             }
         };
-        schema.properties.$and = {
+        schema.properties!.$and = {
             type: 'array',
             description: 'Joins query clauses with a logical AND returns all documents that match the conditions of both clauses',
             items: <JSONSchema>{
                 $ref: schemaUri
             }
         };
-        schema.properties.$nor = {
+        schema.properties!.$nor = {
             type: 'array',
             description: 'Joins query clauses with a logical NOR returns all documents that fail to match both clauses',
             items: <JSONSchema>{
@@ -377,12 +380,12 @@ Use the $where operator to pass either a string containing a JavaScript expressi
         };
 
         schema.properties = { ...expressionSchema.properties };
-        schema.properties.$not = {
+        schema.properties!.$not = {
             type: 'object',
             description: 'Inverts the effect of a query expression and returns documents that do not match the query expression',
             properties: { ...expressionSchema.properties }
         };
-        schema.properties.$elemMatch = {
+        schema.properties!.$elemMatch = {
             type: 'object'
         };
     }

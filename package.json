@@ -849,7 +849,7 @@
         "ts-node": "^7.0.1",
         "tslint": "^5.7.0",
         "tslint-microsoft-contrib": "5.0.1",
-        "typescript": "^3.6.2",
+        "typescript": "^3.8.3",
         "vsce": "^1.37.5",
         "vscode": "^1.1.18",
         "vscode-azureextensiondev": "^0.2.3",

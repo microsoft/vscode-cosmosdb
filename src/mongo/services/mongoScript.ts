@@ -17,6 +17,9 @@ import { MongoVisitor } from './../grammar/visitors';
 import { CompletionItemsVisitor } from './completionItemProvider';
 import { SchemaService } from './schemaService';
 
+// grandfathered-in
+// tslint:disable: no-non-null-assertion
+
 export class MongoScriptDocumentManager {
 
     constructor(
@@ -69,15 +72,15 @@ class NodeFinder extends MongoVisitor<ParseTree> {
             if (stop < this.offset) {
                 return ctx;
             }
-            return null;
+            return null!;
         }
         if (ctx instanceof TerminalNode) {
             if (ctx.symbol.stopIndex < this.offset) {
                 return ctx;
             }
-            return null;
+            return null!;
         }
-        return null;
+        return null!;
     }
 
     protected aggregateResult(aggregate: ParseTree, nextResult: ParseTree): ParseTree {

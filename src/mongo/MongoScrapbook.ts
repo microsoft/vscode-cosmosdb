@@ -14,6 +14,7 @@ import { IActionContext, IParsedError, parseError } from 'vscode-azureextensionu
 import { CosmosEditorManager } from '../CosmosEditorManager';
 import { ext } from '../extensionVariables';
 import { filterType, findType } from '../utils/array';
+import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import * as vscodeUtil from './../utils/vscodeUtils';
 import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
 import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
@@ -41,24 +42,21 @@ export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vsc
     return errors;
 }
 
-export async function executeAllCommandsFromActiveEditor(database: MongoDatabaseTreeItem, editorManager: CosmosEditorManager, context: IActionContext): Promise<void> {
+export async function executeAllCommandsFromActiveEditor(editorManager: CosmosEditorManager, context: IActionContext): Promise<void> {
     ext.outputChannel.appendLog("Executing all commands in scrapbook...");
     const commands = getAllCommandsFromActiveEditor();
-    await executeCommands(vscode.window.activeTextEditor, database, editorManager, context, commands);
+    await executeCommands(editorManager, context, commands);
 }
 
-export async function executeCommandFromActiveEditor(database: MongoDatabaseTreeItem, editorManager: CosmosEditorManager, context: IActionContext): Promise<void> {
+export async function executeCommandFromActiveEditor(editorManager: CosmosEditorManager, context: IActionContext): Promise<void> {
     const commands = getAllCommandsFromActiveEditor();
-    const activeEditor = vscode.window.activeTextEditor;
-    const selection = activeEditor.selection;
-    const command = findCommandAtPosition(commands, selection.start);
-    return await executeCommand(activeEditor, database, editorManager, context, command);
+    const command = findCommandAtPosition(commands, vscode.window.activeTextEditor?.selection.start);
+    return await executeCommand(editorManager, context, command);
 }
 
-export async function executeCommandFromText(database: MongoDatabaseTreeItem, editorManager: CosmosEditorManager, context: IActionContext, commandText: string): Promise<void> {
-    const activeEditor = vscode.window.activeTextEditor;
+export async function executeCommandFromText(editorManager: CosmosEditorManager, context: IActionContext, commandText: string): Promise<void> {
     const command = getCommandFromTextAtLocation(commandText, new vscode.Position(0, 0));
-    return await executeCommand(activeEditor, database, editorManager, context, command);
+    return await executeCommand(editorManager, context, command);
 }
 
 function getAllCommandsFromActiveEditor(): MongoCommand[] {
@@ -75,10 +73,10 @@ export function getAllCommandsFromTextDocument(document: vscode.TextDocument): M
     return getAllCommandsFromText(document.getText());
 }
 
-async function executeCommands(activeEditor: vscode.TextEditor, database: MongoDatabaseTreeItem, editorManager: CosmosEditorManager, context: IActionContext, commands: MongoCommand[]): Promise<void> {
+async function executeCommands(editorManager: CosmosEditorManager, context: IActionContext, commands: MongoCommand[]): Promise<void> {
     for (const command of commands) {
         try {
-            await executeCommand(activeEditor, database, editorManager, context, command);
+            await executeCommand(editorManager, context, command);
         } catch (e) {
             const err = parseError(e);
             if (err.isUserCancelledError) {
@@ -91,7 +89,7 @@ async function executeCommands(activeEditor: vscode.TextEditor, database: MongoD
     }
 }
 
-async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDatabaseTreeItem, editorManager: CosmosEditorManager, context: IActionContext, command: MongoCommand): Promise<void> {
+async function executeCommand(editorManager: CosmosEditorManager, context: IActionContext, command: MongoCommand): Promise<void> {
     if (command) {
         try {
             context.telemetry.properties.command = command.name;
@@ -100,6 +98,7 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
             // Ignore
         }
 
+        const database = ext.connectedMongoDB;
         if (!database) {
             throw new Error('Please select a MongoDB database to run against by selecting it in the explorer and selecting the "Connect" context menu item');
         }
@@ -118,9 +117,10 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
                 if (result === "null") {
                     throw new Error(`Could not find any documents`);
                 }
-                await editorManager.showDocument(context, new MongoFindOneResultEditor(database, command.collection, result), 'cosmos-result.json', { showInNextColumn: true });
+                await editorManager.showDocument(context, new MongoFindOneResultEditor(database, nonNullProp(command, 'collection'), result), 'cosmos-result.json', { showInNextColumn: true });
             } else {
-                await vscodeUtil.showNewFile(result, 'result', '.json', activeEditor.viewColumn + 1);
+                const viewColumn = vscode.window.activeTextEditor?.viewColumn;
+                await vscodeUtil.showNewFile(result, 'result', '.json', viewColumn ? viewColumn + 1 : undefined);
                 await refreshTreeAfterCommand(database, command, context);
             }
         }
@@ -132,7 +132,7 @@ async function executeCommand(activeEditor: vscode.TextEditor, database: MongoDa
 async function refreshTreeAfterCommand(database: MongoDatabaseTreeItem, command: MongoCommand, context: IActionContext): Promise<void> {
     if (command.name === 'drop') {
         await database.refresh();
-    } else if (command.collection && /^(insert|update|delete|replace|remove|write|bulkWrite)/i.test(command.name)) {
+    } else if (command.collection && command.name && /^(insert|update|delete|replace|remove|write|bulkWrite)/i.test(command.name)) {
         const collectionNode = await ext.tree.findTreeItem(database.fullId + "/" + command.collection, context);
         if (collectionNode) {
             await collectionNode.refresh();
@@ -189,8 +189,8 @@ export function getAllCommandsFromText(content: string): MongoCommand[] {
 }
 
 function findCommandAtPosition(commands: MongoCommand[], position?: vscode.Position): MongoCommand {
-    let lastCommandOnSameLine = null;
-    let lastCommandBeforePosition = null;
+    let lastCommandOnSameLine: MongoCommand | undefined;
+    let lastCommandBeforePosition: MongoCommand | undefined;
     if (position) {
         for (const command of commands) {
             if (command.range.contains(position)) {
@@ -212,8 +212,9 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 
     public visitCommand(ctx: mongoParser.CommandContext): MongoCommand[] {
         const funcCallCount: number = filterType(ctx.children, mongoParser.FunctionCallContext).length;
+        const stop = nonNullProp(ctx, 'stop');
         this.commands.push({
-            range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine),
+            range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, stop.line - 1, stop.charPositionInLine),
             text: ctx.text,
             name: '',
             arguments: [],
@@ -244,7 +245,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
                     const lastCommand = this.commands[this.commands.length - 1];
                     const argAsObject = this.contextToObject(ctx);
                     const argText = EJSON.stringify(argAsObject);
-                    lastCommand.arguments.push(argText);
+                    nonNullProp(lastCommand, 'arguments').push(argText);
                     const escapeHandled = this.deduplicateEscapesForRegex(argText);
                     let ejsonParsed = {};
                     try {
@@ -252,7 +253,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
                     } catch (err) { //EJSON parse failed due to a wrong flag, etc.
                         this.addErrorToCommand(parseError(err), ctx);
                     }
-                    lastCommand.argumentObjects.push(ejsonParsed);
+                    nonNullProp(lastCommand, 'argumentObjects').push(ejsonParsed);
                 }
             }
         } catch (error) {
@@ -270,7 +271,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
             return {};
         }
         // In a well formed expression, Argument and propertyValue tokens should have exactly one child, from their definitions in mongo.g4
-        const child: ParseTree = ctx.children[0];
+        const child: ParseTree = nonNullProp(ctx, 'children')[0];
         if (child instanceof mongoParser.LiteralContext) {
             return this.literalContextToObject(child, ctx);
         } else if (child instanceof mongoParser.ObjectLiteralContext) {
@@ -311,11 +312,11 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
             return {};
         } else {
             const parsedObject: Object = {};
-            //tslint:disable:no-non-null-assertion
             const propertyAssignments = filterType(propertyNameAndValue.children, mongoParser.PropertyAssignmentContext);
             for (const propertyAssignment of propertyAssignments) {
-                const propertyName = <mongoParser.PropertyNameContext>propertyAssignment.children[0];
-                const propertyValue = <mongoParser.PropertyValueContext>propertyAssignment.children[2];
+                const propertyAssignmentChildren = nonNullProp(propertyAssignment, 'children');
+                const propertyName = <mongoParser.PropertyNameContext>propertyAssignmentChildren[0];
+                const propertyValue = <mongoParser.PropertyValueContext>propertyAssignmentChildren[2];
                 parsedObject[stripQuotes(propertyName.text)] = this.contextToObject(propertyValue);
             }
             return parsedObject;
@@ -336,8 +337,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 
     private functionCallContextToObject(child: mongoParser.FunctionCallContext, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
         const functionTokens = child.children;
-        const constructorCall: TerminalNode = findType(functionTokens, TerminalNode);
-        const argumentsToken: mongoParser.ArgumentsContext = findType(functionTokens, mongoParser.ArgumentsContext);
+        const constructorCall: TerminalNode = nonNullValue(findType(functionTokens, TerminalNode), 'constructorCall');
+        const argumentsToken: mongoParser.ArgumentsContext = nonNullValue(findType(functionTokens, mongoParser.ArgumentsContext), 'argumentsToken');
         if (!(argumentsToken._CLOSED_PARENTHESIS && argumentsToken._OPEN_PARENTHESIS)) { //argumentsToken does not have '(' or ')'
             const err: IParsedError = parseError(`Expecting parentheses or quotes at '${constructorCall.text}'`);
             this.addErrorToCommand(err, ctx);
@@ -447,7 +448,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
     private addErrorToCommand(error: { message: string }, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): void {
         const command = this.commands[this.commands.length - 1];
         command.errors = command.errors || [];
-        const currentErrorDesc: ErrorDescription = { message: error.message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, ctx.stop.line - 1, ctx.stop.charPositionInLine) };
+        const stop = nonNullProp(ctx, 'stop');
+        const currentErrorDesc: ErrorDescription = { message: error.message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, stop.line - 1, stop.charPositionInLine) };
         command.errors.push(currentErrorDesc);
     }
 

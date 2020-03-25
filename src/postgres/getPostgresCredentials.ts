@@ -5,6 +5,7 @@
 
 import { GenericTreeItem, IActionContext } from "vscode-azureextensionui";
 import { ext } from "../extensionVariables";
+import { nonNullProp } from "../utils/nonNull";
 import { PostgresDatabaseTreeItem } from "./tree/PostgresDatabaseTreeItem";
 
 export async function getPostgresCredentials(context: IActionContext, treeItem?: PostgresDatabaseTreeItem | GenericTreeItem): Promise<void> {
@@ -13,7 +14,7 @@ export async function getPostgresCredentials(context: IActionContext, treeItem?:
     }
 
     if (treeItem instanceof GenericTreeItem) {
-        treeItem = treeItem.parent;
+        treeItem = nonNullProp(treeItem, 'parent');
     }
 
     await (<PostgresDatabaseTreeItem>treeItem).getCredentials(true, false);

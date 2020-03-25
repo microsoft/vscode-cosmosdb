@@ -62,7 +62,11 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
 
         // 4. If all else fails, just attach a new node
         if (!result) {
-            result = new DatabaseTreeItemInternal(parsedCS);
+            if (parsedCS.databaseName) {
+                result = new DatabaseTreeItemInternal(parsedCS, parsedCS.databaseName);
+            } else {
+                result = new DatabaseAccountTreeItemInternal(parsedCS);
+            }
         }
 
         cacheTreeItem(parsedCS, result);
@@ -72,35 +76,40 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
 }
 
 async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedConnectionString, context: IActionContext, maxTime: number): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
-    for (const dbAccount of dbAccounts) {
-        if (Date.now() > maxTime) {
-            return undefined;
-        }
-
-        let actual: ParsedConnectionString;
-        if (dbAccount instanceof MongoAccountTreeItem) {
-            actual = await parseMongoConnectionString(dbAccount.connectionString);
-        } else if (dbAccount instanceof DocDBAccountTreeItemBase) {
-            actual = parseDocDBConnectionString(dbAccount.connectionString);
-        } else {
-            return undefined;
-        }
-
-        if (expected.accountId === actual.accountId) {
-            if (expected.databaseName) {
-                const dbs = await dbAccount.getCachedChildren(context);
-                for (const db of dbs) {
-                    if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) && expected.databaseName === db.databaseName) {
-                        return new DatabaseTreeItemInternal(expected, dbAccount, db);
-                    }
-                }
-
-                // We found the right account - just not the db. In this case we can still 'reveal' the account
-                return new DatabaseTreeItemInternal(expected, dbAccount);
+    try {
+        for (const dbAccount of dbAccounts) {
+            if (Date.now() > maxTime) {
+                return undefined;
             }
 
-            return new DatabaseAccountTreeItemInternal(expected, dbAccount);
+            let actual: ParsedConnectionString;
+            if (dbAccount instanceof MongoAccountTreeItem) {
+                actual = await parseMongoConnectionString(dbAccount.connectionString);
+            } else if (dbAccount instanceof DocDBAccountTreeItemBase) {
+                actual = parseDocDBConnectionString(dbAccount.connectionString);
+            } else {
+                return undefined;
+            }
+
+            if (expected.accountId === actual.accountId) {
+                if (expected.databaseName) {
+                    const dbs = await dbAccount.getCachedChildren(context);
+                    for (const db of dbs) {
+                        if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) && expected.databaseName === db.databaseName) {
+                            return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
+                        }
+                    }
+
+                    // We found the right account - just not the db. In this case we can still 'reveal' the account
+                    return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount);
+                }
+
+                return new DatabaseAccountTreeItemInternal(expected, dbAccount);
+            }
         }
+    } catch (error) {
+        // Swallow all errors to avoid blocking the db account search
+        // https://github.com/microsoft/vscode-cosmosdb/issues/966
     }
 
     return undefined;

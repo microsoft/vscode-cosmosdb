@@ -3,11 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as fse from 'fs-extra';
+import * as path from 'path';
 import { Client, ClientConfig } from 'pg';
 import pgStructure, { Db } from 'pg-structure';
+import { ConnectionOptions } from 'tls';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IParsedError, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { getResourcesPath, getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
 import { localize } from '../../utils/localize';
@@ -62,8 +65,12 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         try {
             const { username, password } = await this.getCredentials(false, true);
 
-            const sslString: string | undefined = process.env.POSTGRES_SSL;
-            const ssl: boolean = sslString === 'true';
+            const ssl: ConnectionOptions = {
+                // Always provide the certificate since it is accepted even when SSL is disabled
+                // Certificate source: https://aka.ms/AA7wnvl
+                ca: fse.readFileSync(path.join(getResourcesPath(), 'certificates', 'BaltimoreCyberTrustRoot.crt.pem')).toString()
+            };
+
             const host: string = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
             const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
             const accountConnection: Client = new Client(clientConfig);

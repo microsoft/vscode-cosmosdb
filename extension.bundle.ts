@@ -20,7 +20,8 @@ export { ObjectID, ObjectId } from 'bson';
 // At runtime the tests live in dist/tests and will therefore pick up the main webpack bundle at dist/extension.bundle.js.
 export * from 'vscode-azureextensionui';
 export { emulatorPassword, isWindows } from './src/constants';
-export { parseDocDBConnectionString } from './src/docdb/docDBConnectionStrings';
+export { ParsedDocDBConnectionString, parseDocDBConnectionString } from './src/docdb/docDBConnectionStrings';
+export { getDocumentClient } from './src/docdb/getDocumentClient';
 export { activateInternal, deactivateInternal } from './src/extension';
 export { ext } from './src/extensionVariables';
 export { connectToMongoClient } from './src/mongo/connectToMongoClient';

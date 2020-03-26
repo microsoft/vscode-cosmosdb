@@ -9,6 +9,7 @@ import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { getThemeAgnosticIconPath } from '../../constants';
+import { ext } from '../../extensionVariables';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { getDocumentClient } from '../getDocumentClient';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -55,7 +56,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
-        const databaseName = await vscode.window.showInputBox({
+        const databaseName = await ext.ui.showInputBox({
             placeHolder: 'Database Name',
             validateInput: validateDatabaseName,
             ignoreFocusOut: true

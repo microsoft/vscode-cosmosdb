@@ -92,17 +92,9 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         let password: string | undefined;
 
         if (!forcePrompt) {
-            const storedValue: string | undefined = ext.context.globalState.get(this._serviceName);
-            if (storedValue && this._keytar) {
-                const servers: IPersistedServer[] = JSON.parse(storedValue);
-                for (const server of servers) {
-                    if (server.id === this._serverId) {
-                        username = server.username;
-                        password = await this._keytar.getPassword(this._serviceName, this._serverId) || undefined;
-                        break;
-                    }
-                }
-            }
+            const cachedCredentials: { username: string | undefined, password: string | undefined } = await this.getCredentialsFromKeytar();
+            username = cachedCredentials.username;
+            password = cachedCredentials.password;
         }
 
         if (!username || !password) {
@@ -144,6 +136,25 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         }
 
         return undefined;
+    }
+
+    private async getCredentialsFromKeytar(): Promise<{ username: string | undefined, password: string | undefined }> {
+        let username: string | undefined;
+        let password: string | undefined;
+
+        const storedValue: string | undefined = ext.context.globalState.get(this._serviceName);
+        if (storedValue && this._keytar) {
+            const servers: IPersistedServer[] = JSON.parse(storedValue);
+            for (const server of servers) {
+                if (server.id === this._serverId) {
+                    username = server.username;
+                    password = await this._keytar.getPassword(this._serviceName, this._serverId) || undefined;
+                    break;
+                }
+            }
+        }
+
+        return { username, password };
     }
 
     private async persistServer(username: string, password: string): Promise<void> {

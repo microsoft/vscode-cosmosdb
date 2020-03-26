@@ -342,7 +342,7 @@
             {
                 "category": "PostgreSQL",
                 "command": "cosmosDB.getPostgresCredentials",
-                "title": "Enter PostgreSQL Server Credentials"
+                "title": "Enter Server Credentials"
             }
         ],
         "menus": {

@@ -4,11 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { DatabaseListResult, Server } from 'azure-arm-postgresql/lib/models';
+import { DatabaseListResult, FirewallRule, Server } from 'azure-arm-postgresql/lib/models';
+import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ISubscriptionContext } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { azureUtils } from '../../utils/azureUtils';
+import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
@@ -71,6 +73,42 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
                 return true;
             default:
                 return false;
+        }
+    }
+
+    public async checkAndConfigureFirewall(): Promise<void> {
+        const firewallRuleName: string = 'azureDatabasesForVSCode-publicIp';
+        const resourceGroup: string = azureUtils.getResourceGroupFromId(this.id);
+        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        const serverName: string = nonNullProp(this.server, 'name');
+        const ip: string = await publicIp.v4();
+        let existingFirewallRule: FirewallRule | undefined;
+
+        // Creating/updating a firewall rule takes a long time. So check if the rule already exists and is valid before creating/updating
+        try {
+            existingFirewallRule = await client.firewallRules.get(resourceGroup, serverName, firewallRuleName);
+        } catch (error) {
+            if (parseError(error).errorType === 'ResourceNotFound') {
+                // This firewall rule is not configured yet. Ignore error
+            } else {
+                throw error;
+            }
+        }
+
+        if (!existingFirewallRule || existingFirewallRule.startIpAddress !== ip || existingFirewallRule.endIpAddress !== ip) {
+            const newFirewallRule: FirewallRule = {
+                startIpAddress: ip,
+                endIpAddress: ip
+            };
+
+            const options: vscode.ProgressOptions = {
+                location: vscode.ProgressLocation.Notification,
+                title: localize('configuringFirewall', 'Configuring firewall for server "{0}"...', serverName)
+            };
+
+            await vscode.window.withProgress(options, async () => {
+                await client.firewallRules.createOrUpdate(resourceGroup, serverName, firewallRuleName, newFirewallRule);
+            });
         }
     }
 }

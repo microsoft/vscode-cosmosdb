@@ -11,9 +11,7 @@ import { PostgresDatabaseTreeItem } from "./tree/PostgresDatabaseTreeItem";
 export async function getPostgresCredentials(context: IActionContext, treeItem?: PostgresDatabaseTreeItem | GenericTreeItem): Promise<void> {
     if (!treeItem) {
         treeItem = await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
-    }
-
-    if (treeItem instanceof GenericTreeItem) {
+    } else if (treeItem instanceof GenericTreeItem) {
         treeItem = nonNullProp(treeItem, 'parent');
     }
 

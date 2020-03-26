@@ -31,7 +31,6 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     private _keytar: KeyTar | undefined;
     private _usernameSuffix: string;
     private _usernamePlaceholder: string;
-    private _usernameRegex: RegExp;
     private _serverId: string;
 
     constructor(parent: PostgresServerTreeItem, databaseName: string) {
@@ -40,7 +39,6 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         this._keytar = tryGetKeyTar();
         this._usernameSuffix = `@${this.parent.server.name}`;
         this._usernamePlaceholder = `user${this._usernameSuffix}`;
-        this._usernameRegex = new RegExp(`(.+)${this._usernameSuffix}`);
         this._serverId = nonNullProp(this.parent.server, 'id');
     }
 
@@ -131,7 +129,8 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
             return localize('usernameCannotBeEmpty', 'Username cannot be empty.');
         }
 
-        if (!this._usernameRegex.test(value)) {
+        const usernameRegex = new RegExp(`(.+)${this._usernameSuffix}`);
+        if (!usernameRegex.test(value)) {
             return localize('usernameMustMatchFormat', 'Username must match format "{0}"', this._usernamePlaceholder);
         }
 

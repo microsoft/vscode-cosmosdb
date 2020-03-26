@@ -4,10 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { parseDocDBConnectionString } from '../extension.bundle';
-import { emulatorPassword } from '../extension.bundle';
+import { emulatorPassword, parseDocDBConnectionString } from '../extension.bundle';
 
-function testConnectionString(connectionString: string, expectedEndpoint: string, expectedKey: string, expectedDatabaseName: string | undefined) {
+function testConnectionString(connectionString: string, expectedEndpoint: string, expectedKey: string, expectedDatabaseName: string | undefined): void {
     const parsedCS = parseDocDBConnectionString(connectionString);
     assert.equal(parsedCS.documentEndpoint, expectedEndpoint);
     assert.equal(parsedCS.masterKey, expectedKey);

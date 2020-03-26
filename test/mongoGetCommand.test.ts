@@ -23,8 +23,8 @@ function expectSingleCommand(text: string): MongoCommand {
 function testParse(
     text: string,
     expectedCommand: { collection: string | undefined, name: string | undefined, args: any[] | undefined, firstErrorText?: string } | undefined
-) {
-    function testCore(coreText) {
+): void {
+    function testCore(coreText: string): void {
         const command = expectSingleCommand(coreText);
         if (expectedCommand) {
             assert.ok(command, "Expected a command, but found none");
@@ -71,7 +71,7 @@ function testParse(
     testCore(spaceText);
 }
 
-function wrapInQuotes(word: string, numQuotes: number) { //0 to do nothing, 1 for single quotes, 2 for double quotes
+function wrapInQuotes(word: string, numQuotes: number): string { //0 to do nothing, 1 for single quotes, 2 for double quotes
     let result: string;
     if (numQuotes === 1) {
         result = `'${word}'`;

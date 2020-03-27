@@ -10,6 +10,7 @@ import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ISubscriptionCon
 import { getThemeAgnosticIconPath } from '../../constants';
 import { azureUtils } from '../../utils/azureUtils';
 import { nonNullProp } from '../../utils/nonNull';
+import { deletePostgresServer } from '../deletePostgresServer';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
 import { PostgresTableTreeItem } from './PostgresTableTreeItem';
@@ -72,5 +73,9 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             default:
                 return false;
         }
+    }
+
+    public async deleteTreeItemImpl(): Promise<void> {
+        await deletePostgresServer(this);
     }
 }

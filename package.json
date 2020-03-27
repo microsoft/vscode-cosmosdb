@@ -458,6 +458,10 @@
                     "when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
                 },
                 {
+                    "command": "cosmosDB.deleteAccount",
+                    "when": "view == cosmosDBExplorer && viewItem == postgresServer"
+                },
+                {
                     "command": "cosmosDB.createMongoDatabase",
                     "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
                 },

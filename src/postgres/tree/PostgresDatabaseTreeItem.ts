@@ -29,16 +29,12 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
     private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.postgresPasswords";
     private _keytar: KeyTar | undefined;
-    private _usernameSuffix: string;
-    private _usernamePlaceholder: string;
     private _serverId: string;
 
     constructor(parent: PostgresServerTreeItem, databaseName: string) {
         super(parent);
         this.databaseName = databaseName;
         this._keytar = tryGetKeyTar();
-        this._usernameSuffix = `@${this.parent.server.name}`;
-        this._usernamePlaceholder = `user${this._usernameSuffix}`;
         this._serverId = nonNullProp(this.parent.server, 'id');
     }
 
@@ -106,9 +102,13 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
             username = await ext.ui.showInputBox({
                 prompt: localize('enterUsername', 'Enter username for server "{0}"', this.parent.label),
-                placeHolder: this._usernamePlaceholder,
-                validateInput: (value: string) => this.validateUsername(value)
+                validateInput: (value: string) => { return (value && value.length) ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.'); }
             });
+
+            const usernameSuffix: string = `@${this.parent.server.name}`;
+            if (!username.includes(usernameSuffix)) {
+                username += usernameSuffix;
+            }
 
             password = await ext.ui.showInputBox({
                 prompt: localize('enterPassword', 'Enter password for server "{0}"', this.parent.label),
@@ -120,21 +120,6 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         }
 
         return { username, password };
-    }
-
-    private validateUsername(value: string): string | undefined {
-        value = value ? value.trim() : '';
-
-        if (!value) {
-            return localize('usernameCannotBeEmpty', 'Username cannot be empty.');
-        }
-
-        const usernameRegex = new RegExp(`(.+)${this._usernameSuffix}`);
-        if (!usernameRegex.test(value)) {
-            return localize('usernameMustMatchFormat', 'Username must match format "{0}"', this._usernamePlaceholder);
-        }
-
-        return undefined;
     }
 
     private async getCredentialsFromKeytar(): Promise<{ username: string | undefined, password: string | undefined }> {

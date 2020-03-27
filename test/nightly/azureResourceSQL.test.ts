@@ -41,10 +41,10 @@ suite('SQL action', async function (this: ISuiteCallbackContext): Promise<void> 
     });
 
     test('Create SQL Database', async () => {
-        const collentionId: string = randomUtils.getRandomHexString(12);
+        const collectionId: string = randomUtils.getRandomHexString(12);
         // Partition key cannot begin with a digit
         const partitionKey: string = `f${randomUtils.getRandomHexString(12)}`;
-        const testInputs: (string | RegExp)[] = [`${accountName} (SQL)`, databaseName, collentionId, partitionKey, '1000'];
+        const testInputs: (string | RegExp)[] = [`${accountName} (SQL)`, databaseName, collectionId, partitionKey, '1000'];
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createDocDBDatabase');
         });

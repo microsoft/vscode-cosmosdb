@@ -5,19 +5,20 @@
 
 import * as assert from 'assert';
 import { CosmosDBManagementModels } from 'azure-arm-cosmosdb';
-import { DatabaseMeta, DocumentClient, QueryError } from 'documentdb';
+import { CollectionMeta, DatabaseMeta, DocumentClient, QueryError } from 'documentdb';
 import { IHookCallbackContext, ISuiteCallbackContext } from 'mocha';
 import * as vscode from 'vscode';
 import { DialogResponses, getDocumentClient, ParsedDocDBConnectionString, parseDocDBConnectionString, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
-import { client, resourceGroupsToDelete } from './global.resource.test';
+import { client, resourceGroupsToDelete, testAccount } from './global.resource.test';
 
 suite('SQL action', async function (this: ISuiteCallbackContext): Promise<void> {
     this.timeout(20 * 60 * 1000);
     let resourceGroupName: string;
     let accountName: string;
     let databaseName: string;
+    let collectionId2: string;
 
     suiteSetup(async function (this: IHookCallbackContext): Promise<void> {
         if (!longRunningTestsEnabled) {
@@ -28,6 +29,7 @@ suite('SQL action', async function (this: ISuiteCallbackContext): Promise<void> 
         // Cosmos DB account must have lower case name
         accountName = randomUtils.getRandomHexString(12).toLowerCase();
         databaseName = randomUtils.getRandomHexString(12);
+        collectionId2 = randomUtils.getRandomHexString(12);
         resourceGroupsToDelete.push(resourceGroupName);
     });
 
@@ -41,10 +43,10 @@ suite('SQL action', async function (this: ISuiteCallbackContext): Promise<void> 
     });
 
     test('Create SQL Database', async () => {
-        const collectionId: string = randomUtils.getRandomHexString(12);
+        const collectionId1: string = randomUtils.getRandomHexString(12);
         // Partition key cannot begin with a digit
-        const partitionKey: string = `f${randomUtils.getRandomHexString(12)}`;
-        const testInputs: (string | RegExp)[] = [`${accountName} (SQL)`, databaseName, collectionId, partitionKey, '1000'];
+        const partitionKey1: string = `f${randomUtils.getRandomHexString(12)}`;
+        const testInputs: (string | RegExp)[] = [`${accountName} (SQL)`, databaseName, collectionId1, partitionKey1, '1000'];
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createDocDBDatabase');
         });
@@ -52,6 +54,19 @@ suite('SQL action', async function (this: ISuiteCallbackContext): Promise<void> 
         const databaseMetaList: DatabaseMeta[] = await getDatabases(getDocDBClient);
         const getDatabase: DatabaseMeta | undefined = databaseMetaList.find((database: DatabaseMeta) => database.id === databaseName);
         assert.ok(getDatabase);
+    });
+
+    test('Create SQL collection', async () => {
+        // Partition key cannot begin with a digit
+        const partitionKey2: string = `f${randomUtils.getRandomHexString(12)}`;
+        const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (SQL)`, databaseName, collectionId2, partitionKey2, '1000'];
+        await testUserInput.runWithInputs(testInputs, async () => {
+            await vscode.commands.executeCommand('cosmosDB.createDocDBCollection');
+        });
+        const getDocDBClient: DocumentClient = await getClient(accountName);
+        const collectionMetaList: CollectionMeta[] = await getCollections(getDocDBClient, databaseName);
+        const getCollection: CollectionMeta | undefined = collectionMetaList.find((collection: CollectionMeta) => collection.id === collectionId2);
+        assert.ok(getCollection);
     });
 
     test('Delete SQL account', async () => {
@@ -74,6 +89,16 @@ suite('SQL action', async function (this: ISuiteCallbackContext): Promise<void> 
 
     async function getDatabases(docDBClient: DocumentClient): Promise<DatabaseMeta[]> {
         return new Promise((resolve, reject) => docDBClient.readDatabases().toArray((err: QueryError, res: DatabaseMeta[]) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(res);
+            }
+        }));
+    }
+
+    async function getCollections(docDBClient: DocumentClient, databaseId: string): Promise<CollectionMeta[]> {
+        return new Promise((resolve, reject) => docDBClient.readCollections(`/dbs/${databaseId}`).toArray((err: QueryError, res: CollectionMeta[]) => {
             if (err) {
                 reject(err);
             } else {

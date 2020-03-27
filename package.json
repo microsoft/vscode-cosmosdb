@@ -59,6 +59,7 @@
         "onCommand:cosmosDB.deleteDocDBCollection",
         "onCommand:cosmosDB.deleteDocDBDocument",
         "onCommand:cosmosDB.deleteGraphDatabase",
+        "onCommand:cosmosDB.deletePostgresDatabase",
         "onCommand:cosmosDB.deleteGraph",
         "onCommand:cosmosDB.executeAllMongoCommands",
         "onCommand:cosmosDB.executeMongoCommand",
@@ -270,6 +271,11 @@
             {
                 "category": "Graph (Gremlin)",
                 "command": "cosmosDB.deleteGraphDatabase",
+                "title": "Delete Database..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "cosmosDB.deletePostgresDatabase",
                 "title": "Delete Database..."
             },
             {
@@ -556,6 +562,10 @@
                 {
                     "command": "cosmosDB.deleteGraphDatabase",
                     "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
+                },
+                {
+                    "command": "cosmosDB.deletePostgresDatabase",
+                    "when": "view == cosmosDBExplorer && viewItem == postgresDatabase"
                 },
                 {
                     "command": "cosmosDB.deleteGraph",

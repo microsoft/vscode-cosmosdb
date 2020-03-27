@@ -3,13 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { Client, ClientConfig } from 'pg';
 import pgStructure, { Db } from 'pg-structure';
 import { ConnectionOptions } from 'tls';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IParsedError, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, DialogResponses, GenericTreeItem, IParsedError, ISubscriptionContext, parseError, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
+import { azureUtils } from '../../utils/azureUtils';
 import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
@@ -22,6 +24,18 @@ interface IPersistedServer {
 }
 
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
+
+    public get label(): string {
+        return this.databaseName;
+    }
+
+    public get id(): string {
+        return this.databaseName;
+    }
+
+    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
+        return getThemeAgnosticIconPath('Database.svg');
+    }
     public static contextValue: string = "postgresDatabase";
     public readonly contextValue: string = PostgresDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = "Schema";
@@ -37,18 +51,6 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         this.databaseName = databaseName;
         this._keytar = tryGetKeyTar();
         this._serverId = nonNullProp(this.parent.server, 'id');
-    }
-
-    public get label(): string {
-        return this.databaseName;
-    }
-
-    public get id(): string {
-        return this.databaseName;
-    }
-
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('Database.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {
@@ -125,6 +127,17 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         }
 
         return { username, password };
+    }
+
+    public async deleteTreeItemImpl(): Promise<void> {
+        const message: string = `Are you sure you want to delete database '${this.label}'?`;
+        const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+        if (result === DialogResponses.deleteResponse) {
+            const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+            await client.databases.deleteMethod(azureUtils.getResourceGroupFromId(this.fullId), this.parent.name, this.databaseName);
+        } else {
+            throw new UserCancelledError();
+        }
     }
 
     private async getCredentialsFromKeytar(): Promise<{ username: string | undefined, password: string | undefined }> {

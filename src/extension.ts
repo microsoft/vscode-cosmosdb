@@ -30,6 +30,7 @@ import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { getPostgresCredentials } from './postgres/getPostgresCredentials';
+import { registerPostgresCommands } from './postgres/registerPostgresCommands';
 import { PostgresServerTreeItem } from './postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
@@ -63,6 +64,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
         registerDocDBCommands(editorManager);
         registerGraphCommands();
+        registerPostgresCommands();
         const codeLensProvider = registerMongoCommands(editorManager);
 
         const cosmosDBTopLevelContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];

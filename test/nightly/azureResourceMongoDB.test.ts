@@ -10,6 +10,7 @@ import { Collection, MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, connectToMongoClient, DialogResponses, IDatabaseInfo, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
+import { getConnectionString } from './getConnectionString';
 import { client, resourceGroupsToDelete, testAccount } from './global.resource.test';
 
 suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<void> {
@@ -93,11 +94,7 @@ suite('MongoDB action', async function (this: ISuiteCallbackContext): Promise<vo
     });
 
     async function getMongoClient(resourceName: string): Promise<MongoClient> {
-        await vscode.env.clipboard.writeText('');
-        await testUserInput.runWithInputs([new RegExp(resourceName)], async () => {
-            await vscode.commands.executeCommand('cosmosDB.copyConnectionString');
-        });
-        const connectionString: string = await vscode.env.clipboard.readText();
+        const connectionString: string = await getConnectionString(resourceName);
         return await connectToMongoClient(connectionString, appendExtensionUserAgent());
     }
 

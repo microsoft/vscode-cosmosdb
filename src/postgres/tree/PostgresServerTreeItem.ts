@@ -9,6 +9,7 @@ import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
+import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
@@ -96,6 +97,12 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         }
 
         if (!existingFirewallRule || existingFirewallRule.startIpAddress !== ip || existingFirewallRule.endIpAddress !== ip) {
+            await ext.ui.showWarningMessage(
+                localize('firewallWillBeConfigured', 'The firewall for server "{0}" will be configured to allow your IP ({1}).', this.server.name, ip),
+                { modal: true },
+                { title: localize('continue', 'Continue') }
+            );
+
             const newFirewallRule: FirewallRule = {
                 startIpAddress: ip,
                 endIpAddress: ip
@@ -103,7 +110,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
 
             const options: vscode.ProgressOptions = {
                 location: vscode.ProgressLocation.Notification,
-                title: localize('configuringFirewall', 'Configuring firewall for server "{0}"...', serverName)
+                title: localize('configuringFirewall', 'Adding firewall rule for IP "{0}" to server "{1}"...', ip, serverName)
             };
 
             await vscode.window.withProgress(options, async () => {

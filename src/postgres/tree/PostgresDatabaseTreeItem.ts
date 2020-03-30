@@ -21,6 +21,8 @@ interface IPersistedServer {
     username: string;
 }
 
+const invalidCredentialsErrorType: string = '28P01';
+
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresDatabase";
     public readonly contextValue: string = PostgresDatabaseTreeItem.contextValue;
@@ -73,7 +75,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         } catch (error) {
             const parsedError: IParsedError = parseError(error);
 
-            if (parsedError.message.match(/password authentication failed for user/) || parsedError.errorType === 'UserCancelledError') {
+            if (parsedError.errorType === invalidCredentialsErrorType || parsedError.errorType === 'UserCancelledError') {
                 // tslint:disable-next-line: no-floating-promises
                 ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
 

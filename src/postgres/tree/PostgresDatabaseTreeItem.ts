@@ -73,16 +73,18 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         } catch (error) {
             const parsedError: IParsedError = parseError(error);
 
-            if (parsedError.errorType !== 'UserCancelledError') {
+            if (parsedError.message.match(/password authentication failed for user/) || parsedError.errorType === 'UserCancelledError') {
                 // tslint:disable-next-line: no-floating-promises
                 ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
+
+                return [new GenericTreeItem(this, {
+                    contextValue: 'postgresCredentials',
+                    label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
+                    commandId: 'cosmosDB.getPostgresCredentials'
+                })];
             }
 
-            return [new GenericTreeItem(this, {
-                contextValue: 'postgresCredentials',
-                label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
-                commandId: 'cosmosDB.getPostgresCredentials'
-            })];
+            throw error;
         }
     }
 

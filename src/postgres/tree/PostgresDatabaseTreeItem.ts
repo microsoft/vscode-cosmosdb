@@ -21,6 +21,8 @@ interface IPersistedServer {
     username: string;
 }
 
+class PromptForCredentialsError extends Error { }
+
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresDatabase";
     public readonly contextValue: string = PostgresDatabaseTreeItem.contextValue;
@@ -73,7 +75,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         } catch (error) {
             const parsedError: IParsedError = parseError(error);
 
-            if (parsedError.errorType !== 'UserCancelledError') {
+            if (parsedError.errorType !== 'UserCancelledError' && parsedError.errorType !== 'PromptForCredentialsError') {
                 // tslint:disable-next-line: no-floating-promises
                 ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
             }
@@ -98,11 +100,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
         if (!username || !password) {
             if (warnBeforePrompting) {
-                await ext.ui.showWarningMessage(
-                    localize('mustEnterUsernameAndPassword', 'You must enter the username and password for server "{0}" to continue.', this.parent.label),
-                    { modal: true },
-                    { title: localize('continue', 'Continue') }
-                );
+                throw new PromptForCredentialsError();
             }
 
             username = await ext.ui.showInputBox({

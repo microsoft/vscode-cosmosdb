@@ -20,6 +20,7 @@ interface IPersistedServer {
     id: string;
     username: string;
 }
+const invalidCredentialsErrorType: string = '28P01';
 
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresDatabase";
@@ -56,74 +57,58 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
-        try {
-            const { username, password } = await this.getCredentials(false, true);
+        const { username, password } = await this.getCredentialsFromKeytar();
 
-            const ssl: ConnectionOptions = {
-                // Always provide the certificate since it is accepted even when SSL is disabled
-                // Certificate source: https://aka.ms/AA7wnvl
-                ca: BaltimoreCyberTrustRoot
-            };
+        if (username && password) {
+            try {
+                const ssl: ConnectionOptions = {
+                    // Always provide the certificate since it is accepted even when SSL is disabled
+                    // Certificate source: https://aka.ms/AA7wnvl
+                    ca: BaltimoreCyberTrustRoot
+                };
 
-            const host: string = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
-            const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
-            const accountConnection: Client = new Client(clientConfig);
-            const db: Db = await pgStructure(accountConnection);
-            return db.schemas.map(schema => new PostgresSchemaTreeItem(this, schema));
-        } catch (error) {
-            const parsedError: IParsedError = parseError(error);
+                const host: string = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
+                const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
+                const accountConnection: Client = new Client(clientConfig);
+                const db: Db = await pgStructure(accountConnection);
+                return db.schemas.map(schema => new PostgresSchemaTreeItem(this, schema));
+            } catch (error) {
+                const parsedError: IParsedError = parseError(error);
 
-            if (parsedError.errorType !== 'UserCancelledError') {
-                // tslint:disable-next-line: no-floating-promises
-                ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
+                if (parsedError.errorType === invalidCredentialsErrorType) {
+                    // tslint:disable-next-line: no-floating-promises
+                    ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
+                } else {
+                    throw error;
+                }
             }
-
-            return [new GenericTreeItem(this, {
-                contextValue: 'postgresCredentials',
-                label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
-                commandId: 'cosmosDB.getPostgresCredentials'
-            })];
         }
+
+        return [new GenericTreeItem(this, {
+            contextValue: 'postgresCredentials',
+            label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
+            commandId: 'cosmosDB.getPostgresCredentials'
+        })];
     }
 
-    public async getCredentials(forcePrompt: boolean, warnBeforePrompting: boolean): Promise<{ username: string, password: string }> {
-        let username: string | undefined;
-        let password: string | undefined;
+    public async promptForCredentials(): Promise<{ username: string, password: string }> {
+        let username: string = await ext.ui.showInputBox({
+            prompt: localize('enterUsername', 'Enter username for server "{0}"', this.parent.label),
+            validateInput: (value: string) => { return (value && value.length) ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.'); }
+        });
 
-        if (!forcePrompt) {
-            const cachedCredentials: { username: string | undefined, password: string | undefined } = await this.getCredentialsFromKeytar();
-            username = cachedCredentials.username;
-            password = cachedCredentials.password;
+        const usernameSuffix: string = `@${this.parent.server.name}`;
+        if (!username.includes(usernameSuffix)) {
+            username += usernameSuffix;
         }
 
-        if (!username || !password) {
-            if (warnBeforePrompting) {
-                await ext.ui.showWarningMessage(
-                    localize('mustEnterUsernameAndPassword', 'You must enter the username and password for server "{0}" to continue.', this.parent.label),
-                    { modal: true },
-                    { title: localize('continue', 'Continue') }
-                );
-            }
+        const password: string = await ext.ui.showInputBox({
+            prompt: localize('enterPassword', 'Enter password for server "{0}"', this.parent.label),
+            password: true,
+            validateInput: (value: string) => { return (value && value.length) ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.'); }
+        });
 
-            username = await ext.ui.showInputBox({
-                prompt: localize('enterUsername', 'Enter username for server "{0}"', this.parent.label),
-                validateInput: (value: string) => { return (value && value.length) ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.'); }
-            });
-
-            const usernameSuffix: string = `@${this.parent.server.name}`;
-            if (!username.includes(usernameSuffix)) {
-                username += usernameSuffix;
-            }
-
-            password = await ext.ui.showInputBox({
-                prompt: localize('enterPassword', 'Enter password for server "{0}"', this.parent.label),
-                password: true,
-                validateInput: (value: string) => { return (value && value.length) ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.'); }
-            });
-
-            await this.persistServer(username, password);
-        }
-
+        await this.persistServer(username, password);
         return { username, password };
     }
 

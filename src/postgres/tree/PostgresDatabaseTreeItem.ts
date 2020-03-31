@@ -20,7 +20,6 @@ interface IPersistedServer {
     id: string;
     username: string;
 }
-class CredentialsNotFoundError extends Error { }
 const invalidCredentialsErrorType: string = '28P01';
 
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
@@ -58,38 +57,38 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
-        try {
-            const { username, password } = await this.getCredentialsFromKeytar();
+        const { username, password } = await this.getCredentialsFromKeytar();
 
-            const ssl: ConnectionOptions = {
-                // Always provide the certificate since it is accepted even when SSL is disabled
-                // Certificate source: https://aka.ms/AA7wnvl
-                ca: BaltimoreCyberTrustRoot
-            };
+        if (username && password) {
+            try {
+                const ssl: ConnectionOptions = {
+                    // Always provide the certificate since it is accepted even when SSL is disabled
+                    // Certificate source: https://aka.ms/AA7wnvl
+                    ca: BaltimoreCyberTrustRoot
+                };
 
-            const host: string = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
-            const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
-            const accountConnection: Client = new Client(clientConfig);
-            const db: Db = await pgStructure(accountConnection);
-            return db.schemas.map(schema => new PostgresSchemaTreeItem(this, schema));
-        } catch (error) {
-            const parsedError: IParsedError = parseError(error);
+                const host: string = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
+                const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
+                const accountConnection: Client = new Client(clientConfig);
+                const db: Db = await pgStructure(accountConnection);
+                return db.schemas.map(schema => new PostgresSchemaTreeItem(this, schema));
+            } catch (error) {
+                const parsedError: IParsedError = parseError(error);
 
-            if (parsedError.errorType === invalidCredentialsErrorType || parsedError.errorType === 'CredentialsNotFoundError') {
                 if (parsedError.errorType === invalidCredentialsErrorType) {
                     // tslint:disable-next-line: no-floating-promises
                     ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
+                } else {
+                    throw error;
                 }
-
-                return [new GenericTreeItem(this, {
-                    contextValue: 'postgresCredentials',
-                    label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
-                    commandId: 'cosmosDB.getPostgresCredentials'
-                })];
             }
-
-            throw error;
         }
+
+        return [new GenericTreeItem(this, {
+            contextValue: 'postgresCredentials',
+            label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
+            commandId: 'cosmosDB.getPostgresCredentials'
+        })];
     }
 
     public async promptForCredentials(): Promise<{ username: string, password: string }> {
@@ -113,21 +112,23 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         return { username, password };
     }
 
-    private async getCredentialsFromKeytar(): Promise<{ username: string, password: string }> {
+    private async getCredentialsFromKeytar(): Promise<{ username: string | undefined, password: string | undefined }> {
+        let username: string | undefined;
+        let password: string | undefined;
+
         const storedValue: string | undefined = ext.context.globalState.get(this._serviceName);
         if (storedValue && this._keytar) {
             const servers: IPersistedServer[] = JSON.parse(storedValue);
             for (const server of servers) {
                 if (server.id === this._serverId) {
-                    return {
-                        username: server.username,
-                        password: <string>await this._keytar.getPassword(this._serviceName, this._serverId)
-                    };
+                    username = server.username;
+                    password = await this._keytar.getPassword(this._serviceName, this._serverId) || undefined;
+                    break;
                 }
             }
         }
 
-        throw new CredentialsNotFoundError();
+        return { username, password };
     }
 
     private async persistServer(username: string, password: string): Promise<void> {

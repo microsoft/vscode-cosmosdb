@@ -258,6 +258,7 @@ paket-files/
 # Artifacts from running vscode extension tests
 .vscode-test
 test-results.xml
+testWorkspace
 
 # Artifacts from ANTLR4 extension
 grammar/.antlr

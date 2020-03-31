@@ -6,12 +6,12 @@
 import * as assert from 'assert';
 import { addDatabaseToAccountConnectionString, emulatorPassword, getDatabaseNameFromConnectionString } from '../extension.bundle';
 
-function testDatabaseToAccountConnectionString(connectionString: string, databaseName: string, expectedConnectionString: string | undefined) {
+function testDatabaseToAccountConnectionString(connectionString: string, databaseName: string, expectedConnectionString: string | undefined): void {
     const databaseConnectionString = addDatabaseToAccountConnectionString(connectionString, databaseName);
     assert.equal(databaseConnectionString, expectedConnectionString);
 }
 
-function testDatabaseNameFromConectionString(connectionString: string, expectedDatabaseName: string | undefined) {
+function testDatabaseNameFromConectionString(connectionString: string, expectedDatabaseName: string | undefined): void {
     const databaseName = getDatabaseNameFromConnectionString(connectionString);
     assert.equal(databaseName, expectedDatabaseName);
 }

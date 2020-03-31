@@ -63,10 +63,16 @@ suite('SQL action', async function (this: ISuiteCallbackContext): Promise<void> 
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createDocDBCollection');
         });
-        const getDocDBClient: DocumentClient = await getClient(accountName);
-        const collectionMetaList: CollectionMeta[] = await getCollections(getDocDBClient, databaseName);
-        const getCollection: CollectionMeta | undefined = collectionMetaList.find((collection: CollectionMeta) => collection.id === collectionId2);
-        assert.ok(getCollection);
+        assert.ok(await getDocDBCollectionMeta(accountName, databaseName, collectionId2));
+    });
+
+    test('Delete SQL collection', async () => {
+        assert.ok(await getDocDBCollectionMeta(accountName, databaseName, collectionId2));
+        const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (SQL)`, databaseName, collectionId2, DialogResponses.deleteResponse.title];
+        await testUserInput.runWithInputs(testInputs, async () => {
+            await vscode.commands.executeCommand('cosmosDB.deleteDocDBCollection');
+        });
+        assert.ifError(await getDocDBCollectionMeta(accountName, databaseName, collectionId2));
     });
 
     test('Delete SQL account', async () => {
@@ -105,5 +111,11 @@ suite('SQL action', async function (this: ISuiteCallbackContext): Promise<void> 
                 resolve(res);
             }
         }));
+    }
+
+    async function getDocDBCollectionMeta(accountId: string, databaseId: string, collectionId: string): Promise<CollectionMeta | undefined> {
+        const getDocDBClient: DocumentClient = await getClient(accountId);
+        const collectionMetaList: CollectionMeta[] = await getCollections(getDocDBClient, databaseId);
+        return collectionMetaList.find((collection: CollectionMeta) => collection.id === collectionId);
     }
 });

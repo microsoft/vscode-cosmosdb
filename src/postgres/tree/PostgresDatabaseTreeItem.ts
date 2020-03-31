@@ -80,6 +80,8 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 if (parsedError.errorType === invalidCredentialsErrorType) {
                     // tslint:disable-next-line: no-floating-promises
                     ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
+                } else if (parsedError.errorType === 'UserCancelledError') {
+                    throw new Error(localize('firewallHasNotBeenConfigured', 'Firewall for server "{0}" has not been configured.', this.parent.server.name));
                 } else {
                     throw error;
                 }

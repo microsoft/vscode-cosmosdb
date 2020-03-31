@@ -7,7 +7,7 @@ import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { DatabaseListResult, FirewallRule, Server } from 'azure-arm-postgresql/lib/models';
 import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, DialogResponses, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
@@ -98,9 +98,9 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
 
         if (!existingFirewallRule || existingFirewallRule.startIpAddress !== ip || existingFirewallRule.endIpAddress !== ip) {
             await ext.ui.showWarningMessage(
-                localize('firewallWillBeConfigured', 'The firewall for server "{0}" will be configured to allow your IP ({1}).', this.server.name, ip),
+                localize('configureFirewall', 'Your IP ({0}) is not included in the firewall rules for "{1}". Would you like to add it?', ip, this.server.name),
                 { modal: true },
-                { title: localize('continue', 'Continue') }
+                { title: DialogResponses.yes.title }
             );
 
             const newFirewallRule: FirewallRule = {

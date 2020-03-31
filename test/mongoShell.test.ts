@@ -28,7 +28,7 @@ if (!isWindows) {
     testsSupported = false;
 }
 
-suite("MongoShell", function (this: Mocha.Suite) {
+suite("MongoShell", function (this: Mocha.Suite): void {
     function testIfSupported(title: string, fn?: Mocha.Func | Mocha.AsyncFunc): void {
         if (testsSupported) {
             test(title, fn);
@@ -70,7 +70,7 @@ suite("MongoShell", function (this: Mocha.Suite) {
         public clear(): void { }
         public show(preserveFocus?: boolean): void;
         public show(column?: vscode.ViewColumn, preserveFocus?: boolean): void;
-        public show(_column?: any, _preserveFocus?: any) { }
+        public show(_column?: any, _preserveFocus?: any): void { }
         public hide(): void { }
         public dispose(): void { }
     }

@@ -5,7 +5,6 @@
 
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { ResourceManagementClient } from 'azure-arm-resource';
-import { IHookCallbackContext } from 'mocha';
 import * as vscode from 'vscode';
 import { TestAzureAccount } from 'vscode-azureextensiondev';
 import { AzExtTreeDataProvider, AzureAccountTreeItemWithAttached, createAzureClient, ext } from '../../extension.bundle';
@@ -15,26 +14,23 @@ export let testAccount: TestAzureAccount;
 export let client: CosmosDBManagementClient;
 export const resourceGroupsToDelete: string[] = [];
 
-suiteSetup(async function (this: IHookCallbackContext): Promise<void> {
-    if (!longRunningTestsEnabled) {
-        this.skip();
+suiteSetup(async function (this: Mocha.Context): Promise<void> {
+    if (longRunningTestsEnabled) {
+        this.timeout(2 * 60 * 1000);
+        testAccount = new TestAzureAccount(vscode);
+        await testAccount.signIn();
+        ext.azureAccountTreeItem = new AzureAccountTreeItemWithAttached(testAccount);
+        ext.tree = new AzExtTreeDataProvider(ext.azureAccountTreeItem, 'cosmosDB.loadMore');
+        client = createAzureClient(testAccount.getSubscriptionContext(), CosmosDBManagementClient);
     }
-
-    this.timeout(2 * 60 * 1000);
-    testAccount = new TestAzureAccount(vscode);
-    await testAccount.signIn();
-    ext.azureAccountTreeItem = new AzureAccountTreeItemWithAttached(testAccount);
-    ext.tree = new AzExtTreeDataProvider(ext.azureAccountTreeItem, 'cosmosDB.loadMore');
-    client = createAzureClient(testAccount.getSubscriptionContext(), CosmosDBManagementClient);
 });
 
-suiteTeardown(async function (this: IHookCallbackContext): Promise<void> {
-    if (!longRunningTestsEnabled) {
-        this.skip();
+suiteTeardown(async function (this: Mocha.Context): Promise<void> {
+    if (longRunningTestsEnabled) {
+        this.timeout(10 * 60 * 1000);
+        await deleteResourceGroups();
+        ext.azureAccountTreeItem.dispose();
     }
-    this.timeout(10 * 60 * 1000);
-    await deleteResourceGroups();
-    ext.azureAccountTreeItem.dispose();
 });
 
 async function deleteResourceGroups(): Promise<void> {

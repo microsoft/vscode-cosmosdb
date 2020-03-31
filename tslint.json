@@ -98,7 +98,8 @@
     },
     "linterOptions": {
         "exclude": [
-            "src/mongo/grammar/**" // generated files
+            "src/mongo/grammar/**", // generated files
+            "**/*.d.ts"
         ]
     }
 }

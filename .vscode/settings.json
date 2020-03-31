@@ -1,27 +1,26 @@
 {
-    "editor.formatOnSave": true,
-    "files.exclude": {
-        ".vscode-test": true
+    "editor.codeActionsOnSave": {
+        "source.fixAll.tslint": true,
+        "source.organizeImports": true
     },
-    "files.trimTrailingWhitespace": true,
-    "editor.insertSpaces": true,
     "editor.detectIndentation": false,
+    "editor.formatOnSave": true,
+    "editor.insertSpaces": true,
     "editor.tabSize": 4,
     "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true,
     "search.exclude": {
         "out": true,
         "**/node_modules": true,
         ".vscode-test": true
     },
+    "tslint.ignoreDefinitionFiles": true,
+    "typescript.preferences.importModuleSpecifier": "relative",
+    "typescript.tsdk": "node_modules/typescript/lib",
     "antlr4.generation": {
         // Settings for "ANTLR4 grammar syntax support" extension
         "mode": "internal",
         "listeners": true,
         "visitors": false
-    },
-    "editor.codeActionsOnSave": {
-        "source.fixAll.tslint": true,
-    },
-    "tslint.ignoreDefinitionFiles": true,
-    "typescript.preferences.importModuleSpecifier": "relative"
+    }
 }

@@ -15,6 +15,6 @@ export async function getPostgresCredentials(context: IActionContext, treeItem?:
         treeItem = nonNullProp(treeItem, 'parent');
     }
 
-    await (<PostgresDatabaseTreeItem>treeItem).getCredentials(true, false);
+    await (<PostgresDatabaseTreeItem>treeItem).promptForCredentials();
     await treeItem.refresh();
 }

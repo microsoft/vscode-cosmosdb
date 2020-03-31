@@ -20,7 +20,7 @@ interface IPersistedServer {
     id: string;
     username: string;
 }
-class PromptForCredentialsError extends Error { }
+class CredentialsNotFoundError extends Error { }
 const invalidCredentialsErrorType: string = '28P01';
 
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
@@ -59,7 +59,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
         try {
-            const { username, password } = await this.getCredentials(false, true);
+            const { username, password } = await this.getCredentialsFromKeytar();
 
             const ssl: ConnectionOptions = {
                 // Always provide the certificate since it is accepted even when SSL is disabled
@@ -75,7 +75,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         } catch (error) {
             const parsedError: IParsedError = parseError(error);
 
-            if (parsedError.errorType === invalidCredentialsErrorType || parsedError.errorType === 'UserCancelledError' || parsedError.errorType === 'PromptForCredentialsError') {
+            if (parsedError.errorType === invalidCredentialsErrorType || parsedError.errorType === 'CredentialsNotFoundError') {
                 if (parsedError.errorType === invalidCredentialsErrorType) {
                     // tslint:disable-next-line: no-floating-promises
                     ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
@@ -92,60 +92,42 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         }
     }
 
-    public async getCredentials(forcePrompt: boolean, warnBeforePrompting: boolean): Promise<{ username: string, password: string }> {
-        let username: string | undefined;
-        let password: string | undefined;
+    public async promptForCredentials(): Promise<{ username: string, password: string }> {
+        let username: string = await ext.ui.showInputBox({
+            prompt: localize('enterUsername', 'Enter username for server "{0}"', this.parent.label),
+            validateInput: (value: string) => { return (value && value.length) ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.'); }
+        });
 
-        if (!forcePrompt) {
-            const cachedCredentials: { username: string | undefined, password: string | undefined } = await this.getCredentialsFromKeytar();
-            username = cachedCredentials.username;
-            password = cachedCredentials.password;
+        const usernameSuffix: string = `@${this.parent.server.name}`;
+        if (!username.includes(usernameSuffix)) {
+            username += usernameSuffix;
         }
 
-        if (!username || !password) {
-            if (warnBeforePrompting) {
-                throw new PromptForCredentialsError();
-            }
+        const password: string = await ext.ui.showInputBox({
+            prompt: localize('enterPassword', 'Enter password for server "{0}"', this.parent.label),
+            password: true,
+            validateInput: (value: string) => { return (value && value.length) ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.'); }
+        });
 
-            username = await ext.ui.showInputBox({
-                prompt: localize('enterUsername', 'Enter username for server "{0}"', this.parent.label),
-                validateInput: (value: string) => { return (value && value.length) ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.'); }
-            });
-
-            const usernameSuffix: string = `@${this.parent.server.name}`;
-            if (!username.includes(usernameSuffix)) {
-                username += usernameSuffix;
-            }
-
-            password = await ext.ui.showInputBox({
-                prompt: localize('enterPassword', 'Enter password for server "{0}"', this.parent.label),
-                password: true,
-                validateInput: (value: string) => { return (value && value.length) ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.'); }
-            });
-
-            await this.persistServer(username, password);
-        }
-
+        await this.persistServer(username, password);
         return { username, password };
     }
 
-    private async getCredentialsFromKeytar(): Promise<{ username: string | undefined, password: string | undefined }> {
-        let username: string | undefined;
-        let password: string | undefined;
-
+    private async getCredentialsFromKeytar(): Promise<{ username: string, password: string }> {
         const storedValue: string | undefined = ext.context.globalState.get(this._serviceName);
         if (storedValue && this._keytar) {
             const servers: IPersistedServer[] = JSON.parse(storedValue);
             for (const server of servers) {
                 if (server.id === this._serverId) {
-                    username = server.username;
-                    password = await this._keytar.getPassword(this._serviceName, this._serverId) || undefined;
-                    break;
+                    return {
+                        username: server.username,
+                        password: <string>await this._keytar.getPassword(this._serviceName, this._serverId)
+                    };
                 }
             }
         }
 
-        return { username, password };
+        throw new CredentialsNotFoundError();
     }
 
     private async persistServer(username: string, password: string): Promise<void> {

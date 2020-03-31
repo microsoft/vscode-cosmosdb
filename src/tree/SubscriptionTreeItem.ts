@@ -38,6 +38,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         //Postgres
         const postgresClient: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const postgresServers: ServerListResult = await postgresClient.servers.list();
+        console.log(postgresServers);
         treeItemPostgres = await this.createTreeItemsWithErrorHandling(
             postgresServers,
             'invalidPostgreSQLAccount',

@@ -84,7 +84,13 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
             await node.deleteTreeItem(actionContext);
         });
+        registerCommand('cosmosDB.deletePostgresAccount', async (actionContext: IActionContext, node?: AzureTreeItem) => {
+            if (!node) {
+                node = await ext.tree.showTreeItemPicker<AzureTreeItem>(PostgresServerTreeItem.contextValue, actionContext);
+            }
 
+            await node.deleteTreeItem(actionContext);
+        });
         registerCommand('cosmosDB.attachDatabaseAccount', async () => {
             await ext.attachedAccountsNode.attachNewAccount();
             await ext.tree.refresh(ext.attachedAccountsNode);

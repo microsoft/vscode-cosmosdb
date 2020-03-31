@@ -35,6 +35,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get name(): string {
+        console.log(this.server.name);
         return nonNullProp(this.server, 'name');
     }
 

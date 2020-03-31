@@ -6,13 +6,12 @@
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import * as vscode from 'vscode';
 import { AzureTreeItem, createAzureClient, DialogResponses } from 'vscode-azureextensionui';
-import { UserCancelledError } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
 import { azureUtils } from '../utils/azureUtils';
 
 export async function deletePostgresServer(node: AzureTreeItem): Promise<void> {
     const message: string = `Are you sure you want to delete server '${node.label}' and its contents?`;
-    const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+    const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
     if (result === DialogResponses.deleteResponse) {
         const client: PostgreSQLManagementClient = createAzureClient(node.root, PostgreSQLManagementClient);
         const resourceGroup: string = azureUtils.getResourceGroupFromId(node.fullId);
@@ -23,7 +22,5 @@ export async function deletePostgresServer(node: AzureTreeItem): Promise<void> {
         });
         // don't wait
         vscode.window.showInformationMessage(`Successfully deleted server "${serverName}".`);
-    } else {
-        throw new UserCancelledError();
     }
 }

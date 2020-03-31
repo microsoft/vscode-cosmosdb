@@ -20,6 +20,8 @@ interface IPersistedServer {
     id: string;
     username: string;
 }
+class PromptForCredentialsError extends Error { }
+const invalidCredentialsErrorType: string = '28P01';
 
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresDatabase";
@@ -73,16 +75,20 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         } catch (error) {
             const parsedError: IParsedError = parseError(error);
 
-            if (parsedError.errorType !== 'UserCancelledError') {
-                // tslint:disable-next-line: no-floating-promises
-                ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
+            if (parsedError.errorType === invalidCredentialsErrorType || parsedError.errorType === 'UserCancelledError' || parsedError.errorType === 'PromptForCredentialsError') {
+                if (parsedError.errorType === invalidCredentialsErrorType) {
+                    // tslint:disable-next-line: no-floating-promises
+                    ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
+                }
+
+                return [new GenericTreeItem(this, {
+                    contextValue: 'postgresCredentials',
+                    label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
+                    commandId: 'cosmosDB.getPostgresCredentials'
+                })];
             }
 
-            return [new GenericTreeItem(this, {
-                contextValue: 'postgresCredentials',
-                label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
-                commandId: 'cosmosDB.getPostgresCredentials'
-            })];
+            throw error;
         }
     }
 
@@ -98,11 +104,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
         if (!username || !password) {
             if (warnBeforePrompting) {
-                await ext.ui.showWarningMessage(
-                    localize('mustEnterUsernameAndPassword', 'You must enter the username and password for server "{0}" to continue.', this.parent.label),
-                    { modal: true },
-                    { title: localize('continue', 'Continue') }
-                );
+                throw new PromptForCredentialsError();
             }
 
             username = await ext.ui.showInputBox({

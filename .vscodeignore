@@ -25,3 +25,4 @@ build
 *.ts
 *.zip
 *.mongo
+testWorkspace/**

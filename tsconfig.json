@@ -19,7 +19,7 @@
         "alwaysStrict": true,
         "paths": {
             "*": [
-                "node_modules/vscode/*",
+                "node_modules/@types/*",
                 "*"
             ]
         }

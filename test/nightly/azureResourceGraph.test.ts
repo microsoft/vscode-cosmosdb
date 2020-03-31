@@ -5,18 +5,17 @@
 
 import * as assert from 'assert';
 import { CosmosDBManagementModels } from 'azure-arm-cosmosdb';
-import { IHookCallbackContext, ISuiteCallbackContext } from 'mocha';
 import * as vscode from 'vscode';
 import { randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { client, resourceGroupsToDelete } from './global.resource.test';
 
-suite('Graph action', async function (this: ISuiteCallbackContext): Promise<void> {
+suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(20 * 60 * 1000);
     let resourceGroupName: string;
     let accountName: string;
 
-    suiteSetup(async function (this: IHookCallbackContext): Promise<void> {
+    suiteSetup(async function (this: Mocha.Context): Promise<void> {
         if (!longRunningTestsEnabled) {
             this.skip();
         }

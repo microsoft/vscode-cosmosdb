@@ -5,6 +5,7 @@
 
 import { Client, ClientConfig } from 'pg';
 import pgStructure, { Db } from 'pg-structure';
+import * as publicIp from 'public-ip';
 import { ConnectionOptions } from 'tls';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IParsedError, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
@@ -61,6 +62,14 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
         if (username && password) {
             try {
+                if (!await this.parent.isFirewallConfigured()) {
+                    return [new GenericTreeItem(this, {
+                        contextValue: 'postgresFirewall',
+                        label: localize('configureFirewall', 'Add your IP ({0}) to firewall rules for "{1}"...', await publicIp.v4(), this.parent.label),
+                        commandId: 'cosmosDB.configurePostgresFirewall'
+                    })];
+                }
+
                 const ssl: ConnectionOptions = {
                     // Always provide the certificate since it is accepted even when SSL is disabled
                     // Certificate source: https://aka.ms/AA7wnvl
@@ -70,8 +79,6 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 const host: string = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
                 const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
                 const accountConnection: Client = new Client(clientConfig);
-
-                await this.parent.checkAndConfigureFirewall();
                 const db: Db = await pgStructure(accountConnection);
                 return db.schemas.map(schema => new PostgresSchemaTreeItem(this, schema));
             } catch (error) {
@@ -80,8 +87,6 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 if (parsedError.errorType === invalidCredentialsErrorType) {
                     // tslint:disable-next-line: no-floating-promises
                     ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
-                } else if (parsedError.errorType === 'UserCancelledError') {
-                    throw new Error(localize('firewallHasNotBeenConfigured', 'Firewall for server "{0}" has not been configured.', this.parent.server.name));
                 } else {
                     throw error;
                 }

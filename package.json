@@ -74,7 +74,8 @@
         "onCommand:cosmosDB.copyConnectionString",
         "onCommand:cosmosDB.launchMongoShell",
         "onCommand:cosmosDB.openGraphExplorer",
-        "onCommand:cosmosDB.getPostgresCredentials"
+        "onCommand:cosmosDB.getPostgresCredentials",
+        "onCommand:cosmosDB.configurePostgresFirewall"
     ],
     "contributes": {
         "viewsContainers": {
@@ -343,6 +344,11 @@
                 "category": "PostgreSQL",
                 "command": "cosmosDB.getPostgresCredentials",
                 "title": "Enter Server Credentials"
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "cosmosDB.configurePostgresFirewall",
+                "title": "Configure Firewall"
             }
         ],
         "menus": {

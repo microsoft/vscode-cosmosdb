@@ -7,9 +7,8 @@ import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { DatabaseListResult, FirewallRule, Server } from 'azure-arm-postgresql/lib/models';
 import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, DialogResponses, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
@@ -22,6 +21,8 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
     public readonly server: Server;
+
+    private readonly firewallRuleName: string = "azureDatabasesForVSCode-publicIp";
 
     constructor(parent: AzureParentTreeItem, server: Server) {
         super(parent);
@@ -77,45 +78,43 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         }
     }
 
-    public async checkAndConfigureFirewall(): Promise<void> {
-        const firewallRuleName: string = 'azureDatabasesForVSCode-publicIp';
+    public async isFirewallConfigured(): Promise<boolean> {
         const resourceGroup: string = azureUtils.getResourceGroupFromId(this.id);
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const serverName: string = nonNullProp(this.server, 'name');
         const ip: string = await publicIp.v4();
-        let existingFirewallRule: FirewallRule | undefined;
 
-        // Creating/updating a firewall rule takes a long time. So check if the rule already exists and is valid before creating/updating
         try {
-            existingFirewallRule = await client.firewallRules.get(resourceGroup, serverName, firewallRuleName);
+            const existingFirewallRule: FirewallRule = await client.firewallRules.get(resourceGroup, serverName, this.firewallRuleName);
+            return existingFirewallRule && existingFirewallRule.startIpAddress === ip && existingFirewallRule.endIpAddress === ip;
         } catch (error) {
             if (parseError(error).errorType === 'ResourceNotFound') {
-                // This firewall rule is not configured yet. Ignore error
+                // The firewall rule is not configured yet
+                return false;
             } else {
                 throw error;
             }
         }
+    }
 
-        if (!existingFirewallRule || existingFirewallRule.startIpAddress !== ip || existingFirewallRule.endIpAddress !== ip) {
-            await ext.ui.showWarningMessage(
-                localize('configureFirewall', 'Your IP ({0}) is not included in the firewall rules for "{1}". Would you like to add it?', ip, this.server.name),
-                { modal: true },
-                { title: DialogResponses.yes.title }
-            );
+    public async configureFirewall(): Promise<void> {
+        const resourceGroup: string = azureUtils.getResourceGroupFromId(this.id);
+        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        const serverName: string = nonNullProp(this.server, 'name');
+        const ip: string = await publicIp.v4();
 
-            const newFirewallRule: FirewallRule = {
-                startIpAddress: ip,
-                endIpAddress: ip
-            };
+        const newFirewallRule: FirewallRule = {
+            startIpAddress: ip,
+            endIpAddress: ip
+        };
 
-            const options: vscode.ProgressOptions = {
-                location: vscode.ProgressLocation.Notification,
-                title: localize('configuringFirewall', 'Adding firewall rule for IP "{0}" to server "{1}"...', ip, serverName)
-            };
+        const options: vscode.ProgressOptions = {
+            location: vscode.ProgressLocation.Notification,
+            title: localize('configuringFirewall', 'Adding firewall rule for IP "{0}" to server "{1}"...', ip, serverName)
+        };
 
-            await vscode.window.withProgress(options, async () => {
-                await client.firewallRules.createOrUpdate(resourceGroup, serverName, firewallRuleName, newFirewallRule);
-            });
-        }
+        await vscode.window.withProgress(options, async () => {
+            await client.firewallRules.createOrUpdate(resourceGroup, serverName, this.firewallRuleName, newFirewallRule);
+        });
     }
 }

@@ -21,6 +21,7 @@ interface IPersistedServer {
     username: string;
 }
 const invalidCredentialsErrorType: string = '28P01';
+const firewallNotConfiguredErrorType: string = '28000';
 
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresDatabase";
@@ -78,6 +79,14 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 if (parsedError.errorType === invalidCredentialsErrorType) {
                     // tslint:disable-next-line: no-floating-promises
                     ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
+                } else if (parsedError.errorType === firewallNotConfiguredErrorType) {
+                    const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
+                        contextValue: 'postgresFirewall',
+                        label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
+                        commandId: 'cosmosDB.configurePostgresFirewall'
+                    });
+                    firewallTreeItem.commandArgs = [this.parent];
+                    return [firewallTreeItem];
                 } else {
                     throw error;
                 }

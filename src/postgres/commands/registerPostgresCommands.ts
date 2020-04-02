@@ -12,7 +12,7 @@ import { enterPostgresCredentials } from "./enterPostgresCredentials";
 // tslint:disable-next-line: max-func-body-length
 export function registerPostgresCommands(): void {
 
-    registerCommand('cosmosDB.deletePostgresAccount', async (actionContext: IActionContext, node?: AzureTreeItem) => {
+    registerCommand('cosmosDB.deletePostgresServer', async (actionContext: IActionContext, node?: AzureTreeItem) => {
         if (!node) {
             node = await ext.tree.showTreeItemPicker<AzureTreeItem>(PostgresServerTreeItem.contextValue, actionContext);
         }

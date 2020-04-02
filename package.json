@@ -41,7 +41,7 @@
         "onCommand:cosmosDB.attachEmulator",
         "onCommand:cosmosDB.createAccount",
         "onCommand:cosmosDB.deleteAccount",
-        "onCommand:cosmosDB.deletePostgresAccount",
+        "onCommand:cosmosDB.deletePostgresServer",
         "onCommand:cosmosDB.detachDatabaseAccount",
         "onCommand:cosmosDB.createMongoDatabase",
         "onCommand:cosmosDB.createMongoCollection",
@@ -176,7 +176,7 @@
             },
             {
                 "category": "Cosmos DB",
-                "command": "cosmosDB.deletePostgresAccount",
+                "command": "cosmosDB.deletePostgresServer",
                 "title": "Delete Server..."
             },
             {
@@ -470,7 +470,7 @@
                     "when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
                 },
                 {
-                    "command": "cosmosDB.deletePostgresAccount",
+                    "command": "cosmosDB.deletePostgresServer",
                     "when": "view == cosmosDBExplorer && viewItem == postgresServer"
                 },
                 {

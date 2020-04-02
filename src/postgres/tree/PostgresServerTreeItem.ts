@@ -12,7 +12,7 @@ import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
 import { nonNullProp } from '../../utils/nonNull';
-import { deletePostgresServer } from '../deletePostgresServer';
+import { deletePostgresServer } from '../commands/deletePostgresServer';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
 import { PostgresTableTreeItem } from './PostgresTableTreeItem';

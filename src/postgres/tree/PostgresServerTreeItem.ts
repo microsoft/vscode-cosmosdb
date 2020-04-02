@@ -4,13 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { DatabaseListResult, FirewallRule, Server } from 'azure-arm-postgresql/lib/models';
-import * as publicIp from 'public-ip';
+import { DatabaseListResult, Server } from 'azure-arm-postgresql/lib/models';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { azureUtils } from '../../utils/azureUtils';
-import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
@@ -21,8 +19,6 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
     public readonly server: Server;
-
-    private readonly firewallRuleName: string = "azureDatabasesForVSCode-publicIp";
 
     constructor(parent: AzureParentTreeItem, server: Server) {
         super(parent);
@@ -76,45 +72,5 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             default:
                 return false;
         }
-    }
-
-    public async isFirewallConfigured(): Promise<boolean> {
-        const resourceGroup: string = azureUtils.getResourceGroupFromId(this.id);
-        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-        const serverName: string = nonNullProp(this.server, 'name');
-        const ip: string = await publicIp.v4();
-
-        try {
-            const existingFirewallRule: FirewallRule = await client.firewallRules.get(resourceGroup, serverName, this.firewallRuleName);
-            return existingFirewallRule && existingFirewallRule.startIpAddress === ip && existingFirewallRule.endIpAddress === ip;
-        } catch (error) {
-            if (parseError(error).errorType === 'ResourceNotFound') {
-                // The firewall rule is not configured yet
-                return false;
-            } else {
-                throw error;
-            }
-        }
-    }
-
-    public async configureFirewall(): Promise<void> {
-        const resourceGroup: string = azureUtils.getResourceGroupFromId(this.id);
-        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-        const serverName: string = nonNullProp(this.server, 'name');
-        const ip: string = await publicIp.v4();
-
-        const newFirewallRule: FirewallRule = {
-            startIpAddress: ip,
-            endIpAddress: ip
-        };
-
-        const options: vscode.ProgressOptions = {
-            location: vscode.ProgressLocation.Notification,
-            title: localize('configuringFirewall', 'Adding firewall rule for IP "{0}" to server "{1}"...', ip, serverName)
-        };
-
-        await vscode.window.withProgress(options, async () => {
-            await client.firewallRules.createOrUpdate(resourceGroup, serverName, this.firewallRuleName, newFirewallRule);
-        });
     }
 }

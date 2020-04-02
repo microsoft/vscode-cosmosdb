@@ -5,7 +5,6 @@
 
 import { Client, ClientConfig } from 'pg';
 import pgStructure, { Db } from 'pg-structure';
-import * as publicIp from 'public-ip';
 import { ConnectionOptions } from 'tls';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IParsedError, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
@@ -22,6 +21,7 @@ interface IPersistedServer {
     username: string;
 }
 const invalidCredentialsErrorType: string = '28P01';
+const firewallNotConfiguredErrorType: string = '28000';
 
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresDatabase";
@@ -62,14 +62,6 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
         if (username && password) {
             try {
-                if (!await this.parent.isFirewallConfigured()) {
-                    return [new GenericTreeItem(this, {
-                        contextValue: 'postgresFirewall',
-                        label: localize('configureFirewall', 'Add your IP ({0}) to firewall rules for "{1}"...', await publicIp.v4(), this.parent.label),
-                        commandId: 'cosmosDB.configurePostgresFirewall'
-                    })];
-                }
-
                 const ssl: ConnectionOptions = {
                     // Always provide the certificate since it is accepted even when SSL is disabled
                     // Certificate source: https://aka.ms/AA7wnvl
@@ -87,6 +79,14 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 if (parsedError.errorType === invalidCredentialsErrorType) {
                     // tslint:disable-next-line: no-floating-promises
                     ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
+                } else if (parsedError.errorType === firewallNotConfiguredErrorType) {
+                    const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
+                        contextValue: 'postgresFirewall',
+                        label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
+                        commandId: 'cosmosDB.configurePostgresFirewall'
+                    });
+                    firewallTreeItem.commandArgs = [this.parent];
+                    return [firewallTreeItem];
                 } else {
                     throw error;
                 }

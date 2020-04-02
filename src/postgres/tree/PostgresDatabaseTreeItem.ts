@@ -10,16 +10,13 @@ import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IParsedError, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
 
-interface IPersistedServer {
-    id: string;
-    username: string;
-}
+const invalidCredentialsErrorType: string = '28P01';
+const firewallNotConfiguredErrorType: string = '28000';
 
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresDatabase";
@@ -28,15 +25,9 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     public readonly databaseName: string;
     public readonly parent: PostgresServerTreeItem;
 
-    private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.postgresPasswords";
-    private _keytar: KeyTar | undefined;
-    private _serverId: string;
-
     constructor(parent: PostgresServerTreeItem, databaseName: string) {
         super(parent);
         this.databaseName = databaseName;
-        this._keytar = tryGetKeyTar();
-        this._serverId = nonNullProp(this.parent.server, 'id');
     }
 
     public get label(): string {
@@ -56,112 +47,48 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
-        try {
-            const { username, password } = await this.getCredentials(false, true);
+        const { username, password } = await this.parent.getCredentials();
 
-            const ssl: ConnectionOptions = {
-                // Always provide the certificate since it is accepted even when SSL is disabled
-                // Certificate source: https://aka.ms/AA7wnvl
-                ca: BaltimoreCyberTrustRoot
-            };
+        if (username && password) {
+            try {
+                const ssl: ConnectionOptions = {
+                    // Always provide the certificate since it is accepted even when SSL is disabled
+                    // Certificate source: https://aka.ms/AA7wnvl
+                    ca: BaltimoreCyberTrustRoot
+                };
 
-            const host: string = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
-            const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
-            const accountConnection: Client = new Client(clientConfig);
-            const db: Db = await pgStructure(accountConnection);
-            return db.schemas.map(schema => new PostgresSchemaTreeItem(this, schema));
-        } catch (error) {
-            const parsedError: IParsedError = parseError(error);
+                const host: string = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
+                const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
+                const accountConnection: Client = new Client(clientConfig);
+                const db: Db = await pgStructure(accountConnection);
+                return db.schemas.map(schema => new PostgresSchemaTreeItem(this, schema));
+            } catch (error) {
+                const parsedError: IParsedError = parseError(error);
 
-            if (parsedError.errorType !== 'UserCancelledError') {
-                // tslint:disable-next-line: no-floating-promises
-                ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
-            }
-
-            return [new GenericTreeItem(this, {
-                contextValue: 'postgresCredentials',
-                label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
-                commandId: 'cosmosDB.getPostgresCredentials'
-            })];
-        }
-    }
-
-    public async getCredentials(forcePrompt: boolean, warnBeforePrompting: boolean): Promise<{ username: string, password: string }> {
-        let username: string | undefined;
-        let password: string | undefined;
-
-        if (!forcePrompt) {
-            const cachedCredentials: { username: string | undefined, password: string | undefined } = await this.getCredentialsFromKeytar();
-            username = cachedCredentials.username;
-            password = cachedCredentials.password;
-        }
-
-        if (!username || !password) {
-            if (warnBeforePrompting) {
-                await ext.ui.showWarningMessage(
-                    localize('mustEnterUsernameAndPassword', 'You must enter the username and password for server "{0}" to continue.', this.parent.label),
-                    { modal: true },
-                    { title: localize('continue', 'Continue') }
-                );
-            }
-
-            username = await ext.ui.showInputBox({
-                prompt: localize('enterUsername', 'Enter username for server "{0}"', this.parent.label),
-                validateInput: (value: string) => { return (value && value.length) ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.'); }
-            });
-
-            const usernameSuffix: string = `@${this.parent.server.name}`;
-            if (!username.includes(usernameSuffix)) {
-                username += usernameSuffix;
-            }
-
-            password = await ext.ui.showInputBox({
-                prompt: localize('enterPassword', 'Enter password for server "{0}"', this.parent.label),
-                password: true,
-                validateInput: (value: string) => { return (value && value.length) ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.'); }
-            });
-
-            await this.persistServer(username, password);
-        }
-
-        return { username, password };
-    }
-
-    private async getCredentialsFromKeytar(): Promise<{ username: string | undefined, password: string | undefined }> {
-        let username: string | undefined;
-        let password: string | undefined;
-
-        const storedValue: string | undefined = ext.context.globalState.get(this._serviceName);
-        if (storedValue && this._keytar) {
-            const servers: IPersistedServer[] = JSON.parse(storedValue);
-            for (const server of servers) {
-                if (server.id === this._serverId) {
-                    username = server.username;
-                    password = await this._keytar.getPassword(this._serviceName, this._serverId) || undefined;
-                    break;
+                if (parsedError.errorType === invalidCredentialsErrorType) {
+                    // tslint:disable-next-line: no-floating-promises
+                    ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
+                } else if (parsedError.errorType === firewallNotConfiguredErrorType) {
+                    const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
+                        contextValue: 'postgresFirewall',
+                        label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
+                        commandId: 'cosmosDB.configurePostgresFirewall'
+                    });
+                    firewallTreeItem.commandArgs = [this.parent];
+                    return [firewallTreeItem];
+                } else {
+                    throw error;
                 }
             }
         }
 
-        return { username, password };
-    }
-
-    private async persistServer(username: string, password: string): Promise<void> {
-        if (this._keytar) {
-            const storedValue: string | undefined = ext.context.globalState.get(this._serviceName);
-            let servers: IPersistedServer[] = storedValue ? JSON.parse(storedValue) : [];
-
-            // Remove this server from the cache if it's there
-            servers = servers.filter((server: IPersistedServer) => { return server.id !== this._serverId; });
-
-            const newServer: IPersistedServer = {
-                id: this._serverId,
-                username
-            };
-            servers.push(newServer);
-            await ext.context.globalState.update(this._serviceName, JSON.stringify(servers));
-            await this._keytar.setPassword(this._serviceName, this._serverId, password);
-        }
+        const credentialsTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
+            contextValue: 'postgresCredentials',
+            label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
+            commandId: 'cosmosDB.enterPostgresCredentials'
+        });
+        credentialsTreeItem.commandArgs = [this.parent];
+        return [credentialsTreeItem];
     }
 }
 

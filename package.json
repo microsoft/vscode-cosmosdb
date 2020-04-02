@@ -75,7 +75,8 @@
         "onCommand:cosmosDB.copyConnectionString",
         "onCommand:cosmosDB.launchMongoShell",
         "onCommand:cosmosDB.openGraphExplorer",
-        "onCommand:cosmosDB.getPostgresCredentials"
+        "onCommand:cosmosDB.enterPostgresCredentials",
+        "onCommand:cosmosDB.configurePostgresFirewall"
     ],
     "contributes": {
         "viewsContainers": {
@@ -347,8 +348,13 @@
             },
             {
                 "category": "PostgreSQL",
-                "command": "cosmosDB.getPostgresCredentials",
+                "command": "cosmosDB.enterPostgresCredentials",
                 "title": "Enter Server Credentials"
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "cosmosDB.configurePostgresFirewall",
+                "title": "Configure Firewall"
             }
         ],
         "menus": {
@@ -880,6 +886,7 @@
         "ms-rest-azure": "^2.3.1",
         "pg": "^7.18.1",
         "pg-structure": "^5.10.7",
+        "public-ip": "^4.0.0",
         "underscore": "^1.8.3",
         "vscode-azureextensionui": "^0.29.12",
         "vscode-json-languageservice": "^3.0.8",

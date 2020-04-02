@@ -74,7 +74,7 @@
         "onCommand:cosmosDB.copyConnectionString",
         "onCommand:cosmosDB.launchMongoShell",
         "onCommand:cosmosDB.openGraphExplorer",
-        "onCommand:cosmosDB.getPostgresCredentials",
+        "onCommand:cosmosDB.enterPostgresCredentials",
         "onCommand:cosmosDB.configurePostgresFirewall"
     ],
     "contributes": {
@@ -342,7 +342,7 @@
             },
             {
                 "category": "PostgreSQL",
-                "command": "cosmosDB.getPostgresCredentials",
+                "command": "cosmosDB.enterPostgresCredentials",
                 "title": "Enter Server Credentials"
             },
             {

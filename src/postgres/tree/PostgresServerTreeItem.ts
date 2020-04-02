@@ -11,7 +11,6 @@ import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
-import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
@@ -88,28 +87,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         }
     }
 
-    public async promptForCredentials(): Promise<{ username: string, password: string }> {
-        let username: string = await ext.ui.showInputBox({
-            prompt: localize('enterUsername', 'Enter username for server "{0}"', this.label),
-            validateInput: (value: string) => { return (value && value.length) ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.'); }
-        });
-
-        const usernameSuffix: string = `@${this.server.name}`;
-        if (!username.includes(usernameSuffix)) {
-            username += usernameSuffix;
-        }
-
-        const password: string = await ext.ui.showInputBox({
-            prompt: localize('enterPassword', 'Enter password for server "{0}"', this.label),
-            password: true,
-            validateInput: (value: string) => { return (value && value.length) ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.'); }
-        });
-
-        await this.persistServer(username, password);
-        return { username, password };
-    }
-
-    public async getCredentialsFromKeytar(): Promise<{ username: string | undefined, password: string | undefined }> {
+    public async getCredentials(): Promise<{ username: string | undefined, password: string | undefined }> {
         let username: string | undefined;
         let password: string | undefined;
 
@@ -128,7 +106,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         return { username, password };
     }
 
-    private async persistServer(username: string, password: string): Promise<void> {
+    public async setCredentials(username: string, password: string): Promise<void> {
         if (this._keytar) {
             const storedValue: string | undefined = ext.context.globalState.get(this._serviceName);
             let servers: IPersistedServer[] = storedValue ? JSON.parse(storedValue) : [];

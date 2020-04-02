@@ -46,7 +46,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
-        const { username, password } = await this.parent.getCredentialsFromKeytar();
+        const { username, password } = await this.parent.getCredentials();
 
         if (username && password) {
             try {
@@ -73,11 +73,13 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
             }
         }
 
-        return [new GenericTreeItem(this, {
+        const credentialsTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
             contextValue: 'postgresCredentials',
             label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
-            commandId: 'cosmosDB.getPostgresCredentials'
-        })];
+            commandId: 'cosmosDB.enterPostgresCredentials'
+        });
+        credentialsTreeItem.commandArgs = [this.parent];
+        return [credentialsTreeItem];
     }
 }
 

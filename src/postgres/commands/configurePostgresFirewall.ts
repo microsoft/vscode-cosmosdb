@@ -8,11 +8,11 @@ import { FirewallRule } from "azure-arm-postgresql/lib/models";
 import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
 import { createAzureClient, DialogResponses, IActionContext } from "vscode-azureextensionui";
-import { ext } from "../extensionVariables";
-import { azureUtils } from "../utils/azureUtils";
-import { localize } from "../utils/localize";
-import { nonNullProp } from "../utils/nonNull";
-import { PostgresServerTreeItem } from "./tree/PostgresServerTreeItem";
+import { ext } from "../../extensionVariables";
+import { azureUtils } from "../../utils/azureUtils";
+import { localize } from "../../utils/localize";
+import { nonNullProp } from "../../utils/nonNull";
+import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
 
 export async function configurePostgresFirewall(context: IActionContext, treeItem?: PostgresServerTreeItem): Promise<void> {
     if (!treeItem) {

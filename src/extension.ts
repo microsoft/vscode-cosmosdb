@@ -30,6 +30,7 @@ import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { registerPostgresCommands } from './postgres/commands/registerPostgresCommands';
+import { configurePostgresFirewall } from './postgres/configurePostgresFirewall';
 import { PostgresServerTreeItem } from './postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
@@ -146,6 +147,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         }, doubleClickDebounceDelay);
         registerCommand('cosmosDB.update', async (actionContext: IActionContext, uri: vscode.Uri) => await editorManager.updateMatchingNode(actionContext, uri));
         registerCommand('cosmosDB.loadMore', async (actionContext: IActionContext, node: AzExtTreeItem) => await ext.tree.loadMore(node, actionContext));
+        registerCommand('cosmosDB.configurePostgresFirewall', configurePostgresFirewall);
         registerEvent(
             'cosmosDB.CosmosEditorManager.onDidSaveTextDocument',
             vscode.workspace.onDidSaveTextDocument,

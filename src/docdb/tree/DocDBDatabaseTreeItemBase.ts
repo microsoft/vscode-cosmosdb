@@ -14,7 +14,7 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 const minThroughputFixed = 400;
-const minThroughputPartitioned = 1000;
+const minThroughputPartitioned = 400;
 const maxThroughput: number = 100000;
 
 /**

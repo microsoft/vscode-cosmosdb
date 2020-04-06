@@ -175,7 +175,7 @@
                 "title": "Delete Account..."
             },
             {
-                "category": "Cosmos DB",
+                "category": "PostgreSQL",
                 "command": "cosmosDB.deletePostgresServer",
                 "title": "Delete Server..."
             },

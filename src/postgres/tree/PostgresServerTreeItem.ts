@@ -12,7 +12,6 @@ import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
 import { nonNullProp } from '../../utils/nonNull';
-import { deletePostgresServer } from '../commands/deletePostgresServer';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
 import { PostgresTableTreeItem } from './PostgresTableTreeItem';
@@ -48,7 +47,6 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get name(): string {
-        console.log(this.server.name);
         return nonNullProp(this.server, 'name');
     }
 
@@ -90,8 +88,15 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        await deletePostgresServer(this);
+        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        const fullID: string = nonNullProp(this, 'fullId');
+        const resourceGroup: string = azureUtils.getResourceGroupFromId(fullID);
+        const deletingMessage: string = `Deleting server "${this.name}"...`;
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
+            await client.servers.deleteMethod(resourceGroup, this.name);
+        });
     }
+
     public async getCredentials(): Promise<{ username: string | undefined, password: string | undefined }> {
         let username: string | undefined;
         let password: string | undefined;

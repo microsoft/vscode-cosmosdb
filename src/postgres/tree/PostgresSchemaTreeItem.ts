@@ -3,22 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Schema, Table } from 'pg-structure';
-import * as _ from 'underscore';
+import { Schema } from 'pg-structure';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { PostgresTableTreeItem } from './PostgresTableTreeItem';
+import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
 export class PostgresSchemaTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresSchema";
     public readonly contextValue: string = PostgresSchemaTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Table";
     public readonly schema: Schema;
+
+    private _tablesTreeItem: PostgresTablesTreeItem;
 
     constructor(parent: AzureParentTreeItem, schema: Schema) {
         super(parent);
         this.schema = schema;
+        this._tablesTreeItem = new PostgresTablesTreeItem(this);
     }
 
     public get id(): string {
@@ -37,8 +38,7 @@ export class PostgresSchemaTreeItem extends AzureParentTreeItem<ISubscriptionCon
         return false;
     }
 
-    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresTableTreeItem[]> {
-        const tables: Table[] = this.schema.tables;
-        return tables.map(table => new PostgresTableTreeItem(this, table));
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresTablesTreeItem[]> {
+        return [this._tablesTreeItem];
     }
 }

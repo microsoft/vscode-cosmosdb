@@ -8,7 +8,7 @@ import { Client, ClientConfig } from 'pg';
 import pgStructure, { Db } from 'pg-structure';
 import { ConnectionOptions } from 'tls';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, DialogResponses, GenericTreeItem, IParsedError, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, GenericTreeItem, IParsedError, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
@@ -93,12 +93,8 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         return [credentialsTreeItem];
     }
     public async deleteTreeItemImpl(): Promise<void> {
-        const message: string = `Are you sure you want to delete database '${this.label}'?`;
-        const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
-        if (result === DialogResponses.deleteResponse) {
-            const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-            await client.databases.deleteMethod(azureUtils.getResourceGroupFromId(this.fullId), this.parent.name, this.databaseName);
-        }
+        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        await client.databases.deleteMethod(azureUtils.getResourceGroupFromId(this.fullId), this.parent.name, this.databaseName);
     }
 }
 

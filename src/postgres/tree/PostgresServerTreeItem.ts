@@ -86,6 +86,16 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         }
     }
 
+    public async deleteTreeItemImpl(): Promise<void> {
+        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        const fullID: string = nonNullProp(this, 'fullId');
+        const resourceGroup: string = azureUtils.getResourceGroupFromId(fullID);
+        const deletingMessage: string = `Deleting server "${this.name}"...`;
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
+            await client.servers.deleteMethod(resourceGroup, this.name);
+        });
+    }
+
     public async getCredentials(): Promise<{ username: string | undefined, password: string | undefined }> {
         let username: string | undefined;
         let password: string | undefined;

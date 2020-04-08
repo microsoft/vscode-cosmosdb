@@ -13,6 +13,7 @@ export class PostgresSchemaTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public static contextValue: string = "postgresSchema";
     public readonly contextValue: string = PostgresSchemaTreeItem.contextValue;
     public readonly schema: Schema;
+    public autoSelectInTreeItemPicker: boolean = true;
 
     private _tablesTreeItem: PostgresTablesTreeItem;
 

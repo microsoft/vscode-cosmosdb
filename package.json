@@ -52,6 +52,7 @@
         "onCommand:cosmosDB.createDocDBStoredProcedure",
         "onCommand:cosmosDB.createGraphDatabase",
         "onCommand:cosmosDB.createGraph",
+        "onCommand:cosmosDB.createPostgresDatabase",
         "onCommand:cosmosDB.connectMongoDB",
         "onCommand:cosmosDB.deleteMongoDB",
         "onCommand:cosmosDB.deleteMongoCollection",
@@ -228,6 +229,11 @@
                 "category": "Graph (Gremlin)",
                 "command": "cosmosDB.createGraph",
                 "title": "Create Graph..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "cosmosDB.createPostgresDatabase",
+                "title": "Create Database..."
             },
             {
                 "category": "Cosmos DB",
@@ -520,6 +526,10 @@
                 {
                     "command": "cosmosDB.createGraph",
                     "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
+                },
+                {
+                    "command": "cosmosDB.createPostgresDatabase",
+                    "when": "view == cosmosDBExplorer && viewItem == postgresServer"
                 },
                 {
                     "command": "cosmosDB.detachDatabaseAccount",

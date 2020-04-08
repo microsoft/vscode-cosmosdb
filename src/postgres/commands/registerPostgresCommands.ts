@@ -5,6 +5,7 @@
 
 import { registerCommand } from "vscode-azureextensionui";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";
+import { createPostgresDatabase } from "./createPostgresDatabase";
 import { deletePostgresServer } from "./deletePostgresServer";
 import { enterPostgresCredentials } from "./enterPostgresCredentials";
 
@@ -13,5 +14,6 @@ export function registerPostgresCommands(): void {
     registerCommand('cosmosDB.deletePostgresServer', deletePostgresServer);
     registerCommand('cosmosDB.enterPostgresCredentials', enterPostgresCredentials);
     registerCommand('cosmosDB.configurePostgresFirewall', configurePostgresFirewall);
+    registerCommand('cosmosDB.createPostgresDatabase', createPostgresDatabase);
 
 }

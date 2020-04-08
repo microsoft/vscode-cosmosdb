@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { DatabaseListResult, Server } from 'azure-arm-postgresql/lib/models';
+import { Database, DatabaseListResult, Server } from 'azure-arm-postgresql/lib/models';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ISubscriptionContext } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ICreateChildImplContext, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
@@ -87,6 +87,22 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         }
     }
 
+    public async createChildImpl(context: ICreateChildImplContext): Promise<PostgresDatabaseTreeItem> {
+        const databaseName = await ext.ui.showInputBox({
+            placeHolder: "Database Name",
+            prompt: "Enter the name of the database",
+            validateInput: validateDatabaseName
+        });
+        context.showCreatingTreeItem(databaseName);
+        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        const fullID: string = nonNullProp(this, 'fullId');
+        const resourceGroup: string = azureUtils.getResourceGroupFromId(fullID);
+        const database: Database = { name: databaseName };
+        await client.databases.createOrUpdate(resourceGroup, this.name, databaseName, database);
+        await this.refresh();
+        return new PostgresDatabaseTreeItem(this, databaseName);
+    }
+
     public async deleteTreeItemImpl(): Promise<void> {
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const fullID: string = nonNullProp(this, 'fullId');
@@ -133,4 +149,17 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             await this._keytar.setPassword(this._serviceName, this._serverId, password);
         }
     }
+}
+
+function validateDatabaseName(name: string): string | undefined | null {
+    if (!name || name.length < 1 || name.length > 255) {
+        return "Name has to be between 1 and 255 chars long";
+    }
+    if (name.endsWith(" ")) {
+        return "Database name cannot end with space";
+    }
+    if (/[/\\?#]/.test(name)) {
+        return `Database name cannot contain the characters '\\', '/', '#', '?'`;
+    }
+    return undefined;
 }

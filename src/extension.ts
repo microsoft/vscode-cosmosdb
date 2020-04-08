@@ -29,7 +29,7 @@ import { setConnectedNode } from './mongo/setConnectedNode';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
-import { registerPostgresCommands } from './postgres/registerPostgresCommands';
+import { registerPostgresCommands } from './postgres/commands/registerPostgresCommands';
 import { PostgresServerTreeItem } from './postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';

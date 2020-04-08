@@ -22,6 +22,17 @@ const firewallNotConfiguredErrorType: string = '28000';
 
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
 
+    public static contextValue: string = "postgresDatabase";
+    public readonly contextValue: string = PostgresDatabaseTreeItem.contextValue;
+    public readonly childTypeLabel: string = "Schema";
+    public readonly databaseName: string;
+    public readonly parent: PostgresServerTreeItem;
+
+    constructor(parent: PostgresServerTreeItem, databaseName: string) {
+        super(parent);
+        this.databaseName = databaseName;
+    }
+
     public get label(): string {
         return this.databaseName;
     }
@@ -32,16 +43,6 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return getThemeAgnosticIconPath('Database.svg');
-    }
-    public static contextValue: string = "postgresDatabase";
-    public readonly contextValue: string = PostgresDatabaseTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Schema";
-    public readonly databaseName: string;
-    public readonly parent: PostgresServerTreeItem;
-
-    constructor(parent: PostgresServerTreeItem, databaseName: string) {
-        super(parent);
-        this.databaseName = databaseName;
     }
 
     public hasMoreChildrenImpl(): boolean {

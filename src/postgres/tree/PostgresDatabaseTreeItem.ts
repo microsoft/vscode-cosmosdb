@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Client, ClientConfig } from 'pg';
+import { Client, ClientConfig, QueryResult } from 'pg';
 import pgStructure, { Db } from 'pg-structure';
 import { ConnectionOptions } from 'tls';
 import * as vscode from 'vscode';
@@ -12,8 +12,10 @@ import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
+import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
+import { IPostgresFunction } from './PostgresFunctionTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
+import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
 const invalidCredentialsErrorType: string = '28P01';
 const firewallNotConfiguredErrorType: string = '28000';
@@ -21,9 +23,10 @@ const firewallNotConfiguredErrorType: string = '28000';
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresDatabase";
     public readonly contextValue: string = PostgresDatabaseTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Schema";
+    public readonly childTypeLabel: string = "Tables";
     public readonly databaseName: string;
     public readonly parent: PostgresServerTreeItem;
+    public autoSelectInTreeItemPicker: boolean = true;
 
     constructor(parent: PostgresServerTreeItem, databaseName: string) {
         super(parent);
@@ -61,7 +64,11 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
                 const accountConnection: Client = new Client(clientConfig);
                 const db: Db = await pgStructure(accountConnection);
-                return db.schemas.map(schema => new PostgresSchemaTreeItem(this, schema, clientConfig));
+
+                const functionsTreeItem = new PostgresFunctionsTreeItem(this, await this.listFunctions(clientConfig));
+                const tablesTreeItem = new PostgresTablesTreeItem(this, db.tables);
+
+                return [functionsTreeItem, tablesTreeItem];
             } catch (error) {
                 const parsedError: IParsedError = parseError(error);
 
@@ -89,6 +96,47 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         });
         credentialsTreeItem.commandArgs = [this.parent];
         return [credentialsTreeItem];
+    }
+
+    private async listFunctions(clientConfig: ClientConfig): Promise<IPostgresFunction[]> {
+        const client = new Client(clientConfig);
+        await client.connect();
+
+        // Adapted from https://aka.ms/AA83fg8
+        const functionsQuery: string = `select n.nspname as schema,
+            p.proname as name,
+            p.oid as oid,
+            case when l.lanname = 'internal' then p.prosrc
+                else pg_get_functiondef(p.oid)
+                end as definition
+            from pg_proc p
+            left join pg_namespace n on p.pronamespace = n.oid
+            left join pg_language l on p.prolang = l.oid
+            where n.nspname not in ('pg_catalog', 'information_schema')
+                ${this.parent.supportsStoredProcedures() ? "and p.prokind = 'f'" : '' /* Only select functions, not stored procedures */}
+            order by name;`;
+
+        const queryResult: QueryResult = await client.query(functionsQuery);
+        const rows: { schema: string, name: string, oid: number, definition: string }[] = queryResult.rows || [];
+
+        const allNames: Set<string> = new Set();
+        const duplicateNames: Set<string> = new Set();
+        for (const row of rows) {
+            if (allNames.has(row.name)) {
+                duplicateNames.add(row.name);
+            }
+
+            allNames.add(row.name);
+        }
+
+        return rows.map(row => {
+            return {
+                name: row.name,
+                oid: row.oid,
+                description: duplicateNames.has(row.name) ? row.schema : '',
+                definition: row.definition
+            };
+        });
     }
 }
 

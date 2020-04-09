@@ -8,16 +8,27 @@ import { AzureTreeItem, ISubscriptionContext } from "vscode-azureextensionui";
 import { getThemeAgnosticIconPath } from "../../constants";
 import { PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
 
+export interface IPostgresFunction {
+    name: string;
+    oid: number;
+    description: string;
+    definition: string;
+}
+
 export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext> {
     public static contextValue: string = 'postgresFunction';
     public readonly contextValue: string = PostgresFunctionTreeItem.contextValue;
-    public name: string;
+    public readonly name: string;
+    public readonly id: string;
+    public readonly description: string;
     public definition: string;
 
-    constructor(parent: PostgresFunctionsTreeItem, name: string, definition: string) {
+    constructor(parent: PostgresFunctionsTreeItem, func: IPostgresFunction) {
         super(parent);
-        this.name = name;
-        this.definition = definition;
+        this.name = func.name;
+        this.id = String(func.oid);
+        this.description = func.description;
+        this.definition = func.definition;
     }
 
     public get label(): string {

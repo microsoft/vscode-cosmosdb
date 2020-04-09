@@ -11,6 +11,7 @@ import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
+import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
@@ -88,15 +89,15 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<PostgresDatabaseTreeItem> {
-        const databaseName = await ext.ui.showInputBox({
-            placeHolder: "Database Name",
-            prompt: "Enter the name of the database",
-            validateInput: validateDatabaseName
-        });
-        context.showCreatingTreeItem(databaseName);
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const fullID: string = nonNullProp(this, 'fullId');
         const resourceGroup: string = azureUtils.getResourceGroupFromId(fullID);
+        const databaseName = await ext.ui.showInputBox({
+            placeHolder: "Database Name",
+            prompt: "Enter the name of the database",
+            validateInput: (name: string) => validateDatabaseName(name, client, this.name, resourceGroup)
+        });
+        context.showCreatingTreeItem(databaseName);
         const database: Database = { name: databaseName };
         await client.databases.createOrUpdate(resourceGroup, this.name, databaseName, database);
         await this.refresh();
@@ -151,15 +152,14 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 }
 
-function validateDatabaseName(name: string): string | undefined | null {
-    if (!name || name.length < 1 || name.length > 255) {
-        return "Name has to be between 1 and 255 chars long";
-    }
-    if (name.endsWith(" ")) {
-        return "Database name cannot end with space";
-    }
-    if (/[/\\?#]/.test(name)) {
-        return `Database name cannot contain the characters '\\', '/', '#', '?'`;
+async function validateDatabaseName(name: string, client: PostgreSQLManagementClient, serverName: string, resourceGroup: string): Promise<string | undefined | null> {
+    const currentDatabaseList: DatabaseListResult = await client.databases.listByServer(resourceGroup, serverName);
+    const currentDatabaseNames: string[] = [];
+    currentDatabaseList.map(database => currentDatabaseNames.push(nonNullProp(database, 'name')));
+    if (!name || name.length < 1) {
+        return localize('NameCannotBeEmpty', 'Name cannot be empty.');
+    } else if (currentDatabaseNames.includes(name)) {
+        return localize('NameExists', 'Database "{0}" already exists.', name);
     }
     return undefined;
 }

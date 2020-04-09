@@ -7,7 +7,7 @@ import { Table } from "pg-structure";
 import { Uri } from 'vscode';
 import { AzureParentTreeItem, ISubscriptionContext } from "vscode-azureextensionui";
 import { getThemeAgnosticIconPath } from "../../constants";
-import { PostgresSchemaTreeItem } from "./PostgresSchemaTreeItem";
+import { PostgresDatabaseTreeItem } from "./PostgresDatabaseTreeItem";
 import { PostgresTableTreeItem } from "./PostgresTableTreeItem";
 
 export class PostgresTablesTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
@@ -15,10 +15,11 @@ export class PostgresTablesTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public readonly contextValue: string = PostgresTablesTreeItem.contextValue;
     public readonly childTypeLabel: string = "Table";
     public readonly label: string = 'Tables';
-    public readonly parent: PostgresSchemaTreeItem;
+    public readonly tables: Table[];
 
-    constructor(parent: PostgresSchemaTreeItem) {
+    constructor(parent: PostgresDatabaseTreeItem, tables: Table[]) {
         super(parent);
+        this.tables = tables;
     }
 
     public get iconPath(): string | Uri | { light: string | Uri; dark: string | Uri } {
@@ -30,7 +31,6 @@ export class PostgresTablesTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresTableTreeItem[]> {
-        const tables: Table[] = this.parent.schema.tables;
-        return tables.map(table => new PostgresTableTreeItem(this, table));
+        return this.tables.map(table => new PostgresTableTreeItem(this, table));
     }
 }

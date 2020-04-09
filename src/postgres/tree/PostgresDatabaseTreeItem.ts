@@ -14,8 +14,8 @@ import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
+import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
 const invalidCredentialsErrorType: string = '28P01';
 const firewallNotConfiguredErrorType: string = '28000';
@@ -24,9 +24,10 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
     public static contextValue: string = "postgresDatabase";
     public readonly contextValue: string = PostgresDatabaseTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Schema";
+    public readonly childTypeLabel: string = "Tables";
     public readonly databaseName: string;
     public readonly parent: PostgresServerTreeItem;
+    public autoSelectInTreeItemPicker: boolean = true;
 
     constructor(parent: PostgresServerTreeItem, databaseName: string) {
         super(parent);
@@ -64,7 +65,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
                 const accountConnection: Client = new Client(clientConfig);
                 const db: Db = await pgStructure(accountConnection);
-                return db.schemas.map(schema => new PostgresSchemaTreeItem(this, schema));
+                return [new PostgresTablesTreeItem(this, db.tables)];
             } catch (error) {
                 const parsedError: IParsedError = parseError(error);
 

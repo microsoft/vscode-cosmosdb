@@ -61,7 +61,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
                 const accountConnection: Client = new Client(clientConfig);
                 const db: Db = await pgStructure(accountConnection);
-                return db.schemas.map(schema => new PostgresSchemaTreeItem(this, schema));
+                return db.schemas.map(schema => new PostgresSchemaTreeItem(this, schema, clientConfig));
             } catch (error) {
                 const parsedError: IParsedError = parseError(error);
 

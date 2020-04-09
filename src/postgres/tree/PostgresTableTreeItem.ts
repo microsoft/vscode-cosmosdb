@@ -7,15 +7,15 @@ import { Table } from 'pg-structure';
 import * as vscode from 'vscode';
 import { AzureTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
+import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
 export class PostgresTableTreeItem extends AzureTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresTable";
     public readonly contextValue: string = PostgresTableTreeItem.contextValue;
     public readonly table: Table;
-    public readonly parent: PostgresSchemaTreeItem;
+    public readonly parent: PostgresTablesTreeItem;
 
-    constructor(parent: PostgresSchemaTreeItem, table: Table) {
+    constructor(parent: PostgresTablesTreeItem, table: Table) {
         super(parent);
         this.table = table;
     }

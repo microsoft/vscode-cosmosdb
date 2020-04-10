@@ -4,18 +4,16 @@
  *--------------------------------------------------------------------------------------------*/
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { Client, ClientConfig, QueryResult } from 'pg';
+import { Client, ClientConfig } from 'pg';
 import pgStructure, { Db } from 'pg-structure';
 import { ConnectionOptions } from 'tls';
-import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, GenericTreeItem, IParsedError, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, GenericTreeItem, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
-import { IPostgresFunction } from './PostgresFunctionTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
@@ -43,7 +41,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         return this.databaseName;
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
+    public get iconPath(): TreeItemIconPath {
         return getThemeAgnosticIconPath('Database.svg');
     }
 
@@ -67,7 +65,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 const accountConnection: Client = new Client(clientConfig);
                 const db: Db = await pgStructure(accountConnection);
 
-                const functionsTreeItem = new PostgresFunctionsTreeItem(this, await this.listFunctions(clientConfig));
+                const functionsTreeItem = new PostgresFunctionsTreeItem(this, clientConfig);
                 const tablesTreeItem = new PostgresTablesTreeItem(this, db.tables);
 
                 return [functionsTreeItem, tablesTreeItem];
@@ -103,47 +101,6 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     public async deleteTreeItemImpl(): Promise<void> {
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         await client.databases.deleteMethod(azureUtils.getResourceGroupFromId(this.fullId), this.parent.name, this.databaseName);
-    }
-
-    private async listFunctions(clientConfig: ClientConfig): Promise<IPostgresFunction[]> {
-        const client = new Client(clientConfig);
-        await client.connect();
-
-        // Adapted from https://aka.ms/AA83fg8
-        const functionsQuery: string = `select n.nspname as schema,
-            p.proname as name,
-            p.oid as oid,
-            case when l.lanname = 'internal' then p.prosrc
-                else pg_get_functiondef(p.oid)
-                end as definition
-            from pg_proc p
-            left join pg_namespace n on p.pronamespace = n.oid
-            left join pg_language l on p.prolang = l.oid
-            where n.nspname not in ('pg_catalog', 'information_schema')
-                ${this.parent.supportsStoredProcedures() ? "and p.prokind = 'f'" : '' /* Only select functions, not stored procedures */}
-            order by name;`;
-
-        const queryResult: QueryResult = await client.query(functionsQuery);
-        const rows: { schema: string, name: string, oid: number, definition: string }[] = queryResult.rows || [];
-
-        const allNames: Set<string> = new Set();
-        const duplicateNames: Set<string> = new Set();
-        for (const row of rows) {
-            if (allNames.has(row.name)) {
-                duplicateNames.add(row.name);
-            }
-
-            allNames.add(row.name);
-        }
-
-        return rows.map(row => {
-            return {
-                name: row.name,
-                oid: row.oid,
-                description: duplicateNames.has(row.name) ? row.schema : '',
-                definition: row.definition
-            };
-        });
     }
 }
 

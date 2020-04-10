@@ -3,39 +3,37 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Uri } from 'vscode';
-import { AzureTreeItem, ISubscriptionContext } from "vscode-azureextensionui";
+import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
 import { getThemeAgnosticIconPath } from "../../constants";
 import { PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
-
-export interface IPostgresFunction {
-    name: string;
-    oid: number;
-    description: string;
-    definition: string;
-}
 
 export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext> {
     public static contextValue: string = 'postgresFunction';
     public readonly contextValue: string = PostgresFunctionTreeItem.contextValue;
+    public readonly schema: string;
     public readonly name: string;
     public readonly id: string;
-    public readonly description: string;
+    public readonly isDuplicate: boolean;
     public definition: string;
 
-    constructor(parent: PostgresFunctionsTreeItem, func: IPostgresFunction) {
+    constructor(parent: PostgresFunctionsTreeItem, schema: string, name: string, oid: number, definition: string, isDuplicate: boolean) {
         super(parent);
-        this.name = func.name;
-        this.id = String(func.oid);
-        this.description = func.description;
-        this.definition = func.definition;
+        this.schema = schema;
+        this.name = name;
+        this.id = String(oid);
+        this.definition = definition;
+        this.isDuplicate = isDuplicate;
     }
 
     public get label(): string {
         return this.name;
     }
 
-    public get iconPath(): string | Uri | { light: string | Uri; dark: string | Uri } {
+    public get description(): string | undefined {
+        return this.isDuplicate ? this.schema : undefined;
+    }
+
+    public get iconPath(): TreeItemIconPath {
         return getThemeAgnosticIconPath('Collection.svg');
     }
 }

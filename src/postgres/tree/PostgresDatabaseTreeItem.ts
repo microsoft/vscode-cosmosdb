@@ -3,13 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { Client, ClientConfig, QueryResult } from 'pg';
 import pgStructure, { Db } from 'pg-structure';
 import { ConnectionOptions } from 'tls';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IParsedError, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, GenericTreeItem, IParsedError, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
+import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
@@ -96,6 +98,11 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         });
         credentialsTreeItem.commandArgs = [this.parent];
         return [credentialsTreeItem];
+    }
+
+    public async deleteTreeItemImpl(): Promise<void> {
+        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        await client.databases.deleteMethod(azureUtils.getResourceGroupFromId(this.fullId), this.parent.name, this.databaseName);
     }
 
     private async listFunctions(clientConfig: ClientConfig): Promise<IPostgresFunction[]> {

@@ -14,7 +14,7 @@ import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
-import { PostgresSchemaTreeItem } from './PostgresSchemaTreeItem';
+import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 import { PostgresTableTreeItem } from './PostgresTableTreeItem';
 
 interface IPersistedServer {
@@ -80,7 +80,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public isAncestorOfImpl(contextValue: string): boolean {
         switch (contextValue) {
             case PostgresDatabaseTreeItem.contextValue:
-            case PostgresSchemaTreeItem.contextValue:
+            case PostgresTablesTreeItem.contextValue:
             case PostgresTableTreeItem.contextValue:
                 return true;
             default:

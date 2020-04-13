@@ -5,7 +5,7 @@
 
 import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
 import { getThemeAgnosticIconPath } from "../../constants";
-import { PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
+import { IPostgresFunctionsQueryRow, PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
 
 export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext> {
     public static contextValue: string = 'postgresFunction';
@@ -16,12 +16,12 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
     public readonly isDuplicate: boolean;
     public definition: string;
 
-    constructor(parent: PostgresFunctionsTreeItem, schema: string, name: string, oid: number, definition: string, isDuplicate: boolean) {
+    constructor(parent: PostgresFunctionsTreeItem, row: IPostgresFunctionsQueryRow, isDuplicate: boolean) {
         super(parent);
-        this.schema = schema;
-        this.name = name;
-        this.id = String(oid);
-        this.definition = definition;
+        this.schema = row.schema;
+        this.name = row.name;
+        this.id = String(row.oid);
+        this.definition = row.definition;
         this.isDuplicate = isDuplicate;
     }
 

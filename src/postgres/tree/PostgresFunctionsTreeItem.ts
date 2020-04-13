@@ -9,6 +9,13 @@ import { getThemeAgnosticIconPath } from "../../constants";
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionTreeItem } from "./PostgresFunctionTreeItem";
 
+export interface IPostgresFunctionsQueryRow {
+    schema: string;
+    name: string;
+    oid: number;
+    definition: string;
+}
+
 export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = 'postgresFunctions';
     public readonly contextValue: string = PostgresFunctionsTreeItem.contextValue;
@@ -49,7 +56,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
             order by name;`;
 
         const queryResult: QueryResult = await client.query(functionsQuery);
-        const rows: { schema: string, name: string, oid: number, definition: string }[] = queryResult.rows || [];
+        const rows: IPostgresFunctionsQueryRow[] = queryResult.rows || [];
 
         const allNames: Set<string> = new Set();
         const duplicateNames: Set<string> = new Set();
@@ -63,10 +70,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
 
         return rows.map(row => new PostgresFunctionTreeItem(
             this,
-            row.schema,
-            row.name,
-            row.oid,
-            row.definition,
+            row,
             duplicateNames.has(row.name)
         ));
     }

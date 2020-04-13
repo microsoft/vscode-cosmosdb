@@ -7,13 +7,13 @@ import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { Client, ClientConfig } from 'pg';
 import pgStructure, { Db } from 'pg-structure';
 import { ConnectionOptions } from 'tls';
-import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, GenericTreeItem, IParsedError, ISubscriptionContext, parseError } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, GenericTreeItem, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
+import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
@@ -21,7 +21,6 @@ const invalidCredentialsErrorType: string = '28P01';
 const firewallNotConfiguredErrorType: string = '28000';
 
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
-
     public static contextValue: string = "postgresDatabase";
     public readonly contextValue: string = PostgresDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = "Tables";
@@ -42,7 +41,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         return this.databaseName;
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
+    public get iconPath(): TreeItemIconPath {
         return getThemeAgnosticIconPath('Database.svg');
     }
 
@@ -65,7 +64,11 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
                 const accountConnection: Client = new Client(clientConfig);
                 const db: Db = await pgStructure(accountConnection);
-                return [new PostgresTablesTreeItem(this, db.tables)];
+
+                const functionsTreeItem = new PostgresFunctionsTreeItem(this, clientConfig);
+                const tablesTreeItem = new PostgresTablesTreeItem(this, db.tables);
+
+                return [functionsTreeItem, tablesTreeItem];
             } catch (error) {
                 const parsedError: IParsedError = parseError(error);
 
@@ -94,6 +97,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         credentialsTreeItem.commandArgs = [this.parent];
         return [credentialsTreeItem];
     }
+
     public async deleteTreeItemImpl(): Promise<void> {
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         await client.databases.deleteMethod(azureUtils.getResourceGroupFromId(this.fullId), this.parent.name, this.databaseName);

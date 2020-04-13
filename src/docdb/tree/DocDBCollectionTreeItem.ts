@@ -7,6 +7,7 @@ import { CollectionMeta, CollectionPartitionKey } from 'documentdb';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
+import { ext } from '../../extensionVariables';
 import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
@@ -52,7 +53,7 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
 
     public async deleteTreeItemImpl(): Promise<void> {
         const message: string = `Are you sure you want to delete collection '${this.label}' and its contents?`;
-        const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+        const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const client = this.root.getDocumentClient();
             await new Promise((resolve, reject) => {

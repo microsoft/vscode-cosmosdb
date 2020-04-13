@@ -32,12 +32,14 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.postgresPasswords";
     private _keytar: KeyTar | undefined;
     private _serverId: string;
+    private _resourceGroup: string;
 
     constructor(parent: AzureParentTreeItem, server: Server) {
         super(parent);
         this.server = server;
         this._keytar = tryGetKeyTar();
         this._serverId = nonNullProp(this.server, 'id');
+        this._resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -65,9 +67,8 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
-        const resourceGroup: string = azureUtils.getResourceGroupFromId(this.id);
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-        const listOfDatabases: DatabaseListResult = await client.databases.listByServer(resourceGroup, this.name);
+        const listOfDatabases: DatabaseListResult = await client.databases.listByServer(this._resourceGroup, this.name);
         return this.createTreeItemsWithErrorHandling(
             listOfDatabases,
             'invalidPostgresServer',
@@ -91,27 +92,22 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<PostgresDatabaseTreeItem> {
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-        const fullID: string = nonNullProp(this, 'fullId');
-        const resourceGroup: string = azureUtils.getResourceGroupFromId(fullID);
         const databaseName = await ext.ui.showInputBox({
             placeHolder: "Database Name",
             prompt: "Enter the name of the database",
-            validateInput: (name: string) => validateDatabaseName(name, client, this.name, resourceGroup)
+            validateInput: (name: string) => validateDatabaseName(name, client, this.name, this._resourceGroup)
         });
         context.showCreatingTreeItem(databaseName);
         const database: Database = { name: databaseName };
-        await client.databases.createOrUpdate(resourceGroup, this.name, databaseName, database);
-        await this.refresh();
+        await client.databases.createOrUpdate(this._resourceGroup, this.name, databaseName, database);
         return new PostgresDatabaseTreeItem(this, databaseName);
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-        const fullID: string = nonNullProp(this, 'fullId');
-        const resourceGroup: string = azureUtils.getResourceGroupFromId(fullID);
         const deletingMessage: string = `Deleting server "${this.name}"...`;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
-            await client.servers.deleteMethod(resourceGroup, this.name);
+            await client.servers.deleteMethod(this._resourceGroup, this.name);
         });
     }
 

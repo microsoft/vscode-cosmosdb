@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { Client } from "pg";
 import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
 import { getThemeAgnosticIconPath } from "../../constants";
 import { IPostgresFunctionsQueryRow, PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
@@ -10,6 +11,8 @@ import { IPostgresFunctionsQueryRow, PostgresFunctionsTreeItem } from "./Postgre
 export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext> {
     public static contextValue: string = 'postgresFunction';
     public readonly contextValue: string = PostgresFunctionTreeItem.contextValue;
+    public readonly commandId: string = 'cosmosDB.openPostgresFunction';
+    public readonly parent: PostgresFunctionsTreeItem;
     public readonly schema: string;
     public readonly name: string;
     public readonly id: string;
@@ -35,5 +38,13 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
 
     public get iconPath(): TreeItemIconPath {
         return getThemeAgnosticIconPath('Collection.svg');
+    }
+
+    public async update(newDefinition: string): Promise<string> {
+        this.definition = newDefinition;
+        const client = new Client(this.parent.clientConfig);
+        await client.connect();
+        await client.query(this.definition);
+        return this.definition;
     }
 }

@@ -5,6 +5,7 @@
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { DatabaseListResult, Server } from 'azure-arm-postgresql/lib/models';
+import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -132,5 +133,11 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             await ext.context.globalState.update(this._serviceName, JSON.stringify(servers));
             await this._keytar.setPassword(this._serviceName, this._serverId, password);
         }
+    }
+
+    public supportsStoredProcedures(): boolean {
+        // `semver.gte` complains when a version doesn't have decimals (i.e. "10"), so attempt to convert version to SemVer
+        const version: SemVer | null = coerce(this.server.version);
+        return !!version && gte(version, '11.0.0');
     }
 }

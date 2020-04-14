@@ -10,6 +10,8 @@ import { IPostgresFunctionsQueryRow, PostgresFunctionsTreeItem } from "./Postgre
 export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext> {
     public static contextValue: string = 'postgresFunction';
     public readonly contextValue: string = PostgresFunctionTreeItem.contextValue;
+    public readonly commandId: string = 'cosmosDB.openPostgresFunction';
+    public readonly parent: PostgresFunctionsTreeItem;
     public readonly schema: string;
     public readonly name: string;
     public readonly id: string;

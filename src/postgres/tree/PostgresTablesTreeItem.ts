@@ -33,4 +33,8 @@ export class PostgresTablesTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresTableTreeItem[]> {
         return this.tables.map(table => new PostgresTableTreeItem(this, table));
     }
+
+    public isAncestorOfImpl(contextValue: string): boolean {
+        return contextValue === PostgresTableTreeItem.contextValue;
+    }
 }

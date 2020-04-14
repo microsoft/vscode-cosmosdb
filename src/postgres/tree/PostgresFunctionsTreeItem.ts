@@ -74,4 +74,8 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
             duplicateNames.has(row.name)
         ));
     }
+
+    public isAncestorOfImpl(contextValue: string): boolean {
+        return contextValue === PostgresFunctionTreeItem.contextValue;
+    }
 }

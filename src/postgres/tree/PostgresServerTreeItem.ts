@@ -14,6 +14,8 @@ import { azureUtils } from '../../utils/azureUtils';
 import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
+import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
+import { PostgresFunctionTreeItem } from './PostgresFunctionTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 import { PostgresTableTreeItem } from './PostgresTableTreeItem';
 
@@ -81,6 +83,8 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             case PostgresDatabaseTreeItem.contextValue:
             case PostgresTablesTreeItem.contextValue:
             case PostgresTableTreeItem.contextValue:
+            case PostgresFunctionsTreeItem.contextValue:
+            case PostgresFunctionTreeItem.contextValue:
                 return true;
             default:
                 return false;

@@ -63,7 +63,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
         registerDocDBCommands(editorManager);
         registerGraphCommands();
-        registerPostgresCommands();
+        registerPostgresCommands(editorManager);
         const codeLensProvider = registerMongoCommands(editorManager);
 
         const cosmosDBTopLevelContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];

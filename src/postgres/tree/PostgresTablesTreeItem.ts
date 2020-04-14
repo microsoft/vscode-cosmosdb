@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Table } from "pg-structure";
+import { Client, ClientConfig } from "pg";
+import pgStructure, { Db, Table } from "pg-structure";
 import { Uri } from 'vscode';
 import { AzureParentTreeItem, ISubscriptionContext } from "vscode-azureextensionui";
 import { getThemeAgnosticIconPath } from "../../constants";
@@ -16,10 +17,11 @@ export class PostgresTablesTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public readonly childTypeLabel: string = "Table";
     public readonly label: string = 'Tables';
     public readonly tables: Table[];
+    public readonly clientConfig: ClientConfig;
 
-    constructor(parent: PostgresDatabaseTreeItem, tables: Table[]) {
+    constructor(parent: PostgresDatabaseTreeItem, clientConfig: ClientConfig) {
         super(parent);
-        this.tables = tables;
+        this.clientConfig = clientConfig;
     }
 
     public get iconPath(): string | Uri | { light: string | Uri; dark: string | Uri } {
@@ -31,6 +33,8 @@ export class PostgresTablesTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresTableTreeItem[]> {
-        return this.tables.map(table => new PostgresTableTreeItem(this, table));
+        const client = new Client(this.clientConfig);
+        const db: Db = await pgStructure(client);
+        return db.tables.map(table => new PostgresTableTreeItem(this, table));
     }
 }

@@ -37,4 +37,8 @@ export class PostgresTablesTreeItem extends AzureParentTreeItem<ISubscriptionCon
         const db: Db = await pgStructure(client);
         return db.tables.map(table => new PostgresTableTreeItem(this, table));
     }
+
+    public isAncestorOfImpl(contextValue: string): boolean {
+        return contextValue === PostgresTableTreeItem.contextValue;
+    }
 }

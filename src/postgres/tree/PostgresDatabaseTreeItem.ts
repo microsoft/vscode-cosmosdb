@@ -22,7 +22,7 @@ const firewallNotConfiguredErrorType: string = '28000';
 export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresDatabase";
     public readonly contextValue: string = PostgresDatabaseTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Tables";
+    public readonly childTypeLabel: string = "Resource Type";
     public readonly databaseName: string;
     public readonly parent: PostgresServerTreeItem;
     public autoSelectInTreeItemPicker: boolean = true;

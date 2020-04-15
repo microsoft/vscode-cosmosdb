@@ -70,6 +70,7 @@
         "onCommand:cosmosDB.update",
         "onCommand:cosmosDB.openDocument",
         "onCommand:cosmosDB.openStoredProcedure",
+        "onCommand:cosmosDB.openPostgresFunction",
         "onCommand:cosmosDB.openCollection",
         "onCommand:cosmosDB.loadMore",
         "onCommand:cosmosDB.refresh",
@@ -357,6 +358,11 @@
                 "category": "Cosmos DB",
                 "command": "cosmosDB.openStoredProcedure",
                 "title": "Open Stored Procedure"
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "cosmosDB.openPostgresFunction",
+                "title": "Open Function"
             },
             {
                 "category": "PostgreSQL",

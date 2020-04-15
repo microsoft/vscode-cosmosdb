@@ -5,7 +5,6 @@
 
 import * as vscode from 'vscode';
 import { AzureTreeItem, callWithTelemetryAndErrorHandling, IActionContext, registerCommand, registerEvent } from "vscode-azureextensionui";
-import { CosmosEditorManager } from "../CosmosEditorManager";
 import { ext } from "../extensionVariables";
 import { AttachedAccountSuffix } from '../tree/AttachedAccountsTreeItem';
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -24,7 +23,7 @@ let diagnosticsCollection: vscode.DiagnosticCollection;
 const mongoLanguageId: string = 'mongo';
 
 // tslint:disable-next-line: max-func-body-length
-export function registerMongoCommands(editorManager: CosmosEditorManager): MongoCodeLensProvider {
+export function registerMongoCommands(): MongoCodeLensProvider {
     const languageClient: MongoDBLanguageClient = new MongoDBLanguageClient();
 
     const codeLensProvider = new MongoCodeLensProvider();
@@ -111,21 +110,21 @@ export function registerMongoCommands(editorManager: CosmosEditorManager): Mongo
         if (!node) {
             node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
         }
-        await editorManager.showDocument(context, new MongoCollectionNodeEditor(node), node.label + '-cosmos-collection.json');
+        await ext.editorManager.showDocument(context, new MongoCollectionNodeEditor(node), node.label + '-cosmos-collection.json');
     });
     registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
     registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', 'Scrapbook', '.mongo'));
     registerCommand('cosmosDB.executeMongoCommand', async (context: IActionContext, commandText: object) => {
         await loadPersistedMongoDBTask;
         if (typeof commandText === "string") {
-            await executeCommandFromText(editorManager, context, <string>commandText);
+            await executeCommandFromText(context, <string>commandText);
         } else {
-            await executeCommandFromActiveEditor(editorManager, context);
+            await executeCommandFromActiveEditor(context);
         }
     });
     registerCommand('cosmosDB.executeAllMongoCommands', async (context: IActionContext) => {
         await loadPersistedMongoDBTask;
-        await executeAllCommandsFromActiveEditor(editorManager, context);
+        await executeAllCommandsFromActiveEditor(context);
     });
 
     return codeLensProvider;

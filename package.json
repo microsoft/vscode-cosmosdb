@@ -50,6 +50,7 @@
         "onCommand:cosmosDB.createDocDBCollection",
         "onCommand:cosmosDB.createDocDBDocument",
         "onCommand:cosmosDB.createDocDBStoredProcedure",
+        "onCommand:cosmosDB.createPostgresFunction",
         "onCommand:cosmosDB.createGraphDatabase",
         "onCommand:cosmosDB.createGraph",
         "onCommand:cosmosDB.connectMongoDB",
@@ -220,6 +221,11 @@
                 "category": "Core (SQL)",
                 "command": "cosmosDB.createDocDBStoredProcedure",
                 "title": "Create Stored Procedure..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "cosmosDB.createPostgresFunction",
+                "title": "Create Function..."
             },
             {
                 "category": "Graph (Gremlin)",
@@ -508,6 +514,10 @@
                 {
                     "command": "cosmosDB.createDocDBStoredProcedure",
                     "when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProceduresGroup"
+                },
+                {
+                    "command": "cosmosDB.createPostgresFunction",
+                    "when": "view == cosmosDBExplorer && viewItem == postgresFunctions"
                 },
                 {
                     "command": "cosmosDB.createDocDBCollection",

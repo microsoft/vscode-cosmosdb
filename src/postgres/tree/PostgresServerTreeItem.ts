@@ -12,6 +12,7 @@ import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
+import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
@@ -143,5 +144,24 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         // `semver.gte` complains when a version doesn't have decimals (i.e. "10"), so attempt to convert version to SemVer
         const version: SemVer | null = coerce(this.server.version);
         return !!version && gte(version, '11.0.0');
+    }
+
+    public validateIdentifier(identifier: string, identifierLabel: string): string | undefined {
+        // Identifier naming rules: https://aka.ms/AA8618j
+        identifier = identifier.trim();
+
+        if (!identifier) {
+            return localize('cannotBeEmpty', '{0} cannot be empty.', identifierLabel);
+        }
+
+        if (!identifier[0].match(/[a-z_]/i)) {
+            return localize('mustStartWithLetterOrUnderscore', '{0} must start with a letter or underscore.', identifierLabel);
+        }
+
+        if (identifier.match(/[^a-z_\d$]/i)) {
+            return localize('canOnlyContainCertainCharacters', '{0} can only contain letters, underscores, digits (0-9), and dollar signs ($).', identifierLabel);
+        }
+
+        return undefined;
     }
 }

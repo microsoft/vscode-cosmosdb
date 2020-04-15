@@ -10,6 +10,7 @@ import { PostgresFunctionTreeItem } from "../tree/PostgresFunctionTreeItem";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";
 import { deletePostgresDatabase } from "./deletePostgresDatabase";
 import { deletePostgresServer } from "./deletePostgresServer";
+import { deletePostgresTable } from "./deletePostgresTable";
 import { enterPostgresCredentials } from "./enterPostgresCredentials";
 import { openPostgresFunction } from "./openPostgresFunction";
 
@@ -18,6 +19,7 @@ export function registerPostgresCommands(editorManager: CosmosEditorManager): vo
     registerCommand('cosmosDB.enterPostgresCredentials', enterPostgresCredentials);
     registerCommand('cosmosDB.configurePostgresFirewall', configurePostgresFirewall);
     registerCommand('cosmosDB.deletePostgresDatabase', deletePostgresDatabase);
+    registerCommand('cosmosDB.deletePostgresTable', deletePostgresTable);
     registerCommand('cosmosDB.openPostgresFunction', async (context: IActionContext, treeItem?: PostgresFunctionTreeItem) => {
         await openPostgresFunction(editorManager, context, treeItem);
         // tslint:disable-next-line:align

@@ -8,14 +8,9 @@ import { AzExtTreeItem, AzureParentTreeItem, IActionContext, ISubscriptionContex
 import { getThemeAgnosticIconPath } from "../../constants";
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
+import { IPostgresProceduresQueryRow } from '../IPostgresProceduresQueryRow';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionTreeItem } from "./PostgresFunctionTreeItem";
-
-export interface IPostgresFunctionsQueryRow {
-    schema: string;
-    name: string;
-    definition: string;
-}
 
 export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = 'postgresFunctions';
@@ -39,7 +34,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
     }
 
     public async loadMoreChildrenImpl(): Promise<PostgresFunctionTreeItem[]> {
-        const rows: IPostgresFunctionsQueryRow[] = await this.listFunctions();
+        const rows: IPostgresProceduresQueryRow[] = await this.listFunctions();
         const allNames: Set<string> = new Set();
         const duplicateNames: Set<string> = new Set();
         for (const row of rows) {
@@ -95,7 +90,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
         return contextValue === PostgresFunctionTreeItem.contextValue;
     }
 
-    private async listFunctions(functionName?: string): Promise<IPostgresFunctionsQueryRow[]> {
+    private async listFunctions(functionName?: string): Promise<IPostgresProceduresQueryRow[]> {
         const client = new Client(this.clientConfig);
         await client.connect();
 

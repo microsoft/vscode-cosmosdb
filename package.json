@@ -72,6 +72,7 @@
         "onCommand:cosmosDB.openDocument",
         "onCommand:cosmosDB.openStoredProcedure",
         "onCommand:cosmosDB.openPostgresFunction",
+        "onCommand:cosmosDB.deletePostgresFunction",
         "onCommand:cosmosDB.openCollection",
         "onCommand:cosmosDB.loadMore",
         "onCommand:cosmosDB.refresh",
@@ -372,6 +373,11 @@
             },
             {
                 "category": "PostgreSQL",
+                "command": "cosmosDB.deletePostgresFunction",
+                "title": "Delete Function..."
+            },
+            {
+                "category": "PostgreSQL",
                 "command": "cosmosDB.enterPostgresCredentials",
                 "title": "Enter Server Credentials"
             },
@@ -608,6 +614,10 @@
                 {
                     "command": "cosmosDB.deletePostgresTable",
                     "when": "view == cosmosDBExplorer && viewItem == postgresTable"
+                },
+                {
+                    "command": "cosmosDB.deletePostgresFunction",
+                    "when": "view == cosmosDBExplorer && viewItem == postgresFunction"
                 },
                 {
                     "command": "cosmosDB.deleteGraph",

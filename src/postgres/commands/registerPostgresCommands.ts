@@ -8,6 +8,7 @@ import { doubleClickDebounceDelay } from "../../constants";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";
 import { createPostgresFunction } from "./createPostgresFunction";
 import { deletePostgresDatabase } from "./deletePostgresDatabase";
+import { deletePostgresFunction } from "./deletePostgresFunction";
 import { deletePostgresServer } from "./deletePostgresServer";
 import { deletePostgresTable } from "./deletePostgresTable";
 import { enterPostgresCredentials } from "./enterPostgresCredentials";
@@ -21,4 +22,5 @@ export function registerPostgresCommands(): void {
     registerCommand('cosmosDB.deletePostgresTable', deletePostgresTable);
     registerCommand('cosmosDB.createPostgresFunction', createPostgresFunction);
     registerCommand('cosmosDB.openPostgresFunction', openPostgresFunction, doubleClickDebounceDelay);
+    registerCommand('cosmosDB.deletePostgresFunction', deletePostgresFunction);
 }

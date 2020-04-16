@@ -61,7 +61,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     // Delete the database
     public async deleteTreeItemImpl(): Promise<void> {
         const message: string = `Are you sure you want to delete database '${this.label}' and its contents?`;
-        const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
+        const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const client = this.root.getDocumentClient();
             await new Promise((resolve, reject) => {

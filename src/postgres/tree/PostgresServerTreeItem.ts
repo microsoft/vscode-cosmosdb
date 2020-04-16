@@ -96,10 +96,11 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<PostgresDatabaseTreeItem> {
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        const getChildrenTask: Promise<AzExtTreeItem[]> = this.getCachedChildren(context);
         const databaseName = await ext.ui.showInputBox({
             placeHolder: "Database Name",
             prompt: "Enter the name of the database",
-            validateInput: (name: string) => validateDatabaseName(name, client, this.name, this._resourceGroup)
+            validateInput: (name: string) => validateDatabaseName(name, getChildrenTask)
         });
         context.showCreatingTreeItem(databaseName);
         const database: Database = { name: databaseName };
@@ -159,13 +160,14 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 }
 
-async function validateDatabaseName(name: string, client: PostgreSQLManagementClient, serverName: string, resourceGroup: string): Promise<string | undefined | null> {
-    const currentDatabaseList: DatabaseListResult = await client.databases.listByServer(resourceGroup, serverName);
-    const currentDatabaseNames: string[] = [];
-    currentDatabaseList.map(database => currentDatabaseNames.push(nonNullProp(database, 'name')));
+async function validateDatabaseName(name: string, getChildrenTask: Promise<AzExtTreeItem[]>): Promise<string | undefined | null> {
     if (!name || name.length < 1) {
         return localize('NameCannotBeEmpty', 'Name cannot be empty.');
-    } else if (currentDatabaseNames.includes(name)) {
+    }
+    const currDatabaseList = await getChildrenTask;
+    const currDatabaseNames: string[] = [];
+    currDatabaseList.map(database => currDatabaseNames.push(database.label));
+    if (currDatabaseNames.includes(name)) {
         return localize('NameExists', 'Database "{0}" already exists.', name);
     }
     return undefined;

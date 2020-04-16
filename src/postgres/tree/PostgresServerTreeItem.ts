@@ -12,6 +12,7 @@ import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
+import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
@@ -29,6 +30,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
     public readonly server: Server;
+
     private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.postgresPasswords";
     private _keytar: KeyTar | undefined;
     private _serverId: string;
@@ -95,7 +97,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const fullID: string = nonNullProp(this, 'fullId');
         const resourceGroup: string = azureUtils.getResourceGroupFromId(fullID);
-        const deletingMessage: string = `Deleting server "${this.name}"...`;
+        const deletingMessage: string = localize('DeleteServerMessage', 'Deleting server "{0}"...', this.name);
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
             await client.servers.deleteMethod(resourceGroup, this.name);
         });

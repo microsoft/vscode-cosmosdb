@@ -59,12 +59,12 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         ext.treeView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: ext.tree, showCollapseAll: true });
         context.subscriptions.push(ext.treeView);
 
-        const editorManager: CosmosEditorManager = new CosmosEditorManager(context.globalState);
+        ext.editorManager = new CosmosEditorManager(context.globalState);
 
-        registerDocDBCommands(editorManager);
+        registerDocDBCommands();
         registerGraphCommands();
-        registerPostgresCommands(editorManager);
-        const codeLensProvider = registerMongoCommands(editorManager);
+        registerPostgresCommands();
+        const codeLensProvider = registerMongoCommands();
 
         const cosmosDBTopLevelContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
         const allAccountsTopLevelContextValues: string[] = [...cosmosDBTopLevelContextValues, PostgresServerTreeItem.contextValue];
@@ -75,6 +75,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             if (!node) {
                 node = await ext.tree.showTreeItemPicker<SubscriptionTreeItem>(SubscriptionTreeItem.contextValue, actionContext);
             }
+
             await node.createChild(actionContext);
         });
         registerCommand('cosmosDB.deleteAccount', async (actionContext: IActionContext, node?: AzureTreeItem) => {
@@ -136,18 +137,18 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
             const editorTabName = node.label + "-cosmos-document.json";
             if (node instanceof MongoDocumentTreeItem) {
-                await editorManager.showDocument(actionContext, new MongoDocumentNodeEditor(node), editorTabName);
+                await ext.editorManager.showDocument(actionContext, new MongoDocumentNodeEditor(node), editorTabName);
             } else {
-                await editorManager.showDocument(actionContext, new DocDBDocumentNodeEditor(node), editorTabName);
+                await ext.editorManager.showDocument(actionContext, new DocDBDocumentNodeEditor(node), editorTabName);
             }
             // tslint:disable-next-line:align
         }, doubleClickDebounceDelay);
-        registerCommand('cosmosDB.update', async (actionContext: IActionContext, uri: vscode.Uri) => await editorManager.updateMatchingNode(actionContext, uri));
+        registerCommand('cosmosDB.update', async (actionContext: IActionContext, uri: vscode.Uri) => await ext.editorManager.updateMatchingNode(actionContext, uri));
         registerCommand('cosmosDB.loadMore', async (actionContext: IActionContext, node: AzExtTreeItem) => await ext.tree.loadMore(node, actionContext));
         registerEvent(
             'cosmosDB.CosmosEditorManager.onDidSaveTextDocument',
             vscode.workspace.onDidSaveTextDocument,
-            async (actionContext: IActionContext, doc: vscode.TextDocument) => await editorManager.onDidSaveTextDocument(actionContext, doc)
+            async (actionContext: IActionContext, doc: vscode.TextDocument) => await ext.editorManager.onDidSaveTextDocument(actionContext, doc)
         );
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',

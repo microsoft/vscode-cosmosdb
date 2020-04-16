@@ -8,9 +8,8 @@ import { IResourceGroupWizardContext } from 'vscode-azureextensionui';
 
 export interface IPostgresWizardContext extends IResourceGroupWizardContext {
 
-    serverName?: string;
+    newServerName?: string;
     server?: Server;
-    resourceGroupName?: String;
 
     adminUser?: string;
     adminPassword?: string;

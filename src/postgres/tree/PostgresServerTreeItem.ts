@@ -12,7 +12,6 @@ import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
-import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
@@ -97,7 +96,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const fullID: string = nonNullProp(this, 'fullId');
         const resourceGroup: string = azureUtils.getResourceGroupFromId(fullID);
-        const deletingMessage: string = localize('DeleteServerMessage', 'Deleting server "{0}"...', this.name);
+        const deletingMessage: string = `Deleting server "${this.name}"...`;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
             await client.servers.deleteMethod(resourceGroup, this.name);
         });

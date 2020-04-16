@@ -49,10 +49,7 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createDocDBDatabase');
         });
-        const getDocDBClient: DocumentClient = await getClient(accountName);
-        const databaseMetaList: DatabaseMeta[] = await getDatabases(getDocDBClient);
-        const getDatabase: DatabaseMeta | undefined = databaseMetaList.find((database: DatabaseMeta) => database.id === databaseName);
-        assert.ok(getDatabase);
+        assert.ok(await getDatabaseMeta());
     });
 
     test('Create SQL collection', async () => {
@@ -72,6 +69,15 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
             await vscode.commands.executeCommand('cosmosDB.deleteDocDBCollection');
         });
         assert.ifError(await getDocDBCollectionMeta(accountName, databaseName, collectionId2));
+    });
+
+    test('Delete SQL Database', async () => {
+        assert.ok(await getDatabaseMeta());
+        const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (SQL)`, databaseName, DialogResponses.deleteResponse.title];
+        await testUserInput.runWithInputs(testInputs, async () => {
+            await vscode.commands.executeCommand('cosmosDB.deleteDocDBDatabase');
+        });
+        assert.ifError(await getDatabaseMeta());
     });
 
     test('Delete SQL account', async () => {
@@ -110,6 +116,12 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
                 resolve(res);
             }
         }));
+    }
+
+    async function getDatabaseMeta(): Promise<DatabaseMeta | undefined> {
+        const getDocDBClient: DocumentClient = await getClient(accountName);
+        const databaseMetaList: DatabaseMeta[] = await getDatabases(getDocDBClient);
+        return databaseMetaList.find((database: DatabaseMeta) => database.id === databaseName);
     }
 
     async function getDocDBCollectionMeta(accountId: string, databaseId: string, collectionId: string): Promise<CollectionMeta | undefined> {

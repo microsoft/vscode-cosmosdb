@@ -11,7 +11,6 @@ import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ObjectID } from 'bson';
 import * as vscode from 'vscode';
 import { IActionContext, IParsedError, parseError } from 'vscode-azureextensionui';
-import { CosmosEditorManager } from '../CosmosEditorManager';
 import { ext } from '../extensionVariables';
 import { filterType, findType } from '../utils/array';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
@@ -42,21 +41,21 @@ export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vsc
     return errors;
 }
 
-export async function executeAllCommandsFromActiveEditor(editorManager: CosmosEditorManager, context: IActionContext): Promise<void> {
+export async function executeAllCommandsFromActiveEditor(context: IActionContext): Promise<void> {
     ext.outputChannel.appendLog("Executing all commands in scrapbook...");
     const commands = getAllCommandsFromActiveEditor();
-    await executeCommands(editorManager, context, commands);
+    await executeCommands(context, commands);
 }
 
-export async function executeCommandFromActiveEditor(editorManager: CosmosEditorManager, context: IActionContext): Promise<void> {
+export async function executeCommandFromActiveEditor(context: IActionContext): Promise<void> {
     const commands = getAllCommandsFromActiveEditor();
     const command = findCommandAtPosition(commands, vscode.window.activeTextEditor?.selection.start);
-    return await executeCommand(editorManager, context, command);
+    return await executeCommand(context, command);
 }
 
-export async function executeCommandFromText(editorManager: CosmosEditorManager, context: IActionContext, commandText: string): Promise<void> {
+export async function executeCommandFromText(context: IActionContext, commandText: string): Promise<void> {
     const command = getCommandFromTextAtLocation(commandText, new vscode.Position(0, 0));
-    return await executeCommand(editorManager, context, command);
+    return await executeCommand(context, command);
 }
 
 function getAllCommandsFromActiveEditor(): MongoCommand[] {
@@ -73,10 +72,10 @@ export function getAllCommandsFromTextDocument(document: vscode.TextDocument): M
     return getAllCommandsFromText(document.getText());
 }
 
-async function executeCommands(editorManager: CosmosEditorManager, context: IActionContext, commands: MongoCommand[]): Promise<void> {
+async function executeCommands(context: IActionContext, commands: MongoCommand[]): Promise<void> {
     for (const command of commands) {
         try {
-            await executeCommand(editorManager, context, command);
+            await executeCommand(context, command);
         } catch (e) {
             const err = parseError(e);
             if (err.isUserCancelledError) {
@@ -89,7 +88,7 @@ async function executeCommands(editorManager: CosmosEditorManager, context: IAct
     }
 }
 
-async function executeCommand(editorManager: CosmosEditorManager, context: IActionContext, command: MongoCommand): Promise<void> {
+async function executeCommand(context: IActionContext, command: MongoCommand): Promise<void> {
     if (command) {
         try {
             context.telemetry.properties.command = command.name;
@@ -110,14 +109,14 @@ async function executeCommand(editorManager: CosmosEditorManager, context: IActi
 
         // we don't handle chained commands so we can only handle "find" if isn't chained
         if (command.name === 'find' && !command.chained) {
-            await editorManager.showDocument(context, new MongoFindResultEditor(database, command), 'cosmos-result.json', { showInNextColumn: true });
+            await ext.editorManager.showDocument(context, new MongoFindResultEditor(database, command), 'cosmos-result.json', { showInNextColumn: true });
         } else {
             const result = await database.executeCommand(command, context);
             if (command.name === 'findOne') {
                 if (result === "null") {
                     throw new Error(`Could not find any documents`);
                 }
-                await editorManager.showDocument(context, new MongoFindOneResultEditor(database, nonNullProp(command, 'collection'), result), 'cosmos-result.json', { showInNextColumn: true });
+                await ext.editorManager.showDocument(context, new MongoFindOneResultEditor(database, nonNullProp(command, 'collection'), result), 'cosmos-result.json', { showInNextColumn: true });
             } else {
                 const viewColumn = vscode.window.activeTextEditor?.viewColumn;
                 await vscodeUtil.showNewFile(result, 'result', '.json', viewColumn ? viewColumn + 1 : undefined);

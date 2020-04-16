@@ -11,7 +11,7 @@ import { PostgresFunctionTreeItem } from "../tree/PostgresFunctionTreeItem";
 
 export async function deletePostgresFunction(context: IActionContext, treeItem?: PostgresFunctionTreeItem): Promise<void> {
     if (!treeItem) {
-        treeItem = <PostgresFunctionTreeItem>await ext.tree.showTreeItemPicker(PostgresFunctionTreeItem.contextValue, context);
+        treeItem = <PostgresFunctionTreeItem>await ext.tree.showTreeItemPicker(PostgresFunctionTreeItem.contextValue, { ...context, suppressCreatePick: true });
     }
 
     const message = localize('deleteFunction', 'Are you sure you want to delete function "{0}"?', treeItem.label);

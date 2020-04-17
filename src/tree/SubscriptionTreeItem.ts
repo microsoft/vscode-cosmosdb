@@ -7,7 +7,6 @@ import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from 'azure-arm-cosmosdb/lib/models';
 import { PostgreSQLManagementClient } from 'azure-arm-postgresql';
 import { Server, ServerListResult } from 'azure-arm-postgresql/lib/models';
-import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { getExperienceLabel, tryGetExperience } from '../CosmosDBExperiences';
@@ -15,13 +14,6 @@ import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { setFirewallRule } from '../postgres/commands/configurePostgresFirewall';
-import { IPostgresWizardContext } from '../postgres/commands/PostgresAccountWizard/IPostgresWizardContext';
-import { PostgresServerCreateStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerCreateStep';
-import { PostgresServerCredStepPW } from '../postgres/commands/PostgresAccountWizard/PostgresServerCredStepPW';
-import { PostgresServerCredStepUser } from '../postgres/commands/PostgresAccountWizard/PostgresServerCredStepUser';
-import { PostgresServerFirewallStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerFirewallStep';
-import { PostgresServerNameStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerNameStep';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { azureUtils } from '../utils/azureUtils';
@@ -30,8 +22,6 @@ import { CosmosDBAccountApiStep } from './CosmosDBAccountWizard/CosmosDBAccountA
 import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccountCreateStep';
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
-import { DatabaseAccountOptionsStep } from './DatabaseAccountOptionsStep';
-import { IDBAWizardContext } from './IDBAWizardContext';
 
 export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
     public childTypeLabel: string = 'Account';
@@ -70,82 +60,34 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem> {
-        const wizardContextInitial: IDBAWizardContext = Object.assign(context, this.root);
+        const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
+        const wizardContext: ICosmosDBWizardContext = Object.assign(context, this.root);
 
         const promptSteps: AzureWizardPromptStep<ILocationWizardContext>[] = [
-            new DatabaseAccountOptionsStep()
+            new CosmosDBAccountNameStep(),
+            new CosmosDBAccountApiStep(),
+            new ResourceGroupListStep()
         ];
-        const wizardInitial = new AzureWizard(wizardContextInitial, {
-            promptSteps
+        LocationListStep.addStep(wizardContext, promptSteps);
+
+        const wizard = new AzureWizard(wizardContext, {
+            promptSteps,
+            executeSteps: [
+                new CosmosDBAccountCreateStep()
+            ],
+            title: 'Create new Cosmos DB account'
         });
-        await wizardInitial.prompt();
 
-        if (wizardContextInitial.accountType === "cosmosdb") {
-            const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
-            const wizardContext: ICosmosDBWizardContext = Object.assign(context, this.root);
+        await wizard.prompt();
 
-            promptSteps.push(
-                new CosmosDBAccountNameStep(),
-                new CosmosDBAccountApiStep(),
-                new ResourceGroupListStep()
-            );
-            LocationListStep.addStep(wizardContext, promptSteps);
+        wizardContext.telemetry.properties.defaultExperience = wizardContext.defaultExperience?.api;
 
-            const wizard = new AzureWizard(wizardContext, {
-                promptSteps,
-                executeSteps: [
-                    new CosmosDBAccountCreateStep()
-                ],
-                title: 'Create new Cosmos DB account'
-            });
-
-            await wizard.prompt();
-
-            wizardContext.telemetry.properties.defaultExperience = wizardContext.defaultExperience?.api;
-
-            const accountName: string = nonNullProp(wizardContext, 'accountName');
-            context.showCreatingTreeItem(accountName);
-            await wizard.execute();
-            // don't wait
-            vscode.window.showInformationMessage(`Successfully created account "${accountName}".`);
-            return await this.initCosmosDBChild(client, nonNullProp(wizardContext, 'databaseAccount'));
-        } else {
-            const wizardContext: IPostgresWizardContext = Object.assign(context, this.root);
-            promptSteps.push(
-                new PostgresServerNameStep(),
-                new ResourceGroupListStep(),
-                new PostgresServerCredStepUser(),
-                new PostgresServerCredStepPW(),
-                new PostgresServerFirewallStep()
-            );
-            LocationListStep.addStep(wizardContext, promptSteps);
-            const wizard = new AzureWizard(wizardContext, {
-                promptSteps,
-                executeSteps: [
-                    new PostgresServerCreateStep()
-                ],
-                title: 'Create new PostgreSQL account'
-            });
-            await wizard.prompt();
-            const serverName: string = nonNullProp(wizardContext, 'newServerName');
-            context.showCreatingTreeItem(serverName);
-            await wizard.execute();
-
-            vscode.window.showInformationMessage(`Successfully created server "${wizardContext.newServerName}".`);
-            const serverTree: PostgresServerTreeItem = new PostgresServerTreeItem(this, nonNullProp(wizardContext, 'server'));
-            let user: string = nonNullProp(wizardContext, 'adminUser');
-            const usernameSuffix: string = `@${serverName}`;
-            if (!user.includes(usernameSuffix)) {
-                user += usernameSuffix;
-            }
-            const password: string = nonNullProp(wizardContext, 'adminPassword');
-            void serverTree.setCredentials(user, password);
-            if (wizardContext.firewall) {
-                const ip: string = await publicIp.v4();
-                void setFirewallRule(serverTree, ip);
-            }
-            return serverTree;
-        }
+        const accountName: string = nonNullProp(wizardContext, 'accountName');
+        context.showCreatingTreeItem(accountName);
+        await wizard.execute();
+        // don't wait
+        vscode.window.showInformationMessage(`Successfully created account "${accountName}".`);
+        return await this.initCosmosDBChild(client, nonNullProp(wizardContext, 'databaseAccount'));
     }
 
     public isAncestorOfImpl(contextValue: string | RegExp): boolean {

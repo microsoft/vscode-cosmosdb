@@ -12,11 +12,11 @@ import { nonNullProp } from '../../../utils/nonNull';
 import { IPostgresWizardContext } from './IPostgresWizardContext';
 
 export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresWizardContext> {
-    public priority: number = 100;
+    public priority: number = 150;
 
     public async execute(wizardContext: IPostgresWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
         const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
-        const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in 3-4 minutes.', wizardContext.newServerName);
+        const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in several minutes.', wizardContext.newServerName);
         ext.outputChannel.appendLog(createMessage);
         progress.report({ message: createMessage });
 
@@ -37,7 +37,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresWi
         };
 
         wizardContext.server = await client.servers.create(rgName, serverName, options);
-        ext.outputChannel.appendLog(`Successfully created PostgreSQL Server "${serverName}".`);
+        ext.outputChannel.appendLog(localize('createdServerOutput', 'Successfully created PostgreSQL Server "{0}".', serverName));
     }
 
     public shouldExecute(wizardContext: IPostgresWizardContext): boolean {

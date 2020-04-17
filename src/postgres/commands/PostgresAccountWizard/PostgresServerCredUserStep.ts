@@ -5,14 +5,15 @@
 
 import { AzureWizardPromptStep } from 'vscode-azureextensionui';
 import { ext } from '../../../extensionVariables';
+import { localize } from '../../../utils/localize';
 import { IPostgresWizardContext } from './IPostgresWizardContext';
 
-export class PostgresServerCredStepUser extends AzureWizardPromptStep<IPostgresWizardContext> {
+export class PostgresServerCredUserStep extends AzureWizardPromptStep<IPostgresWizardContext> {
 
     public async prompt(wizardContext: IPostgresWizardContext): Promise<void> {
         wizardContext.adminUser = (await ext.ui.showInputBox({
-            placeHolder: "Username",
-            prompt: 'Enter administrator username for the server.',
+            placeHolder: localize('usernamePlaceholder', 'Username'),
+            prompt: localize('enterUsernamePrompt', 'Enter administrator username for the server.'),
             validateInput: validateUser,
         })).trim();
     }
@@ -31,11 +32,13 @@ async function validateUser(username: string): Promise<string | undefined> {
     const restricted = ['azure_superuser', 'azure_pg_admin', 'admin', 'administrator', 'root', 'guest', 'public'];
 
     if (username.length < min || username.length > max) {
-        return `The name must be between ${min} and ${max} characters.`;
+        return localize('usernameLenghtMatch', 'The name must be between {0} and {1} characters.', min, max);
     } else if (!username.match(/^[a-zA-Z0-9_]+$/)) {
-        return "The name can only contain letters, numbers, and the '_' character.";
-    } else if (restricted.includes(username) || username.startsWith('pg_')) {
-        return 'Admin username cannot be ' + restricted.join(", ") + " or start with 'pg_\'.";
+        return localize('usernameCharacterCheck', 'The name can only contain letters, numbers, and the "_" character.');
+    } else if (username.startsWith('pg_')) {
+        return localize('usernameStartWithCheck', 'Admin username cannot start with "pg_".');
+    } else if (restricted.includes(username)) {
+        return localize('usernameRestrictedCheck', 'Admin username cannot be {0}.', restricted.join(", "));
     } else {
         return undefined;
     }

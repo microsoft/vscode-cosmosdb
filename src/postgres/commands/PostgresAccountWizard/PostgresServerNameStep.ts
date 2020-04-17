@@ -7,6 +7,7 @@ import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { NameAvailability, NameAvailabilityRequest } from 'azure-arm-postgresql/lib/models';
 import { AzureNameStep, createAzureClient, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
 import { ext } from '../../../extensionVariables';
+import { localize } from '../../../utils/localize';
 import { IPostgresWizardContext } from './IPostgresWizardContext';
 
 export class PostgresServerNameStep extends AzureNameStep<IPostgresWizardContext> {
@@ -14,9 +15,9 @@ export class PostgresServerNameStep extends AzureNameStep<IPostgresWizardContext
     public async prompt(wizardContext: IPostgresWizardContext): Promise<void> {
         const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
         wizardContext.newServerName = (await ext.ui.showInputBox({
-            placeHolder: "Server name",
-            prompt: "Provide a name for the PostgreSQL Server.",
-            validateInput: (name: string) => validatePostgresAccountName(name, client)
+            placeHolder: localize('serverNamePlaceholder', 'Server name'),
+            prompt: localize('enterServerNamePrompt', 'Provide a name for the PostgreSQL Server.'),
+            validateInput: (name: string) => validatePostgresServerName(name, client)
         })).trim();
 
         wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.newServerName, resourceGroupNamingRules);
@@ -31,14 +32,14 @@ export class PostgresServerNameStep extends AzureNameStep<IPostgresWizardContext
     }
 }
 
-async function validatePostgresAccountName(name: string, client: PostgreSQLManagementClient): Promise<string | undefined> {
+async function validatePostgresServerName(name: string, client: PostgreSQLManagementClient): Promise<string | undefined> {
     name = name ? name.trim() : '';
 
     const min = 3;
     const max = 63;
 
     if (name.length < min || name.length > max) {
-        return `The name must be between ${min} and ${max} characters.`;
+        return localize('serverNameLengthCheck', 'The name must be between {0} and {1} characters.', min, max);
     }
 
     const availabilityRequest: NameAvailabilityRequest = { name: name, type: "Microsoft.DBforPostgreSQL" };

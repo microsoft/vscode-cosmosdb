@@ -20,11 +20,11 @@ export class PostgresServerFirewallStep extends AzureWizardPromptStep<IPostgresW
 
         const placeHolder: string = localize('addFirewallForNewServer', 'A firewall rule is required to access this server from your current IP.');
 
-        wizardContext.firewall = await ext.ui.showQuickPick([yes, no], { placeHolder }) === yes;
+        wizardContext.addFirewall = await ext.ui.showQuickPick([yes, no], { placeHolder }) === yes;
 
     }
 
     public shouldPrompt(wizardContext: IPostgresWizardContext): boolean {
-        return !wizardContext.firewall;
+        return wizardContext.addFirewall === undefined;
     }
 }

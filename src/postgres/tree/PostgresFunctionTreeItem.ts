@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { Client } from "pg";
 import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
 import { getThemeAgnosticIconPath } from "../../constants";
 import { IPostgresFunctionsQueryRow, PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
@@ -37,5 +38,11 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
 
     public get iconPath(): TreeItemIconPath {
         return getThemeAgnosticIconPath('Collection.svg');
+    }
+
+    public async deleteTreeItemImpl(): Promise<void> {
+        const client = new Client(this.parent.clientConfig);
+        await client.connect();
+        await client.query(`DROP FUNCTION ${this.schema}.${this.name};`);
     }
 }

@@ -30,18 +30,18 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
     public readonly server: Server;
+    public resourceGroup: string;
 
     private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.postgresPasswords";
     private _keytar: KeyTar | undefined;
     private _serverId: string;
-    private _resourceGroup: string;
 
     constructor(parent: AzureParentTreeItem, server: Server) {
         super(parent);
         this.server = server;
         this._keytar = tryGetKeyTar();
         this._serverId = nonNullProp(this.server, 'id');
-        this._resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
+        this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -70,7 +70,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-        const listOfDatabases: DatabaseListResult = await client.databases.listByServer(this._resourceGroup, this.name);
+        const listOfDatabases: DatabaseListResult = await client.databases.listByServer(this.resourceGroup, this.name);
         return this.createTreeItemsWithErrorHandling(
             listOfDatabases,
             'invalidPostgresServer',
@@ -104,7 +104,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         });
         context.showCreatingTreeItem(databaseName);
         const database: Database = { name: databaseName };
-        await client.databases.createOrUpdate(this._resourceGroup, this.name, databaseName, database);
+        await client.databases.createOrUpdate(this.resourceGroup, this.name, databaseName, database);
         return new PostgresDatabaseTreeItem(this, databaseName);
     }
 
@@ -112,7 +112,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const deletingMessage: string = `Deleting server "${this.name}"...`;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
-            await client.servers.deleteMethod(this._resourceGroup, this.name);
+            await client.servers.deleteMethod(this.resourceGroup, this.name);
         });
     }
 
@@ -161,12 +161,16 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
 }
 
 async function validateDatabaseName(name: string, getChildrenTask: Promise<AzExtTreeItem[]>): Promise<string | undefined | null> {
-    if (!name || name.length < 1) {
+    if (!name) {
         return localize('NameCannotBeEmpty', 'Name cannot be empty.');
     }
     const currDatabaseList = await getChildrenTask;
     const currDatabaseNames: string[] = [];
-    currDatabaseList.map(database => currDatabaseNames.push(database.label));
+    for (const db of currDatabaseList) {
+        if (db instanceof PostgresDatabaseTreeItem) {
+            currDatabaseNames.push(db.databaseName);
+        }
+    }
     if (currDatabaseNames.includes(name)) {
         return localize('NameExists', 'Database "{0}" already exists.', name);
     }

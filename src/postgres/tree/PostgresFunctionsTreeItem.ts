@@ -20,7 +20,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
     public readonly parent: PostgresDatabaseTreeItem;
     public clientConfig: ClientConfig;
 
-    private _functionsAndSchemas: {}; // Function name to list of schemas
+    private _functionsAndSchemas: { [key: string]: string[] }; // Function name to list of schemas
 
     constructor(parent: PostgresDatabaseTreeItem, clientConfig: ClientConfig) {
         super(parent);
@@ -62,19 +62,23 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
         } else {
             const schemaQuickPicks = schemas.map(s => { return { label: s }; });
             schema = (await ext.ui.showQuickPick(schemaQuickPicks, {
-                placeHolder: localize('selectSchema', 'Select schema for new function...')
+                placeHolder: localize('selectSchema', 'Select schema for new function')
             })).label;
         }
 
         const name: string = (await ext.ui.showInputBox({
-            prompt: localize('enterFunctionName', 'Enter function name'),
+            prompt: localize('provideFunctionName', 'Provide function name'),
             validateInput: value => this.validateFunctionName(value, schema)
         })).trim();
 
-        const schemasContainingFunction: string[] = this._functionsAndSchemas[name] || [];
-        const isDuplicate: boolean = schemasContainingFunction.length > 1 || (!schemasContainingFunction.includes(schema) && schemasContainingFunction.length === 1);
+        if (this._functionsAndSchemas[name]) {
+            this._functionsAndSchemas[name].push(schema);
+        } else {
+            this._functionsAndSchemas[name] = [schema];
+        }
 
         const definition: string = defaultFunctionDefinition(schema, name);
+        const isDuplicate: boolean = this._functionsAndSchemas[name].length > 1;
         return new PostgresFunctionTreeItem(this, { schema, name, definition }, isDuplicate);
     }
 

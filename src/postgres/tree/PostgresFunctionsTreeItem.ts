@@ -39,11 +39,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
         const rows: IPostgresProceduresQueryRow[] = await this.listFunctions();
         this._functionsAndSchemas = {};
         for (const row of rows) {
-            if (this._functionsAndSchemas[row.name]) {
-                this._functionsAndSchemas[row.name].push(row.schema);
-            } else {
-                this._functionsAndSchemas[row.name] = [row.schema];
-            }
+            this.addFunctionsAndSchemasEntry(row.name, row.schema);
         }
 
         return rows.map(row => new PostgresFunctionTreeItem(
@@ -71,11 +67,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
             validateInput: value => this.validateFunctionName(value, schema)
         })).trim();
 
-        if (this._functionsAndSchemas[name]) {
-            this._functionsAndSchemas[name].push(schema);
-        } else {
-            this._functionsAndSchemas[name] = [schema];
-        }
+        this.addFunctionsAndSchemasEntry(name, schema);
 
         const definition: string = defaultFunctionDefinition(schema, name);
         const isDuplicate: boolean = this._functionsAndSchemas[name].length > 1;
@@ -84,6 +76,14 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
 
     public isAncestorOfImpl(contextValue: string): boolean {
         return contextValue === PostgresFunctionTreeItem.contextValue;
+    }
+
+    private addFunctionsAndSchemasEntry(name: string, schema: string): void {
+        if (this._functionsAndSchemas[name]) {
+            this._functionsAndSchemas[name].push(schema);
+        } else {
+            this._functionsAndSchemas[name] = [schema];
+        }
     }
 
     private async listFunctions(functionName?: string): Promise<IPostgresProceduresQueryRow[]> {

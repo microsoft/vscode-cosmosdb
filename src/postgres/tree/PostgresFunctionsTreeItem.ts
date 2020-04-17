@@ -20,7 +20,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
     public readonly parent: PostgresDatabaseTreeItem;
     public clientConfig: ClientConfig;
 
-    private _schemasToFunctions: Map<string, Set<string>>; // key: schema, value: function names
+    private _functionsAndSchemas: {}; // Function name to list of schemas
 
     constructor(parent: PostgresDatabaseTreeItem, clientConfig: ClientConfig) {
         super(parent);
@@ -37,28 +37,19 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
 
     public async loadMoreChildrenImpl(): Promise<PostgresFunctionTreeItem[]> {
         const rows: IPostgresProceduresQueryRow[] = await this.listFunctions();
-        const allFunctions: Set<string> = new Set();
-        const duplicateFunctions: Set<string> = new Set();
-        this._schemasToFunctions = new Map();
+        this._functionsAndSchemas = {};
         for (const row of rows) {
-            if (allFunctions.has(row.name)) {
-                duplicateFunctions.add(row.name);
+            if (this._functionsAndSchemas[row.name]) {
+                this._functionsAndSchemas[row.name].push(row.schema);
             } else {
-                allFunctions.add(row.name);
+                this._functionsAndSchemas[row.name] = [row.schema];
             }
-
-            let functionsInSchema: Set<string> | undefined = this._schemasToFunctions.get(row.schema);
-            if (!functionsInSchema) {
-                functionsInSchema = new Set();
-            }
-            functionsInSchema.add(row.name);
-            this._schemasToFunctions.set(row.schema, functionsInSchema);
         }
 
         return rows.map(row => new PostgresFunctionTreeItem(
             this,
             row,
-            duplicateFunctions.has(row.name)
+            this._functionsAndSchemas[row.name].length > 1
         ));
     }
 
@@ -80,13 +71,8 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
             validateInput: value => this.validateFunctionName(value, schema)
         })).trim();
 
-        let isDuplicate: boolean = false;
-        for (const otherSchema of this._schemasToFunctions.keys()) {
-            if (schema !== otherSchema && this._schemasToFunctions.get(otherSchema)?.has(name)) {
-                isDuplicate = true;
-                break;
-            }
-        }
+        const schemasContainingFunction: string[] = this._functionsAndSchemas[name] || [];
+        const isDuplicate: boolean = schemasContainingFunction.length > 1 || (!schemasContainingFunction.includes(schema) && schemasContainingFunction.length === 1);
 
         const definition: string = defaultFunctionDefinition(schema, name);
         return new PostgresFunctionTreeItem(this, { schema, name, definition }, isDuplicate);
@@ -131,7 +117,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
     }
 
     private validateFunctionName(name: string, schema: string): string | undefined {
-        if (this._schemasToFunctions.get(schema)?.has(name)) {
+        if (this._functionsAndSchemas[name] && this._functionsAndSchemas[name].includes(schema)) {
             return localize('functionAlreadyExists', 'A function named "{0}" already exists in schema "{1}".', name, schema);
         }
 

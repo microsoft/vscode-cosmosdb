@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { ClientConfig } from 'pg';
+import { Client, ClientConfig } from 'pg';
 import { ConnectionOptions } from 'tls';
 import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, GenericTreeItem, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -61,6 +61,10 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
                 const host: string = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
                 const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
+
+                // Ensure the client config is valid before continuing
+                const client: Client = new Client(clientConfig);
+                await client.connect();
 
                 const functionsTreeItem = new PostgresFunctionsTreeItem(this, clientConfig);
                 const tablesTreeItem = new PostgresTablesTreeItem(this, clientConfig);

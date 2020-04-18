@@ -10,11 +10,11 @@ import { IPostgresWizardContext } from "./IPostgresWizardContext";
 
 export class PostgresServerConfirmPWStep extends AzureWizardPromptStep<IPostgresWizardContext> {
     public async prompt(wizardContext: IPostgresWizardContext): Promise<void> {
-        const prompt: string = localize('confirmPassphrase', 'Confirm your passphrase');
+        const prompt: string = localize('confirmPW', 'Confirm your password');
         await ext.ui.showInputBox({
             prompt,
             password: true,
-            validateInput: async (value: string | undefined): Promise<string | undefined> => await this.validatePassphrase(wizardContext, value)
+            validateInput: async (value: string | undefined): Promise<string | undefined> => await this.validatePassword(wizardContext, value)
         });
     }
 
@@ -22,9 +22,9 @@ export class PostgresServerConfirmPWStep extends AzureWizardPromptStep<IPostgres
         return !!wizardContext.adminPassword;
     }
 
-    private async validatePassphrase(wizardContext: IPostgresWizardContext, passphrase: string | undefined): Promise<string | undefined> {
+    private async validatePassword(wizardContext: IPostgresWizardContext, passphrase: string | undefined): Promise<string | undefined> {
         if (passphrase !== wizardContext.adminPassword) {
-            return localize('passphraseMatch', 'The passphrases must match.');
+            return localize('pwMatch', 'The passwords must match.');
         }
 
         return undefined;

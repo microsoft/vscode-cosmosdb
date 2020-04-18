@@ -38,7 +38,8 @@ async function validateUser(username: string): Promise<string | undefined> {
     } else if (username.startsWith('pg_')) {
         return localize('usernameStartWithCheck', 'Admin username cannot start with "pg_".');
     } else if (restricted.includes(username)) {
-        return localize('usernameRestrictedCheck', 'Admin username cannot be {0}.', restricted.join(", "));
+        const restrictedString = restricted.map(d => `"${d}"`).join(', ');
+        return localize('usernameRestrictedCheck', 'Admin username cannot be any of the following: {0}.', restrictedString);
     } else {
         return undefined;
     }

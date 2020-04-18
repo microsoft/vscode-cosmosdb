@@ -3,9 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { Client } from "pg";
 import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
 import { getThemeAgnosticIconPath } from "../../constants";
-import { IPostgresFunctionsQueryRow, PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
+import { IPostgresProceduresQueryRow } from "../IPostgresProceduresQueryRow";
+import { PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
 
 export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext> {
     public static contextValue: string = 'postgresFunction';
@@ -18,7 +20,7 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
     public readonly isDuplicate: boolean;
     public definition: string;
 
-    constructor(parent: PostgresFunctionsTreeItem, row: IPostgresFunctionsQueryRow, isDuplicate: boolean) {
+    constructor(parent: PostgresFunctionsTreeItem, row: IPostgresProceduresQueryRow, isDuplicate: boolean) {
         super(parent);
         this.schema = row.schema;
         this.name = row.name;
@@ -37,5 +39,11 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
 
     public get iconPath(): TreeItemIconPath {
         return getThemeAgnosticIconPath('Collection.svg');
+    }
+
+    public async deleteTreeItemImpl(): Promise<void> {
+        const client = new Client(this.parent.clientConfig);
+        await client.connect();
+        await client.query(`DROP FUNCTION ${this.schema}.${this.name};`);
     }
 }

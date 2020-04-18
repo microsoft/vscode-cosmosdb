@@ -53,6 +53,7 @@
         "onCommand:cosmosDB.createDocDBStoredProcedure",
         "onCommand:cosmosDB.createGraphDatabase",
         "onCommand:cosmosDB.createGraph",
+        "onCommand:cosmosDB.createPostgresDatabase",
         "onCommand:cosmosDB.connectMongoDB",
         "onCommand:cosmosDB.deleteMongoDB",
         "onCommand:cosmosDB.deleteMongoCollection",
@@ -72,6 +73,7 @@
         "onCommand:cosmosDB.openDocument",
         "onCommand:cosmosDB.openStoredProcedure",
         "onCommand:cosmosDB.openPostgresFunction",
+        "onCommand:cosmosDB.deletePostgresFunction",
         "onCommand:cosmosDB.openCollection",
         "onCommand:cosmosDB.loadMore",
         "onCommand:cosmosDB.refresh",
@@ -243,6 +245,11 @@
                 "title": "Create Graph..."
             },
             {
+                "category": "PostgreSQL",
+                "command": "cosmosDB.createPostgresDatabase",
+                "title": "Create Database..."
+            },
+            {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.detachDatabaseAccount",
                 "title": "Detach"
@@ -373,6 +380,11 @@
                 "category": "PostgreSQL",
                 "command": "cosmosDB.openPostgresFunction",
                 "title": "Open Function"
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "cosmosDB.deletePostgresFunction",
+                "title": "Delete Function..."
             },
             {
                 "category": "PostgreSQL",
@@ -560,6 +572,10 @@
                     "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
                 },
                 {
+                    "command": "cosmosDB.createPostgresDatabase",
+                    "when": "view == cosmosDBExplorer && viewItem == postgresServer"
+                },
+                {
                     "command": "cosmosDB.detachDatabaseAccount",
                     "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
                 },
@@ -618,6 +634,10 @@
                 {
                     "command": "cosmosDB.deletePostgresTable",
                     "when": "view == cosmosDBExplorer && viewItem == postgresTable"
+                },
+                {
+                    "command": "cosmosDB.deletePostgresFunction",
+                    "when": "view == cosmosDBExplorer && viewItem == postgresFunction"
                 },
                 {
                     "command": "cosmosDB.deleteGraph",

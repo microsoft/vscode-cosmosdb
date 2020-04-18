@@ -6,15 +6,9 @@
 import { Client, ClientConfig, QueryResult } from 'pg';
 import { AzureParentTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
 import { getThemeAgnosticIconPath } from "../../constants";
+import { IPostgresProceduresQueryRow } from '../IPostgresProceduresQueryRow';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionTreeItem } from "./PostgresFunctionTreeItem";
-
-export interface IPostgresFunctionsQueryRow {
-    schema: string;
-    name: string;
-    oid: number;
-    definition: string;
-}
 
 export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = 'postgresFunctions';
@@ -56,7 +50,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
             order by name;`;
 
         const queryResult: QueryResult = await client.query(functionsQuery);
-        const rows: IPostgresFunctionsQueryRow[] = queryResult.rows || [];
+        const rows: IPostgresProceduresQueryRow[] = queryResult.rows || [];
 
         const allNames: Set<string> = new Set();
         const duplicateNames: Set<string> = new Set();

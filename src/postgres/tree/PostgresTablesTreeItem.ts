@@ -35,7 +35,17 @@ export class PostgresTablesTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresTableTreeItem[]> {
         const client = new Client(this.clientConfig);
         const db: Db = await pgStructure(client);
-        return db.tables.map(table => new PostgresTableTreeItem(this, table));
+        const allNames: Set<string> = new Set();
+        const duplicateNames: Set<string> = new Set();
+        for (const table of db.tables) {
+            const tableName = table.name.trim();
+            if (allNames.has(tableName)) {
+                duplicateNames.add(tableName);
+            } else {
+                allNames.add(tableName);
+            }
+        }
+        return db.tables.map(table => new PostgresTableTreeItem(this, table, duplicateNames.has(table.name.trim())));
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {

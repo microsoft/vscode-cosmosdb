@@ -6,6 +6,7 @@
 import { registerCommand } from "vscode-azureextensionui";
 import { doubleClickDebounceDelay } from "../../constants";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";
+import { createPostgresDatabase } from "./createPostgresDatabase";
 import { deletePostgresDatabase } from "./deletePostgresDatabase";
 import { deletePostgresFunction } from "./deletePostgresFunction";
 import { deletePostgresServer } from "./deletePostgresServer";
@@ -17,6 +18,7 @@ export function registerPostgresCommands(): void {
     registerCommand('cosmosDB.deletePostgresServer', deletePostgresServer);
     registerCommand('cosmosDB.enterPostgresCredentials', enterPostgresCredentials);
     registerCommand('cosmosDB.configurePostgresFirewall', configurePostgresFirewall);
+    registerCommand('cosmosDB.createPostgresDatabase', createPostgresDatabase);
     registerCommand('cosmosDB.deletePostgresDatabase', deletePostgresDatabase);
     registerCommand('cosmosDB.deletePostgresTable', deletePostgresTable);
     registerCommand('cosmosDB.openPostgresFunction', openPostgresFunction, doubleClickDebounceDelay);

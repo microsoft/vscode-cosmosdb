@@ -44,7 +44,7 @@ suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
             await vscode.commands.executeCommand('cosmosDB.createGraphDatabase');
         });
         const connectionString: string = await getConnectionString(accountName);
-        const graphClient = new CosmosClient(connectionString);
+        const graphClient: CosmosClient = new CosmosClient(connectionString);
         const listDatabases: (DatabaseDefinition & Resource)[] = (await graphClient.databases.readAll().fetchAll()).resources;
         const databaseExists: (DatabaseDefinition & Resource) | undefined = listDatabases.find((database: DatabaseDefinition & Resource) => database.id === databaseName);
         assert.ok(databaseExists);

@@ -46,6 +46,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
             left join pg_namespace n on p.pronamespace = n.oid
             left join pg_language l on p.prolang = l.oid
             where n.nspname not in ('pg_catalog', 'information_schema')
+                and p.proname not in ('pg_buffercache_pages', 'pg_stat_statements_reset', 'pg_stat_statements')
                 ${this.parent.parent.supportsStoredProcedures() ? "and p.prokind = 'f'" : '' /* Only select functions, not stored procedures */}
             order by name;`;
 

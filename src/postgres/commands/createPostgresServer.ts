@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
 import { AzureWizard, AzureWizardPromptStep, IActionContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
@@ -54,10 +53,10 @@ export async function createPostgresServer(context: IActionContext, node?: Subsc
         user += usernameSuffix;
     }
     const password: string = nonNullProp(wizardContext, 'adminPassword');
-    void serverTree.setCredentials(user, password);
+    await serverTree.setCredentials(user, password);
     if (wizardContext.addFirewall) {
-        const ip: string = await publicIp.v4();
-        void setFirewallRule(serverTree, ip);
+        const ip: string = nonNullProp(wizardContext, 'publicIp');
+        await setFirewallRule(serverTree, ip);
     }
     await node.refresh();
 }

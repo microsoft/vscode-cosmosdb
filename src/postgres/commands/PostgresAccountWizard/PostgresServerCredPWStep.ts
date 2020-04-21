@@ -27,7 +27,7 @@ export class PostgresServerCredPWStep extends AzureWizardPromptStep<IPostgresWiz
 }
 
 async function validatePassword(username: string, password: string): Promise<string | undefined> {
-    password = password ? password.trim() : '';
+    password = password ? password : '';
 
     const min = 8;
     const max = 128;

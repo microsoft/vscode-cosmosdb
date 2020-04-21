@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as publicIp from 'public-ip';
-import { QuickPickItem } from 'vscode';
-import { AzureWizardPromptStep } from 'vscode-azureextensionui';
+import { AzureWizardPromptStep, IAzureQuickPickItem } from 'vscode-azureextensionui';
 import { ext } from '../../../extensionVariables';
 import { localize } from '../../../utils/localize';
 import { IPostgresWizardContext } from './IPostgresWizardContext';
@@ -14,17 +13,21 @@ export class PostgresServerFirewallStep extends AzureWizardPromptStep<IPostgresW
 
     public async prompt(wizardContext: IPostgresWizardContext): Promise<void> {
 
-        const ip: string = await publicIp.v4();
-        const yes: QuickPickItem = { label: localize('addFirewallRule', 'Add firewall rule for IP "{0}"', ip) };
-        const no: QuickPickItem = { label: localize('skipFireWallRule', '$(clock) Skip for now') };
-
         const placeHolder: string = localize('addFirewallForNewServer', 'A firewall rule is required to access this server from your current IP.');
 
-        wizardContext.addFirewall = await ext.ui.showQuickPick([yes, no], { placeHolder }) === yes;
+        wizardContext.addFirewall = (await ext.ui.showQuickPick(this.getPicks(wizardContext), { placeHolder })).data;
 
     }
 
     public shouldPrompt(wizardContext: IPostgresWizardContext): boolean {
         return wizardContext.addFirewall === undefined;
+    }
+
+    public async getPicks(wizardContext: IPostgresWizardContext): Promise<IAzureQuickPickItem<boolean>[]> {
+        wizardContext.publicIp = await publicIp.v4();
+        return [
+            { label: localize('addFirewallRule', 'Add firewall rule for IP "{0}"', wizardContext.publicIp), data: true },
+            { label: localize('skipFireWallRule', '$(clock) Skip for now'), data: false }
+        ];
     }
 }

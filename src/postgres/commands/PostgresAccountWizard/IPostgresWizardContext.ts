@@ -13,6 +13,8 @@ export interface IPostgresWizardContext extends IResourceGroupWizardContext {
 
     adminUser?: string;
     adminPassword?: string;
+
     addFirewall?: boolean;
+    publicIp?: string;
 
 }

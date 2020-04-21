@@ -6,6 +6,7 @@
 export interface IPostgresProceduresQueryRow {
     schema: string;
     name: string;
+    args: string;
     oid: number;
     definition: string;
 }

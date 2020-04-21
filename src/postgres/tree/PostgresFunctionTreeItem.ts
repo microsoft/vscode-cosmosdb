@@ -16,6 +16,7 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
     public readonly parent: PostgresFunctionsTreeItem;
     public readonly schema: string;
     public readonly name: string;
+    public readonly args: string;
     public readonly id: string;
     public readonly isDuplicate: boolean;
     public definition: string;
@@ -24,13 +25,14 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
         super(parent);
         this.schema = row.schema;
         this.name = row.name;
+        this.args = row.args;
         this.id = String(row.oid);
         this.definition = row.definition;
         this.isDuplicate = isDuplicate;
     }
 
     public get label(): string {
-        return this.name;
+        return `${this.name}(${this.args})`;
     }
 
     public get description(): string | undefined {

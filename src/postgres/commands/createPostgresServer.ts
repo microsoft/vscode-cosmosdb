@@ -10,7 +10,6 @@ import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
-import { setFirewallRule } from './configurePostgresFirewall';
 import { IPostgresWizardContext } from './PostgresAccountWizard/IPostgresWizardContext';
 import { PostgresServerConfirmPWStep } from './PostgresAccountWizard/PostgresServerConfirmPWStep';
 import { PostgresServerCreateStep } from './PostgresAccountWizard/PostgresServerCreateStep';
@@ -18,12 +17,15 @@ import { PostgresServerCredPWStep } from './PostgresAccountWizard/PostgresServer
 import { PostgresServerCredUserStep } from './PostgresAccountWizard/PostgresServerCredUserStep';
 import { PostgresServerFirewallStep } from './PostgresAccountWizard/PostgresServerFirewallStep';
 import { PostgresServerNameStep } from './PostgresAccountWizard/PostgresServerNameStep';
+import { PostgresServerSetCredentialsStep } from './PostgresAccountWizard/PostgresServerSetCredentialsStep';
+import { PostgresServerSetFirewallStep } from './PostgresAccountWizard/PostgresServerSetFirewallStep';
 
 export async function createPostgresServer(context: IActionContext, node?: SubscriptionTreeItem): Promise<void> {
     if (!node) {
         node = await ext.tree.showTreeItemPicker<SubscriptionTreeItem>(SubscriptionTreeItem.contextValue, context);
     }
     const wizardContext: IPostgresWizardContext = Object.assign(context, node.root);
+    wizardContext.subscriptonTreeItem = node;
     const promptSteps: AzureWizardPromptStep<ILocationWizardContext>[] = [
         new PostgresServerNameStep(),
         new ResourceGroupListStep(),
@@ -37,26 +39,19 @@ export async function createPostgresServer(context: IActionContext, node?: Subsc
     const wizard = new AzureWizard(wizardContext, {
         promptSteps,
         executeSteps: [
-            new PostgresServerCreateStep()
+            new PostgresServerCreateStep(),
+            new PostgresServerSetCredentialsStep(),
+            new PostgresServerSetFirewallStep()
         ],
         title: localize('createPostgresServerPrompt', 'Create new PostgreSQL server')
     });
     await wizard.prompt();
-    const serverName: string = nonNullProp(wizardContext, 'newServerName');
     await wizard.execute();
 
     vscode.window.showInformationMessage(localize('createdServerMsg', 'Successfully created server "{0}".', wizardContext.newServerName));
-    const serverTree: PostgresServerTreeItem = new PostgresServerTreeItem(node, nonNullProp(wizardContext, 'server'));
-    let user: string = nonNullProp(wizardContext, 'adminUser');
-    const usernameSuffix: string = `@${serverName}`;
-    if (!user.includes(usernameSuffix)) {
-        user += usernameSuffix;
-    }
-    const password: string = nonNullProp(wizardContext, 'adminPassword');
-    await serverTree.setCredentials(user, password);
-    if (wizardContext.addFirewall) {
-        const ip: string = nonNullProp(wizardContext, 'publicIp');
-        await setFirewallRule(serverTree, ip);
-    }
+    const serverTreeItem = new PostgresServerTreeItem(node, nonNullProp(wizardContext, 'server'));
+
+    await serverTreeItem.refresh();
+
     await node.refresh();
 }

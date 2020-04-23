@@ -11,7 +11,7 @@ import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ICreateChildImpl
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
-import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
+import { KeyTar } from '../../utils/keytar';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
@@ -39,7 +39,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     constructor(parent: AzureParentTreeItem, server: Server) {
         super(parent);
         this.server = server;
-        this._keytar = tryGetKeyTar();
+        this._keytar = ext.keytar;
         this._serverId = nonNullProp(this.server, 'id');
         this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
     }

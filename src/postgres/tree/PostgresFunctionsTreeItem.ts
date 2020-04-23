@@ -39,7 +39,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
         const rows: IPostgresProceduresQueryRow[] = await this.listFunctions();
         this._functionsAndSchemas = {};
         for (const row of rows) {
-            this.addFunctionsAndSchemasEntry(row.name, row.schema);
+            this.parent.addResourceAndSchemasEntry(this._functionsAndSchemas, row.name, row.schema);
         }
 
         return rows.map(row => new PostgresFunctionTreeItem(
@@ -100,6 +100,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
             left join pg_namespace n on p.pronamespace = n.oid
             left join pg_language l on p.prolang = l.oid
             where n.nspname not in ('pg_catalog', 'information_schema')
+                and p.proname not in ('pg_buffercache_pages', 'pg_stat_statements_reset', 'pg_stat_statements')
                 ${this.parent.parent.supportsStoredProcedures() ? "and p.prokind = 'f'" : '' /* Only select functions, not stored procedures */}
                 ${functionName ? `and p.proname = '${functionName}'` : '' /* Only select functions that match the given name (if provided) */}
             order by name;`;

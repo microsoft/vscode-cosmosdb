@@ -12,7 +12,7 @@
         "color": "#3c3c3c",
         "theme": "dark"
     },
-    "icon": "resources/cosmos.png",
+    "icon": "resources/databases.png",
     "categories": [
         "Azure"
     ],
@@ -903,6 +903,7 @@
         "all": "npm i && npm run lint && npm test"
     },
     "devDependencies": {
+        "@azure/cosmos": "^3.6.3",
         "@types/documentdb": "^1.10.2",
         "@types/fs-extra": "^8.1.0",
         "@types/keytar": "4.0.1",

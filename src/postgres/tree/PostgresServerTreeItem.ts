@@ -32,7 +32,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public readonly server: Server;
     public resourceGroup: string;
 
-    private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.postgresPasswords";
+    private readonly _serviceName: string = "ms-azuretools.vscode-azuredatabases.postgresPasswords";
     private _keytar: KeyTar | undefined;
     private _serverId: string;
 

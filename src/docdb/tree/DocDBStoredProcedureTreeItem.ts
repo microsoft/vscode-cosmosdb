@@ -16,7 +16,7 @@ import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
     public static contextValue: string = "cosmosDBStoredProcedure";
     public readonly contextValue: string = DocDBStoredProcedureTreeItem.contextValue;
-    public readonly commandId: string = 'cosmosDB.openStoredProcedure';
+    public readonly commandId: string = 'azureDatabases.openStoredProcedure';
 
     constructor(parent: DocDBStoredProceduresTreeItem, public procedure: ProcedureMeta) {
         super(parent);

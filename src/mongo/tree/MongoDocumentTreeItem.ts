@@ -23,7 +23,7 @@ export interface IMongoDocument {
 export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
     public static contextValue: string = "MongoDocument";
     public readonly contextValue: string = MongoDocumentTreeItem.contextValue;
-    public readonly commandId: string = 'cosmosDB.openDocument';
+    public readonly commandId: string = 'azureDatabases.openDocument';
     public document: IMongoDocument;
     public readonly parent: MongoCollectionTreeItem;
 

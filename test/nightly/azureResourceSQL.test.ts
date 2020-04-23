@@ -35,7 +35,7 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
     test('Create SQL account', async () => {
         const testInputs: (string | RegExp)[] = [accountName, /SQL/, '$(plus) Create new resource group', resourceGroupName, 'West US'];
         await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createAccount');
+            await vscode.commands.executeCommand('azureDatabases.createAccount');
         });
         const getAccount: CosmosDBManagementModels.DatabaseAccount | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
         assert.ok(getAccount);
@@ -47,7 +47,7 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         const partitionKey1: string = `f${randomUtils.getRandomHexString(12)}`;
         const testInputs: (string | RegExp)[] = [`${accountName} (SQL)`, databaseName, collectionId1, partitionKey1, '1000'];
         await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createDocDBDatabase');
+            await vscode.commands.executeCommand('azureDatabases.createDocDBDatabase');
         });
         assert.ok(await getDatabaseMeta());
     });
@@ -57,7 +57,7 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         const partitionKey2: string = `f${randomUtils.getRandomHexString(12)}`;
         const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (SQL)`, databaseName, collectionId2, partitionKey2, '1000'];
         await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createDocDBCollection');
+            await vscode.commands.executeCommand('azureDatabases.createDocDBCollection');
         });
         assert.ok(await getDocDBCollectionMeta(accountName, databaseName, collectionId2));
     });
@@ -66,7 +66,7 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         assert.ok(await getDocDBCollectionMeta(accountName, databaseName, collectionId2));
         const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (SQL)`, databaseName, collectionId2, DialogResponses.deleteResponse.title];
         await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteDocDBCollection');
+            await vscode.commands.executeCommand('azureDatabases.deleteDocDBCollection');
         });
         assert.ifError(await getDocDBCollectionMeta(accountName, databaseName, collectionId2));
     });
@@ -75,7 +75,7 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         assert.ok(await getDatabaseMeta());
         const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (SQL)`, databaseName, DialogResponses.deleteResponse.title];
         await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteDocDBDatabase');
+            await vscode.commands.executeCommand('azureDatabases.deleteDocDBDatabase');
         });
         assert.ifError(await getDatabaseMeta());
     });
@@ -85,7 +85,7 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         assert.ok(SQLAccount);
         const testInputs: string[] = [`${accountName} (SQL)`, DialogResponses.deleteResponse.title];
         await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteAccount');
+            await vscode.commands.executeCommand('azureDatabases.deleteAccount');
         });
         const listAccounts: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupName);
         const accountExists: CosmosDBManagementModels.DatabaseAccount | undefined = listAccounts.find((account: CosmosDBManagementModels.DatabaseAccount) => account.name === accountName);

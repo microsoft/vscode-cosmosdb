@@ -17,7 +17,7 @@ import { DocDBStoredProceduresTreeItem } from "./tree/DocDBStoredProceduresTreeI
 import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
 
 export function registerDocDBCommands(): void {
-    registerCommand('cosmosDB.createDocDBDatabase', async (context: IActionContext, node?: DocDBAccountTreeItem) => {
+    registerCommand('azureDatabases.createDocDBDatabase', async (context: IActionContext, node?: DocDBAccountTreeItem) => {
         if (!node) {
             node = <DocDBAccountTreeItem>await ext.tree.showTreeItemPicker(DocDBAccountTreeItem.contextValue, context);
         }
@@ -26,50 +26,50 @@ export function registerDocDBCommands(): void {
         const collectionNode: DocDBCollectionTreeItem = <DocDBCollectionTreeItem>await databaseNode.createChild(context);
         await ext.treeView.reveal(collectionNode);
     });
-    registerCommand('cosmosDB.createDocDBCollection', async (context: IActionContext, node?: DocDBDatabaseTreeItem) => {
+    registerCommand('azureDatabases.createDocDBCollection', async (context: IActionContext, node?: DocDBDatabaseTreeItem) => {
         if (!node) {
             node = <DocDBDatabaseTreeItem>await ext.tree.showTreeItemPicker(DocDBDatabaseTreeItem.contextValue, context);
         }
         const collectionNode: DocDBCollectionTreeItem = <DocDBCollectionTreeItem>await node.createChild(context);
         await ext.treeView.reveal(collectionNode);
     });
-    registerCommand('cosmosDB.createDocDBDocument', async (context: IActionContext, node?: DocDBDocumentsTreeItem) => {
+    registerCommand('azureDatabases.createDocDBDocument', async (context: IActionContext, node?: DocDBDocumentsTreeItem) => {
         if (!node) {
             node = <DocDBDocumentsTreeItem>await ext.tree.showTreeItemPicker(DocDBDocumentsTreeItem.contextValue, context);
         }
         const documentNode = <DocDBDocumentTreeItem>await node.createChild(context);
         await ext.treeView.reveal(documentNode);
-        await commands.executeCommand("cosmosDB.openDocument", documentNode);
+        await commands.executeCommand("azureDatabases.openDocument", documentNode);
 
     });
-    registerCommand('cosmosDB.createDocDBStoredProcedure', async (context: IActionContext, node?: DocDBStoredProceduresTreeItem) => {
+    registerCommand('azureDatabases.createDocDBStoredProcedure', async (context: IActionContext, node?: DocDBStoredProceduresTreeItem) => {
         if (!node) {
             node = <DocDBStoredProceduresTreeItem>await ext.tree.showTreeItemPicker(DocDBStoredProceduresTreeItem.contextValue, context);
         }
         const childNode = await node.createChild(context);
-        await commands.executeCommand("cosmosDB.openStoredProcedure", childNode);
+        await commands.executeCommand("azureDatabases.openStoredProcedure", childNode);
 
     });
-    registerCommand('cosmosDB.deleteDocDBDatabase', async (context: IActionContext, node?: DocDBDatabaseTreeItem) => {
+    registerCommand('azureDatabases.deleteDocDBDatabase', async (context: IActionContext, node?: DocDBDatabaseTreeItem) => {
         if (!node) {
             node = <DocDBDatabaseTreeItem>await ext.tree.showTreeItemPicker(DocDBDatabaseTreeItem.contextValue, context);
         }
         await node.deleteTreeItem(context);
     });
-    registerCommand('cosmosDB.deleteDocDBCollection', async (context: IActionContext, node?: DocDBCollectionTreeItem) => {
+    registerCommand('azureDatabases.deleteDocDBCollection', async (context: IActionContext, node?: DocDBCollectionTreeItem) => {
         if (!node) {
             node = <DocDBCollectionTreeItem>await ext.tree.showTreeItemPicker(DocDBCollectionTreeItem.contextValue, context);
         }
         await node.deleteTreeItem(context);
     });
-    registerCommand('cosmosDB.openStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
+    registerCommand('azureDatabases.openStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
         if (!node) {
             node = <DocDBStoredProcedureTreeItem>await ext.tree.showTreeItemPicker([DocDBStoredProcedureTreeItem.contextValue], context);
         }
         await ext.editorManager.showDocument(context, new DocDBStoredProcedureNodeEditor(node), node.label + '-cosmos-stored-procedure.js');
         // tslint:disable-next-line:align
     }, doubleClickDebounceDelay);
-    registerCommand('cosmosDB.deleteDocDBDocument', async (context: IActionContext, node?: DocDBDocumentTreeItem) => {
+    registerCommand('azureDatabases.deleteDocDBDocument', async (context: IActionContext, node?: DocDBDocumentTreeItem) => {
         if (!node) {
             node = <DocDBDocumentTreeItem>await ext.tree.showTreeItemPicker(DocDBDocumentTreeItem.contextValue, context);
         }

@@ -17,7 +17,7 @@ import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
     public static contextValue: string = "cosmosDBDocument";
     public readonly contextValue: string = DocDBDocumentTreeItem.contextValue;
-    public readonly commandId: string = 'cosmosDB.openDocument';
+    public readonly commandId: string = 'azureDatabases.openDocument';
     public readonly parent: DocDBDocumentsTreeItem;
 
     private readonly _partitionKeyValue: string | undefined | Object;

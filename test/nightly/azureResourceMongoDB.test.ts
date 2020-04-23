@@ -37,7 +37,7 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
     test('Create MongoDB account', async () => {
         const testInputs: (string | RegExp)[] = [accountName, /MongoDB/, '$(plus) Create new resource group', resourceGroupName, 'West US'];
         await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createAccount');
+            await vscode.commands.executeCommand('azureDatabases.createAccount');
         });
         const createAccount: CosmosDBManagementModels.DatabaseAccount | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
         assert.ok(createAccount);
@@ -47,7 +47,7 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
         const collectionName2: string = randomUtils.getRandomHexString(12);
         const testInputs: string[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (MongoDB)`, databaseName1, collectionName2];
         await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createMongoDatabase');
+            await vscode.commands.executeCommand('azureDatabases.createMongoDatabase');
         });
         assert.ok(await doesMongoDatabaseExist(accountName, databaseName1));
     });
@@ -55,7 +55,7 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
     test('Create Mongo Collection', async () => {
         const testInputs: string[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (MongoDB)`, '$(plus) Create new Database...', databaseName2, collectionName1];
         await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createMongoCollection');
+            await vscode.commands.executeCommand('azureDatabases.createMongoCollection');
         });
         assert.ok(await doesMongoCollectionExist(accountName, databaseName2, collectionName1));
     });
@@ -64,7 +64,7 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
         assert.ok(await doesMongoCollectionExist(accountName, databaseName2, collectionName1));
         const testInputs: string[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (MongoDB)`, databaseName2, collectionName1, DialogResponses.deleteResponse.title];
         await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteMongoCollection');
+            await vscode.commands.executeCommand('azureDatabases.deleteMongoCollection');
         });
         const mongoCollection: Collection | undefined = await doesMongoCollectionExist(accountName, databaseName2, collectionName1);
         assert.ifError(mongoCollection);
@@ -74,7 +74,7 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
         assert.ok(await doesMongoDatabaseExist(accountName, databaseName1));
         const testInputs: string[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (MongoDB)`, databaseName1, DialogResponses.deleteResponse.title];
         await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteMongoDB');
+            await vscode.commands.executeCommand('azureDatabases.deleteMongoDB');
         });
         const mongoDatabase: IDatabaseInfo | undefined = await doesMongoDatabaseExist(accountName, databaseName1);
         assert.ifError(mongoDatabase);
@@ -85,7 +85,7 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
         assert.ok(mongoAccount);
         const testInputs: string[] = [`${accountName} (MongoDB)`, DialogResponses.deleteResponse.title];
         await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteAccount');
+            await vscode.commands.executeCommand('azureDatabases.deleteAccount');
         });
         const listAccounts: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupName);
         const accountExists: CosmosDBManagementModels.DatabaseAccount | undefined = listAccounts.find((account: CosmosDBManagementModels.DatabaseAccount) => account.name === accountName);

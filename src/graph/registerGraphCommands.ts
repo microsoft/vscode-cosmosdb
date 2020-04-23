@@ -12,31 +12,31 @@ import { GraphDatabaseTreeItem } from "./tree/GraphDatabaseTreeItem";
 import { GraphTreeItem } from "./tree/GraphTreeItem";
 
 export function registerGraphCommands(): void {
-    registerCommand('cosmosDB.createGraphDatabase', async (context: IActionContext, node?: GraphAccountTreeItem) => {
+    registerCommand('azureDatabases.createGraphDatabase', async (context: IActionContext, node?: GraphAccountTreeItem) => {
         if (!node) {
             node = <GraphAccountTreeItem>await ext.tree.showTreeItemPicker(GraphAccountTreeItem.contextValue, context);
         }
         await node.createChild(context);
     });
-    registerCommand('cosmosDB.createGraph', async (context: IActionContext, node?: GraphDatabaseTreeItem) => {
+    registerCommand('azureDatabases.createGraph', async (context: IActionContext, node?: GraphDatabaseTreeItem) => {
         if (!node) {
             node = <GraphDatabaseTreeItem>await ext.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
         }
         await node.createChild(context);
     });
-    registerCommand('cosmosDB.deleteGraphDatabase', async (context: IActionContext, node?: GraphDatabaseTreeItem) => {
+    registerCommand('azureDatabases.deleteGraphDatabase', async (context: IActionContext, node?: GraphDatabaseTreeItem) => {
         if (!node) {
             node = <GraphDatabaseTreeItem>await ext.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
         }
         await node.deleteTreeItem(context);
     });
-    registerCommand('cosmosDB.deleteGraph', async (context: IActionContext, node?: GraphCollectionTreeItem) => {
+    registerCommand('azureDatabases.deleteGraph', async (context: IActionContext, node?: GraphCollectionTreeItem) => {
         if (!node) {
             node = <GraphCollectionTreeItem>await ext.tree.showTreeItemPicker(GraphCollectionTreeItem.contextValue, context);
         }
         await node.deleteTreeItem(context);
     });
-    registerCommand('cosmosDB.openGraphExplorer', async (context: IActionContext, node: GraphTreeItem) => {
+    registerCommand('azureDatabases.openGraphExplorer', async (context: IActionContext, node: GraphTreeItem) => {
         if (!node) {
             node = <GraphTreeItem>await ext.tree.showTreeItemPicker(GraphTreeItem.contextValue, context);
         }

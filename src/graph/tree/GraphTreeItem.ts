@@ -19,7 +19,7 @@ import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
     public static contextValue: string = "cosmosDBGraphGraph";
     public readonly contextValue: string = GraphTreeItem.contextValue;
-    public readonly commandId: string = 'cosmosDB.openGraphExplorer';
+    public readonly commandId: string = 'azureDatabases.openGraphExplorer';
     public readonly parent: GraphCollectionTreeItem;
 
     private readonly _collection: CollectionMeta;

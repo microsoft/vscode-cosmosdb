@@ -40,7 +40,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
                         isConnected ?
                             `Connected to ${database}` :
                             `Connect to a database`,
-                    command: isInitialized && 'cosmosDB.connectMongoDB'
+                    command: isInitialized && 'azureDatabases.connectMongoDB'
                 },
                 range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0))
             });
@@ -50,7 +50,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
                 lenses.push(<vscode.CodeLens>{
                     command: {
                         title: "Execute All",
-                        command: 'cosmosDB.executeAllMongoCommands'
+                        command: 'azureDatabases.executeAllMongoCommands'
                     },
                     range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0))
                 });
@@ -61,7 +61,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
                     lenses.push(<vscode.CodeLens>{
                         command: {
                             title: "Execute",
-                            command: 'cosmosDB.executeMongoCommand',
+                            command: 'azureDatabases.executeMongoCommand',
                             arguments: [cmd.text]
                         },
                         range: cmd.range

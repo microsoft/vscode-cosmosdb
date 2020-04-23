@@ -9,7 +9,7 @@ import { testUserInput } from '../global.test';
 export async function getConnectionString(accountName: string): Promise<string> {
     await vscode.env.clipboard.writeText('');
     await testUserInput.runWithInputs([new RegExp(accountName)], async () => {
-        await vscode.commands.executeCommand('cosmosDB.copyConnectionString');
+        await vscode.commands.executeCommand('azureDatabases.copyConnectionString');
     });
     return await vscode.env.clipboard.readText();
 }

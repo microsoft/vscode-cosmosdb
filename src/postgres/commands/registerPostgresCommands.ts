@@ -15,12 +15,12 @@ import { enterPostgresCredentials } from "./enterPostgresCredentials";
 import { openPostgresFunction } from "./openPostgresFunction";
 
 export function registerPostgresCommands(): void {
-    registerCommand('cosmosDB.deletePostgresServer', deletePostgresServer);
-    registerCommand('cosmosDB.enterPostgresCredentials', enterPostgresCredentials);
-    registerCommand('cosmosDB.configurePostgresFirewall', configurePostgresFirewall);
-    registerCommand('cosmosDB.createPostgresDatabase', createPostgresDatabase);
-    registerCommand('cosmosDB.deletePostgresDatabase', deletePostgresDatabase);
-    registerCommand('cosmosDB.deletePostgresTable', deletePostgresTable);
-    registerCommand('cosmosDB.openPostgresFunction', openPostgresFunction, doubleClickDebounceDelay);
-    registerCommand('cosmosDB.deletePostgresFunction', deletePostgresFunction);
+    registerCommand('azureDatabases.deletePostgresServer', deletePostgresServer);
+    registerCommand('azureDatabases.enterPostgresCredentials', enterPostgresCredentials);
+    registerCommand('azureDatabases.configurePostgresFirewall', configurePostgresFirewall);
+    registerCommand('azureDatabases.createPostgresDatabase', createPostgresDatabase);
+    registerCommand('azureDatabases.deletePostgresDatabase', deletePostgresDatabase);
+    registerCommand('azureDatabases.deletePostgresTable', deletePostgresTable);
+    registerCommand('azureDatabases.openPostgresFunction', openPostgresFunction, doubleClickDebounceDelay);
+    registerCommand('azureDatabases.deletePostgresFunction', deletePostgresFunction);
 }

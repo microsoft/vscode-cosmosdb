@@ -80,7 +80,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                     const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
                         contextValue: 'postgresFirewall',
                         label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
-                        commandId: 'cosmosDB.configurePostgresFirewall'
+                        commandId: 'azureDatabases.configurePostgresFirewall'
                     });
                     firewallTreeItem.commandArgs = [this.parent];
                     return [firewallTreeItem];
@@ -93,7 +93,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         const credentialsTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
             contextValue: 'postgresCredentials',
             label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
-            commandId: 'cosmosDB.enterPostgresCredentials'
+            commandId: 'azureDatabases.enterPostgresCredentials'
         });
         credentialsTreeItem.commandArgs = [this.parent];
         return [credentialsTreeItem];

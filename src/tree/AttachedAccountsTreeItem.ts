@@ -100,7 +100,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         return attachedAccounts.length > 0 ? attachedAccounts : [new GenericTreeItem(this, {
             contextValue: 'cosmosDBAttachDatabaseAccount',
             label: 'Attach Database Account...',
-            commandId: 'cosmosDB.attachDatabaseAccount',
+            commandId: 'azureDatabases.attachDatabaseAccount',
             includeInTreeItemPicker: true
         })];
     }

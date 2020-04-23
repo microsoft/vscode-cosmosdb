@@ -23,12 +23,9 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
         super(parent);
         this.schema = row.schema;
         this.name = row.name;
+        this.id = String(row.oid);
         this.definition = row.definition;
         this.isDuplicate = isDuplicate;
-    }
-
-    public get id(): string {
-        return `${this.schema}.${this.name}`;
     }
 
     public get label(): string {

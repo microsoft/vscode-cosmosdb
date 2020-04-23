@@ -67,23 +67,31 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
             validateInput: value => this.validateFunctionName(value, schema)
         })).trim();
 
-        this.addFunctionsAndSchemasEntry(name, schema);
+        this.parent.addResourceAndSchemasEntry(this._functionsAndSchemas, name, schema);
 
-        const definition: string = defaultFunctionDefinition(schema, name);
+        const definition: string = defaultFunctionQuery(schema, name);
+        const client = new Client(this.clientConfig);
+        await client.connect();
+        await client.query(definition);
+
+        const rowsMatchingFunctionName: IPostgresProceduresQueryRow[] = await this.listFunctions(name);
+        let oid: number | undefined;
+        for (const row of rowsMatchingFunctionName) {
+            if (row.schema === schema) {
+                oid = row.oid;
+            }
+        }
+
+        if (!oid) {
+            throw new Error(localize('functionNotFound', 'Function "{0}" could not be found on server.', name));
+        }
+
         const isDuplicate: boolean = this._functionsAndSchemas[name].length > 1;
-        return new PostgresFunctionTreeItem(this, { schema, name, definition }, isDuplicate);
+        return new PostgresFunctionTreeItem(this, { schema, name, oid, definition }, isDuplicate);
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {
         return contextValue === PostgresFunctionTreeItem.contextValue;
-    }
-
-    private addFunctionsAndSchemasEntry(name: string, schema: string): void {
-        if (this._functionsAndSchemas[name]) {
-            this._functionsAndSchemas[name].push(schema);
-        } else {
-            this._functionsAndSchemas[name] = [schema];
-        }
     }
 
     private async listFunctions(functionName?: string): Promise<IPostgresProceduresQueryRow[]> {
@@ -93,6 +101,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
         // Adapted from https://aka.ms/AA83fg8
         const functionsQuery: string = `select n.nspname as schema,
             p.proname as name,
+            p.oid as oid,
             case when l.lanname = 'internal' then p.prosrc
                 else pg_get_functiondef(p.oid)
                 end as definition
@@ -130,8 +139,8 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
     }
 }
 
-const defaultFunctionDefinition = (schema: string, name: string) => `CREATE OR REPLACE FUNCTION ${schema}.${name}()
- RETURNS <return type>
+const defaultFunctionQuery = (schema: string, name: string) => `CREATE OR REPLACE FUNCTION ${schema}.${name}()
+ RETURNS void
  LANGUAGE plpgsql
 AS $function$
 	BEGIN

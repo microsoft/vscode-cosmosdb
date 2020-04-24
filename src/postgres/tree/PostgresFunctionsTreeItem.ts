@@ -18,6 +18,8 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
     public readonly parent: PostgresDatabaseTreeItem;
     public clientConfig: ClientConfig;
 
+    private _functionsAndSchemas: { [key: string]: string[] }; // Function name to list of schemas
+
     constructor(parent: PostgresDatabaseTreeItem, clientConfig: ClientConfig) {
         super(parent);
         this.clientConfig = clientConfig;
@@ -46,26 +48,22 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
             left join pg_namespace n on p.pronamespace = n.oid
             left join pg_language l on p.prolang = l.oid
             where n.nspname not in ('pg_catalog', 'information_schema')
+                and p.proname not in ('pg_buffercache_pages', 'pg_stat_statements_reset', 'pg_stat_statements')
                 ${this.parent.parent.supportsStoredProcedures() ? "and p.prokind = 'f'" : '' /* Only select functions, not stored procedures */}
             order by name;`;
 
         const queryResult: QueryResult = await client.query(functionsQuery);
         const rows: IPostgresProceduresQueryRow[] = queryResult.rows || [];
 
-        const allNames: Set<string> = new Set();
-        const duplicateNames: Set<string> = new Set();
+        this._functionsAndSchemas = {};
         for (const row of rows) {
-            if (allNames.has(row.name)) {
-                duplicateNames.add(row.name);
-            } else {
-                allNames.add(row.name);
-            }
+            this.parent.addResourceAndSchemasEntry(this._functionsAndSchemas, row.name, row.schema);
         }
 
         return rows.map(row => new PostgresFunctionTreeItem(
             this,
             row,
-            duplicateNames.has(row.name)
+            this._functionsAndSchemas[row.name].length > 1
         ));
     }
 

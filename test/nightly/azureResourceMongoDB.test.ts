@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { appendExtensionUserAgent, connectToMongoClient, DialogResponses, IDatabaseInfo, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
-import { client, resourceGroupsToDelete, testAccount } from './global.resource.test';
+import { accountList, api, client, resourceGrouList, resourceGroupsToDelete, testAccount } from './global.resource.test';
 
 suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(20 * 60 * 1000);
@@ -25,22 +25,12 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
             this.skip();
         }
         this.timeout(2 * 60 * 1000);
-        resourceGroupName = randomUtils.getRandomHexString(12);
-        // Cosmos DB account must have lower case name
-        accountName = randomUtils.getRandomHexString(12).toLowerCase();
+        resourceGroupName = resourceGrouList[api.MongoDB] === undefined ? '' : resourceGrouList[api.MongoDB];
+        accountName = accountList[api.MongoDB] === undefined ? '' : accountList[api.MongoDB];
         databaseName1 = randomUtils.getRandomHexString(12);
         databaseName2 = randomUtils.getRandomHexString(12);
         collectionName1 = randomUtils.getRandomHexString(12);
         resourceGroupsToDelete.push(resourceGroupName);
-    });
-
-    test('Create MongoDB account', async () => {
-        const testInputs: (string | RegExp)[] = [accountName, /MongoDB/, '$(plus) Create new resource group', resourceGroupName, 'West US'];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createAccount');
-        });
-        const createAccount: CosmosDBManagementModels.DatabaseAccount | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
-        assert.ok(createAccount);
     });
 
     test('Create Mongo Database', async () => {

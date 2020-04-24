@@ -13,6 +13,13 @@ import { longRunningTestsEnabled } from '../global.test';
 export let testAccount: TestAzureAccount;
 export let client: CosmosDBManagementClient;
 export const resourceGroupsToDelete: string[] = [];
+export const accountList: {} = {};
+export const resourceGrouList: {} = {};
+export enum api {
+    MongoDB = 'MongoDB',
+    Graph = 'graph',
+    Core = 'SQL'
+}
 
 suiteSetup(async function (this: Mocha.Context): Promise<void> {
     if (longRunningTestsEnabled) {

@@ -27,12 +27,11 @@ export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPo
 
         const password: string = nonNullProp(wizardContext, 'adminPassword');
         const server: Server = nonNullProp(wizardContext, 'server');
-        wizardContext.addedCredentials = true;
 
         await setPostgresCredentials(user, password, nonNullProp(server, 'id'));
     }
 
-    public shouldExecute(wizardContext: IPostgresWizardContext): boolean {
-        return wizardContext.addedCredentials === undefined;
+    public shouldExecute(): boolean {
+        return true;
     }
 }

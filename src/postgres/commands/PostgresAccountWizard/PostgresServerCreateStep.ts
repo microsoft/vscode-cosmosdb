@@ -22,6 +22,8 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresWi
         const user: string = nonNullProp(wizardContext, 'adminUser');
         const password: string = nonNullProp(wizardContext, 'adminPassword');
 
+        wizardContext.newResourceGroupName = rgName;
+
         return await callWithMaskHandling(
             async () => {
                 const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);

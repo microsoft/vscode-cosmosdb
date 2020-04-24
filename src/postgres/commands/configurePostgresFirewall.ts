@@ -3,16 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import PostgreSQLManagementClient from "azure-arm-postgresql";
-import { FirewallRule } from "azure-arm-postgresql/lib/models";
 import * as publicIp from 'public-ip';
-import * as vscode from 'vscode';
-import { createAzureClient, DialogResponses, IActionContext } from "vscode-azureextensionui";
+import { AzureWizard, DialogResponses, IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { azureUtils } from "../../utils/azureUtils";
 import { localize } from "../../utils/localize";
-import { nonNullProp } from "../../utils/nonNull";
 import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
+import { IPostgresWizardContext } from "./PostgresAccountWizard/IPostgresWizardContext";
+import { PostgresServerSetFirewallStep } from "./PostgresAccountWizard/PostgresServerSetFirewallStep";
 
 export async function configurePostgresFirewall(context: IActionContext, treeItem?: PostgresServerTreeItem): Promise<void> {
     if (!treeItem) {
@@ -25,31 +23,18 @@ export async function configurePostgresFirewall(context: IActionContext, treeIte
         { modal: true },
         { title: DialogResponses.yes.title }
     );
+    const wizardContext: IPostgresWizardContext = Object.assign(context, treeItem.root);
+    wizardContext.newResourceGroupName = azureUtils.getResourceGroupFromId(treeItem.id);
+    wizardContext.publicIp = await publicIp.v4();
+    wizardContext.server = treeItem.server;
+    wizardContext.addFirewall = true;
 
-    await setFirewallRule(treeItem, ip);
-
-}
-
-export async function setFirewallRule(treeItem: PostgresServerTreeItem, ip: string): Promise<void> {
-
-    const client: PostgreSQLManagementClient = createAzureClient(treeItem.root, PostgreSQLManagementClient);
-    const resourceGroup: string = azureUtils.getResourceGroupFromId(treeItem.id);
-    const serverName: string = nonNullProp(treeItem.server, 'name');
-    const firewallRuleName: string = "azureDatabasesForVSCode-publicIp";
-
-    const newFirewallRule: FirewallRule = {
-        startIpAddress: ip,
-        endIpAddress: ip
-    };
-
-    const options: vscode.ProgressOptions = {
-        location: vscode.ProgressLocation.Notification,
-        title: localize('configuringFirewall', 'Adding firewall rule for IP "{0}" to server "{1}"...', ip, serverName)
-    };
-
-    await vscode.window.withProgress(options, async () => {
-        await client.firewallRules.createOrUpdate(resourceGroup, serverName, firewallRuleName, newFirewallRule);
+    const wizard = new AzureWizard(wizardContext, {
+        executeSteps: [
+            new PostgresServerSetFirewallStep()
+        ],
+        title: localize('addFirewallRule', 'Add Firewall Rule')
     });
-
+    await wizard.execute();
     await treeItem.refresh();
 }

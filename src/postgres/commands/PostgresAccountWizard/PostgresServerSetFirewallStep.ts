@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { FirewallRule } from 'azure-arm-postgresql/lib/models';
+import { FirewallRule, Server } from 'azure-arm-postgresql/lib/models';
+import * as vscode from 'vscode';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, createAzureClient } from 'vscode-azureextensionui';
-import { SubscriptionTreeItem } from '../../../tree/SubscriptionTreeItem';
 import { localize } from '../../../utils/localize';
 import { nonNullProp } from '../../../utils/nonNull';
 import { IPostgresWizardContext } from './IPostgresWizardContext';
@@ -18,10 +18,10 @@ export class PostgresServerSetFirewallStep extends AzureWizardExecuteStep<IPostg
     public async execute(wizardContext: IPostgresWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
         const ip: string = nonNullProp(wizardContext, 'publicIp');
-        const node: SubscriptionTreeItem = nonNullProp(wizardContext, 'subscriptonTreeItem');
-        const client: PostgreSQLManagementClient = createAzureClient(node.root, PostgreSQLManagementClient);
-        const resourceGroup: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
-        const serverName: string = nonNullProp(wizardContext, 'newServerName');
+        const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
+        const resourceGroup: string = nonNullProp(wizardContext, 'newResourceGroupName');
+        const server: Server = nonNullProp(wizardContext, 'server');
+        const serverName: string = nonNullProp(server, 'name');
         const firewallRuleName: string = "azureDatabasesForVSCode-publicIp";
 
         const newFirewallRule: FirewallRule = {
@@ -32,13 +32,12 @@ export class PostgresServerSetFirewallStep extends AzureWizardExecuteStep<IPostg
         const addFirewallMessage: string = localize('configuringFirewall', 'Adding firewall rule for IP "{0}" to server "{1}"...', ip, serverName);
         progress.report({ message: addFirewallMessage });
 
-        wizardContext.addedFirewall = true;
-
         await client.firewallRules.createOrUpdate(resourceGroup, serverName, firewallRuleName, newFirewallRule);
+        vscode.window.showInformationMessage(localize('addedFirewallRule', 'Successfully added firewall rule for IP "{0}" to server "{1}".', ip, serverName));
 
     }
 
     public shouldExecute(wizardContext: IPostgresWizardContext): boolean {
-        return wizardContext.addedFirewall === undefined;
+        return !!wizardContext.addFirewall;
     }
 }

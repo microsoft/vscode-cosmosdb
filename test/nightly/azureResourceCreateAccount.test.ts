@@ -18,7 +18,7 @@ suite('Create account', async function (this: Mocha.Suite): Promise<void> {
             this.skip();
         }
         this.timeout(2 * 60 * 1000);
-        await Promise.all([promise(5, /graph/), promise(10, /MongoDB/), promise(15, /SQL/)]);
+        await Promise.all([delayCreateAccount(5, /graph/), delayCreateAccount(10, /MongoDB/), delayCreateAccount(15, /SQL/)]);
     });
 
     test('Create SQL account', async () => {
@@ -33,7 +33,7 @@ suite('Create account', async function (this: Mocha.Suite): Promise<void> {
         await doesAccountExists(api.Graph);
     });
 
-    async function createAccount(accountType: RegExp): Promise<CosmosDBManagementModels.DatabaseAccount | undefined> {
+    async function createAccount(accountType: RegExp): Promise<void> {
         // Cosmos DB account must have lower case name
         const accountName: string = randomUtils.getRandomHexString(12).toLowerCase();
         const resourceGroupName: string = randomUtils.getRandomHexString(12);
@@ -43,7 +43,6 @@ suite('Create account', async function (this: Mocha.Suite): Promise<void> {
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createAccount');
         });
-        return await client.databaseAccounts.get(resourceGroupName, accountName);
     }
 
     async function doesAccountExists(key: string): Promise<void> {
@@ -51,13 +50,17 @@ suite('Create account', async function (this: Mocha.Suite): Promise<void> {
         assert.ok(getAccount);
     }
 
-    const promise = (m: number, accountType: RegExp) => new Promise((resolve) => {
-        setTimeout(async () => {
-            try {
-                resolve(await createAccount(accountType));
-            } catch {
-                resolve();
-            }
-        }, m * 1000);
-    });
+    async function delayCreateAccount(ms: number, accountType: RegExp): Promise<void> {
+        await new Promise<void>((resolve: () => void): void => {
+            setTimeout(async () => {
+                try {
+                    await createAccount(accountType);
+                } catch {
+                }
+                finally {
+                    resolve();
+                }
+            }, ms * 1000);
+        });
+    }
 });

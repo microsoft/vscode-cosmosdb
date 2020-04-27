@@ -9,6 +9,7 @@ import { CosmosEditorManager } from "./CosmosEditorManager";
 import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 import { AttachedAccountsTreeItem } from "./tree/AttachedAccountsTreeItem";
 import { AzureAccountTreeItemWithAttached } from "./tree/AzureAccountTreeItemWithAttached";
+import { KeyTar } from "./utils/keytar";
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -25,6 +26,7 @@ export namespace ext {
     export let ignoreBundle: boolean | undefined;
     export let azureAccountTreeItem: AzureAccountTreeItemWithAttached;
     export let editorManager: CosmosEditorManager;
+    export let keytar: KeyTar | undefined;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

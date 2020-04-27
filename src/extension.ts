@@ -35,6 +35,7 @@ import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
+import { tryGetKeyTar } from './utils/keytar';
 
 // tslint:disable-next-line: max-func-body-length
 export async function activateInternal(context: vscode.ExtensionContext, perfStats: { loadStartTime: number, loadEndTime: number }, ignoreBundle?: boolean): Promise<AzureExtensionApiProvider> {
@@ -58,7 +59,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         ext.tree = new AzExtTreeDataProvider(ext.azureAccountTreeItem, 'cosmosDB.loadMore');
         ext.treeView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: ext.tree, showCollapseAll: true });
         context.subscriptions.push(ext.treeView);
-
+        ext.keytar = tryGetKeyTar();
         ext.editorManager = new CosmosEditorManager(context.globalState);
 
         registerDocDBCommands();

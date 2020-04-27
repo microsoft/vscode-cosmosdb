@@ -25,7 +25,6 @@ export async function createPostgresServer(context: IActionContext, node?: Subsc
         node = await ext.tree.showTreeItemPicker<SubscriptionTreeItem>(SubscriptionTreeItem.contextValue, context);
     }
     const wizardContext: IPostgresWizardContext = Object.assign(context, node.root);
-    wizardContext.subscriptonTreeItem = node;
     const promptSteps: AzureWizardPromptStep<ILocationWizardContext>[] = [
         new PostgresServerNameStep(),
         new ResourceGroupListStep(),

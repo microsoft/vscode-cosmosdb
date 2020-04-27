@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { FirewallRule, Server } from 'azure-arm-postgresql/lib/models';
-import * as vscode from 'vscode';
+import { FirewallRule } from 'azure-arm-postgresql/lib/models';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, createAzureClient } from 'vscode-azureextensionui';
 import { localize } from '../../../utils/localize';
@@ -19,9 +18,8 @@ export class PostgresServerSetFirewallStep extends AzureWizardExecuteStep<IPostg
 
         const ip: string = nonNullProp(wizardContext, 'publicIp');
         const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
-        const resourceGroup: string = nonNullProp(wizardContext, 'newResourceGroupName');
-        const server: Server = nonNullProp(wizardContext, 'server');
-        const serverName: string = nonNullProp(server, 'name');
+        const resourceGroup: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
+        const serverName: string = nonNullProp(wizardContext, 'newServerName');
         const firewallRuleName: string = "azureDatabasesForVSCode-publicIp";
 
         const newFirewallRule: FirewallRule = {
@@ -33,7 +31,6 @@ export class PostgresServerSetFirewallStep extends AzureWizardExecuteStep<IPostg
         progress.report({ message: addFirewallMessage });
 
         await client.firewallRules.createOrUpdate(resourceGroup, serverName, firewallRuleName, newFirewallRule);
-        vscode.window.showInformationMessage(localize('addedFirewallRule', 'Successfully added firewall rule for IP "{0}" to server "{1}".', ip, serverName));
 
     }
 

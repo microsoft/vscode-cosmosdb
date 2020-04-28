@@ -20,7 +20,7 @@ suiteSetup(async function (this: Mocha.Context): Promise<void> {
         testAccount = new TestAzureAccount(vscode);
         await testAccount.signIn();
         ext.azureAccountTreeItem = new AzureAccountTreeItemWithAttached(testAccount);
-        ext.tree = new AzExtTreeDataProvider(ext.azureAccountTreeItem, 'cosmosDB.loadMore');
+        ext.tree = new AzExtTreeDataProvider(ext.azureAccountTreeItem, 'azureDatabases.loadMore');
         client = createAzureClient(testAccount.getSubscriptionContext(), CosmosDBManagementClient);
     }
 });

@@ -3,7 +3,7 @@
     "version": "0.12.3-alpha",
     "aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
     "publisher": "ms-azuretools",
-    "displayName": "Azure Cosmos DB",
+    "displayName": "Azure Databases",
     "description": "Create, browse, and update globally distributed, multi-model databases in Azure.",
     "engines": {
         "vscode": "^1.31.0"
@@ -21,7 +21,8 @@
         "DocumentDB",
         "Graph",
         "Gremlin",
-        "MongoDB"
+        "MongoDB",
+        "PostgreSQL"
     ],
     "preview": true,
     "homepage": "https://github.com/microsoft/vscode-cosmosdb/blob/master/README.md",
@@ -36,13 +37,15 @@
     "main": "./main",
     "activationEvents": [
         "onLanguage:mongo",
-        "onView:cosmosDBExplorer",
+        "onView:azureDatabasesExplorer",
+        "onCommand:azureDatabases.update",
+        "onCommand:azureDatabases.loadMore",
+        "onCommand:azureDatabases.refresh",
+        "onCommand:azureDatabases.openInPortal",
         "onCommand:cosmosDB.attachDatabaseAccount",
         "onCommand:cosmosDB.attachEmulator",
         "onCommand:cosmosDB.createAccount",
-        "onCommand:cosmosDB.createPostgresServer",
         "onCommand:cosmosDB.deleteAccount",
-        "onCommand:cosmosDB.deletePostgresServer",
         "onCommand:cosmosDB.detachDatabaseAccount",
         "onCommand:cosmosDB.createMongoDatabase",
         "onCommand:cosmosDB.createMongoCollection",
@@ -53,7 +56,6 @@
         "onCommand:cosmosDB.createDocDBStoredProcedure",
         "onCommand:cosmosDB.createGraphDatabase",
         "onCommand:cosmosDB.createGraph",
-        "onCommand:cosmosDB.createPostgresDatabase",
         "onCommand:cosmosDB.connectMongoDB",
         "onCommand:cosmosDB.deleteMongoDB",
         "onCommand:cosmosDB.deleteMongoCollection",
@@ -62,27 +64,26 @@
         "onCommand:cosmosDB.deleteDocDBCollection",
         "onCommand:cosmosDB.deleteDocDBDocument",
         "onCommand:cosmosDB.deleteGraphDatabase",
-        "onCommand:cosmosDB.deletePostgresDatabase",
-        "onCommand:cosmosDB.deletePostgresTable",
         "onCommand:cosmosDB.deleteGraph",
         "onCommand:cosmosDB.executeAllMongoCommands",
         "onCommand:cosmosDB.executeMongoCommand",
         "onCommand:cosmosDB.importDocument",
         "onCommand:cosmosDB.newMongoScrapbook",
-        "onCommand:cosmosDB.update",
         "onCommand:cosmosDB.openDocument",
         "onCommand:cosmosDB.openStoredProcedure",
-        "onCommand:cosmosDB.openPostgresFunction",
-        "onCommand:cosmosDB.deletePostgresFunction",
         "onCommand:cosmosDB.openCollection",
-        "onCommand:cosmosDB.loadMore",
-        "onCommand:cosmosDB.refresh",
-        "onCommand:cosmosDB.openInPortal",
         "onCommand:cosmosDB.copyConnectionString",
         "onCommand:cosmosDB.launchMongoShell",
         "onCommand:cosmosDB.openGraphExplorer",
-        "onCommand:cosmosDB.enterPostgresCredentials",
-        "onCommand:cosmosDB.configurePostgresFirewall"
+        "onCommand:postgreSQL.createPostgresServer",
+        "onCommand:postgreSQL.deletePostgresServer",
+        "onCommand:postgreSQL.createPostgresDatabase",
+        "onCommand:postgreSQL.deletePostgresDatabase",
+        "onCommand:postgreSQL.deletePostgresTable",
+        "onCommand:postgreSQL.openFunction",
+        "onCommand:postgreSQL.deletePostgresFunction",
+        "onCommand:postgreSQL.enterCredentials",
+        "onCommand:postgreSQL.configureFirewall"
     ],
     "contributes": {
         "viewsContainers": {
@@ -97,9 +98,9 @@
         "views": {
             "azure": [
                 {
-                    "id": "cosmosDBExplorer",
-                    "name": "Cosmos DB",
-                    "when": "config.cosmosDB.showExplorer == true"
+                    "id": "azureDatabasesExplorer",
+                    "name": "Databases",
+                    "when": "config.azureDatabases.showExplorer == true"
                 }
             ]
         },
@@ -177,7 +178,7 @@
             },
             {
                 "category": "PostgreSQL",
-                "command": "cosmosDB.createPostgresServer",
+                "command": "postgreSQL.createServer",
                 "title": "Create PostgreSQL Server...",
                 "icon": {
                     "light": "resources/icons/light/add.svg",
@@ -191,7 +192,7 @@
             },
             {
                 "category": "PostgreSQL",
-                "command": "cosmosDB.deletePostgresServer",
+                "command": "postgreSQL.deleteServer",
                 "title": "Delete Server..."
             },
             {
@@ -246,7 +247,7 @@
             },
             {
                 "category": "PostgreSQL",
-                "command": "cosmosDB.createPostgresDatabase",
+                "command": "postgreSQL.createDatabase",
                 "title": "Create Database..."
             },
             {
@@ -301,12 +302,12 @@
             },
             {
                 "category": "PostgreSQL",
-                "command": "cosmosDB.deletePostgresDatabase",
+                "command": "postgreSQL.deleteDatabase",
                 "title": "Delete Database..."
             },
             {
                 "category": "PostgreSQL",
-                "command": "cosmosDB.deletePostgresTable",
+                "command": "postgreSQL.deleteTable",
                 "title": "Delete Table..."
             },
             {
@@ -329,8 +330,8 @@
                 }
             },
             {
-                "category": "Cosmos DB",
-                "command": "cosmosDB.refresh",
+                "category": "Azure Databases",
+                "command": "azureDatabases.refresh",
                 "title": "Refresh",
                 "icon": {
                     "light": "resources/icons/light/refresh.svg",
@@ -338,8 +339,8 @@
                 }
             },
             {
-                "category": "Cosmos DB",
-                "command": "cosmosDB.openInPortal",
+                "category": "Azure Databases",
+                "command": "azureDatabases.openInPortal",
                 "title": "Open in Portal"
             },
             {
@@ -348,8 +349,8 @@
                 "title": "Copy Connection String"
             },
             {
-                "category": "Cosmos DB",
-                "command": "cosmosDB.update",
+                "category": "Azure Databases",
+                "command": "azureDatabases.update",
                 "title": "Update to Cloud",
                 "icon": {
                     "light": "/resources/icons/theme-agnostic/UpdateOutline.svg",
@@ -357,8 +358,8 @@
                 }
             },
             {
-                "category": "Core (SQL)",
-                "command": "cosmosDB.loadMore",
+                "category": "Azure Databases",
+                "command": "azureDatabases.loadMore",
                 "title": "Load More"
             },
             {
@@ -378,22 +379,22 @@
             },
             {
                 "category": "PostgreSQL",
-                "command": "cosmosDB.openPostgresFunction",
+                "command": "postgreSQL.openFunction",
                 "title": "Open Function"
             },
             {
                 "category": "PostgreSQL",
-                "command": "cosmosDB.deletePostgresFunction",
+                "command": "postgreSQL.deleteFunction",
                 "title": "Delete Function..."
             },
             {
                 "category": "PostgreSQL",
-                "command": "cosmosDB.enterPostgresCredentials",
+                "command": "postgreSQL.enterCredentials",
                 "title": "Enter Server Credentials"
             },
             {
                 "category": "PostgreSQL",
-                "command": "cosmosDB.configurePostgresFirewall",
+                "command": "postgreSQL.configureFirewall",
                 "title": "Configure Firewall"
             }
         ],
@@ -408,19 +409,19 @@
                     "when": "resourceLangId==mongo"
                 },
                 {
-                    "command": "cosmosDB.update",
+                    "command": "azureDatabases.update",
                     "when": "resourceFilename==cosmos-result.json"
                 },
                 {
-                    "command": "cosmosDB.update",
+                    "command": "azureDatabases.update",
                     "when": "resourceFilename=~/(.*cosmos-document[.]json)/"
                 },
                 {
-                    "command": "cosmosDB.update",
+                    "command": "azureDatabases.update",
                     "when": "resourceFilename=~/(.*cosmos-collection[.]json)/"
                 },
                 {
-                    "command": "cosmosDB.update",
+                    "command": "azureDatabases.update",
                     "when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)/"
                 },
                 {
@@ -430,350 +431,350 @@
             ],
             "editor/title": [
                 {
-                    "command": "cosmosDB.update",
+                    "command": "azureDatabases.update",
                     "when": "resourceFilename==cosmos-result.json",
                     "group": "navigation"
                 },
                 {
-                    "command": "cosmosDB.update",
+                    "command": "azureDatabases.update",
                     "when": "resourceFilename=~/(.*cosmos-document[.]json)/",
                     "group": "navigation"
                 },
                 {
-                    "command": "cosmosDB.update",
+                    "command": "azureDatabases.update",
                     "when": "resourceFilename=~/(.*cosmos-collection[.]json)/",
                     "group": "navigation"
                 },
                 {
-                    "command": "cosmosDB.update",
+                    "command": "azureDatabases.update",
                     "when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)/",
                     "group": "navigation"
                 }
             ],
             "view/title": [
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer",
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer",
                     "group": "navigation"
                 },
                 {
                     "command": "cosmosDB.createAccount",
-                    "when": "view == cosmosDBExplorer",
+                    "when": "view == azureDatabasesExplorer",
                     "group": "navigation"
                 },
                 {
-                    "command": "cosmosDB.createPostgresServer",
-                    "when": "view == cosmosDBExplorer",
+                    "command": "postgreSQL.createServer",
+                    "when": "view == azureDatabasesExplorer",
                     "group": "navigation"
                 },
                 {
                     "command": "cosmosDB.attachDatabaseAccount",
-                    "when": "view == cosmosDBExplorer",
+                    "when": "view == azureDatabasesExplorer",
                     "group": "navigation"
                 },
                 {
                     "command": "cosmosDB.newMongoScrapbook",
-                    "when": "view == cosmosDBExplorer",
+                    "when": "view == azureDatabasesExplorer",
                     "group": "navigation"
                 }
             ],
             "view/item/context": [
                 {
                     "command": "cosmosDB.selectSubscriptions",
-                    "when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+                    "when": "view == azureDatabasesExplorer && viewItem == azureextensionui.azureSubscription",
                     "group": "inline"
                 },
                 {
                     "command": "cosmosDB.createAccount",
-                    "when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+                    "when": "view == azureDatabasesExplorer && viewItem == azureextensionui.azureSubscription",
                     "group": "1@1"
                 },
                 {
-                    "command": "cosmosDB.createPostgresServer",
-                    "when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+                    "command": "postgreSQL.createServer",
+                    "when": "view == azureDatabasesExplorer && viewItem == azureextensionui.azureSubscription",
                     "group": "1@1"
                 },
                 {
-                    "command": "cosmosDB.openInPortal",
-                    "when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+                    "command": "azureDatabases.openInPortal",
+                    "when": "view == azureDatabasesExplorer && viewItem == azureextensionui.azureSubscription",
                     "group": "1@2"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == azureextensionui.azureSubscription",
                     "group": "2@1"
                 },
                 {
                     "command": "cosmosDB.deleteAccount",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBMongoServer"
                 },
                 {
                     "command": "cosmosDB.deleteAccount",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServer"
                 },
                 {
                     "command": "cosmosDB.deleteAccount",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraphAccount"
                 },
                 {
                     "command": "cosmosDB.deleteAccount",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBTableAccount"
                 },
                 {
-                    "command": "cosmosDB.deletePostgresServer",
-                    "when": "view == cosmosDBExplorer && viewItem == postgresServer"
+                    "command": "postgreSQL.deleteServer",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresServer"
                 },
                 {
                     "command": "cosmosDB.createMongoDatabase",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBMongoServerAttached"
                 },
                 {
                     "command": "cosmosDB.createMongoDatabase",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBMongoServer"
                 },
                 {
                     "command": "cosmosDB.createMongoDocument",
-                    "when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+                    "when": "view == azureDatabasesExplorer && viewItem == MongoCollection"
                 },
                 {
                     "command": "cosmosDB.createMongoCollection",
-                    "when": "view == cosmosDBExplorer && viewItem == mongoDb"
+                    "when": "view == azureDatabasesExplorer && viewItem == mongoDb"
                 },
                 {
                     "command": "cosmosDB.createDocDBDocument",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentsGroup"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentsGroup"
                 },
                 {
                     "command": "cosmosDB.createDocDBStoredProcedure",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProceduresGroup"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBStoredProceduresGroup"
                 },
                 {
                     "command": "cosmosDB.createDocDBCollection",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentDatabase"
                 },
                 {
                     "command": "cosmosDB.createDocDBDatabase",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServer"
                 },
                 {
                     "command": "cosmosDB.createDocDBDatabase",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServerAttached"
                 },
                 {
                     "command": "cosmosDB.createGraphDatabase",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraphAccount"
                 },
                 {
                     "command": "cosmosDB.createGraphDatabase",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraphAccountAttached"
                 },
                 {
                     "command": "cosmosDB.createGraph",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraphDatabase"
                 },
                 {
-                    "command": "cosmosDB.createPostgresDatabase",
-                    "when": "view == cosmosDBExplorer && viewItem == postgresServer"
-                },
-                {
-                    "command": "cosmosDB.detachDatabaseAccount",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
+                    "command": "postgreSQL.createDatabase",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresServer"
                 },
                 {
                     "command": "cosmosDB.detachDatabaseAccount",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBMongoServerAttached"
                 },
                 {
                     "command": "cosmosDB.detachDatabaseAccount",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraphAccountAttached"
                 },
                 {
                     "command": "cosmosDB.detachDatabaseAccount",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccountAttached"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServerAttached"
+                },
+                {
+                    "command": "cosmosDB.detachDatabaseAccount",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBTableAccountAttached"
                 },
                 {
                     "command": "cosmosDB.connectMongoDB",
-                    "when": "view == cosmosDBExplorer && viewItem == mongoDb"
+                    "when": "view == azureDatabasesExplorer && viewItem == mongoDb"
                 },
                 {
                     "command": "cosmosDB.deleteMongoDB",
-                    "when": "view == cosmosDBExplorer && viewItem == mongoDb"
+                    "when": "view == azureDatabasesExplorer && viewItem == mongoDb"
                 },
                 {
                     "command": "cosmosDB.deleteMongoCollection",
-                    "when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+                    "when": "view == azureDatabasesExplorer && viewItem == MongoCollection"
                 },
                 {
                     "command": "cosmosDB.deleteMongoDocument",
-                    "when": "view == cosmosDBExplorer && viewItem == MongoDocument"
+                    "when": "view == azureDatabasesExplorer && viewItem == MongoDocument"
                 },
                 {
                     "command": "cosmosDB.deleteDocDBCollection",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentCollection"
                 },
                 {
                     "command": "cosmosDB.deleteDocDBDocument",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocument"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocument"
                 },
                 {
                     "command": "cosmosDB.deleteDocDBStoredProcedure",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProcedure"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBStoredProcedure"
                 },
                 {
                     "command": "cosmosDB.deleteDocDBDatabase",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentDatabase"
                 },
                 {
                     "command": "cosmosDB.deleteGraphDatabase",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraphDatabase"
                 },
                 {
-                    "command": "cosmosDB.deletePostgresDatabase",
-                    "when": "view == cosmosDBExplorer && viewItem == postgresDatabase"
+                    "command": "postgreSQL.deleteDatabase",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresDatabase"
                 },
                 {
-                    "command": "cosmosDB.deletePostgresTable",
-                    "when": "view == cosmosDBExplorer && viewItem == postgresTable"
+                    "command": "postgreSQL.deleteTable",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresTable"
                 },
                 {
-                    "command": "cosmosDB.deletePostgresFunction",
-                    "when": "view == cosmosDBExplorer && viewItem == postgresFunction"
+                    "command": "postgreSQL.deleteFunction",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresFunction"
                 },
                 {
                     "command": "cosmosDB.deleteGraph",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraph"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraph"
                 },
                 {
                     "command": "cosmosDB.attachDatabaseAccount",
-                    "when": "view == cosmosDBExplorer && viewItem =~ /^cosmosDBAttachedAccounts/"
+                    "when": "view == azureDatabasesExplorer && viewItem =~ /^cosmosDBAttachedAccounts/"
                 },
                 {
                     "command": "cosmosDB.attachEmulator",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBAttachedAccountsWithEmulator"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBAttachedAccountsWithEmulator"
                 },
                 {
-                    "command": "cosmosDB.openInPortal",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+                    "command": "azureDatabases.openInPortal",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBMongoServer"
                 },
                 {
-                    "command": "cosmosDB.openInPortal",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
+                    "command": "azureDatabases.openInPortal",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBTableAccount"
                 },
                 {
-                    "command": "cosmosDB.openInPortal",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+                    "command": "azureDatabases.openInPortal",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServer"
                 },
                 {
-                    "command": "cosmosDB.openInPortal",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+                    "command": "azureDatabases.openInPortal",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraphAccount"
                 },
                 {
-                    "command": "cosmosDB.openInPortal",
-                    "when": "view == cosmosDBExplorer && viewItem == postgresServer"
+                    "command": "azureDatabases.openInPortal",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresServer"
                 },
                 {
                     "command": "cosmosDB.openCollection",
-                    "when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+                    "when": "view == azureDatabasesExplorer && viewItem == MongoCollection"
                 },
                 {
                     "command": "cosmosDB.copyConnectionString",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBMongoServer"
                 },
                 {
                     "command": "cosmosDB.copyConnectionString",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraphAccount"
                 },
                 {
                     "command": "cosmosDB.copyConnectionString",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServer"
                 },
                 {
                     "command": "cosmosDB.copyConnectionString",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccount"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBTableAccount"
                 },
                 {
                     "command": "cosmosDB.copyConnectionString",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBMongoServerAttached"
                 },
                 {
                     "command": "cosmosDB.copyConnectionString",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraphAccountAttached"
                 },
                 {
                     "command": "cosmosDB.copyConnectionString",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServerAttached"
                 },
                 {
                     "command": "cosmosDB.copyConnectionString",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBTableAccountAttached"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBTableAccountAttached"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServer"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBMongoServer"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentCollection"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentDatabase"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentDatabase"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentsGroup"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentsGroup"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBStoredProceduresGroup"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBStoredProceduresGroup"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServer"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServer"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == postgresServer"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresServer"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentServerAttached"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServerAttached"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccount"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraphAccount"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphAccountAttached"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraphAccountAttached"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBGraphDatabase"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraphDatabase"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBMongoServerAttached"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBMongoServerAttached"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == mongoDb"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == mongoDb"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == MongoCollection"
                 },
                 {
-                    "command": "cosmosDB.refresh",
-                    "when": "view == cosmosDBExplorer && viewItem =~ /^cosmosDBAttachedAccounts/"
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem =~ /^cosmosDBAttachedAccounts/"
                 },
                 {
                     "command": "cosmosDB.importDocument",
-                    "when": "view == cosmosDBExplorer && viewItem == MongoCollection"
+                    "when": "view == azureDatabasesExplorer && viewItem == MongoCollection"
                 },
                 {
                     "command": "cosmosDB.importDocument",
-                    "when": "view == cosmosDBExplorer && viewItem == cosmosDBDocumentCollection"
+                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentCollection"
                 }
             ],
             "explorer/context": [
@@ -788,15 +789,15 @@
                     "when": "never"
                 },
                 {
-                    "command": "cosmosDB.refresh",
+                    "command": "azureDatabases.refresh",
                     "when": "never"
                 },
                 {
-                    "command": "cosmosDB.loadMore",
+                    "command": "azureDatabases.loadMore",
                     "when": "never"
                 },
                 {
-                    "command": "cosmosDB.update",
+                    "command": "azureDatabases.update",
                     "when": "never"
                 },
                 {
@@ -829,7 +830,7 @@
             }
         ],
         "configuration": {
-            "title": "Cosmos DB",
+            "title": "Azure Databases",
             "properties": {
                 "mongo.shell.path": {
                     "type": [
@@ -854,10 +855,10 @@
                     "description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 30 seconds.",
                     "default": 30
                 },
-                "cosmosDB.showExplorer": {
+                "azureDatabases.showExplorer": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Show or hide the Cosmos DB Explorer"
+                    "description": "Show or hide the Azure Databases Explorer"
                 },
                 "cosmosDB.documentLabelFields": {
                     "type": "array",
@@ -874,12 +875,12 @@
                     ],
                     "description": "The field values to display as labels in the treeview for Cosmos DB and MongoDB documents, in priority order"
                 },
-                "cosmosDB.showSavePrompt": {
+                "azureDatabases.showSavePrompt": {
                     "type": "boolean",
                     "default": true,
                     "description": "Show warning dialog when uploading a document to the cloud."
                 },
-                "cosmosDB.enableOutputTimestamps": {
+                "azureDatabases.enableOutputTimestamps": {
                     "type": "boolean",
                     "default": true,
                     "description": "Prepends each line displayed in the output channel with a timestamp."

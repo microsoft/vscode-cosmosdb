@@ -44,8 +44,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     ext.reporter = createTelemetryReporter(context);
     ext.ui = new AzureUserInput(context.globalState);
 
-    const extensionPrefix: string = 'cosmosDB';
-    ext.outputChannel = createAzExtOutputChannel("Azure Cosmos DB", extensionPrefix);
+    const extensionPrefix: string = 'azureDatabases';
+    ext.outputChannel = createAzExtOutputChannel("Azure Databases", extensionPrefix);
     context.subscriptions.push(ext.outputChannel);
     registerUIExtensionVariables(ext);
 

@@ -4,14 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IActionContext } from "vscode-azureextensionui";
-import { ICosmosEditor } from "../../CosmosEditorManager";
+import { IEditor } from "../../EditorManager";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
 import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 // tslint:disable:no-var-requires no-require-imports
 const EJSON = require("mongodb-extended-json");
 
-export class MongoCollectionNodeEditor implements ICosmosEditor<IMongoDocument[]> {
+export class MongoCollectionNodeEditor implements IEditor<IMongoDocument[]> {
     private _collectionNode: MongoCollectionTreeItem;
     constructor(collectionNode: MongoCollectionTreeItem) {
         this._collectionNode = collectionNode;

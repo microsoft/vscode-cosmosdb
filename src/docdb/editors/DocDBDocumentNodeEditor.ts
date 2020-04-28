@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { RetrievedDocument } from "documentdb";
-import { ICosmosEditor } from "../../CosmosEditorManager";
+import { IEditor } from "../../EditorManager";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
 import { DocDBDocumentTreeItem } from "../tree/DocDBDocumentTreeItem";
 
-export class DocDBDocumentNodeEditor implements ICosmosEditor<RetrievedDocument> {
+export class DocDBDocumentNodeEditor implements IEditor<RetrievedDocument> {
     private _documentNode: DocDBDocumentTreeItem;
     constructor(documentNode: DocDBDocumentTreeItem) {
         this._documentNode = documentNode;

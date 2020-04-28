@@ -13,13 +13,13 @@ import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
 import { importDocuments } from './commands/importDocuments';
 import { doubleClickDebounceDelay } from './constants';
-import { CosmosEditorManager } from './CosmosEditorManager';
 import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBCollectionTreeItem } from './docdb/tree/DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
+import { EditorManager } from './EditorManager';
 import { ext } from './extensionVariables';
 import { registerGraphCommands } from './graph/registerGraphCommands';
 import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
@@ -60,7 +60,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         ext.treeView = vscode.window.createTreeView('cosmosDBExplorer', { treeDataProvider: ext.tree, showCollapseAll: true });
         context.subscriptions.push(ext.treeView);
         ext.keytar = tryGetKeyTar();
-        ext.editorManager = new CosmosEditorManager(context.globalState);
+        ext.editorManager = new EditorManager(context.globalState);
 
         registerDocDBCommands();
         registerGraphCommands();
@@ -147,7 +147,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         registerCommand('cosmosDB.update', async (actionContext: IActionContext, uri: vscode.Uri) => await ext.editorManager.updateMatchingNode(actionContext, uri));
         registerCommand('cosmosDB.loadMore', async (actionContext: IActionContext, node: AzExtTreeItem) => await ext.tree.loadMore(node, actionContext));
         registerEvent(
-            'cosmosDB.CosmosEditorManager.onDidSaveTextDocument',
+            'azureDatabases.EditorManager.onDidSaveTextDocument',
             vscode.workspace.onDidSaveTextDocument,
             async (actionContext: IActionContext, doc: vscode.TextDocument) => await ext.editorManager.onDidSaveTextDocument(actionContext, doc)
         );

@@ -23,7 +23,7 @@ import { PostgresFunctionTreeItem } from './postgres/tree/PostgresFunctionTreeIt
 import { nonNullValue } from './utils/nonNull';
 import * as vscodeUtils from './utils/vscodeUtils';
 
-export interface ICosmosEditor<T = {}> {
+export interface IEditor<T = {}> {
     label: string;
     id: string;
     getData(context: IActionContext): Promise<T>;
@@ -41,19 +41,19 @@ export interface ShowEditorDocumentOptions {
 
 type PersistedEditors = { [key: string]: string };
 
-export class CosmosEditorManager {
-    private fileMap: { [key: string]: ICosmosEditor } = {};
+export class EditorManager {
+    private fileMap: { [key: string]: IEditor } = {};
     private ignoreSave: boolean = false;
 
     private readonly showSavePromptKey: string = 'cosmosDB.showSavePrompt';
     private _globalState: vscode.Memento;
-    private readonly _persistedEditorsKey: string = "ms-azuretools.vscode-cosmosdb.editors";
+    private readonly _persistedEditorsKey: string = "ms-azuretools.vscode-azuredatabases.editors";
 
     constructor(globalState: vscode.Memento) {
         this._globalState = globalState;
     }
 
-    public async showDocument(context: IActionContext, editor: ICosmosEditor, fileName: string, options?: ShowEditorDocumentOptions): Promise<void> {
+    public async showDocument(context: IActionContext, editor: IEditor, fileName: string, options?: ShowEditorDocumentOptions): Promise<void> {
         let column: vscode.ViewColumn = vscode.ViewColumn.Active;
         let preserveFocus: boolean = false;
         if (options && options.showInNextColumn) {
@@ -65,7 +65,7 @@ export class CosmosEditorManager {
         }
 
         const localFilename = fileName.replace(/[<>:"\/\\|?*]/g, "-");
-        const localDocPath = path.join(os.tmpdir(), 'vscode-cosmosdb-editor', localFilename);
+        const localDocPath = path.join(os.tmpdir(), 'vscode-azuredatabases-editor', localFilename);
         await fse.ensureFile(localDocPath);
 
         const document = await vscode.workspace.openTextDocument(localDocPath);
@@ -103,7 +103,7 @@ export class CosmosEditorManager {
         }
         if (!this.ignoreSave && filePath) {
             context.telemetry.suppressIfSuccessful = false;
-            const editor: ICosmosEditor = this.fileMap[filePath];
+            const editor: IEditor = this.fileMap[filePath];
             const showSaveWarning: boolean | undefined = vscode.workspace.getConfiguration().get(this.showSavePromptKey);
             if (showSaveWarning !== false) {
                 const message: string = `Saving '${path.parse(doc.fileName).base}' will update the entity "${editor.label}" to the Cloud.`;
@@ -120,7 +120,7 @@ export class CosmosEditorManager {
         }
     }
 
-    private async updateToCloud(editor: ICosmosEditor, doc: vscode.TextDocument, context: IActionContext): Promise<void> {
+    private async updateToCloud(editor: IEditor, doc: vscode.TextDocument, context: IActionContext): Promise<void> {
         const newContent = editor.convertFromString(doc.getText());
         const updatedContent: {} = await editor.update(newContent, context);
         ext.outputChannel.appendLog(`Updated entity "${editor.label}"`);
@@ -134,7 +134,7 @@ export class CosmosEditorManager {
         }
     }
 
-    private async updateEditor(data: {}, textEditor: vscode.TextEditor, editor: ICosmosEditor): Promise<void> {
+    private async updateEditor(data: {}, textEditor: vscode.TextEditor, editor: IEditor): Promise<void> {
         const updatedText = editor.convertToString(data);
         await vscodeUtils.writeToEditor(textEditor, updatedText);
         this.ignoreSave = true;
@@ -151,7 +151,7 @@ export class CosmosEditorManager {
         const editorFilePath = Object.keys(persistedEditors).find((label) => path.relative(documentUri.fsPath, label) === '');
         if (editorFilePath) {
             const editorNode: AzureTreeItem | undefined = await ext.tree.findTreeItem(persistedEditors[editorFilePath], context);
-            let editor: ICosmosEditor;
+            let editor: IEditor;
             if (editorNode) {
                 if (editorNode instanceof MongoCollectionTreeItem) {
                     editor = new MongoCollectionNodeEditor(editorNode);

@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ICosmosEditor } from "../../CosmosEditorManager";
+import { IEditor } from "../../EditorManager";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
 import { DocDBStoredProcedureTreeItem } from "../tree/DocDBStoredProcedureTreeItem";
 
-export class DocDBStoredProcedureNodeEditor implements ICosmosEditor<string> {
+export class DocDBStoredProcedureNodeEditor implements IEditor<string> {
     private _spNode: DocDBStoredProcedureTreeItem;
     constructor(spNode: DocDBStoredProcedureTreeItem) {
         this._spNode = spNode;

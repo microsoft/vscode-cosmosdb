@@ -5,7 +5,7 @@
 
 import { ExtensionContext, TreeView } from "vscode";
 import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel, IAzureUserInput, ITelemetryReporter } from "vscode-azureextensionui";
-import { CosmosEditorManager } from "./CosmosEditorManager";
+import { EditorManager } from "./EditorManager";
 import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 import { AttachedAccountsTreeItem } from "./tree/AttachedAccountsTreeItem";
 import { AzureAccountTreeItemWithAttached } from "./tree/AzureAccountTreeItemWithAttached";
@@ -25,7 +25,7 @@ export namespace ext {
     export let attachedAccountsNode: AttachedAccountsTreeItem;
     export let ignoreBundle: boolean | undefined;
     export let azureAccountTreeItem: AzureAccountTreeItemWithAttached;
-    export let editorManager: CosmosEditorManager;
+    export let editorManager: EditorManager;
     export let keytar: KeyTar | undefined;
 
     export namespace settingsKeys {

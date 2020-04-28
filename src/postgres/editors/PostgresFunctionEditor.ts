@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Client } from "pg";
-import { ICosmosEditor } from "../../CosmosEditorManager";
+import { IEditor } from "../../EditorManager";
 import { getNodeEditorLabel } from "../../utils/vscodeUtils";
 import { PostgresFunctionTreeItem } from "../tree/PostgresFunctionTreeItem";
 
-export class PostgresFunctionEditor implements ICosmosEditor<string> {
+export class PostgresFunctionEditor implements IEditor<string> {
     private _treeItem: PostgresFunctionTreeItem;
 
     constructor(treeItem: PostgresFunctionTreeItem) {

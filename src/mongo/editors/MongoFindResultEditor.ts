@@ -5,7 +5,7 @@
 
 import { Collection } from "mongodb";
 import { IActionContext } from "vscode-azureextensionui";
-import { ICosmosEditor } from "../../CosmosEditorManager";
+import { IEditor } from "../../EditorManager";
 import { ext } from "../../extensionVariables";
 import { nonNullProp } from "../../utils/nonNull";
 import { MongoCommand } from "../MongoCommand";
@@ -16,7 +16,7 @@ import { MongoCollectionNodeEditor } from "./MongoCollectionNodeEditor";
 // tslint:disable:no-var-requires no-require-imports
 const EJSON = require("mongodb-extended-json");
 
-export class MongoFindResultEditor implements ICosmosEditor<IMongoDocument[]> {
+export class MongoFindResultEditor implements IEditor<IMongoDocument[]> {
     private _databaseNode: MongoDatabaseTreeItem;
     private _command: MongoCommand;
     private _collectionTreeItem: MongoCollectionTreeItem;

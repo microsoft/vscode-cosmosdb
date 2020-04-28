@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ICosmosEditor } from "../../CosmosEditorManager";
+import { IEditor } from "../../EditorManager";
 import { getNodeEditorLabel } from '../../utils/vscodeUtils';
 import { IMongoDocument, MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 // tslint:disable:no-var-requires no-require-imports
 const EJSON = require("mongodb-extended-json");
 
-export class MongoDocumentNodeEditor implements ICosmosEditor<IMongoDocument> {
+export class MongoDocumentNodeEditor implements IEditor<IMongoDocument> {
     private _documentNode: MongoDocumentTreeItem;
     constructor(documentNode: MongoDocumentTreeItem) {
         this._documentNode = documentNode;

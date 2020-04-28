@@ -11,7 +11,6 @@ import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ICreateChildImpl
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
-import { KeyTar, tryGetKeyTar } from '../../utils/keytar';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
@@ -33,13 +32,11 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public resourceGroup: string;
 
     private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.postgresPasswords";
-    private _keytar: KeyTar | undefined;
     private _serverId: string;
 
     constructor(parent: AzureParentTreeItem, server: Server) {
         super(parent);
         this.server = server;
-        this._keytar = tryGetKeyTar();
         this._serverId = nonNullProp(this.server, 'id');
         this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
     }
@@ -121,36 +118,18 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         let password: string | undefined;
 
         const storedValue: string | undefined = ext.context.globalState.get(this._serviceName);
-        if (storedValue && this._keytar) {
+        if (storedValue && ext.keytar) {
             const servers: IPersistedServer[] = JSON.parse(storedValue);
             for (const server of servers) {
                 if (server.id === this._serverId) {
                     username = server.username;
-                    password = await this._keytar.getPassword(this._serviceName, this._serverId) || undefined;
+                    password = await ext.keytar.getPassword(this._serviceName, this._serverId) || undefined;
                     break;
                 }
             }
         }
 
         return { username, password };
-    }
-
-    public async setCredentials(username: string, password: string): Promise<void> {
-        if (this._keytar) {
-            const storedValue: string | undefined = ext.context.globalState.get(this._serviceName);
-            let servers: IPersistedServer[] = storedValue ? JSON.parse(storedValue) : [];
-
-            // Remove this server from the cache if it's there
-            servers = servers.filter((server: IPersistedServer) => { return server.id !== this._serverId; });
-
-            const newServer: IPersistedServer = {
-                id: this._serverId,
-                username
-            };
-            servers.push(newServer);
-            await ext.context.globalState.update(this._serviceName, JSON.stringify(servers));
-            await this._keytar.setPassword(this._serviceName, this._serverId, password);
-        }
     }
 
     public supportsStoredProcedures(): boolean {

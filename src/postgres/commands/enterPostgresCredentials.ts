@@ -3,10 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { Server } from "azure-arm-postgresql/lib/models";
 import { IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
+import { nonNullProp } from "../../utils/nonNull";
 import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
+import { setPostgresCredentials } from "./setPostgresCredentials";
 
 export async function enterPostgresCredentials(context: IActionContext, treeItem?: PostgresServerTreeItem): Promise<void> {
     if (!treeItem) {
@@ -29,6 +32,7 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
         validateInput: (value: string) => { return (value && value.length) ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.'); }
     });
 
-    await treeItem.setCredentials(username, password);
+    const server: Server = nonNullProp(treeItem, 'server');
+    await setPostgresCredentials(username, password, nonNullProp(server, 'id'));
     await treeItem.refresh();
 }

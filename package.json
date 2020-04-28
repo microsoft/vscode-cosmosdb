@@ -40,6 +40,7 @@
         "onCommand:cosmosDB.attachDatabaseAccount",
         "onCommand:cosmosDB.attachEmulator",
         "onCommand:cosmosDB.createAccount",
+        "onCommand:cosmosDB.createPostgresServer",
         "onCommand:cosmosDB.deleteAccount",
         "onCommand:cosmosDB.deletePostgresServer",
         "onCommand:cosmosDB.detachDatabaseAccount",
@@ -169,6 +170,15 @@
                 "category": "Cosmos DB",
                 "command": "cosmosDB.createAccount",
                 "title": "Create Account...",
+                "icon": {
+                    "light": "resources/icons/light/add.svg",
+                    "dark": "resources/icons/dark/add.svg"
+                }
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "cosmosDB.createPostgresServer",
+                "title": "Create PostgreSQL Server...",
                 "icon": {
                     "light": "resources/icons/light/add.svg",
                     "dark": "resources/icons/dark/add.svg"
@@ -452,6 +462,11 @@
                     "group": "navigation"
                 },
                 {
+                    "command": "cosmosDB.createPostgresServer",
+                    "when": "view == cosmosDBExplorer",
+                    "group": "navigation"
+                },
+                {
                     "command": "cosmosDB.attachDatabaseAccount",
                     "when": "view == cosmosDBExplorer",
                     "group": "navigation"
@@ -470,6 +485,11 @@
                 },
                 {
                     "command": "cosmosDB.createAccount",
+                    "when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
+                    "group": "1@1"
+                },
+                {
+                    "command": "cosmosDB.createPostgresServer",
                     "when": "view == cosmosDBExplorer && viewItem == azureextensionui.azureSubscription",
                     "group": "1@1"
                 },

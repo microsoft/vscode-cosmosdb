@@ -45,7 +45,7 @@ export class CosmosEditorManager {
     private fileMap: { [key: string]: ICosmosEditor } = {};
     private ignoreSave: boolean = false;
 
-    private readonly showSavePromptKey: string = 'azureDatabases.showSavePrompt';
+    private readonly showSavePromptKey: string = 'cosmosDB.showSavePrompt';
     private _globalState: vscode.Memento;
     private readonly _persistedEditorsKey: string = "ms-azuretools.vscode-cosmosdb.editors";
 

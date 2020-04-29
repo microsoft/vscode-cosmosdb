@@ -75,13 +75,13 @@
         "onCommand:cosmosDB.copyConnectionString",
         "onCommand:cosmosDB.launchMongoShell",
         "onCommand:cosmosDB.openGraphExplorer",
-        "onCommand:postgreSQL.createPostgresServer",
-        "onCommand:postgreSQL.deletePostgresServer",
-        "onCommand:postgreSQL.createPostgresDatabase",
-        "onCommand:postgreSQL.deletePostgresDatabase",
-        "onCommand:postgreSQL.deletePostgresTable",
+        "onCommand:postgreSQL.createServer",
+        "onCommand:postgreSQL.deleteServer",
+        "onCommand:postgreSQL.createDatabase",
+        "onCommand:postgreSQL.deleteDatabase",
+        "onCommand:postgreSQL.deleteTable",
         "onCommand:postgreSQL.openFunction",
-        "onCommand:postgreSQL.deletePostgresFunction",
+        "onCommand:postgreSQL.deleteFunction",
         "onCommand:postgreSQL.enterCredentials",
         "onCommand:postgreSQL.configureFirewall"
     ],
@@ -875,7 +875,7 @@
                     ],
                     "description": "The field values to display as labels in the treeview for Cosmos DB and MongoDB documents, in priority order"
                 },
-                "azureDatabases.showSavePrompt": {
+                "cosmosDB.showSavePrompt": {
                     "type": "boolean",
                     "default": true,
                     "description": "Show warning dialog when uploading a document to the cloud."

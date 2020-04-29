@@ -17,7 +17,7 @@ suite('Create account', async function (this: Mocha.Suite): Promise<void> {
         if (!longRunningTestsEnabled) {
             this.skip();
         }
-        this.timeout(2 * 60 * 1000);
+        this.timeout(15 * 60 * 1000);
         await Promise.all([delayCreateAccount(5, /graph/), delayCreateAccount(10, /MongoDB/), delayCreateAccount(15, /SQL/)]);
     });
 

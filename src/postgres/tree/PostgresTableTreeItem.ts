@@ -16,9 +16,12 @@ export class PostgresTableTreeItem extends AzureTreeItem<ISubscriptionContext> {
     public readonly table: Table;
     public readonly parent: PostgresTablesTreeItem;
 
-    constructor(parent: PostgresTablesTreeItem, table: Table) {
+    private _isDuplicate: boolean;
+
+    constructor(parent: PostgresTablesTreeItem, table: Table, isDuplicate: boolean) {
         super(parent);
         this.table = table;
+        this._isDuplicate = isDuplicate;
     }
 
     public get id(): string {
@@ -27,6 +30,10 @@ export class PostgresTableTreeItem extends AzureTreeItem<ISubscriptionContext> {
 
     public get label(): string {
         return this.table.name;
+    }
+
+    public get description(): string | undefined {
+        return this._isDuplicate ? this.table.schema.name : undefined;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {

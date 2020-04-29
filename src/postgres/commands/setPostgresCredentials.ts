@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ext } from "../../extensionVariables";
+import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
 
 interface IPersistedServer {
     id: string;
@@ -12,7 +13,7 @@ interface IPersistedServer {
 
 export async function setPostgresCredentials(username: string, password: string, serverId: string): Promise<void> {
     if (ext.keytar) {
-        const serviceName: string = "ms-azuretools.vscode-cosmosdb.postgresPasswords";
+        const serviceName: string = PostgresServerTreeItem.serviceName;
         const storedValue: string | undefined = ext.context.globalState.get(serviceName);
         let servers: IPersistedServer[] = storedValue ? JSON.parse(storedValue) : [];
 

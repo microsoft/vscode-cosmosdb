@@ -26,12 +26,12 @@ interface IPersistedServer {
 
 export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresServer";
+    public static serviceName: string = "ms-azuretools.vscode-azuredatabases.postgresPasswords";
     public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
     public readonly server: Server;
     public resourceGroup: string;
 
-    private readonly _serviceName: string = "ms-azuretools.vscode-azuredatabases.postgresPasswords";
     private _serverId: string;
 
     constructor(parent: AzureParentTreeItem, server: Server) {
@@ -117,13 +117,13 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         let username: string | undefined;
         let password: string | undefined;
 
-        const storedValue: string | undefined = ext.context.globalState.get(this._serviceName);
+        const storedValue: string | undefined = ext.context.globalState.get(PostgresServerTreeItem.serviceName);
         if (storedValue && ext.keytar) {
             const servers: IPersistedServer[] = JSON.parse(storedValue);
             for (const server of servers) {
                 if (server.id === this._serverId) {
                     username = server.username;
-                    password = await ext.keytar.getPassword(this._serviceName, this._serverId) || undefined;
+                    password = await ext.keytar.getPassword(PostgresServerTreeItem.serviceName, this._serverId) || undefined;
                     break;
                 }
             }

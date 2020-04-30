@@ -18,14 +18,14 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresWi
 
         const locationName = nonNullProp(nonNullProp(wizardContext, 'location'), 'name');
         const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
-        const serverName = nonNullProp(wizardContext, 'newServerName');
+        const serverName = nonNullProp(wizardContext, 'accountName');
         const user: string = nonNullProp(wizardContext, 'adminUser');
         const password: string = nonNullProp(wizardContext, 'adminPassword');
 
         return await callWithMaskHandling(
             async () => {
                 const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
-                const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in several minutes.', wizardContext.newServerName);
+                const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in several minutes.', wizardContext.accountName);
                 ext.outputChannel.appendLog(createMessage);
                 progress.report({ message: createMessage });
                 const options = {

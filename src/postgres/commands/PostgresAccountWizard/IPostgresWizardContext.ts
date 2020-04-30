@@ -3,13 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Server } from 'azure-arm-postgresql/lib/models';
-import { IResourceGroupWizardContext } from 'vscode-azureextensionui';
+import { ICosmosDBWizardContext } from '../../../tree/CosmosDBAccountWizard/ICosmosDBWizardContext';
 
-export interface IPostgresWizardContext extends IResourceGroupWizardContext {
-
-    newServerName?: string;
-    server?: Server;
+export interface IPostgresWizardContext extends ICosmosDBWizardContext {
 
     adminUser?: string;
     adminPassword?: string;

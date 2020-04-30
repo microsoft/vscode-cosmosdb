@@ -17,7 +17,7 @@ export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPo
     public async execute(wizardContext: IPostgresWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
         let user: string = nonNullProp(wizardContext, 'adminUser');
-        const serverName: string = nonNullProp(wizardContext, 'newServerName');
+        const serverName: string = nonNullProp(wizardContext, 'accountName');
         const usernameSuffix: string = `@${serverName}`;
         if (!user.includes(usernameSuffix)) {
             user += usernameSuffix;

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
+import { Server } from 'azure-arm-postgresql/lib/models';
 import { IResourceGroupWizardContext } from 'vscode-azureextensionui';
 import { Experience } from '../../CosmosDBExperiences';
 
@@ -25,4 +26,6 @@ export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
      * This will be defined after `CosmosDBAccountApiStep.prompt` occurs.
      */
     defaultExperience?: Experience;
+
+    server?: Server;
 }

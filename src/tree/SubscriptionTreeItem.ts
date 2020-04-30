@@ -9,7 +9,7 @@ import { PostgreSQLManagementClient } from 'azure-arm-postgresql';
 import { Server, ServerListResult } from 'azure-arm-postgresql/lib/models';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
-import { getExperienceLabel, tryGetExperience } from '../CosmosDBExperiences';
+import { API, getExperienceLabel, tryGetExperience } from '../CosmosDBExperiences';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
@@ -19,8 +19,6 @@ import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { azureUtils } from '../utils/azureUtils';
 import { nonNullProp } from '../utils/nonNull';
 import { CosmosDBAccountApiStep } from './CosmosDBAccountWizard/CosmosDBAccountApiStep';
-import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccountCreateStep';
-import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
 
 export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
@@ -64,7 +62,6 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const wizardContext: ICosmosDBWizardContext = Object.assign(context, this.root);
 
         const promptSteps: AzureWizardPromptStep<ILocationWizardContext>[] = [
-            new CosmosDBAccountNameStep(),
             new CosmosDBAccountApiStep(),
             new ResourceGroupListStep()
         ];
@@ -72,9 +69,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
         const wizard = new AzureWizard(wizardContext, {
             promptSteps,
-            executeSteps: [
-                new CosmosDBAccountCreateStep()
-            ],
+            executeSteps: [],
             title: 'Create new Cosmos DB account'
         });
 
@@ -87,6 +82,10 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         await wizard.execute();
         // don't wait
         vscode.window.showInformationMessage(`Successfully created account "${accountName}".`);
+        if (wizardContext.defaultExperience?.api === API.Postgres) {
+            return new PostgresServerTreeItem(this, nonNullProp(wizardContext, 'server'));
+
+        }
         return await this.initCosmosDBChild(client, nonNullProp(wizardContext, 'databaseAccount'));
     }
 

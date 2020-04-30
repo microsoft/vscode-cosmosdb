@@ -47,7 +47,7 @@ export async function createPostgresServer(context: IActionContext, node?: Subsc
     await wizard.prompt();
     await wizard.execute();
 
-    vscode.window.showInformationMessage(localize('createdServerMsg', 'Successfully created server "{0}".', wizardContext.newServerName));
+    vscode.window.showInformationMessage(localize('createdServerMsg', 'Successfully created server "{0}".', wizardContext.accountName));
     const serverTreeItem = new PostgresServerTreeItem(node, nonNullProp(wizardContext, 'server'));
 
     await serverTreeItem.refresh();

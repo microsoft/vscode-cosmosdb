@@ -11,12 +11,14 @@ export enum API {
     MongoDB = 'MongoDB',
     Graph = 'Graph',
     Table = 'Table',
-    Core = 'Core'
+    Core = 'Core',
+    Postgres = 'Postgres'
 }
 
 export enum DBAccountKind {
     MongoDB = 'MongoDB',
-    GlobalDocumentDB = 'GlobalDocumentDB'
+    GlobalDocumentDB = 'GlobalDocumentDB',
+    Postgres = 'Postgres'
 }
 
 export type CapabilityName = 'EnableGremlin' | 'EnableTable';
@@ -90,6 +92,7 @@ const CoreExperience: Experience = { api: API.Core, longName: "Core", descriptio
 const MongoExperience: Experience = { api: API.MongoDB, longName: "Azure Cosmos DB for MongoDB API", shortName: "MongoDB", kind: DBAccountKind.MongoDB, tag: "Azure Cosmos DB for MongoDB API" };
 const TableExperience: Experience = { api: API.Table, longName: "Azure Table", shortName: "Table", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableTable', tag: "Azure Table" };
 const GremlinExperience: Experience = { api: API.Graph, longName: "Gremlin", description: "(graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableGremlin', tag: "Gremlin (graph)" };
+const PostgresExperience: Experience = { api: API.Postgres, longName: "Azure Database for PostgreSQL", shortName: "PostgreSQL", kind: DBAccountKind.Postgres, tag: "Azure Database for PostgreSQL" };
 
-const experiencesArray: Experience[] = [CoreExperience, MongoExperience, TableExperience, GremlinExperience];
+const experiencesArray: Experience[] = [CoreExperience, MongoExperience, TableExperience, GremlinExperience, PostgresExperience];
 const experiencesMap = new Map<API, Experience>(experiencesArray.map((info: Experience): [API, Experience] => [info.api, info]));

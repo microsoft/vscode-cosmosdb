@@ -5,18 +5,21 @@
 
 import { AzureTreeItem, IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
-import { setConnectedDatabase } from "../setConnectedDatabase";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
-import { connectedDBKey } from "./registerPostgresCommands";
+import { connectedPostgresKey } from "./registerPostgresCommands";
 
 export async function connectPostgresDatabase(context: IActionContext, treeItem?: PostgresDatabaseTreeItem): Promise<void> {
     if (!treeItem) {
         treeItem = <PostgresDatabaseTreeItem>await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
     }
 
-    const oldTreeItemId: string | undefined = ext.connectedMongoDB && ext.connectedMongoDB.fullId;
-    ext.context.globalState.update(connectedDBKey, treeItem.fullId);
-    setConnectedDatabase(treeItem);
+    const oldTreeItemId: string | undefined = ext.connectedPostgresDB && ext.connectedPostgresDB.fullId;
+    ext.context.globalState.update(connectedPostgresKey, treeItem.fullId);
+    ext.connectedPostgresDB = treeItem;
+    const database = treeItem && treeItem.label;
+    if (ext.postgresCodeLensProvider) {
+        ext.postgresCodeLensProvider.setConnectedDatabase(database);
+    }
     await treeItem.refresh();
 
     if (oldTreeItemId) {

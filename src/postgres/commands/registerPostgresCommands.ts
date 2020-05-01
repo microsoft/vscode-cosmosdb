@@ -20,7 +20,7 @@ import { deletePostgresTable } from "./deletePostgresTable";
 import { enterPostgresCredentials } from "./enterPostgresCredentials";
 import { openPostgresFunction } from "./openPostgresFunction";
 
-export const connectedDBKey: string = 'ms-azuretools.vscode-azuredatabases.connectedPostgresDB';
+export const connectedPostgresKey: string = 'ms-azuretools.vscode-azuredatabases.connectedPostgresDB';
 const postgresLanguageId: string = 'sql';
 
 export function registerPostgresCommands(): void {
@@ -49,7 +49,7 @@ export async function loadPersistedPostgresDatabase(): Promise<void> {
         context.telemetry.properties.isActivationEvent = 'true';
 
         try {
-            const persistedTreeItemId: string | undefined = ext.context.globalState.get(connectedDBKey);
+            const persistedTreeItemId: string | undefined = ext.context.globalState.get(connectedPostgresKey);
             if (persistedTreeItemId) {
                 const persistedTreeItem: PostgresDatabaseTreeItem = <PostgresDatabaseTreeItem>await ext.tree.findTreeItem(persistedTreeItemId, context);
                 if (persistedTreeItem) {

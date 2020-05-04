@@ -6,11 +6,12 @@
 import { Pool } from 'pg';
 import { Table } from 'pg-structure';
 import * as vscode from 'vscode';
-import { AzureTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
+import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
+import { PostgresColumnTreeItem } from './PostgresColumnTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
-export class PostgresTableTreeItem extends AzureTreeItem<ISubscriptionContext> {
+export class PostgresTableTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresTable";
     public readonly contextValue: string = PostgresTableTreeItem.contextValue;
     public readonly table: Table;
@@ -37,7 +38,16 @@ export class PostgresTableTreeItem extends AzureTreeItem<ISubscriptionContext> {
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('Document.svg');
+        return getThemeAgnosticIconPath('PostgresTable.svg');
+    }
+
+    public hasMoreChildrenImpl(): boolean {
+        return false;
+    }
+
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresColumnTreeItem[]> {
+
+        return this.table.columns.map(column => new PostgresColumnTreeItem(this, column.name));
     }
 
     public async deleteTreeItemImpl(): Promise<void> {

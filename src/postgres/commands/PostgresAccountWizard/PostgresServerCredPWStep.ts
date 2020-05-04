@@ -15,7 +15,10 @@ export class PostgresServerCredPWStep extends AzureWizardPromptStep<IPostgresWiz
         const user = nonNullProp(wizardContext, 'adminUser');
         wizardContext.adminPassword = (await ext.ui.showInputBox({
             placeHolder: localize('pwPlaceholder', 'Password'),
-            prompt: localize('enterPWPrompt', 'Enter administrator password for the server.'),
+            prompt: localize('enterPWPrompt', 'Enter administrator password for the server. ' +
+                '**Note** Password must contain characters from three of the following categories: ' +
+                '"uppercase letters", "lowercase letters", "numbers (0-9)", and "non-alphanumeric characteries (!, $, etc.)"'
+            ),
             password: true,
             validateInput: (password: string) => validatePassword(user, password),
         }));

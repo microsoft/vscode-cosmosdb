@@ -46,8 +46,12 @@ async function validatePostgresServerName(name: string, client: PostgreSQLManage
     const availability: NameAvailability = (await client.checkNameAvailability.execute(availabilityRequest));
 
     if (!availability.nameAvailable) {
-
-        return availability.message;
+        if (availability.reason === 'AlreadyExists') {
+            return localize('serverNameAvailabilityCheck', 'Server name "{0}" is not available.', name);
+        } else if (!name.match(/^(?![-])[a-zA-Z0-9-]*(?<![-])$/)) {
+            return localize('serverNameCharacterCheck', 'Server name must only contain lowercase letters, numbers, and hyphens. ' +
+                'The server name must not start or end in a hyphen.');
+        }
     }
 
     return undefined;

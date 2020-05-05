@@ -12,6 +12,7 @@ import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";
 import { connectPostgresDatabase } from "./connectPostgresDatabase";
 import { createPostgresDatabase } from "./createPostgresDatabase";
+import { createPostgresQuery } from "./createPostgresQuery";
 import { createPostgresServer } from "./createPostgresServer";
 import { deletePostgresDatabase } from "./deletePostgresDatabase";
 import { deletePostgresFunction } from "./deletePostgresFunction";
@@ -40,9 +41,10 @@ export function registerPostgresCommands(): void {
     registerCommand('postgreSQL.openFunction', openPostgresFunction, doubleClickDebounceDelay);
     registerCommand('postgreSQL.deleteFunction', deletePostgresFunction);
     registerCommand('postgreSQL.connectDatabase', connectPostgresDatabase);
+    registerCommand('postgreSQL.createQuery', createPostgresQuery);
 }
 
-async function loadPersistedPostgresDatabase(): Promise<void> {
+export async function loadPersistedPostgresDatabase(): Promise<void> {
     // NOTE: We want to make sure this function never throws or returns a rejected promise because it gets awaited multiple times
     await callWithTelemetryAndErrorHandling('postgreSQL.loadPersistedDatabase', async (context: IActionContext) => {
         context.errorHandling.suppressDisplay = true;

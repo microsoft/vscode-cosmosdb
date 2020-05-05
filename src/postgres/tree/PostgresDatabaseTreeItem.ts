@@ -36,6 +36,10 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         return this.databaseName;
     }
 
+    public get description(): string {
+        return ext.connectedPostgresDB && ext.connectedPostgresDB.fullId === this.fullId ? 'Connected' : '';
+    }
+
     public get id(): string {
         return this.databaseName;
     }

@@ -42,7 +42,7 @@ export function registerPostgresCommands(): void {
     registerCommand('postgreSQL.connectDatabase', connectPostgresDatabase);
 }
 
-export async function loadPersistedPostgresDatabase(): Promise<void> {
+async function loadPersistedPostgresDatabase(): Promise<void> {
     // NOTE: We want to make sure this function never throws or returns a rejected promise because it gets awaited multiple times
     await callWithTelemetryAndErrorHandling('postgreSQL.loadPersistedDatabase', async (context: IActionContext) => {
         context.errorHandling.suppressDisplay = true;
@@ -51,7 +51,7 @@ export async function loadPersistedPostgresDatabase(): Promise<void> {
         try {
             const persistedTreeItemId: string | undefined = ext.context.globalState.get(connectedPostgresKey);
             if (persistedTreeItemId) {
-                const persistedTreeItem: PostgresDatabaseTreeItem = <PostgresDatabaseTreeItem>await ext.tree.findTreeItem(persistedTreeItemId, context);
+                const persistedTreeItem: PostgresDatabaseTreeItem | undefined = <PostgresDatabaseTreeItem>await ext.tree.findTreeItem(persistedTreeItemId, context);
                 if (persistedTreeItem) {
                     await connectPostgresDatabase(context, persistedTreeItem);
                 }

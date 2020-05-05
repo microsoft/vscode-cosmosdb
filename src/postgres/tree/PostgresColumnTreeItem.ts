@@ -20,7 +20,7 @@ export class PostgresColumnTreeItem extends AzureTreeItem<ISubscriptionContext> 
     }
 
     public get id(): string {
-        return String(this.columnName);
+        return this.columnName;
     }
 
     public get label(): string {
@@ -28,7 +28,7 @@ export class PostgresColumnTreeItem extends AzureTreeItem<ISubscriptionContext> 
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('PostgresColumn.svg');
+        return getThemeAgnosticIconPath('Document.svg');
     }
 
 }

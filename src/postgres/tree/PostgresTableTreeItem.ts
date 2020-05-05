@@ -50,6 +50,15 @@ export class PostgresTableTreeItem extends AzureParentTreeItem<ISubscriptionCont
         return this.table.columns.map(column => new PostgresColumnTreeItem(this, column.name));
     }
 
+    public hasMoreChildrenImpl(): boolean {
+        return false;
+    }
+
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresColumnTreeItem[]> {
+
+        return this.table.columns.map(column => new PostgresColumnTreeItem(this, column.name));
+    }
+
     public async deleteTreeItemImpl(): Promise<void> {
         const pool = new Pool(this.parent.clientConfig);
         await pool.query(`Drop Table ${this.table.schema.name}."${this.label}";`);

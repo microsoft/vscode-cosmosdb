@@ -83,7 +83,8 @@
         "onCommand:postgreSQL.openFunction",
         "onCommand:postgreSQL.deleteFunction",
         "onCommand:postgreSQL.enterCredentials",
-        "onCommand:postgreSQL.configureFirewall"
+        "onCommand:postgreSQL.configureFirewall",
+        "onCommand:postgreSQL.connectDatabase"
     ],
     "contributes": {
         "viewsContainers": {
@@ -396,6 +397,11 @@
                 "category": "PostgreSQL",
                 "command": "postgreSQL.configureFirewall",
                 "title": "Configure Firewall"
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.connectDatabase",
+                "title": "Connect to Database..."
             }
         ],
         "menus": {
@@ -427,6 +433,10 @@
                 {
                     "command": "cosmosDB.importDocument",
                     "when": "resourceLangId==json"
+                },
+                {
+                    "command": "postgreSQL.connectDatabase",
+                    "when": "resourceLangId==sql"
                 }
             ],
             "editor/title": [
@@ -775,12 +785,20 @@
                 {
                     "command": "cosmosDB.importDocument",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentCollection"
+                },
+                {
+                    "command": "postgreSQL.connectDatabase",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresDatabase"
                 }
             ],
             "explorer/context": [
                 {
                     "command": "cosmosDB.importDocument",
                     "when": "resourceLangId == json"
+                },
+                {
+                    "command": "postgreSQL.connectDatabase",
+                    "when": "resourceLangId == sql"
                 }
             ],
             "commandPalette": [

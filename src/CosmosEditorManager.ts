@@ -18,8 +18,6 @@ import { MongoCollectionNodeEditor } from './mongo/editors/MongoCollectionNodeEd
 import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
-import { PostgresFunctionEditor } from './postgres/editors/PostgresFunctionEditor';
-import { PostgresFunctionTreeItem } from './postgres/tree/PostgresFunctionTreeItem';
 import { nonNullValue } from './utils/nonNull';
 import * as vscodeUtils from './utils/vscodeUtils';
 
@@ -161,8 +159,6 @@ export class CosmosEditorManager {
                     editor = new MongoDocumentNodeEditor(editorNode);
                 } else if (editorNode instanceof DocDBStoredProcedureTreeItem) {
                     editor = new DocDBStoredProcedureNodeEditor(editorNode);
-                } else if (editorNode instanceof PostgresFunctionTreeItem) {
-                    editor = new PostgresFunctionEditor(editorNode);
                 } else {
                     throw new Error("Unexpected type of Editor treeItem");
                 }

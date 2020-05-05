@@ -18,7 +18,7 @@ import { MongoCollectionTreeItem } from "./tree/MongoCollectionTreeItem";
 import { MongoDatabaseTreeItem } from "./tree/MongoDatabaseTreeItem";
 import { MongoDocumentTreeItem } from "./tree/MongoDocumentTreeItem";
 
-const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
+const connectedMongoKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 let diagnosticsCollection: vscode.DiagnosticCollection;
 const mongoLanguageId: string = 'mongo';
 
@@ -71,7 +71,7 @@ export function registerMongoCommands(): MongoCodeLensProvider {
 
         const oldNodeId: string | undefined = ext.connectedMongoDB && ext.connectedMongoDB.fullId;
         await languageClient.connect(node.connectionString, node.databaseName);
-        ext.context.globalState.update(connectedDBKey, node.fullId);
+        ext.context.globalState.update(connectedMongoKey, node.fullId);
         setConnectedNode(node, codeLensProvider);
         await node.refresh();
 
@@ -90,7 +90,7 @@ export function registerMongoCommands(): MongoCodeLensProvider {
         await node.deleteTreeItem(context);
         if (ext.connectedMongoDB && ext.connectedMongoDB.fullId === node.fullId) {
             setConnectedNode(undefined, codeLensProvider);
-            ext.context.globalState.update(connectedDBKey, undefined);
+            ext.context.globalState.update(connectedMongoKey, undefined);
             languageClient.disconnect();
         }
     });
@@ -137,7 +137,7 @@ async function loadPersistedMongoDB(languageClient: MongoDBLanguageClient, codeL
         context.telemetry.properties.isActivationEvent = 'true';
 
         try {
-            const persistedNodeId: string | undefined = ext.context.globalState.get(connectedDBKey);
+            const persistedNodeId: string | undefined = ext.context.globalState.get(connectedMongoKey);
             if (persistedNodeId) {
                 const persistedNode = await ext.tree.findTreeItem(persistedNodeId, context);
                 if (persistedNode) {

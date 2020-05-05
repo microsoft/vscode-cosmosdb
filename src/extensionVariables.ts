@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ExtensionContext, TreeView } from "vscode";
-import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel, IAzureUserInput, ITelemetryReporter } from "vscode-azureextensionui";
+import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel, IAzureUserInput } from "vscode-azureextensionui";
 import { CosmosEditorManager } from "./CosmosEditorManager";
 import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 import { AttachedAccountsTreeItem } from "./tree/AttachedAccountsTreeItem";
@@ -19,7 +19,6 @@ export namespace ext {
     export let ui: IAzureUserInput;
     export let context: ExtensionContext;
     export let outputChannel: IAzExtOutputChannel;
-    export let reporter: ITelemetryReporter;
     export let tree: AzExtTreeDataProvider;
     export let treeView: TreeView<AzExtTreeItem>;
     export let attachedAccountsNode: AttachedAccountsTreeItem;

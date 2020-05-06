@@ -38,16 +38,7 @@ export class PostgresTableTreeItem extends AzureParentTreeItem<ISubscriptionCont
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('PostgresTable.svg');
-    }
-
-    public hasMoreChildrenImpl(): boolean {
-        return false;
-    }
-
-    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresColumnTreeItem[]> {
-
-        return this.table.columns.map(column => new PostgresColumnTreeItem(this, column.name));
+        return getThemeAgnosticIconPath('Document.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {

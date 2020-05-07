@@ -84,7 +84,8 @@
         "onCommand:postgreSQL.deleteFunction",
         "onCommand:postgreSQL.enterCredentials",
         "onCommand:postgreSQL.configureFirewall",
-        "onCommand:postgreSQL.connectDatabase"
+        "onCommand:postgreSQL.connectDatabase",
+        "onCommand:postgreSQL.executeQuery"
     ],
     "contributes": {
         "viewsContainers": {
@@ -402,6 +403,11 @@
                 "category": "PostgreSQL",
                 "command": "postgreSQL.connectDatabase",
                 "title": "Connect to Database..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.executeQuery",
+                "title": "Execute Query..."
             }
         ],
         "menus": {
@@ -788,6 +794,10 @@
                 },
                 {
                     "command": "postgreSQL.connectDatabase",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresDatabase"
+                },
+                {
+                    "command": "postgreSQL.executeQuery",
                     "when": "view == azureDatabasesExplorer && viewItem == postgresDatabase"
                 }
             ],

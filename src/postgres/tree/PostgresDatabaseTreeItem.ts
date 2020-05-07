@@ -26,6 +26,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     public readonly databaseName: string;
     public readonly parent: PostgresServerTreeItem;
     public autoSelectInTreeItemPicker: boolean = true;
+    public clientConfig: ClientConfig | undefined;
 
     constructor(parent: PostgresServerTreeItem, databaseName: string) {
         super(parent);
@@ -65,6 +66,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
                 const host: string = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
                 const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
+                this.clientConfig = clientConfig;
 
                 // Ensure the client config is valid before continuing
                 const client: Client = new Client(clientConfig);

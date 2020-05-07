@@ -109,6 +109,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const deletingMessage: string = `Deleting server "${this.name}"...`;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
+            await this.deletePostgresCredentials();
             await client.servers.deleteMethod(this.resourceGroup, this.name);
         });
     }
@@ -136,6 +137,20 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         // `semver.gte` complains when a version doesn't have decimals (i.e. "10"), so attempt to convert version to SemVer
         const version: SemVer | null = coerce(this.server.version);
         return !!version && gte(version, '11.0.0');
+    }
+
+    private async deletePostgresCredentials(): Promise<void> {
+        if (ext.keytar) {
+            const serviceName: string = PostgresServerTreeItem.serviceName;
+            const storedValue: string | undefined = ext.context.globalState.get(serviceName);
+            let servers: IPersistedServer[] = storedValue ? JSON.parse(storedValue) : [];
+
+            // Remove this server from the cache
+            servers = servers.filter((server: IPersistedServer) => { return server.id !== this.id; });
+
+            await ext.context.globalState.update(serviceName, JSON.stringify(servers));
+            await ext.keytar.deletePassword(serviceName, this.id);
+        }
     }
 }
 

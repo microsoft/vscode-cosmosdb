@@ -109,8 +109,8 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const deletingMessage: string = `Deleting server "${this.name}"...`;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
-            await this.deletePostgresCredentials();
             await client.servers.deleteMethod(this.resourceGroup, this.name);
+            await this.deletePostgresCredentials();
         });
     }
 

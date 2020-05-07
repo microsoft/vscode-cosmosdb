@@ -43,7 +43,7 @@ async function validatePostgresServerName(name: string, client: PostgreSQLManage
 
     const availabilityRequest: NameAvailabilityRequest = { name: name, type: "Microsoft.DBforPostgreSQL" };
     const characterMatch = name.match(/^(?![-])[a-zA-Z0-9-]*(?<![-])$/);
-    const prefixSuffixMatch = name.match(/^[-]*.*[-]$/);
+    const prefixSuffixMatch = name.match(/^[-]*.*[-]*$/);
     const availability: NameAvailability = (await client.checkNameAvailability.execute(availabilityRequest));
 
     if (!availability.nameAvailable) {

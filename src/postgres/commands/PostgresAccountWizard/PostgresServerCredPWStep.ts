@@ -13,11 +13,12 @@ export class PostgresServerCredPWStep extends AzureWizardPromptStep<IPostgresWiz
 
     public async prompt(wizardContext: IPostgresWizardContext): Promise<void> {
         const user = nonNullProp(wizardContext, 'adminUser');
+        const pwConditionMsg = localize('passwordConditionMsg', 'Password must contain characters from three of the following categories - uppercase letters, lowercase letters, numbers (0-9), and non-alphanumeric characters (!, $, etc.).');
         wizardContext.adminPassword = (await ext.ui.showInputBox({
             placeHolder: localize('pwPlaceholder', 'Administrator Password'),
-            prompt: localize('enterPWPrompt', 'Password must contain characters from three of the following categories: uppercase letters, lowercase letters, numbers (0-9), and non-alphanumeric characters (!, $, etc.).'),
+            prompt: pwConditionMsg,
             password: true,
-            validateInput: (password: string) => validatePassword(user, password),
+            validateInput: (password: string) => validatePassword(user, password, pwConditionMsg),
         }));
     }
 
@@ -26,7 +27,7 @@ export class PostgresServerCredPWStep extends AzureWizardPromptStep<IPostgresWiz
     }
 }
 
-async function validatePassword(username: string, password: string): Promise<string | undefined> {
+async function validatePassword(username: string, password: string, pwConditionMsg: string): Promise<string | undefined> {
     password = password ? password : '';
 
     const min = 8;
@@ -44,7 +45,7 @@ async function validatePassword(username: string, password: string): Promise<str
     if (password.length < min || password.length > max) {
         return localize('pwLengthCheck', 'Password must be between {0} and {1} characters.', min, max);
     } else if (numOccurrence < 3) {
-        return localize('pwCharacterCheck', 'Password must contain characters from three of the following categories - uppercase letters, lowercase letters, numbers (0-9), and non-alphanumeric characters (!, $, etc.).');
+        return pwConditionMsg;
     } else if (password.includes(username)) {
         return localize('pwUserSimalarityCheck', 'Password cannot contain the username.');
     } else {

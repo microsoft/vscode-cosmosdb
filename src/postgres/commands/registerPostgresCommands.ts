@@ -12,7 +12,7 @@ import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";
 import { connectPostgresDatabase } from "./connectPostgresDatabase";
 import { createPostgresDatabase } from "./createPostgresDatabase";
-import { createPostgresQuery } from "./createPostgresQuery";
+import { createPostgresFunctionQuery } from "./createPostgresFunctionQuery";
 import { createPostgresServer } from "./createPostgresServer";
 import { deletePostgresDatabase } from "./deletePostgresDatabase";
 import { deletePostgresFunction } from "./deletePostgresFunction";
@@ -41,7 +41,7 @@ export function registerPostgresCommands(): void {
     registerCommand('postgreSQL.openFunction', openPostgresFunction, doubleClickDebounceDelay);
     registerCommand('postgreSQL.deleteFunction', deletePostgresFunction);
     registerCommand('postgreSQL.connectDatabase', connectPostgresDatabase);
-    registerCommand('postgreSQL.createQuery', createPostgresQuery);
+    registerCommand('postgreSQL.createFunctionQuery', createPostgresFunctionQuery);
 }
 
 export async function loadPersistedPostgresDatabase(): Promise<void> {

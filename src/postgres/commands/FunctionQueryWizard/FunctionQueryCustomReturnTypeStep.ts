@@ -4,20 +4,16 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from "vscode-azureextensionui";
-import { ext } from "../../../../extensionVariables";
-import { localize } from "../../../../utils/localize";
-import { PostgresServerTreeItem } from "../../../tree/PostgresServerTreeItem";
+import { ext } from "../../../extensionVariables";
+import { localize } from "../../../utils/localize";
 import { IPostgresFunctionQueryWizardContext } from "./IPostgresFunctionQueryWizardContext";
 
-export class FunctionQueryNameStep extends AzureWizardPromptStep<IPostgresFunctionQueryWizardContext> {
+export class FunctionQueryCustomReturnTypeStep extends AzureWizardPromptStep<IPostgresFunctionQueryWizardContext> {
     public async prompt(wizardContext: IPostgresFunctionQueryWizardContext): Promise<void> {
-        wizardContext.name = (await ext.ui.showInputBox({
-            prompt: localize('provideFunctionName', 'Provide function name'),
-            validateInput: PostgresServerTreeItem.validateIdentifier
-        })).trim();
+        wizardContext.returnType = await ext.ui.showInputBox({ prompt: localize('provideCustomReturnType', 'Provide custom return type') });
     }
 
-    public shouldPrompt(): boolean {
-        return true;
+    public shouldPrompt(wizardContext: IPostgresFunctionQueryWizardContext): boolean {
+        return !wizardContext.returnType;
     }
 }

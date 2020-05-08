@@ -3,36 +3,28 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { QuickPickItem } from "vscode";
-import { AzureWizardPromptStep, IWizardOptions } from "vscode-azureextensionui";
-import { ext } from "../../../../extensionVariables";
-import { localize } from "../../../../utils/localize";
+import { AzureWizardPromptStep, IAzureQuickPickItem, IWizardOptions } from "vscode-azureextensionui";
+import { ext } from "../../../extensionVariables";
+import { localize } from "../../../utils/localize";
 import { FunctionQueryCustomReturnTypeStep } from "./FunctionQueryCustomReturnTypeStep";
 import { IPostgresFunctionQueryWizardContext } from "./IPostgresFunctionQueryWizardContext";
 
-const customReturnTypePick: QuickPickItem = { label: localize('enterCustomReturnType', '$(pencil) Enter custom return type...') };
-
 export class FunctionQueryReturnTypeStep extends AzureWizardPromptStep<IPostgresFunctionQueryWizardContext> {
     public async prompt(wizardContext: IPostgresFunctionQueryWizardContext): Promise<void> {
-        const returnTypeQuickPicks: QuickPickItem[] = returnTypes.map(r => { return { label: r }; });
-        returnTypeQuickPicks.push(customReturnTypePick);
+        const returnTypeQuickPicks: IAzureQuickPickItem<string | undefined>[] = returnTypes.map(r => { return { label: r, data: r }; });
+        returnTypeQuickPicks.push({ label: localize('enterCustomReturnType', '$(pencil) Enter custom return type...'), data: undefined });
 
-        wizardContext.returnTypePick = (await ext.ui.showQuickPick(returnTypeQuickPicks, {
+        wizardContext.returnType = (await ext.ui.showQuickPick(returnTypeQuickPicks, {
             placeHolder: localize('selectReturnType', 'Select return type')
-        }));
+        })).data;
     }
 
-    public shouldPrompt(): boolean {
-        return true;
+    public shouldPrompt(wizardContext: IPostgresFunctionQueryWizardContext): boolean {
+        return !wizardContext.returnType;
     }
 
     public async getSubWizard(wizardContext: IPostgresFunctionQueryWizardContext): Promise<IWizardOptions<IPostgresFunctionQueryWizardContext> | undefined> {
-        if (wizardContext.returnTypePick === customReturnTypePick) {
-            return { promptSteps: [new FunctionQueryCustomReturnTypeStep()] };
-        }
-
-        wizardContext.returnType = wizardContext.returnTypePick.label;
-        return undefined;
+        return wizardContext.returnType ? undefined : { promptSteps: [new FunctionQueryCustomReturnTypeStep()] };
     }
 }
 

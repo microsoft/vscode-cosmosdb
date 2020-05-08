@@ -4,13 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep } from "vscode-azureextensionui";
+import { nonNullProp } from "../../../utils/nonNull";
 import { IPostgresFunctionQueryWizardContext } from "./IPostgresFunctionQueryWizardContext";
 
 export class FunctionQueryCreateStep extends AzureWizardExecuteStep<IPostgresFunctionQueryWizardContext> {
     public priority: number = 100;
 
     public async execute(wizardContext: IPostgresFunctionQueryWizardContext): Promise<void> {
-        wizardContext.query = defaultFunctionQuery(wizardContext.name, wizardContext.returnType);
+        wizardContext.query = defaultFunctionQuery(nonNullProp(wizardContext, 'name'), nonNullProp(wizardContext, 'returnType'));
     }
 
     public shouldExecute(): boolean {

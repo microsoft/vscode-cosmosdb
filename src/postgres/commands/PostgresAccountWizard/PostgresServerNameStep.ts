@@ -39,19 +39,18 @@ async function validatePostgresServerName(name: string, client: PostgreSQLManage
 
     if (name.length < min || name.length > max) {
         return localize('serverNameLengthCheck', 'The name must be between {0} and {1} characters.', min, max);
+    } else if (!(/^[a-z0-9-]+$/).test(name)) {
+        return localize('serverNameCharacterCheck', 'Server name must only contain lowercase letters, numbers, and hyphens.');
+    } else if (name.startsWith('-') || name.endsWith('-')) {
+        return localize('serverNamePrefixSuffixCheck', 'Server name must not start or end in a hyphen.');
     }
 
     const availabilityRequest: NameAvailabilityRequest = { name: name, type: "Microsoft.DBforPostgreSQL" };
-    const characterMatch = name.match(/^[a-z\d-]+$/);
     const availability: NameAvailability = (await client.checkNameAvailability.execute(availabilityRequest));
 
     if (!availability.nameAvailable) {
         if (availability.reason === 'AlreadyExists') {
             return localize('serverNameAvailabilityCheck', 'Server name "{0}" is not available.', name);
-        } else if (!characterMatch) {
-            return localize('serverNameCharacterCheck', 'Server name must only contain lowercase letters, numbers, and hyphens.');
-        } else if (name.startsWith('-') || name.endsWith('-')) {
-            return localize('serverNamePrefixSuffixCheck', 'Server name must not start or end in a hyphen.');
         }
     }
 

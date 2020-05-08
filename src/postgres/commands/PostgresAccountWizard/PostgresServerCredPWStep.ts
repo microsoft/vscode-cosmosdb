@@ -9,16 +9,17 @@ import { localize } from '../../../utils/localize';
 import { nonNullProp } from '../../../utils/nonNull';
 import { IPostgresWizardContext } from './IPostgresWizardContext';
 
+const pwConditionMsg = localize('passwordConditionMsg', 'Password must contain characters from three of the following categories - uppercase letters, lowercase letters, numbers (0-9), and non-alphanumeric characters (!, $, etc.).');
+
 export class PostgresServerCredPWStep extends AzureWizardPromptStep<IPostgresWizardContext> {
 
     public async prompt(wizardContext: IPostgresWizardContext): Promise<void> {
         const user = nonNullProp(wizardContext, 'adminUser');
-        const pwConditionMsg = localize('passwordConditionMsg', 'Password must contain characters from three of the following categories - uppercase letters, lowercase letters, numbers (0-9), and non-alphanumeric characters (!, $, etc.).');
         wizardContext.adminPassword = (await ext.ui.showInputBox({
             placeHolder: localize('pwPlaceholder', 'Administrator Password'),
             prompt: pwConditionMsg,
             password: true,
-            validateInput: (password: string) => validatePassword(user, password, pwConditionMsg),
+            validateInput: (password: string) => validatePassword(user, password),
         }));
     }
 
@@ -27,7 +28,7 @@ export class PostgresServerCredPWStep extends AzureWizardPromptStep<IPostgresWiz
     }
 }
 
-async function validatePassword(username: string, password: string, pwConditionMsg: string): Promise<string | undefined> {
+async function validatePassword(username: string, password: string): Promise<string | undefined> {
     password = password ? password : '';
 
     const min = 8;

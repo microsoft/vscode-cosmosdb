@@ -44,7 +44,7 @@ export function registerPostgresCommands(): void {
     registerCommand('postgreSQL.createFunctionQuery', createPostgresFunctionQuery);
 }
 
-export async function loadPersistedPostgresDatabase(): Promise<void> {
+async function loadPersistedPostgresDatabase(): Promise<void> {
     // NOTE: We want to make sure this function never throws or returns a rejected promise because it gets awaited multiple times
     await callWithTelemetryAndErrorHandling('postgreSQL.loadPersistedDatabase', async (context: IActionContext) => {
         context.errorHandling.suppressDisplay = true;

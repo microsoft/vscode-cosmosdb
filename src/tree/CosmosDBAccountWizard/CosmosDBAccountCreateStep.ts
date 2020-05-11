@@ -19,10 +19,10 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
         const locationName: string = nonNullProp(nonNullProp(wizardContext, 'location'), 'name');
         const defaultExperience = nonNullProp(wizardContext, 'defaultExperience');
         const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
-        const accountName = nonNullProp(wizardContext, 'accountName');
+        const resourceName = nonNullProp(wizardContext, 'resourceName');
 
         const client: CosmosDBManagementClient = createAzureClient(wizardContext, CosmosDBManagementClient);
-        const creatingMessage: string = localize('creatingCosmosDBAccount', 'Creating Cosmos DB account "{0}" with the "{1}" API... It should be ready in several minutes.', accountName, defaultExperience.shortName);
+        const creatingMessage: string = localize('creatingCosmosDBAccount', 'Creating Cosmos DB account "{0}" with the "{1}" API... It should be ready in several minutes.', resourceName, defaultExperience.shortName);
         ext.outputChannel.appendLog(creatingMessage);
         progress.report({ message: creatingMessage });
 
@@ -31,7 +31,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             locations: [{ locationName: locationName }],
             kind: defaultExperience.kind,
             // Note: Setting this tag has no functional effect in the portal, but we'll keep doing it to imitate portal behavior
-            tags: { defaultExperience: defaultExperience.tag },
+            tags: { defaultExperience: nonNullProp(defaultExperience, 'tag') },
             capabilities: <Capability[]>[]
         };
 
@@ -39,11 +39,11 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             options.capabilities.push(<Capability>{ name: defaultExperience.capability });
         }
 
-        wizardContext.databaseAccount = await client.databaseAccounts.createOrUpdate(rgName, accountName, options);
+        wizardContext.databaseAccount = await client.databaseAccounts.createOrUpdate(rgName, resourceName, options);
 
         // createOrUpdate always returns an empty object - so we have to get the DatabaseAccount separately
-        wizardContext.databaseAccount = await client.databaseAccounts.get(rgName, accountName);
-        ext.outputChannel.appendLog(`Successfully created Cosmos DB account "${accountName}".`);
+        wizardContext.databaseAccount = await client.databaseAccounts.get(rgName, resourceName);
+        ext.outputChannel.appendLog(`Successfully created Cosmos DB account "${resourceName}".`);
     }
 
     public shouldExecute(wizardContext: ICosmosDBWizardContext): boolean {

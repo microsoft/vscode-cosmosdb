@@ -12,7 +12,6 @@ import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";
 import { connectPostgresDatabase } from "./connectPostgresDatabase";
 import { createPostgresDatabase } from "./createPostgresDatabase";
-import { createPostgresServer } from "./createPostgresServer";
 import { deletePostgresDatabase } from "./deletePostgresDatabase";
 import { deletePostgresFunction } from "./deletePostgresFunction";
 import { deletePostgresServer } from "./deletePostgresServer";
@@ -30,7 +29,6 @@ export function registerPostgresCommands(): void {
     // tslint:disable-next-line: no-floating-promises
     loadPersistedPostgresDatabase();
 
-    registerCommand('postgreSQL.createServer', createPostgresServer);
     registerCommand('postgreSQL.deleteServer', deletePostgresServer);
     registerCommand('postgreSQL.enterCredentials', enterPostgresCredentials);
     registerCommand('postgreSQL.configureFirewall', configurePostgresFirewall);

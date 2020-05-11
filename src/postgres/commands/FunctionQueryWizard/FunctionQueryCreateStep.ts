@@ -25,6 +25,6 @@ const defaultFunctionQuery = (name: string, returnType: string) => `CREATE OR RE
 AS $function$
     BEGIN
     /* function body */
-	END;
+    END;
 $function$
 `;

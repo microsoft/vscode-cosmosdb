@@ -46,5 +46,6 @@ const returnTypes: string[] = [
     'oid[]',
     'smallint',
     'smallint[]',
+    'text',
     'void'
 ];

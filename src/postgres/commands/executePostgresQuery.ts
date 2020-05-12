@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Client, QueryResult } from 'pg';
+import { Client, ClientConfig, QueryResult } from 'pg';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, IActionContext } from 'vscode-azureextensionui';
+import { IActionContext, IParsedError, parseError } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
-import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
+import { firewallNotConfiguredErrorType, invalidCredentialsErrorType, PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
 import { configurePostgresFirewall } from './configurePostgresFirewall';
 import { enterPostgresCredentials } from './enterPostgresCredentials';
 import { loadPersistedPostgresDatabase } from './registerPostgresCommands';
@@ -24,20 +24,20 @@ export async function executePostgresQuery(context: IActionContext, treeItem?: P
         }
     }
 
-    if (!treeItem.clientConfig) {
-        let children: AzExtTreeItem[] = await treeItem.loadAllChildren(context);
+    let clientConfig: ClientConfig | undefined;
+    while (!clientConfig) {
+        try {
+            clientConfig = await treeItem.getClientConfig();
+        } catch (error) {
+            const parsedError: IParsedError = parseError(error);
 
-        while (children.length === 1) {
-            // One child was returned meaning there was a problem connecting to the server
-
-            if (children[0].contextValue === 'postgresCredentials') {
+            if (parsedError.errorType === invalidCredentialsErrorType) {
                 await enterPostgresCredentials(context, treeItem.parent);
-            } else if (children[0].contextValue === 'postgresFirewall') {
+            } else if (parsedError.errorType === firewallNotConfiguredErrorType) {
                 await configurePostgresFirewall(context, treeItem.parent);
+            } else {
+                throw error;
             }
-
-            await treeItem.refresh();
-            children = await treeItem.loadAllChildren(context);
         }
     }
 
@@ -48,7 +48,7 @@ export async function executePostgresQuery(context: IActionContext, treeItem?: P
         throw new Error(localize('openQueryBeforeExecuting', 'Open a PostgreSQL query before executing.'));
     }
 
-    const client: Client = new Client(treeItem.clientConfig);
+    const client: Client = new Client(clientConfig);
     await client.connect();
     const queryResult: QueryResult = await client.query(query);
 

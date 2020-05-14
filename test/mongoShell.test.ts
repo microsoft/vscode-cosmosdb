@@ -108,11 +108,11 @@ suite("MongoShell", function (this: Mocha.Suite): void {
 
             mongodCP = cp.spawn(mongodPath, ['--quiet']);
 
-            mongodCP.stdout.on("data", (buffer: Buffer) => {
+            mongodCP.stdout?.on("data", (buffer: Buffer) => {
                 log(buffer.toString(), "mongo server: ");
                 mongoDOutput += buffer.toString();
             });
-            mongodCP.stderr.on("data", (buffer: Buffer) => {
+            mongodCP.stderr?.on("data", (buffer: Buffer) => {
                 log(buffer.toString(), "mongo server STDERR: ");
                 mongoDErrors += buffer.toString();
             });

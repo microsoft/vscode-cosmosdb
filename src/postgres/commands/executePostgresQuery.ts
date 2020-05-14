@@ -13,15 +13,14 @@ import { configurePostgresFirewall } from './configurePostgresFirewall';
 import { enterPostgresCredentials } from './enterPostgresCredentials';
 import { loadPersistedPostgresDatabase } from './registerPostgresCommands';
 
-export async function executePostgresQuery(context: IActionContext, treeItem?: PostgresDatabaseTreeItem): Promise<void> {
+export async function executePostgresQuery(context: IActionContext): Promise<void> {
     await loadPersistedPostgresDatabase();
 
-    if (!treeItem) {
-        if (ext.connectedPostgresDB) {
-            treeItem = ext.connectedPostgresDB;
-        } else {
-            treeItem = <PostgresDatabaseTreeItem>await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
-        }
+    let treeItem: PostgresDatabaseTreeItem;
+    if (ext.connectedPostgresDB) {
+        treeItem = ext.connectedPostgresDB;
+    } else {
+        treeItem = <PostgresDatabaseTreeItem>await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
     }
 
     let clientConfig: ClientConfig | undefined;

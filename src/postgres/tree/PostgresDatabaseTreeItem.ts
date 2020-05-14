@@ -120,8 +120,10 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
             return clientConfig;
         } else {
-            const invalidCredentialsError: Error & { code: string } = Object.assign(new Error(localize('mustEnterCredentials', 'Must enter credentials to connect to server.')), { code: invalidCredentialsErrorType });
-            throw invalidCredentialsError;
+            throw {
+                message: localize('mustEnterCredentials', 'Must enter credentials to connect to server.'),
+                code: invalidCredentialsErrorType
+            };
         }
     }
 }

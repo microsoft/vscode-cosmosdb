@@ -68,7 +68,7 @@ export class InteractiveChildProcess {
 
     public writeLine(text: string): void {
         this.writeLineToOutputChannel(text, stdInPrefix);
-        this._childProc.stdin.write(text + os.EOL);
+        this._childProc.stdin?.write(text + os.EOL);
     }
 
     private async startCore(): Promise<void> {
@@ -88,13 +88,13 @@ export class InteractiveChildProcess {
         this.writeLineToOutputChannel(`Starting executable: "${this._options.command}" ${formattedArgs}`);
         this._childProc = cp.spawn(this._options.command, this._options.args, options);
 
-        this._childProc.stdout.on('data', (data: string | Buffer) => {
+        this._childProc.stdout?.on('data', (data: string | Buffer) => {
             const text = data.toString();
             this._onStdOutEmitter.fire(text);
             this.writeLineToOutputChannel(text);
         });
 
-        this._childProc.stderr.on('data', (data: string | Buffer) => {
+        this._childProc.stderr?.on('data', (data: string | Buffer) => {
             const text = data.toString();
             this._onStdErrEmitter.fire(text);
             this.writeLineToOutputChannel(text, stdErrPrefix);

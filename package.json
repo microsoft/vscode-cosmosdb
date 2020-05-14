@@ -85,6 +85,7 @@
         "onCommand:postgreSQL.enterCredentials",
         "onCommand:postgreSQL.configureFirewall",
         "onCommand:postgreSQL.connectDatabase",
+        "onCommand:postgreSQL.createFunctionQuery",
         "onCommand:postgreSQL.executeQuery"
     ],
     "contributes": {
@@ -403,6 +404,10 @@
                 "category": "PostgreSQL",
                 "command": "postgreSQL.connectDatabase",
                 "title": "Connect to Database..."
+            },
+            {
+                "command": "postgreSQL.createFunctionQuery",
+                "title": "Create Function Query..."
             },
             {
                 "category": "PostgreSQL",
@@ -754,6 +759,18 @@
                 },
                 {
                     "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresDatabase"
+                },
+                {
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresTables"
+                },
+                {
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresFunctions"
+                },
+                {
+                    "command": "azureDatabases.refresh",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServerAttached"
                 },
                 {
@@ -795,6 +812,10 @@
                 {
                     "command": "postgreSQL.connectDatabase",
                     "when": "view == azureDatabasesExplorer && viewItem == postgresDatabase"
+                },
+                {
+                    "command": "postgreSQL.createFunctionQuery",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresFunctions"
                 }
             ],
             "explorer/context": [

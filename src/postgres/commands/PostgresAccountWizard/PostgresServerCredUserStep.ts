@@ -12,8 +12,7 @@ export class PostgresServerCredUserStep extends AzureWizardPromptStep<IPostgresW
 
     public async prompt(wizardContext: IPostgresWizardContext): Promise<void> {
         wizardContext.adminUser = (await ext.ui.showInputBox({
-            placeHolder: localize('usernamePlaceholder', 'Username'),
-            prompt: localize('enterUsernamePrompt', 'Enter administrator username for the server.'),
+            placeHolder: localize('usernamePlaceholder', 'Administrator Username'),
             validateInput: validateUser,
         })).trim();
     }

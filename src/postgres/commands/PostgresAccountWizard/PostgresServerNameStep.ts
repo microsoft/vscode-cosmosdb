@@ -15,8 +15,7 @@ export class PostgresServerNameStep extends AzureNameStep<IPostgresWizardContext
     public async prompt(wizardContext: IPostgresWizardContext): Promise<void> {
         const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
         wizardContext.newServerName = (await ext.ui.showInputBox({
-            placeHolder: localize('serverNamePlaceholder', 'Server name'),
-            prompt: localize('enterServerNamePrompt', 'Provide a name for the PostgreSQL Server.'),
+            placeHolder: localize('serverNamePlaceholder', 'Server Name'),
             validateInput: (name: string) => validatePostgresServerName(name, client)
         })).trim();
 
@@ -40,14 +39,19 @@ async function validatePostgresServerName(name: string, client: PostgreSQLManage
 
     if (name.length < min || name.length > max) {
         return localize('serverNameLengthCheck', 'The name must be between {0} and {1} characters.', min, max);
+    } else if (!(/^[a-z0-9-]+$/).test(name)) {
+        return localize('serverNameCharacterCheck', 'Server name must only contain lowercase letters, numbers, and hyphens.');
+    } else if (name.startsWith('-') || name.endsWith('-')) {
+        return localize('serverNamePrefixSuffixCheck', 'Server name must not start or end in a hyphen.');
     }
 
     const availabilityRequest: NameAvailabilityRequest = { name: name, type: "Microsoft.DBforPostgreSQL" };
     const availability: NameAvailability = (await client.checkNameAvailability.execute(availabilityRequest));
 
     if (!availability.nameAvailable) {
-
-        return availability.message;
+        if (availability.reason === 'AlreadyExists') {
+            return localize('serverNameAvailabilityCheck', 'Server name "{0}" is not available.', name);
+        }
     }
 
     return undefined;

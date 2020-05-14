@@ -27,7 +27,7 @@ export class PostgresServerSetFirewallStep extends AzureWizardExecuteStep<IPostg
             endIpAddress: ip
         };
 
-        const addFirewallMessage: string = localize('configuringFirewall', 'Adding firewall rule for IP "{0}" to server "{1}"...', ip, serverName);
+        const addFirewallMessage: string = localize('configuringFirewall', 'Adding firewall rule for your IP "{0}" to server "{1}"...', ip, serverName);
         progress.report({ message: addFirewallMessage });
 
         await client.firewallRules.createOrUpdate(resourceGroup, serverName, firewallRuleName, newFirewallRule);

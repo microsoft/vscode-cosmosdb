@@ -26,7 +26,6 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     public readonly databaseName: string;
     public readonly parent: PostgresServerTreeItem;
     public autoSelectInTreeItemPicker: boolean = true;
-    public clientConfig: ClientConfig | undefined;
 
     constructor(parent: PostgresServerTreeItem, databaseName: string) {
         super(parent);

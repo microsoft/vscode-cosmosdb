@@ -19,6 +19,7 @@ import { deletePostgresFunction } from "./deletePostgresFunction";
 import { deletePostgresServer } from "./deletePostgresServer";
 import { deletePostgresTable } from "./deletePostgresTable";
 import { enterPostgresCredentials } from "./enterPostgresCredentials";
+import { executePostgresQuery } from "./executePostgresQuery";
 import { openPostgresFunction } from "./openPostgresFunction";
 
 export const connectedPostgresKey: string = 'ms-azuretools.vscode-azuredatabases.connectedPostgresDB';
@@ -42,9 +43,10 @@ export function registerPostgresCommands(): void {
     registerCommand('postgreSQL.deleteFunction', deletePostgresFunction);
     registerCommand('postgreSQL.connectDatabase', connectPostgresDatabase);
     registerCommand('postgreSQL.createFunctionQuery', createPostgresFunctionQuery);
+    registerCommand('postgreSQL.executeQuery', executePostgresQuery);
 }
 
-async function loadPersistedPostgresDatabase(): Promise<void> {
+export async function loadPersistedPostgresDatabase(): Promise<void> {
     // NOTE: We want to make sure this function never throws or returns a rejected promise because it gets awaited multiple times
     await callWithTelemetryAndErrorHandling('postgreSQL.loadPersistedDatabase', async (context: IActionContext) => {
         context.errorHandling.suppressDisplay = true;

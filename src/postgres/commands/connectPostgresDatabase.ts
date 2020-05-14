@@ -3,13 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { Uri, window } from 'vscode';
 import { AzureTreeItem, IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
 import { connectedPostgresKey } from "./registerPostgresCommands";
 
-export async function connectPostgresDatabase(context: IActionContext, treeItem?: PostgresDatabaseTreeItem): Promise<void> {
-    if (!treeItem) {
+export async function connectPostgresDatabase(context: IActionContext, treeItem?: Uri | PostgresDatabaseTreeItem): Promise<void> {
+    if (!treeItem || treeItem instanceof Uri) {
+        if (treeItem) {
+            window.showTextDocument(treeItem);
+        }
+
         treeItem = <PostgresDatabaseTreeItem>await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
     }
 

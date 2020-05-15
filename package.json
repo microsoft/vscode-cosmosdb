@@ -6,7 +6,7 @@
     "displayName": "Azure Databases",
     "description": "Create, browse, and update globally distributed, multi-model databases in Azure.",
     "engines": {
-        "vscode": "^1.31.0"
+        "vscode": "^1.40.0"
     },
     "galleryBanner": {
         "color": "#3c3c3c",
@@ -83,7 +83,9 @@
         "onCommand:postgreSQL.deleteFunction",
         "onCommand:postgreSQL.enterCredentials",
         "onCommand:postgreSQL.configureFirewall",
-        "onCommand:postgreSQL.connectDatabase"
+        "onCommand:postgreSQL.connectDatabase",
+        "onCommand:postgreSQL.createFunctionQuery",
+        "onCommand:postgreSQL.executeQuery"
     ],
     "contributes": {
         "viewsContainers": {
@@ -392,6 +394,16 @@
                 "category": "PostgreSQL",
                 "command": "postgreSQL.connectDatabase",
                 "title": "Connect to Database..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.createFunctionQuery",
+                "title": "Create Function Query..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.executeQuery",
+                "title": "Execute Query..."
             }
         ],
         "menus": {
@@ -728,6 +740,18 @@
                 },
                 {
                     "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresDatabase"
+                },
+                {
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresTables"
+                },
+                {
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresFunctions"
+                },
+                {
+                    "command": "azureDatabases.refresh",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServerAttached"
                 },
                 {
@@ -769,6 +793,10 @@
                 {
                     "command": "postgreSQL.connectDatabase",
                     "when": "view == azureDatabasesExplorer && viewItem == postgresDatabase"
+                },
+                {
+                    "command": "postgreSQL.createFunctionQuery",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresFunctions"
                 }
             ],
             "explorer/context": [
@@ -805,6 +833,10 @@
                 {
                     "command": "cosmosDB.executeMongoCommand",
                     "when": "editorLangId == 'mongo'"
+                },
+                {
+                    "command": "postgreSQL.executeQuery",
+                    "when": "editorLangId == 'sql'"
                 }
             ]
         },
@@ -918,8 +950,8 @@
         "@types/keytar": "4.0.1",
         "@types/mocha": "^7.0.2",
         "@types/mongodb": "^3.3.2",
-        "@types/node": "^10.0.0",
-        "@types/vscode": "1.31.0",
+        "@types/node": "^12.0.0",
+        "@types/vscode": "1.40.0",
         "antlr4ts-cli": "^0.4.0-alpha.4",
         "azure-arm-resource": "^3.0.0-preview",
         "copy-webpack-plugin": "^5.1.1",
@@ -934,7 +966,7 @@
         "tslint-microsoft-contrib": "5.0.1",
         "typescript": "^3.8.3",
         "vsce": "^1.37.5",
-        "vscode-azureextensiondev": "^0.3.3",
+        "vscode-azureextensiondev": "^0.4.0",
         "vscode-test": "^1.3.0",
         "webpack": "4.28.1",
         "webpack-cli": "^3.1.2"
@@ -955,7 +987,7 @@
         "public-ip": "^4.0.0",
         "semver": "^7.2.2",
         "underscore": "^1.8.3",
-        "vscode-azureextensionui": "^0.31.1",
+        "vscode-azureextensionui": "^0.33.0",
         "vscode-json-languageservice": "^3.0.8",
         "vscode-languageclient": "^4.4.0",
         "vscode-languageserver": "^4.4.0",

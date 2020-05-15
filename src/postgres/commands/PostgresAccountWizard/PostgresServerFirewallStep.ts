@@ -26,7 +26,7 @@ export class PostgresServerFirewallStep extends AzureWizardPromptStep<IPostgresW
     public async getPicks(wizardContext: IPostgresWizardContext): Promise<IAzureQuickPickItem<boolean>[]> {
         wizardContext.publicIp = await publicIp.v4();
         return [
-            { label: localize('addFirewallRule', 'Add firewall rule for IP "{0}"', wizardContext.publicIp), data: true },
+            { label: localize('addFirewallRule', 'Add firewall rule for your IP "{0}"', wizardContext.publicIp), data: true },
             { label: localize('skipFireWallRule', '$(clock) Skip for now'), data: false }
         ];
     }

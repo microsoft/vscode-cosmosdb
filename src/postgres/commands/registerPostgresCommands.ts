@@ -23,11 +23,12 @@ import { executePostgresQuery } from "./executePostgresQuery";
 import { openPostgresFunction } from "./openPostgresFunction";
 
 export const connectedPostgresKey: string = 'ms-azuretools.vscode-azuredatabases.connectedPostgresDB';
-const postgresLanguageId: string = 'sql';
+export const postgresFileExtension: string = '.sql';
+export const postgresBaseFileName: string = 'pg-query';
 
 export function registerPostgresCommands(): void {
     ext.postgresCodeLensProvider = new PostgresCodeLensProvider();
-    ext.context.subscriptions.push(languages.registerCodeLensProvider(postgresLanguageId, ext.postgresCodeLensProvider));
+    ext.context.subscriptions.push(languages.registerCodeLensProvider({ pattern: `{**/,}*${postgresBaseFileName}*${postgresFileExtension}` }, ext.postgresCodeLensProvider));
 
     // tslint:disable-next-line: no-floating-promises
     loadPersistedPostgresDatabase();

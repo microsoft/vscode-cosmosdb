@@ -19,10 +19,10 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
         const locationName: string = nonNullProp(nonNullProp(wizardContext, 'location'), 'name');
         const defaultExperience = nonNullProp(wizardContext, 'defaultExperience');
         const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
-        const resourceName = nonNullProp(wizardContext, 'resourceName');
+        const serverName = nonNullProp(wizardContext, 'serverName');
 
         const client: CosmosDBManagementClient = createAzureClient(wizardContext, CosmosDBManagementClient);
-        const creatingMessage: string = localize('creatingCosmosDBAccount', 'Creating Cosmos DB account "{0}" with the "{1}" API... It should be ready in several minutes.', resourceName, defaultExperience.shortName);
+        const creatingMessage: string = localize('creatingCosmosDBAccount', 'Creating Cosmos DB server "{0}" with the "{1}" API... It should be ready in several minutes.', serverName, defaultExperience.shortName);
         ext.outputChannel.appendLog(creatingMessage);
         progress.report({ message: creatingMessage });
 
@@ -39,11 +39,11 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             options.capabilities.push(<Capability>{ name: defaultExperience.capability });
         }
 
-        wizardContext.databaseAccount = await client.databaseAccounts.createOrUpdate(rgName, resourceName, options);
+        wizardContext.databaseAccount = await client.databaseAccounts.createOrUpdate(rgName, serverName, options);
 
         // createOrUpdate always returns an empty object - so we have to get the DatabaseAccount separately
-        wizardContext.databaseAccount = await client.databaseAccounts.get(rgName, resourceName);
-        ext.outputChannel.appendLog(`Successfully created Cosmos DB account "${resourceName}".`);
+        wizardContext.databaseAccount = await client.databaseAccounts.get(rgName, serverName);
+        ext.outputChannel.appendLog(`Successfully created Cosmos DB server "${serverName}".`);
     }
 
     public shouldExecute(wizardContext: ICosmosDBWizardContext): boolean {

@@ -71,7 +71,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
         registerCommand('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
 
-        registerCommand('azureDatabases.createResource', async (actionContext: IActionContext, node?: SubscriptionTreeItem) => {
+        registerCommand('azureDatabases.createServer', async (actionContext: IActionContext, node?: SubscriptionTreeItem) => {
             if (!node) {
                 node = await ext.tree.showTreeItemPicker<SubscriptionTreeItem>(SubscriptionTreeItem.contextValue, actionContext);
             }

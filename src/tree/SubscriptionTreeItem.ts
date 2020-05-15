@@ -71,18 +71,18 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const wizard = new AzureWizard(wizardContext, {
             promptSteps,
             executeSteps: [],
-            title: 'Create new Azure Database Resource'
+            title: 'Create new Azure Database Server'
         });
 
         await wizard.prompt();
 
         wizardContext.telemetry.properties.defaultExperience = wizardContext.defaultExperience?.api;
 
-        const resourceName: string = nonNullProp(wizardContext, 'resourceName');
+        const resourceName: string = nonNullProp(wizardContext, 'serverName');
         context.showCreatingTreeItem(resourceName);
         await wizard.execute();
         // don't wait
-        vscode.window.showInformationMessage(`Successfully created resource "${resourceName}".`);
+        vscode.window.showInformationMessage(`Successfully created server "${resourceName}".`);
         if (wizardContext.defaultExperience?.api === API.Postgres) {
             return new PostgresServerTreeItem(this, nonNullProp(wizardContext, 'server'));
 

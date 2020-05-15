@@ -8,7 +8,7 @@ import { Experience } from '../AzureDBExperiences';
 
 export interface IAzureDBWizardContext extends IResourceGroupWizardContext {
 
-    resourceName?: string;
+    serverName?: string;
     defaultExperience?: Experience;
 
 }

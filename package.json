@@ -44,7 +44,7 @@
         "onCommand:azureDatabases.openInPortal",
         "onCommand:cosmosDB.attachDatabaseAccount",
         "onCommand:cosmosDB.attachEmulator",
-        "onCommand:azureDatabases.createResource",
+        "onCommand:azureDatabases.createServer",
         "onCommand:cosmosDB.deleteAccount",
         "onCommand:cosmosDB.detachDatabaseAccount",
         "onCommand:cosmosDB.createMongoDatabase",
@@ -171,8 +171,8 @@
             },
             {
                 "category": "Azure Databases",
-                "command": "azureDatabases.createResource",
-                "title": "Create Resource...",
+                "command": "azureDatabases.createServer",
+                "title": "Create Server...",
                 "icon": {
                     "light": "resources/icons/light/add.svg",
                     "dark": "resources/icons/dark/add.svg"
@@ -470,7 +470,7 @@
                     "group": "navigation"
                 },
                 {
-                    "command": "azureDatabases.createResource",
+                    "command": "azureDatabases.createServer",
                     "when": "view == azureDatabasesExplorer",
                     "group": "navigation"
                 },
@@ -492,7 +492,7 @@
                     "group": "inline"
                 },
                 {
-                    "command": "azureDatabases.createResource",
+                    "command": "azureDatabases.createServer",
                     "when": "view == azureDatabasesExplorer && viewItem == azureextensionui.azureSubscription",
                     "group": "1@1"
                 },

@@ -14,17 +14,17 @@ export class PostgresServerNameStep extends AzureNameStep<IPostgresWizardContext
 
     public async prompt(wizardContext: IPostgresWizardContext): Promise<void> {
         const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
-        wizardContext.resourceName = (await ext.ui.showInputBox({
+        wizardContext.serverName = (await ext.ui.showInputBox({
             placeHolder: localize('serverNamePlaceholder', 'Server name'),
             prompt: localize('enterServerNamePrompt', 'Provide a name for the PostgreSQL Server.'),
             validateInput: (name: string) => validatePostgresServerName(name, client)
         })).trim();
 
-        wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.resourceName, resourceGroupNamingRules);
+        wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.serverName, resourceGroupNamingRules);
     }
 
     public shouldPrompt(wizardContext: IPostgresWizardContext): boolean {
-        return !wizardContext.resourceName;
+        return !wizardContext.serverName;
     }
 
     protected async isRelatedNameAvailable(wizardContext: IPostgresWizardContext, name: string): Promise<boolean> {

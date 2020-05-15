@@ -352,6 +352,11 @@
                 "title": "Copy Connection String"
             },
             {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.copyConnectionString",
+                "title": "Copy Connection String"
+            },
+            {
                 "category": "Azure Databases",
                 "command": "azureDatabases.update",
                 "title": "Update to Cloud",
@@ -729,6 +734,10 @@
                 {
                     "command": "cosmosDB.copyConnectionString",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBTableAccountAttached"
+                },
+                {
+                    "command": "postgreSQL.copyConnectionString",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresDatabase"
                 },
                 {
                     "command": "azureDatabases.refresh",

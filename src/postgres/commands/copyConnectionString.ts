@@ -5,35 +5,24 @@
 
 import { ClientConfig } from 'pg';
 import * as vscode from 'vscode';
-import { IActionContext, IParsedError, parseError } from 'vscode-azureextensionui';
+import { IActionContext } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
-import { firewallNotConfiguredErrorType, invalidCredentialsErrorType, PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
-import { configurePostgresFirewall } from './configurePostgresFirewall';
-import { enterPostgresCredentials } from './enterPostgresCredentials';
+import { localize } from '../../utils/localize';
+import { nonNullProp } from '../../utils/nonNull';
+import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
+import { checkAuthentication } from './checkAuthentication';
 
 export async function copyConnectionString(context: IActionContext, node: PostgresDatabaseTreeItem): Promise<void> {
-    const message = 'The connection string has been copied to the clipboard';
     if (!node) {
         node = <PostgresDatabaseTreeItem>await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
     }
 
-    let clientConfig: ClientConfig | undefined;
-    while (!clientConfig) {
-        try {
-            clientConfig = await node.getClientConfig();
-        } catch (error) {
-            const parsedError: IParsedError = parseError(error);
+    const clientConfig: ClientConfig = await checkAuthentication(context, node);
 
-            if (parsedError.errorType === invalidCredentialsErrorType) {
-                await enterPostgresCredentials(context, node.parent);
-            } else if (parsedError.errorType === firewallNotConfiguredErrorType) {
-                await configurePostgresFirewall(context, node.parent);
-            } else {
-                throw error;
-            }
-        }
-    }
-
-    await vscode.env.clipboard.writeText(node.connectionString);
+    const credentials = nonNullProp(clientConfig, 'user') + ':' + nonNullProp(clientConfig, 'password');
+    const serverDetails = nonNullProp(clientConfig, 'host') + ':' + String(nonNullProp(clientConfig, 'port'));
+    const connectionString = "postgres://" + credentials + '@' + serverDetails + '/\'' + node.databaseName + '\'';
+    await vscode.env.clipboard.writeText(connectionString);
+    const message = localize('copiedPostgresConnectStringMsg', 'The connection string has been copied to the clipboard');
     vscode.window.showInformationMessage(message);
 }

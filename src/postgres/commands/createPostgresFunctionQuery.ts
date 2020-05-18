@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizard, IActionContext } from "vscode-azureextensionui";
+import { postgresBaseFileName, sqlFileExtension } from "../../constants";
 import { nonNullProp } from "../../utils/nonNull";
 import * as vscodeUtil from '../../utils/vscodeUtils';
 import { PostgresFunctionsTreeItem } from "../tree/PostgresFunctionsTreeItem";
@@ -12,7 +13,6 @@ import { FunctionQueryCreateStep } from "./FunctionQueryWizard/FunctionQueryCrea
 import { FunctionQueryNameStep } from "./FunctionQueryWizard/FunctionQueryNameStep";
 import { FunctionQueryReturnTypeStep } from "./FunctionQueryWizard/FunctionQueryReturnTypeStep";
 import { IPostgresFunctionQueryWizardContext } from "./FunctionQueryWizard/IPostgresFunctionQueryWizardContext";
-import { postgresBaseFileName, postgresFileExtension } from "./registerPostgresCommands";
 
 export async function createPostgresFunctionQuery(context: IActionContext, treeItem?: PostgresFunctionsTreeItem): Promise<void> {
     const wizardContext: IPostgresFunctionQueryWizardContext = context;
@@ -24,7 +24,7 @@ export async function createPostgresFunctionQuery(context: IActionContext, treeI
 
     await wizard.prompt();
     await wizard.execute();
-    await vscodeUtil.showNewFile(nonNullProp(wizardContext, 'query'), postgresBaseFileName, postgresFileExtension);
+    await vscodeUtil.showNewFile(nonNullProp(wizardContext, 'query'), postgresBaseFileName, sqlFileExtension);
 
     if (treeItem) {
         await connectPostgresDatabase(wizardContext, treeItem.parent);

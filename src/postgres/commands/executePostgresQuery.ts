@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { EOL } from 'os';
 import * as path from 'path';
 import { Client, ClientConfig, QueryResult } from 'pg';
 import * as vscode from 'vscode';
@@ -52,8 +53,6 @@ export async function executePostgresQuery(context: IActionContext): Promise<voi
     await client.connect();
     const query: string | undefined = activeEditor.document.getText();
     const queryResult: QueryResult = await client.query(query);
-
-    ext.outputChannel.show();
     ext.outputChannel.appendLine(localize('executedQuery', 'Successfully executed "{0}" query.', queryResult.command));
 
     if (queryResult.rowCount) {
@@ -62,14 +61,14 @@ export async function executePostgresQuery(context: IActionContext): Promise<voi
         const outputFileName: string = `${queryFileName}-output`;
 
         const fields: string[] = queryResult.fields.map(f => f.name);
-        let csvData: string = `${fields.join(',')}\n`;
+        let csvData: string = `${fields.join(',')}${EOL}`;
 
         for (const row of queryResult.rows) {
             const fieldValues: string[] = [];
             for (const field of fields) {
                 fieldValues.push(row[field]);
             }
-            csvData += `${fieldValues.join(',')}\n`;
+            csvData += `${fieldValues.join(',')}${EOL}`;
         }
 
         await vscodeUtil.showNewFile(csvData, outputFileName, '.csv');

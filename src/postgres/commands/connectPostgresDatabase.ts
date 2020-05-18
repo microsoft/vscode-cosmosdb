@@ -5,9 +5,9 @@
 
 import { Uri, window } from 'vscode';
 import { AzureTreeItem, IActionContext } from "vscode-azureextensionui";
+import { connectedPostgresKey } from '../../constants';
 import { ext } from "../../extensionVariables";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
-import { connectedPostgresKey } from "./registerPostgresCommands";
 
 export async function connectPostgresDatabase(context: IActionContext, treeItem?: Uri | PostgresDatabaseTreeItem): Promise<void> {
     if (!treeItem || treeItem instanceof Uri) {

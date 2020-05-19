@@ -11,6 +11,7 @@ import { PostgresCodeLensProvider } from "../services/PostgresCodeLensProvider";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";
 import { connectPostgresDatabase } from "./connectPostgresDatabase";
+import { copyConnectionString } from "./copyConnectionString";
 import { createPostgresDatabase } from "./createPostgresDatabase";
 import { createPostgresFunctionQuery } from "./createPostgresFunctionQuery";
 import { createPostgresServer } from "./createPostgresServer";
@@ -41,6 +42,7 @@ export function registerPostgresCommands(): void {
     registerCommand('postgreSQL.connectDatabase', connectPostgresDatabase);
     registerCommand('postgreSQL.createFunctionQuery', createPostgresFunctionQuery);
     registerCommand('postgreSQL.executeQuery', executePostgresQuery);
+    registerCommand('postgreSQL.copyConnectionString', copyConnectionString);
 }
 
 export async function loadPersistedPostgresDatabase(): Promise<void> {

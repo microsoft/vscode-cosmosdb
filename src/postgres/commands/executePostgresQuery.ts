@@ -7,13 +7,12 @@ import { EOL } from 'os';
 import * as path from 'path';
 import { Client, ClientConfig, QueryResult } from 'pg';
 import * as vscode from 'vscode';
-import { IActionContext, IParsedError, parseError } from 'vscode-azureextensionui';
+import { IActionContext } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import * as vscodeUtil from '../../utils/vscodeUtils';
-import { firewallNotConfiguredErrorType, invalidCredentialsErrorType, PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
-import { configurePostgresFirewall } from './configurePostgresFirewall';
-import { enterPostgresCredentials } from './enterPostgresCredentials';
+import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
+import { checkAuthentication } from './checkAuthentication';
 import { loadPersistedPostgresDatabase } from './registerPostgresCommands';
 
 export async function executePostgresQuery(context: IActionContext): Promise<void> {
@@ -26,22 +25,7 @@ export async function executePostgresQuery(context: IActionContext): Promise<voi
         treeItem = <PostgresDatabaseTreeItem>await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
     }
 
-    let clientConfig: ClientConfig | undefined;
-    while (!clientConfig) {
-        try {
-            clientConfig = await treeItem.getClientConfig();
-        } catch (error) {
-            const parsedError: IParsedError = parseError(error);
-
-            if (parsedError.errorType === invalidCredentialsErrorType) {
-                await enterPostgresCredentials(context, treeItem.parent);
-            } else if (parsedError.errorType === firewallNotConfiguredErrorType) {
-                await configurePostgresFirewall(context, treeItem.parent);
-            } else {
-                throw error;
-            }
-        }
-    }
+    const clientConfig: ClientConfig = await checkAuthentication(context, treeItem);
 
     const activeEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
 

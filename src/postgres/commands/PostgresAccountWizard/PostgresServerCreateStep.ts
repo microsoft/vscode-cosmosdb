@@ -18,14 +18,14 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresWi
 
         const locationName = nonNullProp(nonNullProp(wizardContext, 'location'), 'name');
         const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
-        const serverName = nonNullProp(wizardContext, 'serverName');
+        const newServerName = nonNullProp(wizardContext, 'newServerName');
         const user: string = nonNullProp(wizardContext, 'adminUser');
         const password: string = nonNullProp(wizardContext, 'adminPassword');
 
         return await callWithMaskHandling(
             async () => {
                 const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
-                const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in several minutes.', wizardContext.serverName);
+                const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in several minutes.', wizardContext.newServerName);
                 ext.outputChannel.appendLog(createMessage);
                 progress.report({ message: createMessage });
                 const options = {
@@ -38,8 +38,8 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresWi
                     },
                 };
 
-                wizardContext.server = await client.servers.create(rgName, serverName, options);
-                ext.outputChannel.appendLog(localize('createdServerOutput', 'Successfully created PostgreSQL server "{0}".', serverName));
+                wizardContext.server = await client.servers.create(rgName, newServerName, options);
+                ext.outputChannel.appendLog(localize('createdServerOutput', 'Successfully created PostgreSQL server "{0}".', newServerName));
             },
             password);
     }

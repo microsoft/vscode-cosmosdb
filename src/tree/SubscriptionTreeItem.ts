@@ -7,7 +7,6 @@ import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from 'azure-arm-cosmosdb/lib/models';
 import { PostgreSQLManagementClient } from 'azure-arm-postgresql';
 import { Server, ServerListResult } from 'azure-arm-postgresql/lib/models';
-import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { API, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
@@ -18,6 +17,7 @@ import { IPostgresWizardContext } from '../postgres/commands/PostgresAccountWiza
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { azureUtils } from '../utils/azureUtils';
+import { localize } from '../utils/localize';
 import { nonNullProp } from '../utils/nonNull';
 import { AzureDBAPIStep } from './AzureDBAPIStep';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
@@ -71,23 +71,21 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const wizard = new AzureWizard(wizardContext, {
             promptSteps,
             executeSteps: [],
-            title: 'Create new Azure Database Server'
+            title: localize('createDBServerMsg', 'Create new Azure Database Server')
         });
 
         await wizard.prompt();
 
         wizardContext.telemetry.properties.defaultExperience = wizardContext.defaultExperience?.api;
 
-        const resourceName: string = nonNullProp(wizardContext, 'serverName');
-        context.showCreatingTreeItem(resourceName);
+        const newServerName: string = nonNullProp(wizardContext, 'newServerName');
+        context.showCreatingTreeItem(newServerName);
         await wizard.execute();
-        // don't wait
-        vscode.window.showInformationMessage(`Successfully created server "${resourceName}".`);
         if (wizardContext.defaultExperience?.api === API.Postgres) {
             return new PostgresServerTreeItem(this, nonNullProp(wizardContext, 'server'));
-
+        } else {
+            return await this.initCosmosDBChild(client, nonNullProp(wizardContext, 'databaseAccount'));
         }
-        return await this.initCosmosDBChild(client, nonNullProp(wizardContext, 'databaseAccount'));
     }
 
     public isAncestorOfImpl(contextValue: string | RegExp): boolean {

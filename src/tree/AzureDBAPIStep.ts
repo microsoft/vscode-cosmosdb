@@ -15,6 +15,7 @@ import { PostgresServerFirewallStep } from '../postgres/commands/PostgresAccount
 import { PostgresServerNameStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerNameStep';
 import { PostgresServerSetCredentialsStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerSetCredentialsStep';
 import { PostgresServerSetFirewallStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerSetFirewallStep';
+import { localize } from '../utils/localize';
 import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccountCreateStep';
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
@@ -25,24 +26,24 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresWizardContext
         const picks: IAzureQuickPickItem<Experience>[] = getExperienceQuickPicks();
 
         const result: IAzureQuickPickItem<Experience> = await ext.ui.showQuickPick(picks, {
-            placeHolder: "Select an Azure Database Resource."
+            placeHolder: localize('selectDBServerMsg', 'Select an Azure Database Server.')
         });
 
         wizardContext.defaultExperience = result.data;
     }
 
     public async getSubWizard(wizardContext: IAzureDBWizardContext): Promise<IWizardOptions<IPostgresWizardContext | ICosmosDBWizardContext>> {
+        let promptSteps: AzureWizardPromptStep<IPostgresWizardContext | ICosmosDBWizardContext>[];
+        let executeSteps: AzureWizardExecuteStep<IPostgresWizardContext | ICosmosDBWizardContext>[];
         if (wizardContext.defaultExperience?.api === API.Postgres) {
-            // tslint:disable-next-line: no-shadowed-variable
-            const promptSteps: AzureWizardPromptStep<IPostgresWizardContext>[] = [
+            promptSteps = [
                 new PostgresServerNameStep(),
                 new PostgresServerCredUserStep(),
                 new PostgresServerCredPWStep(),
                 new PostgresServerConfirmPWStep(),
                 new PostgresServerFirewallStep()
             ];
-            // tslint:disable-next-line: no-shadowed-variable
-            const executeSteps: AzureWizardExecuteStep<IPostgresWizardContext>[] = [
+            executeSteps = [
                 new PostgresServerCreateStep(),
                 new PostgresServerSetCredentialsStep(),
                 new PostgresServerSetFirewallStep()
@@ -50,15 +51,17 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresWizardContext
             // tslint:disable-next-line: no-unnecessary-local-variable
             const wizardOptions: IWizardOptions<IPostgresWizardContext> = { promptSteps, executeSteps };
             return wizardOptions;
+        } else {
+            promptSteps = [
+                new CosmosDBAccountNameStep()
+            ];
+            executeSteps = [
+                new CosmosDBAccountCreateStep()
+            ];
+            // tslint:disable-next-line: no-unnecessary-local-variable
+            const wizardOptions: IWizardOptions<ICosmosDBWizardContext> = { promptSteps, executeSteps };
+            return wizardOptions;
         }
-        const promptSteps: AzureWizardPromptStep<ICosmosDBWizardContext>[] = [
-            new CosmosDBAccountNameStep()
-        ];
-        const executeSteps: AzureWizardExecuteStep<ICosmosDBWizardContext>[] = [
-            new CosmosDBAccountCreateStep()
-        ];
-
-        return { promptSteps, executeSteps };
     }
 
     public shouldPrompt(wizardContext: IAzureDBWizardContext): boolean {

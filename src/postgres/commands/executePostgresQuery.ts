@@ -3,11 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { EOL } from 'os';
+import * as path from 'path';
 import { Client, ClientConfig, QueryResult } from 'pg';
 import * as vscode from 'vscode';
 import { IActionContext } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
+import * as vscodeUtil from '../../utils/vscodeUtils';
 import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
 import { checkAuthentication } from './checkAuthentication';
 import { loadPersistedPostgresDatabase } from './registerPostgresCommands';
@@ -25,21 +28,33 @@ export async function executePostgresQuery(context: IActionContext): Promise<voi
     const clientConfig: ClientConfig = await checkAuthentication(context, treeItem);
 
     const activeEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
-    const query: string | undefined = activeEditor?.document.getText();
 
-    if (!query) {
+    if (!activeEditor?.document) {
         throw new Error(localize('openQueryBeforeExecuting', 'Open a PostgreSQL query before executing.'));
     }
 
     const client: Client = new Client(clientConfig);
     await client.connect();
+    const query: string | undefined = activeEditor.document.getText();
     const queryResult: QueryResult = await client.query(query);
+    ext.outputChannel.appendLine(localize('executedQuery', 'Successfully executed "{0}" query.', queryResult.command));
 
-    let resultString: string = localize('executedQuery', 'Successfully executed "{0}" query.', queryResult.command);
     if (queryResult.rowCount) {
-        resultString += `\n\t${JSON.stringify(queryResult.rows)}`;
-    }
+        const fileExtension: string = path.extname(activeEditor.document.fileName);
+        const queryFileName: string = path.basename(activeEditor.document.fileName, fileExtension);
+        const outputFileName: string = `${queryFileName}-output`;
 
-    ext.outputChannel.show();
-    ext.outputChannel.appendLine(resultString);
+        const fields: string[] = queryResult.fields.map(f => f.name);
+        let csvData: string = `${fields.join(',')}${EOL}`;
+
+        for (const row of queryResult.rows) {
+            const fieldValues: string[] = [];
+            for (const field of fields) {
+                fieldValues.push(row[field]);
+            }
+            csvData += `${fieldValues.join(',')}${EOL}`;
+        }
+
+        await vscodeUtil.showNewFile(csvData, outputFileName, '.csv');
+    }
 }

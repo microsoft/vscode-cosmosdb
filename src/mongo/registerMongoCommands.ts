@@ -41,10 +41,7 @@ export function registerMongoCommands(): MongoCodeLensProvider {
             node = <MongoAccountTreeItem>await ext.tree.showTreeItemPicker([MongoAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue + AttachedAccountSuffix], context);
         }
         const databaseNode = <MongoDatabaseTreeItem>await node.createChild(context);
-        // reveal the database treeItem in case user cancels collection creation
-        await ext.treeView.reveal(databaseNode, { focus: false });
-        const collectionNode = <MongoCollectionTreeItem>await databaseNode.createChild(context);
-        await ext.treeView.reveal(collectionNode, { focus: true });
+        await databaseNode.createChild(context);
 
         await vscode.commands.executeCommand('cosmosDB.connectMongoDB', databaseNode);
     });
@@ -53,7 +50,6 @@ export function registerMongoCommands(): MongoCodeLensProvider {
             node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
         }
         const collectionNode = await node.createChild(context);
-        await ext.treeView.reveal(collectionNode);
         await vscode.commands.executeCommand('cosmosDB.connectMongoDB', collectionNode.parent);
     });
     registerCommand('cosmosDB.createMongoDocument', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
@@ -61,7 +57,6 @@ export function registerMongoCommands(): MongoCodeLensProvider {
             node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
         }
         const documentNode = await node.createChild(context);
-        await ext.treeView.reveal(documentNode);
         await vscode.commands.executeCommand("cosmosDB.openDocument", documentNode);
     });
     registerCommand('cosmosDB.connectMongoDB', async (context: IActionContext, node?: MongoDatabaseTreeItem) => {

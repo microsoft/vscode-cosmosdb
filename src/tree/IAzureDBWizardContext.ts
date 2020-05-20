@@ -3,17 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Server } from "azure-arm-postgresql/lib/models";
-import { IAzureDBWizardContext } from "../../../tree/IAzureDBWizardContext";
+import { IResourceGroupWizardContext } from 'vscode-azureextensionui';
+import { Experience } from '../AzureDBExperiences';
 
-export interface IPostgresWizardContext extends IAzureDBWizardContext {
+export interface IAzureDBWizardContext extends IResourceGroupWizardContext {
 
-    adminUser?: string;
-    adminPassword?: string;
-
-    addFirewall?: boolean;
-    publicIp?: string;
-
-    server?: Server;
+    newServerName?: string;
+    defaultExperience?: Experience;
 
 }

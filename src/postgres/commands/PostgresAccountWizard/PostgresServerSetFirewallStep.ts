@@ -19,7 +19,7 @@ export class PostgresServerSetFirewallStep extends AzureWizardExecuteStep<IPostg
         const ip: string = nonNullProp(wizardContext, 'publicIp');
         const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
         const resourceGroup: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
-        const serverName: string = nonNullProp(wizardContext, 'newServerName');
+        const newServerName: string = nonNullProp(wizardContext, 'newServerName');
         const firewallRuleName: string = "azureDatabasesForVSCode-publicIp";
 
         const newFirewallRule: FirewallRule = {
@@ -27,10 +27,10 @@ export class PostgresServerSetFirewallStep extends AzureWizardExecuteStep<IPostg
             endIpAddress: ip
         };
 
-        const addFirewallMessage: string = localize('configuringFirewall', 'Adding firewall rule for your IP "{0}" to server "{1}"...', ip, serverName);
+        const addFirewallMessage: string = localize('configuringFirewall', 'Adding firewall rule for your IP "{0}" to server "{1}"...', ip, newServerName);
         progress.report({ message: addFirewallMessage });
 
-        await client.firewallRules.createOrUpdate(resourceGroup, serverName, firewallRuleName, newFirewallRule);
+        await client.firewallRules.createOrUpdate(resourceGroup, newServerName, firewallRuleName, newFirewallRule);
 
     }
 

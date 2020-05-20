@@ -44,7 +44,7 @@
         "onCommand:azureDatabases.openInPortal",
         "onCommand:cosmosDB.attachDatabaseAccount",
         "onCommand:cosmosDB.attachEmulator",
-        "onCommand:cosmosDB.createAccount",
+        "onCommand:azureDatabases.createServer",
         "onCommand:cosmosDB.deleteAccount",
         "onCommand:cosmosDB.detachDatabaseAccount",
         "onCommand:cosmosDB.createMongoDatabase",
@@ -75,7 +75,6 @@
         "onCommand:cosmosDB.copyConnectionString",
         "onCommand:cosmosDB.launchMongoShell",
         "onCommand:cosmosDB.openGraphExplorer",
-        "onCommand:postgreSQL.createServer",
         "onCommand:postgreSQL.deleteServer",
         "onCommand:postgreSQL.createDatabase",
         "onCommand:postgreSQL.deleteDatabase",
@@ -171,18 +170,9 @@
                 "title": "Attach Emulator..."
             },
             {
-                "category": "Cosmos DB",
-                "command": "cosmosDB.createAccount",
-                "title": "Create Account...",
-                "icon": {
-                    "light": "resources/icons/light/add.svg",
-                    "dark": "resources/icons/dark/add.svg"
-                }
-            },
-            {
-                "category": "PostgreSQL",
-                "command": "postgreSQL.createServer",
-                "title": "Create PostgreSQL Server...",
+                "category": "Azure Databases",
+                "command": "azureDatabases.createServer",
+                "title": "Create Server...",
                 "icon": {
                     "light": "resources/icons/light/add.svg",
                     "dark": "resources/icons/dark/add.svg"
@@ -485,12 +475,7 @@
                     "group": "navigation"
                 },
                 {
-                    "command": "cosmosDB.createAccount",
-                    "when": "view == azureDatabasesExplorer",
-                    "group": "navigation"
-                },
-                {
-                    "command": "postgreSQL.createServer",
+                    "command": "azureDatabases.createServer",
                     "when": "view == azureDatabasesExplorer",
                     "group": "navigation"
                 },
@@ -512,12 +497,7 @@
                     "group": "inline"
                 },
                 {
-                    "command": "cosmosDB.createAccount",
-                    "when": "view == azureDatabasesExplorer && viewItem == azureextensionui.azureSubscription",
-                    "group": "1@1"
-                },
-                {
-                    "command": "postgreSQL.createServer",
+                    "command": "azureDatabases.createServer",
                     "when": "view == azureDatabasesExplorer && viewItem == azureextensionui.azureSubscription",
                     "group": "1@1"
                 },

@@ -5,8 +5,7 @@
 
 import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import * as vscode from 'vscode';
-import { AzureTreeItem, createAzureClient, DialogResponses } from 'vscode-azureextensionui';
-import { UserCancelledError } from 'vscode-azureextensionui';
+import { AzureTreeItem, createAzureClient, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
 import { azureUtils } from '../utils/azureUtils';
 

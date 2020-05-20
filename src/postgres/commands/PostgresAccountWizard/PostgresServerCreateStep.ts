@@ -18,7 +18,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresWi
 
         const locationName = nonNullProp(nonNullProp(wizardContext, 'location'), 'name');
         const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
-        const serverName = nonNullProp(wizardContext, 'newServerName');
+        const newServerName = nonNullProp(wizardContext, 'newServerName');
         const user: string = nonNullProp(wizardContext, 'adminUser');
         const password: string = nonNullProp(wizardContext, 'adminPassword');
 
@@ -38,8 +38,8 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresWi
                     },
                 };
 
-                wizardContext.server = await client.servers.create(rgName, serverName, options);
-                ext.outputChannel.appendLog(localize('createdServerOutput', 'Successfully created PostgreSQL Server "{0}".', serverName));
+                wizardContext.server = await client.servers.create(rgName, newServerName, options);
+                ext.outputChannel.appendLog(localize('createdServerOutput', 'Successfully created PostgreSQL server "{0}".', newServerName));
             },
             password);
     }

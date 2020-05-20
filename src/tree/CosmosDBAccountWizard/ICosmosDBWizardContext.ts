@@ -4,15 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
-import { IResourceGroupWizardContext } from 'vscode-azureextensionui';
-import { Experience } from '../../CosmosDBExperiences';
+import { IAzureDBWizardContext } from '../IAzureDBWizardContext';
 
-export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
-    /**
-     * The name of the new Cosmos DB account
-     * This will be defined after `CosmosDBAccountNameStep.prompt` occurs.
-     */
-    accountName?: string;
+export interface ICosmosDBWizardContext extends IAzureDBWizardContext {
 
     /**
      * The newly created Cosmos DB account
@@ -20,9 +14,4 @@ export interface ICosmosDBWizardContext extends IResourceGroupWizardContext {
      */
     databaseAccount?: DatabaseAccount;
 
-    /**
-     * The defaultExperience to use
-     * This will be defined after `CosmosDBAccountApiStep.prompt` occurs.
-     */
-    defaultExperience?: Experience;
 }

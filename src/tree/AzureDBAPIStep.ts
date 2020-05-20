@@ -48,9 +48,6 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresWizardContext
                 new PostgresServerSetCredentialsStep(),
                 new PostgresServerSetFirewallStep()
             ];
-            // tslint:disable-next-line: no-unnecessary-local-variable
-            const wizardOptions: IWizardOptions<IPostgresWizardContext> = { promptSteps, executeSteps };
-            return wizardOptions;
         } else {
             promptSteps = [
                 new CosmosDBAccountNameStep()
@@ -58,10 +55,8 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresWizardContext
             executeSteps = [
                 new CosmosDBAccountCreateStep()
             ];
-            // tslint:disable-next-line: no-unnecessary-local-variable
-            const wizardOptions: IWizardOptions<ICosmosDBWizardContext> = { promptSteps, executeSteps };
-            return wizardOptions;
         }
+        return { promptSteps, executeSteps };
     }
 
     public shouldPrompt(wizardContext: IAzureDBWizardContext): boolean {

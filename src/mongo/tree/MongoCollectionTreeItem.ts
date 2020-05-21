@@ -7,10 +7,11 @@ import * as assert from 'assert';
 import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, DeleteWriteOpResultObject, InsertOneWriteOpResult, InsertWriteOpResult, MongoCountPreferences } from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, DialogResponses, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, DialogResponses, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { defaultBatchSize, getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { nonNullValue } from '../../utils/nonNull';
+import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { MongoCommand } from '../MongoCommand';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
@@ -77,7 +78,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
         return this._hasMoreChildren;
     }
 
-    public async loadMoreChildrenImpl(clearCache: boolean): Promise<MongoDocumentTreeItem[]> {
+    public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (clearCache || this._cursor === undefined) {
             this._cursor = this.collection.find(this._query).batchSize(defaultBatchSize);
             if (this._projection) {
@@ -99,7 +100,12 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
         }
         this._batchSize *= 2;
 
-        return documents.map((document: IMongoDocument) => new MongoDocumentTreeItem(this, document));
+        return this.createTreeItemsWithErrorHandling<IMongoDocument>(
+            documents,
+            'invalidMongoDocument',
+            doc => new MongoDocumentTreeItem(this, doc),
+            getDocumentTreeItemLabel
+        );
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDocumentTreeItem> {

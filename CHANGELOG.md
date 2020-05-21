@@ -2,6 +2,14 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.13.0 - 2020-05-28
+### Added
+- PostgreSQL support
+  - Basic CRUD support added to PostgreSQL databases and integrated with the exisitng extension; updates to Tables is not yet supported
+  - Functions and stored procedures CRUD support
+### Changed
+- Top level naming convention is updated from "CosmosDB" to "Azure Databases"
+
 ## 0.12.2 - 2020-03-10
 ### Fixed
 - Language client is not ready yet [#1334](https://github.com/microsoft/vscode-cosmosdb/issues/1334)

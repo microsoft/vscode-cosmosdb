@@ -25,7 +25,7 @@ export async function connectToMongoClient(connectionString: string, appName: st
 
         // Example error: "failed to connect to server [localhost:10255] on first connect [MongoError: connect ECONNREFUSED 127.0.0.1:10255]"
         // Example error: "failed to connect to server [127.0.0.1:27017] on first connect [MongoError: connect ECONNREFUSED 127.0.0.1:27017]"
-        if (message && name === 'MongoError' && /ECONNREFUSED/.test(message) && /(localhost|127\.0\.0\.1)/.test(message)) {
+        if (message && (name === 'MongoError' || name === 'MongoNetworkError') && /ECONNREFUSED/.test(message) && /(localhost|127\.0\.0\.1)/.test(message)) {
             throw new Error(`Unable to connect to local Mongo DB instance. Make sure it is started correctly. See ${Links.LocalConnectionDebuggingTips} for tips.\n${message}`);
         }
 

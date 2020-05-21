@@ -10,14 +10,13 @@ Browse and query your Azure databases both locally and in the cloud using [_scra
 # Prerequisites
 
 - Some less-common commands in the Mongo [scrapbook](#mongo-scrapbooks) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
-- Executing graph queries for Gremlin accounts requires installing the [Cosmos DB Graph Extension](https://github.com/microsoft/vscode-cosmosdbgraph).
 
 # Features
 
 ## Azure Databases Explorer
 
-- Create a PostgreSQL server or Cosmos DB account by clicking the `+` button in the title
-- View Azure PostgreSQL servers and Cosmos DB accounts and open directly in the portal
+- Create a database server by clicking the `+` button in the title
+- View database servers and open directly in the portal
 - View/Create/Delete databases, collections, graphs, stored procedures, documents, and queries
 - Click on a document, stored procedure, or query to open in the editor
 - Click on a graph to visualize data

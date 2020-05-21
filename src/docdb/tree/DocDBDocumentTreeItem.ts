@@ -6,7 +6,7 @@
 import { DocumentClient, RetrievedDocument } from 'documentdb';
 import * as vscode from 'vscode';
 import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
-import { emptyPartitionKeyValue, getThemeAgnosticIconPath } from '../../constants';
+import { getThemeAgnosticIconPath } from '../../constants';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
@@ -116,7 +116,7 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
         for (const field of fields) {
             value = value ? value[field] : this.document[field];
             if (!value) { //Partition Key exists, but this document doesn't have a value
-                return emptyPartitionKeyValue;
+                return '';
             }
         }
         return value;

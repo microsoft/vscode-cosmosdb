@@ -4,10 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { AzureTreeItem, callWithTelemetryAndErrorHandling, IActionContext, registerCommand, registerEvent } from "vscode-azureextensionui";
+import { AzureTreeItem, callWithTelemetryAndErrorHandling, IActionContext, IErrorHandlerContext, registerCommand, registerErrorHandler, registerEvent } from "vscode-azureextensionui";
 import { ext } from "../extensionVariables";
 import { AttachedAccountSuffix } from '../tree/AttachedAccountsTreeItem';
 import * as vscodeUtil from '../utils/vscodeUtils';
+import { MongoConnectError } from './connectToMongoClient';
 import { MongoCollectionNodeEditor } from "./editors/MongoCollectionNodeEditor";
 import { MongoDBLanguageClient } from "./languageClient";
 import { executeAllCommandsFromActiveEditor, executeCommandFromActiveEditor, executeCommandFromText, getAllErrorsFromTextDocument } from "./MongoScrapbook";
@@ -186,6 +187,12 @@ function setUpErrorReporting(): void {
                 context.telemetry.suppressIfSuccessful = true;
             }
         });
+
+    registerErrorHandler((context: IErrorHandlerContext) => {
+        if (context.error instanceof MongoConnectError) {
+            context.errorHandling.suppressReportIssue = true;
+        }
+    });
 }
 
 function updateErrorsInScrapbook(context: IActionContext, document: vscode.TextDocument | undefined): void {

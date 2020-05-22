@@ -6,7 +6,7 @@
 import { ServiceClientCredentials } from 'ms-rest';
 import { AzureEnvironment } from 'ms-rest-azure';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, callWithTelemetryAndErrorHandling, GenericTreeItem, IActionContext, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, getThemedIconPath } from '../constants';
@@ -121,38 +121,40 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     public async attachNewAccount(): Promise<void> {
-        const defaultExperiencePick = await vscode.window.showQuickPick(getExperienceQuickPicks(), { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
-        if (defaultExperiencePick) {
-            const defaultExperience = defaultExperiencePick.data;
-            let placeholder: string;
-            let defaultValue: string | undefined;
-            let validateInput: (value: string) => string | undefined | null;
-            if (defaultExperience.api === API.MongoDB) {
-                placeholder = 'mongodb://host:port';
-                if (await this.canConnectToLocalMongoDB()) {
-                    defaultValue = placeholder = localMongoConnectionString;
+        await callWithTelemetryAndErrorHandling('attachNewAccount', async (context: IActionContext) => {
+            const defaultExperiencePick = await vscode.window.showQuickPick(getExperienceQuickPicks(), { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
+            if (defaultExperiencePick) {
+                const defaultExperience = defaultExperiencePick.data;
+                let placeholder: string;
+                let defaultValue: string | undefined;
+                let validateInput: (value: string) => string | undefined | null;
+                if (defaultExperience.api === API.MongoDB) {
+                    placeholder = 'mongodb://host:port';
+                    if (await this.canConnectToLocalMongoDB(context)) {
+                        defaultValue = placeholder = localMongoConnectionString;
+                    }
+                    validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
+                } else {
+                    placeholder = 'AccountEndpoint=...;AccountKey=...';
+                    validateInput = AttachedAccountsTreeItem.validateDocDBConnectionString;
                 }
-                validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
+
+                const connectionString = (await ext.ui.showInputBox({
+                    placeHolder: placeholder,
+                    prompt: 'Enter the connection string for your database account',
+                    validateInput: validateInput,
+                    ignoreFocusOut: true,
+                    value: defaultValue
+                })).trim();
+
+                if (connectionString) {
+                    const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);
+                    await this.attachAccount(treeItem, connectionString);
+                }
             } else {
-                placeholder = 'AccountEndpoint=...;AccountKey=...';
-                validateInput = AttachedAccountsTreeItem.validateDocDBConnectionString;
+                throw new UserCancelledError();
             }
-
-            const connectionString = (await ext.ui.showInputBox({
-                placeHolder: placeholder,
-                prompt: 'Enter the connection string for your database account',
-                validateInput: validateInput,
-                ignoreFocusOut: true,
-                value: defaultValue
-            })).trim();
-
-            if (connectionString) {
-                const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);
-                await this.attachAccount(treeItem, connectionString);
-            }
-        } else {
-            throw new UserCancelledError();
-        }
+        });
     }
 
     public async attachConnectionString(connectionString: string, api: API.MongoDB | API.Core): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase> {
@@ -233,9 +235,9 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         return this._attachedAccounts;
     }
 
-    private async canConnectToLocalMongoDB(): Promise<boolean> {
+    private async canConnectToLocalMongoDB(context: IActionContext): Promise<boolean> {
         try {
-            const db = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent());
+            const db = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent(), context);
             // grandfathered in
             // tslint:disable-next-line: no-floating-promises
             db.close();

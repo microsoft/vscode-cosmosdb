@@ -4,9 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { MongoClient, MongoClientOptions } from 'mongodb';
+import { IActionContext } from 'vscode-azureextensionui';
 import { Links } from '../constants';
 
-export async function connectToMongoClient(connectionString: string, appName: string): Promise<MongoClient> {
+export async function connectToMongoClient(connectionString: string, appName: string, context?: IActionContext): Promise<MongoClient> {
     // appname appears to be the correct equivalent to user-agent for mongo
     const options: MongoClientOptions = <MongoClientOptions>{
         // appName should be wrapped in '@'s when trying to connect to a Mongo account, this doesn't effect the appendUserAgent string
@@ -21,6 +22,10 @@ export async function connectToMongoClient(connectionString: string, appName: st
         // Note: This file can't use `parseError` from `vscode-azureextensionui` because it's used by languageService.ts - see that file for more info
         const error = <{ message?: string, name?: string }>err;
         const message = error && error.message;
+
+        if (context) {
+            context.errorHandling.suppressReportIssue = true;
+        }
 
         // Example error: "failed to connect to server [localhost:10255] on first connect [MongoError: connect ECONNREFUSED 127.0.0.1:10255]"
         // Example error: "failed to connect to server [127.0.0.1:27017] on first connect [MongoError: connect ECONNREFUSED 127.0.0.1:27017]"

@@ -105,7 +105,10 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
         if (experience && experience.api === "MongoDB") {
             const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, name);
-            const connectionString = nonNullProp(nonNullProp(result, 'connectionStrings')[0], 'connectionString');
+            let connectionString = nonNullProp(nonNullProp(result, 'connectionStrings')[0], 'connectionString');
+            // for any Mongo connectionString, append this query param because the Mongo API doesn't support retrywrites
+            // but the newer Mongo enables it by default
+            connectionString += '&retrywrites=false';
             // Use the default connection string
             return new MongoAccountTreeItem(this, id, label, connectionString, isEmulator, databaseAccount);
         } else {

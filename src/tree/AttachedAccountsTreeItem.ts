@@ -6,7 +6,7 @@
 import { ServiceClientCredentials } from 'ms-rest';
 import { AzureEnvironment } from 'ms-rest-azure';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, IActionContext, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, getThemedIconPath } from '../constants';
@@ -120,7 +120,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
     }
 
-    public async attachNewAccount(context: IActionContext): Promise<void> {
+    public async attachNewAccount(): Promise<void> {
         const defaultExperiencePick = await vscode.window.showQuickPick(getExperienceQuickPicks(), { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
         if (defaultExperiencePick) {
             const defaultExperience = defaultExperiencePick.data;
@@ -129,7 +129,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             let validateInput: (value: string) => string | undefined | null;
             if (defaultExperience.api === API.MongoDB) {
                 placeholder = 'mongodb://host:port';
-                if (await this.canConnectToLocalMongoDB(context)) {
+                if (await this.canConnectToLocalMongoDB()) {
                     defaultValue = placeholder = localMongoConnectionString;
                 }
                 validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
@@ -233,9 +233,9 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         return this._attachedAccounts;
     }
 
-    private async canConnectToLocalMongoDB(context: IActionContext): Promise<boolean> {
+    private async canConnectToLocalMongoDB(): Promise<boolean> {
         try {
-            const db = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent(), context);
+            const db = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent());
             // grandfathered in
             // tslint:disable-next-line: no-floating-promises
             db.close();

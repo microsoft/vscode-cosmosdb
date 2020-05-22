@@ -4,10 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { MongoClient, MongoClientOptions } from 'mongodb';
-import { IActionContext } from 'vscode-azureextensionui';
 import { Links } from '../constants';
 
-export async function connectToMongoClient(connectionString: string, appName: string, context?: IActionContext): Promise<MongoClient> {
+export async function connectToMongoClient(connectionString: string, appName: string): Promise<MongoClient> {
     // appname appears to be the correct equivalent to user-agent for mongo
     const options: MongoClientOptions = <MongoClientOptions>{
         // appName should be wrapped in '@'s when trying to connect to a Mongo account, this doesn't effect the appendUserAgent string
@@ -26,10 +25,6 @@ export async function connectToMongoClient(connectionString: string, appName: st
         // Example error: "failed to connect to server [localhost:10255] on first connect [MongoError: connect ECONNREFUSED 127.0.0.1:10255]"
         // Example error: "failed to connect to server [127.0.0.1:27017] on first connect [MongoError: connect ECONNREFUSED 127.0.0.1:27017]"
         if (message && /ECONNREFUSED/.test(message) && /(localhost|127\.0\.0\.1)/.test(message)) {
-            if (context) {
-                context.errorHandling.suppressReportIssue = true;
-            }
-
             throw new Error(`Unable to connect to local Mongo DB instance. Make sure it is started correctly. See ${Links.LocalConnectionDebuggingTips} for tips.`);
         }
 

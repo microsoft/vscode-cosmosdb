@@ -109,7 +109,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             // for any Mongo connectionString, append this query param because the Cosmos Mongo API v3.6 doesn't support retrywrites
             // but the newer node.js drivers started breaking this
             const searchParam: string = 'retrywrites';
-            if (!connectionString.searchParams.get(searchParam)) {
+            if (!connectionString.searchParams.has(searchParam)) {
                 connectionString.searchParams.set(searchParam, 'false');
             }
 

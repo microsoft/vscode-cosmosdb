@@ -98,6 +98,7 @@ const TableExperience: Experience = { api: API.Table, longName: "Azure Table", s
 const GremlinExperience: Experience = { api: API.Graph, longName: "Gremlin", description: "(graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableGremlin', tag: "Gremlin (graph)" };
 const PostgresExperience: Experience = { api: API.Postgres, longName: "PostgreSQL", shortName: "Postgres" };
 
-const experiencesArray: Experience[] = [CoreExperience, MongoExperience, TableExperience, GremlinExperience, PostgresExperience];
 const cosmosExperiencesArray: Experience[] = [CoreExperience, MongoExperience, TableExperience, GremlinExperience];
+const experiencesArray: Experience[] = cosmosExperiencesArray;
+experiencesArray.push(PostgresExperience);
 const experiencesMap = new Map<API, Experience>(experiencesArray.map((info: Experience): [API, Experience] => [info.api, info]));

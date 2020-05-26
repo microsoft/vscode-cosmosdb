@@ -5,7 +5,7 @@
 
 import { languages } from "vscode";
 import { callWithTelemetryAndErrorHandling, IActionContext, registerCommand } from "vscode-azureextensionui";
-import { connectedPostgresKey, doubleClickDebounceDelay, postgresBaseFileName, sqlFileExtension } from "../../constants";
+import { connectedPostgresKey, doubleClickDebounceDelay, postgresBaseFileName, postgresFileExtension } from "../../constants";
 import { ext } from "../../extensionVariables";
 import { PostgresCodeLensProvider } from "../services/PostgresCodeLensProvider";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
@@ -24,7 +24,7 @@ import { openPostgresFunction } from "./openPostgresFunction";
 
 export function registerPostgresCommands(): void {
     ext.postgresCodeLensProvider = new PostgresCodeLensProvider();
-    ext.context.subscriptions.push(languages.registerCodeLensProvider({ pattern: `{**/,}*${postgresBaseFileName}*${sqlFileExtension}` }, ext.postgresCodeLensProvider));
+    ext.context.subscriptions.push(languages.registerCodeLensProvider({ pattern: `{**/,}*${postgresBaseFileName}*${postgresFileExtension}` }, ext.postgresCodeLensProvider));
 
     // tslint:disable-next-line: no-floating-promises
     loadPersistedPostgresDatabase();

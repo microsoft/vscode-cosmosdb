@@ -443,7 +443,7 @@
                 },
                 {
                     "command": "postgreSQL.connectDatabase",
-                    "when": "resourceLangId==sql"
+                    "when": "resourceLangId==psql"
                 }
             ],
             "editor/title": [
@@ -815,7 +815,7 @@
                 },
                 {
                     "command": "postgreSQL.connectDatabase",
-                    "when": "resourceLangId == sql"
+                    "when": "resourceLangId == psql"
                 }
             ],
             "commandPalette": [
@@ -845,7 +845,7 @@
                 },
                 {
                     "command": "postgreSQL.executeQuery",
-                    "when": "editorLangId == 'sql'"
+                    "when": "editorLangId == 'psql'"
                 }
             ]
         },

@@ -51,7 +51,7 @@ async function validatePostgresServerName(name: string, client: PostgreSQLManage
 
     if (!availability.nameAvailable) {
         if (availability.reason === 'AlreadyExists') {
-            return localize('serverNameAvailabilityCheck', 'Server name "{0}" is not available.', name);
+            return localize('serverNameAvailabilityCheck', 'A server named "{0}" already exists.', name);
         }
     }
 

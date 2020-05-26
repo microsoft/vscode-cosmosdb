@@ -34,28 +34,31 @@ export async function executePostgresQuery(context: IActionContext): Promise<voi
     }
 
     const client: Client = new Client(clientConfig);
-    await client.connect();
-    const query: string | undefined = activeEditor.document.getText();
-    const queryResult: QueryResult = await client.query(query);
-    await client.end();
-    ext.outputChannel.appendLine(localize('executedQuery', 'Successfully executed "{0}" query.', queryResult.command));
+    try {
+        await client.connect();
+        const query: string | undefined = activeEditor.document.getText();
+        const queryResult: QueryResult = await client.query(query);
+        ext.outputChannel.appendLine(localize('executedQuery', 'Successfully executed "{0}" query.', queryResult.command));
 
-    if (queryResult.rowCount) {
-        const fileExtension: string = path.extname(activeEditor.document.fileName);
-        const queryFileName: string = path.basename(activeEditor.document.fileName, fileExtension);
-        const outputFileName: string = `${queryFileName}-output`;
+        if (queryResult.rowCount) {
+            const fileExtension: string = path.extname(activeEditor.document.fileName);
+            const queryFileName: string = path.basename(activeEditor.document.fileName, fileExtension);
+            const outputFileName: string = `${queryFileName}-output`;
 
-        const fields: string[] = queryResult.fields.map(f => f.name);
-        let csvData: string = `${fields.join(',')}${EOL}`;
+            const fields: string[] = queryResult.fields.map(f => f.name);
+            let csvData: string = `${fields.join(',')}${EOL}`;
 
-        for (const row of queryResult.rows) {
-            const fieldValues: string[] = [];
-            for (const field of fields) {
-                fieldValues.push(row[field]);
+            for (const row of queryResult.rows) {
+                const fieldValues: string[] = [];
+                for (const field of fields) {
+                    fieldValues.push(row[field]);
+                }
+                csvData += `${fieldValues.join(',')}${EOL}`;
             }
-            csvData += `${fieldValues.join(',')}${EOL}`;
-        }
 
-        await vscodeUtil.showNewFile(csvData, outputFileName, '.csv');
+            await vscodeUtil.showNewFile(csvData, outputFileName, '.csv');
+        }
+    } finally {
+        await client.end();
     }
 }

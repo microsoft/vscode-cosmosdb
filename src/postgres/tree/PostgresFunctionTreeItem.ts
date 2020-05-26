@@ -43,8 +43,11 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
 
     public async deleteTreeItemImpl(): Promise<void> {
         const client = new Client(this.parent.clientConfig);
-        await client.connect();
-        await client.query(`DROP FUNCTION ${this.schema}.${this.name};`);
-        await client.end();
+        try {
+            await client.connect();
+            await client.query(`DROP FUNCTION ${this.schema}.${this.name};`);
+        } finally {
+            await client.end();
+        }
     }
 }

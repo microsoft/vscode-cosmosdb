@@ -35,10 +35,11 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
 
     public async loadMoreChildrenImpl(): Promise<PostgresFunctionTreeItem[]> {
         const client = new Client(this.clientConfig);
-        await client.connect();
+        try {
+            await client.connect();
 
-        // Adapted from https://aka.ms/AA83fg8
-        const functionsQuery: string = `select n.nspname as schema,
+            // Adapted from https://aka.ms/AA83fg8
+            const functionsQuery: string = `select n.nspname as schema,
             p.proname as name,
             p.oid as oid,
             case when l.lanname = 'internal' then p.prosrc
@@ -52,21 +53,22 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
                 ${this.parent.parent.supportsStoredProcedures() ? "and p.prokind = 'f'" : '' /* Only select functions, not stored procedures */}
             order by name;`;
 
-        const queryResult: QueryResult = await client.query(functionsQuery);
-        const rows: IPostgresProceduresQueryRow[] = queryResult.rows || [];
+            const queryResult: QueryResult = await client.query(functionsQuery);
+            const rows: IPostgresProceduresQueryRow[] = queryResult.rows || [];
 
-        await client.end();
+            this._functionsAndSchemas = {};
+            for (const row of rows) {
+                this.parent.addResourceAndSchemasEntry(this._functionsAndSchemas, row.name, row.schema);
+            }
 
-        this._functionsAndSchemas = {};
-        for (const row of rows) {
-            this.parent.addResourceAndSchemasEntry(this._functionsAndSchemas, row.name, row.schema);
+            return rows.map(row => new PostgresFunctionTreeItem(
+                this,
+                row,
+                this._functionsAndSchemas[row.name].length > 1
+            ));
+        } finally {
+            await client.end();
         }
-
-        return rows.map(row => new PostgresFunctionTreeItem(
-            this,
-            row,
-            this._functionsAndSchemas[row.name].length > 1
-        ));
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {

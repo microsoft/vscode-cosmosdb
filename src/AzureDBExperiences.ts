@@ -99,6 +99,5 @@ const GremlinExperience: Experience = { api: API.Graph, longName: "Gremlin", des
 const PostgresExperience: Experience = { api: API.Postgres, longName: "PostgreSQL", shortName: "Postgres" };
 
 const cosmosExperiencesArray: Experience[] = [CoreExperience, MongoExperience, TableExperience, GremlinExperience];
-const experiencesArray: Experience[] = cosmosExperiencesArray;
-experiencesArray.push(PostgresExperience);
+const experiencesArray: Experience[] = [...cosmosExperiencesArray, PostgresExperience];
 const experiencesMap = new Map<API, Experience>(experiencesArray.map((info: Experience): [API, Experience] => [info.api, info]));

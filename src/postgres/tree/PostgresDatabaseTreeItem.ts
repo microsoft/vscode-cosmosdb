@@ -116,6 +116,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
             // Ensure the client config is valid before returning
             const client: Client = new Client(clientConfig);
             await client.connect();
+            await client.end();
 
             return clientConfig;
         } else {

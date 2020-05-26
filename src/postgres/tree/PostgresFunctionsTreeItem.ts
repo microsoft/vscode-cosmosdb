@@ -55,6 +55,8 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
         const queryResult: QueryResult = await client.query(functionsQuery);
         const rows: IPostgresProceduresQueryRow[] = queryResult.rows || [];
 
+        await client.end();
+
         this._functionsAndSchemas = {};
         for (const row of rows) {
             this.parent.addResourceAndSchemasEntry(this._functionsAndSchemas, row.name, row.schema);

@@ -45,5 +45,6 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
         const client = new Client(this.parent.clientConfig);
         await client.connect();
         await client.query(`DROP FUNCTION ${this.schema}.${this.name};`);
+        await client.end();
     }
 }

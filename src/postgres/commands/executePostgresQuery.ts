@@ -37,6 +37,7 @@ export async function executePostgresQuery(context: IActionContext): Promise<voi
     await client.connect();
     const query: string | undefined = activeEditor.document.getText();
     const queryResult: QueryResult = await client.query(query);
+    await client.end();
     ext.outputChannel.appendLine(localize('executedQuery', 'Successfully executed "{0}" query.', queryResult.command));
 
     if (queryResult.rowCount) {

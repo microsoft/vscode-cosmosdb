@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as vscode from 'vscode';
 import { DialogResponses, IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
@@ -17,4 +18,7 @@ export async function deletePostgresDatabase(context: IActionContext, node?: Pos
     if (result === DialogResponses.deleteResponse) {
         await node.deleteTreeItem(context);
     }
+    const deleteMessage = localize('deletePostgresDatabaseMsg', 'Successfully deleted database "{0}".', node.databaseName);
+    vscode.window.showInformationMessage(deleteMessage);
+    ext.outputChannel.appendLog(deleteMessage);
 }

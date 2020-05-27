@@ -17,5 +17,7 @@ export async function deletePostgresFunction(context: IActionContext, treeItem?:
     const message = localize('deleteFunction', 'Are you sure you want to delete function "{0}"?', treeItem.label);
     await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
     await treeItem.deleteTreeItem(context);
-    window.showInformationMessage(localize('successfullyDeletedFunction', 'Successfully deleted function "{0}".', treeItem.label));
+    const deleteMessage = localize('successfullyDeletedFunction', 'Successfully deleted function "{0}".', treeItem.label);
+    window.showInformationMessage(deleteMessage);
+    ext.outputChannel.appendLog(deleteMessage);
 }

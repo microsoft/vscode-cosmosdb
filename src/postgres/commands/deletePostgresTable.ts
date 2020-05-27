@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { window } from 'vscode';
 import { DialogResponses, IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
@@ -15,4 +16,7 @@ export async function deletePostgresTable(context: IActionContext, node?: Postgr
     const message = localize('deletesPostgresTable', 'Are you sure you want to delete table "{0}"?', node.label);
     await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
     await node.deleteTreeItem(context);
+    const deleteMessage = localize('successfullyDeletedTable', 'Successfully deleted table "{0}".', node.label);
+    window.showInformationMessage(deleteMessage);
+    ext.outputChannel.appendLog(deleteMessage);
 }

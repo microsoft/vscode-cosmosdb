@@ -84,7 +84,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         context.showCreatingTreeItem(newServerName);
         await wizard.execute();
         if (wizardContext.defaultExperience?.api === API.Postgres) {
-            const createMessage = localize('createdServerOutput', 'Successfully created PostgreSQL server "{0}".', wizardContext.newServerName);
+            const createMessage: string = localize('createdServerOutput', 'Successfully created PostgreSQL server "{0}".', wizardContext.newServerName);
             vscode.window.showInformationMessage(createMessage);
             ext.outputChannel.appendLog(createMessage);
             return new PostgresServerTreeItem(this, nonNullProp(wizardContext, 'server'));

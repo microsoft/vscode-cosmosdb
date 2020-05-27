@@ -17,7 +17,7 @@ export async function deletePostgresServer(context: IActionContext, node?: Postg
     const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
     if (result === DialogResponses.deleteResponse) {
         await node.deleteTreeItem(context);
-        const deleteMessage = localize("deleteServerMsg", 'Successfully deleted server "{0}".', node.name);
+        const deleteMessage: string = localize("deleteServerMsg", 'Successfully deleted server "{0}".', node.name);
         vscode.window.showInformationMessage(deleteMessage);
         ext.outputChannel.appendLog(deleteMessage);
     }

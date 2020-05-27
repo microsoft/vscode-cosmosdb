@@ -14,10 +14,10 @@ export async function deletePostgresFunction(context: IActionContext, treeItem?:
         treeItem = <PostgresFunctionTreeItem>await ext.tree.showTreeItemPicker(PostgresFunctionTreeItem.contextValue, { ...context, suppressCreatePick: true });
     }
 
-    const message = localize('deleteFunction', 'Are you sure you want to delete function "{0}"?', treeItem.label);
+    const message: string = localize('deleteFunction', 'Are you sure you want to delete function "{0}"?', treeItem.label);
     await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
     await treeItem.deleteTreeItem(context);
-    const deleteMessage = localize('successfullyDeletedFunction', 'Successfully deleted function "{0}".', treeItem.label);
+    const deleteMessage: string = localize('successfullyDeletedFunction', 'Successfully deleted function "{0}".', treeItem.label);
     window.showInformationMessage(deleteMessage);
     ext.outputChannel.appendLog(deleteMessage);
 }

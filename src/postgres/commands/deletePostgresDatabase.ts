@@ -13,12 +13,12 @@ export async function deletePostgresDatabase(context: IActionContext, node?: Pos
     if (!node) {
         node = <PostgresDatabaseTreeItem>await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
     }
-    const message = localize('deletesPostgresDatabase', 'Are you sure you want to delete database "{0}"?', node.databaseName);
+    const message: string = localize('deletesPostgresDatabase', 'Are you sure you want to delete database "{0}"?', node.databaseName);
     const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
     if (result === DialogResponses.deleteResponse) {
         await node.deleteTreeItem(context);
     }
-    const deleteMessage = localize('deletePostgresDatabaseMsg', 'Successfully deleted database "{0}".', node.databaseName);
+    const deleteMessage: string = localize('deletePostgresDatabaseMsg', 'Successfully deleted database "{0}".', node.databaseName);
     vscode.window.showInformationMessage(deleteMessage);
     ext.outputChannel.appendLog(deleteMessage);
 }

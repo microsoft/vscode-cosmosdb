@@ -105,9 +105,16 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
         if (experience && experience.api === "MongoDB") {
             const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, name);
-            const connectionString = nonNullProp(nonNullProp(result, 'connectionStrings')[0], 'connectionString');
+            const connectionString: URL = new URL(nonNullProp(nonNullProp(result, 'connectionStrings')[0], 'connectionString'));
+            // for any Mongo connectionString, append this query param because the Cosmos Mongo API v3.6 doesn't support retrywrites
+            // but the newer node.js drivers started breaking this
+            const searchParam: string = 'retrywrites';
+            if (!connectionString.searchParams.has(searchParam)) {
+                connectionString.searchParams.set(searchParam, 'false');
+            }
+
             // Use the default connection string
-            return new MongoAccountTreeItem(this, id, label, connectionString, isEmulator, databaseAccount);
+            return new MongoAccountTreeItem(this, id, label, connectionString.toString(), isEmulator, databaseAccount);
         } else {
             const keyResult: DatabaseAccountListKeysResult = await client.databaseAccounts.listKeys(resourceGroup, name);
             const primaryMasterKey: string = nonNullProp(keyResult, 'primaryMasterKey');

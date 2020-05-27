@@ -31,4 +31,7 @@ export class TableAccountTreeItem extends DocDBAccountTreeItemBase {
         await deleteCosmosDBAccount(this);
     }
 
+    public isAncestorOfImpl(): boolean {
+        return false;
+    }
 }

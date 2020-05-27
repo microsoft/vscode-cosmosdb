@@ -7,6 +7,7 @@ import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { FirewallRule } from 'azure-arm-postgresql/lib/models';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, createAzureClient } from 'vscode-azureextensionui';
+import { ext } from '../../../extensionVariables';
 import { localize } from '../../../utils/localize';
 import { nonNullProp } from '../../../utils/nonNull';
 import { IPostgresWizardContext } from './IPostgresWizardContext';
@@ -29,7 +30,7 @@ export class PostgresServerSetFirewallStep extends AzureWizardExecuteStep<IPostg
 
         const addFirewallMessage: string = localize('configuringFirewall', 'Adding firewall rule for your IP "{0}" to server "{1}"...', ip, newServerName);
         progress.report({ message: addFirewallMessage });
-
+        ext.outputChannel.appendLog(addFirewallMessage);
         await client.firewallRules.createOrUpdate(resourceGroup, newServerName, firewallRuleName, newFirewallRule);
 
     }

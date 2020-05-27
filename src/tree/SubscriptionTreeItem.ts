@@ -7,9 +7,11 @@ import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from 'azure-arm-cosmosdb/lib/models';
 import { PostgreSQLManagementClient } from 'azure-arm-postgresql';
 import { Server, ServerListResult } from 'azure-arm-postgresql/lib/models';
+import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { API, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
+import { ext } from '../extensionVariables';
 import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
@@ -82,6 +84,9 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         context.showCreatingTreeItem(newServerName);
         await wizard.execute();
         if (wizardContext.defaultExperience?.api === API.Postgres) {
+            const createMessage: string = localize('createdServerOutput', 'Successfully created PostgreSQL server "{0}".', wizardContext.newServerName);
+            vscode.window.showInformationMessage(createMessage);
+            ext.outputChannel.appendLog(createMessage);
             return new PostgresServerTreeItem(this, nonNullProp(wizardContext, 'server'));
         } else {
             return await this.initCosmosDBChild(client, nonNullProp(wizardContext, 'databaseAccount'));

@@ -39,6 +39,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
         const functionsQuery: string = `select n.nspname as schema,
             p.proname as name,
             p.oid as oid,
+            pg_get_function_arguments(p.oid) as args,
             case when l.lanname = 'internal' then p.prosrc
                 else pg_get_functiondef(p.oid)
                 end as definition

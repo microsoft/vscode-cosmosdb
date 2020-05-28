@@ -31,7 +31,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('Database.svg');
+        return getThemeAgnosticIconPath('DocDatabase.svg');
     }
 
     public get id(): string {

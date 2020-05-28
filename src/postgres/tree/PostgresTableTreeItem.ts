@@ -7,7 +7,7 @@ import { Pool } from 'pg';
 import { Table } from 'pg-structure';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { getThemedIconPath } from '../../constants';
 import { PostgresColumnTreeItem } from './PostgresColumnTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
@@ -38,7 +38,7 @@ export class PostgresTableTreeItem extends AzureParentTreeItem<ISubscriptionCont
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('Document.svg');
+        return getThemedIconPath('window.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {

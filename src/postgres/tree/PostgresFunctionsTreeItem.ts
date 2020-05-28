@@ -5,7 +5,7 @@
 
 import { Client, ClientConfig, QueryResult } from 'pg';
 import { AzureParentTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
-import { getThemeAgnosticIconPath } from "../../constants";
+import { getThemedIconPath } from "../../constants";
 import { IPostgresProceduresQueryRow } from '../IPostgresProceduresQueryRow';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionTreeItem } from "./PostgresFunctionTreeItem";
@@ -26,7 +26,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
     }
 
     public get iconPath(): TreeItemIconPath {
-        return getThemeAgnosticIconPath('Collection.svg');
+        return getThemedIconPath('list-unordered.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {

@@ -40,7 +40,7 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
     }
 
     public get iconPath(): TreeItemIconPath {
-        return getThemeAgnosticIconPath('Collection.svg');
+        return getThemeAgnosticIconPath('function.svg');
     }
 
     public async deleteTreeItemImpl(): Promise<void> {

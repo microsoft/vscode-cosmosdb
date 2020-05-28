@@ -10,7 +10,7 @@ In this release, we're rebranding the Cosmos DB Extension to Azure Databases to 
   - Create, edit, and execute PostgreSQL queries
 ### Fixed
 - [Bugs fixed](https://github.com/microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A0.13.0+is%3Aclosed)
-### Removed
+### Changed
 - Viewing and querying Azure Cosmos DB graphs has been moved to a separate graph-specific extension,
   [vscode-cosmosdbgraph](https://github.com/microsoft/vscode-cosmosdbgraph)
 

@@ -5,7 +5,7 @@
 
 import { Client } from "pg";
 import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
-import { getThemeAgnosticIconPath } from "../../constants";
+import { getThemedIconPath } from "../../constants";
 import { IPostgresProceduresQueryRow } from "../IPostgresProceduresQueryRow";
 import { PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
 
@@ -40,7 +40,7 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
     }
 
     public get iconPath(): TreeItemIconPath {
-        return getThemeAgnosticIconPath('function.svg');
+        return getThemedIconPath('function.svg');
     }
 
     public async deleteTreeItemImpl(): Promise<void> {

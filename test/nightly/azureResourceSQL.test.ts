@@ -33,9 +33,9 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
     });
 
     test('Create SQL account', async () => {
-        const testInputs: (string | RegExp)[] = [accountName, /SQL/, '$(plus) Create new resource group', resourceGroupName, 'West US'];
+        const testInputs: (string | RegExp)[] = [/SQL/, accountName, '$(plus) Create new resource group', resourceGroupName, 'West US'];
         await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createAccount');
+            await vscode.commands.executeCommand('azureDatabases.createServer');
         });
         const getAccount: CosmosDBManagementModels.DatabaseAccount | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
         assert.ok(getAccount);

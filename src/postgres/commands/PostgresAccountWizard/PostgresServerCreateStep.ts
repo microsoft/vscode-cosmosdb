@@ -39,7 +39,6 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresWi
                 };
 
                 wizardContext.server = await client.servers.create(rgName, newServerName, options);
-                ext.outputChannel.appendLog(localize('createdServerOutput', 'Successfully created PostgreSQL server "{0}".', newServerName));
             },
             password);
     }

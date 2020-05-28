@@ -17,6 +17,7 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
     public readonly schema: string;
     public readonly name: string;
     public readonly id: string;
+    public readonly args: string;
     public readonly isDuplicate: boolean;
     public definition: string;
 
@@ -25,6 +26,7 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
         this.schema = row.schema;
         this.name = row.name;
         this.id = String(row.oid);
+        this.args = row.args;
         this.definition = row.definition;
         this.isDuplicate = isDuplicate;
     }
@@ -45,7 +47,7 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
         const client = new Client(this.parent.clientConfig);
         try {
             await client.connect();
-            await client.query(`DROP FUNCTION ${this.schema}.${this.name};`);
+            await client.query(`DROP FUNCTION ${this.schema}.${this.name}(${this.args});`);
         } finally {
             await client.end();
         }

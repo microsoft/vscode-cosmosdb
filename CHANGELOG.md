@@ -8,11 +8,12 @@ In this release, we're rebranding the Cosmos DB Extension to Azure Databases to 
 - PostgreSQL support
   - Create and view PostgreSQL servers, databases, and functions.
   - Create, edit, and execute PostgreSQL queries
+
 ### Fixed
 - [Bugs fixed](https://github.com/microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A0.13.0+is%3Aclosed)
+
 ### Changed
-- Viewing and querying Azure Cosmos DB graphs has been moved to a separate graph-specific extension,
-  [vscode-cosmosdbgraph](https://github.com/microsoft/vscode-cosmosdbgraph)
+- Viewing and querying Azure Cosmos DB graphs has been moved to a separate graph-specific extension, [vscode-cosmosdbgraph](https://github.com/microsoft/vscode-cosmosdbgraph)
 
 ## 0.12.2 - 2020-03-10
 ### Fixed

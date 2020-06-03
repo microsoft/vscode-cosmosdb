@@ -61,8 +61,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
                     lenses.push(<vscode.CodeLens>{
                         command: {
                             title: "Execute",
-                            command: 'cosmosDB.executeMongoCommand',
-                            arguments: [cmd.text]
+                            command: 'cosmosDB.executeMongoCommand'
                         },
                         range: cmd.range
                     });

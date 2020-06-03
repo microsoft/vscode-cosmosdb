@@ -53,11 +53,6 @@ export async function executeCommandFromActiveEditor(context: IActionContext): P
     return await executeCommand(context, command);
 }
 
-export async function executeCommandFromText(context: IActionContext, commandText: string): Promise<void> {
-    const command = getCommandFromTextAtLocation(commandText, new vscode.Position(0, 0));
-    return await executeCommand(context, command);
-}
-
 function getAllCommandsFromActiveEditor(): MongoCommand[] {
     const activeEditor = vscode.window.activeTextEditor;
     if (activeEditor) {
@@ -104,7 +99,7 @@ async function executeCommand(context: IActionContext, command: MongoCommand): P
         if (command.errors && command.errors.length > 0) {
             //Currently, we take the first error pushed. Tests correlate that the parser visits errors in left-to-right, top-to-bottom.
             const err = command.errors[0];
-            throw new Error(`Error near line ${err.range.start.line}, column ${err.range.start.character}: '${err.message}'. Please check syntax.`);
+            throw new Error(`Error near line ${err.range.start.line + 1}, column ${err.range.start.character + 1}: '${err.message}'. Please check syntax.`);
         }
 
         // we don't handle chained commands so we can only handle "find" if isn't chained
@@ -137,11 +132,6 @@ async function refreshTreeAfterCommand(database: MongoDatabaseTreeItem, command:
             await collectionNode.refresh();
         }
     }
-}
-
-export function getCommandFromTextAtLocation(content: string, position?: vscode.Position): MongoCommand {
-    const commands = getAllCommandsFromText(content);
-    return findCommandAtPosition(commands, position);
 }
 
 export function getAllCommandsFromText(content: string): MongoCommand[] {
@@ -187,7 +177,7 @@ export function getAllCommandsFromText(content: string): MongoCommand[] {
     return commands;
 }
 
-function findCommandAtPosition(commands: MongoCommand[], position?: vscode.Position): MongoCommand {
+export function findCommandAtPosition(commands: MongoCommand[], position?: vscode.Position): MongoCommand {
     let lastCommandOnSameLine: MongoCommand | undefined;
     let lastCommandBeforePosition: MongoCommand | undefined;
     if (position) {

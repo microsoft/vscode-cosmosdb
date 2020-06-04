@@ -13,6 +13,7 @@ import * as vscode from 'vscode';
 import { IActionContext, IParsedError, parseError } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
 import { filterType, findType } from '../utils/array';
+import { localize } from '../utils/localize';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import * as vscodeUtil from './../utils/vscodeUtils';
 import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
@@ -99,7 +100,7 @@ async function executeCommand(context: IActionContext, command: MongoCommand): P
         if (command.errors && command.errors.length > 0) {
             //Currently, we take the first error pushed. Tests correlate that the parser visits errors in left-to-right, top-to-bottom.
             const err = command.errors[0];
-            throw new Error(`Error near line ${err.range.start.line + 1}, column ${err.range.start.character + 1}: '${err.message}'. Please check syntax.`);
+            throw new Error(localize('unableToParseSyntax', `Unable to parse syntax. Error near line ${err.range.start.line + 1}, column ${err.range.start.character + 1}: "${err.message}"`));
         }
 
         // we don't handle chained commands so we can only handle "find" if isn't chained

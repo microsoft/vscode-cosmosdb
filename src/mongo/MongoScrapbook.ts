@@ -47,9 +47,9 @@ export async function executeAllCommandsFromActiveEditor(context: IActionContext
     await executeCommands(context, commands);
 }
 
-export async function executeCommandFromActiveEditor(context: IActionContext): Promise<void> {
+export async function executeCommandFromActiveEditor(context: IActionContext, position?: vscode.Position): Promise<void> {
     const commands = getAllCommandsFromActiveEditor();
-    const command = findCommandAtPosition(commands, vscode.window.activeTextEditor?.selection.start);
+    const command = findCommandAtPosition(commands, position || vscode.window.activeTextEditor?.selection.start);
     return await executeCommand(context, command);
 }
 

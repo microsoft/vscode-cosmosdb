@@ -110,9 +110,9 @@ export function registerMongoCommands(): MongoCodeLensProvider {
     });
     registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
     registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', 'Scrapbook', '.mongo'));
-    registerCommand('cosmosDB.executeMongoCommand', async (context: IActionContext) => {
+    registerCommand('cosmosDB.executeMongoCommand', async (context: IActionContext, position?: vscode.Position) => {
         await loadPersistedMongoDBTask;
-        await executeCommandFromActiveEditor(context);
+        await executeCommandFromActiveEditor(context, position);
     });
     registerCommand('cosmosDB.executeAllMongoCommands', async (context: IActionContext) => {
         await loadPersistedMongoDBTask;

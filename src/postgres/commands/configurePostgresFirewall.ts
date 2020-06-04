@@ -41,15 +41,18 @@ export async function setFirewallRule(treeItem: PostgresServerTreeItem, ip: stri
         endIpAddress: ip
     };
 
+    const progressMessage: string = localize('configuringFirewallRule', 'Adding firewall rule for IP "{0}" to server "{1}"...', ip, serverName);
     const options: vscode.ProgressOptions = {
         location: vscode.ProgressLocation.Notification,
-        title: localize('configuringFirewall', 'Adding firewall rule for IP "{0}" to server "{1}"...', ip, serverName)
+        title: progressMessage
     };
 
     await vscode.window.withProgress(options, async () => {
         await client.firewallRules.createOrUpdate(resourceGroup, serverName, firewallRuleName, newFirewallRule);
     });
-
+    const completedMessage: string = localize('addedFirewallRule', 'Successfully added firewall rule for IP "{0}" to server "{1}".', ip, serverName);
+    vscode.window.showInformationMessage(completedMessage);
+    ext.outputChannel.appendLog(completedMessage);
     await treeItem.refresh();
 }
 

@@ -11,7 +11,7 @@ import * as vscodeUtil from '../utils/vscodeUtils';
 import { MongoConnectError } from './connectToMongoClient';
 import { MongoCollectionNodeEditor } from "./editors/MongoCollectionNodeEditor";
 import { MongoDBLanguageClient } from "./languageClient";
-import { executeAllCommandsFromActiveEditor, executeCommandFromActiveEditor, executeCommandFromText, getAllErrorsFromTextDocument } from "./MongoScrapbook";
+import { executeAllCommandsFromActiveEditor, executeCommandFromActiveEditor, getAllErrorsFromTextDocument } from "./MongoScrapbook";
 import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
 import { setConnectedNode } from "./setConnectedNode";
 import { MongoAccountTreeItem } from "./tree/MongoAccountTreeItem";
@@ -110,13 +110,9 @@ export function registerMongoCommands(): MongoCodeLensProvider {
     });
     registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
     registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', 'Scrapbook', '.mongo'));
-    registerCommand('cosmosDB.executeMongoCommand', async (context: IActionContext, commandText: object) => {
+    registerCommand('cosmosDB.executeMongoCommand', async (context: IActionContext, position?: vscode.Position) => {
         await loadPersistedMongoDBTask;
-        if (typeof commandText === "string") {
-            await executeCommandFromText(context, <string>commandText);
-        } else {
-            await executeCommandFromActiveEditor(context);
-        }
+        await executeCommandFromActiveEditor(context, position);
     });
     registerCommand('cosmosDB.executeAllMongoCommands', async (context: IActionContext) => {
         await loadPersistedMongoDBTask;

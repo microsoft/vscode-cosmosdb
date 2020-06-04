@@ -92,14 +92,6 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         await client.databases.deleteMethod(azureUtils.getResourceGroupFromId(this.fullId), this.parent.name, this.databaseName);
     }
 
-    public addResourceAndSchemasEntry(resourceAndSchemas: { [key: string]: string[] }, name: string, schema: string): void {
-        if (resourceAndSchemas[name]) {
-            resourceAndSchemas[name].push(schema);
-        } else {
-            resourceAndSchemas[name] = [schema];
-        }
-    }
-
     public async getClientConfig(): Promise<ClientConfig> {
         const { username, password } = await this.parent.getCredentials();
 

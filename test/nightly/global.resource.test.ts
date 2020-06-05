@@ -23,7 +23,7 @@ export enum AccountApi {
 
 suiteSetup(async function (this: Mocha.Context): Promise<void> {
     if (longRunningTestsEnabled) {
-        this.timeout(2 * 60 * 1000);
+        this.timeout(20 * 60 * 1000);
         testAccount = new TestAzureAccount(vscode);
         await testAccount.signIn();
         ext.azureAccountTreeItem = new AzureAccountTreeItemWithAttached(testAccount);

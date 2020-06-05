@@ -9,14 +9,14 @@ import { getThemedIconPath } from "../../constants";
 import { getPostgresProcedureQueryRows } from '../getPostgresProcedureQueryRows';
 import { IPostgresProceduresQueryRow } from '../IPostgresProceduresQueryRow';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
-import { PostgresFunctionTreeItem } from "./PostgresFunctionTreeItem";
 import { PostgresResourcesTreeItemBase } from './PostgresResourcesTreeItemBase';
+import { PostgresStoredProcedureTreeItem } from './PostgresStoredProcedureTreeItem';
 
-export class PostgresFunctionsTreeItem extends PostgresResourcesTreeItemBase {
-    public static contextValue: string = 'postgresFunctions';
-    public readonly contextValue: string = PostgresFunctionsTreeItem.contextValue;
-    public readonly label: string = 'Functions';
-    public readonly childTypeLabel: string = 'Function';
+export class PostgresStoredProceduresTreeItem extends PostgresResourcesTreeItemBase {
+    public static contextValue: string = 'postgresStoredProcedures';
+    public readonly contextValue: string = PostgresStoredProceduresTreeItem.contextValue;
+    public readonly label: string = 'Stored Procedures';
+    public readonly childTypeLabel: string = 'Stored Procedure';
 
     constructor(parent: PostgresDatabaseTreeItem, clientConfig: ClientConfig) {
         super(parent);
@@ -31,9 +31,9 @@ export class PostgresFunctionsTreeItem extends PostgresResourcesTreeItemBase {
         return false;
     }
 
-    public async loadMoreChildrenImpl(): Promise<PostgresFunctionTreeItem[]> {
+    public async loadMoreChildrenImpl(): Promise<PostgresStoredProcedureTreeItem[]> {
         // Adapted from https://aka.ms/AA83fg8
-        const functionsQuery: string = `select n.nspname as schema,
+        const storedProceduresQuery: string = `select n.nspname as schema,
             p.proname as name,
             p.oid as oid,
             pg_get_function_arguments(p.oid) as args,
@@ -44,12 +44,11 @@ export class PostgresFunctionsTreeItem extends PostgresResourcesTreeItemBase {
             left join pg_namespace n on p.pronamespace = n.oid
             left join pg_language l on p.prolang = l.oid
             where n.nspname not in ('pg_catalog', 'information_schema')
-                and p.proname not in ('pg_buffercache_pages', 'pg_stat_statements_reset', 'pg_stat_statements')
-                ${this.parent.parent.supportsStoredProcedures() ? "and p.prokind = 'f'" : '' /* Only select functions, not stored procedures */}
+                and p.prokind = 'p'
             order by name;`;
 
-        const rows: IPostgresProceduresQueryRow[] = await getPostgresProcedureQueryRows(this, functionsQuery);
-        return rows.map(row => new PostgresFunctionTreeItem(
+        const rows: IPostgresProceduresQueryRow[] = await getPostgresProcedureQueryRows(this, storedProceduresQuery);
+        return rows.map(row => new PostgresStoredProcedureTreeItem(
             this,
             row,
             this.isDuplicateResource(row.name)
@@ -57,6 +56,6 @@ export class PostgresFunctionsTreeItem extends PostgresResourcesTreeItemBase {
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {
-        return contextValue === PostgresFunctionTreeItem.contextValue;
+        return contextValue === PostgresStoredProcedureTreeItem.contextValue;
     }
 }

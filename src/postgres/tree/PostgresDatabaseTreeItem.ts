@@ -14,6 +14,7 @@ import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
+import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
 export const invalidCredentialsErrorType: string = '28P01';
@@ -55,10 +56,16 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
         try {
             const clientConfig: ClientConfig = await this.getClientConfig();
-            const functionsTreeItem = new PostgresFunctionsTreeItem(this, clientConfig);
-            const tablesTreeItem = new PostgresTablesTreeItem(this, clientConfig);
+            const children: AzExtTreeItem[] = [
+                new PostgresFunctionsTreeItem(this, clientConfig),
+                new PostgresTablesTreeItem(this, clientConfig)
+            ];
 
-            return [functionsTreeItem, tablesTreeItem];
+            if (this.parent.supportsStoredProcedures()) {
+                children.push(new PostgresStoredProceduresTreeItem(this, clientConfig));
+            }
+
+            return children;
         } catch (error) {
             const parsedError: IParsedError = parseError(error);
 

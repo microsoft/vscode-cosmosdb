@@ -7,6 +7,7 @@ import { ClientConfig } from "pg";
 import { AzureParentTreeItem, ISubscriptionContext } from "vscode-azureextensionui";
 import { PostgresDatabaseTreeItem } from "./PostgresDatabaseTreeItem";
 
+// Base class for Postgres tree items whose children are individual resources
 export abstract class PostgresResourcesTreeItemBase extends AzureParentTreeItem<ISubscriptionContext> {
     public parent: PostgresDatabaseTreeItem;
     public clientConfig: ClientConfig;

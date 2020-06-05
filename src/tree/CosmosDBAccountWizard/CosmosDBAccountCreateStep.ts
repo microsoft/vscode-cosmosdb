@@ -19,7 +19,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
         const locationName: string = nonNullProp(nonNullProp(wizardContext, 'location'), 'name');
         const defaultExperience = nonNullProp(wizardContext, 'defaultExperience');
         const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
-        const accountName = nonNullProp(wizardContext, 'accountName');
+        const accountName = nonNullProp(wizardContext, 'newServerName');
 
         const client: CosmosDBManagementClient = createAzureClient(wizardContext, CosmosDBManagementClient);
         const creatingMessage: string = localize('creatingCosmosDBAccount', 'Creating Cosmos DB account "{0}" with the "{1}" API... It should be ready in several minutes.', accountName, defaultExperience.shortName);
@@ -31,7 +31,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             locations: [{ locationName: locationName }],
             kind: defaultExperience.kind,
             // Note: Setting this tag has no functional effect in the portal, but we'll keep doing it to imitate portal behavior
-            tags: { defaultExperience: defaultExperience.tag },
+            tags: { defaultExperience: nonNullProp(defaultExperience, 'tag') },
             capabilities: <Capability[]>[]
         };
 

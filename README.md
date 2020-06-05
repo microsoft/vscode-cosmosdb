@@ -1,11 +1,11 @@
 
-# Cosmos DB Support for VS Code (Preview)
+# Azure Databases for VS Code (Preview)
 
 [![Version](https://vsmarketplacebadge.apphb.com/version/ms-azuretools.vscode-cosmosdb.svg)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb) [![Installs](https://vsmarketplacebadge.apphb.com/installs-short/ms-azuretools.vscode-cosmosdb.svg)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb) [![Build Status](https://dev.azure.com/ms-azuretools/AzCode/_apis/build/status/vscode-cosmosdb)](https://dev.azure.com/ms-azuretools/AzCode/_build/latest?definitionId=7)
 
-Browse and query your MongoDB databases both locally and in the cloud using [_scrapbooks_](#mongo-scrapbooks) with rich Intellisense then connect to Azure to manage your Cosmos DB databases with support for MongoDB, Graph (Gremlin), and SQL (previously known as DocumentDB).
+Browse and query your Azure databases both locally and in the cloud using [_scrapbooks_](#mongo-scrapbooks) with rich Intellisense then connect to Azure to manage your PostgreSQL and Cosmos DB databases with support for MongoDB, Graph (Gremlin), and SQL (previously known as DocumentDB).
 
-![Cosmos DB Extension](resources/features.png)
+![Azure Databases Extension](resources/features.png)
 
 # Prerequisites
 
@@ -13,18 +13,18 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
 
 # Features
 
-## Cosmos DB Explorer
+## Azure Databases Explorer
 
-- Create a Cosmos DB account by clicking the `+` button in the title
-- View Azure Cosmos DB accounts and open directly in the portal
-- View/Create/Delete databases, collections, graphs, stored procedures, and documents
-- Click on a document or stored procedure to open in the editor
+- Create a database server by clicking the `+` button in the title
+- View database servers and open directly in the portal
+- View/Create/Delete databases, collections, graphs, stored procedures, documents, and queries
+- Click on a document, stored procedure, or query to open in the editor
 - Click on a graph to visualize data
 - Query graph using [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support)
 - Edit a document and persist changes to the cloud
 - Attach a Mongo server by clicking the plug icon in the title
 
-![Browse CosmosDB and MongoDB databases](resources/Browse.png)
+![Browse PostgreSQL, CosmosDB, and MongoDB databases](resources/Browse.png)
 
 ## Mongo Scrapbooks
 ### Run Mongo Commands with Rich Intellisense
@@ -76,9 +76,9 @@ Browse and query your MongoDB databases both locally and in the cloud using [_sc
     ]
 ```
 
-## Create a Cosmos DB Account
+## Create an Azure Databases Server
 
-![Create Cosmos DB Account](resources/create.gif)
+![Create Azure Databases Server](resources/create.gif)
 
 ## Attach to the Cosmos DB Emulator
 

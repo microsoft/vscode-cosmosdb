@@ -4,13 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { AzureTreeItem, callWithTelemetryAndErrorHandling, IActionContext, registerCommand, registerEvent } from "vscode-azureextensionui";
+import { AzureTreeItem, callWithTelemetryAndErrorHandling, IActionContext, IErrorHandlerContext, registerCommand, registerErrorHandler, registerEvent } from "vscode-azureextensionui";
 import { ext } from "../extensionVariables";
 import { AttachedAccountSuffix } from '../tree/AttachedAccountsTreeItem';
 import * as vscodeUtil from '../utils/vscodeUtils';
+import { MongoConnectError } from './connectToMongoClient';
 import { MongoCollectionNodeEditor } from "./editors/MongoCollectionNodeEditor";
 import { MongoDBLanguageClient } from "./languageClient";
-import { executeAllCommandsFromActiveEditor, executeCommandFromActiveEditor, executeCommandFromText, getAllErrorsFromTextDocument } from "./MongoScrapbook";
+import { executeAllCommandsFromActiveEditor, executeCommandFromActiveEditor, getAllErrorsFromTextDocument } from "./MongoScrapbook";
 import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
 import { setConnectedNode } from "./setConnectedNode";
 import { MongoAccountTreeItem } from "./tree/MongoAccountTreeItem";
@@ -18,7 +19,7 @@ import { MongoCollectionTreeItem } from "./tree/MongoCollectionTreeItem";
 import { MongoDatabaseTreeItem } from "./tree/MongoDatabaseTreeItem";
 import { MongoDocumentTreeItem } from "./tree/MongoDocumentTreeItem";
 
-const connectedDBKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
+const connectedMongoKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 let diagnosticsCollection: vscode.DiagnosticCollection;
 const mongoLanguageId: string = 'mongo';
 
@@ -41,10 +42,7 @@ export function registerMongoCommands(): MongoCodeLensProvider {
             node = <MongoAccountTreeItem>await ext.tree.showTreeItemPicker([MongoAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue + AttachedAccountSuffix], context);
         }
         const databaseNode = <MongoDatabaseTreeItem>await node.createChild(context);
-        // reveal the database treeItem in case user cancels collection creation
-        await ext.treeView.reveal(databaseNode, { focus: false });
-        const collectionNode = <MongoCollectionTreeItem>await databaseNode.createChild(context);
-        await ext.treeView.reveal(collectionNode, { focus: true });
+        await databaseNode.createChild(context);
 
         await vscode.commands.executeCommand('cosmosDB.connectMongoDB', databaseNode);
     });
@@ -53,7 +51,6 @@ export function registerMongoCommands(): MongoCodeLensProvider {
             node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
         }
         const collectionNode = await node.createChild(context);
-        await ext.treeView.reveal(collectionNode);
         await vscode.commands.executeCommand('cosmosDB.connectMongoDB', collectionNode.parent);
     });
     registerCommand('cosmosDB.createMongoDocument', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
@@ -61,7 +58,6 @@ export function registerMongoCommands(): MongoCodeLensProvider {
             node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
         }
         const documentNode = await node.createChild(context);
-        await ext.treeView.reveal(documentNode);
         await vscode.commands.executeCommand("cosmosDB.openDocument", documentNode);
     });
     registerCommand('cosmosDB.connectMongoDB', async (context: IActionContext, node?: MongoDatabaseTreeItem) => {
@@ -71,7 +67,7 @@ export function registerMongoCommands(): MongoCodeLensProvider {
 
         const oldNodeId: string | undefined = ext.connectedMongoDB && ext.connectedMongoDB.fullId;
         await languageClient.connect(node.connectionString, node.databaseName);
-        ext.context.globalState.update(connectedDBKey, node.fullId);
+        ext.context.globalState.update(connectedMongoKey, node.fullId);
         setConnectedNode(node, codeLensProvider);
         await node.refresh();
 
@@ -90,7 +86,7 @@ export function registerMongoCommands(): MongoCodeLensProvider {
         await node.deleteTreeItem(context);
         if (ext.connectedMongoDB && ext.connectedMongoDB.fullId === node.fullId) {
             setConnectedNode(undefined, codeLensProvider);
-            ext.context.globalState.update(connectedDBKey, undefined);
+            ext.context.globalState.update(connectedMongoKey, undefined);
             languageClient.disconnect();
         }
     });
@@ -114,13 +110,9 @@ export function registerMongoCommands(): MongoCodeLensProvider {
     });
     registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
     registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', 'Scrapbook', '.mongo'));
-    registerCommand('cosmosDB.executeMongoCommand', async (context: IActionContext, commandText: object) => {
+    registerCommand('cosmosDB.executeMongoCommand', async (context: IActionContext, position?: vscode.Position) => {
         await loadPersistedMongoDBTask;
-        if (typeof commandText === "string") {
-            await executeCommandFromText(context, <string>commandText);
-        } else {
-            await executeCommandFromActiveEditor(context);
-        }
+        await executeCommandFromActiveEditor(context, position);
     });
     registerCommand('cosmosDB.executeAllMongoCommands', async (context: IActionContext) => {
         await loadPersistedMongoDBTask;
@@ -137,7 +129,7 @@ async function loadPersistedMongoDB(languageClient: MongoDBLanguageClient, codeL
         context.telemetry.properties.isActivationEvent = 'true';
 
         try {
-            const persistedNodeId: string | undefined = ext.context.globalState.get(connectedDBKey);
+            const persistedNodeId: string | undefined = ext.context.globalState.get(connectedMongoKey);
             if (persistedNodeId) {
                 const persistedNode = await ext.tree.findTreeItem(persistedNodeId, context);
                 if (persistedNode) {
@@ -191,6 +183,12 @@ function setUpErrorReporting(): void {
                 context.telemetry.suppressIfSuccessful = true;
             }
         });
+
+    registerErrorHandler((context: IErrorHandlerContext) => {
+        if (context.error instanceof MongoConnectError) {
+            context.errorHandling.suppressReportIssue = true;
+        }
+    });
 }
 
 function updateErrorsInScrapbook(context: IActionContext, document: vscode.TextDocument | undefined): void {

@@ -6,6 +6,7 @@
 import { Server } from 'azure-arm-postgresql/lib/models';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep } from 'vscode-azureextensionui';
+import { ext } from '../../../extensionVariables';
 import { localize } from '../../../utils/localize';
 import { nonNullProp } from '../../../utils/nonNull';
 import { setPostgresCredentials } from '../setPostgresCredentials';
@@ -17,14 +18,14 @@ export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPo
     public async execute(wizardContext: IPostgresWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
         let user: string = nonNullProp(wizardContext, 'adminUser');
-        const serverName: string = nonNullProp(wizardContext, 'newServerName');
-        const usernameSuffix: string = `@${serverName}`;
+        const newServerName: string = nonNullProp(wizardContext, 'newServerName');
+        const usernameSuffix: string = `@${newServerName}`;
         if (!user.includes(usernameSuffix)) {
             user += usernameSuffix;
         }
-        const setupMessage: string = localize('setupCredentialsMessage', 'Setting up Credentials for server "{0}"...', serverName);
+        const setupMessage: string = localize('setupCredentialsMessage', 'Setting up Credentials for server "{0}"...', newServerName);
         progress.report({ message: setupMessage });
-
+        ext.outputChannel.appendLog(setupMessage);
         const password: string = nonNullProp(wizardContext, 'adminPassword');
         const server: Server = nonNullProp(wizardContext, 'server');
 

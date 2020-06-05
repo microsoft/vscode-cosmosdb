@@ -5,7 +5,7 @@
 
 import { Client, ClientConfig, QueryResult } from 'pg';
 import { AzureParentTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
-import { getThemeAgnosticIconPath } from "../../constants";
+import { getThemedIconPath } from "../../constants";
 import { IPostgresProceduresQueryRow } from '../IPostgresProceduresQueryRow';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionTreeItem } from "./PostgresFunctionTreeItem";
@@ -26,7 +26,7 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
     }
 
     public get iconPath(): TreeItemIconPath {
-        return getThemeAgnosticIconPath('Collection.svg');
+        return getThemedIconPath('list-unordered.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {
@@ -35,12 +35,11 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
 
     public async loadMoreChildrenImpl(): Promise<PostgresFunctionTreeItem[]> {
         const client = new Client(this.clientConfig);
-        await client.connect();
-
         // Adapted from https://aka.ms/AA83fg8
         const functionsQuery: string = `select n.nspname as schema,
             p.proname as name,
             p.oid as oid,
+            pg_get_function_arguments(p.oid) as args,
             case when l.lanname = 'internal' then p.prosrc
                 else pg_get_functiondef(p.oid)
                 end as definition
@@ -51,8 +50,15 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
                 and p.proname not in ('pg_buffercache_pages', 'pg_stat_statements_reset', 'pg_stat_statements')
                 ${this.parent.parent.supportsStoredProcedures() ? "and p.prokind = 'f'" : '' /* Only select functions, not stored procedures */}
             order by name;`;
+        let queryResult: QueryResult;
 
-        const queryResult: QueryResult = await client.query(functionsQuery);
+        try {
+            await client.connect();
+            queryResult = await client.query(functionsQuery);
+        } finally {
+            await client.end();
+        }
+
         const rows: IPostgresProceduresQueryRow[] = queryResult.rows || [];
 
         this._functionsAndSchemas = {};

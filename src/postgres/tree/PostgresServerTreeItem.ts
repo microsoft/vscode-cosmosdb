@@ -26,12 +26,12 @@ interface IPersistedServer {
 
 export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresServer";
+    public static serviceName: string = "ms-azuretools.vscode-azuredatabases.postgresPasswords";
     public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
     public readonly server: Server;
     public resourceGroup: string;
 
-    private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.postgresPasswords";
     private _serverId: string;
 
     constructor(parent: AzureParentTreeItem, server: Server) {
@@ -110,6 +110,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         const deletingMessage: string = `Deleting server "${this.name}"...`;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
             await client.servers.deleteMethod(this.resourceGroup, this.name);
+            await this.deletePostgresCredentials();
         });
     }
 
@@ -117,13 +118,13 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         let username: string | undefined;
         let password: string | undefined;
 
-        const storedValue: string | undefined = ext.context.globalState.get(this._serviceName);
+        const storedValue: string | undefined = ext.context.globalState.get(PostgresServerTreeItem.serviceName);
         if (storedValue && ext.keytar) {
             const servers: IPersistedServer[] = JSON.parse(storedValue);
             for (const server of servers) {
                 if (server.id === this._serverId) {
                     username = server.username;
-                    password = await ext.keytar.getPassword(this._serviceName, this._serverId) || undefined;
+                    password = await ext.keytar.getPassword(PostgresServerTreeItem.serviceName, this._serverId) || undefined;
                     break;
                 }
             }
@@ -136,6 +137,20 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         // `semver.gte` complains when a version doesn't have decimals (i.e. "10"), so attempt to convert version to SemVer
         const version: SemVer | null = coerce(this.server.version);
         return !!version && gte(version, '11.0.0');
+    }
+
+    private async deletePostgresCredentials(): Promise<void> {
+        if (ext.keytar) {
+            const serviceName: string = PostgresServerTreeItem.serviceName;
+            const storedValue: string | undefined = ext.context.globalState.get(serviceName);
+            let servers: IPersistedServer[] = storedValue ? JSON.parse(storedValue) : [];
+
+            // Remove this server from the cache
+            servers = servers.filter((server: IPersistedServer) => { return server.id !== this.id; });
+
+            await ext.context.globalState.update(serviceName, JSON.stringify(servers));
+            await ext.keytar.deletePassword(serviceName, this.id);
+        }
     }
 }
 

@@ -7,7 +7,7 @@ import { Client, ClientConfig } from "pg";
 import pgStructure, { Db } from "pg-structure";
 import { Uri } from 'vscode';
 import { AzureParentTreeItem, ISubscriptionContext } from "vscode-azureextensionui";
-import { getThemeAgnosticIconPath } from "../../constants";
+import { getThemedIconPath } from "../../constants";
 import { PostgresDatabaseTreeItem } from "./PostgresDatabaseTreeItem";
 import { PostgresTableTreeItem } from "./PostgresTableTreeItem";
 
@@ -27,7 +27,7 @@ export class PostgresTablesTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get iconPath(): string | Uri | { light: string | Uri; dark: string | Uri } {
-        return getThemeAgnosticIconPath('Collection.svg');
+        return getThemedIconPath('list-unordered.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {

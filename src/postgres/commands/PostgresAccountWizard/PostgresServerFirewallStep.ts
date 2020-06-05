@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as publicIp from 'public-ip';
 import { AzureWizardPromptStep, IAzureQuickPickItem } from 'vscode-azureextensionui';
 import { ext } from '../../../extensionVariables';
 import { localize } from '../../../utils/localize';
+import { getPublicIp } from '../configurePostgresFirewall';
 import { IPostgresWizardContext } from './IPostgresWizardContext';
 
 export class PostgresServerFirewallStep extends AzureWizardPromptStep<IPostgresWizardContext> {
@@ -24,9 +24,9 @@ export class PostgresServerFirewallStep extends AzureWizardPromptStep<IPostgresW
     }
 
     public async getPicks(wizardContext: IPostgresWizardContext): Promise<IAzureQuickPickItem<boolean>[]> {
-        wizardContext.publicIp = await publicIp.v4();
+        wizardContext.publicIp = await getPublicIp();
         return [
-            { label: localize('addFirewallRule', 'Add firewall rule for IP "{0}"', wizardContext.publicIp), data: true },
+            { label: localize('addFirewallRule', 'Add firewall rule for your IP "{0}"', wizardContext.publicIp), data: true },
             { label: localize('skipFireWallRule', '$(clock) Skip for now'), data: false }
         ];
     }

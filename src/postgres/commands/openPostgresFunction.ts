@@ -4,8 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IActionContext } from "vscode-azureextensionui";
+import { postgresBaseFileName, postgresFileExtension } from "../../constants";
 import { ext } from "../../extensionVariables";
-import { PostgresFunctionEditor } from "../editors/PostgresFunctionEditor";
+import * as vscodeUtil from '../../utils/vscodeUtils';
 import { PostgresFunctionTreeItem } from "../tree/PostgresFunctionTreeItem";
 
 export async function openPostgresFunction(context: IActionContext, treeItem?: PostgresFunctionTreeItem): Promise<void> {
@@ -13,6 +14,6 @@ export async function openPostgresFunction(context: IActionContext, treeItem?: P
         treeItem = <PostgresFunctionTreeItem>await ext.tree.showTreeItemPicker(PostgresFunctionTreeItem.contextValue, context);
     }
 
-    const fileName: string = `${treeItem.label} (${treeItem.parent.parent.parent.server.name}.${treeItem.schema}).sql`;
-    await ext.editorManager.showDocument(context, new PostgresFunctionEditor(treeItem), fileName);
+    const fileName: string = `${treeItem.label}-${postgresBaseFileName}`;
+    await vscodeUtil.showNewFile(treeItem.definition, fileName, postgresFileExtension);
 }

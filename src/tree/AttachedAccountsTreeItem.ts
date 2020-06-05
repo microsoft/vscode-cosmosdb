@@ -7,9 +7,9 @@ import { ServiceClientCredentials } from 'ms-rest';
 import { AzureEnvironment } from 'ms-rest-azure';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
+import { API, getCosmosExperienceQuickPicks, getExperienceFromApi, getExperienceQuickPick } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, getThemedIconPath } from '../constants';
-import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../CosmosDBExperiences';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
@@ -121,7 +121,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     public async attachNewAccount(): Promise<void> {
-        const defaultExperiencePick = await vscode.window.showQuickPick(getExperienceQuickPicks(), { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
+        const defaultExperiencePick = await vscode.window.showQuickPick(getCosmosExperienceQuickPicks(), { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
         if (defaultExperiencePick) {
             const defaultExperience = defaultExperiencePick.data;
             let placeholder: string;

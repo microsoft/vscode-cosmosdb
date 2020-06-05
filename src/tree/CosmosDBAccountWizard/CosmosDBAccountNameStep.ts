@@ -12,17 +12,17 @@ export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContex
 
     public async prompt(wizardContext: ICosmosDBWizardContext): Promise<void> {
         const client: CosmosDBManagementClient = createAzureClient(wizardContext, CosmosDBManagementClient);
-        wizardContext.accountName = (await ext.ui.showInputBox({
+        wizardContext.newServerName = (await ext.ui.showInputBox({
             placeHolder: "Account name",
             prompt: "Provide a Cosmos DB account name",
             validateInput: (name: string) => validateCosmosDBAccountName(name, client)
         })).trim();
 
-        wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.accountName, resourceGroupNamingRules);
+        wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.newServerName, resourceGroupNamingRules);
     }
 
     public shouldPrompt(wizardContext: ICosmosDBWizardContext): boolean {
-        return !wizardContext.accountName;
+        return !wizardContext.newServerName;
     }
 
     protected async isRelatedNameAvailable(wizardContext: ICosmosDBWizardContext, name: string): Promise<boolean> {

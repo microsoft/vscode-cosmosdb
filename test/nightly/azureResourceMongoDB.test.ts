@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { appendExtensionUserAgent, connectToMongoClient, DialogResponses, IDatabaseInfo, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
-import { accountList, api, client, resourceGrouList, resourceGroupsToDelete, testAccount } from './global.resource.test';
+import { AccountApi, accountList, client, resourceGroupList, resourceGroupsToDelete, testAccount } from './global.resource.test';
 
 suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(20 * 60 * 1000);
@@ -25,12 +25,17 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
             this.skip();
         }
         this.timeout(2 * 60 * 1000);
-        resourceGroupName = resourceGrouList[api.MongoDB] === undefined ? '' : resourceGrouList[api.MongoDB];
-        accountName = accountList[api.MongoDB] === undefined ? '' : accountList[api.MongoDB];
+        resourceGroupName = resourceGroupList[AccountApi.MongoDB];
+        accountName = accountList[AccountApi.MongoDB];
         databaseName1 = randomUtils.getRandomHexString(12);
         databaseName2 = randomUtils.getRandomHexString(12);
         collectionName1 = randomUtils.getRandomHexString(12);
         resourceGroupsToDelete.push(resourceGroupName);
+    });
+
+    test('Create MongoDB account', async () => {
+        const getAccount: CosmosDBManagementModels.DatabaseAccount | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
+        assert.ok(getAccount);
     });
 
     test('Create Mongo Database', async () => {

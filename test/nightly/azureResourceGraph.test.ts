@@ -5,11 +5,12 @@
 
 import { ContainerDefinition, CosmosClient, DatabaseDefinition, Resource } from '@azure/cosmos';
 import * as assert from 'assert';
+import { CosmosDBManagementModels } from 'azure-arm-cosmosdb';
 import * as vscode from 'vscode';
 import { randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
-import { accountList, api, resourceGrouList, resourceGroupsToDelete, testAccount } from './global.resource.test';
+import { AccountApi, accountList, client, resourceGroupList, resourceGroupsToDelete, testAccount } from './global.resource.test';
 
 suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(20 * 60 * 1000);
@@ -22,10 +23,15 @@ suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
             this.skip();
         }
         this.timeout(2 * 60 * 1000);
-        resourceGroupName = resourceGrouList[api.Graph] === undefined ? '' : resourceGrouList[api.Graph];
-        accountName = accountList[api.Graph] === undefined ? '' : accountList[api.Graph];
+        resourceGroupName = resourceGroupList[AccountApi.Graph];
+        accountName = accountList[AccountApi.Graph];
         databaseName = randomUtils.getRandomHexString(12);
         resourceGroupsToDelete.push(resourceGroupName);
+    });
+
+    test('Create graph account', async () => {
+        const getAccount: CosmosDBManagementModels.DatabaseAccount | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
+        assert.ok(getAccount);
     });
 
     test('Create graph Database', async () => {

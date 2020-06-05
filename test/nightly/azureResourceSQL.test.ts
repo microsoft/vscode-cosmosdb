@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { DialogResponses, getDocumentClient, ParsedDocDBConnectionString, parseDocDBConnectionString, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
-import { accountList, api, client, resourceGrouList, resourceGroupsToDelete, testAccount } from './global.resource.test';
+import { AccountApi, accountList, client, resourceGroupList, resourceGroupsToDelete, testAccount } from './global.resource.test';
 
 suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(20 * 60 * 1000);
@@ -24,11 +24,16 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
             this.skip();
         }
         this.timeout(2 * 60 * 1000);
-        resourceGroupName = resourceGrouList[api.Core] === undefined ? '' : resourceGrouList[api.Core];
-        accountName = accountList[api.Core] === undefined ? '' : accountList[api.Core];
+        resourceGroupName = resourceGroupList[AccountApi.Core];
+        accountName = accountList[AccountApi.Core];
         databaseName = randomUtils.getRandomHexString(12);
         collectionId2 = randomUtils.getRandomHexString(12);
         resourceGroupsToDelete.push(resourceGroupName);
+    });
+
+    test('Create SQL account', async () => {
+        const getAccount: CosmosDBManagementModels.DatabaseAccount | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
+        assert.ok(getAccount);
     });
 
     test('Create SQL Database', async () => {

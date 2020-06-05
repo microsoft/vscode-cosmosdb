@@ -4,21 +4,18 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Client, ClientConfig, QueryResult } from 'pg';
-import { AzureParentTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
+import { TreeItemIconPath } from "vscode-azureextensionui";
 import { getThemedIconPath } from "../../constants";
 import { IPostgresProceduresQueryRow } from '../IPostgresProceduresQueryRow';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionTreeItem } from "./PostgresFunctionTreeItem";
+import { PostgresResourcesTreeItemBase } from './PostgresResourcesTreeItemBase';
 
-export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
+export class PostgresFunctionsTreeItem extends PostgresResourcesTreeItemBase {
     public static contextValue: string = 'postgresFunctions';
     public readonly contextValue: string = PostgresFunctionsTreeItem.contextValue;
     public readonly label: string = 'Functions';
     public readonly childTypeLabel: string = 'Function';
-    public readonly parent: PostgresDatabaseTreeItem;
-    public clientConfig: ClientConfig;
-
-    private _functionsAndSchemas: { [key: string]: string[] }; // Function name to list of schemas
 
     constructor(parent: PostgresDatabaseTreeItem, clientConfig: ClientConfig) {
         super(parent);
@@ -61,15 +58,15 @@ export class PostgresFunctionsTreeItem extends AzureParentTreeItem<ISubscription
 
         const rows: IPostgresProceduresQueryRow[] = queryResult.rows || [];
 
-        this._functionsAndSchemas = {};
+        this.resourcesAndSchemas = {};
         for (const row of rows) {
-            this.parent.addResourceAndSchemasEntry(this._functionsAndSchemas, row.name, row.schema);
+            this.addResourcesAndSchemasEntry(row.name, row.schema);
         }
 
         return rows.map(row => new PostgresFunctionTreeItem(
             this,
             row,
-            this._functionsAndSchemas[row.name].length > 1
+            this.isDuplicateResource(row.name)
         ));
     }
 

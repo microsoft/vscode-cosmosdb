@@ -5,6 +5,7 @@
 
 'use strict';
 
+import { platform } from 'os';
 import * as vscode from 'vscode';
 import { AzExtTreeDataProvider, AzExtTreeItem, AzureTreeItem, AzureUserInput, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
 import { AzureExtensionApi, AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
@@ -36,6 +37,7 @@ import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
 import { tryGetKeyTar } from './utils/keytar';
+import { localize } from './utils/localize';
 
 // tslint:disable-next-line: max-func-body-length
 export async function activateInternal(context: vscode.ExtensionContext, perfStats: { loadStartTime: number, loadEndTime: number }, ignoreBundle?: boolean): Promise<AzureExtensionApiProvider> {
@@ -89,7 +91,12 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             await ext.attachedAccountsNode.attachNewAccount();
             await ext.tree.refresh(ext.attachedAccountsNode);
         });
-        registerCommand('cosmosDB.attachEmulator', async () => {
+        registerCommand('cosmosDB.attachEmulator', async (actionContext: IActionContext) => {
+            if (platform() !== 'win32') {
+                actionContext.errorHandling.suppressReportIssue = true;
+                throw new Error(localize('emulatorNotSupported', 'The Cosmos DB emulator is only supported on Windows.'));
+            }
+
             await ext.attachedAccountsNode.attachEmulator();
             await ext.tree.refresh(ext.attachedAccountsNode);
         });

@@ -6,7 +6,7 @@
 import { Client } from "pg";
 import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
 import { getThemedIconPath } from "../../constants";
-import { IPostgresProceduresQueryRow } from "../IPostgresProceduresQueryRow";
+import { IPostgresProceduresQueryRow } from "../getPostgresProcedureQueryRows";
 import { PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
 
 export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext> {

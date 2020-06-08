@@ -6,8 +6,7 @@
 import { ClientConfig } from 'pg';
 import { TreeItemIconPath } from "vscode-azureextensionui";
 import { getThemedIconPath } from "../../constants";
-import { getPostgresProcedureQueryRows } from '../getPostgresProcedureQueryRows';
-import { IPostgresProceduresQueryRow } from '../IPostgresProceduresQueryRow';
+import { getPostgresProcedureQueryRows, IPostgresProceduresQueryRow } from '../getPostgresProcedureQueryRows';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionTreeItem } from "./PostgresFunctionTreeItem";
 import { PostgresResourcesTreeItemBase } from './PostgresResourcesTreeItemBase';
@@ -32,23 +31,7 @@ export class PostgresFunctionsTreeItem extends PostgresResourcesTreeItemBase {
     }
 
     public async loadMoreChildrenImpl(): Promise<PostgresFunctionTreeItem[]> {
-        // Adapted from https://aka.ms/AA83fg8
-        const functionsQuery: string = `select n.nspname as schema,
-            p.proname as name,
-            p.oid as oid,
-            pg_get_function_arguments(p.oid) as args,
-            case when l.lanname = 'internal' then p.prosrc
-                else pg_get_functiondef(p.oid)
-                end as definition
-            from pg_proc p
-            left join pg_namespace n on p.pronamespace = n.oid
-            left join pg_language l on p.prolang = l.oid
-            where n.nspname not in ('pg_catalog', 'information_schema')
-                and p.proname not in ('pg_buffercache_pages', 'pg_stat_statements_reset', 'pg_stat_statements')
-                ${this.parent.parent.supportsStoredProcedures() ? "and p.prokind = 'f'" : '' /* Only select functions, not stored procedures */}
-            order by name;`;
-
-        const rows: IPostgresProceduresQueryRow[] = await getPostgresProcedureQueryRows(this, functionsQuery);
+        const rows: IPostgresProceduresQueryRow[] = await getPostgresProcedureQueryRows(this);
         return rows.map(row => new PostgresFunctionTreeItem(
             this,
             row,

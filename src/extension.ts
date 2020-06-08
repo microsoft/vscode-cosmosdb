@@ -91,8 +91,9 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             await ext.attachedAccountsNode.attachNewAccount();
             await ext.tree.refresh(ext.attachedAccountsNode);
         });
-        registerCommand('cosmosDB.attachEmulator', async () => {
+        registerCommand('cosmosDB.attachEmulator', async (actionContext: IActionContext) => {
             if (platform() !== 'win32') {
+                actionContext.errorHandling.suppressReportIssue = true;
                 throw new Error(localize('emulatorNotSupported', 'The Cosmos DB emulator is only supported on Windows.'));
             }
 

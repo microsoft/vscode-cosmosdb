@@ -15,8 +15,8 @@ export interface IPostgresProceduresQueryRow {
     definition: string;
 }
 
-// Adapted from https://aka.ms/AA83fg8
-const proceduresQuery: (conditions: string) => string = (conditions: string) => {
+function getProceduresQuery(conditions: string): string {
+    // Adapted from https://aka.ms/AA83fg8
     return `select n.nspname as schema,
         p.proname as name,
         p.oid as oid,
@@ -30,7 +30,7 @@ const proceduresQuery: (conditions: string) => string = (conditions: string) => 
         where n.nspname not in ('pg_catalog', 'information_schema')
             ${conditions}
         order by name;`;
-};
+}
 
 export async function getPostgresProcedureQueryRows(treeItem: PostgresResourcesTreeItemBase): Promise<IPostgresProceduresQueryRow[]> {
     let conditions: string;
@@ -43,7 +43,7 @@ export async function getPostgresProcedureQueryRows(treeItem: PostgresResourcesT
         conditions = "and p.prokind = 'p'";
     }
 
-    const query: string = proceduresQuery(conditions);
+    const query: string = getProceduresQuery(conditions);
     const client = new Client(treeItem.clientConfig);
     let queryResult: QueryResult;
 

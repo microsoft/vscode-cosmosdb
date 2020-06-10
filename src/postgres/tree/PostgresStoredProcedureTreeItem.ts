@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Client } from "pg";
 import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
 import { getThemedIconPath } from "../../constants";
 import { IPostgresProceduresQueryRow } from "../getPostgresProcedureQueryRows";
+import { runPostgresQuery } from "../runPostgresQuery";
 import { PostgresStoredProceduresTreeItem } from "./PostgresStoredProceduresTreeItem";
 
 export class PostgresStoredProcedureTreeItem extends AzureTreeItem<ISubscriptionContext> {
@@ -43,12 +43,6 @@ export class PostgresStoredProcedureTreeItem extends AzureTreeItem<ISubscription
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        const client = new Client(this.parent.clientConfig);
-        try {
-            await client.connect();
-            await client.query(`DROP PROCEDURE ${this.schema}.${this.name}(${this.args});`);
-        } finally {
-            await client.end();
-        }
+        await runPostgresQuery(this.parent.clientConfig, `DROP PROCEDURE ${this.schema}.${this.name}(${this.args});`);
     }
 }

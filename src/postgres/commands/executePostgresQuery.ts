@@ -35,10 +35,10 @@ export async function executePostgresQuery(context: IActionContext): Promise<voi
     }
 
     const query: string | undefined = activeEditor.document.getText();
-    const queryResult: QueryResult | undefined = await runPostgresQuery(clientConfig, query);
-    ext.outputChannel.appendLine(localize('executedQuery', 'Successfully executed "{0}" query.', queryResult?.command));
+    const queryResult: QueryResult = await runPostgresQuery(clientConfig, query);
+    ext.outputChannel.appendLine(localize('executedQuery', 'Successfully executed "{0}" query.', queryResult.command));
 
-    if (queryResult?.rowCount) {
+    if (queryResult.rowCount) {
         const fileExtension: string = path.extname(activeEditor.document.fileName);
         const queryFileName: string = path.basename(activeEditor.document.fileName, fileExtension);
         const outputFileName: string = `${queryFileName}-output`;

@@ -81,6 +81,7 @@
         "onCommand:postgreSQL.deleteTable",
         "onCommand:postgreSQL.openFunction",
         "onCommand:postgreSQL.deleteFunction",
+        "onCommand:postgreSQL.deleteStoredProcedure",
         "onCommand:postgreSQL.enterCredentials",
         "onCommand:postgreSQL.configureFirewall",
         "onCommand:postgreSQL.connectDatabase",
@@ -396,6 +397,11 @@
             },
             {
                 "category": "PostgreSQL",
+                "command": "postgreSQL.deleteStoredProcedure",
+                "title": "Delete Stored Procedure..."
+            },
+            {
+                "category": "PostgreSQL",
                 "command": "postgreSQL.enterCredentials",
                 "title": "Enter Server Credentials"
             },
@@ -655,6 +661,10 @@
                 {
                     "command": "postgreSQL.deleteFunction",
                     "when": "view == azureDatabasesExplorer && viewItem == postgresFunction"
+                },
+                {
+                    "command": "postgreSQL.deleteStoredProcedure",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresStoredProcedure"
                 },
                 {
                     "command": "cosmosDB.deleteGraph",

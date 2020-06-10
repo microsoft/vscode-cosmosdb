@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Client, QueryResult } from "pg";
+import { QueryResult } from "pg";
+import { runPostgresQuery } from "./runPostgresQuery";
 import { PostgresFunctionsTreeItem } from "./tree/PostgresFunctionsTreeItem";
 import { PostgresResourcesTreeItemBase } from "./tree/PostgresResourcesTreeItemBase";
 
@@ -44,17 +45,8 @@ export async function getPostgresProcedureQueryRows(treeItem: PostgresResourcesT
     }
 
     const query: string = getProceduresQuery(conditions);
-    const client = new Client(treeItem.clientConfig);
-    let queryResult: QueryResult;
-
-    try {
-        await client.connect();
-        queryResult = await client.query(query);
-    } finally {
-        await client.end();
-    }
-
-    const rows: IPostgresProceduresQueryRow[] = queryResult.rows || [];
+    const queryResult: QueryResult | undefined = await runPostgresQuery(treeItem.clientConfig, query);
+    const rows: IPostgresProceduresQueryRow[] = queryResult?.rows || [];
 
     treeItem.resourcesAndSchemas = {};
     for (const row of rows) {

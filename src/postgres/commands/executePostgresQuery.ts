@@ -5,12 +5,13 @@
 
 import { EOL } from 'os';
 import * as path from 'path';
-import { Client, ClientConfig, QueryResult } from 'pg';
+import { ClientConfig, QueryResult } from 'pg';
 import * as vscode from 'vscode';
 import { IActionContext } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import * as vscodeUtil from '../../utils/vscodeUtils';
+import { runPostgresQuery } from '../runPostgresQuery';
 import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
 import { checkAuthentication } from './checkAuthentication';
 import { loadPersistedPostgresDatabase } from './registerPostgresCommands';
@@ -33,19 +34,11 @@ export async function executePostgresQuery(context: IActionContext): Promise<voi
         throw new Error(localize('openQueryBeforeExecuting', 'Open a PostgreSQL query before executing.'));
     }
 
-    const client: Client = new Client(clientConfig);
     const query: string | undefined = activeEditor.document.getText();
-    let queryResult: QueryResult;
-    try {
-        await client.connect();
-        queryResult = await client.query(query);
-    } finally {
-        await client.end();
-    }
+    const queryResult: QueryResult | undefined = await runPostgresQuery(clientConfig, query);
+    ext.outputChannel.appendLine(localize('executedQuery', 'Successfully executed "{0}" query.', queryResult?.command));
 
-    ext.outputChannel.appendLine(localize('executedQuery', 'Successfully executed "{0}" query.', queryResult.command));
-
-    if (queryResult.rowCount) {
+    if (queryResult?.rowCount) {
         const fileExtension: string = path.extname(activeEditor.document.fileName);
         const queryFileName: string = path.basename(activeEditor.document.fileName, fileExtension);
         const outputFileName: string = `${queryFileName}-output`;

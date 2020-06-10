@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { Client, ClientConfig } from 'pg';
+import { ClientConfig } from 'pg';
 import { ConnectionOptions } from 'tls';
 import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, GenericTreeItem, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -12,6 +12,7 @@ import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
+import { runPostgresQuery } from '../runPostgresQuery';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
 import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
@@ -113,13 +114,8 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
             const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
 
             // Ensure the client config is valid before returning
-            const client: Client = new Client(clientConfig);
-            try {
-                await client.connect();
-                return clientConfig;
-            } finally {
-                await client.end();
-            }
+            await runPostgresQuery(clientConfig);
+            return clientConfig;
         } else {
             throw {
                 message: localize('mustEnterCredentials', 'Must enter credentials to connect to server.'),

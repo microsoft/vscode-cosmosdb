@@ -35,7 +35,7 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
     const serverName: string = nonNullProp(treeItem.server, 'name');
     const id: string = nonNullProp(treeItem.server, 'id');
 
-    const progressMessage: string = localize('setupCredentialsMessage', 'Setting up Credentials for server "{0}"...', serverName);
+    const progressMessage: string = localize('setupCredentialsMessage', 'Setting up credentials for server "{0}"...', serverName);
     const options: vscode.ProgressOptions = {
         location: vscode.ProgressLocation.Notification,
         title: progressMessage

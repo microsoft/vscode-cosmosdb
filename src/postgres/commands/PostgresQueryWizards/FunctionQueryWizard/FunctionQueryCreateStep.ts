@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep } from "vscode-azureextensionui";
-import { nonNullProp } from "../../../utils/nonNull";
+import { nonNullProp } from "../../../../utils/nonNull";
 import { IPostgresFunctionQueryWizardContext } from "./IPostgresFunctionQueryWizardContext";
 
 export class FunctionQueryCreateStep extends AzureWizardExecuteStep<IPostgresFunctionQueryWizardContext> {

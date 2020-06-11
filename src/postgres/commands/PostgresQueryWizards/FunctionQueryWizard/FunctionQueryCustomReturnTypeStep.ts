@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from "vscode-azureextensionui";
-import { ext } from "../../../extensionVariables";
-import { localize } from "../../../utils/localize";
+import { ext } from "../../../../extensionVariables";
+import { localize } from "../../../../utils/localize";
 import { IPostgresFunctionQueryWizardContext } from "./IPostgresFunctionQueryWizardContext";
 
 export class FunctionQueryCustomReturnTypeStep extends AzureWizardPromptStep<IPostgresFunctionQueryWizardContext> {

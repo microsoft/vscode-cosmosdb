@@ -4,12 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizard, IActionContext } from "vscode-azureextensionui";
-import { PostgresFunctionsTreeItem } from "../tree/PostgresFunctionsTreeItem";
-import { FunctionQueryCreateStep } from "./PostgresQueryWizards/FunctionQueryWizard/FunctionQueryCreateStep";
-import { FunctionQueryNameStep } from "./PostgresQueryWizards/FunctionQueryWizard/FunctionQueryNameStep";
-import { FunctionQueryReturnTypeStep } from "./PostgresQueryWizards/FunctionQueryWizard/FunctionQueryReturnTypeStep";
-import { IPostgresFunctionQueryWizardContext } from "./PostgresQueryWizards/FunctionQueryWizard/IPostgresFunctionQueryWizardContext";
-import { runPostgresQueryWizard } from "./PostgresQueryWizards/runPostgresQueryWizard";
+import { PostgresFunctionsTreeItem } from "../../../tree/PostgresFunctionsTreeItem";
+import { runPostgresQueryWizard } from "../runPostgresQueryWizard";
+import { IPostgresFunctionQueryWizardContext } from "./IPostgresFunctionQueryWizardContext";
+import { FunctionQueryCreateStep } from "./steps/FunctionQueryCreateStep";
+import { FunctionQueryNameStep } from "./steps/FunctionQueryNameStep";
+import { FunctionQueryReturnTypeStep } from "./steps/FunctionQueryReturnTypeStep";
 
 export async function createPostgresFunctionQuery(context: IActionContext, treeItem?: PostgresFunctionsTreeItem): Promise<void> {
     const wizardContext: IPostgresFunctionQueryWizardContext = context;

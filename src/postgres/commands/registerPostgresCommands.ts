@@ -13,7 +13,7 @@ import { configurePostgresFirewall } from "./configurePostgresFirewall";
 import { connectPostgresDatabase } from "./connectPostgresDatabase";
 import { copyConnectionString } from "./copyConnectionString";
 import { createPostgresDatabase } from "./createPostgresDatabase";
-import { createPostgresFunctionQuery } from "./createPostgresFunctionQuery";
+import { createPostgresFunctionQuery } from "./createPostgresQuery/function/createPostgresFunctionQuery";
 import { deletePostgresDatabase } from "./deletePostgresDatabase";
 import { deletePostgresFunction } from "./deletePostgresFunction";
 import { deletePostgresServer } from "./deletePostgresServer";

@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from "vscode-azureextensionui";
-import { ext } from "../../../../extensionVariables";
-import { localize } from "../../../../utils/localize";
-import { validateIdentifier } from "../validateIdentifier";
-import { IPostgresFunctionQueryWizardContext } from "./IPostgresFunctionQueryWizardContext";
+import { ext } from "../../../../../extensionVariables";
+import { localize } from "../../../../../utils/localize";
+import { validateIdentifier } from "../../validateIdentifier";
+import { IPostgresFunctionQueryWizardContext } from "../IPostgresFunctionQueryWizardContext";
 
 export class FunctionQueryNameStep extends AzureWizardPromptStep<IPostgresFunctionQueryWizardContext> {
     public async prompt(wizardContext: IPostgresFunctionQueryWizardContext): Promise<void> {

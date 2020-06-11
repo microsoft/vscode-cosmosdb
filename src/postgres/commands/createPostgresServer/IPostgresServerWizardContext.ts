@@ -6,7 +6,7 @@
 import { Server } from "azure-arm-postgresql/lib/models";
 import { IAzureDBWizardContext } from "../../../tree/IAzureDBWizardContext";
 
-export interface IPostgresWizardContext extends IAzureDBWizardContext {
+export interface IPostgresServerWizardContext extends IAzureDBWizardContext {
 
     adminUser?: string;
     adminPassword?: string;

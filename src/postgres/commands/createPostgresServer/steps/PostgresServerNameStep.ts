@@ -6,13 +6,13 @@
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { NameAvailability, NameAvailabilityRequest } from 'azure-arm-postgresql/lib/models';
 import { AzureNameStep, createAzureClient, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
-import { ext } from '../../../extensionVariables';
-import { localize } from '../../../utils/localize';
-import { IPostgresWizardContext } from './IPostgresWizardContext';
+import { ext } from '../../../../extensionVariables';
+import { localize } from '../../../../utils/localize';
+import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
-export class PostgresServerNameStep extends AzureNameStep<IPostgresWizardContext> {
+export class PostgresServerNameStep extends AzureNameStep<IPostgresServerWizardContext> {
 
-    public async prompt(wizardContext: IPostgresWizardContext): Promise<void> {
+    public async prompt(wizardContext: IPostgresServerWizardContext): Promise<void> {
         const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
         wizardContext.newServerName = (await ext.ui.showInputBox({
             placeHolder: localize('serverNamePlaceholder', 'Server name'),
@@ -23,11 +23,11 @@ export class PostgresServerNameStep extends AzureNameStep<IPostgresWizardContext
         wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.newServerName, resourceGroupNamingRules);
     }
 
-    public shouldPrompt(wizardContext: IPostgresWizardContext): boolean {
+    public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {
         return !wizardContext.newServerName;
     }
 
-    protected async isRelatedNameAvailable(wizardContext: IPostgresWizardContext, name: string): Promise<boolean> {
+    protected async isRelatedNameAvailable(wizardContext: IPostgresServerWizardContext, name: string): Promise<boolean> {
         return await ResourceGroupListStep.isNameAvailable(wizardContext, name);
     }
 }

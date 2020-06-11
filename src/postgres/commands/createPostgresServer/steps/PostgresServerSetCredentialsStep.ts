@@ -6,16 +6,16 @@
 import { Server } from 'azure-arm-postgresql/lib/models';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep } from 'vscode-azureextensionui';
-import { ext } from '../../../extensionVariables';
-import { localize } from '../../../utils/localize';
-import { nonNullProp } from '../../../utils/nonNull';
-import { setPostgresCredentials } from '../setPostgresCredentials';
-import { IPostgresWizardContext } from './IPostgresWizardContext';
+import { ext } from '../../../../extensionVariables';
+import { localize } from '../../../../utils/localize';
+import { nonNullProp } from '../../../../utils/nonNull';
+import { setPostgresCredentials } from '../../setPostgresCredentials';
+import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
-export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPostgresWizardContext> {
+export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPostgresServerWizardContext> {
     public priority: number = 200;
 
-    public async execute(wizardContext: IPostgresWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
+    public async execute(wizardContext: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
         let user: string = nonNullProp(wizardContext, 'adminUser');
         const newServerName: string = nonNullProp(wizardContext, 'newServerName');

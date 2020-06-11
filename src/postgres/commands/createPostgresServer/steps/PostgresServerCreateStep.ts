@@ -6,15 +6,15 @@
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, callWithMaskHandling, createAzureClient } from 'vscode-azureextensionui';
-import { ext } from '../../../extensionVariables';
-import { localize } from '../../../utils/localize';
-import { nonNullProp } from '../../../utils/nonNull';
-import { IPostgresWizardContext } from './IPostgresWizardContext';
+import { ext } from '../../../../extensionVariables';
+import { localize } from '../../../../utils/localize';
+import { nonNullProp } from '../../../../utils/nonNull';
+import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
-export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresWizardContext> {
+export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresServerWizardContext> {
     public priority: number = 150;
 
-    public async execute(wizardContext: IPostgresWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
+    public async execute(wizardContext: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
         const locationName = nonNullProp(nonNullProp(wizardContext, 'location'), 'name');
         const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
@@ -43,7 +43,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresWi
             password);
     }
 
-    public shouldExecute(wizardContext: IPostgresWizardContext): boolean {
+    public shouldExecute(wizardContext: IPostgresServerWizardContext): boolean {
         return !wizardContext.server;
     }
 }

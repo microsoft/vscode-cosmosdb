@@ -5,20 +5,26 @@
 
 import { DocumentClient, RetrievedDocument } from 'documentdb';
 import * as vscode from 'vscode';
-import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
+import { IEditableTreeItem } from '../../DatabasesFileSystem';
+import { ext } from '../../extensionVariables';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
+const hiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts'];
+
 /**
  * Represents a Cosmos DB DocumentDB (SQL) document
  */
-export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
+export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> implements IEditableTreeItem {
     public static contextValue: string = "cosmosDBDocument";
     public readonly contextValue: string = DocDBDocumentTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openDocument';
     public readonly parent: DocDBDocumentsTreeItem;
+    public readonly cTime: number = Date.now();
+    public mTime: number = Date.now();
 
     private readonly _partitionKeyValue: string | undefined | Object;
     private _label: string;
@@ -29,6 +35,7 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
         this._document = document;
         this._partitionKeyValue = this.getPartitionKeyValue();
         this._label = getDocumentTreeItemLabel(this._document);
+        ext.fileSystem.fireChangedEvent(this);
     }
 
     public get id(): string {
@@ -37,8 +44,13 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
         // The toString implicit conversion handles undefined and {} as expected. toString satisfies the uniqueness criterion.
     }
 
+    public get filePath(): string {
+        return this.label + '-cosmos-document.json';
+    }
+
     public async refreshImpl(): Promise<void> {
         this._label = getDocumentTreeItemLabel(this._document);
+        ext.fileSystem.fireChangedEvent(this);
     }
 
     public get link(): string {
@@ -78,7 +90,20 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
         }
     }
 
-    public async update(newData: RetrievedDocument): Promise<RetrievedDocument> {
+    public async getFileContent(): Promise<string> {
+        const clonedDoc: {} = { ...this.document };
+        for (const field of hiddenFields) {
+            delete clonedDoc[field];
+        }
+        return JSON.stringify(clonedDoc, null, 2);
+    }
+
+    public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
+        const newData: RetrievedDocument = JSON.parse(content);
+        for (const field of hiddenFields) {
+            newData[field] = this.document[field];
+        }
+
         const client: DocumentClient = this.root.getDocumentClient();
         const _self: string = this.document._self;
         if (["_self", "_etag"].some((element) => !newData[element])) {
@@ -99,7 +124,6 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
                         }
                     });
             });
-            return this.document;
         }
     }
 

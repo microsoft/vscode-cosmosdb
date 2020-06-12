@@ -45,8 +45,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     ext.ignoreBundle = ignoreBundle;
     ext.ui = new AzureUserInput(context.globalState);
 
-    const extensionPrefix: string = 'azureDatabases';
-    ext.outputChannel = createAzExtOutputChannel("Azure Databases", extensionPrefix);
+    ext.outputChannel = createAzExtOutputChannel("Azure Databases", ext.prefix);
     context.subscriptions.push(ext.outputChannel);
     registerUIExtensionVariables(ext);
 

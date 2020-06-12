@@ -30,6 +30,7 @@ export namespace ext {
     export let editorManager: CosmosEditorManager;
     export let keytar: KeyTar | undefined;
     export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;
+    export const prefix: string = 'azureDatabases';
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

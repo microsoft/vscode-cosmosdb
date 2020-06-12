@@ -11,8 +11,9 @@ import * as os from 'os';
 import * as path from 'path';
 import { isNumber } from 'util';
 import * as vscode from 'vscode';
-import { isWindows, MongoShell, parseError } from '../extension.bundle';
+import { ext, isWindows, MongoShell, parseError } from '../extension.bundle';
 import { IDisposable } from '../src/utils/vscodeUtils';
+import { runWithSetting } from './runWithSetting';
 import { setEnvironmentVariables } from './util/setEnvironmentVariables';
 
 // grandfathered in
@@ -28,13 +29,18 @@ if (!isWindows) {
     testsSupported = false;
 }
 
-suite("MongoShell", function (this: Mocha.Suite): void {
-    function testIfSupported(title: string, fn?: Mocha.Func | Mocha.AsyncFunc): void {
-        if (testsSupported) {
-            test(title, fn);
-        } else {
-            test(title);
-        }
+suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
+    // https://aka.ms/AA8o5r3
+    this.timeout(10000);
+
+    async function testIfSupported(title: string, fn?: Mocha.Func | Mocha.AsyncFunc): Promise<void> {
+        await runWithSetting(ext.settingsKeys.mongoShellTimeout, '60', async () => {
+            if (testsSupported) {
+                test(title, fn);
+            } else {
+                test(title);
+            }
+        });
     }
 
     // CONSIDER: Make more generic
@@ -51,6 +57,9 @@ suite("MongoShell", function (this: Mocha.Suite): void {
     } else if (!fse.existsSync(mongodPath)) {
         console.log(`Couldn't find mongo.exe at ${mongoPath} - skipping MongoShell tests`);
         testsSupported = false;
+    } else {
+        // Prevents code 100 error: https://aka.ms/AA8o5qm
+        await fse.ensureDir('D:\\data\\db\\');
     }
 
     class FakeOutputChannel implements vscode.OutputChannel {
@@ -136,7 +145,7 @@ suite("MongoShell", function (this: Mocha.Suite): void {
         }
     });
 
-    testIfSupported("Verify mongod running", async () => {
+    await testIfSupported("Verify mongod running", async () => {
         while (!mongoDOutput.includes('waiting for connections on port 27017')) {
             assert.equal(mongoDErrors, "", "Expected no errors");
             assert(!isClosed);
@@ -144,7 +153,7 @@ suite("MongoShell", function (this: Mocha.Suite): void {
         }
     });
 
-    function testShellCommand(options: {
+    async function testShellCommand(options: {
         script: string;
         expectedResult?: string;
         expectedError?: string | RegExp;
@@ -154,8 +163,8 @@ suite("MongoShell", function (this: Mocha.Suite): void {
         mongoPath?: string; // Defaults to the correct mongo path
         env?: { [key: string]: string }; // Add to environment
         timeoutSeconds?: number;
-    }): void {
-        testIfSupported(options.title || options.script, async () => {
+    }): Promise<void> {
+        await testIfSupported(options.title || options.script, async () => {
             assert(!isClosed);
             assert(mongoDErrors === "");
 
@@ -198,19 +207,19 @@ suite("MongoShell", function (this: Mocha.Suite): void {
         });
     }
 
-    testShellCommand({
+    await testShellCommand({
         script: 'use abc',
         expectedResult: 'switched to db abc'
     });
 
-    testShellCommand({
+    await testShellCommand({
         title: "Incorrect path",
         script: 'use abc',
         mongoPath: "/notfound/mongo.exe",
         expectedError: /Could not find .*notfound.*mongo.exe/
     });
 
-    testShellCommand({
+    await testShellCommand({
         title: "Find mongo through PATH",
         script: 'use abc',
         mongoPath: "mongo",
@@ -220,28 +229,28 @@ suite("MongoShell", function (this: Mocha.Suite): void {
         }
     });
 
-    testShellCommand({
+    await testShellCommand({
         title: "With valid argument",
         script: 'use abc',
         args: ["--quiet"],
         expectedResult: 'switched to db abc'
     });
 
-    testShellCommand({
+    await testShellCommand({
         title: "With invalid argument",
         script: '',
         args: ["--hey-man-how-are-you"],
         expectedError: /Error parsing command line: unrecognised option/
     });
 
-    testShellCommand({
+    await testShellCommand({
         title: "Output window may contain additional information",
         script: '',
         args: ["-u", "baduser", "-p", "badpassword"],
         expectedError: /The output window may contain additional information/
     });
 
-    testShellCommand({
+    await testShellCommand({
         title: "With bad credentials",
         script: '',
         args: ["-u", "baduser", "-p", "badpassword"],
@@ -249,27 +258,27 @@ suite("MongoShell", function (this: Mocha.Suite): void {
         expectedOutput: /Authentication failed/
     });
 
-    testShellCommand({
+    await testShellCommand({
         title: "Process exits immediately",
         script: '',
         args: ["--version"],
         expectedError: /The process exited prematurely/
     });
 
-    testShellCommand({
+    await testShellCommand({
         title: "Javascript",
         script: "for (var i = 0; i < 123; ++i) { }; i",
         expectedResult: "123"
     });
 
-    testShellCommand({
+    await testShellCommand({
         title: "Actual timeout",
         script: "for (var i = 0; i < 10000000; ++i) { }; i",
         expectedError: /Timed out trying to execute the Mongo script. To use a longer timeout, modify the VS Code 'mongo.shell.timeout' setting./,
         timeoutSeconds: 2
     });
 
-    testIfSupported("More results than displayed (type 'it' for more -> (More))", async () => {
+    await testIfSupported("More results than displayed (type 'it' for more -> (More))", async () => {
         const shell = await MongoShell.create(mongoPath, [], '', false, new FakeOutputChannel(), 5);
         await shell.executeScript('db.mongoShellTest.drop()');
         await shell.executeScript('for (var i = 0; i < 50; ++i) { db.mongoShellTest.insert({a:i}); }');

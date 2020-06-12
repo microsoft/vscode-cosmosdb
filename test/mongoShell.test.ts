@@ -30,7 +30,7 @@ if (!isWindows) {
 }
 
 suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
-    // https://aka.ms/AA8o5r3
+    // https://github.com/mochajs/mocha/issues/2025
     this.timeout(10000);
 
     async function testIfSupported(title: string, fn?: Mocha.Func | Mocha.AsyncFunc): Promise<void> {
@@ -58,7 +58,7 @@ suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
         console.log(`Couldn't find mongo.exe at ${mongoPath} - skipping MongoShell tests`);
         testsSupported = false;
     } else {
-        // Prevents code 100 error: https://aka.ms/AA8o5qm
+        // Prevent code 100 error: https://stackoverflow.com/questions/41420466/mongodb-shuts-down-with-code-100
         await fse.ensureDir('D:\\data\\db\\');
     }
 

@@ -36,6 +36,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
 
     public async writeFileImpl(context: IActionContext, node: IEditableTreeItem, content: Uint8Array, _originalUri: Uri): Promise<void> {
         const showSavePromptKey: string = 'showSavePrompt';
+        // NOTE: Using "cosmosDB" instead of "azureDatabases" here for the sake of backwards compatibility. If/when this file system adds support for non-cosmosdb items, we should consider changing this to "azureDatabases"
         const prefix: string = 'cosmosDB';
         const nodeEditorLabel: string = getNodeEditorLabel(node);
         if (this._showSaveConfirmation && getWorkspaceSetting<boolean>(showSavePromptKey, undefined, prefix)) {

@@ -80,6 +80,7 @@
         "onCommand:postgreSQL.deleteDatabase",
         "onCommand:postgreSQL.deleteTable",
         "onCommand:postgreSQL.openFunction",
+        "onCommand:postgreSQL.openStoredProcedure",
         "onCommand:postgreSQL.deleteFunction",
         "onCommand:postgreSQL.deleteStoredProcedure",
         "onCommand:postgreSQL.enterCredentials",
@@ -389,6 +390,11 @@
                 "category": "PostgreSQL",
                 "command": "postgreSQL.openFunction",
                 "title": "Open Function"
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.openStoredProcedure",
+                "title": "Open Stored Procedure"
             },
             {
                 "category": "PostgreSQL",

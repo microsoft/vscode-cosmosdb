@@ -4,14 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep, IAzureQuickPickItem } from 'vscode-azureextensionui';
-import { ext } from '../../../extensionVariables';
-import { localize } from '../../../utils/localize';
-import { getPublicIp } from '../configurePostgresFirewall';
-import { IPostgresWizardContext } from './IPostgresWizardContext';
+import { ext } from '../../../../extensionVariables';
+import { localize } from '../../../../utils/localize';
+import { getPublicIp } from '../../configurePostgresFirewall';
+import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
-export class PostgresServerFirewallStep extends AzureWizardPromptStep<IPostgresWizardContext> {
+export class PostgresServerFirewallStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
 
-    public async prompt(wizardContext: IPostgresWizardContext): Promise<void> {
+    public async prompt(wizardContext: IPostgresServerWizardContext): Promise<void> {
 
         const placeHolder: string = localize('addFirewallForNewServer', 'A firewall rule is required to access this server from your current IP.');
 
@@ -19,11 +19,11 @@ export class PostgresServerFirewallStep extends AzureWizardPromptStep<IPostgresW
 
     }
 
-    public shouldPrompt(wizardContext: IPostgresWizardContext): boolean {
+    public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {
         return wizardContext.addFirewall === undefined;
     }
 
-    public async getPicks(wizardContext: IPostgresWizardContext): Promise<IAzureQuickPickItem<boolean>[]> {
+    public async getPicks(wizardContext: IPostgresServerWizardContext): Promise<IAzureQuickPickItem<boolean>[]> {
         wizardContext.publicIp = await getPublicIp();
         return [
             { label: localize('addFirewallRule', 'Add firewall rule for your IP "{0}"', wizardContext.publicIp), data: true },

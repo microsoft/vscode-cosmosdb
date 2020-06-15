@@ -4,16 +4,16 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from 'vscode-azureextensionui';
-import { ext } from '../../../extensionVariables';
-import { localize } from '../../../utils/localize';
-import { nonNullProp } from '../../../utils/nonNull';
-import { IPostgresWizardContext } from './IPostgresWizardContext';
+import { ext } from '../../../../extensionVariables';
+import { localize } from '../../../../utils/localize';
+import { nonNullProp } from '../../../../utils/nonNull';
+import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 const pwConditionMsg = localize('passwordConditionMsg', 'Password must contain characters from three of the following categories - uppercase letters, lowercase letters, numbers (0-9), and non-alphanumeric characters (!, $, etc.).');
 
-export class PostgresServerCredPWStep extends AzureWizardPromptStep<IPostgresWizardContext> {
+export class PostgresServerCredPWStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
 
-    public async prompt(wizardContext: IPostgresWizardContext): Promise<void> {
+    public async prompt(wizardContext: IPostgresServerWizardContext): Promise<void> {
         const user = nonNullProp(wizardContext, 'adminUser');
         wizardContext.adminPassword = (await ext.ui.showInputBox({
             placeHolder: localize('pwPlaceholder', 'Administrator Password'),
@@ -23,7 +23,7 @@ export class PostgresServerCredPWStep extends AzureWizardPromptStep<IPostgresWiz
         }));
     }
 
-    public shouldPrompt(wizardContext: IPostgresWizardContext): boolean {
+    public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {
         return !wizardContext.adminPassword;
     }
 }

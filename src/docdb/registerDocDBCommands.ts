@@ -7,7 +7,6 @@ import { commands } from "vscode";
 import { IActionContext, registerCommand } from "vscode-azureextensionui";
 import { doubleClickDebounceDelay } from "../constants";
 import { ext } from "../extensionVariables";
-import { DocDBStoredProcedureNodeEditor } from "./editors/DocDBStoredProcedureNodeEditor";
 import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
 import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
@@ -62,7 +61,7 @@ export function registerDocDBCommands(): void {
         if (!node) {
             node = <DocDBStoredProcedureTreeItem>await ext.tree.showTreeItemPicker([DocDBStoredProcedureTreeItem.contextValue], context);
         }
-        await ext.editorManager.showDocument(context, new DocDBStoredProcedureNodeEditor(node), node.label + '-cosmos-stored-procedure.js');
+        await ext.fileSystem.showTextDocument(node);
         // tslint:disable-next-line:align
     }, doubleClickDebounceDelay);
     registerCommand('cosmosDB.deleteDocDBDocument', async (context: IActionContext, node?: DocDBDocumentTreeItem) => {

@@ -9,6 +9,7 @@ import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ObjectID } from 'bson';
+import { Collection } from 'mongodb';
 import * as vscode from 'vscode';
 import { IActionContext, IParsedError, parseError } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
@@ -16,14 +17,14 @@ import { filterType, findType } from '../utils/array';
 import { localize } from '../utils/localize';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import * as vscodeUtil from './../utils/vscodeUtils';
-import { MongoFindOneResultEditor } from './editors/MongoFindOneResultEditor';
-import { MongoFindResultEditor } from './editors/MongoFindResultEditor';
 import { LexerErrorListener, ParserErrorListener } from './errorListeners';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
 import { ErrorDescription, MongoCommand } from './MongoCommand';
+import { MongoCollectionTreeItem } from './tree/MongoCollectionTreeItem';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
+import { IMongoDocument, MongoDocumentTreeItem } from './tree/MongoDocumentTreeItem';
 // tslint:disable:no-var-requires no-require-imports
 const EJSON = require("mongodb-extended-json");
 
@@ -105,14 +106,30 @@ async function executeCommand(context: IActionContext, command: MongoCommand): P
 
         // we don't handle chained commands so we can only handle "find" if isn't chained
         if (command.name === 'find' && !command.chained) {
-            await ext.editorManager.showDocument(context, new MongoFindResultEditor(database, command), 'cosmos-result.json', { showInNextColumn: true });
+            const db = await database.connectToDb();
+            const collectionName: string = nonNullProp(command, 'collection');
+            const collection: Collection = db.collection(collectionName);
+            // NOTE: Intentionally creating a _new_ tree item rather than searching for a cached node in the tree because
+            // the executed 'find' command could have a filter or projection that is not handled by a cached tree node
+            const node = new MongoCollectionTreeItem(database, collection, command.argumentObjects);
+            await ext.fileSystem.showTextDocument(node);
         } else {
             const result = await database.executeCommand(command, context);
             if (command.name === 'findOne') {
                 if (result === "null") {
                     throw new Error(`Could not find any documents`);
                 }
-                await ext.editorManager.showDocument(context, new MongoFindOneResultEditor(database, nonNullProp(command, 'collection'), result), 'cosmos-result.json', { showInNextColumn: true });
+
+                const document: IMongoDocument = EJSON.parse(result);
+                const collectionName: string = nonNullProp(command, 'collection');
+
+                const collectionId: string = `${database.fullId}/${collectionName}`;
+                const colNode: MongoCollectionTreeItem | undefined = await ext.tree.findTreeItem(collectionId, context);
+                if (!colNode) {
+                    throw new Error(localize('failedToFind', 'Failed to find collection "{0}".', collectionName));
+                }
+                const docNode = new MongoDocumentTreeItem(colNode, document);
+                await ext.fileSystem.showTextDocument(docNode);
             } else {
                 const viewColumn = vscode.window.activeTextEditor?.viewColumn;
                 await vscodeUtil.showNewFile(result, 'result', '.json', viewColumn ? viewColumn + 1 : undefined);

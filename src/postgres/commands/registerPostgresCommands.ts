@@ -14,6 +14,7 @@ import { connectPostgresDatabase } from "./connectPostgresDatabase";
 import { copyConnectionString } from "./copyConnectionString";
 import { createPostgresDatabase } from "./createPostgresDatabase";
 import { createPostgresFunctionQuery } from "./createPostgresQuery/function/createPostgresFunctionQuery";
+import { createPostgresStoredProcedureQuery } from "./createPostgresQuery/storedProcedure/createPostgresStoredProcedureQuery";
 import { deletePostgresDatabase } from "./deletePostgresDatabase";
 import { deletePostgresFunction } from "./deletePostgresFunction";
 import { deletePostgresServer } from "./deletePostgresServer";
@@ -43,6 +44,7 @@ export function registerPostgresCommands(): void {
     registerCommand('postgreSQL.deleteStoredProcedure', deletePostgresStoredProcedure);
     registerCommand('postgreSQL.connectDatabase', connectPostgresDatabase);
     registerCommand('postgreSQL.createFunctionQuery', createPostgresFunctionQuery);
+    registerCommand('postgreSQL.createStoredProcedureQuery', createPostgresStoredProcedureQuery);
     registerCommand('postgreSQL.executeQuery', executePostgresQuery);
     registerCommand('postgreSQL.copyConnectionString', copyConnectionString);
 }

@@ -80,6 +80,7 @@
         "onCommand:postgreSQL.deleteDatabase",
         "onCommand:postgreSQL.deleteTable",
         "onCommand:postgreSQL.openFunction",
+        "onCommand:postgreSQL.openStoredProcedure",
         "onCommand:postgreSQL.deleteFunction",
         "onCommand:postgreSQL.deleteStoredProcedure",
         "onCommand:postgreSQL.enterCredentials",
@@ -87,7 +88,8 @@
         "onCommand:postgreSQL.connectDatabase",
         "onCommand:postgreSQL.createFunctionQuery",
         "onCommand:postgreSQL.createStoredProcedureQuery",
-        "onCommand:postgreSQL.executeQuery"
+        "onCommand:postgreSQL.executeQuery",
+        "onFileSystem:azureDatabases"
     ],
     "contributes": {
         "viewsContainers": {
@@ -390,6 +392,11 @@
                 "category": "PostgreSQL",
                 "command": "postgreSQL.openFunction",
                 "title": "Open Function"
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.openStoredProcedure",
+                "title": "Open Stored Procedure"
             },
             {
                 "category": "PostgreSQL",
@@ -786,6 +793,10 @@
                 },
                 {
                     "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresStoredProcedures"
+                },
+                {
+                    "command": "azureDatabases.refresh",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServerAttached"
                 },
                 {
@@ -1026,7 +1037,7 @@
         "public-ip": "^4.0.0",
         "semver": "^7.2.2",
         "underscore": "^1.8.3",
-        "vscode-azureextensionui": "^0.33.2",
+        "vscode-azureextensionui": "^0.33.5",
         "vscode-json-languageservice": "^3.0.8",
         "vscode-languageclient": "^4.4.0",
         "vscode-languageserver": "^4.4.0",

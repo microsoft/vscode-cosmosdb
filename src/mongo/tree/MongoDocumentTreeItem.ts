@@ -6,11 +6,15 @@
 import { Collection, DeleteWriteOpResultObject, ObjectID, UpdateWriteOpResult } from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
+import { IEditableTreeItem } from '../../DatabasesFileSystem';
+import { ext } from '../../extensionVariables';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
+// tslint:disable:no-var-requires no-require-imports
+const EJSON = require("mongodb-extended-json");
 
 export interface IMongoDocument {
     _id: string | ObjectID;
@@ -20,12 +24,14 @@ export interface IMongoDocument {
     [key: string]: any;
 }
 
-export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
+export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> implements IEditableTreeItem {
     public static contextValue: string = "MongoDocument";
     public readonly contextValue: string = MongoDocumentTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openDocument';
     public document: IMongoDocument;
     public readonly parent: MongoCollectionTreeItem;
+    public readonly cTime: number = Date.now();
+    public mTime: number = Date.now();
 
     private _label: string;
 
@@ -33,6 +39,7 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
         super(parent);
         this.document = document;
         this._label = getDocumentTreeItemLabel(this.document);
+        ext.fileSystem.fireChangedEvent(this);
     }
 
     public get id(): string {
@@ -48,6 +55,10 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
         return getThemeAgnosticIconPath('Document.svg');
     }
 
+    public get filePath(): string {
+        return this.label + '-cosmos-document.json';
+    }
+
     public static async update(collection: Collection, newDocument: IMongoDocument): Promise<IMongoDocument> {
         if (!newDocument._id) {
             throw new Error(`The "_id" field is required to update a document.`);
@@ -60,8 +71,13 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
         return newDocument;
     }
 
+    public async getFileContent(): Promise<string> {
+        return EJSON.stringify(this.document, null, 2);
+    }
+
     public async refreshImpl(): Promise<void> {
         this._label = getDocumentTreeItemLabel(this.document);
+        ext.fileSystem.fireChangedEvent(this);
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
@@ -77,8 +93,8 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> {
         }
     }
 
-    public async update(newDocument: IMongoDocument): Promise<IMongoDocument> {
+    public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
+        const newDocument: IMongoDocument = EJSON.parse(content);
         this.document = await MongoDocumentTreeItem.update(this.parent.collection, newDocument);
-        return this.document;
     }
 }

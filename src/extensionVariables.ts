@@ -5,7 +5,7 @@
 
 import { ExtensionContext, TreeView } from "vscode";
 import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel, IAzureUserInput } from "vscode-azureextensionui";
-import { CosmosEditorManager } from "./CosmosEditorManager";
+import { DatabasesFileSystem } from "./DatabasesFileSystem";
 import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 import { PostgresCodeLensProvider } from "./postgres/services/PostgresCodeLensProvider";
 import { PostgresDatabaseTreeItem } from "./postgres/tree/PostgresDatabaseTreeItem";
@@ -27,10 +27,10 @@ export namespace ext {
     export let attachedAccountsNode: AttachedAccountsTreeItem;
     export let ignoreBundle: boolean | undefined;
     export let azureAccountTreeItem: AzureAccountTreeItemWithAttached;
-    export let editorManager: CosmosEditorManager;
     export let keytar: KeyTar | undefined;
     export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;
     export const prefix: string = 'azureDatabases';
+    export let fileSystem: DatabasesFileSystem;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

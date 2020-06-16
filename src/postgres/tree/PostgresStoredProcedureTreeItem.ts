@@ -12,6 +12,7 @@ import { PostgresStoredProceduresTreeItem } from "./PostgresStoredProceduresTree
 export class PostgresStoredProcedureTreeItem extends AzureTreeItem<ISubscriptionContext> {
     public static contextValue: string = 'postgresStoredProcedure';
     public readonly contextValue: string = PostgresStoredProcedureTreeItem.contextValue;
+    public readonly commandId: string = 'postgreSQL.openStoredProcedure';
     public readonly parent: PostgresStoredProceduresTreeItem;
     public readonly schema: string;
     public readonly name: string;

@@ -23,6 +23,7 @@ import { deletePostgresTable } from "./deletePostgresTable";
 import { enterPostgresCredentials } from "./enterPostgresCredentials";
 import { executePostgresQuery } from "./executePostgresQuery";
 import { openPostgresFunction } from "./openPostgresFunction";
+import { openPostgresStoredProcedure } from "./openPostgresStoredProcedure";
 
 export function registerPostgresCommands(): void {
     ext.postgresCodeLensProvider = new PostgresCodeLensProvider();
@@ -38,6 +39,7 @@ export function registerPostgresCommands(): void {
     registerCommand('postgreSQL.deleteDatabase', deletePostgresDatabase);
     registerCommand('postgreSQL.deleteTable', deletePostgresTable);
     registerCommand('postgreSQL.openFunction', openPostgresFunction, doubleClickDebounceDelay);
+    registerCommand('postgreSQL.openStoredProcedure', openPostgresStoredProcedure, doubleClickDebounceDelay);
     registerCommand('postgreSQL.deleteFunction', deletePostgresFunction);
     registerCommand('postgreSQL.deleteStoredProcedure', deletePostgresStoredProcedure);
     registerCommand('postgreSQL.connectDatabase', connectPostgresDatabase);

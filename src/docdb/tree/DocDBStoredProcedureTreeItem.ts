@@ -5,21 +5,30 @@
 
 import { ProcedureMeta } from 'documentdb';
 import * as vscode from "vscode";
-import { AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemedIconPath } from '../../constants';
+import { IEditableTreeItem } from '../../DatabasesFileSystem';
+import { ext } from '../../extensionVariables';
 import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) stored procedure
  */
-export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
+export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> implements IEditableTreeItem {
     public static contextValue: string = "cosmosDBStoredProcedure";
     public readonly contextValue: string = DocDBStoredProcedureTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openStoredProcedure';
+    public readonly cTime: number = Date.now();
+    public mTime: number = Date.now();
 
     constructor(parent: DocDBStoredProceduresTreeItem, public procedure: ProcedureMeta) {
         super(parent);
+        ext.fileSystem.fireChangedEvent(this);
+    }
+
+    public get filePath(): string {
+        return this.label + '-cosmos-stored-procedure.js';
     }
 
     public get id(): string {
@@ -34,11 +43,19 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
         return this.procedure._self;
     }
 
-    public async update(newProcBody: string): Promise<string> {
+    public async getFileContent(): Promise<string> {
+        return this.procedure.body;
+    }
+
+    public async refreshImpl(): Promise<void> {
+        ext.fileSystem.fireChangedEvent(this);
+    }
+
+    public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
         const client = this.root.getDocumentClient();
         this.procedure = await new Promise<ProcedureMeta>((resolve, reject) => client.replaceStoredProcedure(
             this.link,
-            { body: newProcBody, id: this.procedure.id },
+            { body: content, id: this.procedure.id },
             (err, updated: ProcedureMeta) => {
                 if (err) {
                     reject(err);
@@ -47,7 +64,6 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
                 }
             })
         );
-        return newProcBody;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {

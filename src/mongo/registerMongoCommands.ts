@@ -9,7 +9,6 @@ import { ext } from "../extensionVariables";
 import { AttachedAccountSuffix } from '../tree/AttachedAccountsTreeItem';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { MongoConnectError } from './connectToMongoClient';
-import { MongoCollectionNodeEditor } from "./editors/MongoCollectionNodeEditor";
 import { MongoDBLanguageClient } from "./languageClient";
 import { executeAllCommandsFromActiveEditor, executeCommandFromActiveEditor, getAllErrorsFromTextDocument } from "./MongoScrapbook";
 import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
@@ -106,7 +105,7 @@ export function registerMongoCommands(): MongoCodeLensProvider {
         if (!node) {
             node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
         }
-        await ext.editorManager.showDocument(context, new MongoCollectionNodeEditor(node), node.label + '-cosmos-collection.json');
+        await ext.fileSystem.showTextDocument(node);
     });
     registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
     registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', 'Scrapbook', '.mongo'));

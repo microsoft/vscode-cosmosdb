@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Server } from "azure-arm-postgresql/lib/models";
+import * as vscode from 'vscode';
 import { IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
-import { nonNullProp } from "../../utils/nonNull";
+import { nonNullProp } from '../../utils/nonNull';
 import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
 import { setPostgresCredentials } from "./setPostgresCredentials";
 
@@ -32,7 +32,22 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
         validateInput: (value: string) => { return (value && value.length) ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.'); }
     });
 
-    const server: Server = nonNullProp(treeItem, 'server');
-    await setPostgresCredentials(username, password, nonNullProp(server, 'id'));
+    const serverName: string = nonNullProp(treeItem.server, 'name');
+    const id: string = nonNullProp(treeItem.server, 'id');
+
+    const progressMessage: string = localize('setupCredentialsMessage', 'Setting up credentials for server "{0}"...', serverName);
+    const options: vscode.ProgressOptions = {
+        location: vscode.ProgressLocation.Notification,
+        title: progressMessage
+    };
+
+    await vscode.window.withProgress(options, async () => {
+        await setPostgresCredentials(username, password, id);
+    });
+
+    const completedMessage: string = localize('setupCredentialsMessage', 'Successfully added credentials to server "{0}".', serverName);
+    vscode.window.showInformationMessage(completedMessage);
+    ext.outputChannel.appendLog(completedMessage);
+
     await treeItem.refresh();
 }

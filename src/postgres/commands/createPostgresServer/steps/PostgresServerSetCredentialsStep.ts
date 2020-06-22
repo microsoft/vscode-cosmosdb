@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Server } from 'azure-arm-postgresql/lib/models';
+import * as vscode from 'vscode';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
@@ -30,6 +31,9 @@ export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPo
         const server: Server = nonNullProp(wizardContext, 'server');
 
         await setPostgresCredentials(user, password, nonNullProp(server, 'id'));
+        const completedMessage: string = localize('addedCredentialsMessage', 'Successfully setup credentials for server "{0}".', newServerName);
+        vscode.window.showInformationMessage(completedMessage);
+        ext.outputChannel.appendLog(completedMessage);
     }
 
     public shouldExecute(): boolean {

@@ -4,20 +4,20 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from 'vscode-azureextensionui';
-import { ext } from '../../../extensionVariables';
-import { localize } from '../../../utils/localize';
-import { IPostgresWizardContext } from './IPostgresWizardContext';
+import { ext } from '../../../../extensionVariables';
+import { localize } from '../../../../utils/localize';
+import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
-export class PostgresServerCredUserStep extends AzureWizardPromptStep<IPostgresWizardContext> {
+export class PostgresServerCredUserStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
 
-    public async prompt(wizardContext: IPostgresWizardContext): Promise<void> {
+    public async prompt(wizardContext: IPostgresServerWizardContext): Promise<void> {
         wizardContext.adminUser = (await ext.ui.showInputBox({
             placeHolder: localize('usernamePlaceholder', 'Administrator Username'),
             validateInput: validateUser,
         })).trim();
     }
 
-    public shouldPrompt(wizardContext: IPostgresWizardContext): boolean {
+    public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {
         return !wizardContext.adminUser;
     }
 }

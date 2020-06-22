@@ -3,17 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Server } from "azure-arm-postgresql/lib/models";
-import { IAzureDBWizardContext } from "../../../tree/IAzureDBWizardContext";
+import { IPostgresQueryWizardContext } from "../IPostgresQueryWizardContext";
 
-export interface IPostgresWizardContext extends IAzureDBWizardContext {
-
-    adminUser?: string;
-    adminPassword?: string;
-
-    addFirewall?: boolean;
-    publicIp?: string;
-
-    server?: Server;
-
+export interface IPostgresFunctionQueryWizardContext extends IPostgresQueryWizardContext {
+    returnType?: string;
 }

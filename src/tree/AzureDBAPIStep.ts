@@ -6,22 +6,22 @@
 import { AzureWizardExecuteStep, AzureWizardPromptStep, IAzureQuickPickItem, IWizardOptions } from 'vscode-azureextensionui';
 import { API, Experience, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
-import { IPostgresWizardContext } from '../postgres/commands/PostgresAccountWizard/IPostgresWizardContext';
-import { PostgresServerConfirmPWStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerConfirmPWStep';
-import { PostgresServerCreateStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerCreateStep';
-import { PostgresServerCredPWStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerCredPWStep';
-import { PostgresServerCredUserStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerCredUserStep';
-import { PostgresServerFirewallStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerFirewallStep';
-import { PostgresServerNameStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerNameStep';
-import { PostgresServerSetCredentialsStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerSetCredentialsStep';
-import { PostgresServerSetFirewallStep } from '../postgres/commands/PostgresAccountWizard/PostgresServerSetFirewallStep';
+import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
+import { PostgresServerConfirmPWStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerConfirmPWStep';
+import { PostgresServerCreateStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerCreateStep';
+import { PostgresServerCredPWStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerCredPWStep';
+import { PostgresServerCredUserStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerCredUserStep';
+import { PostgresServerFirewallStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerFirewallStep';
+import { PostgresServerNameStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerNameStep';
+import { PostgresServerSetCredentialsStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerSetCredentialsStep';
+import { PostgresServerSetFirewallStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerSetFirewallStep';
 import { localize } from '../utils/localize';
 import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccountCreateStep';
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
 import { IAzureDBWizardContext } from './IAzureDBWizardContext';
 
-export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresWizardContext | ICosmosDBWizardContext> {
+export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardContext | ICosmosDBWizardContext> {
     public async prompt(wizardContext: IAzureDBWizardContext): Promise<void> {
         const picks: IAzureQuickPickItem<Experience>[] = getExperienceQuickPicks();
 
@@ -32,9 +32,9 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresWizardContext
         wizardContext.defaultExperience = result.data;
     }
 
-    public async getSubWizard(wizardContext: IAzureDBWizardContext): Promise<IWizardOptions<IPostgresWizardContext | ICosmosDBWizardContext>> {
-        let promptSteps: AzureWizardPromptStep<IPostgresWizardContext | ICosmosDBWizardContext>[];
-        let executeSteps: AzureWizardExecuteStep<IPostgresWizardContext | ICosmosDBWizardContext>[];
+    public async getSubWizard(wizardContext: IAzureDBWizardContext): Promise<IWizardOptions<IPostgresServerWizardContext | ICosmosDBWizardContext>> {
+        let promptSteps: AzureWizardPromptStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[];
+        let executeSteps: AzureWizardExecuteStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[];
         if (wizardContext.defaultExperience?.api === API.Postgres) {
             promptSteps = [
                 new PostgresServerNameStep(),

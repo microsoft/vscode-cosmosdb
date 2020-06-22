@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from "vscode-azureextensionui";
-import { ext } from "../../../extensionVariables";
-import { localize } from "../../../utils/localize";
-import { IPostgresFunctionQueryWizardContext } from "./IPostgresFunctionQueryWizardContext";
+import { ext } from "../../../../../extensionVariables";
+import { localize } from "../../../../../utils/localize";
+import { IPostgresFunctionQueryWizardContext } from "../IPostgresFunctionQueryWizardContext";
 
 export class FunctionQueryCustomReturnTypeStep extends AzureWizardPromptStep<IPostgresFunctionQueryWizardContext> {
     public async prompt(wizardContext: IPostgresFunctionQueryWizardContext): Promise<void> {

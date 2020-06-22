@@ -6,11 +6,11 @@
 import { IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { showPostgresQuery } from "../showPostgresQuery";
-import { PostgresFunctionTreeItem } from "../tree/PostgresFunctionTreeItem";
+import { PostgresStoredProcedureTreeItem } from "../tree/PostgresStoredProcedureTreeItem";
 
-export async function openPostgresFunction(context: IActionContext, treeItem?: PostgresFunctionTreeItem): Promise<void> {
+export async function openPostgresStoredProcedure(context: IActionContext, treeItem?: PostgresStoredProcedureTreeItem): Promise<void> {
     if (!treeItem) {
-        treeItem = <PostgresFunctionTreeItem>await ext.tree.showTreeItemPicker(PostgresFunctionTreeItem.contextValue, context);
+        treeItem = <PostgresStoredProcedureTreeItem>await ext.tree.showTreeItemPicker(PostgresStoredProcedureTreeItem.contextValue, context);
     }
 
     await showPostgresQuery(treeItem);

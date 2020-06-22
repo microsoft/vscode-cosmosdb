@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep, IAzureQuickPickItem, IWizardOptions } from "vscode-azureextensionui";
-import { ext } from "../../../extensionVariables";
-import { localize } from "../../../utils/localize";
+import { ext } from "../../../../../extensionVariables";
+import { localize } from "../../../../../utils/localize";
+import { IPostgresFunctionQueryWizardContext } from "../IPostgresFunctionQueryWizardContext";
 import { FunctionQueryCustomReturnTypeStep } from "./FunctionQueryCustomReturnTypeStep";
-import { IPostgresFunctionQueryWizardContext } from "./IPostgresFunctionQueryWizardContext";
 
 export class FunctionQueryReturnTypeStep extends AzureWizardPromptStep<IPostgresFunctionQueryWizardContext> {
     public async prompt(wizardContext: IPostgresFunctionQueryWizardContext): Promise<void> {

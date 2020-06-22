@@ -14,8 +14,7 @@ import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
 import { importDocuments } from './commands/importDocuments';
 import { doubleClickDebounceDelay } from './constants';
-import { CosmosEditorManager } from './CosmosEditorManager';
-import { DocDBDocumentNodeEditor } from './docdb/editors/DocDBDocumentNodeEditor';
+import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
@@ -24,7 +23,6 @@ import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { ext } from './extensionVariables';
 import { registerGraphCommands } from './graph/registerGraphCommands';
 import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
-import { MongoDocumentNodeEditor } from './mongo/editors/MongoDocumentNodeEditor';
 import { registerMongoCommands } from './mongo/registerMongoCommands';
 import { setConnectedNode } from './mongo/setConnectedNode';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
@@ -45,8 +43,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     ext.ignoreBundle = ignoreBundle;
     ext.ui = new AzureUserInput(context.globalState);
 
-    const extensionPrefix: string = 'azureDatabases';
-    ext.outputChannel = createAzExtOutputChannel("Azure Databases", extensionPrefix);
+    ext.outputChannel = createAzExtOutputChannel("Azure Databases", ext.prefix);
     context.subscriptions.push(ext.outputChannel);
     registerUIExtensionVariables(ext);
 
@@ -61,12 +58,14 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         ext.treeView = vscode.window.createTreeView('azureDatabasesExplorer', { treeDataProvider: ext.tree, showCollapseAll: true });
         context.subscriptions.push(ext.treeView);
         ext.keytar = tryGetKeyTar();
-        ext.editorManager = new CosmosEditorManager(context.globalState);
 
         registerDocDBCommands();
         registerGraphCommands();
         registerPostgresCommands();
         const codeLensProvider = registerMongoCommands();
+
+        ext.fileSystem = new DatabasesFileSystem(ext.tree);
+        context.subscriptions.push(vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem));
 
         const cosmosDBTopLevelContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
         const allAccountsTopLevelContextValues: string[] = [...cosmosDBTopLevelContextValues, PostgresServerTreeItem.contextValue];
@@ -142,21 +141,11 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 node = await ext.tree.showTreeItemPicker<MongoDocumentTreeItem | DocDBDocumentTreeItem>([MongoDocumentTreeItem.contextValue, DocDBDocumentTreeItem.contextValue], actionContext);
             }
 
-            const editorTabName = node.label + "-cosmos-document.json";
-            if (node instanceof MongoDocumentTreeItem) {
-                await ext.editorManager.showDocument(actionContext, new MongoDocumentNodeEditor(node), editorTabName);
-            } else {
-                await ext.editorManager.showDocument(actionContext, new DocDBDocumentNodeEditor(node), editorTabName);
-            }
+            await ext.fileSystem.showTextDocument(node);
             // tslint:disable-next-line:align
         }, doubleClickDebounceDelay);
-        registerCommand('azureDatabases.update', async (actionContext: IActionContext, uri: vscode.Uri) => await ext.editorManager.updateMatchingNode(actionContext, uri));
+        registerCommand('azureDatabases.update', async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri));
         registerCommand('azureDatabases.loadMore', async (actionContext: IActionContext, node: AzExtTreeItem) => await ext.tree.loadMore(node, actionContext));
-        registerEvent(
-            'cosmosDB.CosmosEditorManager.onDidSaveTextDocument',
-            vscode.workspace.onDidSaveTextDocument,
-            async (actionContext: IActionContext, doc: vscode.TextDocument) => await ext.editorManager.onDidSaveTextDocument(actionContext, doc)
-        );
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',
             vscode.workspace.onDidChangeConfiguration,

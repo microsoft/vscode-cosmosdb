@@ -13,14 +13,17 @@ import { configurePostgresFirewall } from "./configurePostgresFirewall";
 import { connectPostgresDatabase } from "./connectPostgresDatabase";
 import { copyConnectionString } from "./copyConnectionString";
 import { createPostgresDatabase } from "./createPostgresDatabase";
-import { createPostgresFunctionQuery } from "./createPostgresFunctionQuery";
+import { createPostgresFunctionQuery } from "./createPostgresQuery/function/createPostgresFunctionQuery";
+import { createPostgresStoredProcedureQuery } from "./createPostgresQuery/storedProcedure/createPostgresStoredProcedureQuery";
 import { deletePostgresDatabase } from "./deletePostgresDatabase";
 import { deletePostgresFunction } from "./deletePostgresFunction";
 import { deletePostgresServer } from "./deletePostgresServer";
+import { deletePostgresStoredProcedure } from "./deletePostgresStoredProcedure";
 import { deletePostgresTable } from "./deletePostgresTable";
 import { enterPostgresCredentials } from "./enterPostgresCredentials";
 import { executePostgresQuery } from "./executePostgresQuery";
 import { openPostgresFunction } from "./openPostgresFunction";
+import { openPostgresStoredProcedure } from "./openPostgresStoredProcedure";
 
 export function registerPostgresCommands(): void {
     ext.postgresCodeLensProvider = new PostgresCodeLensProvider();
@@ -36,9 +39,12 @@ export function registerPostgresCommands(): void {
     registerCommand('postgreSQL.deleteDatabase', deletePostgresDatabase);
     registerCommand('postgreSQL.deleteTable', deletePostgresTable);
     registerCommand('postgreSQL.openFunction', openPostgresFunction, doubleClickDebounceDelay);
+    registerCommand('postgreSQL.openStoredProcedure', openPostgresStoredProcedure, doubleClickDebounceDelay);
     registerCommand('postgreSQL.deleteFunction', deletePostgresFunction);
+    registerCommand('postgreSQL.deleteStoredProcedure', deletePostgresStoredProcedure);
     registerCommand('postgreSQL.connectDatabase', connectPostgresDatabase);
     registerCommand('postgreSQL.createFunctionQuery', createPostgresFunctionQuery);
+    registerCommand('postgreSQL.createStoredProcedureQuery', createPostgresStoredProcedureQuery);
     registerCommand('postgreSQL.executeQuery', executePostgresQuery);
     registerCommand('postgreSQL.copyConnectionString', copyConnectionString);
 }

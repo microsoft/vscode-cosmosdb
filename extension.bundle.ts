@@ -35,6 +35,7 @@ export { AzureAccountTreeItemWithAttached } from './src/tree/AzureAccountTreeIte
 export { improveError } from './src/utils/improveError';
 export * from './src/utils/nonNull';
 export { randomUtils } from './src/utils/randomUtils';
+export { getGlobalSetting, updateGlobalSetting } from './src/utils/settingUtils';
 export { rejectOnTimeout, valueOnTimeout } from './src/utils/timeout';
 export { getDocumentTreeItemLabel, IDisposable } from './src/utils/vscodeUtils';
 export { wrapError } from './src/utils/wrapError';

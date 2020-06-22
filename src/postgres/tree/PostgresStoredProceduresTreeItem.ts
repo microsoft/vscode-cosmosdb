@@ -8,14 +8,14 @@ import { TreeItemIconPath } from "vscode-azureextensionui";
 import { getThemedIconPath } from "../../constants";
 import { getPostgresProcedureQueryRows, IPostgresProceduresQueryRow } from '../getPostgresProcedureQueryRows';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
-import { PostgresFunctionTreeItem } from "./PostgresFunctionTreeItem";
 import { PostgresResourcesTreeItemBase } from './PostgresResourcesTreeItemBase';
+import { PostgresStoredProcedureTreeItem } from './PostgresStoredProcedureTreeItem';
 
-export class PostgresFunctionsTreeItem extends PostgresResourcesTreeItemBase {
-    public static contextValue: string = 'postgresFunctions';
-    public readonly contextValue: string = PostgresFunctionsTreeItem.contextValue;
-    public readonly label: string = 'Functions';
-    public readonly childTypeLabel: string = 'Function';
+export class PostgresStoredProceduresTreeItem extends PostgresResourcesTreeItemBase {
+    public static contextValue: string = 'postgresStoredProcedures';
+    public readonly contextValue: string = PostgresStoredProceduresTreeItem.contextValue;
+    public readonly label: string = 'Stored Procedures';
+    public readonly childTypeLabel: string = 'Stored Procedure';
 
     constructor(parent: PostgresDatabaseTreeItem, clientConfig: ClientConfig) {
         super(parent);
@@ -30,9 +30,9 @@ export class PostgresFunctionsTreeItem extends PostgresResourcesTreeItemBase {
         return false;
     }
 
-    public async loadMoreChildrenImpl(): Promise<PostgresFunctionTreeItem[]> {
+    public async loadMoreChildrenImpl(): Promise<PostgresStoredProcedureTreeItem[]> {
         const rows: IPostgresProceduresQueryRow[] = await getPostgresProcedureQueryRows(this);
-        return rows.map(row => new PostgresFunctionTreeItem(
+        return rows.map(row => new PostgresStoredProcedureTreeItem(
             this,
             row,
             this.isDuplicateResource(row.name)
@@ -40,6 +40,6 @@ export class PostgresFunctionsTreeItem extends PostgresResourcesTreeItemBase {
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {
-        return contextValue === PostgresFunctionTreeItem.contextValue;
+        return contextValue === PostgresStoredProcedureTreeItem.contextValue;
     }
 }

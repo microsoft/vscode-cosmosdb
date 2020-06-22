@@ -7,13 +7,13 @@ import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-az
 import { getThemedIconPath } from "../../constants";
 import { IPostgresProceduresQueryRow } from "../getPostgresProcedureQueryRows";
 import { runPostgresQuery } from "../runPostgresQuery";
-import { PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
+import { PostgresStoredProceduresTreeItem } from "./PostgresStoredProceduresTreeItem";
 
-export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext> {
-    public static contextValue: string = 'postgresFunction';
-    public readonly contextValue: string = PostgresFunctionTreeItem.contextValue;
-    public readonly commandId: string = 'postgreSQL.openFunction';
-    public readonly parent: PostgresFunctionsTreeItem;
+export class PostgresStoredProcedureTreeItem extends AzureTreeItem<ISubscriptionContext> {
+    public static contextValue: string = 'postgresStoredProcedure';
+    public readonly contextValue: string = PostgresStoredProcedureTreeItem.contextValue;
+    public readonly commandId: string = 'postgreSQL.openStoredProcedure';
+    public readonly parent: PostgresStoredProceduresTreeItem;
     public readonly schema: string;
     public readonly name: string;
     public readonly id: string;
@@ -21,7 +21,7 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
     public readonly isDuplicate: boolean;
     public definition: string;
 
-    constructor(parent: PostgresFunctionsTreeItem, row: IPostgresProceduresQueryRow, isDuplicate: boolean) {
+    constructor(parent: PostgresStoredProceduresTreeItem, row: IPostgresProceduresQueryRow, isDuplicate: boolean) {
         super(parent);
         this.schema = row.schema;
         this.name = row.name;
@@ -40,10 +40,10 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
     }
 
     public get iconPath(): TreeItemIconPath {
-        return getThemedIconPath('function.svg');
+        return getThemedIconPath('Process_16x.svg');
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        await runPostgresQuery(this.parent.clientConfig, `DROP FUNCTION ${this.schema}.${this.name}(${this.args});`);
+        await runPostgresQuery(this.parent.clientConfig, `DROP PROCEDURE ${this.schema}.${this.name}(${this.args});`);
     }
 }

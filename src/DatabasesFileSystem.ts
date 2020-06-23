@@ -3,11 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { Collection, Db } from "mongodb";
+import { basename } from 'path';
 import { FileStat, FileType, MessageItem, Uri, workspace } from "vscode";
 import { AzExtItemQuery, AzExtItemUriParts, AzExtTreeFileSystem, AzExtTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { FileChangeType } from "vscode-languageclient";
 import { ext } from "./extensionVariables";
 import { MongoCollectionTreeItem } from "./mongo/tree/MongoCollectionTreeItem";
+import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 import { localize } from "./utils/localize";
 import { getWorkspaceSetting, updateGlobalSetting } from "./utils/settingUtils";
 import { getNodeEditorLabel } from "./utils/vscodeUtils";
@@ -84,7 +87,15 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
     }
 
     protected async findItem(context: IActionContext, query: AzExtItemQuery): Promise<IEditableTreeItem | undefined> {
-        const node: IEditableTreeItem | undefined = await super.findItem(context, query);
+        let node: IEditableTreeItem | undefined = await super.findItem(context, query);
+        if (!node && ext.connectedMongoDB) {
+            const database: MongoDatabaseTreeItem = ext.connectedMongoDB;
+            const db: Db = await database.connectToDb();
+            const collectionName: string = basename(query.id);
+            const collection: Collection = db.collection(collectionName);
+            node = new MongoCollectionTreeItem(database, collection);
+        }
+
         if (node && node instanceof MongoCollectionTreeItem) {
             const findArgs: {}[] | undefined = getFindArgsFromQuery(query);
             if (findArgs) {

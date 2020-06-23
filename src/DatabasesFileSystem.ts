@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Collection, Db } from "mongodb";
-import { basename } from 'path';
+import { basename, dirname } from 'path';
 import { FileStat, FileType, MessageItem, Uri, workspace } from "vscode";
 import { AzExtItemQuery, AzExtItemUriParts, AzExtTreeFileSystem, AzExtTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { FileChangeType } from "vscode-languageclient";
@@ -88,12 +88,15 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
 
     protected async findItem(context: IActionContext, query: AzExtItemQuery): Promise<IEditableTreeItem | undefined> {
         let node: IEditableTreeItem | undefined = await super.findItem(context, query);
-        if (!node && ext.connectedMongoDB) {
-            const database: MongoDatabaseTreeItem = ext.connectedMongoDB;
-            const db: Db = await database.connectToDb();
-            const collectionName: string = basename(query.id);
-            const collection: Collection = db.collection(collectionName);
-            node = new MongoCollectionTreeItem(database, collection);
+        if (!node) {
+            const parentId: string = dirname(query.id);
+            const parentNode: IEditableTreeItem | undefined = await ext.tree.findTreeItem(parentId, context);
+            if (parentNode instanceof MongoDatabaseTreeItem) {
+                const db: Db = await parentNode.connectToDb();
+                const collectionName: string = basename(query.id);
+                const collection: Collection = db.collection(collectionName);
+                node = new MongoCollectionTreeItem(parentNode, collection);
+            }
         }
 
         if (node && node instanceof MongoCollectionTreeItem) {

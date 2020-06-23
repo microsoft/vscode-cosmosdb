@@ -264,7 +264,7 @@
             {
                 "category": "MongoDB",
                 "command": "cosmosDB.connectMongoDB",
-                "title": "Connect"
+                "title": "Connect to Database..."
             },
             {
                 "category": "MongoDB",

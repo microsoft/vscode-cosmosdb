@@ -23,7 +23,7 @@ export class PostgresStoredProceduresTreeItem extends PostgresResourcesTreeItemB
     }
 
     public get iconPath(): TreeItemIconPath {
-        return getThemedIconPath('list-unordered.svg');
+        return getThemedIconPath('Process_16x.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {

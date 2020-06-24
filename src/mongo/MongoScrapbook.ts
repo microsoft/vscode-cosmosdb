@@ -132,7 +132,7 @@ async function executeCommand(context: IActionContext, command: MongoCommand): P
                 await ext.fileSystem.showTextDocument(docNode);
             } else {
                 const viewColumn = vscode.window.activeTextEditor?.viewColumn;
-                await vscodeUtil.showNewFile(result, 'result', '.json', viewColumn ? viewColumn + 1 : undefined);
+                await vscodeUtil.createOrAppendToFile(result, 'Scrapbook-results', '.txt', viewColumn ? viewColumn + 1 : undefined);
                 await refreshTreeAfterCommand(database, command, context);
             }
         }

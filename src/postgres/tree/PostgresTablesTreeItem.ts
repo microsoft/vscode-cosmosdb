@@ -23,7 +23,7 @@ export class PostgresTablesTreeItem extends PostgresResourcesTreeItemBase {
     }
 
     public get iconPath(): string | Uri | { light: string | Uri; dark: string | Uri } {
-        return getThemedIconPath('list-unordered.svg');
+        return getThemedIconPath('window.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {

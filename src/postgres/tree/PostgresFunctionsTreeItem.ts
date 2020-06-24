@@ -23,7 +23,7 @@ export class PostgresFunctionsTreeItem extends PostgresResourcesTreeItemBase {
     }
 
     public get iconPath(): TreeItemIconPath {
-        return getThemedIconPath('list-unordered.svg');
+        return getThemedIconPath('function.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {

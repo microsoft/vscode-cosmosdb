@@ -15,6 +15,11 @@ export async function connectToMongoClient(connectionString: string, appName: st
         useNewUrlParser: true
     };
 
+    if (!!connectionString.match(/^mongodb:\/\/(localhost|127\.0\.0\.1)/)) {
+        // Prevents self signed certificate error https://github.com/microsoft/vscode-cosmosdb/issues/1241#issuecomment-614446198
+        options.tlsAllowInvalidCertificates = true;
+    }
+
     try {
         return await MongoClient.connect(connectionString, options);
     } catch (err) {

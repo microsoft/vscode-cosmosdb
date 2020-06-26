@@ -6,7 +6,7 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import { AzExtTreeDataProvider, AzExtTreeItem, AzureTreeItem, AzureUserInput, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
+import { AzExtTreeDataProvider, AzExtTreeItem, AzureTreeItem, AzureUserInput, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, ITreeItemPickerContext, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
 import { AzureExtensionApi, AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
@@ -36,6 +36,7 @@ import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
 import { tryGetKeyTar } from './utils/keytar';
+import { localize } from './utils/localize';
 
 // tslint:disable-next-line: max-func-body-length
 export async function activateInternal(context: vscode.ExtensionContext, perfStats: { loadStartTime: number, loadEndTime: number }, ignoreBundle?: boolean): Promise<AzureExtensionApiProvider> {
@@ -94,18 +95,25 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             await ext.tree.refresh(ext.attachedAccountsNode);
         });
         registerCommand('azureDatabases.refresh', async (_actionContext: IActionContext, node?: AzExtTreeItem) => await ext.tree.refresh(node));
-        registerCommand('cosmosDB.detachDatabaseAccount', async (actionContext: IActionContext, node?: AzureTreeItem) => {
-            if (!node) {
-                node = await ext.tree.showTreeItemPicker<AzureTreeItem>(cosmosDBTopLevelContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
-            }
-            if (node instanceof MongoAccountTreeItem) {
-                if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
-                    setConnectedNode(undefined, codeLensProvider);
-                    await node.refresh();
+        registerCommand('cosmosDB.detachDatabaseAccount', async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzureTreeItem) => {
+            const numChildren: number = ext.attachedAccountsNode.loadAllChildren.length;
+            if (numChildren < 2) {
+                const message = localize('noAttachedAccounts', 'There are no Attached Accounts.');
+                vscode.window.showInformationMessage(message);
+                actionContext.suppressCreatePick = true;
+            } else {
+                if (!node) {
+                    node = await ext.tree.showTreeItemPicker<AzureTreeItem>(cosmosDBTopLevelContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
                 }
+                if (node instanceof MongoAccountTreeItem) {
+                    if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
+                        setConnectedNode(undefined, codeLensProvider);
+                        await node.refresh();
+                    }
+                }
+                await ext.attachedAccountsNode.detach(node);
+                await ext.tree.refresh(ext.attachedAccountsNode);
             }
-            await ext.attachedAccountsNode.detach(node);
-            await ext.tree.refresh(ext.attachedAccountsNode);
         });
         registerCommand('cosmosDB.importDocument', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => {
             if (selectedNode instanceof vscode.Uri) {

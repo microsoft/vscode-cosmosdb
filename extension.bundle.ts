@@ -27,7 +27,7 @@ export { ext } from './src/extensionVariables';
 export { connectToMongoClient } from './src/mongo/connectToMongoClient';
 export { MongoCommand } from './src/mongo/MongoCommand';
 export { addDatabaseToAccountConnectionString, getDatabaseNameFromConnectionString } from './src/mongo/mongoConnectionStrings';
-export { getAllCommandsFromText, getCommandFromTextAtLocation } from './src/mongo/MongoScrapbook';
+export { findCommandAtPosition, getAllCommandsFromText } from './src/mongo/MongoScrapbook';
 export { MongoShell } from './src/mongo/MongoShell';
 export { IDatabaseInfo } from './src/mongo/tree/MongoAccountTreeItem';
 export { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from './src/tree/AttachedAccountsTreeItem';
@@ -35,6 +35,7 @@ export { AzureAccountTreeItemWithAttached } from './src/tree/AzureAccountTreeIte
 export { improveError } from './src/utils/improveError';
 export * from './src/utils/nonNull';
 export { randomUtils } from './src/utils/randomUtils';
+export { getGlobalSetting, updateGlobalSetting } from './src/utils/settingUtils';
 export { rejectOnTimeout, valueOnTimeout } from './src/utils/timeout';
 export { getDocumentTreeItemLabel, IDisposable } from './src/utils/vscodeUtils';
 export { wrapError } from './src/utils/wrapError';

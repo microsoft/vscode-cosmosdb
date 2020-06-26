@@ -80,12 +80,16 @@
         "onCommand:postgreSQL.deleteDatabase",
         "onCommand:postgreSQL.deleteTable",
         "onCommand:postgreSQL.openFunction",
+        "onCommand:postgreSQL.openStoredProcedure",
         "onCommand:postgreSQL.deleteFunction",
+        "onCommand:postgreSQL.deleteStoredProcedure",
         "onCommand:postgreSQL.enterCredentials",
         "onCommand:postgreSQL.configureFirewall",
         "onCommand:postgreSQL.connectDatabase",
         "onCommand:postgreSQL.createFunctionQuery",
-        "onCommand:postgreSQL.executeQuery"
+        "onCommand:postgreSQL.createStoredProcedureQuery",
+        "onCommand:postgreSQL.executeQuery",
+        "onFileSystem:azureDatabases"
     ],
     "contributes": {
         "viewsContainers": {
@@ -260,7 +264,7 @@
             {
                 "category": "MongoDB",
                 "command": "cosmosDB.connectMongoDB",
-                "title": "Connect"
+                "title": "Connect to Database..."
             },
             {
                 "category": "MongoDB",
@@ -391,8 +395,18 @@
             },
             {
                 "category": "PostgreSQL",
+                "command": "postgreSQL.openStoredProcedure",
+                "title": "Open Stored Procedure"
+            },
+            {
+                "category": "PostgreSQL",
                 "command": "postgreSQL.deleteFunction",
                 "title": "Delete Function..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.deleteStoredProcedure",
+                "title": "Delete Stored Procedure..."
             },
             {
                 "category": "PostgreSQL",
@@ -413,6 +427,11 @@
                 "category": "PostgreSQL",
                 "command": "postgreSQL.createFunctionQuery",
                 "title": "Create Function Query..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.createStoredProcedureQuery",
+                "title": "Create Stored Procedure Query..."
             },
             {
                 "category": "PostgreSQL",
@@ -657,6 +676,10 @@
                     "when": "view == azureDatabasesExplorer && viewItem == postgresFunction"
                 },
                 {
+                    "command": "postgreSQL.deleteStoredProcedure",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresStoredProcedure"
+                },
+                {
                     "command": "cosmosDB.deleteGraph",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraph"
                 },
@@ -770,6 +793,10 @@
                 },
                 {
                     "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresStoredProcedures"
+                },
+                {
+                    "command": "azureDatabases.refresh",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServerAttached"
                 },
                 {
@@ -815,6 +842,10 @@
                 {
                     "command": "postgreSQL.createFunctionQuery",
                     "when": "view == azureDatabasesExplorer && viewItem == postgresFunctions"
+                },
+                {
+                    "command": "postgreSQL.createStoredProcedureQuery",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresStoredProcedures"
                 }
             ],
             "explorer/context": [
@@ -1006,7 +1037,7 @@
         "public-ip": "^4.0.0",
         "semver": "^7.2.2",
         "underscore": "^1.8.3",
-        "vscode-azureextensionui": "^0.33.1",
+        "vscode-azureextensionui": "^0.33.7",
         "vscode-json-languageservice": "^3.0.8",
         "vscode-languageclient": "^4.4.0",
         "vscode-languageserver": "^4.4.0",

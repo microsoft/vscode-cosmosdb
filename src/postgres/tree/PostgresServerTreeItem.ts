@@ -16,6 +16,8 @@ import { nonNullProp } from '../../utils/nonNull';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresFunctionTreeItem } from './PostgresFunctionTreeItem';
+import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
+import { PostgresStoredProcedureTreeItem } from './PostgresStoredProcedureTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 import { PostgresTableTreeItem } from './PostgresTableTreeItem';
 
@@ -85,6 +87,8 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             case PostgresTableTreeItem.contextValue:
             case PostgresFunctionsTreeItem.contextValue:
             case PostgresFunctionTreeItem.contextValue:
+            case PostgresStoredProceduresTreeItem.contextValue:
+            case PostgresStoredProcedureTreeItem.contextValue:
                 return true;
             default:
                 return false;

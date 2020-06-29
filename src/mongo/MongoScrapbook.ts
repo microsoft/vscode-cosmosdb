@@ -112,7 +112,7 @@ async function executeCommand(context: IActionContext, command: MongoCommand): P
             // NOTE: Intentionally creating a _new_ tree item rather than searching for a cached node in the tree because
             // the executed 'find' command could have a filter or projection that is not handled by a cached tree node
             const node = new MongoCollectionTreeItem(database, collection, command.argumentObjects);
-            await ext.fileSystem.showTextDocument(node);
+            await ext.fileSystem.showTextDocument(node, { viewColumn: vscode.ViewColumn.Beside });
         } else {
             const result = await database.executeCommand(command, context);
             if (command.name === 'findOne') {
@@ -129,7 +129,7 @@ async function executeCommand(context: IActionContext, command: MongoCommand): P
                     throw new Error(localize('failedToFind', 'Failed to find collection "{0}".', collectionName));
                 }
                 const docNode = new MongoDocumentTreeItem(colNode, document);
-                await ext.fileSystem.showTextDocument(docNode);
+                await ext.fileSystem.showTextDocument(docNode, { viewColumn: vscode.ViewColumn.Beside });
             } else {
                 const viewColumn = vscode.window.activeTextEditor?.viewColumn;
                 await vscodeUtil.createOrAppendToFile(result, 'Scrapbook-results', '.txt', viewColumn ? viewColumn + 1 : undefined);

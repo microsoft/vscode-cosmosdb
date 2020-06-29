@@ -5,7 +5,6 @@
 
 import { RetrievedDocument } from 'documentdb';
 import * as fse from 'fs-extra';
-import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { AzExtTreeItem } from 'vscode-azureextensionui';
@@ -35,36 +34,18 @@ export async function showNewFile(data: string, fileName: string, fileExtension:
     const fullFileName: string | undefined = await getUniqueFileName(folderPath, fileName, fileExtension);
     uri = vscode.Uri.file(path.join(folderPath, fullFileName)).with({ scheme: 'untitled' });
     const textDocument = await vscode.workspace.openTextDocument(uri);
-    const editor = await showTextDocument(textDocument, column);
+    const editor = await vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true);
     await writeToEditor(editor, data);
 }
 
-export async function createOrAppendToFile(data: string, fileName: string, fileExtension: string, column?: vscode.ViewColumn): Promise<void> {
-    const folderPath: string = getRootPath() || ext.context.extensionPath;
-    const fullFileName: string = `${path.join(folderPath, fileName)}${fileExtension}`;
-    await fse.ensureFile(fullFileName);
-    const textDocument: vscode.TextDocument = await vscode.workspace.openTextDocument(fullFileName);
-    const editor: vscode.TextEditor = await showTextDocument(textDocument, column);
-    await writeToEditor(editor, data, false);
-}
-
-async function showTextDocument(textDocument: vscode.TextDocument, column?: vscode.ViewColumn): Promise<vscode.TextEditor> {
-    return await vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true);
-}
-
-export async function writeToEditor(editor: vscode.TextEditor, data: string, overwrite: boolean = true): Promise<void> {
+export async function writeToEditor(editor: vscode.TextEditor, data: string): Promise<void> {
     await editor.edit((editBuilder: vscode.TextEditorEdit) => {
-        const lineCount: number = editor.document.lineCount;
-        if (overwrite) {
-            if (lineCount > 0) {
-                const lastLine = editor.document.lineAt(lineCount - 1);
-                editBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
-            }
-
-            editBuilder.insert(new vscode.Position(0, 0), data);
-        } else {
-            editBuilder.insert(new vscode.Position(lineCount, 0), `${data}${os.EOL}${os.EOL}`);
+        if (editor.document.lineCount > 0) {
+            const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
+            editBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
         }
+
+        editBuilder.insert(new vscode.Position(0, 0), data);
     });
 }
 

@@ -10,13 +10,13 @@ import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ObjectID } from 'bson';
 import { Collection } from 'mongodb';
+import { EOL } from 'os';
 import * as vscode from 'vscode';
-import { IActionContext, IParsedError, parseError } from 'vscode-azureextensionui';
+import { IActionContext, IParsedError, openReadOnlyContent, parseError } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
 import { filterType, findType } from '../utils/array';
 import { localize } from '../utils/localize';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
-import * as vscodeUtil from './../utils/vscodeUtils';
 import { LexerErrorListener, ParserErrorListener } from './errorListeners';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as mongoParser from './grammar/mongoParser';
@@ -131,8 +131,7 @@ async function executeCommand(context: IActionContext, command: MongoCommand): P
                 const docNode = new MongoDocumentTreeItem(colNode, document);
                 await ext.fileSystem.showTextDocument(docNode, { viewColumn: vscode.ViewColumn.Beside });
             } else {
-                const viewColumn = vscode.window.activeTextEditor?.viewColumn;
-                await vscodeUtil.createOrAppendToFile(result, 'Scrapbook-results', '.txt', viewColumn ? viewColumn + 1 : undefined);
+                await openReadOnlyContent({ label: 'Scrapbook-results', fullId: database.fullId }, result, '.txt', `${EOL}${EOL}`, true);
                 await refreshTreeAfterCommand(database, command, context);
             }
         }

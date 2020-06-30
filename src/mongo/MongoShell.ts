@@ -6,7 +6,9 @@
 import * as os from 'os';
 import * as vscode from 'vscode';
 import { parseError } from 'vscode-azureextensionui';
+import { ext } from '../extensionVariables';
 import { InteractiveChildProcess } from '../utils/InteractiveChildProcess';
+import { nonNullValue } from '../utils/nonNull';
 import { randomUtils } from '../utils/randomUtils';
 import { wrapError } from '../utils/wrapError';
 
@@ -52,6 +54,11 @@ export class MongoShell extends vscode.Disposable {
             // Try writing an empty script to verify the process is running correctly and allow us
             // to catch any errors related to the start-up of the process before trying to write to it.
             await shell.executeScript("");
+
+            // Set the configured shell batch size
+            const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
+            const mongoShellBatchSize: number = nonNullValue(config.get<number>(ext.settingsKeys.mongoShellBatchSize), 'mongoShellBatchSize');
+            await shell.executeScript(`DBQuery.shellBatchSize = ${mongoShellBatchSize}`);
 
             return shell;
         } catch (error) {

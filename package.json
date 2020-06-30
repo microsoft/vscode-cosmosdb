@@ -935,6 +935,11 @@
                     "description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 30 seconds.",
                     "default": 30
                 },
+                "mongo.shell.batchSize": {
+                    "type": "number",
+                    "description": "The maximum number of documents to be returned from a query executed in the Mongo shell.",
+                    "default": 20
+                },
                 "azureDatabases.showExplorer": {
                     "type": "boolean",
                     "default": true,

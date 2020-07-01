@@ -8,11 +8,12 @@ import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Curso
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
-import { defaultBatchSize, getThemeAgnosticIconPath } from '../../constants';
+import { getThemeAgnosticIconPath } from '../../constants';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { nonNullValue } from '../../utils/nonNull';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
+import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { MongoCommand } from '../MongoCommand';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
@@ -40,7 +41,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
     private readonly _projection: object | undefined;
     private _cursor: Cursor | undefined;
     private _hasMoreChildren: boolean = true;
-    private _batchSize: number = defaultBatchSize;
+    private _batchSize: number = getBatchSizeSetting();
 
     constructor(parent: AzureParentTreeItem, collection: Collection, findArgs?: {}[]) {
         super(parent);
@@ -106,6 +107,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
     }
 
     public async refreshImpl(): Promise<void> {
+        this._batchSize = getBatchSizeSetting();
         ext.fileSystem.fireChangedEvent(this);
     }
 
@@ -126,11 +128,10 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 
     public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (clearCache || this._cursor === undefined) {
-            this._cursor = this.collection.find(this._query).batchSize(defaultBatchSize);
+            this._cursor = this.collection.find(this._query).batchSize(this._batchSize);
             if (this._projection) {
                 this._cursor = this._cursor.project(this._projection);
             }
-            this._batchSize = defaultBatchSize;
         }
 
         const documents: IMongoDocument[] = [];

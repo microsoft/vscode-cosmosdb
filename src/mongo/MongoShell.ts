@@ -6,10 +6,9 @@
 import * as os from 'os';
 import * as vscode from 'vscode';
 import { parseError } from 'vscode-azureextensionui';
-import { ext } from '../extensionVariables';
 import { InteractiveChildProcess } from '../utils/InteractiveChildProcess';
-import { nonNullValue } from '../utils/nonNull';
 import { randomUtils } from '../utils/randomUtils';
+import { getBatchSizeSetting } from '../utils/workspacUtils';
 import { wrapError } from '../utils/wrapError';
 
 const timeoutMessage = "Timed out trying to execute the Mongo script. To use a longer timeout, modify the VS Code 'mongo.shell.timeout' setting.";
@@ -55,10 +54,8 @@ export class MongoShell extends vscode.Disposable {
             // to catch any errors related to the start-up of the process before trying to write to it.
             await shell.executeScript("");
 
-            // Set the configured shell batch size
-            const config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration();
-            const mongoShellBatchSize: number = nonNullValue(config.get<number>(ext.settingsKeys.mongoShellBatchSize), 'mongoShellBatchSize');
-            await shell.executeScript(`DBQuery.shellBatchSize = ${mongoShellBatchSize}`);
+            // Configure the batch size
+            await shell.executeScript(`DBQuery.shellBatchSize = ${getBatchSizeSetting()}`);
 
             return shell;
         } catch (error) {

@@ -5,7 +5,7 @@
 
 import { DocumentClient, FeedOptions, QueryError, QueryIterator } from 'documentdb';
 import { AzExtTreeItem, AzureParentTreeItem, AzureTreeItem } from 'vscode-azureextensionui';
-import { defaultBatchSize } from '../../constants';
+import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
@@ -19,7 +19,7 @@ export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTre
 
     private _hasMoreChildren: boolean = true;
     private _iterator: QueryIterator<T> | undefined;
-    private _batchSize: number = defaultBatchSize;
+    private _batchSize: number = getBatchSizeSetting();
 
     public hasMoreChildrenImpl(): boolean {
         return this._hasMoreChildren;
@@ -33,8 +33,8 @@ export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTre
         if (clearCache || this._iterator === undefined) {
             this._hasMoreChildren = true;
             const client = this.root.getDocumentClient();
-            this._iterator = await this.getIterator(client, { maxItemCount: defaultBatchSize });
-            this._batchSize = defaultBatchSize;
+            this._batchSize = getBatchSizeSetting();
+            this._iterator = await this.getIterator(client, { maxItemCount: this._batchSize });
         }
 
         const resources: T[] = [];

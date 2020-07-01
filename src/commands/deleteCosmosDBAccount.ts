@@ -21,7 +21,6 @@ export async function deleteCosmosDBAccount(node: AzureTreeItem): Promise<void> 
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
             await client.databaseAccounts.deleteMethod(resourceGroup, accountName);
         });
-        // don't wait
         const deleteMessage: string = localize("deleteAccountMsg", `Successfully deleted account "{0}".`, accountName);
         vscode.window.showInformationMessage(deleteMessage);
         ext.outputChannel.appendLog(deleteMessage);

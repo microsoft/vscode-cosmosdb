@@ -960,9 +960,9 @@
                     "default": true,
                     "description": "Show warning dialog when uploading a document to the cloud."
                 },
-                "cosmosDB.batchSize": {
+                "azureDatabases.batchSize": {
                     "type": "number",
-                    "description": "The batch size to be used when querying Cosmos DB resources.",
+                    "description": "The batch size to be used when querying Azure Database resources.",
                     "default": 50
                 },
                 "azureDatabases.enableOutputTimestamps": {

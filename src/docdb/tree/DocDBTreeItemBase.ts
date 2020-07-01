@@ -29,11 +29,14 @@ export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTre
 
     public abstract getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<T>>;
 
+    public async refreshImpl(): Promise<void> {
+        this._batchSize = getBatchSizeSetting();
+    }
+
     public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (clearCache || this._iterator === undefined) {
             this._hasMoreChildren = true;
             const client = this.root.getDocumentClient();
-            this._batchSize = getBatchSizeSetting();
             this._iterator = await this.getIterator(client, { maxItemCount: this._batchSize });
         }
 

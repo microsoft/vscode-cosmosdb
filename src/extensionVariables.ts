@@ -37,7 +37,7 @@ export namespace ext {
         export const mongoShellArgs = 'mongo.shell.args';
         export const documentLabelFields = 'cosmosDB.documentLabelFields';
         export const mongoShellTimeout = 'mongo.shell.timeout';
-        export const batchSize = 'cosmosDB.batchSize';
+        export const batchSize = 'azureDatabases.batchSize';
 
         export namespace vsCode {
             export const proxyStrictSSL = "http.proxyStrictSSL";

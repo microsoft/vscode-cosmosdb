@@ -107,6 +107,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
     }
 
     public async refreshImpl(): Promise<void> {
+        this._batchSize = getBatchSizeSetting();
         ext.fileSystem.fireChangedEvent(this);
     }
 
@@ -127,7 +128,6 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 
     public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (clearCache || this._cursor === undefined) {
-            this._batchSize = getBatchSizeSetting();
             this._cursor = this.collection.find(this._query).batchSize(this._batchSize);
             if (this._projection) {
                 this._cursor = this._cursor.project(this._projection);

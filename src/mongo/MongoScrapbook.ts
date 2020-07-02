@@ -12,7 +12,7 @@ import { ObjectID } from 'bson';
 import { Collection } from 'mongodb';
 import { EOL } from 'os';
 import * as vscode from 'vscode';
-import { IActionContext, IParsedError, openReadOnlyContent, parseError } from 'vscode-azureextensionui';
+import { IActionContext, IParsedError, openReadOnlyContent, parseError, ReadOnlyContent } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
 import { filterType, findType } from '../utils/array';
 import { localize } from '../utils/localize';
@@ -29,6 +29,9 @@ import { IMongoDocument, MongoDocumentTreeItem } from './tree/MongoDocumentTreeI
 const EJSON = require("mongodb-extended-json");
 
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
+const resultMap: Map<string, ReadOnlyContent> = new Map<string, ReadOnlyContent>();
+let clearResults: boolean = false;
+let isExecutingAll: boolean = true;
 
 export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vscode.Diagnostic[] {
     const commands = getAllCommandsFromTextDocument(document);
@@ -70,9 +73,15 @@ export function getAllCommandsFromTextDocument(document: vscode.TextDocument): M
 }
 
 async function executeCommands(context: IActionContext, commands: MongoCommand[]): Promise<void> {
+    let viewColumn: vscode.ViewColumn | undefined = vscode.window.activeTextEditor?.viewColumn;
+
+    // Don't use ViewColumn.Beside here to avoid opening results in a new column for each command executed
+    viewColumn = viewColumn ? viewColumn + 1 : undefined;
+    clearResults = true;
+    isExecutingAll = true;
     for (const command of commands) {
         try {
-            await executeCommand(context, command);
+            await executeCommand(context, command, viewColumn);
         } catch (e) {
             const err = parseError(e);
             if (err.isUserCancelledError) {
@@ -83,9 +92,10 @@ async function executeCommands(context: IActionContext, commands: MongoCommand[]
             }
         }
     }
+    isExecutingAll = false;
 }
 
-async function executeCommand(context: IActionContext, command: MongoCommand): Promise<void> {
+async function executeCommand(context: IActionContext, command: MongoCommand, viewColumn?: vscode.ViewColumn): Promise<void> {
     if (command) {
         try {
             context.telemetry.properties.command = command.name;
@@ -114,7 +124,7 @@ async function executeCommand(context: IActionContext, command: MongoCommand): P
             const node = new MongoCollectionTreeItem(database, collection, command.argumentObjects);
             await ext.fileSystem.showTextDocument(node, { viewColumn: vscode.ViewColumn.Beside });
         } else {
-            const result = await database.executeCommand(command, context);
+            let result = await database.executeCommand(command, context);
             if (command.name === 'findOne') {
                 if (result === "null") {
                     throw new Error(`Could not find any documents`);
@@ -131,7 +141,24 @@ async function executeCommand(context: IActionContext, command: MongoCommand): P
                 const docNode = new MongoDocumentTreeItem(colNode, document);
                 await ext.fileSystem.showTextDocument(docNode, { viewColumn: vscode.ViewColumn.Beside });
             } else {
-                await openReadOnlyContent({ label: 'Scrapbook-results', fullId: database.fullId }, result, '.txt', `${EOL}${EOL}`, true);
+                const fileName: string = isExecutingAll ? 'Scrapbook-execute-all-results' : 'Scrapbook-results';
+                const fullId: string = `${database.fullId}/${fileName}`;
+                const options: vscode.TextDocumentShowOptions = { viewColumn: viewColumn || vscode.ViewColumn.Beside };
+                let readOnlyContent: ReadOnlyContent | undefined = resultMap.get(fullId);
+                result += `${EOL}${EOL}`;
+
+                if (readOnlyContent && clearResults) {
+                    readOnlyContent.clear();
+                }
+                clearResults = false;
+
+                if (readOnlyContent) {
+                    await readOnlyContent.append(result, options);
+                } else {
+                    readOnlyContent = await openReadOnlyContent({ label: fileName, fullId }, result, '.txt', options);
+                    resultMap.set(fullId, readOnlyContent);
+                }
+
                 await refreshTreeAfterCommand(database, command, context);
             }
         }

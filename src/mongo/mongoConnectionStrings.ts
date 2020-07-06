@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { MongoClient, Mongos, ReplSet, Server } from "mongodb";
-import { appendExtensionUserAgent } from "vscode-azureextensionui";
+import { appendExtensionUserAgent, IParsedError, parseError } from "vscode-azureextensionui";
 import { testDb } from "../constants";
 import { ParsedConnectionString } from "../ParsedConnectionString";
 import { nonNullValue } from "../utils/nonNull";
@@ -48,6 +48,23 @@ export function addDatabaseToAccountConnectionString(connectionString: string, d
 export async function parseMongoConnectionString(connectionString: string): Promise<ParsedMongoConnectionString> {
     let host: string;
     let port: string;
+
+    try {
+        // Attempt to connect to determine if the username/password need to be encoded
+        await connectToMongoClient(connectionString, appendExtensionUserAgent());
+    } catch (error) {
+        const parsedError: IParsedError = parseError(error);
+        if (parsedError.message.match(/unescaped/i)) {
+            const matches: RegExpMatchArray | null = connectionString.match(/^(.*):\/\/(.*):(.*)@(.*)/);
+            if (matches) {
+                const prefix: string = matches[1];
+                const username: string = matches[2];
+                const password: string = matches[3];
+                const hostAndQuery: string = matches[4];
+                connectionString = `${prefix}://${encodeURIComponent(username)}:${encodeURIComponent(password)}@${hostAndQuery}`;
+            }
+        }
+    }
 
     const mongoClient: MongoClient = await connectToMongoClient(connectionString, appendExtensionUserAgent());
     const serverConfig: Server | ReplSet | Mongos = mongoClient.db(testDb).serverConfig;

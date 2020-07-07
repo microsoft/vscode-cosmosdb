@@ -960,6 +960,11 @@
                     "default": true,
                     "description": "Show warning dialog when uploading a document to the cloud."
                 },
+                "azureDatabases.batchSize": {
+                    "type": "number",
+                    "description": "The batch size to be used when querying Azure Database resources.",
+                    "default": 50
+                },
                 "azureDatabases.enableOutputTimestamps": {
                     "type": "boolean",
                     "default": true,

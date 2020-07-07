@@ -41,8 +41,6 @@ export function getResourcesPath(): string {
     return ext.context.asAbsolutePath('resources');
 }
 
-export const defaultBatchSize: number = 50;
-
 export const doubleClickDebounceDelay = 500; //milliseconds
 
 export const defaultStoredProcedure =

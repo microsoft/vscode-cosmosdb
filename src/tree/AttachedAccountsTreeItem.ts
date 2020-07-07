@@ -19,7 +19,6 @@ import { connectToMongoClient } from '../mongo/connectToMongoClient';
 import { parseMongoConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
-import { KeyTar, tryGetKeyTar } from '../utils/keytar';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { SubscriptionTreeItem } from './SubscriptionTreeItem';
 
@@ -44,14 +43,12 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 
     private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.connectionStrings";
     private _attachedAccounts: AzureTreeItem[] | undefined;
-    private _keytar: KeyTar | undefined;
 
     private _root: ISubscriptionContext;
     private _loadPersistedAccountsTask: Promise<AzureTreeItem[]>;
 
     constructor(parent: AzExtParentTreeItem) {
         super(parent);
-        this._keytar = tryGetKeyTar();
         this._root = new AttachedAccountRoot();
         this._loadPersistedAccountsTask = this.loadPersistedAccounts();
     }
@@ -205,8 +202,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         const index = attachedAccounts.findIndex((account) => account.fullId === node.fullId);
         if (index !== -1) {
             attachedAccounts.splice(index, 1);
-            if (this._keytar) {
-                await this._keytar.deletePassword(this._serviceName, nonNullProp(node, 'id')); // intentionally using 'id' instead of 'fullId' for the sake of backwards compatability
+            if (ext.keytar) {
+                await ext.keytar.deletePassword(this._serviceName, nonNullProp(node, 'id')); // intentionally using 'id' instead of 'fullId' for the sake of backwards compatibility
                 await this.persistIds(attachedAccounts);
             }
 
@@ -252,8 +249,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`);
         } else {
             attachedAccounts.push(treeItem);
-            if (this._keytar) {
-                await this._keytar.setPassword(this._serviceName, nonNullProp(treeItem, 'id'), connectionString);
+            if (ext.keytar) {
+                await ext.keytar.setPassword(this._serviceName, nonNullProp(treeItem, 'id'), connectionString);
                 await this.persistIds(attachedAccounts);
             }
         }
@@ -262,7 +259,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     private async loadPersistedAccounts(): Promise<AzureTreeItem[]> {
         const persistedAccounts: AzureTreeItem[] = [];
         const value: string | undefined = ext.context.globalState.get(this._serviceName);
-        const keytar = this._keytar;
+        const keytar = ext.keytar;
         if (value && keytar) {
             const accounts: (string | IPersistedAccount)[] = JSON.parse(value);
             await Promise.all(accounts.map(async account => {
@@ -271,7 +268,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 let api: API;
                 let isEmulator: boolean | undefined;
                 if (typeof (account) === 'string') {
-                    // Default to Mongo if the value is a string for the sake of backwards compatiblity
+                    // Default to Mongo if the value is a string for the sake of backwards compatibility
                     // (Mongo was originally the only account type that could be attached)
                     id = account;
                     api = API.MongoDB;

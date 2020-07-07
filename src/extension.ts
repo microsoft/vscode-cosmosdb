@@ -101,8 +101,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         });
         registerCommand('azureDatabases.refresh', async (_actionContext: IActionContext, node?: AzExtTreeItem) => await ext.tree.refresh(node));
         registerCommand('cosmosDB.detachDatabaseAccount', async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzureTreeItem) => {
-            const numChildren: number = ext.attachedAccountsNode.loadAllChildren.length;
-            if (numChildren < 2) {
+            const children = await ext.attachedAccountsNode.loadAllChildren(actionContext);
+            if (!("connectionString" in children[0])) {
                 const message = localize('noAttachedAccounts', 'There are no Attached Accounts.');
                 vscode.window.showInformationMessage(message);
                 actionContext.suppressCreatePick = true;

@@ -29,7 +29,7 @@ import { IMongoDocument, MongoDocumentTreeItem } from './tree/MongoDocumentTreeI
 const EJSON = require("mongodb-extended-json");
 
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
-const resultMap: Map<string, ReadOnlyContent> = new Map<string, ReadOnlyContent>();
+let defaultReadOnlyContent: ReadOnlyContent | undefined;
 
 export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vscode.Diagnostic[] {
     const commands = getAllCommandsFromTextDocument(document);
@@ -137,9 +137,7 @@ async function executeCommand(context: IActionContext, command: MongoCommand, re
                 await ext.fileSystem.showTextDocument(docNode, { viewColumn: vscode.ViewColumn.Beside });
             } else {
                 const showOptions: vscode.TextDocumentShowOptions = { viewColumn: vscode.ViewColumn.Beside };
-                const label: string = 'Scrapbook-results';
-                const fullId: string = `${database.fullId}/${label}`;
-                readOnlyContent = readOnlyContent || resultMap.get(fullId);
+                readOnlyContent = readOnlyContent || defaultReadOnlyContent;
                 result += `${EOL}${EOL}`;
 
                 if (readOnlyContent) {
@@ -150,8 +148,9 @@ async function executeCommand(context: IActionContext, command: MongoCommand, re
                         await readOnlyContent.show(showOptions);
                     }
                 } else {
-                    readOnlyContent = await openReadOnlyContent({ label, fullId }, result, '.txt', showOptions);
-                    resultMap.set(fullId, readOnlyContent);
+                    const label: string = 'Scrapbook-results';
+                    const fullId: string = `${database.fullId}/${label}`;
+                    defaultReadOnlyContent = await openReadOnlyContent({ label, fullId }, result, '.txt', showOptions);
                 }
 
                 await refreshTreeAfterCommand(database, command, context);

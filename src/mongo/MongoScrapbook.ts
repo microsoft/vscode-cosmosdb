@@ -29,7 +29,6 @@ import { IMongoDocument, MongoDocumentTreeItem } from './tree/MongoDocumentTreeI
 const EJSON = require("mongodb-extended-json");
 
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
-let defaultReadOnlyContent: ReadOnlyContent | undefined;
 
 export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vscode.Diagnostic[] {
     const commands = getAllCommandsFromTextDocument(document);
@@ -119,7 +118,7 @@ async function executeCommand(context: IActionContext, command: MongoCommand, re
             const node = new MongoCollectionTreeItem(database, collection, command.argumentObjects);
             await ext.fileSystem.showTextDocument(node, { viewColumn: vscode.ViewColumn.Beside });
         } else {
-            let result = await database.executeCommand(command, context);
+            const result = await database.executeCommand(command, context);
             if (command.name === 'findOne') {
                 if (result === "null") {
                     throw new Error(`Could not find any documents`);
@@ -136,21 +135,12 @@ async function executeCommand(context: IActionContext, command: MongoCommand, re
                 const docNode = new MongoDocumentTreeItem(colNode, document);
                 await ext.fileSystem.showTextDocument(docNode, { viewColumn: vscode.ViewColumn.Beside });
             } else {
-                const showOptions: vscode.TextDocumentShowOptions = { viewColumn: vscode.ViewColumn.Beside };
-                readOnlyContent = readOnlyContent || defaultReadOnlyContent;
-                result += `${EOL}${EOL}`;
-
                 if (readOnlyContent) {
-                    await readOnlyContent.append(result);
-
-                    // If the read only content isn't visible anymore, re-show it. Appending to a hidden document does not show it
-                    if (!(await readOnlyContent.isVisible())) {
-                        await readOnlyContent.show(showOptions);
-                    }
+                    await readOnlyContent.append(`${result}${EOL}${EOL}`);
                 } else {
                     const label: string = 'Scrapbook-results';
                     const fullId: string = `${database.fullId}/${label}`;
-                    defaultReadOnlyContent = await openReadOnlyContent({ label, fullId }, result, '.txt', showOptions);
+                    await openReadOnlyContent({ label, fullId }, result, '.txt', { viewColumn: vscode.ViewColumn.Beside });
                 }
 
                 await refreshTreeAfterCommand(database, command, context);

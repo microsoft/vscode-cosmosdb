@@ -31,7 +31,7 @@ const EJSON = require("mongodb-extended-json");
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
 const resultMap: Map<string, ReadOnlyContent> = new Map<string, ReadOnlyContent>();
 let clearResults: boolean = false;
-let isExecutingAll: boolean = true;
+let isExecutingAll: boolean = false;
 
 export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vscode.Diagnostic[] {
     const commands = getAllCommandsFromTextDocument(document);
@@ -73,15 +73,11 @@ export function getAllCommandsFromTextDocument(document: vscode.TextDocument): M
 }
 
 async function executeCommands(context: IActionContext, commands: MongoCommand[]): Promise<void> {
-    let viewColumn: vscode.ViewColumn | undefined = vscode.window.activeTextEditor?.viewColumn;
-
-    // Don't use ViewColumn.Beside here to avoid opening results in a new column for each command executed
-    viewColumn = viewColumn ? viewColumn + 1 : undefined;
     clearResults = true;
     isExecutingAll = true;
     for (const command of commands) {
         try {
-            await executeCommand(context, command, viewColumn);
+            await executeCommand(context, command);
         } catch (e) {
             const err = parseError(e);
             if (err.isUserCancelledError) {
@@ -90,12 +86,14 @@ async function executeCommands(context: IActionContext, commands: MongoCommand[]
                 const message = `${command.text.split('(')[0]} at ${command.range.start.line + 1}:${command.range.start.character + 1}: ${err.message}`;
                 throw new Error(message);
             }
+        } finally {
+            clearResults = false;
         }
     }
     isExecutingAll = false;
 }
 
-async function executeCommand(context: IActionContext, command: MongoCommand, viewColumn?: vscode.ViewColumn): Promise<void> {
+async function executeCommand(context: IActionContext, command: MongoCommand): Promise<void> {
     if (command) {
         try {
             context.telemetry.properties.command = command.name;
@@ -141,21 +139,26 @@ async function executeCommand(context: IActionContext, command: MongoCommand, vi
                 const docNode = new MongoDocumentTreeItem(colNode, document);
                 await ext.fileSystem.showTextDocument(docNode, { viewColumn: vscode.ViewColumn.Beside });
             } else {
+                const showOptions: vscode.TextDocumentShowOptions = { viewColumn: vscode.ViewColumn.Beside };
                 const fileName: string = isExecutingAll ? 'Scrapbook-execute-all-results' : 'Scrapbook-results';
                 const fullId: string = `${database.fullId}/${fileName}`;
-                const options: vscode.TextDocumentShowOptions = { viewColumn: viewColumn || vscode.ViewColumn.Beside };
                 let readOnlyContent: ReadOnlyContent | undefined = resultMap.get(fullId);
                 result += `${EOL}${EOL}`;
 
-                if (readOnlyContent && clearResults) {
-                    readOnlyContent.clear();
-                }
-                clearResults = false;
-
                 if (readOnlyContent) {
-                    await readOnlyContent.append(result, options);
+                    if (clearResults) {
+                        readOnlyContent.clear();
+                    }
+
+                    await readOnlyContent.append(result);
+
+                    // If the user has closed the read only content, or it isn't visible anymore, re-show it. Appending to a hidden document does not show it
+                    const visibleDocuments: vscode.TextDocument[] = vscode.window.visibleTextEditors.map(editor => editor.document);
+                    if (!visibleDocuments.includes(await vscode.workspace.openTextDocument(readOnlyContent.uri))) {
+                        await vscode.window.showTextDocument(readOnlyContent.uri, showOptions);
+                    }
                 } else {
-                    readOnlyContent = await openReadOnlyContent({ label: fileName, fullId }, result, '.txt', options);
+                    readOnlyContent = await openReadOnlyContent({ label: fileName, fullId }, result, '.txt', showOptions);
                     resultMap.set(fullId, readOnlyContent);
                 }
 

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { MongoClient, MongoClientOptions } from 'mongodb';
-import { Links } from '../constants';
+import { emulatorPassword, Links } from '../constants';
 
 export async function connectToMongoClient(connectionString: string, appName: string): Promise<MongoClient> {
     // appname appears to be the correct equivalent to user-agent for mongo
@@ -15,8 +15,8 @@ export async function connectToMongoClient(connectionString: string, appName: st
         useNewUrlParser: true
     };
 
-    if (!!connectionString.match(/^mongodb:\/\/(localhost|127\.0\.0\.1)/)) {
-        // Prevents self signed certificate error https://github.com/microsoft/vscode-cosmosdb/issues/1241#issuecomment-614446198
+    if (isLocalEmulatorConnectionString(connectionString)) {
+        // Prevents self signed certificate error for emulator https://github.com/microsoft/vscode-cosmosdb/issues/1241#issuecomment-614446198
         options.tlsAllowInvalidCertificates = true;
     }
 
@@ -41,4 +41,9 @@ export class MongoConnectError extends Error {
     constructor() {
         super(`Unable to connect to local Mongo DB instance. Make sure it is started correctly. See ${Links.LocalConnectionDebuggingTips} for tips.`);
     }
+}
+
+export function isLocalEmulatorConnectionString(connectionString: string): boolean {
+    const localEmulatorRegex: RegExp = new RegExp(`(localhost|127\.0\.0\.1):${encodeURIComponent(emulatorPassword)}`, 'i');
+    return localEmulatorRegex.test(connectionString);
 }

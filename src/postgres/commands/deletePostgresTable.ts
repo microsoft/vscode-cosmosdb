@@ -4,12 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { window } from 'vscode';
-import { DialogResponses, IActionContext } from "vscode-azureextensionui";
+import { DialogResponses, IActionContext, ITreeItemPickerContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { PostgresTableTreeItem } from "../tree/PostgresTableTreeItem";
 
 export async function deletePostgresTable(context: IActionContext, node?: PostgresTableTreeItem): Promise<void> {
+    const suppressCreateContext: ITreeItemPickerContext = context;
+    suppressCreateContext.suppressCreatePick = true;
     if (!node) {
         node = <PostgresTableTreeItem>await ext.tree.showTreeItemPicker(PostgresTableTreeItem.contextValue, context);
     }

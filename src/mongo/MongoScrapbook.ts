@@ -140,7 +140,7 @@ async function executeCommand(context: IActionContext, command: MongoCommand, re
                 } else {
                     const label: string = 'Scrapbook-results';
                     const fullId: string = `${database.fullId}/${label}`;
-                    await openReadOnlyContent({ label, fullId }, result, '.txt', { viewColumn: vscode.ViewColumn.Beside });
+                    await openReadOnlyContent({ label, fullId }, result, '.json', { viewColumn: vscode.ViewColumn.Beside });
                 }
 
                 await refreshTreeAfterCommand(database, command, context);

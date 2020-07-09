@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { addDatabaseToAccountConnectionString, emulatorPassword, encodeMongoConnectionString, getDatabaseNameFromConnectionString, isLocalEmulatorConnectionString } from '../extension.bundle';
+import { addDatabaseToAccountConnectionString, emulatorPassword, encodeMongoConnectionString, getDatabaseNameFromConnectionString, isCosmosEmulatorConnectionString } from '../extension.bundle';
 
 function testDatabaseToAccountConnectionString(connectionString: string, databaseName: string, expectedConnectionString: string | undefined): void {
     const databaseConnectionString = addDatabaseToAccountConnectionString(connectionString, databaseName);
@@ -16,8 +16,8 @@ function testDatabaseNameFromConectionString(connectionString: string, expectedD
     assert.equal(databaseName, expectedDatabaseName);
 }
 
-function testIsLocalEmulatorConnectionString(connectionString: string, expected: boolean): void {
-    const actual: boolean = isLocalEmulatorConnectionString(connectionString);
+function testIsCosmosEmulatorConnectionString(connectionString: string, expected: boolean): void {
+    const actual: boolean = isCosmosEmulatorConnectionString(connectionString);
     assert.equal(actual, expected);
 }
 
@@ -118,42 +118,42 @@ suite(`mongoCollectionStrings`, () => {
         testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin!@#%^*()-_,[]', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin!@#%^*()-_,[]?ssl=true`);
     });
 
-    test('isLocalEmulatorConnectionString', () => {
-        testIsLocalEmulatorConnectionString(`mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/our-mongo?ssl=true&replicaSet=globaldb`, false);
+    test('isCosmosEmulatorConnectionString', () => {
+        testIsCosmosEmulatorConnectionString(`mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/our-mongo?ssl=true&replicaSet=globaldb`, false);
 
-        testIsLocalEmulatorConnectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118/`, false);
-        testIsLocalEmulatorConnectionString(`mongodb+srv://dbuser:dbpassword@dbname.mlab.com:14118/database`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118/`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb+srv://dbuser:dbpassword@dbname.mlab.com:14118/database`, false);
 
-        testIsLocalEmulatorConnectionString(`mongodb://db1.example.net:27017,db2.example.net:2500/?replicaSet=test`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://db1.example.net:27017,db2.example.net:2500/my-database?`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://db1.example.net:27017,db2.example.net:2500/?replicaSet=test`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://db1.example.net:27017,db2.example.net:2500/my-database?`, false);
 
-        testIsLocalEmulatorConnectionString(`mongodb://r1.example.net:27017,r2.example.net:27017/`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://r1.example.net:27017,r2.example.net:27017`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://r1.example.net:27017,r2.example.net:27017/{SQL}data`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://r1.example.net:27017,r2.example.net:27017/`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://r1.example.net:27017,r2.example.net:27017`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://r1.example.net:27017,r2.example.net:27017/{SQL}data`, false);
 
-        testIsLocalEmulatorConnectionString(`mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=mySet&authSource=authDB`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=mySet&authSource=authDB`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=mySet&authSource=authDB`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=mySet&authSource=authDB`, false);
 
-        testIsLocalEmulatorConnectionString(`mongodb+srv://server.example.com/?connectTimeoutMS=300000&authSource=aDifferentAuthDB`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/my_db?connectTimeoutMS=300000&replicaSet=mySet&authSource=aDifferentAuthDB`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://db1.example.net:27017,db2.example.net:2500/?replicaSet=test&connectTimeoutMS=300000`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://host.example.com/hello?readPreference=secondary&maxStalenessSeconds=120`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://localhost`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://localhost/db`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://sysop:moon@localhost/records`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://%2Ftmp%2Fmongodb-27017.sock/onemorefundatabase`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/wowsomethingnew?ssl=true`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb+srv://server.example.com/?connectTimeoutMS=300000&authSource=aDifferentAuthDB`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/my_db?connectTimeoutMS=300000&replicaSet=mySet&authSource=aDifferentAuthDB`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://db1.example.net:27017,db2.example.net:2500/?replicaSet=test&connectTimeoutMS=300000`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://host.example.com/hello?readPreference=secondary&maxStalenessSeconds=120`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://localhost`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://localhost/db`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://sysop:moon@localhost/records`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://%2Ftmp%2Fmongodb-27017.sock/onemorefundatabase`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/wowsomethingnew?ssl=true`, false);
 
-        testIsLocalEmulatorConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc...`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/?`, false);
-        testIsLocalEmulatorConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc...`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/?`, false);
+        testIsCosmosEmulatorConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017`, false);
 
         // Emulator
-        testIsLocalEmulatorConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, true);
-        testIsLocalEmulatorConnectionString(`mongodb://127.0.0.1:${encodeURIComponent(emulatorPassword)}@127.0.0.1:10255/?ssl=true`, true);
-        testIsLocalEmulatorConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/database?ssl=true`, true);
+        testIsCosmosEmulatorConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, true);
+        testIsCosmosEmulatorConnectionString(`mongodb://127.0.0.1:${encodeURIComponent(emulatorPassword)}@127.0.0.1:10255/?ssl=true`, true);
+        testIsCosmosEmulatorConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/database?ssl=true`, true);
     });
 
     test('encodeMongoConnectionString', () => {

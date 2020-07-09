@@ -15,7 +15,7 @@ export async function connectToMongoClient(connectionString: string, appName: st
         useNewUrlParser: true
     };
 
-    if (isLocalEmulatorConnectionString(connectionString)) {
+    if (isCosmosEmulatorConnectionString(connectionString)) {
         // Prevents self signed certificate error for emulator https://github.com/microsoft/vscode-cosmosdb/issues/1241#issuecomment-614446198
         options.tlsAllowInvalidCertificates = true;
     }
@@ -43,7 +43,6 @@ export class MongoConnectError extends Error {
     }
 }
 
-export function isLocalEmulatorConnectionString(connectionString: string): boolean {
-    const localEmulatorRegex: RegExp = new RegExp(`(localhost|127\.0\.0\.1):${encodeURIComponent(emulatorPassword)}`, 'i');
-    return localEmulatorRegex.test(connectionString);
+export function isCosmosEmulatorConnectionString(connectionString: string): boolean {
+    return connectionString.includes(encodeURIComponent(emulatorPassword));
 }

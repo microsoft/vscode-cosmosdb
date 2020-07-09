@@ -24,7 +24,7 @@ export { ParsedDocDBConnectionString, parseDocDBConnectionString } from './src/d
 export { getDocumentClient } from './src/docdb/getDocumentClient';
 export { activateInternal, deactivateInternal } from './src/extension';
 export { ext } from './src/extensionVariables';
-export { connectToMongoClient, isLocalEmulatorConnectionString } from './src/mongo/connectToMongoClient';
+export { connectToMongoClient, isCosmosEmulatorConnectionString } from './src/mongo/connectToMongoClient';
 export { MongoCommand } from './src/mongo/MongoCommand';
 export { addDatabaseToAccountConnectionString, encodeMongoConnectionString, getDatabaseNameFromConnectionString } from './src/mongo/mongoConnectionStrings';
 export { findCommandAtPosition, getAllCommandsFromText } from './src/mongo/MongoScrapbook';

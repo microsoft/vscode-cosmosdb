@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { MongoClient, MongoClientOptions } from 'mongodb';
-import { Links } from '../constants';
+import { emulatorPassword, Links } from '../constants';
 
 export async function connectToMongoClient(connectionString: string, appName: string): Promise<MongoClient> {
     // appname appears to be the correct equivalent to user-agent for mongo
@@ -14,6 +14,11 @@ export async function connectToMongoClient(connectionString: string, appName: st
         // https://github.com/lmammino/mongo-uri-builder/issues/2
         useNewUrlParser: true
     };
+
+    if (isCosmosEmulatorConnectionString(connectionString)) {
+        // Prevents self signed certificate error for emulator https://github.com/microsoft/vscode-cosmosdb/issues/1241#issuecomment-614446198
+        options.tlsAllowInvalidCertificates = true;
+    }
 
     try {
         return await MongoClient.connect(connectionString, options);
@@ -36,4 +41,8 @@ export class MongoConnectError extends Error {
     constructor() {
         super(`Unable to connect to local Mongo DB instance. Make sure it is started correctly. See ${Links.LocalConnectionDebuggingTips} for tips.`);
     }
+}
+
+export function isCosmosEmulatorConnectionString(connectionString: string): boolean {
+    return connectionString.includes(encodeURIComponent(emulatorPassword));
 }

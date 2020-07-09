@@ -960,6 +960,11 @@
                     "default": true,
                     "description": "Show warning dialog when uploading a document to the cloud."
                 },
+                "azureDatabases.batchSize": {
+                    "type": "number",
+                    "description": "The batch size to be used when querying Azure Database resources.",
+                    "default": 50
+                },
                 "azureDatabases.enableOutputTimestamps": {
                     "type": "boolean",
                     "default": true,
@@ -1037,7 +1042,7 @@
         "public-ip": "^4.0.0",
         "semver": "^7.2.2",
         "underscore": "^1.8.3",
-        "vscode-azureextensionui": "^0.33.7",
+        "vscode-azureextensionui": "^0.33.9",
         "vscode-json-languageservice": "^3.0.8",
         "vscode-languageclient": "^4.4.0",
         "vscode-languageserver": "^4.4.0",

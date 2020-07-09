@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { addDatabaseToAccountConnectionString, emulatorPassword, getDatabaseNameFromConnectionString, isLocalEmulatorConnectionString } from '../extension.bundle';
+import { addDatabaseToAccountConnectionString, emulatorPassword, encodeMongoConnectionString, getDatabaseNameFromConnectionString, isLocalEmulatorConnectionString } from '../extension.bundle';
 
 function testDatabaseToAccountConnectionString(connectionString: string, databaseName: string, expectedConnectionString: string | undefined): void {
     const databaseConnectionString = addDatabaseToAccountConnectionString(connectionString, databaseName);
@@ -19,6 +19,11 @@ function testDatabaseNameFromConectionString(connectionString: string, expectedD
 function testIsLocalEmulatorConnectionString(connectionString: string, expected: boolean): void {
     const actual: boolean = isLocalEmulatorConnectionString(connectionString);
     assert.equal(actual, expected);
+}
+
+function testEncodeMongoConnectionString(connectionString: string, expectedConnectionString: string): void {
+    connectionString = encodeMongoConnectionString(connectionString);
+    assert.equal(connectionString, expectedConnectionString);
 }
 
 suite(`mongoCollectionStrings`, () => {
@@ -149,5 +154,16 @@ suite(`mongoCollectionStrings`, () => {
         testIsLocalEmulatorConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, true);
         testIsLocalEmulatorConnectionString(`mongodb://127.0.0.1:${encodeURIComponent(emulatorPassword)}@127.0.0.1:10255/?ssl=true`, true);
         testIsLocalEmulatorConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/database?ssl=true`, true);
+    });
+
+    test('encodeMongoConnectionString', () => {
+        testEncodeMongoConnectionString(`mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`, `mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg%3D%3D@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`);
+        testEncodeMongoConnectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118`, `mongodb://dbuser:dbpassword@dbname.mlab.com:14118`);
+        testEncodeMongoConnectionString(`mongodb://db1.example.net:27017,db2.example.net:2500/?replicaSet=test`, `mongodb://db1.example.net:27017,db2.example.net:2500/?replicaSet=test`);
+        testEncodeMongoConnectionString(`mongodb+srv://server.example.com/?connectTimeoutMS=300000&authSource=aDifferentAuthDB?`, `mongodb+srv://server.example.com/?connectTimeoutMS=300000&authSource=aDifferentAuthDB?`);
+        testEncodeMongoConnectionString(`mongodb://localhost`, `mongodb://localhost`);
+        testEncodeMongoConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, `mongodb://localhost:${encodeURIComponent(encodeURIComponent(emulatorPassword))}@localhost:10255/?ssl=true`);
+        testEncodeMongoConnectionString(`mongodb://username@example.com:password@localhost/`, `mongodb://username%40example.com:password@localhost/`);
+        testEncodeMongoConnectionString(`mongodb://crazy@:/%username:even@crazier%/password@localhost/`, `mongodb://crazy%40%3A%2F%25username:even%40crazier%25%2Fpassword@localhost/`);
     });
 });

@@ -10,13 +10,13 @@ import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ObjectID } from 'bson';
 import { Collection } from 'mongodb';
+import { EOL } from 'os';
 import * as vscode from 'vscode';
-import { IActionContext, IParsedError, parseError } from 'vscode-azureextensionui';
+import { IActionContext, IParsedError, openReadOnlyContent, parseError, ReadOnlyContent } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
 import { filterType, findType } from '../utils/array';
 import { localize } from '../utils/localize';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
-import * as vscodeUtil from './../utils/vscodeUtils';
 import { LexerErrorListener, ParserErrorListener } from './errorListeners';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as mongoParser from './grammar/mongoParser';
@@ -70,9 +70,13 @@ export function getAllCommandsFromTextDocument(document: vscode.TextDocument): M
 }
 
 async function executeCommands(context: IActionContext, commands: MongoCommand[]): Promise<void> {
+    const label: string = 'Scrapbook-execute-all-results';
+    const fullId: string = `${ext.connectedMongoDB?.fullId}/${label}`;
+    const readOnlyContent: ReadOnlyContent = await openReadOnlyContent({ label, fullId }, '', '.txt', { viewColumn: vscode.ViewColumn.Beside });
+
     for (const command of commands) {
         try {
-            await executeCommand(context, command);
+            await executeCommand(context, command, readOnlyContent);
         } catch (e) {
             const err = parseError(e);
             if (err.isUserCancelledError) {
@@ -85,7 +89,7 @@ async function executeCommands(context: IActionContext, commands: MongoCommand[]
     }
 }
 
-async function executeCommand(context: IActionContext, command: MongoCommand): Promise<void> {
+async function executeCommand(context: IActionContext, command: MongoCommand, readOnlyContent?: ReadOnlyContent): Promise<void> {
     if (command) {
         try {
             context.telemetry.properties.command = command.name;
@@ -131,8 +135,14 @@ async function executeCommand(context: IActionContext, command: MongoCommand): P
                 const docNode = new MongoDocumentTreeItem(colNode, document);
                 await ext.fileSystem.showTextDocument(docNode, { viewColumn: vscode.ViewColumn.Beside });
             } else {
-                const viewColumn = vscode.window.activeTextEditor?.viewColumn;
-                await vscodeUtil.showNewFile(result, 'result', '.json', viewColumn ? viewColumn + 1 : undefined);
+                if (readOnlyContent) {
+                    await readOnlyContent.append(`${result}${EOL}${EOL}`);
+                } else {
+                    const label: string = 'Scrapbook-results';
+                    const fullId: string = `${database.fullId}/${label}`;
+                    await openReadOnlyContent({ label, fullId }, result, '.json', { viewColumn: vscode.ViewColumn.Beside });
+                }
+
                 await refreshTreeAfterCommand(database, command, context);
             }
         }
@@ -257,14 +267,16 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
                     let ejsonParsed = {};
                     try {
                         ejsonParsed = EJSON.parse(escapeHandled);
-                    } catch (err) { //EJSON parse failed due to a wrong flag, etc.
-                        this.addErrorToCommand(parseError(err), ctx);
+                    } catch (error) { //EJSON parse failed due to a wrong flag, etc.
+                        const parsedError: IParsedError = parseError(error);
+                        this.addErrorToCommand(parsedError.message, ctx);
                     }
                     nonNullProp(lastCommand, 'argumentObjects').push(ejsonParsed);
                 }
             }
         } catch (error) {
-            this.addErrorToCommand(parseError(error), ctx);
+            const parsedError: IParsedError = parseError(error);
+            this.addErrorToCommand(parsedError.message, ctx);
         }
         return super.visitArgument(ctx);
     }
@@ -290,8 +302,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         } else if (child instanceof ErrorNode) {
             return {};
         } else {
-            const err: IParsedError = parseError(`Unrecognized node type encountered. We could not parse ${child.text}`);
-            this.addErrorToCommand(err, ctx);
+            this.addErrorToCommand(`Unrecognized node type encountered. We could not parse ${child.text}`, ctx);
             return {};
         }
     }
@@ -307,8 +318,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         } else if (nonStringLiterals.indexOf(tokenType) > -1) {
             return JSON.parse(text);
         } else {
-            const err: IParsedError = parseError(`Unrecognized token. Token text: ${text}`);
-            this.addErrorToCommand(err, ctx);
+            this.addErrorToCommand(`Unrecognized token. Token text: ${text}`, ctx);
             return {};
         }
     }
@@ -347,15 +357,13 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         const constructorCall: TerminalNode = nonNullValue(findType(functionTokens, TerminalNode), 'constructorCall');
         const argumentsToken: mongoParser.ArgumentsContext = nonNullValue(findType(functionTokens, mongoParser.ArgumentsContext), 'argumentsToken');
         if (!(argumentsToken._CLOSED_PARENTHESIS && argumentsToken._OPEN_PARENTHESIS)) { //argumentsToken does not have '(' or ')'
-            const err: IParsedError = parseError(`Expecting parentheses or quotes at '${constructorCall.text}'`);
-            this.addErrorToCommand(err, ctx);
+            this.addErrorToCommand(`Expecting parentheses or quotes at '${constructorCall.text}'`, ctx);
             return {};
         }
 
         const argumentContextArray: mongoParser.ArgumentContext[] = filterType(argumentsToken.children, mongoParser.ArgumentContext);
         if (argumentContextArray.length > 1) {
-            const err: IParsedError = parseError(`Too many arguments. Expecting 0 or 1 argument(s) to ${constructorCall}`);
-            this.addErrorToCommand(err, ctx);
+            this.addErrorToCommand(`Too many arguments. Expecting 0 or 1 argument(s) to ${constructorCall}`, ctx);
             return {};
         }
 
@@ -368,8 +376,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
             case 'Date':
                 return this.dateToObject(ctx, tokenText);
             default:
-                const unrecognizedNodeErr: IParsedError = parseError(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`);
-                this.addErrorToCommand(unrecognizedNodeErr, ctx);
+                this.addErrorToCommand(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`, ctx);
                 return {};
         }
     }
@@ -409,8 +416,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 
                 return new Date(tokenText);
             } catch (error) {
-                const err: IParsedError = parseError(error);
-                this.addErrorToCommand(err, ctx);
+                const parsedError: IParsedError = parseError(error);
+                this.addErrorToCommand(parsedError.message, ctx);
                 return {};
             }
         }
@@ -426,8 +433,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
             try {
                 constructedObject = new ObjectID(hexID);
             } catch (error) {
-                const err: IParsedError = parseError(error);
-                this.addErrorToCommand(err, ctx);
+                const parsedError: IParsedError = parseError(error);
+                this.addErrorToCommand(parsedError.message, ctx);
                 return {};
             }
         }
@@ -446,17 +453,17 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
             // we are passing back a $regex annotation, hence we ensure parity wit the $regex syntax
             return { $regex: this.regexToStringNotation(pattern), $options: flags };
         } catch (error) { //User may not have finished typing
-            const err: IParsedError = parseError(error);
-            this.addErrorToCommand(err, ctx);
+            const parsedError: IParsedError = parseError(error);
+            this.addErrorToCommand(parsedError.message, ctx);
             return {};
         }
     }
 
-    private addErrorToCommand(error: { message: string }, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): void {
+    private addErrorToCommand(errorMessage: string, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): void {
         const command = this.commands[this.commands.length - 1];
         command.errors = command.errors || [];
         const stop = nonNullProp(ctx, 'stop');
-        const currentErrorDesc: ErrorDescription = { message: error.message, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, stop.line - 1, stop.charPositionInLine) };
+        const currentErrorDesc: ErrorDescription = { message: errorMessage, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, stop.line - 1, stop.charPositionInLine) };
         command.errors.push(currentErrorDesc);
     }
 

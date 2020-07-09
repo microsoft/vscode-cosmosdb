@@ -26,7 +26,7 @@ export { activateInternal, deactivateInternal } from './src/extension';
 export { ext } from './src/extensionVariables';
 export { connectToMongoClient, isLocalEmulatorConnectionString } from './src/mongo/connectToMongoClient';
 export { MongoCommand } from './src/mongo/MongoCommand';
-export { addDatabaseToAccountConnectionString, getDatabaseNameFromConnectionString } from './src/mongo/mongoConnectionStrings';
+export { addDatabaseToAccountConnectionString, encodeMongoConnectionString, getDatabaseNameFromConnectionString } from './src/mongo/mongoConnectionStrings';
 export { findCommandAtPosition, getAllCommandsFromText } from './src/mongo/MongoScrapbook';
 export { MongoShell } from './src/mongo/MongoShell';
 export { IDatabaseInfo } from './src/mongo/tree/MongoAccountTreeItem';

@@ -10,13 +10,13 @@ import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { ObjectID } from 'bson';
 import { Collection } from 'mongodb';
+import { EOL } from 'os';
 import * as vscode from 'vscode';
-import { IActionContext, IParsedError, parseError } from 'vscode-azureextensionui';
+import { IActionContext, IParsedError, openReadOnlyContent, parseError, ReadOnlyContent } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
 import { filterType, findType } from '../utils/array';
 import { localize } from '../utils/localize';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
-import * as vscodeUtil from './../utils/vscodeUtils';
 import { LexerErrorListener, ParserErrorListener } from './errorListeners';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as mongoParser from './grammar/mongoParser';
@@ -70,9 +70,13 @@ export function getAllCommandsFromTextDocument(document: vscode.TextDocument): M
 }
 
 async function executeCommands(context: IActionContext, commands: MongoCommand[]): Promise<void> {
+    const label: string = 'Scrapbook-execute-all-results';
+    const fullId: string = `${ext.connectedMongoDB?.fullId}/${label}`;
+    const readOnlyContent: ReadOnlyContent = await openReadOnlyContent({ label, fullId }, '', '.txt', { viewColumn: vscode.ViewColumn.Beside });
+
     for (const command of commands) {
         try {
-            await executeCommand(context, command);
+            await executeCommand(context, command, readOnlyContent);
         } catch (e) {
             const err = parseError(e);
             if (err.isUserCancelledError) {
@@ -85,7 +89,7 @@ async function executeCommands(context: IActionContext, commands: MongoCommand[]
     }
 }
 
-async function executeCommand(context: IActionContext, command: MongoCommand): Promise<void> {
+async function executeCommand(context: IActionContext, command: MongoCommand, readOnlyContent?: ReadOnlyContent): Promise<void> {
     if (command) {
         try {
             context.telemetry.properties.command = command.name;
@@ -131,8 +135,14 @@ async function executeCommand(context: IActionContext, command: MongoCommand): P
                 const docNode = new MongoDocumentTreeItem(colNode, document);
                 await ext.fileSystem.showTextDocument(docNode, { viewColumn: vscode.ViewColumn.Beside });
             } else {
-                const viewColumn = vscode.window.activeTextEditor?.viewColumn;
-                await vscodeUtil.showNewFile(result, 'result', '.json', viewColumn ? viewColumn + 1 : undefined);
+                if (readOnlyContent) {
+                    await readOnlyContent.append(`${result}${EOL}${EOL}`);
+                } else {
+                    const label: string = 'Scrapbook-results';
+                    const fullId: string = `${database.fullId}/${label}`;
+                    await openReadOnlyContent({ label, fullId }, result, '.json', { viewColumn: vscode.ViewColumn.Beside });
+                }
+
                 await refreshTreeAfterCommand(database, command, context);
             }
         }

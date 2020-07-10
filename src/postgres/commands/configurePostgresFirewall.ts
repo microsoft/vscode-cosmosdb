@@ -46,7 +46,7 @@ export async function setFirewallRule(treeItem: PostgresServerTreeItem, ip: stri
         location: vscode.ProgressLocation.Notification,
         title: progressMessage
     };
-
+    ext.outputChannel.appendLog(progressMessage);
     await vscode.window.withProgress(options, async () => {
         await client.firewallRules.createOrUpdate(resourceGroup, serverName, firewallRuleName, newFirewallRule);
     });

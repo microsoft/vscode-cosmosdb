@@ -5,6 +5,7 @@
 
 import * as vscode from 'vscode';
 import { AzureTreeItem, callWithTelemetryAndErrorHandling, IActionContext, IErrorHandlerContext, ITreeItemPickerContext, registerCommand, registerErrorHandler, registerEvent } from "vscode-azureextensionui";
+import { Experience, MongoExperience } from '../AzureDBExperiences';
 import { ext } from "../extensionVariables";
 import { AttachedAccountSuffix } from '../tree/AttachedAccountsTreeItem';
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -61,7 +62,9 @@ export function registerMongoCommands(): MongoCodeLensProvider {
     });
     registerCommand('cosmosDB.connectMongoDB', async (context: IActionContext, node?: MongoDatabaseTreeItem) => {
         if (!node) {
-            node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
+            // Include defaultExperience in the context to prevent https://github.com/microsoft/vscode-cosmosdb/issues/1517
+            const experienceContext: ITreeItemPickerContext & { defaultExperience?: Experience } = { ...context, defaultExperience: MongoExperience };
+            node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, experienceContext);
         }
 
         const oldNodeId: string | undefined = ext.connectedMongoDB && ext.connectedMongoDB.fullId;

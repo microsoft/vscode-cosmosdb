@@ -7,7 +7,7 @@
 
 import { platform } from 'os';
 import * as vscode from 'vscode';
-import { AzExtTreeDataProvider, AzExtTreeItem, AzureTreeItem, AzureUserInput, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
+import { AzExtTreeDataProvider, AzExtTreeItem, AzureTreeItem, AzureUserInput, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, ITreeItemPickerContext, registerCommand, registerEvent, registerUIExtensionVariables } from 'vscode-azureextensionui';
 import { AzureExtensionApi, AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
@@ -80,6 +80,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             await node.createChild(actionContext);
         });
         registerCommand('cosmosDB.deleteAccount', async (actionContext: IActionContext, node?: AzureTreeItem) => {
+            const suppressCreateContext: ITreeItemPickerContext = actionContext;
+            suppressCreateContext.suppressCreatePick = true;
             if (!node) {
                 node = await ext.tree.showTreeItemPicker<AzureTreeItem>(cosmosDBTopLevelContextValues, actionContext);
             }

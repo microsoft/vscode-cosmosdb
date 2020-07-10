@@ -82,6 +82,8 @@ export function registerMongoCommands(): MongoCodeLensProvider {
         }
     });
     registerCommand('cosmosDB.deleteMongoDB', async (context: IActionContext, node?: MongoDatabaseTreeItem) => {
+        const suppressCreateContext: ITreeItemPickerContext = context;
+        suppressCreateContext.suppressCreatePick = true;
         if (!node) {
             node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
         }
@@ -93,12 +95,16 @@ export function registerMongoCommands(): MongoCodeLensProvider {
         }
     });
     registerCommand('cosmosDB.deleteMongoCollection', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
+        const suppressCreateContext: ITreeItemPickerContext = context;
+        suppressCreateContext.suppressCreatePick = true;
         if (!node) {
             node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
         }
         await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.deleteMongoDocument', async (context: IActionContext, node?: MongoDocumentTreeItem) => {
+        const suppressCreateContext: ITreeItemPickerContext = context;
+        suppressCreateContext.suppressCreatePick = true;
         if (!node) {
             node = <MongoDocumentTreeItem>await ext.tree.showTreeItemPicker(MongoDocumentTreeItem.contextValue, context);
         }

@@ -7,6 +7,7 @@ import { commands } from "vscode";
 import { IActionContext, registerCommand } from "vscode-azureextensionui";
 import { doubleClickDebounceDelay } from "../constants";
 import { ext } from "../extensionVariables";
+import { AttachedAccountSuffix } from "../tree/AttachedAccountsTreeItem";
 import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
 import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
@@ -18,7 +19,7 @@ import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeIte
 export function registerDocDBCommands(): void {
     registerCommand('cosmosDB.createDocDBDatabase', async (context: IActionContext, node?: DocDBAccountTreeItem) => {
         if (!node) {
-            node = <DocDBAccountTreeItem>await ext.tree.showTreeItemPicker(DocDBAccountTreeItem.contextValue, context);
+            node = <DocDBAccountTreeItem>await ext.tree.showTreeItemPicker([DocDBAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue + AttachedAccountSuffix], context);
         }
         const databaseNode: DocDBDatabaseTreeItem = <DocDBDatabaseTreeItem>await node.createChild(context);
         await databaseNode.createChild(context);

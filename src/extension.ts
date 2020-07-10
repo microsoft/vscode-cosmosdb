@@ -100,14 +100,14 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             await ext.tree.refresh(ext.attachedAccountsNode);
         });
         registerCommand('azureDatabases.refresh', async (_actionContext: IActionContext, node?: AzExtTreeItem) => await ext.tree.refresh(node));
-        registerCommand('cosmosDB.detachDatabaseAccount', async (_context: IActionContext & ITreeItemPickerContext, node?: AzureTreeItem) => {
-            const children = await ext.attachedAccountsNode.loadAllChildren(_context);
+        registerCommand('cosmosDB.detachDatabaseAccount', async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzureTreeItem) => {
+            const children = await ext.attachedAccountsNode.loadAllChildren(actionContext);
             if (children[0].contextValue === "cosmosDBAttachDatabaseAccount") {
                 const message = localize('noAttachedAccounts', 'There are no Attached Accounts.');
                 vscode.window.showInformationMessage(message);
             } else {
                 if (!node) {
-                    node = await ext.tree.showTreeItemPicker<AzureTreeItem>(cosmosDBTopLevelContextValues.map((val: string) => val += AttachedAccountSuffix), _context);
+                    node = await ext.tree.showTreeItemPicker<AzureTreeItem>(cosmosDBTopLevelContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
                 }
                 if (node instanceof MongoAccountTreeItem) {
                     if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {

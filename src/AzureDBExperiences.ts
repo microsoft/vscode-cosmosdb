@@ -83,7 +83,7 @@ export function getExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
 
 export function getCosmosExperienceQuickPicks(attached?: boolean): IAzureQuickPickItem<Experience>[] {
     if (attached) {
-        return cosmosExperiencesArray.map(exp => getExperienceQuickPickforAttached(exp.api));
+        return cosmosExperiencesArray.map(exp => getExperienceQuickPickForAttached(exp.api));
     } else {
         return cosmosExperiencesArray.map(exp => getExperienceQuickPick(exp.api));
     }

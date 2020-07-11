@@ -94,7 +94,7 @@ export function getExperienceQuickPick(api: API): IAzureQuickPickItem<Experience
     return { label: exp.longName, description: exp.description, data: exp };
 }
 
-export function getExperienceQuickPickforAttached(api: API): IAzureQuickPickItem<Experience> {
+export function getExperienceQuickPickForAttached(api: API): IAzureQuickPickItem<Experience> {
     const exp = getExperienceFromApi(api);
     return { label: exp.shortName, description: exp.description, data: exp };
 }

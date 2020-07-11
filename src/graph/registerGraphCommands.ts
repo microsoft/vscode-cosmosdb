@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext, registerCommand } from "vscode-azureextensionui";
+import { IActionContext, ITreeItemPickerContext, registerCommand } from "vscode-azureextensionui";
 import { doubleClickDebounceDelay } from '../constants';
 import { ext } from '../extensionVariables';
 import { GraphAccountTreeItem } from "./tree/GraphAccountTreeItem";
@@ -25,12 +25,16 @@ export function registerGraphCommands(): void {
         await node.createChild(context);
     });
     registerCommand('cosmosDB.deleteGraphDatabase', async (context: IActionContext, node?: GraphDatabaseTreeItem) => {
+        const suppressCreateContext: ITreeItemPickerContext = context;
+        suppressCreateContext.suppressCreatePick = true;
         if (!node) {
             node = <GraphDatabaseTreeItem>await ext.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
         }
         await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.deleteGraph', async (context: IActionContext, node?: GraphCollectionTreeItem) => {
+        const suppressCreateContext: ITreeItemPickerContext = context;
+        suppressCreateContext.suppressCreatePick = true;
         if (!node) {
             node = <GraphCollectionTreeItem>await ext.tree.showTreeItemPicker(GraphCollectionTreeItem.contextValue, context);
         }

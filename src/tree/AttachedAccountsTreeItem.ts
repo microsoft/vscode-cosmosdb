@@ -118,7 +118,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     public async attachNewAccount(): Promise<void> {
-        const defaultExperiencePick = await vscode.window.showQuickPick(getCosmosExperienceQuickPicks(), { placeHolder: "Select a Database Account API...", ignoreFocusOut: true });
+        const defaultExperiencePick = await vscode.window.showQuickPick(getCosmosExperienceQuickPicks(true), { placeHolder: "Select a Database type...", ignoreFocusOut: true });
         if (defaultExperiencePick) {
             const defaultExperience = defaultExperiencePick.data;
             let placeholder: string;

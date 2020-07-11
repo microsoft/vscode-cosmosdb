@@ -81,13 +81,22 @@ export function getExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
     return experiencesArray.map(exp => getExperienceQuickPick(exp.api));
 }
 
-export function getCosmosExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
-    return cosmosExperiencesArray.map(exp => getExperienceQuickPick(exp.api));
+export function getCosmosExperienceQuickPicks(attached?: boolean): IAzureQuickPickItem<Experience>[] {
+    if (attached) {
+        return cosmosExperiencesArray.map(exp => getExperienceQuickPickForAttached(exp.api));
+    } else {
+        return cosmosExperiencesArray.map(exp => getExperienceQuickPick(exp.api));
+    }
 }
 
 export function getExperienceQuickPick(api: API): IAzureQuickPickItem<Experience> {
     const exp = getExperienceFromApi(api);
     return { label: exp.longName, description: exp.description, data: exp };
+}
+
+export function getExperienceQuickPickForAttached(api: API): IAzureQuickPickItem<Experience> {
+    const exp = getExperienceFromApi(api);
+    return { label: exp.shortName, description: exp.description, data: exp };
 }
 
 // Mongo is distinguished by having kind="MongoDB". All others have kind="GlobalDocumentDB"

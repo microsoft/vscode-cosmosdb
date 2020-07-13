@@ -150,7 +150,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             }
 
             // Clear un-uploaded local changes to the document before opening https://github.com/microsoft/vscode-cosmosdb/issues/1619
-            await node.refresh();
+            ext.fileSystem.fireChangedEvent(node);
             await ext.fileSystem.showTextDocument(node);
             // tslint:disable-next-line:align
         }, doubleClickDebounceDelay);

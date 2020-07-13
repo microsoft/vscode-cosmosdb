@@ -149,6 +149,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 node = await ext.tree.showTreeItemPicker<MongoDocumentTreeItem | DocDBDocumentTreeItem>([MongoDocumentTreeItem.contextValue, DocDBDocumentTreeItem.contextValue], actionContext);
             }
 
+            // Clear un-uploaded local changes to the document before opening https://github.com/microsoft/vscode-cosmosdb/issues/1619
+            ext.fileSystem.fireChangedEvent(node);
             await ext.fileSystem.showTextDocument(node);
             // tslint:disable-next-line:align
         }, doubleClickDebounceDelay);

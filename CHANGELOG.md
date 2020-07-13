@@ -2,6 +2,20 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.14.0 - 2020-07-14
+### Added
+- Use the setting "azureDatabases.batchSize" to configure the Mongo
+"DBQuery.shellBatchSize" attribute and the batch size when loading children in
+the tree view.
+- Create and edit stored procedures in PostgreSQL. NOTE: only applies to
+PostgreSQL server versions 11 and above.
+
+### Fixed
+- [Bugs fixed](https://github.com/microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A0.14.0+is%3Aclosed)
+
+### Changed
+- Results from executing most Mongo commands open in a single read-only editor.
+
 ## 0.13.0 - 2020-05-28
 In this release, we're rebranding the Cosmos DB Extension to Azure Databases to expand our database support beyond just Cosmos DB. This release also marks the first new database engine: PostgreSQL with other database engines coming later this year.
 ### Added

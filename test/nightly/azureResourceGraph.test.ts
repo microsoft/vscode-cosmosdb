@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
-import { AccountApi, accountList, client, resourceGroupList, resourceGroupsToDelete, testAccount } from './global.resource.test';
+import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
 
 suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(20 * 60 * 1000);
@@ -26,7 +26,6 @@ suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
         resourceGroupName = resourceGroupList[AccountApi.Graph];
         accountName = accountList[AccountApi.Graph];
         databaseName = randomUtils.getRandomHexString(12);
-        resourceGroupsToDelete.push(resourceGroupName);
     });
 
     test('Create graph account', async () => {

@@ -63,6 +63,7 @@ async function createAccount(accountType: RegExp): Promise<void> {
     const resourceGroupName: string = randomUtils.getRandomHexString(12);
     accountList[accountType.source] = accountName;
     resourceGroupList[accountType.source] = resourceGroupName;
+    resourceGroupsToDelete.push(resourceGroupName);
     const testInputs: (string | RegExp)[] = [accountType, accountName, '$(plus) Create new resource group', resourceGroupName, 'West US'];
     await testUserInput.runWithInputs(testInputs, async () => {
         await vscode.commands.executeCommand('azureDatabases.createServer');

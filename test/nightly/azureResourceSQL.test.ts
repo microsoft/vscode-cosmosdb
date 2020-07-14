@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { DialogResponses, getDocumentClient, ParsedDocDBConnectionString, parseDocDBConnectionString, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
-import { AccountApi, accountList, client, resourceGroupList, resourceGroupsToDelete, testAccount } from './global.resource.test';
+import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
 
 suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(20 * 60 * 1000);
@@ -28,7 +28,6 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         accountName = accountList[AccountApi.Core];
         databaseName = randomUtils.getRandomHexString(12);
         collectionId2 = randomUtils.getRandomHexString(12);
-        resourceGroupsToDelete.push(resourceGroupName);
     });
 
     test('Create SQL account', async () => {
@@ -40,7 +39,7 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         const collectionId1: string = randomUtils.getRandomHexString(12);
         // Partition key cannot begin with a digit
         const partitionKey1: string = `f${randomUtils.getRandomHexString(12)}`;
-        const testInputs: (string | RegExp)[] = [`${accountName} (SQL)`, databaseName, collectionId1, partitionKey1, '1000'];
+        const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (SQL)`, databaseName, collectionId1, partitionKey1, '1000'];
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createDocDBDatabase');
         });

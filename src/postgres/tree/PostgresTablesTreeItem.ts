@@ -6,20 +6,16 @@
 import { Client, ClientConfig } from "pg";
 import pgStructure, { Db } from "pg-structure";
 import { Uri } from 'vscode';
-import { AzureParentTreeItem, ISubscriptionContext } from "vscode-azureextensionui";
 import { getThemedIconPath } from "../../constants";
 import { PostgresDatabaseTreeItem } from "./PostgresDatabaseTreeItem";
+import { PostgresResourcesTreeItemBase } from "./PostgresResourcesTreeItemBase";
 import { PostgresTableTreeItem } from "./PostgresTableTreeItem";
 
-export class PostgresTablesTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
+export class PostgresTablesTreeItem extends PostgresResourcesTreeItemBase {
     public static contextValue: string = "postgresTables";
     public readonly contextValue: string = PostgresTablesTreeItem.contextValue;
     public readonly childTypeLabel: string = "Table";
     public readonly label: string = 'Tables';
-    public readonly parent: PostgresDatabaseTreeItem;
-    public readonly clientConfig: ClientConfig;
-
-    private _tablesAndSchemas: { [key: string]: string[] };
 
     constructor(parent: PostgresDatabaseTreeItem, clientConfig: ClientConfig) {
         super(parent);
@@ -27,7 +23,7 @@ export class PostgresTablesTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get iconPath(): string | Uri | { light: string | Uri; dark: string | Uri } {
-        return getThemedIconPath('list-unordered.svg');
+        return getThemedIconPath('window.svg');
     }
 
     public hasMoreChildrenImpl(): boolean {
@@ -38,14 +34,14 @@ export class PostgresTablesTreeItem extends AzureParentTreeItem<ISubscriptionCon
 
         const client = new Client(this.clientConfig);
         const db: Db = await pgStructure(client);
-        this._tablesAndSchemas = {};
+        this.resourcesAndSchemas = {};
         for (const table of db.tables) {
-            this.parent.addResourceAndSchemasEntry(this._tablesAndSchemas, table.name.trim(), table.schema.name);
+            this.addResourcesAndSchemasEntry(table.name.trim(), table.schema.name);
         }
         return db.tables.map(table => new PostgresTableTreeItem(
             this,
             table,
-            this._tablesAndSchemas[table.name.trim()].length > 1
+            this.isDuplicateResource(table.name.trim())
         ));
     }
 

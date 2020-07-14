@@ -7,11 +7,13 @@ import * as assert from 'assert';
 import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, DeleteWriteOpResultObject, InsertOneWriteOpResult, InsertWriteOpResult, MongoCountPreferences } from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, DialogResponses, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
-import { defaultBatchSize, getThemeAgnosticIconPath } from '../../constants';
+import { AzExtTreeItem, AzureParentTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
+import { getThemeAgnosticIconPath } from '../../constants';
+import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { nonNullValue } from '../../utils/nonNull';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
+import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { MongoCommand } from '../MongoCommand';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
@@ -25,28 +27,35 @@ class FunctionDescriptor {
     }
 }
 
-export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
+export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot> implements IEditableTreeItem {
     public static contextValue: string = "MongoCollection";
     public readonly contextValue: string = MongoCollectionTreeItem.contextValue;
     public readonly childTypeLabel: string = "Document";
     public readonly collection: Collection;
+    public parent: AzureParentTreeItem;
+    public findArgs?: {}[];
+    public readonly cTime: number = Date.now();
+    public mTime: number = Date.now();
 
     private readonly _query: object | undefined;
     private readonly _projection: object | undefined;
     private _cursor: Cursor | undefined;
     private _hasMoreChildren: boolean = true;
-    private _batchSize: number = defaultBatchSize;
+    private _batchSize: number = getBatchSizeSetting();
 
-    constructor(parent: AzureParentTreeItem, collection: Collection, query?: Object[]) {
+    constructor(parent: AzureParentTreeItem, collection: Collection, findArgs?: {}[]) {
         super(parent);
         this.collection = collection;
-        if (query && query.length) {
-            this._query = query[0];
-            this._projection = query.length > 1 ? query[1] : undefined;
+        this.findArgs = findArgs;
+        if (findArgs && findArgs.length) {
+            this._query = findArgs[0];
+            this._projection = findArgs.length > 1 ? findArgs[1] : undefined;
         }
+        ext.fileSystem.fireChangedEvent(this);
     }
 
-    public async update(documents: IMongoDocument[]): Promise<IMongoDocument[]> {
+    public async writeFileContent(context: IActionContext, content: string): Promise<void> {
+        const documents: IMongoDocument[] = EJSON.parse(content);
         const operations = documents.map((document) => {
             return {
                 replaceOne: {
@@ -59,7 +68,26 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 
         const result: BulkWriteOpResultObject = await this.collection.bulkWrite(operations);
         ext.outputChannel.appendLog(`Successfully updated ${result.modifiedCount} document(s), inserted ${result.insertedCount} document(s)`);
-        return documents;
+
+        // The current tree item may have been a temporary one used to execute a scrapbook command.
+        // We want to refresh children for this one _and_ the actual one in the tree (if it's different)
+        const nodeInTree: MongoCollectionTreeItem | undefined = await ext.tree.findTreeItem(this.fullId, context);
+        const nodesToRefresh: MongoCollectionTreeItem[] = [this];
+        if (nodeInTree && this !== nodeInTree) {
+            nodesToRefresh.push(nodeInTree);
+        }
+
+        await Promise.all(nodesToRefresh.map(n => n.refreshChildren(context, documents)));
+
+        if (nodeInTree && this !== nodeInTree) {
+            // Don't need to fire a changed event on the item being saved at the moment. Just the node in the tree if it's different
+            ext.fileSystem.fireChangedEvent(nodeInTree);
+        }
+    }
+
+    public async getFileContent(context: IActionContext): Promise<string> {
+        const children = <MongoDocumentTreeItem[]>await this.getCachedChildren(context);
+        return EJSON.stringify(children.map(c => c.document), null, 2);
     }
 
     public get id(): string {
@@ -74,17 +102,36 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
         return getThemeAgnosticIconPath('Collection.svg');
     }
 
+    public get filePath(): string {
+        return this.label + '-cosmos-collection.json';
+    }
+
+    public async refreshImpl(): Promise<void> {
+        this._batchSize = getBatchSizeSetting();
+        ext.fileSystem.fireChangedEvent(this);
+    }
+
+    public async refreshChildren(context: IActionContext, docs: IMongoDocument[]): Promise<void> {
+        const documentNodes = <MongoDocumentTreeItem[]>await this.getCachedChildren(context);
+        for (const doc of docs) {
+            const documentNode = documentNodes.find((node) => node.document._id.toString() === doc._id.toString());
+            if (documentNode) {
+                documentNode.document = doc;
+                await documentNode.refresh();
+            }
+        }
+    }
+
     public hasMoreChildrenImpl(): boolean {
         return this._hasMoreChildren;
     }
 
     public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (clearCache || this._cursor === undefined) {
-            this._cursor = this.collection.find(this._query).batchSize(defaultBatchSize);
+            this._cursor = this.collection.find(this._query).batchSize(this._batchSize);
             if (this._projection) {
                 this._cursor = this._cursor.project(this._projection);
             }
-            this._batchSize = defaultBatchSize;
         }
 
         const documents: IMongoDocument[] = [];

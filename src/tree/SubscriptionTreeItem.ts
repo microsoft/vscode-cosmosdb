@@ -9,13 +9,13 @@ import { PostgreSQLManagementClient } from 'azure-arm-postgresql';
 import { Server, ServerListResult } from 'azure-arm-postgresql/lib/models';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
-import { API, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
+import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { ext } from '../extensionVariables';
 import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { IPostgresWizardContext } from '../postgres/commands/PostgresAccountWizard/IPostgresWizardContext';
+import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { azureUtils } from '../utils/azureUtils';
@@ -60,9 +60,9 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         return treeItem;
     }
 
-    public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem> {
+    public async createChildImpl(context: ICreateChildImplContext & { defaultExperience?: Experience }): Promise<AzureTreeItem> {
         const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
-        const wizardContext: IPostgresWizardContext & ICosmosDBWizardContext = Object.assign(context, this.root);
+        const wizardContext: IPostgresServerWizardContext & ICosmosDBWizardContext = Object.assign(context, this.root);
 
         const promptSteps: AzureWizardPromptStep<ILocationWizardContext>[] = [
             new AzureDBAPIStep(),

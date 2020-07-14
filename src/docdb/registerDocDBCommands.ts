@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { commands } from "vscode";
-import { IActionContext, registerCommand } from "vscode-azureextensionui";
+import { IActionContext, ITreeItemPickerContext, registerCommand } from "vscode-azureextensionui";
 import { doubleClickDebounceDelay } from "../constants";
 import { ext } from "../extensionVariables";
-import { DocDBStoredProcedureNodeEditor } from "./editors/DocDBStoredProcedureNodeEditor";
+import { AttachedAccountSuffix } from "../tree/AttachedAccountsTreeItem";
 import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
 import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
@@ -19,7 +19,7 @@ import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeIte
 export function registerDocDBCommands(): void {
     registerCommand('cosmosDB.createDocDBDatabase', async (context: IActionContext, node?: DocDBAccountTreeItem) => {
         if (!node) {
-            node = <DocDBAccountTreeItem>await ext.tree.showTreeItemPicker(DocDBAccountTreeItem.contextValue, context);
+            node = <DocDBAccountTreeItem>await ext.tree.showTreeItemPicker([DocDBAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue + AttachedAccountSuffix], context);
         }
         const databaseNode: DocDBDatabaseTreeItem = <DocDBDatabaseTreeItem>await node.createChild(context);
         await databaseNode.createChild(context);
@@ -47,12 +47,16 @@ export function registerDocDBCommands(): void {
 
     });
     registerCommand('cosmosDB.deleteDocDBDatabase', async (context: IActionContext, node?: DocDBDatabaseTreeItem) => {
+        const suppressCreateContext: ITreeItemPickerContext = context;
+        suppressCreateContext.suppressCreatePick = true;
         if (!node) {
             node = <DocDBDatabaseTreeItem>await ext.tree.showTreeItemPicker(DocDBDatabaseTreeItem.contextValue, context);
         }
         await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.deleteDocDBCollection', async (context: IActionContext, node?: DocDBCollectionTreeItem) => {
+        const suppressCreateContext: ITreeItemPickerContext = context;
+        suppressCreateContext.suppressCreatePick = true;
         if (!node) {
             node = <DocDBCollectionTreeItem>await ext.tree.showTreeItemPicker(DocDBCollectionTreeItem.contextValue, context);
         }
@@ -62,16 +66,20 @@ export function registerDocDBCommands(): void {
         if (!node) {
             node = <DocDBStoredProcedureTreeItem>await ext.tree.showTreeItemPicker([DocDBStoredProcedureTreeItem.contextValue], context);
         }
-        await ext.editorManager.showDocument(context, new DocDBStoredProcedureNodeEditor(node), node.label + '-cosmos-stored-procedure.js');
+        await ext.fileSystem.showTextDocument(node);
         // tslint:disable-next-line:align
     }, doubleClickDebounceDelay);
     registerCommand('cosmosDB.deleteDocDBDocument', async (context: IActionContext, node?: DocDBDocumentTreeItem) => {
+        const suppressCreateContext: ITreeItemPickerContext = context;
+        suppressCreateContext.suppressCreatePick = true;
         if (!node) {
             node = <DocDBDocumentTreeItem>await ext.tree.showTreeItemPicker(DocDBDocumentTreeItem.contextValue, context);
         }
         await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.deleteDocDBStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
+        const suppressCreateContext: ITreeItemPickerContext = context;
+        suppressCreateContext.suppressCreatePick = true;
         if (!node) {
             node = <DocDBStoredProcedureTreeItem>await ext.tree.showTreeItemPicker(DocDBStoredProcedureTreeItem.contextValue, context);
         }

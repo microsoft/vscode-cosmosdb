@@ -24,9 +24,9 @@ export { ParsedDocDBConnectionString, parseDocDBConnectionString } from './src/d
 export { getDocumentClient } from './src/docdb/getDocumentClient';
 export { activateInternal, deactivateInternal } from './src/extension';
 export { ext } from './src/extensionVariables';
-export { connectToMongoClient } from './src/mongo/connectToMongoClient';
+export { connectToMongoClient, isCosmosEmulatorConnectionString } from './src/mongo/connectToMongoClient';
 export { MongoCommand } from './src/mongo/MongoCommand';
-export { addDatabaseToAccountConnectionString, getDatabaseNameFromConnectionString } from './src/mongo/mongoConnectionStrings';
+export { addDatabaseToAccountConnectionString, encodeMongoConnectionString, getDatabaseNameFromConnectionString } from './src/mongo/mongoConnectionStrings';
 export { findCommandAtPosition, getAllCommandsFromText } from './src/mongo/MongoScrapbook';
 export { MongoShell } from './src/mongo/MongoShell';
 export { IDatabaseInfo } from './src/mongo/tree/MongoAccountTreeItem';
@@ -35,6 +35,7 @@ export { AzureAccountTreeItemWithAttached } from './src/tree/AzureAccountTreeIte
 export { improveError } from './src/utils/improveError';
 export * from './src/utils/nonNull';
 export { randomUtils } from './src/utils/randomUtils';
+export { getGlobalSetting, updateGlobalSetting } from './src/utils/settingUtils';
 export { rejectOnTimeout, valueOnTimeout } from './src/utils/timeout';
 export { getDocumentTreeItemLabel, IDisposable } from './src/utils/vscodeUtils';
 export { wrapError } from './src/utils/wrapError';

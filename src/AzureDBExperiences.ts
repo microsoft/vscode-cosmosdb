@@ -81,8 +81,12 @@ export function getExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
     return experiencesArray.map(exp => getExperienceQuickPick(exp.api));
 }
 
-export function getCosmosExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
-    return cosmosExperiencesArray.map(exp => getExperienceQuickPick(exp.api));
+export function getCosmosExperienceQuickPicks(attached?: boolean): IAzureQuickPickItem<Experience>[] {
+    if (attached) {
+        return cosmosExperiencesArray.map(exp => getExperienceQuickPickForAttached(exp.api));
+    } else {
+        return cosmosExperiencesArray.map(exp => getExperienceQuickPick(exp.api));
+    }
 }
 
 export function getExperienceQuickPick(api: API): IAzureQuickPickItem<Experience> {
@@ -90,10 +94,15 @@ export function getExperienceQuickPick(api: API): IAzureQuickPickItem<Experience
     return { label: exp.longName, description: exp.description, data: exp };
 }
 
+export function getExperienceQuickPickForAttached(api: API): IAzureQuickPickItem<Experience> {
+    const exp = getExperienceFromApi(api);
+    return { label: exp.shortName, description: exp.description, data: exp };
+}
+
 // Mongo is distinguished by having kind="MongoDB". All others have kind="GlobalDocumentDB"
 // Table and Gremlin are distinguished from SQL by their capabilities
 const CoreExperience: Experience = { api: API.Core, longName: "Core", description: "(SQL)", shortName: "SQL", kind: DBAccountKind.GlobalDocumentDB, tag: "Core (SQL)" };
-const MongoExperience: Experience = { api: API.MongoDB, longName: "Azure Cosmos DB for MongoDB API", shortName: "MongoDB", kind: DBAccountKind.MongoDB, tag: "Azure Cosmos DB for MongoDB API" };
+export const MongoExperience: Experience = { api: API.MongoDB, longName: "Azure Cosmos DB for MongoDB API", shortName: "MongoDB", kind: DBAccountKind.MongoDB, tag: "Azure Cosmos DB for MongoDB API" };
 const TableExperience: Experience = { api: API.Table, longName: "Azure Table", shortName: "Table", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableTable', tag: "Azure Table" };
 const GremlinExperience: Experience = { api: API.Graph, longName: "Gremlin", description: "(graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableGremlin', tag: "Gremlin (graph)" };
 const PostgresExperience: Experience = { api: API.Postgres, longName: "PostgreSQL", shortName: "Postgres" };

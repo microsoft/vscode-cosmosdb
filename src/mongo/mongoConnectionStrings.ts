@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { MongoClient, Mongos, ReplSet, Server } from "mongodb";
-import { appendExtensionUserAgent } from "vscode-azureextensionui";
+import { appendExtensionUserAgent, IParsedError, parseError } from "vscode-azureextensionui";
 import { testDb } from "../constants";
 import { ParsedConnectionString } from "../ParsedConnectionString";
 import { nonNullValue } from "../utils/nonNull";
@@ -49,7 +49,20 @@ export async function parseMongoConnectionString(connectionString: string): Prom
     let host: string;
     let port: string;
 
-    const mongoClient: MongoClient = await connectToMongoClient(connectionString, appendExtensionUserAgent());
+    let mongoClient: MongoClient;
+    try {
+        mongoClient = await connectToMongoClient(connectionString, appendExtensionUserAgent());
+    } catch (error) {
+        const parsedError: IParsedError = parseError(error);
+        if (parsedError.message.match(/unescaped/i)) {
+            // Prevents https://github.com/microsoft/vscode-cosmosdb/issues/1209
+            connectionString = encodeMongoConnectionString(connectionString);
+            mongoClient = await connectToMongoClient(connectionString, appendExtensionUserAgent());
+        } else {
+            throw error;
+        }
+    }
+
     const serverConfig: Server | ReplSet | Mongos = mongoClient.db(testDb).serverConfig;
     // Azure CosmosDB comes back as a ReplSet
     if (serverConfig instanceof ReplSet) {
@@ -80,4 +93,20 @@ export class ParsedMongoConnectionString extends ParsedConnectionString {
         this.hostName = hostName;
         this.port = port;
     }
+}
+
+/**
+ * Encodes the username and password in the given Mongo DB connection string.
+ */
+export function encodeMongoConnectionString(connectionString: string): string {
+    const matches: RegExpMatchArray | null = connectionString.match(/^(.*):\/\/(.*):(.*)@(.*)/);
+    if (matches) {
+        const prefix: string = matches[1];
+        const username: string = matches[2];
+        const password: string = matches[3];
+        const hostAndQuery: string = matches[4];
+        connectionString = `${prefix}://${encodeURIComponent(username)}:${encodeURIComponent(password)}@${hostAndQuery}`;
+    }
+
+    return connectionString;
 }

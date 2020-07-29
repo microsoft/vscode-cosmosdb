@@ -3,11 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import PostgreSQLManagementClient from 'azure-arm-postgresql';
+import { ServerListResult } from 'azure-arm-postgresql/lib/models';
+import { Server } from 'http';
 import { ServiceClientCredentials } from 'ms-rest';
 import { AzureEnvironment } from 'ms-rest-azure';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
-import { API, getCosmosExperienceQuickPicks, getExperienceFromApi, getExperienceQuickPick } from '../AzureDBExperiences';
+import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, createAzureClient, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
+import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, getThemedIconPath } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
@@ -18,6 +21,7 @@ import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
 import { parseMongoConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
+import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { SubscriptionTreeItem } from './SubscriptionTreeItem';
@@ -31,6 +35,7 @@ interface IPersistedAccount {
 
 export const AttachedAccountSuffix: string = 'Attached';
 export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start with "mongodb://" or "mongodb+srv://"';
+export const POSTGRES_CONNECTION_EXPECTED: string = 'Connection string must start with "postgres://"';
 
 const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
 
@@ -69,6 +74,16 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
 
         return MONGO_CONNECTION_EXPECTED;
+    }
+
+    public static validatePostgresConnectionString(value: string): string | undefined {
+        value = value ? value.trim() : '';
+
+        if (value && value.match(/^postgres:\/\//)) {
+            return undefined;
+        }
+
+        return POSTGRES_CONNECTION_EXPECTED;
     }
 
     private static validateDocDBConnectionString(value: string): string | undefined {
@@ -110,6 +125,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             case MongoAccountTreeItem.contextValue:
             case DocDBAccountTreeItem.contextValue:
             case TableAccountTreeItem.contextValue:
+            case PostgresServerTreeItem.contextValue:
             case SubscriptionTreeItem.contextValue:
                 return false;
             default:
@@ -118,7 +134,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     public async attachNewAccount(): Promise<void> {
-        const defaultExperiencePick = await vscode.window.showQuickPick(getCosmosExperienceQuickPicks(true), { placeHolder: "Select a Database type...", ignoreFocusOut: true });
+        const defaultExperiencePick = await vscode.window.showQuickPick(getExperienceQuickPicks(true), { placeHolder: "Select a Database type...", ignoreFocusOut: true });
         if (defaultExperiencePick) {
             const defaultExperience = defaultExperiencePick.data;
             let placeholder: string;
@@ -130,6 +146,9 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                     defaultValue = placeholder = localMongoConnectionString;
                 }
                 validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
+            } else if (defaultExperience.api === API.Postgres) {
+                placeholder = 'postgres://host:port';
+                validateInput = AttachedAccountsTreeItem.validatePostgresConnectionString;
             } else {
                 placeholder = 'AccountEndpoint=...;AccountKey=...';
                 validateInput = AttachedAccountsTreeItem.validateDocDBConnectionString;
@@ -299,6 +318,16 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 
             label = label || `${id} (${getExperienceFromApi(api).shortName})`;
             treeItem = new MongoAccountTreeItem(this, id, label, connectionString, isEmulator);
+        } else if (api === API.Postgres) {
+            let treeItemPostgres: AzExtTreeItem[];
+            const postgresClient: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+            const postgresServers: ServerListResult = await postgresClient.servers.list();
+            treeItemPostgres = await this.createTreeItemsWithErrorHandling(
+                postgresServers,
+                'invalidPostgreSQLAccount',
+                async (server: Server) => new PostgresServerTreeItem(this, server),
+                (server: Server) => server.name
+            );
         } else {
             const parsedCS = parseDocDBConnectionString(connectionString);
 

@@ -36,10 +36,14 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
 
     private _serverId: string;
 
-    constructor(parent: AzureParentTreeItem, server: Server) {
+    constructor(parent: AzureParentTreeItem, server?: Server, serverId?: string) {
         super(parent);
-        this.server = server;
-        this._serverId = nonNullProp(this.server, 'id');
+        if (server) {
+            this.server = server;
+            this._serverId = nonNullProp(this.server, 'id');
+        } else if (serverId) {
+            this._serverId = serverId;
+        }
         this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
     }
 

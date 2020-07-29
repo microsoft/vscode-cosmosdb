@@ -1038,6 +1038,7 @@
         "ms-rest": "^2.2.1",
         "ms-rest-azure": "^2.3.1",
         "pg": "^7.18.1",
+        "pg-connection-string": "^2.3.0",
         "pg-structure": "^5.10.7",
         "public-ip": "^4.0.0",
         "semver": "^7.2.2",

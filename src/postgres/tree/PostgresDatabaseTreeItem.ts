@@ -5,6 +5,7 @@
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { Client, ClientConfig } from 'pg';
+import { dropdb } from 'pgtools';
 import { ConnectionOptions } from 'tls';
 import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, GenericTreeItem, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -95,24 +96,56 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-        await client.databases.deleteMethod(azureUtils.getResourceGroupFromId(this.fullId), this.parent.name, this.databaseName);
+        if (this.parent.server) {
+            const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+            await client.databases.deleteMethod(azureUtils.getResourceGroupFromId(this.fullId), this.parent.name, this.databaseName);
+        } else {
+            const username_connString = nonNullProp(this.parent.connectionString, 'username');
+            const password_connString = nonNullProp(this.parent.connectionString, 'password');
+            const host = nonNullProp(this.parent.connectionString, 'hostName');
+            const config = { user: username_connString, password: password_connString, host, port: 5432 };
+            dropdb(config, this.databaseName, (err) => {
+                if (err) {
+                    console.error(err);
+                    process.exit(-1);
+                }
+            });
+        }
+
     }
 
     public async getClientConfig(): Promise<ClientConfig> {
         const { username, password } = await this.parent.getCredentials();
 
-        if (username && password) {
-            const ssl: ConnectionOptions = {
-                // Always provide the certificate since it is accepted even when SSL is disabled
-                // Certificate source: https://aka.ms/AA7wnvl
-                ca: BaltimoreCyberTrustRoot
-            };
+        const ssl: ConnectionOptions = {
+            // Always provide the certificate since it is accepted even when SSL is disabled
+            // Certificate source: https://aka.ms/AA7wnvl
+            ca: BaltimoreCyberTrustRoot
+        };
 
-            const host: string = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
+        if (username && password) {
+
+            let host: string;
+            if (this.parent.connectionString) {
+                host = nonNullProp(this.parent.connectionString, 'fullId');
+            } else {
+                host = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
+            }
             const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
 
             // Ensure the client config is valid before returning
+            const client: Client = new Client(clientConfig);
+            try {
+                await client.connect();
+                return clientConfig;
+            } finally {
+                await client.end();
+            }
+        } else if (this.parent.connectionString) {
+            const username_connString = nonNullProp(this.parent.connectionString, 'username');
+            const password_connString = nonNullProp(this.parent.connectionString, 'password');
+            const host = nonNullProp(this.parent.connectionString, 'hostName');
+            const clientConfig: ClientConfig = { user: username_connString, password: password_connString, ssl, host, port: 5432, database: this.databaseName };
             const client: Client = new Client(clientConfig);
             try {
                 await client.connect();
@@ -129,7 +162,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     }
 }
 
-const BaltimoreCyberTrustRoot: string = `-----BEGIN CERTIFICATE-----
+export const BaltimoreCyberTrustRoot: string = `-----BEGIN CERTIFICATE-----
 MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYDVQQGEwJJ
 RTESMBAGA1UEChMJQmFsdGltb3JlMRMwEQYDVQQLEwpDeWJlclRydXN0MSIwIAYD
 VQQDExlCYWx0aW1vcmUgQ3liZXJUcnVzdCBSb290MB4XDTAwMDUxMjE4NDYwMFoX

@@ -3,13 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { ServerListResult } from 'azure-arm-postgresql/lib/models';
-import { Server } from 'http';
 import { ServiceClientCredentials } from 'ms-rest';
 import { AzureEnvironment } from 'ms-rest-azure';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, createAzureClient, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, getThemedIconPath } from '../constants';
@@ -21,6 +18,7 @@ import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
 import { parseMongoConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
+import { parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
@@ -171,8 +169,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
     }
 
-    public async attachConnectionString(connectionString: string, api: API.MongoDB | API.Core): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase> {
-        const treeItem = <MongoAccountTreeItem | DocDBAccountTreeItemBase>await this.createTreeItem(connectionString, api);
+    public async attachConnectionString(connectionString: string, api: API.MongoDB | API.Core | API.Postgres): Promise<MongoAccountTreeItem & DocDBAccountTreeItemBase & PostgresServerTreeItem> {
+        const treeItem = <MongoAccountTreeItem & DocDBAccountTreeItemBase & PostgresServerTreeItem>await this.createTreeItem(connectionString, api);
         await this.attachAccount(treeItem, connectionString);
         await this.refresh();
         return treeItem;
@@ -231,6 +229,9 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 removeTreeItemFromCache(parsedCS);
             } else if (node instanceof DocDBAccountTreeItemBase) {
                 const parsedCS = parseDocDBConnectionString(node.connectionString);
+                removeTreeItemFromCache(parsedCS);
+            } else if (node instanceof PostgresServerTreeItem) {
+                const parsedCS = node.connectionString;
                 removeTreeItemFromCache(parsedCS);
             }
         }
@@ -318,16 +319,10 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 
             label = label || `${id} (${getExperienceFromApi(api).shortName})`;
             treeItem = new MongoAccountTreeItem(this, id, label, connectionString, isEmulator);
+            // tslint:disable-next-line: possible-timing-attack
         } else if (api === API.Postgres) {
-            let treeItemPostgres: AzExtTreeItem[];
-            const postgresClient: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-            const postgresServers: ServerListResult = await postgresClient.servers.list();
-            treeItemPostgres = await this.createTreeItemsWithErrorHandling(
-                postgresServers,
-                'invalidPostgreSQLAccount',
-                async (server: Server) => new PostgresServerTreeItem(this, server),
-                (server: Server) => server.name
-            );
+            const parsedPostgresConnSrting = await parsePostgresConnectionString(connectionString);
+            treeItem = new PostgresServerTreeItem(this, undefined, parsedPostgresConnSrting);
         } else {
             const parsedCS = parseDocDBConnectionString(connectionString);
 
@@ -366,6 +361,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 api = API.Table;
             } else if (node instanceof DocDBAccountTreeItem) {
                 api = API.Core;
+            } else if (node instanceof PostgresServerTreeItem) {
+                api = API.Postgres;
             } else {
                 throw new Error(`Unexpected account node "${node.constructor.name}".`);
             }

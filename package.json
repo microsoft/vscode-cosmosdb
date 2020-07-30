@@ -612,6 +612,10 @@
                     "when": "view == azureDatabasesExplorer && viewItem == postgresServer"
                 },
                 {
+                    "command": "postgreSQL.createDatabase",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresServerAttached"
+                },
+                {
                     "command": "cosmosDB.detachDatabaseAccount",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBMongoServerAttached"
                 },
@@ -626,6 +630,10 @@
                 {
                     "command": "cosmosDB.detachDatabaseAccount",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBTableAccountAttached"
+                },
+                {
+                    "command": "cosmosDB.detachDatabaseAccount",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresServerAttached"
                 },
                 {
                     "command": "cosmosDB.connectMongoDB",
@@ -814,6 +822,10 @@
                 {
                     "command": "azureDatabases.refresh",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBMongoServerAttached"
+                },
+                {
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureDatabasesExplorer && viewItem == postgresServerAttached"
                 },
                 {
                     "command": "azureDatabases.refresh",
@@ -1040,6 +1052,7 @@
         "pg": "^7.18.1",
         "pg-connection-string": "^2.3.0",
         "pg-structure": "^5.10.7",
+        "pgtools": "^0.3.0",
         "public-ip": "^4.0.0",
         "semver": "^7.2.2",
         "underscore": "^1.8.3",

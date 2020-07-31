@@ -7,21 +7,31 @@ import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
 import { ResourceManagementClient } from 'azure-arm-resource';
 import * as vscode from 'vscode';
 import { TestAzureAccount } from 'vscode-azureextensiondev';
-import { AzExtTreeDataProvider, AzureAccountTreeItemWithAttached, createAzureClient, ext } from '../../extension.bundle';
-import { longRunningTestsEnabled } from '../global.test';
+import { AzExtTreeDataProvider, AzureAccountTreeItemWithAttached, createAzureClient, ext, randomUtils } from '../../extension.bundle';
+import { longRunningTestsEnabled, testUserInput } from '../global.test';
 
 export let testAccount: TestAzureAccount;
 export let client: CosmosDBManagementClient;
 export const resourceGroupsToDelete: string[] = [];
+export const accountList: {} = {};
+export const resourceGroupList: {} = {};
+export enum AccountApi {
+    MongoDB = 'MongoDB',
+    Graph = 'graph',
+    Core = 'SQL'
+}
 
 suiteSetup(async function (this: Mocha.Context): Promise<void> {
     if (longRunningTestsEnabled) {
-        this.timeout(2 * 60 * 1000);
+        this.timeout(20 * 60 * 1000);
         testAccount = new TestAzureAccount(vscode);
         await testAccount.signIn();
         ext.azureAccountTreeItem = new AzureAccountTreeItemWithAttached(testAccount);
         ext.tree = new AzExtTreeDataProvider(ext.azureAccountTreeItem, 'azureDatabases.loadMore');
         client = createAzureClient(testAccount.getSubscriptionContext(), CosmosDBManagementClient);
+
+        // Create account
+        await Promise.all([delayCreateAccount(5, /graph/), delayCreateAccount(10, /MongoDB/), delayCreateAccount(15, /SQL/)]);
     }
 });
 
@@ -45,4 +55,31 @@ async function deleteResourceGroups(): Promise<void> {
             console.log(`Ignoring resource group "${resourceGroup}" because it does not exist.`);
         }
     }));
+}
+
+async function createAccount(accountType: RegExp): Promise<void> {
+    // Cosmos DB account must have lower case name
+    const accountName: string = randomUtils.getRandomHexString(12).toLowerCase();
+    const resourceGroupName: string = randomUtils.getRandomHexString(12);
+    accountList[accountType.source] = accountName;
+    resourceGroupList[accountType.source] = resourceGroupName;
+    resourceGroupsToDelete.push(resourceGroupName);
+    const testInputs: (string | RegExp)[] = [accountType, accountName, '$(plus) Create new resource group', resourceGroupName, 'West US'];
+    await testUserInput.runWithInputs(testInputs, async () => {
+        await vscode.commands.executeCommand('azureDatabases.createServer');
+    });
+}
+
+async function delayCreateAccount(ms: number, accountType: RegExp): Promise<void> {
+    await new Promise<void>((resolve: () => void): void => {
+        setTimeout(async () => {
+            try {
+                await createAccount(accountType);
+            } catch {
+            }
+            finally {
+                resolve();
+            }
+        }, ms * 1000);
+    });
 }

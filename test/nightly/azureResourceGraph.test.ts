@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
-import { client, resourceGroupsToDelete, testAccount } from './global.resource.test';
+import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
 
 suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(20 * 60 * 1000);
@@ -23,18 +23,12 @@ suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
             this.skip();
         }
         this.timeout(2 * 60 * 1000);
-        resourceGroupName = randomUtils.getRandomHexString(12);
-        // Cosmos DB account must have lower case name
-        accountName = randomUtils.getRandomHexString(12).toLowerCase();
+        resourceGroupName = resourceGroupList[AccountApi.Graph];
+        accountName = accountList[AccountApi.Graph];
         databaseName = randomUtils.getRandomHexString(12);
-        resourceGroupsToDelete.push(resourceGroupName);
     });
 
     test('Create graph account', async () => {
-        const testInputs: (string | RegExp)[] = [/graph/, accountName, '$(plus) Create new resource group', resourceGroupName, 'West US'];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('azureDatabases.createServer');
-        });
         const getAccount: CosmosDBManagementModels.DatabaseAccount | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
         assert.ok(getAccount);
     });

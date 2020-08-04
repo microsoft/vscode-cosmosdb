@@ -148,7 +148,7 @@ async function searchPostgresServers(dbAccount: PostgresServerTreeItem, expected
             if (expected.databaseName) {
                 const dbs = await dbAccount.getCachedChildren(context);
                 for (const db of dbs) {
-                    if (db instanceof PostgresDatabaseTreeItem && expected.databaseName == db.databaseName) {
+                    if (db instanceof PostgresDatabaseTreeItem && expected.databaseName === db.databaseName) {
                         return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
                     }
                 }

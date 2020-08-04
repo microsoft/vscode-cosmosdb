@@ -10,6 +10,8 @@ import { ext } from '../../extensionVariables';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
+import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
+import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { DatabaseTreeItem } from '../../vscode-cosmosdb.api';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 
@@ -17,7 +19,7 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
     public databaseName: string;
     private _dbNode: AzureTreeItem | undefined;
 
-    constructor(parsedCS: ParsedConnectionString, databaseName: string, accountNode?: MongoAccountTreeItem | DocDBAccountTreeItemBase, dbNode?: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase) {
+    constructor(parsedCS: ParsedConnectionString, databaseName: string, accountNode?: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem, dbNode?: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase | PostgresDatabaseTreeItem) {
         super(parsedCS, accountNode);
         this.databaseName = databaseName;
         this._dbNode = dbNode;
@@ -28,7 +30,7 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
             context.errorHandling.suppressDisplay = true;
             context.errorHandling.rethrow = true;
 
-            const accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase = await this.getAccountNode();
+            const accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem = await this.getAccountNode();
             if (!this._dbNode) {
                 const databaseId = `${accountNode.fullId}/${this.databaseName}`;
                 this._dbNode = await ext.tree.findTreeItem(databaseId, context);

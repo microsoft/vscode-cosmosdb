@@ -12,6 +12,9 @@ import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
+import { ParsedPostgresConnectionString, parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
+import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
+import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
 import { DatabaseAccountTreeItem, DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
@@ -27,6 +30,8 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
         let parsedCS: ParsedConnectionString;
         if (/^mongodb[^:]*:\/\//i.test(connectionString)) {
             parsedCS = await parseMongoConnectionString(connectionString);
+        } else if (/^postgres[^:]*:\/\//i.test(connectionString)) {
+            parsedCS = await parsePostgresConnectionString(connectionString);
         } else {
             parsedCS = parseDocDBConnectionString(connectionString);
         }
@@ -82,35 +87,75 @@ async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedCon
                 return undefined;
             }
 
-            let actual: ParsedConnectionString;
-            if (dbAccount instanceof MongoAccountTreeItem) {
-                actual = await parseMongoConnectionString(dbAccount.connectionString);
-            } else if (dbAccount instanceof DocDBAccountTreeItemBase) {
-                actual = parseDocDBConnectionString(dbAccount.connectionString);
+            if (dbAccount instanceof PostgresServerTreeItem) {
+                return await searchPostgresServers(dbAccount, expected, context);
             } else {
-                return undefined;
-            }
-
-            if (expected.accountId === actual.accountId) {
-                if (expected.databaseName) {
-                    const dbs = await dbAccount.getCachedChildren(context);
-                    for (const db of dbs) {
-                        if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) && expected.databaseName === db.databaseName) {
-                            return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
-                        }
-                    }
-
-                    // We found the right account - just not the db. In this case we can still 'reveal' the account
-                    return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount);
+                let actual: ParsedConnectionString;
+                if (dbAccount instanceof MongoAccountTreeItem) {
+                    actual = await parseMongoConnectionString(dbAccount.connectionString);
+                } else if (dbAccount instanceof DocDBAccountTreeItemBase) {
+                    actual = parseDocDBConnectionString(dbAccount.connectionString);
+                } else {
+                    return undefined;
                 }
 
-                return new DatabaseAccountTreeItemInternal(expected, dbAccount);
+                if (expected.accountId === actual.accountId) {
+                    if (expected.databaseName) {
+                        const dbs = await dbAccount.getCachedChildren(context);
+                        for (const db of dbs) {
+                            if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) && expected.databaseName === db.databaseName) {
+                                return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
+                            }
+                        }
+
+                        // We found the right account - just not the db. In this case we can still 'reveal' the account
+                        return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount);
+                    }
+
+                    return new DatabaseAccountTreeItemInternal(expected, dbAccount);
+                }
             }
+
         }
     } catch (error) {
         // Swallow all errors to avoid blocking the db account search
         // https://github.com/microsoft/vscode-cosmosdb/issues/966
     }
 
+    return undefined;
+}
+async function searchPostgresServers(dbAccount: PostgresServerTreeItem, expected: ParsedConnectionString, context: IActionContext): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
+    if (dbAccount.connectionString) {
+        let actual: ParsedPostgresConnectionString;
+        actual = dbAccount.connectionString;
+        if (expected.accountId === actual.accountId) {
+            if (expected.databaseName) {
+                const dbs = await dbAccount.getCachedChildren(context);
+                for (const db of dbs) {
+                    if (db instanceof PostgresDatabaseTreeItem && expected.databaseName === db.databaseName) {
+                        return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
+                    }
+                }
+                // We found the right account - just not the db. In this case we can still 'reveal' the account
+                return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount);
+            }
+            return new DatabaseAccountTreeItemInternal(expected, dbAccount);
+        }
+    } else {
+        const actualDomainName = dbAccount.server.fullyQualifiedDomainName;
+        const expectedDomainName = expected.accountId.split(':')[0];
+        if (expectedDomainName === actualDomainName) {
+            if (expected.databaseName) {
+                const dbs = await dbAccount.getCachedChildren(context);
+                for (const db of dbs) {
+                    if (db instanceof PostgresDatabaseTreeItem && expected.databaseName == db.databaseName) {
+                        return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
+                    }
+                }
+                return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount);
+            }
+            return new DatabaseAccountTreeItemInternal(expected, dbAccount);
+        }
+    }
     return undefined;
 }

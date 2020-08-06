@@ -57,14 +57,17 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get label(): string {
-        return this.name;
+        if (this.server) {
+            return this.name;
+        }
+        return this.id;
     }
 
     public get name(): string {
         if (this.server) {
             return nonNullProp(this.server, 'name');
         }
-        return nonNullProp(this.connectionString, 'hostName') + ":" + nonNullProp(this.connectionString, 'port');
+        return nonNullProp(this.connectionString, 'hostName');
     }
 
     public get id(): string {

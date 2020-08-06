@@ -132,10 +132,10 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         if (username && password) {
 
             let host: string;
-            if (this.parent.connectionString) {
-                host = nonNullProp(this.parent.connectionString, 'fullId');
-            } else {
+            if (this.parent.server) {
                 host = nonNullProp(this.parent.server, 'fullyQualifiedDomainName');
+            } else {
+                host = nonNullProp(this.parent.connectionString, 'fullId');
             }
             const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: this.databaseName };
 
@@ -147,7 +147,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
             } finally {
                 await client.end();
             }
-        } else if (this.parent.connectionString) {
+        } else if (!this.parent.server && this.parent.connectionString) {
             const username_connString = nonNullProp(this.parent.connectionString, 'username');
             const password_connString = nonNullProp(this.parent.connectionString, 'password');
             const host = nonNullProp(this.parent.connectionString, 'hostName');

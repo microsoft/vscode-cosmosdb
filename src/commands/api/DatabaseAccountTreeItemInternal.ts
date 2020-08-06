@@ -43,10 +43,8 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
                 };
             }
         } else if (this._accountNode instanceof PostgresServerTreeItem) {
-            const hostName: string = nonNullProp(this._accountNode?.connectionString, 'hostName');
-            const serverName: string = hostName.split('.')[0];
             return {
-                accountName: serverName
+                accountName: nonNullProp(this._accountNode, 'name')
             };
         }
         return undefined;
@@ -64,7 +62,7 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
     }
 
     public get postgresData(): { username: string; password: string; } | undefined {
-        if (this._accountNode instanceof PostgresServerTreeItem) {
+        if (this._accountNode instanceof PostgresServerTreeItem && this._accountNode.connectionString) {
             return {
                 username: this._accountNode.connectionString.username,
                 password: this._accountNode.connectionString.password

@@ -5,10 +5,9 @@
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { Database, DatabaseListResult, Server } from 'azure-arm-postgresql/lib/models';
-import { ClientConfig, Pool } from 'pg';
+import { ClientConfig, Pool, QueryResult } from "pg";
 import { createdb } from 'pgtools';
 import { coerce, gte, SemVer } from 'semver';
-import { ConnectionOptions } from 'tls';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ICreateChildImplContext, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -16,8 +15,9 @@ import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
+import { getClientConfig } from '../getClientConfig';
 import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
-import { BaltimoreCyberTrustRoot, PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
+import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresFunctionTreeItem } from './PostgresFunctionTreeItem';
 import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
@@ -64,17 +64,21 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get name(): string {
-        if (this.server) {
-            return nonNullProp(this.server, 'name');
+        if (this.connectionString) {
+            if (!this.connectionString.accountConnection) {
+                return this.connectionString.fullId;
+            } else {
+                return this.connectionString.accountId;
+            }
         }
-        return nonNullProp(this.connectionString, 'hostName');
+        return nonNullProp(this.server, 'name');
     }
 
     public get id(): string {
-        if (this.server) {
-            return nonNullProp(this.server, 'id');
+        if (this.connectionString) {
+            return nonNullProp(this.connectionString, 'fullId');
         }
-        return nonNullProp(this.connectionString, 'fullId');
+        return nonNullProp(this.server, 'id');
     }
 
     public get description(): string | undefined {
@@ -86,7 +90,26 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
-        if (this.server) {
+        if (this.connectionString) {
+            const config: ClientConfig = await getClientConfig(this, 'postgres');
+            const pool = new Pool(config);
+            let queryResult: QueryResult;
+            if (!this.connectionString.accountConnection) {
+                const query = `SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false and datname = '` + nonNullProp(this.connectionString, 'databaseName') + `';`;
+                queryResult = await pool.query(query);
+            } else {
+                queryResult = await pool.query(`SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false;`);
+            }
+            const listOfDatabases = queryResult.rows;
+            return this.createTreeItemsWithErrorHandling(
+                listOfDatabases,
+                'invalidPostgresServer',
+                (database) => {
+                    return database.datname && !['azure_maintenance', 'azure_sys'].includes(database.datname) ? new PostgresDatabaseTreeItem(this, database.datname) : undefined;
+                },
+                (database) => database.datname
+            );
+        } else {
             const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
             const listOfDatabases: DatabaseListResult = await client.databases.listByServer(this.resourceGroup, this.name);
             return this.createTreeItemsWithErrorHandling(
@@ -96,27 +119,6 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
                     return database.name && !['azure_maintenance', 'azure_sys'].includes(database.name) ? new PostgresDatabaseTreeItem(this, database.name) : undefined;
                 },
                 (database) => database.name
-            );
-        } else {
-            const username_connString = nonNullProp(this.connectionString, 'username');
-            const password_connString = nonNullProp(this.connectionString, 'password');
-            const host = nonNullProp(this.connectionString, 'hostName');
-            const ssl: ConnectionOptions = {
-                // Always provide the certificate since it is accepted even when SSL is disabled
-                // Certificate source: https://aka.ms/AA7wnvl
-                ca: BaltimoreCyberTrustRoot
-            };
-            const config: ClientConfig = { user: username_connString, password: password_connString, ssl, host, port: 5432, database: 'postgres' };
-            const pool = new Pool(config);
-            const res = await pool.query(`SELECT datname FROM pg_database WHERE datistemplate = false;`);
-            const listOfDatabases = res.rows;
-            return this.createTreeItemsWithErrorHandling(
-                listOfDatabases,
-                'invalidPostgresServer',
-                (database) => {
-                    return database.datname && !['azure_maintenance', 'azure_sys'].includes(database.datname) ? new PostgresDatabaseTreeItem(this, database.datname) : undefined;
-                },
-                (database) => database.datname
             );
         }
     }
@@ -149,15 +151,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             const database: Database = { name: databaseName };
             await client.databases.createOrUpdate(this.resourceGroup, this.name, databaseName, database);
         } else {
-            const username_connString = nonNullProp(this.connectionString, 'username');
-            const password_connString = nonNullProp(this.connectionString, 'password');
-            const host = nonNullProp(this.connectionString, 'hostName');
-            const ssl: ConnectionOptions = {
-                // Always provide the certificate since it is accepted even when SSL is disabled
-                // Certificate source: https://aka.ms/AA7wnvl
-                ca: BaltimoreCyberTrustRoot
-            };
-            const config = { user: username_connString, password: password_connString, ssl, host, port: 5432 };
+            const config: ClientConfig = await getClientConfig(this, databaseName);
             context.showCreatingTreeItem(databaseName);
             await createdb(config, databaseName, (err: string) => {
                 if (err) {

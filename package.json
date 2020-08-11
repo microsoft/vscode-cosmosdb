@@ -46,7 +46,7 @@
         "onCommand:cosmosDB.attachEmulator",
         "onCommand:azureDatabases.createServer",
         "onCommand:cosmosDB.deleteAccount",
-        "onCommand:cosmosDB.detachDatabaseAccount",
+        "onCommand:azureDatabases.detachDatabaseAccount",
         "onCommand:cosmosDB.createMongoDatabase",
         "onCommand:cosmosDB.createMongoCollection",
         "onCommand:cosmosDB.createMongoDocument",
@@ -258,7 +258,7 @@
             },
             {
                 "category": "Cosmos DB",
-                "command": "cosmosDB.detachDatabaseAccount",
+                "command": "azureDatabases.detachDatabaseAccount",
                 "title": "Detach"
             },
             {
@@ -616,23 +616,23 @@
                     "when": "view == azureDatabasesExplorer && viewItem == postgresServerAttached"
                 },
                 {
-                    "command": "cosmosDB.detachDatabaseAccount",
+                    "command": "azureDatabases.detachDatabaseAccount",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBMongoServerAttached"
                 },
                 {
-                    "command": "cosmosDB.detachDatabaseAccount",
+                    "command": "azureDatabases.detachDatabaseAccount",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBGraphAccountAttached"
                 },
                 {
-                    "command": "cosmosDB.detachDatabaseAccount",
+                    "command": "azureDatabases.detachDatabaseAccount",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBDocumentServerAttached"
                 },
                 {
-                    "command": "cosmosDB.detachDatabaseAccount",
+                    "command": "azureDatabases.detachDatabaseAccount",
                     "when": "view == azureDatabasesExplorer && viewItem == cosmosDBTableAccountAttached"
                 },
                 {
-                    "command": "cosmosDB.detachDatabaseAccount",
+                    "command": "azureDatabases.detachDatabaseAccount",
                     "when": "view == azureDatabasesExplorer && viewItem == postgresServerAttached"
                 },
                 {

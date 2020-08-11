@@ -5,6 +5,7 @@
 
 import { ClientConfig } from "pg";
 import { IActionContext, IParsedError, parseError } from "vscode-azureextensionui";
+import { getClientConfig } from "../getClientConfig";
 import { firewallNotConfiguredErrorType, invalidCredentialsErrorType, PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";
 import { enterPostgresCredentials } from "./enterPostgresCredentials";
@@ -13,7 +14,7 @@ export async function checkAuthentication(context: IActionContext, treeItem: Pos
     let clientConfig: ClientConfig | undefined;
     while (!clientConfig) {
         try {
-            clientConfig = await treeItem.getClientConfig();
+            clientConfig = await getClientConfig(treeItem.parent, treeItem.databaseName);
         } catch (error) {
             const parsedError: IParsedError = parseError(error);
 

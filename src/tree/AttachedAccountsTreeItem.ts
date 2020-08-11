@@ -319,7 +319,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 
             label = label || `${id} (${getExperienceFromApi(api).shortName})`;
             treeItem = new MongoAccountTreeItem(this, id, label, connectionString, isEmulator);
-            // tslint:disable-next-line: possible-timing-attack
+            // tslint:disable-next-line: possible-timing-attack // not security related
         } else if (api === API.Postgres) {
             const parsedPostgresConnSrting = await parsePostgresConnectionString(connectionString);
             treeItem = new PostgresServerTreeItem(this, undefined, parsedPostgresConnSrting);

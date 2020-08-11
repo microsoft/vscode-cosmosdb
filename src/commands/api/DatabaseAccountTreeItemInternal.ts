@@ -16,11 +16,20 @@ import { DatabaseAccountTreeItem } from '../../vscode-cosmosdb.api';
 
 export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem {
     protected _parsedCS: ParsedConnectionString;
+    // tslint:disable-next-line: no-any
+    protected _apiType: any;
     private _accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem | undefined;
 
     constructor(parsedCS: ParsedConnectionString, accountNode?: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem) {
         this._parsedCS = parsedCS;
         this._accountNode = accountNode;
+        if (accountNode instanceof MongoAccountTreeItem) {
+            this._apiType = API.MongoDB;
+        } else if (accountNode instanceof DocDBAccountTreeItemBase) {
+            this._apiType = API.Core;
+        } else {
+            this._apiType = API.Postgres;
+        }
     }
 
     public get connectionString(): string {

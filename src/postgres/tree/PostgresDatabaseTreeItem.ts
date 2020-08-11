@@ -11,6 +11,7 @@ import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
+import { createPostgresConnectionString } from '../commands/copyConnectionString';
 import { getClientConfig } from '../getClientConfig';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
@@ -110,5 +111,10 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
             }
         }
 
+    }
+
+    public async getConnectionString(): Promise<string> {
+        const clientConfig: ClientConfig = await getClientConfig(this.parent, this.databaseName);
+        return createPostgresConnectionString(clientConfig);
     }
 }

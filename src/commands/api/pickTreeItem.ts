@@ -16,6 +16,9 @@ import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
+import { parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
+import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
+import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from '../../table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from '../../tree/AttachedAccountsTreeItem';
 import { localize } from '../../utils/localize';
@@ -25,8 +28,8 @@ import { cacheTreeItem } from './apiCache';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
-const databaseContextValues = [MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue, GraphDatabaseTreeItem.contextValue];
-const accountContextValues = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
+const databaseContextValues = [MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue, GraphDatabaseTreeItem.contextValue, PostgresDatabaseTreeItem.contextValue];
+const accountContextValues = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue, PostgresServerTreeItem.contextValue];
 
 function getDatabaseContextValue(apiType: CosmosDBApiType): string {
     switch (apiType) {
@@ -36,6 +39,8 @@ function getDatabaseContextValue(apiType: CosmosDBApiType): string {
             return DocDBDatabaseTreeItem.contextValue;
         case 'Graph':
             return GraphDatabaseTreeItem.contextValue;
+        case 'Postgres':
+            return PostgresDatabaseTreeItem.contextValue;
         default:
             throw new RangeError(`Unsupported api type "${apiType}".`);
     }
@@ -51,6 +56,8 @@ function getAccountContextValue(apiType: CosmosDBApiType): string {
             return GraphAccountTreeItem.contextValue;
         case 'Table':
             return TableAccountTreeItem.contextValue;
+        case 'Postgres':
+            return PostgresServerTreeItem.contextValue;
         default:
             throw new RangeError(`Unsupported api type "${apiType}".`);
     }
@@ -77,8 +84,8 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
         const pickedItem = await ext.tree.showTreeItemPicker(contextValuesToFind, context);
 
         let parsedCS: ParsedConnectionString;
-        let accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase;
-        let databaseNode: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase | undefined;
+        let accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem;
+        let databaseNode: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase | PostgresDatabaseTreeItem | undefined;
         if (pickedItem instanceof MongoAccountTreeItem) {
             parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
             accountNode = pickedItem;
@@ -91,6 +98,14 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
             databaseNode = pickedItem;
         } else if (pickedItem instanceof DocDBDatabaseTreeItemBase) {
             parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
+            accountNode = pickedItem.parent;
+            databaseNode = pickedItem;
+        } else if (pickedItem instanceof PostgresDatabaseTreeItem) {
+            if (pickedItem.parent.connectionString) {
+                parsedCS = pickedItem.parent.connectionString;
+            } else {
+                parsedCS = await parsePostgresConnectionString(await pickedItem.getConnectionString());
+            }
             accountNode = pickedItem.parent;
             databaseNode = pickedItem;
         } else {

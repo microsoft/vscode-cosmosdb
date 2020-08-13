@@ -51,6 +51,11 @@ export interface DatabaseAccountTreeItem extends CosmosDBTreeItem {
         masterKey: string;
         documentEndpoint: string;
     }
+
+    postgresData?: {
+        username: string;
+        password: string;
+    }
 }
 
 export interface DatabaseTreeItem extends DatabaseAccountTreeItem {
@@ -59,7 +64,7 @@ export interface DatabaseTreeItem extends DatabaseAccountTreeItem {
 
 export type CosmosDBResourceType = 'DatabaseAccount' | 'Database';
 
-export type CosmosDBApiType = 'Mongo' | 'SQL' | 'Graph' | 'Table';
+export type CosmosDBApiType = 'Mongo' | 'SQL' | 'Graph' | 'Table' | 'Postgres';
 
 export interface PickTreeItemOptions {
     /**

@@ -24,7 +24,7 @@ export async function copyConnectionString(context: IActionContext, node: Postgr
     vscode.window.showInformationMessage(message);
 }
 
-async function createPostgresConnectionString(clientConfig: ClientConfig): Promise<string> {
+export async function createPostgresConnectionString(clientConfig: ClientConfig): Promise<string> {
 
     const user: string = nonNullProp(clientConfig, 'user');
     const password: string = nonNullProp(clientConfig, 'password');

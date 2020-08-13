@@ -16,6 +16,7 @@ import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
+import { createPostgresConnectionString, ParsedPostgresConnectionString } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { azureUtils } from '../utils/azureUtils';
@@ -42,7 +43,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         treeItemPostgres = await this.createTreeItemsWithErrorHandling(
             postgresServers,
             'invalidPostgreSQLAccount',
-            async (server: Server) => new PostgresServerTreeItem(this, server),
+            async (server: Server) => await this.initPostgresChild(server),
             (server: Server) => server.name
         );
 
@@ -87,7 +88,12 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             const createMessage: string = localize('createdServerOutput', 'Successfully created PostgreSQL server "{0}".', wizardContext.newServerName);
             vscode.window.showInformationMessage(createMessage);
             ext.outputChannel.appendLog(createMessage);
-            return new PostgresServerTreeItem(this, nonNullProp(wizardContext, 'server'));
+            const server = nonNullProp(wizardContext, 'server');
+            const host = nonNullProp(server, 'fullyQualifiedDomainName');
+            const username: string | undefined = wizardContext.adminUser;
+            const password: string | undefined = wizardContext.adminPassword;
+            const connectionString: ParsedPostgresConnectionString = await createPostgresConnectionString(host, username, password);
+            return new PostgresServerTreeItem(this, connectionString, nonNullProp(server, 'id'), nonNullProp(server, 'version'));
         } else {
             return await this.initCosmosDBChild(client, nonNullProp(wizardContext, 'databaseAccount'));
         }
@@ -137,5 +143,9 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
             }
         }
+    }
+    private async initPostgresChild(server: Server): Promise<AzureTreeItem> {
+        const connectionString: ParsedPostgresConnectionString = await createPostgresConnectionString(nonNullProp(server, 'fullyQualifiedDomainName'));
+        return new PostgresServerTreeItem(this, connectionString, server.id, server.version);
     }
 }

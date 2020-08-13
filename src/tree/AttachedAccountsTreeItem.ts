@@ -21,6 +21,7 @@ import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
+import { localize } from '../utils/localize';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { SubscriptionTreeItem } from './SubscriptionTreeItem';
 
@@ -145,7 +146,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 }
                 validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
             } else if (defaultExperience.api === API.Postgres) {
-                placeholder = 'postgres://host:port';
+                placeholder = localize('attachedPostgresPlaceholder', '"postgres://username:password@host" or "postgres://username:password@host/database"');
                 validateInput = AttachedAccountsTreeItem.validatePostgresConnectionString;
             } else {
                 placeholder = 'AccountEndpoint=...;AccountKey=...';
@@ -322,7 +323,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             // tslint:disable-next-line: possible-timing-attack // not security related
         } else if (api === API.Postgres) {
             const parsedPostgresConnSrting = await parsePostgresConnectionString(connectionString);
-            treeItem = new PostgresServerTreeItem(this, undefined, parsedPostgresConnSrting);
+            treeItem = new PostgresServerTreeItem(this, parsedPostgresConnSrting);
         } else {
             const parsedCS = parseDocDBConnectionString(connectionString);
 

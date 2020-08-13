@@ -11,8 +11,12 @@ import { invalidCredentialsErrorType } from "./tree/PostgresDatabaseTreeItem";
 import { PostgresServerTreeItem } from "./tree/PostgresServerTreeItem";
 
 export async function getClientConfig(treeItem: PostgresServerTreeItem, databaseName: string): Promise<ClientConfig> {
-    const { username, password } = await treeItem.getCredentials();
-
+    let { username, password } = await treeItem.getCredentials();
+    if (!(username && password)) {
+        username = treeItem.connectionString.username;
+        password = treeItem.connectionString.password;
+    }
+    let host: string;
     const ssl: ConnectionOptions = {
         // Always provide the certificate since it is accepted even when SSL is disabled
         // Certificate source: https://aka.ms/AA7wnvl
@@ -21,29 +25,15 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
     let clientConfig: ClientConfig;
     let client: Client;
     if (username && password) {
-
-        let host: string;
-        if (treeItem.connectionString) {
-            host = nonNullProp(treeItem.connectionString, 'fullId');
-        } else {
-            host = nonNullProp(treeItem.server, 'fullyQualifiedDomainName');
-        }
-        clientConfig = { user: username, password, ssl, host, port: 5432, database: databaseName };
-
-        // Ensure the client config is valid before returning
-        client = new Client(clientConfig);
-    } else if (treeItem.connectionString) {
-        const username_connString = nonNullProp(treeItem.connectionString, 'username');
-        const password_connString = nonNullProp(treeItem.connectionString, 'password');
-        const host = nonNullProp(treeItem.connectionString, 'hostName');
-        clientConfig = { user: username_connString, password: password_connString, ssl, host, port: 5432, database: databaseName };
-        client = new Client(clientConfig);
+        host = nonNullProp(treeItem.connectionString, 'hostName');
     } else {
         throw {
             message: localize('mustEnterCredentials', 'Must enter credentials to connect to server.'),
             code: invalidCredentialsErrorType
         };
     }
+    clientConfig = { user: username, password: password, ssl, host, port: 5432, database: databaseName };
+    client = new Client(clientConfig);
     try {
         await client.connect();
         return clientConfig;

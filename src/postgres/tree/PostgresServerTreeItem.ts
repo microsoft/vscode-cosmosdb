@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { Server } from 'azure-arm-postgresql/lib/models';
 import { Pool } from "pg";
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
@@ -34,7 +33,6 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public static serviceName: string = "ms-azuretools.vscode-azuredatabases.postgresPasswords";
     public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
-    public readonly server: Server;
     public connectionString: ParsedPostgresConnectionString;
     public resourceGroup: string;
 
@@ -56,7 +54,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get label(): string {
-        if (this.server) {
+        if (this._serverId) {
             return this.name;
         }
         return this.id;

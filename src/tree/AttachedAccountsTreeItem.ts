@@ -34,7 +34,6 @@ interface IPersistedAccount {
 
 export const AttachedAccountSuffix: string = 'Attached';
 export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start with "mongodb://" or "mongodb+srv://"';
-export const POSTGRES_CONNECTION_EXPECTED: string = 'Connection string must start with "postgres://"';
 
 const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
 
@@ -82,7 +81,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             return undefined;
         }
 
-        return POSTGRES_CONNECTION_EXPECTED;
+        return localize('invalidPostgresConnectionString', 'Connection string must start with "postgres://"');
     }
 
     private static validateDocDBConnectionString(value: string): string | undefined {

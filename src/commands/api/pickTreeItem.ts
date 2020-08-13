@@ -16,7 +16,6 @@ import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
-import { parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from '../../table/tree/TableAccountTreeItem';
@@ -92,6 +91,9 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
         } else if (pickedItem instanceof DocDBAccountTreeItemBase) {
             parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
             accountNode = pickedItem;
+        } else if (pickedItem instanceof PostgresServerTreeItem) {
+            parsedCS = pickedItem.connectionString;
+            accountNode = pickedItem;
         } else if (pickedItem instanceof MongoDatabaseTreeItem) {
             parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
             accountNode = pickedItem.parent;
@@ -101,11 +103,7 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
             accountNode = pickedItem.parent;
             databaseNode = pickedItem;
         } else if (pickedItem instanceof PostgresDatabaseTreeItem) {
-            if (pickedItem.parent.connectionString) {
-                parsedCS = pickedItem.parent.connectionString;
-            } else {
-                parsedCS = await parsePostgresConnectionString(await pickedItem.getConnectionString());
-            }
+            parsedCS = pickedItem.parent.connectionString;
             accountNode = pickedItem.parent;
             databaseNode = pickedItem;
         } else {

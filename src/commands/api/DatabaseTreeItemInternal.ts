@@ -34,7 +34,11 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
             if (!this._dbNode) {
                 let databaseId: string;
                 if (accountNode instanceof PostgresServerTreeItem) {
-                    databaseId = `${accountNode.id}/${this.databaseName}`;
+                    if (accountNode.connectionString.databaseName) {
+                        databaseId = accountNode.id;
+                    } else {
+                        databaseId = `${accountNode.id}/${this.databaseName}`;
+                    }
                 } else {
                     databaseId = `${accountNode.fullId}/${this.databaseName}`;
                 }

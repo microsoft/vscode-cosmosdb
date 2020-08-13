@@ -125,37 +125,20 @@ async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedCon
     return undefined;
 }
 async function searchPostgresServers(dbAccount: PostgresServerTreeItem, expected: ParsedConnectionString, context: IActionContext): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
-    if (dbAccount.server) {
-        const actualDomainName = dbAccount.server.fullyQualifiedDomainName;
-        const expectedDomainName = expected.accountId.split(':')[0];
-        if (expectedDomainName === actualDomainName) {
-            if (expected.databaseName) {
-                const dbs = await dbAccount.getCachedChildren(context);
-                for (const db of dbs) {
-                    if (db instanceof PostgresDatabaseTreeItem && expected.databaseName === db.databaseName) {
-                        return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
-                    }
+    let actual: ParsedPostgresConnectionString;
+    actual = dbAccount.connectionString;
+    if (expected.fullId === actual.fullId) {
+        if (expected.databaseName) {
+            const dbs = await dbAccount.getCachedChildren(context);
+            for (const db of dbs) {
+                if (db instanceof PostgresDatabaseTreeItem && expected.databaseName === db.databaseName) {
+                    return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
                 }
-                return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount);
             }
-            return new DatabaseAccountTreeItemInternal(expected, dbAccount);
+            // We found the right account - just not the db. In this case we can still 'reveal' the account
+            return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount);
         }
-    } else {
-        let actual: ParsedPostgresConnectionString;
-        actual = dbAccount.connectionString;
-        if (expected.accountId === actual.accountId) {
-            if (expected.databaseName) {
-                const dbs = await dbAccount.getCachedChildren(context);
-                for (const db of dbs) {
-                    if (db instanceof PostgresDatabaseTreeItem && expected.databaseName === db.databaseName) {
-                        return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
-                    }
-                }
-                // We found the right account - just not the db. In this case we can still 'reveal' the account
-                return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount);
-            }
-            return new DatabaseAccountTreeItemInternal(expected, dbAccount);
-        }
+        return new DatabaseAccountTreeItemInternal(expected, dbAccount);
     }
     return undefined;
 }

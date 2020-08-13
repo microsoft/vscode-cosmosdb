@@ -11,35 +11,38 @@ import { invalidCredentialsErrorType } from "./tree/PostgresDatabaseTreeItem";
 import { PostgresServerTreeItem } from "./tree/PostgresServerTreeItem";
 
 export async function getClientConfig(treeItem: PostgresServerTreeItem, databaseName: string): Promise<ClientConfig> {
-    const { username, password } = await treeItem.getCredentials();
-
+    let { username, password } = await treeItem.getCredentials();
+    if (!(username && password)) {
+        username = treeItem.connectionString.username;
+        password = treeItem.connectionString.password;
+    }
+    let host: string;
+    const ssl: ConnectionOptions = {
+        // Always provide the certificate since it is accepted even when SSL is disabled
+        // Certificate source: https://aka.ms/AA7wnvl
+        ca: BaltimoreCyberTrustRoot
+    };
+    let clientConfig: ClientConfig;
+    let client: Client;
     if (username && password) {
-        const ssl: ConnectionOptions = {
-            // Always provide the certificate since it is accepted even when SSL is disabled
-            // Certificate source: https://aka.ms/AA7wnvl
-            ca: BaltimoreCyberTrustRoot
-        };
-
-        const host: string = nonNullProp(treeItem.server, 'fullyQualifiedDomainName');
-        const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: databaseName };
-
-        // Ensure the client config is valid before returning
-        const client: Client = new Client(clientConfig);
-        try {
-            await client.connect();
-            return clientConfig;
-        } finally {
-            await client.end();
-        }
+        host = nonNullProp(treeItem.connectionString, 'hostName');
     } else {
         throw {
             message: localize('mustEnterCredentials', 'Must enter credentials to connect to server.'),
             code: invalidCredentialsErrorType
         };
     }
+    clientConfig = { user: username, password: password, ssl, host, port: 5432, database: databaseName };
+    client = new Client(clientConfig);
+    try {
+        await client.connect();
+        return clientConfig;
+    } finally {
+        await client.end();
+    }
 }
 
-const BaltimoreCyberTrustRoot: string = `-----BEGIN CERTIFICATE-----
+export const BaltimoreCyberTrustRoot: string = `-----BEGIN CERTIFICATE-----
 MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYDVQQGEwJJ
 RTESMBAGA1UEChMJQmFsdGltb3JlMRMwEQYDVQQLEwpDeWJlclRydXN0MSIwIAYD
 VQQDExlCYWx0aW1vcmUgQ3liZXJUcnVzdCBSb290MB4XDTAwMDUxMjE4NDYwMFoX

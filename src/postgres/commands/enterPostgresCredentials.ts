@@ -21,7 +21,7 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
         validateInput: (value: string) => { return (value && value.length) ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.'); }
     });
 
-    const usernameSuffix: string = `@${treeItem.server.name}`;
+    const usernameSuffix: string = `@${treeItem.name}`;
     if (!username.includes(usernameSuffix)) {
         username += usernameSuffix;
     }
@@ -32,8 +32,8 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
         validateInput: (value: string) => { return (value && value.length) ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.'); }
     });
 
-    const serverName: string = nonNullProp(treeItem.server, 'name');
-    const id: string = nonNullProp(treeItem.server, 'id');
+    const serverName: string = nonNullProp(treeItem, 'name');
+    const id: string = nonNullProp(treeItem, 'id');
 
     const progressMessage: string = localize('setupCredentialsMessage', 'Setting up credentials for server "{0}"...', serverName);
     const options: vscode.ProgressOptions = {
@@ -48,6 +48,8 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
     const completedMessage: string = localize('setupCredentialsMessage', 'Successfully added credentials to server "{0}".', serverName);
     vscode.window.showInformationMessage(completedMessage);
     ext.outputChannel.appendLog(completedMessage);
+
+    await treeItem.updateConnectionString(username, password);
 
     await treeItem.refresh();
 }

@@ -41,6 +41,9 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
     }
 
     public get port(): string {
+        if (!this._parsedCS.port && this._apiType === API.Postgres) {
+            return '5432';
+        }
         return this._parsedCS.port;
     }
 
@@ -70,11 +73,12 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
         }
     }
 
-    public get postgresData(): { username: string; password: string; } | undefined {
-        if (this._accountNode instanceof PostgresServerTreeItem && this._accountNode.connectionString) {
+    public get postgresData(): { username: string; password: string } | undefined {
+        if (this._accountNode instanceof PostgresServerTreeItem) {
+            const connectionString = this._accountNode.connectionString;
             return {
-                username: this._accountNode.connectionString.username,
-                password: this._accountNode.connectionString.password
+                username: connectionString.username,
+                password: connectionString.password
             };
         } else {
             return undefined;

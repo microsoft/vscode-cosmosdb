@@ -5,6 +5,8 @@
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { Database, DatabaseListResult, Server } from 'azure-arm-postgresql/lib/models';
+import { ClientConfig, Pool, QueryResult } from "pg";
+import { createdb } from 'pgtools';
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ICreateChildImplContext, ISubscriptionContext } from 'vscode-azureextensionui';
@@ -13,6 +15,8 @@ import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
+import { getClientConfig } from '../getClientConfig';
+import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresFunctionTreeItem } from './PostgresFunctionTreeItem';
@@ -32,15 +36,20 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
     public readonly server: Server;
+    public readonly connectionString: ParsedPostgresConnectionString;
     public resourceGroup: string;
 
     private _serverId: string;
 
-    constructor(parent: AzureParentTreeItem, server: Server) {
+    constructor(parent: AzureParentTreeItem, server?: Server, connectionString?: ParsedPostgresConnectionString) {
         super(parent);
-        this.server = server;
-        this._serverId = nonNullProp(this.server, 'id');
-        this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
+        if (server) {
+            this.server = server;
+            this._serverId = nonNullProp(this.server, 'id');
+            this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
+        } else if (connectionString) {
+            this.connectionString = connectionString;
+        }
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -48,14 +57,27 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get label(): string {
-        return this.name;
+        if (this.server) {
+            return this.name;
+        }
+        return this.id;
     }
 
     public get name(): string {
+        if (this.connectionString) {
+            if (!this.connectionString.accountConnection) {
+                return this.connectionString.fullId;
+            } else {
+                return this.connectionString.accountId;
+            }
+        }
         return nonNullProp(this.server, 'name');
     }
 
     public get id(): string {
+        if (this.connectionString) {
+            return nonNullProp(this.connectionString, 'fullId');
+        }
         return nonNullProp(this.server, 'id');
     }
 
@@ -68,16 +90,37 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
-        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-        const listOfDatabases: DatabaseListResult = await client.databases.listByServer(this.resourceGroup, this.name);
-        return this.createTreeItemsWithErrorHandling(
-            listOfDatabases,
-            'invalidPostgresServer',
-            (database) => {
-                return database.name && !['azure_maintenance', 'azure_sys'].includes(database.name) ? new PostgresDatabaseTreeItem(this, database.name) : undefined;
-            },
-            (database) => database.name
-        );
+        if (this.connectionString) {
+            const config: ClientConfig = await getClientConfig(this, 'postgres');
+            const pool = new Pool(config);
+            let queryResult: QueryResult;
+            if (!this.connectionString.accountConnection) {
+                const query = `SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false and datname = '` + nonNullProp(this.connectionString, 'databaseName') + `';`;
+                queryResult = await pool.query(query);
+            } else {
+                queryResult = await pool.query(`SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false;`);
+            }
+            const listOfDatabases = queryResult.rows;
+            return this.createTreeItemsWithErrorHandling(
+                listOfDatabases,
+                'invalidPostgresServer',
+                (database) => {
+                    return database.datname && !['azure_maintenance', 'azure_sys'].includes(database.datname) ? new PostgresDatabaseTreeItem(this, database.datname) : undefined;
+                },
+                (database) => database.datname
+            );
+        } else {
+            const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+            const listOfDatabases: DatabaseListResult = await client.databases.listByServer(this.resourceGroup, this.name);
+            return this.createTreeItemsWithErrorHandling(
+                listOfDatabases,
+                'invalidPostgresServer',
+                (database) => {
+                    return database.name && !['azure_maintenance', 'azure_sys'].includes(database.name) ? new PostgresDatabaseTreeItem(this, database.name) : undefined;
+                },
+                (database) => database.name
+            );
+        }
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {
@@ -96,16 +139,27 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<PostgresDatabaseTreeItem> {
-        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const getChildrenTask: Promise<AzExtTreeItem[]> = this.getCachedChildren(context);
         const databaseName = await ext.ui.showInputBox({
             placeHolder: "Database Name",
             prompt: "Enter the name of the database",
             validateInput: (name: string) => validateDatabaseName(name, getChildrenTask)
         });
-        context.showCreatingTreeItem(databaseName);
-        const database: Database = { name: databaseName };
-        await client.databases.createOrUpdate(this.resourceGroup, this.name, databaseName, database);
+        if (this.server) {
+            const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+            context.showCreatingTreeItem(databaseName);
+            const database: Database = { name: databaseName };
+            await client.databases.createOrUpdate(this.resourceGroup, this.name, databaseName, database);
+        } else {
+            const config: ClientConfig = await getClientConfig(this, databaseName);
+            context.showCreatingTreeItem(databaseName);
+            await createdb(config, databaseName, (err: string) => {
+                if (err) {
+                    console.error(err);
+                    process.exit(-1);
+                }
+            });
+        }
         return new PostgresDatabaseTreeItem(this, databaseName);
     }
 
@@ -122,14 +176,16 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         let username: string | undefined;
         let password: string | undefined;
 
-        const storedValue: string | undefined = ext.context.globalState.get(PostgresServerTreeItem.serviceName);
-        if (storedValue && ext.keytar) {
-            const servers: IPersistedServer[] = JSON.parse(storedValue);
-            for (const server of servers) {
-                if (server.id === this._serverId) {
-                    username = server.username;
-                    password = await ext.keytar.getPassword(PostgresServerTreeItem.serviceName, this._serverId) || undefined;
-                    break;
+        if (this.server) {
+            const storedValue: string | undefined = ext.context.globalState.get(PostgresServerTreeItem.serviceName);
+            if (storedValue && ext.keytar) {
+                const servers: IPersistedServer[] = JSON.parse(storedValue);
+                for (const server of servers) {
+                    if (server.id === this._serverId) {
+                        username = server.username;
+                        password = await ext.keytar.getPassword(PostgresServerTreeItem.serviceName, this._serverId) || undefined;
+                        break;
+                    }
                 }
             }
         }
@@ -139,7 +195,10 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
 
     public supportsStoredProcedures(): boolean {
         // `semver.gte` complains when a version doesn't have decimals (i.e. "10"), so attempt to convert version to SemVer
-        const version: SemVer | null = coerce(this.server.version);
+        let version: SemVer | null;
+        if (this.server) {
+            version = coerce(this.server.version);
+        }
         return !!version && gte(version, '11.0.0');
     }
 

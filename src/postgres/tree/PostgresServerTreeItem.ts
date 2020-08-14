@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { Server } from 'azure-arm-postgresql/lib/models';
 import { Pool } from "pg";
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
@@ -34,9 +33,8 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public static serviceName: string = "ms-azuretools.vscode-azuredatabases.postgresPasswords";
     public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
-    public readonly server: Server;
     public connectionString: ParsedPostgresConnectionString;
-    public resourceGroup: string;
+    public resourceGroup: string | undefined;
 
     private _serverId: string | undefined;
     private _serverVersion: string | undefined;
@@ -143,7 +141,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const deletingMessage: string = `Deleting server "${this.name}"...`;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
-            await client.servers.deleteMethod(this.resourceGroup, this.name);
+            await client.servers.deleteMethod(nonNullProp(this, 'resourceGroup'), this.name);
             await this.deletePostgresCredentials();
         });
     }

@@ -5,6 +5,7 @@
 
 import { Client, ClientConfig } from "pg";
 import { ConnectionOptions } from "tls";
+import { postgresDefaultPort } from "../constants";
 import { localize } from "../utils/localize";
 import { nonNullProp } from "../utils/nonNull";
 import { invalidCredentialsErrorType } from "./tree/PostgresDatabaseTreeItem";
@@ -32,8 +33,10 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
             code: invalidCredentialsErrorType
         };
     }
-    clientConfig = { user: username, password: password, ssl, host, port: 5432, database: databaseName };
+    clientConfig = { user: username, password: password, ssl, host, port: postgresDefaultPort, database: databaseName };
     client = new Client(clientConfig);
+
+    // Ensure the client config is valid before returning
     try {
         await client.connect();
         return clientConfig;

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ClientConfig, Pool } from 'pg';
-import { AzExtTreeItem, AzureParentTreeItem, ISubscriptionContext, TreeItemIconPath } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
@@ -51,17 +51,44 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
-        const clientConfig: ClientConfig = await getClientConfig(this.parent, this.databaseName);
-        const children: AzExtTreeItem[] = [
-            new PostgresFunctionsTreeItem(this, clientConfig),
-            new PostgresTablesTreeItem(this, clientConfig)
-        ];
+        try {
+            const clientConfig: ClientConfig = await getClientConfig(this.parent, this.databaseName);
+            const children: AzExtTreeItem[] = [
+                new PostgresFunctionsTreeItem(this, clientConfig),
+                new PostgresTablesTreeItem(this, clientConfig)
+            ];
 
-        if (this.parent.supportsStoredProcedures()) {
-            children.push(new PostgresStoredProceduresTreeItem(this, clientConfig));
+            if (this.parent.supportsStoredProcedures()) {
+                children.push(new PostgresStoredProceduresTreeItem(this, clientConfig));
+            }
+
+            return children;
+        } catch (error) {
+            const parsedError: IParsedError = parseError(error);
+
+            if (parsedError.errorType === invalidCredentialsErrorType) {
+                // tslint:disable-next-line: no-floating-promises
+                ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
+            } else if (this.parent.resourceGroup && parsedError.errorType === firewallNotConfiguredErrorType) {
+                const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
+                    contextValue: 'postgresFirewall',
+                    label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
+                    commandId: 'postgreSQL.configureFirewall'
+                });
+                firewallTreeItem.commandArgs = [this.parent];
+                return [firewallTreeItem];
+            } else {
+                throw error;
+            }
         }
 
-        return children;
+        const credentialsTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
+            contextValue: 'postgresCredentials',
+            label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
+            commandId: 'postgreSQL.enterCredentials'
+        });
+        credentialsTreeItem.commandArgs = [this.parent];
+        return [credentialsTreeItem];
     }
 
     public async deleteTreeItemImpl(): Promise<void> {

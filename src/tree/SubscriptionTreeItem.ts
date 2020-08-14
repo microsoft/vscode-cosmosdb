@@ -92,8 +92,8 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             const host = nonNullProp(server, 'fullyQualifiedDomainName');
             const username: string | undefined = wizardContext.adminUser;
             const password: string | undefined = wizardContext.adminPassword;
-            const connectionString: ParsedPostgresConnectionString = await createPostgresConnectionString(host, username, password);
-            return new PostgresServerTreeItem(this, connectionString, nonNullProp(server, 'id'), nonNullProp(server, 'version'));
+            const connectionString: ParsedPostgresConnectionString = createPostgresConnectionString(host, username, password);
+            return new PostgresServerTreeItem(this, connectionString, nonNullProp(server, 'id'), nonNullProp(server, 'version'), wizardContext.newServerName);
         } else {
             return await this.initCosmosDBChild(client, nonNullProp(wizardContext, 'databaseAccount'));
         }
@@ -145,7 +145,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         }
     }
     private async initPostgresChild(server: Server): Promise<AzureTreeItem> {
-        const connectionString: ParsedPostgresConnectionString = await createPostgresConnectionString(nonNullProp(server, 'fullyQualifiedDomainName'));
-        return new PostgresServerTreeItem(this, connectionString, server.id, server.version);
+        const connectionString: ParsedPostgresConnectionString = createPostgresConnectionString(nonNullProp(server, 'fullyQualifiedDomainName'));
+        return new PostgresServerTreeItem(this, connectionString, server.id, server.version, server.name);
     }
 }

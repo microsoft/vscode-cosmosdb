@@ -12,36 +12,38 @@ import { invalidCredentialsErrorType } from "./tree/PostgresDatabaseTreeItem";
 import { PostgresServerTreeItem } from "./tree/PostgresServerTreeItem";
 
 export async function getClientConfig(treeItem: PostgresServerTreeItem, databaseName: string): Promise<ClientConfig> {
-    let { username, password } = await treeItem.getCredentials();
+    let username: string | undefined = treeItem.connectionString.username;
+    let password: string | undefined = treeItem.connectionString.password;
+
     if (!(username && password)) {
-        username = treeItem.connectionString.username;
-        password = treeItem.connectionString.password;
+        const credentials = await treeItem.getCredentials();
+        username = nonNullProp(credentials, 'username');
+        password = nonNullProp(credentials, 'password');
     }
-    let host: string;
+
     const ssl: ConnectionOptions = {
         // Always provide the certificate since it is accepted even when SSL is disabled
         // Certificate source: https://aka.ms/AA7wnvl
         ca: BaltimoreCyberTrustRoot
     };
-    let clientConfig: ClientConfig;
-    let client: Client;
+
     if (username && password) {
-        host = nonNullProp(treeItem.connectionString, 'hostName');
+        const host = nonNullProp(treeItem.connectionString, 'hostName');
+        const clientConfig = { user: username, password: password, ssl, host, port: postgresDefaultPort, database: databaseName };
+        const client = new Client(clientConfig);
+
+        // Ensure the client config is valid before returning
+        try {
+            await client.connect();
+            return clientConfig;
+        } finally {
+            await client.end();
+        }
     } else {
         throw {
             message: localize('mustEnterCredentials', 'Must enter credentials to connect to server.'),
             code: invalidCredentialsErrorType
         };
-    }
-    clientConfig = { user: username, password: password, ssl, host, port: postgresDefaultPort, database: databaseName };
-    client = new Client(clientConfig);
-
-    // Ensure the client config is valid before returning
-    try {
-        await client.connect();
-        return clientConfig;
-    } finally {
-        await client.end();
     }
 }
 

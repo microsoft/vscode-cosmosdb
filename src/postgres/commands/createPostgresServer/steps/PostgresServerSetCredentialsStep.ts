@@ -23,6 +23,7 @@ export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPo
         const usernameSuffix: string = `@${newServerName}`;
         if (!user.includes(usernameSuffix)) {
             user += usernameSuffix;
+            wizardContext.adminUser += usernameSuffix;
         }
         const setupMessage: string = localize('setupCredentialsMessage', 'Setting up Credentials for server "{0}"...', newServerName);
         progress.report({ message: setupMessage });

@@ -3,12 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ClientConfig, Pool } from 'pg';
+import { ClientConfig } from 'pg';
 import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { getClientConfig } from '../getClientConfig';
+import { runPostgresQuery } from '../runPostgresQuery';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
 import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
@@ -92,8 +93,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        const config = await getClientConfig(this.parent, 'postgres');
-        const pool = new Pool(config);
-        await pool.query(`Drop Database "${this.databaseName}";`);
+        const config = await getClientConfig(this.parent, postgresDefaultDatabase);
+        await runPostgresQuery(config, `Drop Database "${this.databaseName}";`);
     }
 }

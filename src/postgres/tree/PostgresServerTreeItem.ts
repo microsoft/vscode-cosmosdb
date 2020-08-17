@@ -35,10 +35,10 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public readonly childTypeLabel: string = "Database";
     public connectionString: ParsedPostgresConnectionString;
     public resourceGroup: string | undefined;
+    public azureName: string | undefined;
 
     private _azureId: string | undefined;
     private _serverVersion: string | undefined;
-    private _azureName: string | undefined;
 
     constructor(parent: AzureParentTreeItem, connectionString: ParsedPostgresConnectionString, serverId?: string, serverVersion?: string, serverName?: string) {
         super(parent);
@@ -47,7 +47,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         this._serverVersion = serverVersion;
         if (this._azureId) {
             this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
-            this._azureName = serverName;
+            this.azureName = serverName;
         }
     }
 
@@ -56,7 +56,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get label(): string {
-        return this._azureName ? this._azureName : this.connectionString.fullId;
+        return this.azureName ? this.azureName : this.connectionString.fullId;
     }
 
     public get id(): string {
@@ -137,7 +137,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const deletingMessage: string = `Deleting server "${this.label}"...`;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
-            await client.servers.deleteMethod(nonNullProp(this, 'resourceGroup'), this.label);
+            await client.servers.deleteMethod(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
             await this.deletePostgresCredentials();
         });
     }

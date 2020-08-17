@@ -32,7 +32,7 @@ export async function setFirewallRule(treeItem: PostgresServerTreeItem, ip: stri
 
     const client: PostgreSQLManagementClient = createAzureClient(treeItem.root, PostgreSQLManagementClient);
     const resourceGroup: string = nonNullProp(treeItem, 'resourceGroup');
-    const serverName: string = nonNullProp(treeItem, 'label');
+    const serverName: string = nonNullProp(treeItem, 'azureName');
     const firewallRuleName: string = "azureDatabasesForVSCode-publicIp";
 
     const newFirewallRule: FirewallRule = {

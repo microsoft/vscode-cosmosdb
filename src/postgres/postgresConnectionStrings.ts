@@ -30,7 +30,7 @@ export class ParsedPostgresConnectionString extends ParsedConnectionString {
     public readonly port: string;
 
     constructor(connectionString: string, config: ConnectionOptions) {
-        super(connectionString, config.database?.replace(/[']+/g, ''));
+        super(connectionString, config.database?.replace(/^"(.*)"$/, '$1'));
         this.hostName = nonNullProp(config, 'host');
         this.port = config.port ? config.port : `${postgresDefaultPort}`;
         this.username = config.user;

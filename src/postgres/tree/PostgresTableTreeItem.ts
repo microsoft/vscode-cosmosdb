@@ -51,7 +51,7 @@ export class PostgresTableTreeItem extends AzureParentTreeItem<ISubscriptionCont
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        await runPostgresQuery(this.parent.clientConfig, `Drop Table ${this.table.schema.name}."${this.label}";`);
+        await runPostgresQuery(this.parent.clientConfig, `Drop Table ${this.table.schema.name}."${this.table.name}";`);
     }
 
 }

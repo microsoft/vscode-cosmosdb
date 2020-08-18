@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
+import { DatabaseListResult, Server } from 'azure-arm-postgresql/lib/models';
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ICreateChildImplContext, ISubscriptionContext } from 'vscode-azureextensionui';
@@ -40,14 +41,14 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     private _azureId: string | undefined;
     private _serverVersion: string | undefined;
 
-    constructor(parent: AzureParentTreeItem, connectionString: ParsedPostgresConnectionString, serverId?: string, serverVersion?: string, serverName?: string) {
+    constructor(parent: AzureParentTreeItem, connectionString: ParsedPostgresConnectionString, server?: Server) {
         super(parent);
         this.connectionString = connectionString;
-        this._azureId = serverId;
-        this._serverVersion = serverVersion;
-        if (this._azureId) {
+        if (server) {
+            this._azureId = server?.id;
+            this._serverVersion = server?.version;
             this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
-            this.azureName = serverName;
+            this.azureName = server?.name;
         }
     }
 
@@ -56,7 +57,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get label(): string {
-        return this.azureName ? this.azureName : this.connectionString.fullId;
+        return this.azureName ? this.azureName : this.connectionString.accountId;
     }
 
     public get id(): string {
@@ -81,25 +82,31 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
                 await this.updateConnectionString(username, password);
             }
         }
-        let config;
-        let query: string;
-        if (this.connectionString.databaseName) {
-            config = await getClientConfig(this, this.connectionString.databaseName);
-            query = `SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false and datname = '` + nonNullProp(this.connectionString, 'databaseName') + `';`;
+        if (this._azureId) {
+            const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+            const listOfDatabases: DatabaseListResult = await client.databases.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
+            return this.createTreeItemsWithErrorHandling(
+                listOfDatabases,
+                'invalidPostgresServer',
+                (database) => {
+                    return database.name && !['azure_maintenance', 'azure_sys'].includes(database.name) ? new PostgresDatabaseTreeItem(this, database.name) : undefined;
+                },
+                (database) => database.name
+            );
         } else {
-            config = await getClientConfig(this, postgresDefaultDatabase);
-            query = `SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false;`;
+            const config = await getClientConfig(this, postgresDefaultDatabase);
+            const query = `SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false;`;
+            const queryResult = await runPostgresQuery(config, query);
+            const listOfDatabases = queryResult.rows;
+            return this.createTreeItemsWithErrorHandling(
+                listOfDatabases,
+                'invalidPostgresServer',
+                (database) => {
+                    return database.datname && !['azure_maintenance', 'azure_sys'].includes(database.datname) ? new PostgresDatabaseTreeItem(this, database.datname) : undefined;
+                },
+                (database) => database.datname
+            );
         }
-        const queryResult = await runPostgresQuery(config, query);
-        const listOfDatabases = queryResult.rows;
-        return this.createTreeItemsWithErrorHandling(
-            listOfDatabases,
-            'invalidPostgresServer',
-            (database) => {
-                return database.datname && !['azure_maintenance', 'azure_sys'].includes(database.datname) ? new PostgresDatabaseTreeItem(this, database.datname) : undefined;
-            },
-            (database) => database.datname
-        );
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {

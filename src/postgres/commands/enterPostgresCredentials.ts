@@ -21,7 +21,8 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
         validateInput: (value: string) => { return (value && value.length) ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.'); }
     });
 
-    const usernameSuffix: string = `@${treeItem.azureName}`;
+    const serverName: string = nonNullProp(treeItem, 'azureName');
+    const usernameSuffix: string = `@${serverName}`;
     if (!username.includes(usernameSuffix)) {
         username += usernameSuffix;
     }
@@ -32,7 +33,6 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
         validateInput: (value: string) => { return (value && value.length) ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.'); }
     });
 
-    const serverName: string = nonNullProp(treeItem, 'azureName');
     const id: string = nonNullProp(treeItem, 'id');
 
     const progressMessage: string = localize('setupCredentialsMessage', 'Setting up credentials for server "{0}"...', serverName);

@@ -9,7 +9,7 @@ import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constan
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { getClientConfig } from '../getClientConfig';
-import { runPostgresQuery } from '../runPostgresQuery';
+import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
 import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
@@ -94,6 +94,6 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
     public async deleteTreeItemImpl(): Promise<void> {
         const config = await getClientConfig(this.parent, postgresDefaultDatabase);
-        await runPostgresQuery(config, `Drop Database "${this.databaseName}";`);
+        await runPostgresQuery(config, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
     }
 }

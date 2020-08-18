@@ -7,7 +7,7 @@ import { Table } from 'pg-structure';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemedIconPath } from '../../constants';
-import { runPostgresQuery } from '../runPostgresQuery';
+import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresColumnTreeItem } from './PostgresColumnTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
@@ -51,7 +51,7 @@ export class PostgresTableTreeItem extends AzureParentTreeItem<ISubscriptionCont
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        await runPostgresQuery(this.parent.clientConfig, `Drop Table ${this.table.schema.name}."${this.table.name}";`);
+        await runPostgresQuery(this.parent.clientConfig, `Drop Table ${this.table.schema.name}.${wrapArgInQuotes(this.table.name)};`);
     }
 
 }

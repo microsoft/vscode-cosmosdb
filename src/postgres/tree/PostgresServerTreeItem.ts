@@ -15,7 +15,7 @@ import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { getClientConfig } from '../getClientConfig';
 import { createPostgresConnectionString, ParsedPostgresConnectionString } from '../postgresConnectionStrings';
-import { runPostgresQuery } from '../runPostgresQuery';
+import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresFunctionTreeItem } from './PostgresFunctionTreeItem';
@@ -76,12 +76,6 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
-        if (!(this.connectionString.username && this.connectionString.password)) {
-            const { username, password } = await this.getCredentials();
-            if (username && password) {
-                await this.updateConnectionString(username, password);
-            }
-        }
         if (this._azureId) {
             const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
             const listOfDatabases: DatabaseListResult = await client.databases.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
@@ -136,7 +130,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         });
         const config = await getClientConfig(this, postgresDefaultDatabase);
         context.showCreatingTreeItem(databaseName);
-        await runPostgresQuery(config, `Create Database "${databaseName}";`);
+        await runPostgresQuery(config, `Create Database ${wrapArgInQuotes(databaseName)};`);
         return new PostgresDatabaseTreeItem(this, databaseName);
     }
 
@@ -179,9 +173,14 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         return !!version && gte(version, '11.0.0');
     }
 
-    public async updateConnectionString(username: string, password: string): Promise<void> {
+    public async updateConnectionString(username?: string, password?: string): Promise<void> {
+        if (!(username && password)) {
+            const credentials = await this.getCredentials();
+            username = nonNullProp(credentials, 'username');
+            password = nonNullProp(credentials, 'password');
+        }
         const host = this.connectionString.hostName;
-        this.connectionString = createPostgresConnectionString(host, username, password);
+        this.connectionString = createPostgresConnectionString(host, undefined, username, password);
     }
 
     public async deletePostgresCredentials(): Promise<void> {

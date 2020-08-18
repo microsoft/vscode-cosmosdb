@@ -13,14 +13,17 @@ export function parsePostgresConnectionString(connectionString: string): ParsedP
     return new ParsedPostgresConnectionString(connectionString, config);
 }
 
-export function createPostgresConnectionString(host: string, username?: string | undefined, password?: string | undefined): ParsedPostgresConnectionString {
-    let connectionString: string;
+export function createPostgresConnectionString(host: string, port: number = postgresDefaultPort, username?: string | undefined, password?: string | undefined): ParsedPostgresConnectionString {
+    let connectionString: string = `postgres://`;
     if (username && password) {
-        connectionString = `postgres://${username}:${password}@${host}:${postgresDefaultPort}`;
-    } else {
-        connectionString = `postgres://${host}:${postgresDefaultPort}`;
+        connectionString += `${username}:${password}@`;
     }
+    connectionString += `${host}:${port}`;
     return parsePostgresConnectionString(connectionString);
+}
+
+export function fixedEncodeURIComponent(component: string): string {
+    return encodeURIComponent(component).replace(/[!'()*]/g, escape);
 }
 
 export class ParsedPostgresConnectionString extends ParsedConnectionString {
@@ -36,4 +39,19 @@ export class ParsedPostgresConnectionString extends ParsedConnectionString {
         this.username = config.user;
         this.password = config.password;
     }
+
+    public getEncodedConnectionString(): string {
+        let connectionString: string = `postgres://`;
+        if (this.username && this.password) {
+            const encodedUsername = fixedEncodeURIComponent(this.username);
+            const encodedPassword = fixedEncodeURIComponent(this.password);
+            connectionString += `${encodedUsername}:${encodedPassword}@`;
+
+        } else {
+            return this.connectionString;
+        }
+        connectionString += `${this.hostName}:${this.port}`;
+        return connectionString;
+    }
+
 }

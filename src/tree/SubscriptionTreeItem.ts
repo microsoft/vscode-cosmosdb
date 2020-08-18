@@ -92,7 +92,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             const host = nonNullProp(server, 'fullyQualifiedDomainName');
             const username: string | undefined = wizardContext.adminUser;
             const password: string | undefined = wizardContext.adminPassword;
-            const connectionString: ParsedPostgresConnectionString = createPostgresConnectionString(host, username, password);
+            const connectionString: ParsedPostgresConnectionString = createPostgresConnectionString(host, undefined, username, password);
             return new PostgresServerTreeItem(this, connectionString, server);
         } else {
             return await this.initCosmosDBChild(client, nonNullProp(wizardContext, 'databaseAccount'));

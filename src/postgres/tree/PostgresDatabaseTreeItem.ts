@@ -3,14 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { ClientConfig } from 'pg';
-import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, GenericTreeItem, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
+import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { getClientConfig } from '../getClientConfig';
+import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
 import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
@@ -71,7 +70,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
             if (parsedError.errorType === invalidCredentialsErrorType) {
                 // tslint:disable-next-line: no-floating-promises
                 ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
-            } else if (parsedError.errorType === firewallNotConfiguredErrorType) {
+            } else if (this.parent.resourceGroup && parsedError.errorType === firewallNotConfiguredErrorType) {
                 const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
                     contextValue: 'postgresFirewall',
                     label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
@@ -94,8 +93,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-        await client.databases.deleteMethod(azureUtils.getResourceGroupFromId(this.fullId), this.parent.name, this.databaseName);
+        const config = await getClientConfig(this.parent, postgresDefaultDatabase);
+        await runPostgresQuery(config, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
     }
-
 }

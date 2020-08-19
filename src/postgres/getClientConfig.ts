@@ -5,26 +5,35 @@
 
 import { Client, ClientConfig } from "pg";
 import { ConnectionOptions } from "tls";
+import { postgresDefaultPort } from "../constants";
 import { localize } from "../utils/localize";
 import { nonNullProp } from "../utils/nonNull";
 import { invalidCredentialsErrorType } from "./tree/PostgresDatabaseTreeItem";
 import { PostgresServerTreeItem } from "./tree/PostgresServerTreeItem";
 
 export async function getClientConfig(treeItem: PostgresServerTreeItem, databaseName: string): Promise<ClientConfig> {
-    const { username, password } = await treeItem.getCredentials();
+    let username: string | undefined = treeItem.connectionString.username;
+    let password: string | undefined = treeItem.connectionString.password;
+
+    if (!(username && password)) {
+        const credentials = await treeItem.getCredentials();
+        username = nonNullProp(credentials, 'username');
+        password = nonNullProp(credentials, 'password');
+    }
+
+    const ssl: ConnectionOptions = {
+        // Always provide the certificate since it is accepted even when SSL is disabled
+        // Certificate source: https://aka.ms/AA7wnvl
+        ca: BaltimoreCyberTrustRoot
+    };
 
     if (username && password) {
-        const ssl: ConnectionOptions = {
-            // Always provide the certificate since it is accepted even when SSL is disabled
-            // Certificate source: https://aka.ms/AA7wnvl
-            ca: BaltimoreCyberTrustRoot
-        };
-
-        const host: string = nonNullProp(treeItem.server, 'fullyQualifiedDomainName');
-        const clientConfig: ClientConfig = { user: username, password, ssl, host, port: 5432, database: databaseName };
+        const host = nonNullProp(treeItem.connectionString, 'hostName');
+        const port: number = treeItem.connectionString.port ? parseInt(treeItem.connectionString.port) : postgresDefaultPort;
+        const clientConfig = { user: username, password: password, ssl, host, port, database: databaseName };
+        const client = new Client(clientConfig);
 
         // Ensure the client config is valid before returning
-        const client: Client = new Client(clientConfig);
         try {
             await client.connect();
             return clientConfig;
@@ -39,7 +48,7 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
     }
 }
 
-const BaltimoreCyberTrustRoot: string = `-----BEGIN CERTIFICATE-----
+export const BaltimoreCyberTrustRoot: string = `-----BEGIN CERTIFICATE-----
 MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYDVQQGEwJJ
 RTESMBAGA1UEChMJQmFsdGltb3JlMRMwEQYDVQQLEwpDeWJlclRydXN0MSIwIAYD
 VQQDExlCYWx0aW1vcmUgQ3liZXJUcnVzdCBSb290MB4XDTAwMDUxMjE4NDYwMFoX

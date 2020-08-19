@@ -14,3 +14,6 @@ export async function runPostgresQuery(clientConfig: ClientConfig, query: string
         await client.end();
     }
 }
+export function wrapArgInQuotes(input: string): string {
+    return `"${input}"`;
+}

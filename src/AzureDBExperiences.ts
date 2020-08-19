@@ -77,8 +77,12 @@ export interface Experience {
     tag?: string;
 }
 
-export function getExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
-    return experiencesArray.map(exp => getExperienceQuickPick(exp.api));
+export function getExperienceQuickPicks(attached?: boolean): IAzureQuickPickItem<Experience>[] {
+    if (attached) {
+        return experiencesArray.map(exp => getExperienceQuickPickForAttached(exp.api));
+    } else {
+        return experiencesArray.map(exp => getExperienceQuickPick(exp.api));
+    }
 }
 
 export function getCosmosExperienceQuickPicks(attached?: boolean): IAzureQuickPickItem<Experience>[] {
@@ -105,7 +109,7 @@ const CoreExperience: Experience = { api: API.Core, longName: "Core", descriptio
 export const MongoExperience: Experience = { api: API.MongoDB, longName: "Azure Cosmos DB for MongoDB API", shortName: "MongoDB", kind: DBAccountKind.MongoDB, tag: "Azure Cosmos DB for MongoDB API" };
 const TableExperience: Experience = { api: API.Table, longName: "Azure Table", shortName: "Table", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableTable', tag: "Azure Table" };
 const GremlinExperience: Experience = { api: API.Graph, longName: "Gremlin", description: "(graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableGremlin', tag: "Gremlin (graph)" };
-const PostgresExperience: Experience = { api: API.Postgres, longName: "PostgreSQL", shortName: "Postgres" };
+const PostgresExperience: Experience = { api: API.Postgres, longName: "PostgreSQL", shortName: "PostgreSQL" };
 
 const cosmosExperiencesArray: Experience[] = [CoreExperience, MongoExperience, TableExperience, GremlinExperience];
 const experiencesArray: Experience[] = [...cosmosExperiencesArray, PostgresExperience];

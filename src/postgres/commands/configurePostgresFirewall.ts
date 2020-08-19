@@ -9,7 +9,6 @@ import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
 import { createAzureClient, DialogResponses, IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
-import { azureUtils } from "../../utils/azureUtils";
 import { localize } from "../../utils/localize";
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
@@ -21,7 +20,7 @@ export async function configurePostgresFirewall(context: IActionContext, treeIte
 
     const ip: string = await getPublicIp();
     await ext.ui.showWarningMessage(
-        localize('firewallRuleWillBeAdded', 'A firewall rule for your IP ({0}) will be added to server "{1}". Would you like to continue?', ip, treeItem.server.name),
+        localize('firewallRuleWillBeAdded', 'A firewall rule for your IP ({0}) will be added to server "{1}". Would you like to continue?', ip, treeItem.label),
         { modal: true },
         { title: DialogResponses.yes.title }
     );
@@ -32,8 +31,8 @@ export async function configurePostgresFirewall(context: IActionContext, treeIte
 export async function setFirewallRule(treeItem: PostgresServerTreeItem, ip: string): Promise<void> {
 
     const client: PostgreSQLManagementClient = createAzureClient(treeItem.root, PostgreSQLManagementClient);
-    const resourceGroup: string = azureUtils.getResourceGroupFromId(treeItem.id);
-    const serverName: string = nonNullProp(treeItem.server, 'name');
+    const resourceGroup: string = nonNullProp(treeItem, 'resourceGroup');
+    const serverName: string = nonNullProp(treeItem, 'azureName');
     const firewallRuleName: string = "azureDatabasesForVSCode-publicIp";
 
     const newFirewallRule: FirewallRule = {

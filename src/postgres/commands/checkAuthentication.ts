@@ -20,7 +20,9 @@ export async function checkAuthentication(context: IActionContext, treeItem: Pos
 
             if (parsedError.errorType === invalidCredentialsErrorType) {
                 await enterPostgresCredentials(context, treeItem.parent);
-            } else if (parsedError.errorType === firewallNotConfiguredErrorType) {
+
+                // Need to configure firewall only for Azure Subscritption accounts
+            } else if (treeItem.parent.resourceGroup && parsedError.errorType === firewallNotConfiguredErrorType) {
                 await configurePostgresFirewall(context, treeItem.parent);
             } else {
                 throw error;

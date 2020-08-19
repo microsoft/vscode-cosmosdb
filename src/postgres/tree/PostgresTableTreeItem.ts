@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Pool } from 'pg';
 import { Table } from 'pg-structure';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemedIconPath } from '../../constants';
+import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresColumnTreeItem } from './PostgresColumnTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
@@ -51,8 +51,7 @@ export class PostgresTableTreeItem extends AzureParentTreeItem<ISubscriptionCont
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        const pool = new Pool(this.parent.clientConfig);
-        await pool.query(`Drop Table ${this.table.schema.name}."${this.label}";`);
+        await runPostgresQuery(this.parent.clientConfig, `Drop Table ${this.table.schema.name}.${wrapArgInQuotes(this.table.name)};`);
     }
 
 }

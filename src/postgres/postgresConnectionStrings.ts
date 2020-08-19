@@ -27,7 +27,7 @@ export function createPostgresConnectionString(host: string, port: number = post
 
 // encodeURIComponent does not escape A-Z a-z 0-9 - _ . ! ~ * ' ( )
 export function fixedEncodeURIComponent(component: string): string {
-    return encodeURIComponent(component).replace(/[!'()*]/g, escape);
+    return encodeURIComponent(component).replace(/[!~'()]/g, escape);
 }
 
 export class ParsedPostgresConnectionString extends ParsedConnectionString {

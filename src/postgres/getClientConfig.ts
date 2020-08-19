@@ -29,7 +29,8 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
 
     if (username && password) {
         const host = nonNullProp(treeItem.connectionString, 'hostName');
-        const clientConfig = { user: username, password: password, ssl, host, port: postgresDefaultPort, database: databaseName };
+        const port: number = treeItem.connectionString.port ? parseInt(treeItem.connectionString.port) : postgresDefaultPort;
+        const clientConfig = { user: username, password: password, ssl, host, port, database: databaseName };
         const client = new Client(clientConfig);
 
         // Ensure the client config is valid before returning

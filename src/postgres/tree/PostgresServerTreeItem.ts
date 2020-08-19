@@ -57,14 +57,14 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get label(): string {
-        return this.azureName ? this.azureName : this.connectionString.accountId;
+        return this.azureName ? this.azureName : this.connectionString.fullId;
     }
 
     public get id(): string {
         if (this._azureId) {
             return this._azureId;
         }
-        return this.connectionString.accountId;
+        return this.connectionString.fullId;
     }
 
     public get description(): string | undefined {

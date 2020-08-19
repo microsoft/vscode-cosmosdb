@@ -40,7 +40,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     }
 
     public get id(): string {
-        return 'database\/' + this.databaseName;
+        return this.databaseName;
     }
 
     public get iconPath(): TreeItemIconPath {

@@ -19,13 +19,7 @@ export async function copyConnectionString(context: IActionContext, node: Postgr
 
     const parsedConnectionString = node.parent.connectionString;
 
-    if (!(parsedConnectionString.username && parsedConnectionString.password)) {
-        await node.parent.updateConnectionString();
-    }
-
-    const encodedDatabaseName = encodeURIComponent(node.databaseName);
-    let connectionString: string = parsedConnectionString.getEncodedConnectionString();
-    connectionString += `/${encodedDatabaseName}`;
+    const connectionString: string = parsedConnectionString.getEncodedConnectionString(node.databaseName);
     await vscode.env.clipboard.writeText(connectionString);
     const message = localize('copiedPostgresConnectStringMsg', 'The connection string has been copied to the clipboard');
     vscode.window.showInformationMessage(message);

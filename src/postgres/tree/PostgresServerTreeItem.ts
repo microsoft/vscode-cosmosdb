@@ -14,7 +14,7 @@ import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { getClientConfig } from '../getClientConfig';
-import { createPostgresConnectionString, ParsedPostgresConnectionString } from '../postgresConnectionStrings';
+import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
@@ -64,7 +64,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         if (this._azureId) {
             return this._azureId;
         }
-        return this.connectionString.fullId;
+        return this.connectionString.accountId;
     }
 
     public get description(): string | undefined {
@@ -76,31 +76,26 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
+        let dbNames: (string | undefined)[];
         if (this._azureId) {
             const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
             const listOfDatabases: DatabaseListResult = await client.databases.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
-            return this.createTreeItemsWithErrorHandling(
-                listOfDatabases,
-                'invalidPostgresServer',
-                (database) => {
-                    return database.name && !['azure_maintenance', 'azure_sys'].includes(database.name) ? new PostgresDatabaseTreeItem(this, database.name) : undefined;
-                },
-                (database) => database.name
-            );
+            dbNames = listOfDatabases.map(db => db?.name);
+        } else if (this.connectionString.databaseName) {
+            dbNames = [this.connectionString.databaseName];
         } else {
             const config = await getClientConfig(this, postgresDefaultDatabase);
             const query = `SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false;`;
             const queryResult = await runPostgresQuery(config, query);
-            const listOfDatabases = queryResult.rows;
-            return this.createTreeItemsWithErrorHandling(
-                listOfDatabases,
-                'invalidPostgresServer',
-                (database) => {
-                    return database.datname && !['azure_maintenance', 'azure_sys'].includes(database.datname) ? new PostgresDatabaseTreeItem(this, database.datname) : undefined;
-                },
-                (database) => database.datname
-            );
+            dbNames = queryResult.rows.map(db => db?.datname);
         }
+
+        return this.createTreeItemsWithErrorHandling(
+            dbNames,
+            'invalidPostgresServer',
+            dbName => dbName && !['azure_maintenance', 'azure_sys'].includes(dbName) ? new PostgresDatabaseTreeItem(this, dbName) : undefined,
+            dbName => dbName
+        );
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {
@@ -159,6 +154,8 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
                     }
                 }
             }
+            this.connectionString.username = username;
+            this.connectionString.password = password;
         }
 
         return { username, password };
@@ -171,16 +168,6 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             version = coerce(this._serverVersion);
         }
         return !!version && gte(version, '11.0.0');
-    }
-
-    public async updateConnectionString(username?: string, password?: string): Promise<void> {
-        if (!(username && password)) {
-            const credentials = await this.getCredentials();
-            username = nonNullProp(credentials, 'username');
-            password = nonNullProp(credentials, 'password');
-        }
-        const host = this.connectionString.hostName;
-        this.connectionString = createPostgresConnectionString(host, undefined, username, password);
     }
 
     public async deletePostgresCredentials(): Promise<void> {

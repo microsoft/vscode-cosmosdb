@@ -10,6 +10,9 @@ import { nonNullProp } from "../utils/nonNull";
 
 export function parsePostgresConnectionString(connectionString: string): ParsedPostgresConnectionString {
     const config: ConnectionOptions = parse(connectionString.trim());
+    if (config.database) {
+        config.database = decodeURIComponent(config.database);
+    }
     return new ParsedPostgresConnectionString(connectionString, config);
 }
 
@@ -22,35 +25,38 @@ export function createPostgresConnectionString(host: string, port: number = post
     return parsePostgresConnectionString(connectionString);
 }
 
+// encodeURIComponent does not escape A-Z a-z 0-9 - _ . ! ~ * ' ( )
 export function fixedEncodeURIComponent(component: string): string {
     return encodeURIComponent(component).replace(/[!'()*]/g, escape);
 }
 
 export class ParsedPostgresConnectionString extends ParsedConnectionString {
     public readonly hostName: string;
-    public readonly username: string | undefined;
-    public readonly password: string | undefined;
+    public username: string | undefined;
+    public password: string | undefined;
     public readonly port: string;
 
     constructor(connectionString: string, config: ConnectionOptions) {
-        super(connectionString, config.database?.replace(/^'(.*)'$/, '$1'));
+        super(connectionString, config.database ? config.database : undefined);
         this.hostName = nonNullProp(config, 'host');
         this.port = config.port ? config.port : `${postgresDefaultPort}`;
         this.username = config.user;
         this.password = config.password;
     }
 
-    public getEncodedConnectionString(): string {
+    public getEncodedConnectionString(databaseName?: string): string {
         let connectionString: string = `postgres://`;
         if (this.username && this.password) {
             const encodedUsername = fixedEncodeURIComponent(this.username);
             const encodedPassword = fixedEncodeURIComponent(this.password);
             connectionString += `${encodedUsername}:${encodedPassword}@`;
 
-        } else {
-            return this.connectionString;
         }
         connectionString += `${this.hostName}:${this.port}`;
+        if (databaseName) {
+            const encodeDatabaseName = fixedEncodeURIComponent(databaseName);
+            connectionString += `/${encodeDatabaseName}`;
+        }
         return connectionString;
     }
 

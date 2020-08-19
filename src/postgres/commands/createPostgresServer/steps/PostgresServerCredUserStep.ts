@@ -6,6 +6,7 @@
 import { AzureWizardPromptStep } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';
+import { nonNullProp } from '../../../../utils/nonNull';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerCredUserStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
@@ -15,6 +16,10 @@ export class PostgresServerCredUserStep extends AzureWizardPromptStep<IPostgresS
             placeHolder: localize('usernamePlaceholder', 'Administrator Username'),
             validateInput: validateUser,
         })).trim();
+        const usernameSuffix: string = `@${nonNullProp(wizardContext, 'newServerName')}`;
+        if (!wizardContext.adminUser.includes(usernameSuffix)) {
+            wizardContext.adminUser += usernameSuffix;
+        }
     }
 
     public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {

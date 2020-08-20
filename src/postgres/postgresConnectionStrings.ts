@@ -10,9 +10,6 @@ import { nonNullProp } from "../utils/nonNull";
 
 export function parsePostgresConnectionString(connectionString: string): ParsedPostgresConnectionString {
     const config: ConnectionOptions = parse(connectionString.trim());
-    if (config.database) {
-        config.database = decodeURIComponent(config.database);
-    }
     return new ParsedPostgresConnectionString(connectionString, config);
 }
 
@@ -23,11 +20,6 @@ export function createPostgresConnectionString(host: string, port: number = post
     }
     connectionString += `${host}:${port}`;
     return parsePostgresConnectionString(connectionString);
-}
-
-// encodeURIComponent does not escape A-Z a-z 0-9 - _ . ! ~ * ' ( )
-export function fixedEncodeURIComponent(component: string): string {
-    return encodeURIComponent(component).replace(/[!~'()]/g, escape);
 }
 
 export class ParsedPostgresConnectionString extends ParsedConnectionString {
@@ -47,14 +39,14 @@ export class ParsedPostgresConnectionString extends ParsedConnectionString {
     public getEncodedConnectionString(databaseName?: string): string {
         let connectionString: string = `postgres://`;
         if (this.username && this.password) {
-            const encodedUsername = fixedEncodeURIComponent(this.username);
-            const encodedPassword = fixedEncodeURIComponent(this.password);
+            const encodedUsername = encodeURIComponent(this.username);
+            const encodedPassword = encodeURIComponent(this.password);
             connectionString += `${encodedUsername}:${encodedPassword}@`;
 
         }
         connectionString += `${this.hostName}:${this.port}`;
         if (databaseName) {
-            const encodeDatabaseName = fixedEncodeURIComponent(databaseName);
+            const encodeDatabaseName = encodeURIComponent(databaseName);
             connectionString += `/${encodeDatabaseName}`;
         }
         return connectionString;

@@ -10,9 +10,6 @@ import { nonNullProp } from "../utils/nonNull";
 
 export function parsePostgresConnectionString(connectionString: string): ParsedPostgresConnectionString {
     const config: ConnectionOptions = parse(connectionString.trim());
-    if (config.database) {
-        config.database = decodeURIComponent(config.database);
-    }
     return new ParsedPostgresConnectionString(connectionString, config);
 }
 

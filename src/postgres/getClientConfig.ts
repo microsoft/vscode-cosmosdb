@@ -29,10 +29,11 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
         ca: BaltimoreCyberTrustRoot
     };
 
-    if (username && password) {
+    if ((username && password) || username === 'postgres') {
         const host = nonNullProp(treeItem.connectionString, 'hostName');
         const port: number = treeItem.connectionString.port ? parseInt(treeItem.connectionString.port) : postgresDefaultPort;
-        const clientConfig = { user: username, password: password, ssl, host, port, database: databaseName };
+        const sslSupport = treeItem.connectionString.sslSupport;
+        const clientConfig: ClientConfig = { user: username, password: password, ssl: sslSupport ? ssl : sslSupport, host, port, database: databaseName };
         const client = new Client(clientConfig);
 
         // Ensure the client config is valid before returning

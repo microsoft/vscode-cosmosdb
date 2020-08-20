@@ -13,6 +13,9 @@ export function parsePostgresConnectionString(connectionString: string): ParsedP
     if (config.database) {
         config.database = decodeURIComponent(config.database);
     }
+    if (config.host === 'localhost' && !config.user) {
+        config.user = 'postgres';
+    }
     return new ParsedPostgresConnectionString(connectionString, config);
 }
 
@@ -20,6 +23,8 @@ export function createPostgresConnectionString(host: string, port: number = post
     let connectionString: string = `postgres://`;
     if (username && password) {
         connectionString += `${username}:${password}@`;
+    } else if (username === 'postgres') {
+        connectionString += `${username}@`;
     }
     connectionString += `${host}:${port}`;
     return parsePostgresConnectionString(connectionString);
@@ -35,6 +40,7 @@ export class ParsedPostgresConnectionString extends ParsedConnectionString {
     public username: string;
     public password: string;
     public readonly port: string;
+    public readonly sslSupport: boolean;
 
     constructor(connectionString: string, config: ConnectionOptions) {
         super(connectionString, config.database ? config.database : undefined);
@@ -42,6 +48,11 @@ export class ParsedPostgresConnectionString extends ParsedConnectionString {
         this.port = config.port ? config.port : `${postgresDefaultPort}`;
         this.username = nonNullProp(config, 'user');
         this.password = nonNullProp(config, 'password');
+        if (config.ssl === false) {
+            this.sslSupport = false;
+        } else {
+            this.sslSupport = true;
+        }
     }
 
     public getEncodedConnectionString(databaseName?: string): string {

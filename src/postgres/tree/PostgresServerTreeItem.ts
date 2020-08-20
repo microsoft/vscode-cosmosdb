@@ -82,6 +82,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             const listOfDatabases: DatabaseListResult = await client.databases.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
             dbNames = listOfDatabases.map(db => db?.name);
         } else if (this.connectionString.databaseName) {
+            await getClientConfig(this, this.connectionString.databaseName);
             dbNames = [this.connectionString.databaseName];
         } else {
             const config = await getClientConfig(this, postgresDefaultDatabase);

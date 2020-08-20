@@ -22,11 +22,6 @@ export function createPostgresConnectionString(host: string, port: number = post
     return parsePostgresConnectionString(connectionString);
 }
 
-// encodeURIComponent does not escape A-Z a-z 0-9 - _ . ! ~ * ' ( )
-export function fixedEncodeURIComponent(component: string): string {
-    return encodeURIComponent(component).replace(/[!~'()]/g, escape);
-}
-
 export class ParsedPostgresConnectionString extends ParsedConnectionString {
     public readonly hostName: string;
     public username: string | undefined;
@@ -44,14 +39,14 @@ export class ParsedPostgresConnectionString extends ParsedConnectionString {
     public getEncodedConnectionString(databaseName?: string): string {
         let connectionString: string = `postgres://`;
         if (this.username && this.password) {
-            const encodedUsername = fixedEncodeURIComponent(this.username);
-            const encodedPassword = fixedEncodeURIComponent(this.password);
+            const encodedUsername = encodeURIComponent(this.username);
+            const encodedPassword = encodeURIComponent(this.password);
             connectionString += `${encodedUsername}:${encodedPassword}@`;
 
         }
         connectionString += `${this.hostName}:${this.port}`;
         if (databaseName) {
-            const encodeDatabaseName = fixedEncodeURIComponent(databaseName);
+            const encodeDatabaseName = encodeURIComponent(databaseName);
             connectionString += `/${encodeDatabaseName}`;
         }
         return connectionString;

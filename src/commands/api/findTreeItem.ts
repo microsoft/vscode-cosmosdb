@@ -30,7 +30,7 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
         let parsedCS: ParsedConnectionString;
         if (/^mongodb[^:]*:\/\//i.test(connectionString)) {
             parsedCS = await parseMongoConnectionString(connectionString);
-        } else if (/^postgres[^:]*:\/\//i.test(connectionString)) {
+        } else if (/^postgres:\/\//i.test(connectionString)) {
             parsedCS = parsePostgresConnectionString(connectionString);
         } else {
             parsedCS = parseDocDBConnectionString(connectionString);

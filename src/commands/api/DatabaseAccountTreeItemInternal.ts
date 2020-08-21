@@ -82,8 +82,8 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
     protected async getAccountNode(): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
         // If this._accountNode is undefined, attach a new node based on connection string
         if (!this._accountNode) {
-            // tslint:disable-next-line: no-any
-            let apiType: any;
+
+            let apiType: API;
             if (this._parsedCS instanceof ParsedMongoConnectionString) {
                 apiType = API.MongoDB;
             } else if (this._parsedCS instanceof ParsedPostgresConnectionString) {

@@ -109,7 +109,7 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
         }
 
         const result = databaseNode ?
-            new DatabaseTreeItemInternal(parsedCS, parsedCS.databaseName || databaseNode.databaseName, accountNode, databaseNode) :
+            new DatabaseTreeItemInternal(parsedCS, databaseNode.databaseName, accountNode, databaseNode) :
             new DatabaseAccountTreeItemInternal(parsedCS, accountNode);
         cacheTreeItem(parsedCS, result);
         return result;

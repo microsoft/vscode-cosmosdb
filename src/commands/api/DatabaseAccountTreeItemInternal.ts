@@ -63,7 +63,7 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
         }
     }
 
-    public get postgresData(): { username: string; password: string } | undefined {
+    public get postgresData(): { username: string | undefined; password: string | undefined } | undefined {
         if (this._accountNode instanceof PostgresServerTreeItem) {
             const connectionString = this._accountNode.connectionString;
             return {

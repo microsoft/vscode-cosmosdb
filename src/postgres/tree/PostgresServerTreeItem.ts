@@ -154,10 +154,8 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
                     }
                 }
             }
-            if (username && password) {
-                this.connectionString.username = username;
-                this.connectionString.password = password;
-            }
+            this.connectionString.username = username;
+            this.connectionString.password = password;
         }
 
         return { username, password };

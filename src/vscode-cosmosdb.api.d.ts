@@ -53,8 +53,8 @@ export interface DatabaseAccountTreeItem extends CosmosDBTreeItem {
     }
 
     postgresData?: {
-        username: string;
-        password: string;
+        username: string | undefined;
+        password: string | undefined;
     }
 
 }

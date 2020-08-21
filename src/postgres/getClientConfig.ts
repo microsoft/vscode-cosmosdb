@@ -12,15 +12,13 @@ import { invalidCredentialsErrorType } from "./tree/PostgresDatabaseTreeItem";
 import { PostgresServerTreeItem } from "./tree/PostgresServerTreeItem";
 
 export async function getClientConfig(treeItem: PostgresServerTreeItem, databaseName: string): Promise<ClientConfig> {
-    let username: string = treeItem.connectionString.username;
-    let password: string = treeItem.connectionString.password;
+    let username: string | undefined = treeItem.connectionString.username;
+    let password: string | undefined = treeItem.connectionString.password;
 
     if (!(username && password)) {
         const credentials = await treeItem.getCredentials();
-        if (credentials.username && credentials.password) {
-            username = credentials.username;
-            password = credentials.password;
-        }
+        username = nonNullProp(credentials, 'username');
+        password = nonNullProp(credentials, 'password');
     }
 
     const ssl: ConnectionOptions = {

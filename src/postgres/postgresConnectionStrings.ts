@@ -40,7 +40,8 @@ export class ParsedPostgresConnectionString extends ParsedConnectionString {
     public username: string;
     public password: string;
     public readonly port: string;
-    public readonly sslSupport: boolean;
+    public readonly ssl: boolean | undefined;
+    public readonly options: string;
 
     constructor(connectionString: string, config: ConnectionOptions) {
         super(connectionString, config.database ? config.database : undefined);
@@ -48,10 +49,8 @@ export class ParsedPostgresConnectionString extends ParsedConnectionString {
         this.port = config.port ? config.port : `${postgresDefaultPort}`;
         this.username = nonNullProp(config, 'user');
         this.password = nonNullProp(config, 'password');
-        if (config.ssl === false) {
-            this.sslSupport = false;
-        } else {
-            this.sslSupport = true;
+        if (typeof config.ssl !== 'string') {
+            this.ssl = config.ssl;
         }
     }
 

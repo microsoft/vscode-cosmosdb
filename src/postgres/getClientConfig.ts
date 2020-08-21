@@ -23,7 +23,7 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
         }
     }
 
-    const ssl: ConnectionOptions = {
+    const sslAzure: ConnectionOptions = {
         // Always provide the certificate since it is accepted even when SSL is disabled
         // Certificate source: https://aka.ms/AA7wnvl
         ca: BaltimoreCyberTrustRoot
@@ -32,8 +32,13 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
     if ((username && password) || username === 'postgres') {
         const host = nonNullProp(treeItem.connectionString, 'hostName');
         const port: number = treeItem.connectionString.port ? parseInt(treeItem.connectionString.port) : postgresDefaultPort;
-        const sslSupport = treeItem.connectionString.sslSupport;
-        const clientConfig: ClientConfig = { user: username, password: password, ssl: sslSupport ? ssl : sslSupport, host, port, database: databaseName };
+        let ssl: boolean | ConnectionOptions | undefined;
+        if (treeItem.connectionString.hostName.endsWith(`.postgres.database.azure.com`)) {
+            ssl = sslAzure;
+        } else {
+            ssl = treeItem.connectionString.ssl;
+        }
+        const clientConfig: ClientConfig = { user: username, password: password, ssl, host, port, database: databaseName };
         const client = new Client(clientConfig);
 
         // Ensure the client config is valid before returning

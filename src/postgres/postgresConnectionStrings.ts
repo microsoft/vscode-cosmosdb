@@ -13,9 +13,6 @@ export function parsePostgresConnectionString(connectionString: string): ParsedP
     if (config.database) {
         config.database = decodeURIComponent(config.database);
     }
-    if (config.host === 'localhost' && !config.user) {
-        config.user = 'postgres';
-    }
     return new ParsedPostgresConnectionString(connectionString, config);
 }
 
@@ -23,8 +20,6 @@ export function createPostgresConnectionString(host: string, port: number = post
     let connectionString: string = `postgres://`;
     if (username && password) {
         connectionString += `${username}:${password}@`;
-    } else if (username === 'postgres') {
-        connectionString += `${username}@`;
     }
     connectionString += `${host}:${port}`;
     return parsePostgresConnectionString(connectionString);

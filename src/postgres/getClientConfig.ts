@@ -33,13 +33,18 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
         const host = nonNullProp(treeItem.connectionString, 'hostName');
         const port: number = treeItem.connectionString.port ? parseInt(treeItem.connectionString.port) : postgresDefaultPort;
         let ssl: boolean | ConnectionOptions | undefined;
-        if (treeItem.connectionString.hostName.endsWith(`.postgres.database.azure.com`)) {
+        if (treeItem.azureName) {
             ssl = sslAzure;
         } else {
             ssl = treeItem.connectionString.ssl;
         }
         const clientConfig: ClientConfig = { user: username, password: password, ssl, host, port, database: databaseName };
-        const client = new Client(clientConfig);
+        let client: Client;
+        if (treeItem.azureName) {
+            client = new Client(clientConfig);
+        } else {
+            client = new Client(treeItem.connectionString.connectionString);
+        }
 
         // Ensure the client config is valid before returning
         try {

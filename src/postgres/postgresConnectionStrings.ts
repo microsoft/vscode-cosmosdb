@@ -3,13 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ConnectionOptions, parse } from "pg-connection-string";
+import { ConnectionOptions as PGConnectionOptions, parse } from "pg-connection-string";
+import { ConnectionOptions } from "tls";
 import { postgresDefaultPort } from "../constants";
 import { ParsedConnectionString } from "../ParsedConnectionString";
 import { nonNullProp } from "../utils/nonNull";
 
 export function parsePostgresConnectionString(connectionString: string): ParsedPostgresConnectionString {
-    const config: ConnectionOptions = parse(connectionString.trim());
+    const config: PGConnectionOptions = parse(connectionString.trim());
     return new ParsedPostgresConnectionString(connectionString, config);
 }
 
@@ -24,13 +25,13 @@ export function createPostgresConnectionString(host: string, port: number = post
 
 export class ParsedPostgresConnectionString extends ParsedConnectionString {
     public readonly hostName: string;
-    public username: string;
-    public password: string;
+    public username: string | undefined;
+    public password: string | undefined;
     public readonly port: string;
-    public readonly ssl: boolean | undefined;
+    public readonly ssl: boolean | ConnectionOptions | undefined;
     public readonly options: string;
 
-    constructor(connectionString: string, config: ConnectionOptions) {
+    constructor(connectionString: string, config: PGConnectionOptions) {
         super(connectionString, config.database ? config.database : undefined);
         this.hostName = nonNullProp(config, 'host');
         this.port = config.port ? config.port : `${postgresDefaultPort}`;

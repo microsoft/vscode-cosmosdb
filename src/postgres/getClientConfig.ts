@@ -12,8 +12,8 @@ import { invalidCredentialsErrorType } from "./tree/PostgresDatabaseTreeItem";
 import { PostgresServerTreeItem } from "./tree/PostgresServerTreeItem";
 
 export async function getClientConfig(treeItem: PostgresServerTreeItem, databaseName: string): Promise<ClientConfig> {
-    let username: string = treeItem.connectionString.username;
-    let password: string = treeItem.connectionString.password;
+    let username: string | undefined = treeItem.connectionString.username;
+    let password: string | undefined = treeItem.connectionString.password;
 
     if (!(username && password)) {
         const credentials = await treeItem.getCredentials();
@@ -38,13 +38,8 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
         } else {
             ssl = treeItem.connectionString.ssl;
         }
-        const clientConfig: ClientConfig = { user: username, password: password, ssl, host, port, database: databaseName };
-        let client: Client;
-        if (treeItem.azureName) {
-            client = new Client(clientConfig);
-        } else {
-            client = new Client(treeItem.connectionString.connectionString);
-        }
+        const clientConfig: ClientConfig = { user: username, password: password, ssl: ssl, host, port, database: databaseName };
+        const client = new Client(clientConfig);
 
         // Ensure the client config is valid before returning
         try {

@@ -39,7 +39,14 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
             ssl = treeItem.connectionString.ssl;
         }
         const clientConfig: ClientConfig = { user: username, password: password, ssl: ssl, host, port, database: databaseName };
-        const client = new Client(clientConfig);
+        let client: Client;
+        if (treeItem.azureName) {
+            client = new Client(clientConfig);
+        } else {
+            client = new Client({
+                connectionString: treeItem.connectionString.connectionString,
+            });
+        }
 
         // Ensure the client config is valid before returning
         try {

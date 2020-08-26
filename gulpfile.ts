@@ -19,6 +19,14 @@ async function prepareForWebpack(): Promise<void> {
     await fse.writeFile(mainJsPath, contents);
 }
 
+async function cleanReadme(): Promise<void> {
+    const readmePath: string = path.join(__dirname, 'README.md');
+    let data: string = (await fse.readFile(readmePath)).toString();
+    data = data.replace(/<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis, '');
+    await fse.writeFile(readmePath, data);
+}
+
 exports['webpack-dev'] = gulp.series(prepareForWebpack, () => gulp_webpack('development'));
 exports['webpack-prod'] = gulp.series(prepareForWebpack, () => gulp_webpack('production'));
 exports.preTest = gulp_installAzureAccount;
+exports.cleanReadme = cleanReadme;

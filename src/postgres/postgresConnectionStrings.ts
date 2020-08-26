@@ -3,14 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ConnectionOptions as PGConnectionOptions, parse } from "pg-connection-string";
-import { ConnectionOptions } from "tls";
+import { ConnectionOptions, parse } from "pg-connection-string";
 import { postgresDefaultPort } from "../constants";
 import { ParsedConnectionString } from "../ParsedConnectionString";
 import { nonNullProp } from "../utils/nonNull";
 
 export function parsePostgresConnectionString(connectionString: string): ParsedPostgresConnectionString {
-    const config: PGConnectionOptions = parse(connectionString.trim());
+    const config: ConnectionOptions = parse(connectionString.trim());
     return new ParsedPostgresConnectionString(connectionString, config);
 }
 
@@ -28,18 +27,14 @@ export class ParsedPostgresConnectionString extends ParsedConnectionString {
     public username: string | undefined;
     public password: string | undefined;
     public readonly port: string;
-    public readonly ssl: boolean | ConnectionOptions | undefined;
     public readonly options: string;
 
-    constructor(connectionString: string, config: PGConnectionOptions) {
+    constructor(connectionString: string, config: ConnectionOptions) {
         super(connectionString, config.database ? config.database : undefined);
         this.hostName = nonNullProp(config, 'host');
         this.port = config.port ? config.port : `${postgresDefaultPort}`;
         this.username = nonNullProp(config, 'user');
         this.password = nonNullProp(config, 'password');
-        if (typeof config.ssl !== 'string') {
-            this.ssl = config.ssl;
-        }
     }
 
     public getEncodedConnectionString(databaseName?: string): string {

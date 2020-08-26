@@ -12,54 +12,46 @@ import { invalidCredentialsErrorType } from "./tree/PostgresDatabaseTreeItem";
 import { PostgresServerTreeItem } from "./tree/PostgresServerTreeItem";
 
 export async function getClientConfig(treeItem: PostgresServerTreeItem, databaseName: string): Promise<ClientConfig> {
-    let username: string | undefined = treeItem.connectionString.username;
-    let password: string | undefined = treeItem.connectionString.password;
+    let clientConfig: ClientConfig;
+    if (treeItem.azureName) {
+        let username: string | undefined = treeItem.connectionString.username;
+        let password: string | undefined = treeItem.connectionString.password;
 
-    if (!(username && password)) {
-        const credentials = await treeItem.getCredentials();
-        if (credentials.username && credentials.password) {
-            username = credentials.username;
-            password = credentials.password;
+        if (!(username && password)) {
+            const credentials = await treeItem.getCredentials();
+            if (credentials.username && credentials.password) {
+                username = credentials.username;
+                password = credentials.password;
+            }
         }
-    }
 
-    const sslAzure: ConnectionOptions = {
-        // Always provide the certificate since it is accepted even when SSL is disabled
-        // Certificate source: https://aka.ms/AA7wnvl
-        ca: BaltimoreCyberTrustRoot
-    };
+        const sslAzure: ConnectionOptions = {
+            // Always provide the certificate since it is accepted even when SSL is disabled
+            // Certificate source: https://aka.ms/AA7wnvl
+            ca: BaltimoreCyberTrustRoot
+        };
 
-    if ((username && password) || username === 'postgres') {
-        const host = nonNullProp(treeItem.connectionString, 'hostName');
-        const port: number = treeItem.connectionString.port ? parseInt(treeItem.connectionString.port) : postgresDefaultPort;
-        let ssl: boolean | ConnectionOptions | undefined;
-        if (treeItem.azureName) {
-            ssl = sslAzure;
+        if ((username && password) || username === 'postgres') {
+            const host = nonNullProp(treeItem.connectionString, 'hostName');
+            const port: number = treeItem.connectionString.port ? parseInt(treeItem.connectionString.port) : postgresDefaultPort;
+            clientConfig = { user: username, password: password, ssl: sslAzure, host, port, database: databaseName };
         } else {
-            ssl = treeItem.connectionString.ssl;
-        }
-        let clientConfig: ClientConfig;
-        let client: Client;
-        if (treeItem.azureName) {
-            clientConfig = { user: username, password: password, ssl: ssl, host, port, database: databaseName };
-            client = new Client(clientConfig);
-        } else {
-            clientConfig = { connectionString: treeItem.connectionString.connectionString };
-            client = new Client(clientConfig);
-        }
-
-        // Ensure the client config is valid before returning
-        try {
-            await client.connect();
-            return clientConfig;
-        } finally {
-            await client.end();
+            throw {
+                message: localize('mustEnterCredentials', 'Must enter credentials to connect to server.'),
+                code: invalidCredentialsErrorType
+            };
         }
     } else {
-        throw {
-            message: localize('mustEnterCredentials', 'Must enter credentials to connect to server.'),
-            code: invalidCredentialsErrorType
-        };
+        clientConfig = { connectionString: treeItem.connectionString.connectionString };
+    }
+
+    const client = new Client(clientConfig);
+    // Ensure the client config is valid before returning
+    try {
+        await client.connect();
+        return clientConfig;
+    } finally {
+        await client.end();
     }
 }
 

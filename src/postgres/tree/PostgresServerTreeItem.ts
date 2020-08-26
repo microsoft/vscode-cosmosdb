@@ -77,12 +77,12 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
         let dbNames: (string | undefined)[];
-        if (this._azureId) {
+        if (this.azureName) {
+            await this.getCredentials();
             const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
             const listOfDatabases: DatabaseListResult = await client.databases.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
             dbNames = listOfDatabases.map(db => db?.name);
         } else if (this.connectionString.databaseName) {
-            await getClientConfig(this, this.connectionString.databaseName);
             dbNames = [this.connectionString.databaseName];
         } else {
             const config = await getClientConfig(this, postgresDefaultDatabase);

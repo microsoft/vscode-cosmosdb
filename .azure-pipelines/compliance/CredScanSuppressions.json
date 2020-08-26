@@ -4,6 +4,22 @@
         {
             "folder": "node_modules\\",
             "_justification": "No need to scan external node modules."
+        },
+        {
+            "file": "out\\test\\docDBConnectionStrings.test.js",
+            "_justification": "Fake credentials used for unit tests."
+        },
+        {
+            "file": "out\\test\\mongoConnectionStrings.test.js",
+            "_justification": "Fake credentials used for unit tests."
+        },
+        {
+            "file": "test\\docDBConnectionStrings.test.ts",
+            "_justification": "Fake credentials used for unit tests."
+        },
+        {
+            "file": "test\\mongoConnectionStrings.test.ts",
+            "_justification": "Fake credentials used for unit tests."
         }
     ]
 }

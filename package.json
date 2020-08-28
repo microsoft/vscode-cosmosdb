@@ -1049,7 +1049,7 @@
         "mongodb-extended-json": "^1.10.0",
         "ms-rest": "^2.2.1",
         "ms-rest-azure": "^2.3.1",
-        "pg": "^7.18.1",
+        "pg": "^8.3.3",
         "pg-connection-string": "^2.3.0",
         "pg-structure": "^5.10.7",
         "public-ip": "^4.0.0",

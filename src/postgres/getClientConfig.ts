@@ -14,16 +14,21 @@ import { PostgresServerTreeItem } from "./tree/PostgresServerTreeItem";
 export async function getClientConfig(treeItem: PostgresServerTreeItem, databaseName: string): Promise<ClientConfig> {
     let clientConfig: ClientConfig;
     if (treeItem.azureName) {
-        const username: string | undefined = treeItem.connectionString.username;
-        const password: string | undefined = treeItem.connectionString.password;
+        let username: string | undefined = treeItem.connectionString.username;
+        let password: string | undefined = treeItem.connectionString.password;
+
+        if (!(username && password)) {
+            const credentials = await treeItem.getCredentials();
+            username = nonNullProp(credentials, 'username');
+            password = nonNullProp(credentials, 'password');
+        }
 
         const sslAzure: ConnectionOptions = {
             // Always provide the certificate since it is accepted even when SSL is disabled
             // Certificate source: https://aka.ms/AA7wnvl
             ca: BaltimoreCyberTrustRoot
         };
-
-        if ((username && password) || username === 'postgres') {
+        if ((username && password)) {
             const host = nonNullProp(treeItem.connectionString, 'hostName');
             const port: number = treeItem.connectionString.port ? parseInt(treeItem.connectionString.port) : postgresDefaultPort;
             clientConfig = { user: username, password: password, ssl: sslAzure, host, port, database: databaseName };

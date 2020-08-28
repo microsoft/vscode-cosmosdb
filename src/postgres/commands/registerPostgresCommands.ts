@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { defaults } from "pg";
 import { languages } from "vscode";
 import { callWithTelemetryAndErrorHandling, IActionContext, registerCommand } from "vscode-azureextensionui";
 import { connectedPostgresKey, doubleClickDebounceDelay, postgresLanguageId } from "../../constants";
@@ -31,6 +32,9 @@ export function registerPostgresCommands(): void {
 
     // tslint:disable-next-line: no-floating-promises
     loadPersistedPostgresDatabase();
+
+    //update defaults.database of 'pg'
+    defaults.database = 'postgres';
 
     registerCommand('postgreSQL.deleteServer', deletePostgresServer);
     registerCommand('postgreSQL.enterCredentials', enterPostgresCredentials);

@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { openInPortal } from 'vscode-azureextensionui';
 import { API } from '../../AzureDBExperiences';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../../extensionVariables';
@@ -56,6 +57,12 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
 
     public async reveal(): Promise<void> {
         ext.treeView.reveal(await this.getAccountNode());
+    }
+
+    public async openInPortal(resourceID: string): Promise<void> {
+        if (this._accountNode) {
+            await openInPortal(this._accountNode.root, this._accountNode.fullId + `/${resourceID}`);
+        }
     }
 
     protected async getAccountNode(): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase> {

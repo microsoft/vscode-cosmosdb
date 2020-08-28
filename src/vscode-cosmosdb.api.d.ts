@@ -51,6 +51,8 @@ export interface DatabaseAccountTreeItem extends CosmosDBTreeItem {
         masterKey: string;
         documentEndpoint: string;
     }
+
+    openInPortal(resourceID: string): Promise<void>;
 }
 
 export interface DatabaseTreeItem extends DatabaseAccountTreeItem {

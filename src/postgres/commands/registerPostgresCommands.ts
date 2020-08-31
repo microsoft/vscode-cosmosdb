@@ -6,7 +6,7 @@
 import { defaults } from "pg";
 import { languages } from "vscode";
 import { callWithTelemetryAndErrorHandling, IActionContext, registerCommand } from "vscode-azureextensionui";
-import { connectedPostgresKey, doubleClickDebounceDelay, postgresLanguageId } from "../../constants";
+import { connectedPostgresKey, doubleClickDebounceDelay, postgresDefaultDatabase, postgresLanguageId } from "../../constants";
 import { ext } from "../../extensionVariables";
 import { PostgresCodeLensProvider } from "../services/PostgresCodeLensProvider";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
@@ -34,7 +34,7 @@ export function registerPostgresCommands(): void {
     loadPersistedPostgresDatabase();
 
     //update defaults.database of 'pg'
-    defaults.database = 'postgres';
+    defaults.database = postgresDefaultDatabase;
 
     registerCommand('postgreSQL.deleteServer', deletePostgresServer);
     registerCommand('postgreSQL.enterCredentials', enterPostgresCredentials);

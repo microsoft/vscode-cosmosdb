@@ -12,39 +12,43 @@ import { invalidCredentialsErrorType } from "./tree/PostgresDatabaseTreeItem";
 import { PostgresServerTreeItem } from "./tree/PostgresServerTreeItem";
 
 export async function getClientConfig(treeItem: PostgresServerTreeItem, databaseName: string): Promise<ClientConfig> {
-    let username: string | undefined = treeItem.connectionString.username;
-    let password: string | undefined = treeItem.connectionString.password;
+    let clientConfig: ClientConfig;
+    if (treeItem.azureName) {
+        let username: string | undefined = treeItem.connectionString.username;
+        let password: string | undefined = treeItem.connectionString.password;
 
-    if (!(username && password)) {
-        const credentials = await treeItem.getCredentials();
-        username = nonNullProp(credentials, 'username');
-        password = nonNullProp(credentials, 'password');
-    }
+        if (!(username && password)) {
+            const credentials = await treeItem.getCredentials();
+            username = nonNullProp(credentials, 'username');
+            password = nonNullProp(credentials, 'password');
+        }
 
-    const ssl: ConnectionOptions = {
-        // Always provide the certificate since it is accepted even when SSL is disabled
-        // Certificate source: https://aka.ms/AA7wnvl
-        ca: BaltimoreCyberTrustRoot
-    };
-
-    if (username && password) {
-        const host = nonNullProp(treeItem.connectionString, 'hostName');
-        const port: number = treeItem.connectionString.port ? parseInt(treeItem.connectionString.port) : postgresDefaultPort;
-        const clientConfig = { user: username, password: password, ssl, host, port, database: databaseName };
-        const client = new Client(clientConfig);
-
-        // Ensure the client config is valid before returning
-        try {
-            await client.connect();
-            return clientConfig;
-        } finally {
-            await client.end();
+        const sslAzure: ConnectionOptions = {
+            // Always provide the certificate since it is accepted even when SSL is disabled
+            // Certificate source: https://aka.ms/AA7wnvl
+            ca: BaltimoreCyberTrustRoot
+        };
+        if ((username && password)) {
+            const host = nonNullProp(treeItem.connectionString, 'hostName');
+            const port: number = treeItem.connectionString.port ? parseInt(treeItem.connectionString.port) : postgresDefaultPort;
+            clientConfig = { user: username, password: password, ssl: sslAzure, host, port, database: databaseName };
+        } else {
+            throw {
+                message: localize('mustEnterCredentials', 'Must enter credentials to connect to server.'),
+                code: invalidCredentialsErrorType
+            };
         }
     } else {
-        throw {
-            message: localize('mustEnterCredentials', 'Must enter credentials to connect to server.'),
-            code: invalidCredentialsErrorType
-        };
+        clientConfig = { connectionString: treeItem.connectionString.connectionString };
+    }
+
+    const client = new Client(clientConfig);
+    // Ensure the client config is valid before returning
+    try {
+        await client.connect();
+        return clientConfig;
+    } finally {
+        await client.end();
     }
 }
 

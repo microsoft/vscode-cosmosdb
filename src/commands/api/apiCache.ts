@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { ParsedDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { ParsedMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
 import { ParsedPostgresConnectionString, parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
@@ -31,6 +32,8 @@ export function removeTreeItemFromCache(expected: ParsedConnectionString): void 
                 actual = parsePostgresConnectionString(value.connectionString);
             } else if (expected instanceof ParsedMongoConnectionString) {
                 actual = new ParsedMongoConnectionString(value.connectionString, value.hostName, value.port, undefined);
+            } else {
+                actual = new ParsedDocDBConnectionString(value.connectionString, value.hostName, value.port, undefined);
             }
             if (actual && (actual.accountId === expected.accountId)) {
                 sessionCache.delete(key);

@@ -21,14 +21,14 @@ import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeIt
 import { TableAccountTreeItem } from '../../table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from '../../tree/AttachedAccountsTreeItem';
 import { localize } from '../../utils/localize';
-import { CosmosDBApiType, DatabaseAccountTreeItem, DatabaseTreeItem, PickTreeItemOptions } from '../../vscode-cosmosdb.api';
+import { AzureDatabasesApiType, DatabaseAccountTreeItem, DatabaseTreeItem, PickTreeItemOptions } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem } from './apiCache';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
 const databaseContextValues = [MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue, GraphDatabaseTreeItem.contextValue, PostgresDatabaseTreeItem.contextValue];
 const accountContextValues = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue, PostgresServerTreeItem.contextValue];
-function getDatabaseContextValue(apiType: CosmosDBApiType): string {
+function getDatabaseContextValue(apiType: AzureDatabasesApiType): string {
     switch (apiType) {
         case 'Mongo':
             return MongoDatabaseTreeItem.contextValue;
@@ -43,7 +43,7 @@ function getDatabaseContextValue(apiType: CosmosDBApiType): string {
     }
 }
 
-function getAccountContextValue(apiType: CosmosDBApiType): string {
+function getAccountContextValue(apiType: AzureDatabasesApiType): string {
     switch (apiType) {
         case 'Mongo':
             return MongoAccountTreeItem.contextValue;

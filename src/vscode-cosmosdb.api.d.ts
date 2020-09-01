@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export interface CosmosDBExtensionApi {
+export interface AzureDatabasesExtensionApi {
     apiVersion: string;
 
     /**
@@ -28,14 +28,14 @@ export interface CosmosDBExtensionApi {
     revealTreeItem(resourceId: string): Promise<void>;
 }
 
-export interface CosmosDBTreeItem {
+export interface AzureDatabasesTreeItem {
     /**
      * Reveals the item in the tree. This may result in loading more Cosmos DB tree items or manually attaching by connection string.
      */
     reveal(): Promise<void>;
 }
 
-export interface DatabaseAccountTreeItem extends CosmosDBTreeItem {
+export interface DatabaseAccountTreeItem extends AzureDatabasesTreeItem {
     hostName: string;
     port: string;
     connectionString: string;
@@ -63,20 +63,20 @@ export interface DatabaseTreeItem extends DatabaseAccountTreeItem {
     databaseName: string;
 }
 
-export type CosmosDBResourceType = 'DatabaseAccount' | 'Database';
+export type AzureDatabasesResourceType = 'DatabaseAccount' | 'Database';
 
-export type CosmosDBApiType = 'Mongo' | 'SQL' | 'Graph' | 'Table' | 'Postgres';
+export type AzureDatabasesApiType = 'Mongo' | 'SQL' | 'Graph' | 'Table' | 'Postgres';
 
 export interface PickTreeItemOptions {
     /**
      * The resource type of the picked item
      */
-    resourceType: CosmosDBResourceType;
+    resourceType: AzureDatabasesResourceType;
 
     /**
      * An array of the API types that can be picked, or undefined if all API types are allowed
      */
-    apiType?: CosmosDBApiType[];
+    apiType?: AzureDatabasesApiType[];
 }
 
 export interface TreeItemQuery {

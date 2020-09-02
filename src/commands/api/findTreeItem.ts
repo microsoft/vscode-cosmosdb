@@ -16,6 +16,7 @@ import { parsePostgresConnectionString } from '../../postgres/postgresConnection
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
+import { nonNullProp } from '../../utils/nonNull';
 import { DatabaseAccountTreeItem, DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
@@ -26,14 +27,29 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
         context.errorHandling.suppressDisplay = true;
         context.errorHandling.rethrow = true;
 
-        const connectionString = query.connectionString;
         let parsedCS: ParsedConnectionString;
-        if (/^mongodb[^:]*:\/\//i.test(connectionString)) {
-            parsedCS = await parseMongoConnectionString(connectionString);
-        } else if (/^postgres:\/\//i.test(connectionString)) {
+        if (query.postgresData) {
+            const postgresData = query.postgresData;
+            let connectionString: string = `postgres://`;
+            if (postgresData.username && postgresData.password) {
+                const encodedUsername = encodeURIComponent(postgresData.username);
+                const encodedPassword = encodeURIComponent(postgresData.password);
+                connectionString += `${encodedUsername}:${encodedPassword}@`;
+
+            }
+            connectionString += `${postgresData.hostName}:${postgresData.port}`;
+            if (postgresData.dbName) {
+                const encodeDatabaseName = encodeURIComponent(postgresData.dbName);
+                connectionString += `/${encodeDatabaseName}`;
+            }
             parsedCS = parsePostgresConnectionString(connectionString);
         } else {
-            parsedCS = parseDocDBConnectionString(connectionString);
+            const connectionString = nonNullProp(query, 'connectionString');
+            if (/^mongodb[^:]*:\/\//i.test(connectionString)) {
+                parsedCS = await parseMongoConnectionString(connectionString);
+            } else {
+                parsedCS = parseDocDBConnectionString(connectionString);
+            }
         }
 
         const maxTime = Date.now() + 10 * 1000; // Give up searching subscriptions after 10 seconds and just attach the account

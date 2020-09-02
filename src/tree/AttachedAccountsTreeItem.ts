@@ -169,8 +169,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
     }
 
-    public async attachConnectionString(connectionString: string, api: API.MongoDB | API.Core | API.Postgres): Promise<MongoAccountTreeItem & DocDBAccountTreeItemBase & PostgresServerTreeItem> {
-        const treeItem = <MongoAccountTreeItem & DocDBAccountTreeItemBase & PostgresServerTreeItem>await this.createTreeItem(connectionString, api);
+    public async attachConnectionString(connectionString: string, api: API.MongoDB | API.Core | API.Postgres): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
+        const treeItem = <MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem>await this.createTreeItem(connectionString, api);
         await this.attachAccount(treeItem, connectionString);
         await this.refresh();
         return treeItem;

@@ -3,8 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { ParsedDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { ParsedMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
+import { ParsedPostgresConnectionString, parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
 import { DatabaseAccountTreeItem, DatabaseTreeItem } from '../../vscode-cosmosdb.api';
 
 /**
@@ -25,8 +27,15 @@ export function removeTreeItemFromCache(expected: ParsedConnectionString): void 
     if (!expected.databaseName) {
         // If parsedCS represents an account, remove the account and any databases that match that account
         for (const [key, value] of sessionCache.entries()) {
-            const actual = new ParsedMongoConnectionString(value.connectionString, value.hostName, value.port, undefined);
-            if (actual.accountId === expected.accountId) {
+            let actual: ParsedConnectionString | undefined;
+            if (expected instanceof ParsedPostgresConnectionString) {
+                actual = parsePostgresConnectionString(value.connectionString);
+            } else if (expected instanceof ParsedMongoConnectionString) {
+                actual = new ParsedMongoConnectionString(value.connectionString, value.hostName, value.port, undefined);
+            } else {
+                actual = new ParsedDocDBConnectionString(value.connectionString, value.hostName, value.port, undefined);
+            }
+            if (actual && (actual.accountId === expected.accountId)) {
                 sessionCache.delete(key);
             }
         }

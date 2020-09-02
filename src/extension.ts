@@ -172,7 +172,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         findTreeItem,
         pickTreeItem,
         revealTreeItem,
-        apiVersion: '2.0.0'
+        apiVersion: '1.2.0'
     }]);
 }
 

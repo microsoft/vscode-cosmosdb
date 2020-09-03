@@ -16,19 +16,19 @@ import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
+import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
+import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from '../../table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from '../../tree/AttachedAccountsTreeItem';
 import { localize } from '../../utils/localize';
-import { nonNullProp } from '../../utils/nonNull';
-import { CosmosDBApiType, DatabaseAccountTreeItem, DatabaseTreeItem, PickTreeItemOptions } from '../../vscode-cosmosdb.api';
+import { AzureDatabasesApiType, DatabaseAccountTreeItem, DatabaseTreeItem, PickTreeItemOptions } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem } from './apiCache';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
-const databaseContextValues = [MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue, GraphDatabaseTreeItem.contextValue];
-const accountContextValues = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
-
-function getDatabaseContextValue(apiType: CosmosDBApiType): string {
+const databaseContextValues = [MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue, GraphDatabaseTreeItem.contextValue, PostgresDatabaseTreeItem.contextValue];
+const accountContextValues = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue, PostgresServerTreeItem.contextValue];
+function getDatabaseContextValue(apiType: AzureDatabasesApiType): string {
     switch (apiType) {
         case 'Mongo':
             return MongoDatabaseTreeItem.contextValue;
@@ -36,12 +36,14 @@ function getDatabaseContextValue(apiType: CosmosDBApiType): string {
             return DocDBDatabaseTreeItem.contextValue;
         case 'Graph':
             return GraphDatabaseTreeItem.contextValue;
+        case 'Postgres':
+            return PostgresDatabaseTreeItem.contextValue;
         default:
             throw new RangeError(`Unsupported api type "${apiType}".`);
     }
 }
 
-function getAccountContextValue(apiType: CosmosDBApiType): string {
+function getAccountContextValue(apiType: AzureDatabasesApiType): string {
     switch (apiType) {
         case 'Mongo':
             return MongoAccountTreeItem.contextValue;
@@ -51,6 +53,8 @@ function getAccountContextValue(apiType: CosmosDBApiType): string {
             return GraphAccountTreeItem.contextValue;
         case 'Table':
             return TableAccountTreeItem.contextValue;
+        case 'Postgres':
+            return PostgresServerTreeItem.contextValue;
         default:
             throw new RangeError(`Unsupported api type "${apiType}".`);
     }
@@ -77,13 +81,16 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
         const pickedItem = await ext.tree.showTreeItemPicker(contextValuesToFind, context);
 
         let parsedCS: ParsedConnectionString;
-        let accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase;
-        let databaseNode: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase | undefined;
+        let accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem;
+        let databaseNode: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase | PostgresDatabaseTreeItem | undefined;
         if (pickedItem instanceof MongoAccountTreeItem) {
             parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
             accountNode = pickedItem;
         } else if (pickedItem instanceof DocDBAccountTreeItemBase) {
             parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
+            accountNode = pickedItem;
+        } else if (pickedItem instanceof PostgresServerTreeItem) {
+            parsedCS = pickedItem.connectionString;
             accountNode = pickedItem;
         } else if (pickedItem instanceof MongoDatabaseTreeItem) {
             parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
@@ -93,12 +100,16 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
             parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
             accountNode = pickedItem.parent;
             databaseNode = pickedItem;
+        } else if (pickedItem instanceof PostgresDatabaseTreeItem) {
+            parsedCS = pickedItem.parent.connectionString;
+            accountNode = pickedItem.parent;
+            databaseNode = pickedItem;
         } else {
             throw new RangeError(localize('invalidItem', 'Invalid item "{0}".', pickedItem.constructor.name));
         }
 
         const result = databaseNode ?
-            new DatabaseTreeItemInternal(parsedCS, nonNullProp(parsedCS, 'databaseName'), accountNode, databaseNode) :
+            new DatabaseTreeItemInternal(parsedCS, databaseNode.databaseName, accountNode, databaseNode) :
             new DatabaseAccountTreeItemInternal(parsedCS, accountNode);
         cacheTreeItem(parsedCS, result);
         return result;

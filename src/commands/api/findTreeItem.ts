@@ -12,6 +12,9 @@ import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
+import { parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
+import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
+import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
 import { DatabaseAccountTreeItem, DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
@@ -27,6 +30,8 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
         let parsedCS: ParsedConnectionString;
         if (/^mongodb[^:]*:\/\//i.test(connectionString)) {
             parsedCS = await parseMongoConnectionString(connectionString);
+        } else if (/^postgres:\/\//i.test(connectionString)) {
+            parsedCS = parsePostgresConnectionString(connectionString);
         } else {
             parsedCS = parseDocDBConnectionString(connectionString);
         }
@@ -87,6 +92,8 @@ async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedCon
                 actual = await parseMongoConnectionString(dbAccount.connectionString);
             } else if (dbAccount instanceof DocDBAccountTreeItemBase) {
                 actual = parseDocDBConnectionString(dbAccount.connectionString);
+            } else if (dbAccount instanceof PostgresServerTreeItem) {
+                actual = dbAccount.connectionString;
             } else {
                 return undefined;
             }
@@ -95,7 +102,7 @@ async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedCon
                 if (expected.databaseName) {
                     const dbs = await dbAccount.getCachedChildren(context);
                     for (const db of dbs) {
-                        if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) && expected.databaseName === db.databaseName) {
+                        if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase || db instanceof PostgresDatabaseTreeItem) && expected.databaseName === db.databaseName) {
                             return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
                         }
                     }

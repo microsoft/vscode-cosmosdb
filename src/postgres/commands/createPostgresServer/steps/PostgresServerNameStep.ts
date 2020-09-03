@@ -42,6 +42,8 @@ async function validatePostgresServerName(name: string, client: PostgreSQLManage
         return localize('serverNameLengthCheck', 'The name must be between {0} and {1} characters.', min, max);
     } else if (!(/^[a-z0-9-]+$/).test(name)) {
         return localize('serverNameCharacterCheck', 'Server name must only contain lowercase letters, numbers, and hyphens.');
+    } else if ((/^[0-9]+$/).test(name)) {
+        return localize('serverNameCharacterNumbersCheck', 'Server name cannot contain only numbers, must be combined with lowercase letters and/or hyphens.');
     } else if (name.startsWith('-') || name.endsWith('-')) {
         return localize('serverNamePrefixSuffixCheck', 'Server name must not start or end in a hyphen.');
     }

@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { openInPortal } from 'vscode-azureextensionui';
 import { API } from '../../AzureDBExperiences';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { ParsedMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
+import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { nonNullProp } from '../../utils/nonNull';
 import { DatabaseAccountTreeItem } from '../../vscode-cosmosdb.api';
 
@@ -34,14 +34,18 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
         return this._parsedCS.port;
     }
 
-    public get azureData(): { accountName: string; } | undefined {
+    public get azureData(): {} | undefined {
         if (this._accountNode?.databaseAccount) {
             return {
                 accountName: nonNullProp(this._accountNode.databaseAccount, 'name')
             };
-        } else {
-            return undefined;
+        } else if (this._accountNode instanceof PostgresServerTreeItem) {
+            return {
+                accountId: this._accountNode.fullId
+            };
         }
+
+        return undefined;
     }
 
     public get docDBData(): { masterKey: string; documentEndpoint: string; } | undefined {
@@ -57,12 +61,6 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
 
     public async reveal(): Promise<void> {
         ext.treeView.reveal(await this.getAccountNode());
-    }
-
-    public async openInPortal(resourceID: string): Promise<void> {
-        if (this._accountNode) {
-            await openInPortal(this._accountNode.root, this._accountNode.fullId + `/${resourceID}`);
-        }
     }
 
     protected async getAccountNode(): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase> {

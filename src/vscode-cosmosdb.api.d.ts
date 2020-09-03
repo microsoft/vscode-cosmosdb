@@ -44,7 +44,8 @@ export interface DatabaseAccountTreeItem extends CosmosDBTreeItem {
      * Data specific to Azure or undefined if the resource is not in Azure.
      */
     azureData?: {
-        accountName: string;
+        accountName?: string;
+        accountId?: string;
     }
 
     docDBData?: {
@@ -52,7 +53,6 @@ export interface DatabaseAccountTreeItem extends CosmosDBTreeItem {
         documentEndpoint: string;
     }
 
-    openInPortal(resourceID: string): Promise<void>;
 }
 
 export interface DatabaseTreeItem extends DatabaseAccountTreeItem {

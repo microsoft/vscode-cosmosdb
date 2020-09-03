@@ -79,6 +79,12 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
         ext.treeView.reveal(await this.getAccountNode());
     }
 
+    public async resetCredentials(): Promise<void> {
+        if (this.azureData && this._accountNode instanceof PostgresServerTreeItem) {
+            await this._accountNode.getCredentials();
+        }
+    }
+
     protected async getAccountNode(): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
         // If this._accountNode is undefined, attach a new node based on connection string
         if (!this._accountNode) {

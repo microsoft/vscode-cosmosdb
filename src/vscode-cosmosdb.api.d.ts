@@ -88,7 +88,7 @@ export interface TreeItemQuery {
     postgresData?: {
         hostName: string;
         port: string;
-        dbName: string | undefined;
+        databaseName: string | undefined;
         username: string | undefined;
         password: string | undefined;
     }

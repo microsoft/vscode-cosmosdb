@@ -12,7 +12,7 @@ import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
-import { parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
+import { createPostgresConnectionString, parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
@@ -30,23 +30,14 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
         let parsedCS: ParsedConnectionString;
         if (query.postgresData) {
             const postgresData = query.postgresData;
-            let connectionString: string = `postgres://`;
-            if (postgresData.username && postgresData.password) {
-                const encodedUsername = encodeURIComponent(postgresData.username);
-                const encodedPassword = encodeURIComponent(postgresData.password);
-                connectionString += `${encodedUsername}:${encodedPassword}@`;
-
-            }
-            connectionString += `${postgresData.hostName}:${postgresData.port}`;
-            if (postgresData.dbName) {
-                const encodeDatabaseName = encodeURIComponent(postgresData.dbName);
-                connectionString += `/${encodeDatabaseName}`;
-            }
+            const connectionString: string = createPostgresConnectionString(postgresData.hostName, postgresData.port, postgresData.username, postgresData.password, postgresData.databaseName);
             parsedCS = parsePostgresConnectionString(connectionString);
         } else {
             const connectionString = nonNullProp(query, 'connectionString');
             if (/^mongodb[^:]*:\/\//i.test(connectionString)) {
                 parsedCS = await parseMongoConnectionString(connectionString);
+            } else if (/^postgres:\/\//i.test(connectionString)) {
+                parsedCS = parsePostgresConnectionString(connectionString);
             } else {
                 parsedCS = parseDocDBConnectionString(connectionString);
             }

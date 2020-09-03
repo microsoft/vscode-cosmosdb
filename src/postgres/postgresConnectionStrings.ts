@@ -13,13 +13,23 @@ export function parsePostgresConnectionString(connectionString: string): ParsedP
     return new ParsedPostgresConnectionString(connectionString, config);
 }
 
-export function createPostgresConnectionString(host: string, port: number = postgresDefaultPort, username?: string | undefined, password?: string | undefined): ParsedPostgresConnectionString {
+export function createPostgresConnectionString(hostName: string, port: string = postgresDefaultPort, username?: string | undefined, password?: string | undefined, databaseName?: string | undefined): string {
     let connectionString: string = `postgres://`;
-    if (username && password) {
-        connectionString += `${username}:${password}@`;
+    if (username) {
+        const encodedUsername = encodeURIComponent(username);
+        if (password) {
+            const encodedPassword = encodeURIComponent(password);
+            connectionString += `${encodedUsername}:${encodedPassword}@`;
+        } else {
+            connectionString += `${encodedUsername}@`;
+        }
     }
-    connectionString += `${host}:${port}`;
-    return parsePostgresConnectionString(connectionString);
+    connectionString += `${hostName}:${port}`;
+    if (databaseName) {
+        const encodeDatabaseName = encodeURIComponent(databaseName);
+        connectionString += `/${encodeDatabaseName}`;
+    }
+    return connectionString;
 }
 
 export class ParsedPostgresConnectionString extends ParsedConnectionString {
@@ -37,19 +47,7 @@ export class ParsedPostgresConnectionString extends ParsedConnectionString {
     }
 
     public getEncodedConnectionString(databaseName?: string): string {
-        let connectionString: string = `postgres://`;
-        if (this.username && this.password) {
-            const encodedUsername = encodeURIComponent(this.username);
-            const encodedPassword = encodeURIComponent(this.password);
-            connectionString += `${encodedUsername}:${encodedPassword}@`;
-
-        }
-        connectionString += `${this.hostName}:${this.port}`;
-        if (databaseName) {
-            const encodeDatabaseName = encodeURIComponent(databaseName);
-            connectionString += `/${encodeDatabaseName}`;
-        }
-        return connectionString;
+        return createPostgresConnectionString(this.hostName, this.port, this.username, this.password, this.databaseName ? this.databaseName : databaseName);
     }
 
 }

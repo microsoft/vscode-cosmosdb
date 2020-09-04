@@ -35,11 +35,12 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
         return this._parsedCS.port;
     }
 
-    public get azureData(): { accountName: string } | { accountName: string, accountId: string } | undefined {
+    public get azureData(): { accountName: string, accountId: string } | undefined {
         if (this._accountNode instanceof MongoAccountTreeItem || this._accountNode instanceof DocDBAccountTreeItemBase) {
             if (this._accountNode?.databaseAccount) {
                 return {
-                    accountName: nonNullProp(this._accountNode.databaseAccount, 'name')
+                    accountName: nonNullProp(this._accountNode.databaseAccount, 'name'),
+                    accountId: this._accountNode.fullId
                 };
             }
         } else if (this._accountNode instanceof PostgresServerTreeItem) {

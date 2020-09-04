@@ -64,8 +64,8 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
     }
 
     public get postgresData(): { username: string | undefined; password: string | undefined } | undefined {
-        if (this._accountNode instanceof PostgresServerTreeItem) {
-            const connectionString = this._accountNode.connectionString;
+        if (this._parsedCS instanceof ParsedPostgresConnectionString) {
+            const connectionString = this._parsedCS;
             return {
                 username: connectionString.username,
                 password: connectionString.password
@@ -77,12 +77,6 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
 
     public async reveal(): Promise<void> {
         ext.treeView.reveal(await this.getAccountNode());
-    }
-
-    public async resetCredentials(): Promise<void> {
-        if (this.azureData && this._accountNode instanceof PostgresServerTreeItem) {
-            await this._accountNode.getCredentials();
-        }
     }
 
     protected async getAccountNode(): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {

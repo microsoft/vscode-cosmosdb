@@ -93,7 +93,7 @@ async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedCon
             } else if (dbAccount instanceof DocDBAccountTreeItemBase) {
                 actual = parseDocDBConnectionString(dbAccount.connectionString);
             } else if (dbAccount instanceof PostgresServerTreeItem) {
-                actual = dbAccount.connectionString;
+                actual = dbAccount.partialConnectionString;
             } else {
                 return undefined;
             }
@@ -102,16 +102,32 @@ async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedCon
                 if (expected.databaseName) {
                     const dbs = await dbAccount.getCachedChildren(context);
                     for (const db of dbs) {
-                        if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase || db instanceof PostgresDatabaseTreeItem) && expected.databaseName === db.databaseName) {
+                        if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) && expected.databaseName === db.databaseName) {
                             return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
+                        }
+                        if ((db instanceof PostgresDatabaseTreeItem && dbAccount instanceof PostgresServerTreeItem) && expected.databaseName === db.databaseName) {
+                            const fullConnectionString = await dbAccount.getFullConnectionString();
+                            return new DatabaseTreeItemInternal(fullConnectionString, expected.databaseName, dbAccount, db);
                         }
                     }
 
                     // We found the right account - just not the db. In this case we can still 'reveal' the account
-                    return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount);
+                    if (dbAccount instanceof PostgresServerTreeItem) {
+                        const fullConnectionString = await dbAccount.getFullConnectionString();
+                        return new DatabaseTreeItemInternal(fullConnectionString, expected.databaseName, dbAccount);
+                    } else {
+                        return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount);
+                    }
+
                 }
 
-                return new DatabaseAccountTreeItemInternal(expected, dbAccount);
+                if (dbAccount instanceof PostgresServerTreeItem) {
+                    const fullConnectionString = await dbAccount.getFullConnectionString();
+                    return new DatabaseAccountTreeItemInternal(fullConnectionString, dbAccount);
+                } else {
+                    return new DatabaseAccountTreeItemInternal(expected, dbAccount);
+                }
+
             }
         }
     } catch (error) {

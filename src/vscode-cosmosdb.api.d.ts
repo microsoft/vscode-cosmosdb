@@ -57,11 +57,6 @@ export interface DatabaseAccountTreeItem extends AzureDatabasesTreeItem {
         password: string | undefined;
     }
 
-    /**
-     * Resets credentials in connection strings; only for Azure Postgres accounts
-     */
-    resetCredentials(): Promise<void>
-
 }
 
 export interface DatabaseTreeItem extends DatabaseAccountTreeItem {

@@ -45,9 +45,4 @@ export class ParsedPostgresConnectionString extends ParsedConnectionString {
         this.username = config.user;
         this.password = config.password;
     }
-
-    public getEncodedConnectionString(databaseName?: string): string {
-        return createPostgresConnectionString(this.hostName, this.port, this.username, this.password, this.databaseName ? this.databaseName : databaseName);
-    }
-
 }

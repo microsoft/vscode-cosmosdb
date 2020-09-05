@@ -45,6 +45,7 @@ export interface DatabaseAccountTreeItem extends AzureDatabasesTreeItem {
      */
     azureData?: {
         accountName: string;
+        accountId: string;
     }
 
     docDBData?: {

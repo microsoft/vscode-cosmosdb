@@ -16,7 +16,7 @@ import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
-import { createPostgresConnectionString, ParsedPostgresConnectionString } from '../postgres/postgresConnectionStrings';
+import { createPostgresConnectionString, ParsedPostgresConnectionString, parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { azureUtils } from '../utils/azureUtils';
@@ -92,8 +92,9 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             const host = nonNullProp(server, 'fullyQualifiedDomainName');
             const username: string = nonNullProp(wizardContext, 'adminUser');
             const password: string = nonNullProp(wizardContext, 'adminPassword');
-            const connectionString: ParsedPostgresConnectionString = createPostgresConnectionString(host, undefined, username, password);
-            return new PostgresServerTreeItem(this, connectionString, server);
+            const connectionString: string = createPostgresConnectionString(host, undefined, username, password);
+            const parsedCS: ParsedPostgresConnectionString = parsePostgresConnectionString(connectionString);
+            return new PostgresServerTreeItem(this, parsedCS, server);
         } else {
             return await this.initCosmosDBChild(client, nonNullProp(wizardContext, 'databaseAccount'));
         }
@@ -145,7 +146,8 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         }
     }
     private async initPostgresChild(server: Server): Promise<AzureTreeItem> {
-        const connectionString: ParsedPostgresConnectionString = createPostgresConnectionString(nonNullProp(server, 'fullyQualifiedDomainName'));
-        return new PostgresServerTreeItem(this, connectionString, server);
+        const connectionString: string = createPostgresConnectionString(nonNullProp(server, 'fullyQualifiedDomainName'));
+        const parsedCS: ParsedPostgresConnectionString = parsePostgresConnectionString(connectionString);
+        return new PostgresServerTreeItem(this, parsedCS, server);
     }
 }

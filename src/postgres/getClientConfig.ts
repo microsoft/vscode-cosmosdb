@@ -13,15 +13,10 @@ import { PostgresServerTreeItem } from "./tree/PostgresServerTreeItem";
 
 export async function getClientConfig(treeItem: PostgresServerTreeItem, databaseName: string): Promise<ClientConfig> {
     let clientConfig: ClientConfig;
+    const connectionString = await treeItem.getFullConnectionString();
     if (treeItem.azureName) {
-        let username: string | undefined = treeItem.connectionString.username;
-        let password: string | undefined = treeItem.connectionString.password;
-
-        if (!(username && password)) {
-            const credentials = await treeItem.getCredentials();
-            username = nonNullProp(credentials, 'username');
-            password = nonNullProp(credentials, 'password');
-        }
+        const username: string | undefined = connectionString.username;
+        const password: string | undefined = connectionString.password;
 
         const sslAzure: ConnectionOptions = {
             // Always provide the certificate since it is accepted even when SSL is disabled
@@ -29,8 +24,8 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
             ca: BaltimoreCyberTrustRoot
         };
         if ((username && password)) {
-            const host = nonNullProp(treeItem.connectionString, 'hostName');
-            const port: number = treeItem.connectionString.port ? parseInt(treeItem.connectionString.port) : parseInt(postgresDefaultPort);
+            const host = nonNullProp(connectionString, 'hostName');
+            const port: number = connectionString.port ? parseInt(connectionString.port) : parseInt(postgresDefaultPort);
             clientConfig = { user: username, password: password, ssl: sslAzure, host, port, database: databaseName };
         } else {
             throw {
@@ -39,7 +34,7 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
             };
         }
     } else {
-        clientConfig = { connectionString: treeItem.connectionString.connectionString };
+        clientConfig = { connectionString: connectionString.connectionString };
     }
 
     const client = new Client(clientConfig);

@@ -34,16 +34,16 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public static serviceName: string = "ms-azuretools.vscode-azuredatabases.postgresPasswords";
     public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
-    public connectionString: ParsedPostgresConnectionString;
     public resourceGroup: string | undefined;
     public azureName: string | undefined;
+    public partialConnectionString: ParsedPostgresConnectionString;
 
     private _azureId: string | undefined;
     private _serverVersion: string | undefined;
 
     constructor(parent: AzureParentTreeItem, connectionString: ParsedPostgresConnectionString, server?: Server) {
         super(parent);
-        this.connectionString = connectionString;
+        this.partialConnectionString = connectionString;
         if (server) {
             this._azureId = server?.id;
             this._serverVersion = server?.version;
@@ -57,14 +57,14 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get label(): string {
-        return this.azureName ? this.azureName : this.connectionString.fullId;
+        return this.azureName ? this.azureName : this.partialConnectionString.fullId;
     }
 
     public get id(): string {
         if (this._azureId) {
             return this._azureId;
         }
-        return this.connectionString.fullId;
+        return this.partialConnectionString.fullId;
     }
 
     public get description(): string | undefined {
@@ -81,8 +81,8 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
             const listOfDatabases: DatabaseListResult = await client.databases.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
             dbNames = listOfDatabases.map(db => db?.name);
-        } else if (this.connectionString.databaseName) {
-            dbNames = [this.connectionString.databaseName];
+        } else if (this.partialConnectionString.databaseName) {
+            dbNames = [this.partialConnectionString.databaseName];
         } else {
             const config = await getClientConfig(this, postgresDefaultDatabase);
             const query = `SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false;`;
@@ -114,7 +114,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<PostgresDatabaseTreeItem> {
-        if (this.connectionString.databaseName) {
+        if (this.partialConnectionString.databaseName) {
             throw new Error(localize('noPermissionToCreateDatabase', `This attached account does not have permissions to create a database.`));
         }
         const getChildrenTask: Promise<AzExtTreeItem[]> = this.getCachedChildren(context);
@@ -138,27 +138,9 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         });
     }
 
-    public async getCredentials(): Promise<{ username: string | undefined, password: string | undefined }> {
-        let username: string | undefined;
-        let password: string | undefined;
-
-        if (this._azureId) {
-            const storedValue: string | undefined = ext.context.globalState.get(PostgresServerTreeItem.serviceName);
-            if (storedValue && ext.keytar) {
-                const servers: IPersistedServer[] = JSON.parse(storedValue);
-                for (const server of servers) {
-                    if (server.id === this.id) {
-                        username = server.username;
-                        password = await ext.keytar.getPassword(PostgresServerTreeItem.serviceName, this.id) || undefined;
-                        break;
-                    }
-                }
-            }
-            this.connectionString.username = username;
-            this.connectionString.password = password;
-        }
-
-        return { username, password };
+    public setCredentials(username: string, password: string): void {
+        this.partialConnectionString.username = username;
+        this.partialConnectionString.password = password;
     }
 
     public supportsStoredProcedures(): boolean {
@@ -183,6 +165,25 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             await ext.keytar.deletePassword(serviceName, this.id);
         }
     }
+
+    public async getFullConnectionString(): Promise<ParsedPostgresConnectionString> {
+
+        if (this._azureId && !(this.partialConnectionString.username && this.partialConnectionString.password)) {
+            const storedValue: string | undefined = ext.context.globalState.get(PostgresServerTreeItem.serviceName);
+            if (storedValue && ext.keytar) {
+                const servers: IPersistedServer[] = JSON.parse(storedValue);
+                for (const server of servers) {
+                    if (server.id === this.id) {
+                        this.partialConnectionString.username = server.username;
+                        this.partialConnectionString.password = await ext.keytar.getPassword(PostgresServerTreeItem.serviceName, this.id) || undefined;
+                        break;
+                    }
+                }
+            }
+        }
+        return this.partialConnectionString;
+    }
+
 }
 
 async function validateDatabaseName(name: string, getChildrenTask: Promise<AzExtTreeItem[]>): Promise<string | undefined | null> {

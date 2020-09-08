@@ -231,7 +231,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 const parsedCS = parseDocDBConnectionString(node.connectionString);
                 removeTreeItemFromCache(parsedCS);
             } else if (node instanceof PostgresServerTreeItem) {
-                const parsedCS = node.connectionString;
+                const parsedCS = node.partialConnectionString;
                 removeTreeItemFromCache(parsedCS);
             }
         }
@@ -321,8 +321,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             treeItem = new MongoAccountTreeItem(this, id, label, connectionString, isEmulator);
             // tslint:disable-next-line: possible-timing-attack // not security related
         } else if (api === API.Postgres) {
-            const parsedPostgresConnSrting = parsePostgresConnectionString(connectionString);
-            treeItem = new PostgresServerTreeItem(this, parsedPostgresConnSrting);
+            const parsedPostgresConnString = parsePostgresConnectionString(connectionString);
+            treeItem = new PostgresServerTreeItem(this, parsedPostgresConnString);
         } else {
             const parsedCS = parseDocDBConnectionString(connectionString);
 

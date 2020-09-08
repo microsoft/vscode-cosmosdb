@@ -90,7 +90,7 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
             parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
             accountNode = pickedItem;
         } else if (pickedItem instanceof PostgresServerTreeItem) {
-            parsedCS = pickedItem.connectionString;
+            parsedCS = await pickedItem.getFullConnectionString();
             accountNode = pickedItem;
         } else if (pickedItem instanceof MongoDatabaseTreeItem) {
             parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
@@ -101,7 +101,7 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
             accountNode = pickedItem.parent;
             databaseNode = pickedItem;
         } else if (pickedItem instanceof PostgresDatabaseTreeItem) {
-            parsedCS = pickedItem.parent.connectionString;
+            parsedCS = await pickedItem.parent.getFullConnectionString();
             accountNode = pickedItem.parent;
             databaseNode = pickedItem;
         } else {

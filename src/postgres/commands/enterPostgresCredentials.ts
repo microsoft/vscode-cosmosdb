@@ -49,8 +49,7 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
     vscode.window.showInformationMessage(completedMessage);
     ext.outputChannel.appendLog(completedMessage);
 
-    treeItem.connectionString.username = username;
-    treeItem.connectionString.password = password;
+    treeItem.setCredentials(username, password);
 
     await treeItem.refresh();
 }

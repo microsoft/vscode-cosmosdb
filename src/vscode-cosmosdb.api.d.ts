@@ -45,6 +45,7 @@ export interface DatabaseAccountTreeItem extends AzureDatabasesTreeItem {
      */
     azureData?: {
         accountName: string;
+        accountId: string;
     }
 
     docDBData?: {
@@ -83,5 +84,13 @@ export interface TreeItemQuery {
     /**
      * An account or database connection string
      */
-    connectionString: string;
+    connectionString?: string;
+
+    postgresData?: {
+        hostName: string;
+        port: string;
+        databaseName: string | undefined;
+        username: string | undefined;
+        password: string | undefined;
+    }
 }

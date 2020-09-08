@@ -25,7 +25,7 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
         };
         if ((username && password)) {
             const host = nonNullProp(connectionString, 'hostName');
-            const port: number = connectionString.port ? parseInt(connectionString.port) : postgresDefaultPort;
+            const port: number = connectionString.port ? parseInt(connectionString.port) : parseInt(postgresDefaultPort);
             clientConfig = { user: username, password: password, ssl: sslAzure, host, port, database: databaseName };
         } else {
             throw {

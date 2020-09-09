@@ -19,7 +19,6 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
         const locationName = nonNullProp(nonNullProp(wizardContext, 'location'), 'name');
         const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
         const newServerName = nonNullProp(wizardContext, 'newServerName');
-        const user: string = nonNullProp(wizardContext, 'adminUser');
         const password: string = nonNullProp(wizardContext, 'adminPassword');
 
         return await callWithMaskHandling(
@@ -31,7 +30,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                 const options = {
                     location: locationName,
                     properties: {
-                        administratorLogin: user,
+                        administratorLogin: nonNullProp(wizardContext, 'shortUserName'),
                         administratorLoginPassword: password,
                         sslEnforcement: "Enabled",
                         createMode: "Default"

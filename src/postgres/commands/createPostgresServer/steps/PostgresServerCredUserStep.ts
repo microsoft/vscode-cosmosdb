@@ -12,18 +12,16 @@ import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 export class PostgresServerCredUserStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
 
     public async prompt(wizardContext: IPostgresServerWizardContext): Promise<void> {
-        wizardContext.adminUser = (await ext.ui.showInputBox({
+        wizardContext.shortUserName = (await ext.ui.showInputBox({
             placeHolder: localize('usernamePlaceholder', 'Administrator Username'),
             validateInput: validateUser,
         })).trim();
         const usernameSuffix: string = `@${nonNullProp(wizardContext, 'newServerName')}`;
-        if (!wizardContext.adminUser.includes(usernameSuffix)) {
-            wizardContext.adminUser += usernameSuffix;
-        }
+        wizardContext.longUserName = wizardContext.shortUserName + usernameSuffix;
     }
 
     public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {
-        return !wizardContext.adminUser;
+        return !wizardContext.shortUserName;
     }
 }
 

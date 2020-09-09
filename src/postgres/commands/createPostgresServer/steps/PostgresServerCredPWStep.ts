@@ -14,7 +14,7 @@ const pwConditionMsg = localize('passwordConditionMsg', 'Password must contain c
 export class PostgresServerCredPWStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
 
     public async prompt(wizardContext: IPostgresServerWizardContext): Promise<void> {
-        const user = nonNullProp(wizardContext, 'adminUser');
+        const user = nonNullProp(wizardContext, 'shortUserName');
         wizardContext.adminPassword = (await ext.ui.showInputBox({
             placeHolder: localize('pwPlaceholder', 'Administrator Password'),
             prompt: pwConditionMsg,

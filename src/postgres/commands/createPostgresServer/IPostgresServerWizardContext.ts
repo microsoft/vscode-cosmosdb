@@ -8,7 +8,10 @@ import { IAzureDBWizardContext } from "../../../tree/IAzureDBWizardContext";
 
 export interface IPostgresServerWizardContext extends IAzureDBWizardContext {
 
-    adminUser?: string;
+    // username
+    shortUserName?: string;
+    // username@serverName
+    longUserName?: string;
     adminPassword?: string;
 
     addFirewall?: boolean;

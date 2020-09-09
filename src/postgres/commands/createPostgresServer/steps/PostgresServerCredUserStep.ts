@@ -39,6 +39,8 @@ async function validateUser(username: string): Promise<string | undefined> {
         return localize('usernameLenghtMatch', 'The name must be between {0} and {1} characters.', min, max);
     } else if (!username.match(/^[a-zA-Z0-9_]+$/)) {
         return localize('usernameCharacterCheck', 'The name can only contain letters, numbers, and the "_" character.');
+    } else if (username.match(/^[0-9]+/)) {
+        return localize('usernameBeginningMatch', 'The name cannot start with a number.');
     } else if (username.startsWith('pg_')) {
         return localize('usernameStartWithCheck', 'Admin username cannot start with "pg_".');
     } else if (restricted.includes(username)) {

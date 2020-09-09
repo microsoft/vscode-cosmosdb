@@ -31,7 +31,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                 const options = {
                     location: locationName,
                     properties: {
-                        administratorLogin: user,
+                        administratorLogin: user.split('@')[0],
                         administratorLoginPassword: password,
                         sslEnforcement: "Enabled",
                         createMode: "Default"

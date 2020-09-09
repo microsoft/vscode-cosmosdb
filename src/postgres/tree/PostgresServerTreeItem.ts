@@ -147,13 +147,12 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public async supportsStoredProcedures(clientConfig: ClientConfig): Promise<boolean> {
         // `semver.gte` complains when a version doesn't have decimals (i.e. "10"), so attempt to convert version to SemVer
         let version: SemVer | null;
-        if (this._serverVersion) {
-            version = coerce(this._serverVersion);
-        } else {
+        if (!this._serverVersion) {
             const result = await runPostgresQuery(clientConfig, `SHOW server_version;`);
-            version = coerce(result.rows[0].server_version);
+            this._serverVersion = result.rows[0].server_version;
         }
-        return !!version && gte(version, '11.0.0');
+        version = coerce(this._serverVersion);
+        return gte(version, '11.0.0');
     }
 
     public async deletePostgresCredentials(): Promise<void> {

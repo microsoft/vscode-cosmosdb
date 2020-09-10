@@ -59,7 +59,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 new PostgresTablesTreeItem(this, clientConfig)
             ];
 
-            if (this.parent.supportsStoredProcedures()) {
+            if (await this.parent.supportsStoredProcedures(clientConfig)) {
                 children.push(new PostgresStoredProceduresTreeItem(this, clientConfig));
             }
 

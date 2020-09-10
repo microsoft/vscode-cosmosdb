@@ -38,7 +38,7 @@ export async function getPostgresProcedureQueryRows(treeItem: PostgresResourcesT
 
     if (treeItem instanceof PostgresFunctionsTreeItem) {
         conditions = `and p.proname not in ('pg_buffercache_pages', 'pg_stat_statements_reset', 'pg_stat_statements')
-        ${treeItem.parent.parent.supportsStoredProcedures() ? "and p.prokind = 'f'" : ''}`;
+        ${await treeItem.parent.parent.supportsStoredProcedures(treeItem.clientConfig) ? "and p.prokind = 'f'" : ''}`;
     } else {
         // Assume stored procedures
         conditions = "and p.prokind = 'p'";

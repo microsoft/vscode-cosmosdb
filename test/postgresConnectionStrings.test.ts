@@ -4,14 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as assert from 'assert';
-import { addDatabaseToConnectionString } from '../src/postgres/postgresConnectionStrings';
+import { addDatabaseToConnectionString } from '../extension.bundle';
 
 function testAddDatabaseToConectionString(connectionString: string, databaseName: string, expectedConnectionString: string | undefined): void {
     const modifiedConnectionString = addDatabaseToConnectionString(connectionString, databaseName);
     assert.equal(modifiedConnectionString, expectedConnectionString);
 }
 
-suite(`postgresCollectionStrings`, () => {
+suite(`postgresConnectionStrings`, () => {
     test(`addDatabaseToConnectionString`, () => {
         // Connection strings follow the following format (https://www.postgresql.org/docs/12/libpq-connect.html):
         // postgres://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]

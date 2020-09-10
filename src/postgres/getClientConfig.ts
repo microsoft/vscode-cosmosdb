@@ -8,6 +8,7 @@ import { ConnectionOptions } from "tls";
 import { postgresDefaultPort } from "../constants";
 import { localize } from "../utils/localize";
 import { nonNullProp } from "../utils/nonNull";
+import { addDatabaseToConnectionString } from "./postgresConnectionStrings";
 import { invalidCredentialsErrorType } from "./tree/PostgresDatabaseTreeItem";
 import { PostgresServerTreeItem } from "./tree/PostgresServerTreeItem";
 
@@ -36,7 +37,7 @@ export async function getClientConfig(treeItem: PostgresServerTreeItem, database
     } else {
         let connectionString = parsedCS.connectionString;
         if (!parsedCS.databaseName) {
-            connectionString += databaseName;
+            connectionString = addDatabaseToConnectionString(connectionString, databaseName);
         }
         clientConfig = { connectionString: connectionString };
     }

@@ -13,6 +13,12 @@ export function parsePostgresConnectionString(connectionString: string): ParsedP
     return new ParsedPostgresConnectionString(connectionString, config);
 }
 
+export function addDatabaseToConnectionString(connectionString: string, databaseName: string): string {
+    const url = new URL(connectionString);
+    url.pathname = encodeURIComponent(databaseName);
+    return url.toString();
+}
+
 export function createPostgresConnectionString(hostName: string, port: string = postgresDefaultPort, username?: string | undefined, password?: string | undefined, databaseName?: string | undefined): string {
     let connectionString: string = `postgres://`;
     if (username) {

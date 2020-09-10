@@ -30,6 +30,7 @@ export { addDatabaseToAccountConnectionString, encodeMongoConnectionString, getD
 export { findCommandAtPosition, getAllCommandsFromText } from './src/mongo/MongoScrapbook';
 export { MongoShell } from './src/mongo/MongoShell';
 export { IDatabaseInfo } from './src/mongo/tree/MongoAccountTreeItem';
+export { addDatabaseToConnectionString } from './src/postgres/postgresConnectionStrings';
 export { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from './src/tree/AttachedAccountsTreeItem';
 export { AzureAccountTreeItemWithAttached } from './src/tree/AzureAccountTreeItemWithAttached';
 export { improveError } from './src/utils/improveError';

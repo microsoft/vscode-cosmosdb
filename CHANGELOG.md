@@ -2,6 +2,14 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.15.0 - 2020-09-14
+### Added
+- Attach PostgreSQL servers by connection string
+- PostgreSQL support for integration with App Service extension
+
+### Fixed
+- [Bugs fixed](https://github.com/microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A0.15.0+is%3Aclosed)
+
 ## 0.14.0 - 2020-07-14
 ### Added
 - Use the setting "azureDatabases.batchSize" to configure the Mongo "DBQuery.shellBatchSize" attribute and the batch size when loading children in the tree view.

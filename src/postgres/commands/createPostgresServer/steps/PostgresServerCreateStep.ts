@@ -30,17 +30,21 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                 const options = {
                     location: locationName,
                     sku: {
-                        name: "B_Gen5_1",
-                        tier: "Basic",
-                        capacity: 1,
-                        family: "Gen5"
+                        name: "GP_Gen5_2",
+                        tier: "GeneralPurpose",
+                        capacity: 2,
+                        family: "Gen5",
                     },
                     properties: {
                         administratorLogin: nonNullProp(wizardContext, 'shortUserName'),
                         administratorLoginPassword: password,
                         sslEnforcement: "Enabled",
                         createMode: "Default",
-                        vCore: 1
+                        vCore: 2,
+                        version: "10",
+                        storageProfile: {
+                            storageMB: 102400
+                        }
                     },
                 };
 

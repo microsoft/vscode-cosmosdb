@@ -29,7 +29,7 @@ export function validateIdentifier(identifier: string): string | undefined {
 }
 
 // Key words that are reserved in PostgreSQL. Source: https://www.postgresql.org/docs/10/sql-keywords-appendix.html
-const reservedWords = new Set([
+const reservedWords: Set<string> = new Set([
     'all',
     'analyse',
     'analyze',

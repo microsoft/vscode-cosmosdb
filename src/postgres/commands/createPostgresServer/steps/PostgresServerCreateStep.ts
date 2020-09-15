@@ -29,11 +29,22 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                 progress.report({ message: createMessage });
                 const options = {
                     location: locationName,
+                    sku: {
+                        name: "GP_Gen5_4",
+                        tier: "GeneralPurpose",
+                        capacity: 4,
+                        family: "Gen5",
+                        size: "102400"
+                    },
                     properties: {
                         administratorLogin: nonNullProp(wizardContext, 'shortUserName'),
                         administratorLoginPassword: password,
                         sslEnforcement: "Enabled",
-                        createMode: "Default"
+                        createMode: "Default",
+                        version: "10",
+                        storageProfile: {
+                            storageMB: 102400
+                        }
                     },
                 };
 

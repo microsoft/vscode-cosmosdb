@@ -22,7 +22,7 @@ export function validateIdentifier(identifier: string): string | undefined {
     }
 
     if (reservedWords.has(identifier.toLowerCase())) {
-        return localize('cantIncludeReservedWord', 'Name cannot include reserved word "{0}".', identifier);
+        return localize('cantBeReservedWord', 'Name cannot be reserved word "{0}".', identifier);
     }
 
     return undefined;

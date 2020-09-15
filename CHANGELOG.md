@@ -2,10 +2,13 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
-## 0.15.0 - 2020-09-14
+## 0.15.0 - 2020-09-15
 ### Added
 - Attach PostgreSQL servers by connection string
 - PostgreSQL support for integration with App Service extension
+
+### Changed
+- PostgreSQL server defaults to version "10"
 
 ### Fixed
 - [Bugs fixed](https://github.com/microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A0.15.0+is%3Aclosed)

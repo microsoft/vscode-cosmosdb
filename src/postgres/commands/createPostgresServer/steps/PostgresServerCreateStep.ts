@@ -6,7 +6,6 @@
 import PostgreSQLManagementClient from 'azure-arm-postgresql';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, callWithMaskHandling, createAzureClient } from 'vscode-azureextensionui';
-import { postgresDefaultStorageSizeMB } from '../../../../constants';
 import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
@@ -14,6 +13,7 @@ import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresServerWizardContext> {
     public priority: number = 150;
+    public postgresDefaultStorageSizeMB: number = 5120;
 
     public async execute(wizardContext: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
@@ -35,7 +35,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                         tier: "Basic",
                         capacity: 1,
                         family: "Gen5",
-                        size: `postgresDefaultStorageSizeMB`
+                        size: `${this.postgresDefaultStorageSizeMB}`
                     },
                     properties: {
                         administratorLogin: nonNullProp(wizardContext, 'shortUserName'),
@@ -44,7 +44,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                         createMode: "Default",
                         version: "10",
                         storageProfile: {
-                            storageMB: postgresDefaultStorageSizeMB
+                            storageMB: this.postgresDefaultStorageSizeMB
                         }
                     },
                 };

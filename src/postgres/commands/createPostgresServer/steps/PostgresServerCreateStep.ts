@@ -13,6 +13,7 @@ import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresServerWizardContext> {
     public priority: number = 150;
+    public postgresDefaultStorageSizeMB: number = 51200;
 
     public async execute(wizardContext: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
@@ -30,11 +31,11 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                 const options = {
                     location: locationName,
                     sku: {
-                        name: "GP_Gen5_4",
-                        tier: "GeneralPurpose",
-                        capacity: 4,
+                        name: "B_Gen5_1",
+                        tier: "Basic",
+                        capacity: 1,
                         family: "Gen5",
-                        size: "102400"
+                        size: `${this.postgresDefaultStorageSizeMB}`
                     },
                     properties: {
                         administratorLogin: nonNullProp(wizardContext, 'shortUserName'),
@@ -43,7 +44,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                         createMode: "Default",
                         version: "10",
                         storageProfile: {
-                            storageMB: 102400
+                            storageMB: this.postgresDefaultStorageSizeMB
                         }
                     },
                 };

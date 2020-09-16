@@ -13,7 +13,7 @@ import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresServerWizardContext> {
     public priority: number = 150;
-    public postgresDefaultStorageSizeMB: number = 5120;
+    public postgresDefaultStorageSizeMB: number = 51200;
 
     public async execute(wizardContext: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 

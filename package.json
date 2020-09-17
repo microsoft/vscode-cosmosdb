@@ -25,7 +25,7 @@
         "PostgreSQL"
     ],
     "preview": true,
-    "homepage": "https://github.com/microsoft/vscode-cosmosdb/blob/master/README.md",
+    "homepage": "https://github.com/microsoft/vscode-cosmosdb/blob/main/README.md",
     "bugs": {
         "url": "https://github.com/microsoft/vscode-cosmosdb/issues"
     },

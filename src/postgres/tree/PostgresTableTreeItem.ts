@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Table } from 'pg-structure';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemedIconPath } from '../../constants';
+import { IPostgresTable } from '../getPostgresTablesQueryRows copy';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresColumnTreeItem } from './PostgresColumnTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
@@ -14,12 +14,12 @@ import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 export class PostgresTableTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresTable";
     public readonly contextValue: string = PostgresTableTreeItem.contextValue;
-    public readonly table: Table;
+    public readonly table: IPostgresTable;
     public readonly parent: PostgresTablesTreeItem;
 
     private _isDuplicate: boolean;
 
-    constructor(parent: PostgresTablesTreeItem, table: Table, isDuplicate: boolean) {
+    constructor(parent: PostgresTablesTreeItem, table: IPostgresTable, isDuplicate: boolean) {
         super(parent);
         this.table = table;
         this._isDuplicate = isDuplicate;
@@ -34,7 +34,7 @@ export class PostgresTableTreeItem extends AzureParentTreeItem<ISubscriptionCont
     }
 
     public get description(): string | undefined {
-        return this._isDuplicate ? this.table.schema.name : undefined;
+        return this._isDuplicate ? this.table.schemaName : undefined;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -47,11 +47,11 @@ export class PostgresTableTreeItem extends AzureParentTreeItem<ISubscriptionCont
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresColumnTreeItem[]> {
 
-        return this.table.columns.map(column => new PostgresColumnTreeItem(this, column.name));
+        return this.table.columnNames.map(columnName => new PostgresColumnTreeItem(this, columnName));
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        await runPostgresQuery(this.parent.clientConfig, `Drop Table ${this.table.schema.name}.${wrapArgInQuotes(this.table.name)};`);
+        await runPostgresQuery(this.parent.clientConfig, `Drop Table ${this.table.schemaName}.${wrapArgInQuotes(this.table.name)};`);
     }
 
 }

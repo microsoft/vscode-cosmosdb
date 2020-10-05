@@ -6,7 +6,7 @@
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemedIconPath } from '../../constants';
-import { IPostgresTable } from '../getPostgresTablesQueryRows copy';
+import { IPostgresTable } from '../getPostgresTablesQueryRows';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresColumnTreeItem } from './PostgresColumnTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';

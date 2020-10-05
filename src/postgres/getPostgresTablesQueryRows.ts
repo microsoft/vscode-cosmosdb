@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ClientConfig } from "pg";
-import { runPostgresQuery } from "./runPostgresQuery";
+import { runPostgresQuery, wrapArgInQuotes } from "./runPostgresQuery";
 
 export interface IPostgresTable {
     schemaName: string;
@@ -21,16 +21,16 @@ function getTableInfo(): string {
 }
 
 function getTableOID(tableName: string): string {
-    return `select oid from pg_class where relname = '${tableName}'`;
+    return `select oid from pg_class where relname = ${wrapArgInQuotes(tableName)}`;
 }
 
 function getColumnNames(tableName: string): string {
     return `select column_name as name
             from information_schema.columns
-            where table_name = '${tableName}'`;
+            where table_name = ${wrapArgInQuotes(tableName)}`;
 }
 
-export async function getTable(clientConfig: ClientConfig): Promise<IPostgresTable[]> {
+export async function getTables(clientConfig: ClientConfig): Promise<IPostgresTable[]> {
     const tableInfoRows = await runPostgresQuery(clientConfig, getTableInfo());
     const tablesArray: IPostgresTable[] = [];
     for (const row of tableInfoRows.rows) {

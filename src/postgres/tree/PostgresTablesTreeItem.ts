@@ -6,7 +6,7 @@
 import { ClientConfig } from "pg";
 import { Uri } from 'vscode';
 import { getThemedIconPath } from "../../constants";
-import { getTable, IPostgresTable } from "../getPostgresTablesQueryRows copy";
+import { getTables, IPostgresTable } from "../getPostgresTablesQueryRows";
 import { PostgresDatabaseTreeItem } from "./PostgresDatabaseTreeItem";
 import { PostgresResourcesTreeItemBase } from "./PostgresResourcesTreeItemBase";
 import { PostgresTableTreeItem } from "./PostgresTableTreeItem";
@@ -32,7 +32,7 @@ export class PostgresTablesTreeItem extends PostgresResourcesTreeItemBase {
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresTableTreeItem[]> {
 
-        const tables: IPostgresTable[] = await getTable(this.clientConfig);
+        const tables: IPostgresTable[] = await getTables(this.clientConfig);
         this.resourcesAndSchemas = {};
         for (const table of tables) {
             this.addResourcesAndSchemasEntry(table.name.trim(), table.schemaName);

@@ -25,10 +25,6 @@ export class PostgresTableTreeItem extends AzureParentTreeItem<ISubscriptionCont
         this._isDuplicate = isDuplicate;
     }
 
-    public get id(): string {
-        return String(this.table.oid);
-    }
-
     public get label(): string {
         return this.table.name;
     }

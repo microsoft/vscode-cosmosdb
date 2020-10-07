@@ -4,41 +4,28 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ClientConfig } from "pg";
-import { runPostgresQuery, wrapArgInQuotes } from "./runPostgresQuery";
+import { runPostgresQuery } from "./runPostgresQuery";
 
 export interface IPostgresTable {
     schemaName: string;
     name: string;
-    oid: number;
     columnNames: string[];
 }
 
 function getTableInfo(): string {
-    return `select schemaname, tablename
+    return `select schemaname, tablename, array_agg (columnname) as columnarray
             from pg_catalog.pg_tables
+            left join (select column_name::text as columnname, table_name, table_schema from information_schema.columns) columns on table_name = tablename and table_schema = schemaname
             where schemaname != 'pg_catalog' AND
-            schemaname != 'information_schema'`;
-}
-
-function getTableOID(tableName: string): string {
-    return `select oid from pg_class where relname = ${wrapArgInQuotes(tableName)}`;
-}
-
-function getColumnNames(tableName: string): string {
-    return `select column_name as name
-            from information_schema.columns
-            where table_name = ${wrapArgInQuotes(tableName)}`;
+            schemaname != 'information_schema'
+            group by schemaname, tablename;`;
 }
 
 export async function getTables(clientConfig: ClientConfig): Promise<IPostgresTable[]> {
     const tableInfoRows = await runPostgresQuery(clientConfig, getTableInfo());
     const tablesArray: IPostgresTable[] = [];
     for (const row of tableInfoRows.rows) {
-        const schemaName = row.schemaname;
-        const tableName = row.tablename;
-        const tableOIDResult = await runPostgresQuery(clientConfig, getTableOID(tableName));
-        const columnsResult = await runPostgresQuery(clientConfig, getColumnNames(tableName));
-        tablesArray.push({ schemaName, name: tableName, oid: tableOIDResult.rows[0].oid, columnNames: columnsResult.rows.map(result => result.name) });
+        tablesArray.push({ schemaName: row.schemaname, name: row.tablename, columnNames: row.columnarray });
     }
     return tablesArray;
 }

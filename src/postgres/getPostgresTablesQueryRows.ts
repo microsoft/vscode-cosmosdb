@@ -9,11 +9,12 @@ import { runPostgresQuery } from "./runPostgresQuery";
 export interface IPostgresTable {
     schemaName: string;
     name: string;
+    oid: string;
     columnNames: string[];
 }
 
 function getTableInfo(): string {
-    return `select schemaname, tablename, array_agg (columnname) as columnarray
+    return `select schemaname, tablename, array_agg (columnname) as columnarray, concat('"', schemaname, '"."', tablename, '"')::regclass::oid as oid
             from pg_catalog.pg_tables
             left join (select column_name::text as columnname, table_name, table_schema from information_schema.columns) columns on table_name = tablename and table_schema = schemaname
             where schemaname != 'pg_catalog' AND
@@ -25,7 +26,7 @@ export async function getTables(clientConfig: ClientConfig): Promise<IPostgresTa
     const tableInfoRows = await runPostgresQuery(clientConfig, getTableInfo());
     const tablesArray: IPostgresTable[] = [];
     for (const row of tableInfoRows.rows) {
-        tablesArray.push({ schemaName: row.schemaname, name: row.tablename, columnNames: row.columnarray });
+        tablesArray.push({ schemaName: row.schemaname, name: row.tablename, oid: row.oid, columnNames: row.columnarray });
     }
     return tablesArray;
 }

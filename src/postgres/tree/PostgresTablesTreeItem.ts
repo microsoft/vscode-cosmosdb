@@ -6,7 +6,7 @@
 import { ClientConfig } from "pg";
 import { Uri } from 'vscode';
 import { getThemedIconPath } from "../../constants";
-import { getTables, IPostgresTable } from "../getPostgresTablesQueryRows";
+import { getTables, IPostgresTable } from "../getTables";
 import { PostgresDatabaseTreeItem } from "./PostgresDatabaseTreeItem";
 import { PostgresResourcesTreeItemBase } from "./PostgresResourcesTreeItemBase";
 import { PostgresTableTreeItem } from "./PostgresTableTreeItem";

@@ -13,7 +13,7 @@ export interface IPostgresTable {
     columnNames: string[];
 }
 
-const tablesQuery: string = `select schemaname, tablename, array_agg (columnname) as columnarray,
+const tablesQuery: string = `select schemaname, tablename, array_agg (columnname) as columnnames,
                                 concat('"', schemaname, '"."', tablename, '"')::regclass::oid as oid
                             from pg_catalog.pg_tables
                             left join (
@@ -27,7 +27,7 @@ export async function getTables(clientConfig: ClientConfig): Promise<IPostgresTa
     const tableInfoRows: QueryResult = await runPostgresQuery(clientConfig, tablesQuery);
     const tablesArray: IPostgresTable[] = [];
     for (const row of tableInfoRows.rows) {
-        tablesArray.push({ schemaName: row.schemaname, name: row.tablename, oid: row.oid, columnNames: row.columnarray });
+        tablesArray.push({ schemaName: row.schemaname, name: row.tablename, oid: row.oid, columnNames: row.columnnames });
     }
     return tablesArray;
 }

@@ -697,7 +697,7 @@
                 },
                 {
                     "command": "cosmosDB.attachEmulator",
-                    "when": "view == azureDatabasesExplorer && viewItem == cosmosDBAttachedAccountsWithEmulator"
+                    "when": "view == azureDatabasesExplorer && viewItem =~ /^cosmosDBAttachedAccounts/"
                 },
                 {
                     "command": "azureDatabases.openInPortal",

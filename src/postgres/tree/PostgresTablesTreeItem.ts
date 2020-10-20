@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Client, ClientConfig } from "pg";
-import pgStructure, { Db } from "pg-structure";
+import { ClientConfig } from "pg";
 import { Uri } from 'vscode';
 import { getThemedIconPath } from "../../constants";
+import { getTables, IPostgresTable } from "../getTables";
 import { PostgresDatabaseTreeItem } from "./PostgresDatabaseTreeItem";
 import { PostgresResourcesTreeItemBase } from "./PostgresResourcesTreeItemBase";
 import { PostgresTableTreeItem } from "./PostgresTableTreeItem";
@@ -32,13 +32,12 @@ export class PostgresTablesTreeItem extends PostgresResourcesTreeItemBase {
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresTableTreeItem[]> {
 
-        const client = new Client(this.clientConfig);
-        const db: Db = await pgStructure(client);
+        const tables: IPostgresTable[] = await getTables(this.clientConfig);
         this.resourcesAndSchemas = {};
-        for (const table of db.tables) {
-            this.addResourcesAndSchemasEntry(table.name.trim(), table.schema.name);
+        for (const table of tables) {
+            this.addResourcesAndSchemasEntry(table.name.trim(), table.schemaName);
         }
-        return db.tables.map(table => new PostgresTableTreeItem(
+        return tables.map(table => new PostgresTableTreeItem(
             this,
             table,
             this.isDuplicateResource(table.name.trim())

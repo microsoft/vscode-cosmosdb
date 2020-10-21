@@ -4,12 +4,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocumentClient } from "documentdb";
+import { CosmosClient } from "@azure/cosmos";
 import { ISubscriptionContext } from "vscode-azureextensionui";
 
 export interface IDocDBTreeRoot extends ISubscriptionContext {
-    documentEndpoint: string;
+    endpoint: string;
     masterKey: string;
     isEmulator: boolean | undefined;
-    getDocumentClient(): DocumentClient;
+    getDocumentClient(): CosmosClient;
 }

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocumentClient, FeedOptions, QueryError, QueryIterator } from 'documentdb';
+import { CosmosClient, FeedOptions, QueryIterator } from '@azure/cosmos';
 import { AzExtTreeItem, AzureParentTreeItem, AzureTreeItem } from 'vscode-azureextensionui';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
@@ -27,7 +27,7 @@ export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTre
 
     public abstract initChild(resource: T): AzureTreeItem<IDocDBTreeRoot>;
 
-    public abstract getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<T>>;
+    public abstract getIterator(client: CosmosClient, feedOptions: FeedOptions): Promise<QueryIterator<T>>;
 
     public async refreshImpl(): Promise<void> {
         this._batchSize = getBatchSizeSetting();
@@ -43,22 +43,16 @@ export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTre
         const resources: T[] = [];
         let count: number = 0;
         while (count < this._batchSize) {
-            const resource: T | undefined = await new Promise<T | undefined>((resolve, reject) => {
-                // tslint:disable-next-line: no-non-null-assertion
-                this._iterator!.nextItem((error: QueryError, rsrc: T | undefined) => {
-                    error ? reject(error) : resolve(rsrc);
-                });
-            });
-            if (resource === undefined) {
+            const resourceArray: T[] | undefined = (await this._iterator.fetchNext()).resources;
+            if (resourceArray === undefined) {
                 this._hasMoreChildren = false;
                 break;
             } else {
-                resources.push(resource);
+                resources.push(...resourceArray);
                 count += 1;
             }
         }
         this._batchSize *= 2;
-
         return resources.map((resource: T) => this.initChild(resource));
     }
 }

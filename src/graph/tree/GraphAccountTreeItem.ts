@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { DatabaseDefinition, Resource } from '@azure/cosmos';
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
-import { DatabaseMeta } from 'documentdb';
 import { AzureParentTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
@@ -22,7 +22,7 @@ export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
         super(parent, id, label, documentEndpoint, masterKey, isEmulator, databaseAccount);
     }
 
-    public initChild(database: DatabaseMeta): GraphDatabaseTreeItem {
+    public initChild(database: DatabaseDefinition & Resource): GraphDatabaseTreeItem {
         return new GraphDatabaseTreeItem(this, this._gremlinEndpoint, database);
     }
 

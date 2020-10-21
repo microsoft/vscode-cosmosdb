@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CollectionMeta } from 'documentdb';
+import { ContainerDefinition, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -21,9 +21,9 @@ export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
     private readonly _graphTreeItem: GraphTreeItem;
     private readonly _storedProceduresTreeItem: DocDBStoredProceduresTreeItem;
 
-    private readonly _collection: CollectionMeta;
+    private readonly _collection: ContainerDefinition & Resource;
 
-    constructor(parent: GraphDatabaseTreeItem, collection: CollectionMeta) {
+    constructor(parent: GraphDatabaseTreeItem, collection: ContainerDefinition & Resource) {
         super(parent);
         this._collection = collection;
         this._graphTreeItem = new GraphTreeItem(this, this._collection);
@@ -59,9 +59,7 @@ export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const client = this.root.getDocumentClient();
-            await new Promise((resolve, reject) => {
-                client.deleteCollection(this.link, err => err ? reject(err) : resolve());
-            });
+            await client.database(this.parent.id).container(this.id).delete();
         } else {
             throw new UserCancelledError();
         }

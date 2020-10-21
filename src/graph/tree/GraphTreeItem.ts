@@ -50,7 +50,7 @@ export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
         const graphApi: CosmosDBGraphExtensionApi = await this.getGraphApi(context);
         const databaseTreeItem: GraphDatabaseTreeItem = this.parent.parent;
         await graphApi.openGraphExplorer({
-            documentEndpoint: databaseTreeItem.root.documentEndpoint,
+            documentEndpoint: databaseTreeItem.root.endpoint,
             gremlinEndpoint: databaseTreeItem.gremlinEndpoint,
             possibleGremlinEndpoints: databaseTreeItem.possibleGremlinEndpoints,
             databaseName: databaseTreeItem.label,

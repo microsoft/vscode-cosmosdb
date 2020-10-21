@@ -1040,6 +1040,7 @@
         "webpack-cli": "^3.1.2"
     },
     "dependencies": {
+        "@azure/cosmos": "^3.6.3",
         "antlr4ts": "^0.4.1-alpha.0",
         "azure-arm-cosmosdb": "^1.1.2",
         "azure-arm-postgresql": "^4.3.0",

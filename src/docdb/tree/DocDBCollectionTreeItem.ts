@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CollectionMeta, CollectionPartitionKey } from 'documentdb';
+import { ContainerDefinition, PartitionKeyDefinition, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -22,21 +22,23 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
     public static contextValue: string = "cosmosDBDocumentCollection";
     public readonly contextValue: string = DocDBCollectionTreeItem.contextValue;
     public readonly documentsTreeItem: DocDBDocumentsTreeItem;
+    public readonly parent: DocDBDatabaseTreeItem;
 
     private readonly _storedProceduresTreeItem: DocDBStoredProceduresTreeItem;
 
-    constructor(parent: DocDBDatabaseTreeItem, private _collection: CollectionMeta) {
+    constructor(parent: DocDBDatabaseTreeItem, private _container: ContainerDefinition & Resource) {
         super(parent);
+        this.parent = parent;
         this.documentsTreeItem = new DocDBDocumentsTreeItem(this);
         this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this);
     }
 
     public get id(): string {
-        return this._collection.id;
+        return this._container.id;
     }
 
     public get label(): string {
-        return this._collection.id;
+        return this._container.id;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -44,11 +46,11 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
     }
 
     public get link(): string {
-        return this._collection._self;
+        return this._container._self;
     }
 
-    public get partitionKey(): CollectionPartitionKey | undefined {
-        return this._collection.partitionKey;
+    public get partitionKey(): PartitionKeyDefinition | undefined {
+        return this._container.partitionKey;
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
@@ -56,9 +58,7 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const client = this.root.getDocumentClient();
-            await new Promise((resolve, reject) => {
-                client.deleteCollection(this.link, err => err ? reject(err) : resolve());
-            });
+            await client.database(this.parent.id).container(this.id).delete();
         } else {
             throw new UserCancelledError();
         }

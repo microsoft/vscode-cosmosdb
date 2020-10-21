@@ -3,13 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { CosmosClient, DatabaseDefinition, DatabaseResponse, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
 import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
-import { DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
+import { nonNullProp } from '../../utils/nonNull';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { getDocumentClient } from '../getDocumentClient';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -19,22 +20,22 @@ import { IDocDBTreeRoot } from './IDocDBTreeRoot';
  * This class provides common logic for DocumentDB, Graph, and Table accounts
  * (DocumentDB is the base type for all Cosmos DB accounts)
  */
-export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<DatabaseMeta> {
+export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<DatabaseDefinition & Resource> {
     public readonly id: string;
     public readonly label: string;
     public readonly childTypeLabel: string = "Database";
 
     private _root: IDocDBTreeRoot;
 
-    constructor(parent: AzureParentTreeItem, id: string, label: string, documentEndpoint: string, masterKey: string, isEmulator: boolean | undefined, readonly databaseAccount?: DatabaseAccount) {
+    constructor(parent: AzureParentTreeItem, id: string, label: string, endpoint: string, masterKey: string, isEmulator: boolean | undefined, readonly databaseAccount?: DatabaseAccount) {
         super(parent);
         this.id = id;
         this.label = label;
         this._root = Object.assign({}, parent.root, {
-            documentEndpoint,
+            endpoint,
             masterKey,
             isEmulator,
-            getDocumentClient: () => getDocumentClient(documentEndpoint, masterKey, isEmulator)
+            getDocumentClient: () => getDocumentClient(endpoint, masterKey, isEmulator)
         });
     }
 
@@ -44,15 +45,15 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     public get connectionString(): string {
-        return `AccountEndpoint=${this.root.documentEndpoint};AccountKey=${this.root.masterKey}`;
+        return `AccountEndpoint=${this.root.endpoint};AccountKey=${this.root.masterKey}`;
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return getThemeAgnosticIconPath('CosmosDBAccount.svg');
     }
 
-    public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<DatabaseMeta>> {
-        return client.readDatabases(feedOptions);
+    public async getIterator(client: CosmosClient, feedOptions: FeedOptions): Promise<QueryIterator<DatabaseDefinition & Resource>> {
+        return client.databases.readAll(feedOptions);
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
@@ -65,17 +66,8 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         if (databaseName) {
             context.showCreatingTreeItem(databaseName);
             const client = this.root.getDocumentClient();
-            const database: DatabaseMeta = await new Promise<DatabaseMeta>((resolve, reject) => {
-                client.createDatabase({ id: databaseName }, (err, db: DatabaseMeta) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(db);
-                    }
-                });
-            });
-
-            return this.initChild(database);
+            const database: DatabaseResponse = await client.databases.create({ id: databaseName });
+            return this.initChild(nonNullProp(database, 'resource'));
         }
 
         throw new UserCancelledError();

@@ -3,14 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ProcedureMeta } from 'documentdb';
+import { Resource, StoredProcedureDefinition } from '@azure/cosmos';
 import * as vscode from "vscode";
 import { AzureTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemedIconPath } from '../../constants';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
+import { nonNullProp } from '../../utils/nonNull';
 import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
+
+const hiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts'];
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) stored procedure
@@ -20,10 +23,12 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
     public readonly contextValue: string = DocDBStoredProcedureTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openStoredProcedure';
     public readonly cTime: number = Date.now();
+    public readonly parent: DocDBStoredProceduresTreeItem;
     public mTime: number = Date.now();
 
-    constructor(parent: DocDBStoredProceduresTreeItem, public procedure: ProcedureMeta) {
+    constructor(parent: DocDBStoredProceduresTreeItem, public procedure: (StoredProcedureDefinition & Resource)) {
         super(parent);
+        this.parent = parent;
         ext.fileSystem.fireChangedEvent(this);
     }
 
@@ -44,7 +49,11 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
     }
 
     public async getFileContent(): Promise<string> {
-        return this.procedure.body;
+        const clonedProcedure: {} = { ...this.procedure?.body?.toString };
+        for (const field of hiddenFields) {
+            delete clonedProcedure[field];
+        }
+        return JSON.stringify(clonedProcedure, null, 2);
     }
 
     public async refreshImpl(): Promise<void> {
@@ -53,17 +62,8 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
         const client = this.root.getDocumentClient();
-        this.procedure = await new Promise<ProcedureMeta>((resolve, reject) => client.replaceStoredProcedure(
-            this.link,
-            { body: content, id: this.procedure.id },
-            (err, updated: ProcedureMeta) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(updated);
-                }
-            })
-        );
+        const replace = await client.database(this.parent.parent.parent.id).container(this.parent.parent.id).scripts.storedProcedure(this.id).replace({ id: this.id, body: content });
+        this.procedure = nonNullProp(replace, 'resource');
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -75,9 +75,7 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const client = this.root.getDocumentClient();
-            await new Promise((resolve, reject) => {
-                client.deleteStoredProcedure(this.link, err => err ? reject(err) : resolve());
-            });
+            await client.database(this.parent.parent.parent.id).container(this.parent.parent.id).scripts.storedProcedure(this.id).delete();
         } else {
             throw new UserCancelledError();
         }

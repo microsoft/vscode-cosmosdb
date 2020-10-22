@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { CosmosDBManagementModels } from '@azure/arm-cosmosdb';
 import * as assert from 'assert';
-import { CosmosDBManagementModels } from 'azure-arm-cosmosdb';
 import { Collection, MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, connectToMongoClient, DialogResponses, IDatabaseInfo, randomUtils } from '../../extension.bundle';
@@ -33,7 +33,7 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
     });
 
     test('Create MongoDB account', async () => {
-        const getAccount: CosmosDBManagementModels.DatabaseAccount | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
+        const getAccount: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
         assert.ok(getAccount);
     });
 
@@ -75,14 +75,14 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
     });
 
     test('Delete Mongo account', async () => {
-        const mongoAccount: CosmosDBManagementModels.DatabaseAccount = await client.databaseAccounts.get(resourceGroupName, accountName);
+        const mongoAccount: CosmosDBManagementModels.DatabaseAccountGetResults = await client.databaseAccounts.get(resourceGroupName, accountName);
         assert.ok(mongoAccount);
         const testInputs: string[] = [`${accountName} (MongoDB)`, DialogResponses.deleteResponse.title];
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.deleteAccount');
         });
         const listAccounts: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupName);
-        const accountExists: CosmosDBManagementModels.DatabaseAccount | undefined = listAccounts.find((account: CosmosDBManagementModels.DatabaseAccount) => account.name === accountName);
+        const accountExists: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = listAccounts.find((account: CosmosDBManagementModels.DatabaseAccountGetResults) => account.name === accountName);
         assert.ifError(accountExists);
     });
 

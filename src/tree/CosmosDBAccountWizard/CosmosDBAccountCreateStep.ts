@@ -41,9 +41,6 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
 
         const response: DatabaseAccountsCreateOrUpdateResponse = await client.databaseAccounts.createOrUpdate(rgName, accountName, options);
         wizardContext.databaseAccount = response._response.parsedBody;
-
-        // createOrUpdate always returns an empty object - so we have to get the DatabaseAccount separately
-        wizardContext.databaseAccount = await client.databaseAccounts.get(rgName, accountName);
         ext.outputChannel.appendLog(`Successfully created Cosmos DB account "${accountName}".`);
     }
 

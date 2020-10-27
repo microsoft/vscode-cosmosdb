@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
-import { Server } from '@azure/arm-postgresql/src/models';
 import { IAzureQuickPickItem } from 'vscode-azureextensionui';
 import { nonNullProp } from './utils/nonNull';
 
@@ -31,21 +30,17 @@ export function getExperienceFromApi(api: API): Experience {
     return info;
 }
 
-export function getExperienceLabel(databaseAccount?: DatabaseAccountGetResults, server?: Server): string | undefined {
-    if (server) {
-        return <API>(server && server.tags && server.tags.defaultExperience);
-    } else if (databaseAccount) {
-        const experience: Experience | undefined = tryGetExperience(databaseAccount);
-        if (experience) {
-            return experience.shortName;
-        }
-        // Must be some new kind of resource that we aren't aware of.  Try to get a decent label
-        const defaultExperience: string = <API>(databaseAccount && databaseAccount.tags && databaseAccount.tags.defaultExperience);
-        const firstCapability = databaseAccount.capabilities && databaseAccount.capabilities[0];
-        const firstCapabilityName = firstCapability?.name?.replace(/^Enable/, '');
-        return defaultExperience || firstCapabilityName || nonNullProp(databaseAccount, 'kind');
+export function getExperienceLabel(databaseAccount: DatabaseAccountGetResults): string {
+
+    const experience: Experience | undefined = tryGetExperience(databaseAccount);
+    if (experience) {
+        return experience.shortName;
     }
-    return undefined;
+    // Must be some new kind of resource that we aren't aware of.  Try to get a decent label
+    const defaultExperience: string = <API>(databaseAccount && databaseAccount.tags && databaseAccount.tags.defaultExperience);
+    const firstCapability = databaseAccount.capabilities && databaseAccount.capabilities[0];
+    const firstCapabilityName = firstCapability?.name?.replace(/^Enable/, '');
+    return defaultExperience || firstCapabilityName || nonNullProp(databaseAccount, 'kind');
 
 }
 

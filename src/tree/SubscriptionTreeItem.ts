@@ -112,7 +112,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const documentEndpoint: string = nonNullProp(databaseAccount, 'documentEndpoint');
 
         const resourceGroup: string = azureUtils.getResourceGroupFromId(id);
-        const accountKindLabel = getExperienceLabel(databaseAccount, undefined);
+        const accountKindLabel = getExperienceLabel(databaseAccount);
         const label: string = name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
         const isEmulator: boolean = false;
 

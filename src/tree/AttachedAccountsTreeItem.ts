@@ -38,7 +38,7 @@ export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start w
 const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
 
 export class AttachedAccountsTreeItem extends AzureParentTreeItem {
-    public static contextValue: string = 'cosmosDBAttachedAccounts' + (process.platform === 'win32' ? 'WithEmulator' : 'WithoutEmulator');
+    public static contextValue: string = 'cosmosDBAttachedAccounts' + (AttachedAccountsTreeItem.isPlatformWindows() ? 'WithEmulator' : 'WithoutEmulator');
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
     public readonly id: string = 'cosmosDBAttachedAccounts';
     public readonly label: string = 'Attached Database Accounts';
@@ -54,6 +54,10 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         super(parent);
         this._root = new AttachedAccountRoot();
         this._loadPersistedAccountsTask = this.loadPersistedAccounts();
+    }
+
+    public static isPlatformWindows(): boolean {
+        return process.platform === 'win32';
     }
 
     public get root(): ISubscriptionContext {
@@ -107,12 +111,24 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 
         const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
 
-        return attachedAccounts.length > 0 ? attachedAccounts : [new GenericTreeItem(this, {
-            contextValue: 'cosmosDBAttachDatabaseAccount',
-            label: 'Attach Database Account...',
-            commandId: 'cosmosDB.attachDatabaseAccount',
-            includeInTreeItemPicker: true
-        })];
+        if (attachedAccounts.length > 0) {
+            return attachedAccounts;
+        } else {
+            const genericTreeItemWithoutEmulator = new GenericTreeItem(this, {
+                contextValue: 'cosmosDBAttachDatabaseAccount',
+                label: 'Attach Database Account...',
+                commandId: 'cosmosDB.attachDatabaseAccount',
+                includeInTreeItemPicker: true
+            });
+            const genericTreeItemWithEmulator = new GenericTreeItem(this, {
+                contextValue: 'cosmosDBAttachDatabaseAccount',
+                label: 'Attach Emulator...',
+                commandId: 'cosmosDB.attachEmulator',
+                includeInTreeItemPicker: true
+            });
+            return AttachedAccountsTreeItem.isPlatformWindows() ? [genericTreeItemWithoutEmulator, genericTreeItemWithEmulator] :
+                [genericTreeItemWithoutEmulator];
+        }
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {

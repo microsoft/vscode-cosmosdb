@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { Environment } from '@azure/ms-rest-azure-env';
 import { TokenCredentialsBase } from '@azure/ms-rest-nodeauth';
-import { AzureEnvironment } from 'ms-rest-azure';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
@@ -399,7 +399,7 @@ class AttachedAccountRoot implements ISubscriptionContext {
         throw this._error;
     }
 
-    public get environment(): AzureEnvironment {
+    public get environment(): Environment {
         throw this._error;
     }
 }

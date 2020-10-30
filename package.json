@@ -6,7 +6,7 @@
     "displayName": "Azure Databases",
     "description": "Create, browse, and update globally distributed, multi-model databases in Azure.",
     "engines": {
-        "vscode": "^1.50.0"
+        "vscode": "^1.48.0"
     },
     "galleryBanner": {
         "color": "#3c3c3c",
@@ -1019,8 +1019,8 @@
         "@types/keytar": "4.0.1",
         "@types/mocha": "^7.0.2",
         "@types/mongodb": "^3.3.2",
-        "@types/node": "^14.14.5",
-        "@types/vscode": "^1.50.0",
+        "@types/node": "^12.19.3",
+        "@types/vscode": "^1.48.0",
         "antlr4ts-cli": "^0.4.0-alpha.4",
         "copy-webpack-plugin": "^5.1.1",
         "glob": "^7.1.6",
@@ -1034,7 +1034,7 @@
         "tslint-microsoft-contrib": "5.0.1",
         "typescript": "^3.8.3",
         "vsce": "^1.37.5",
-        "vscode-azureextensiondev": "^0.4.0",
+        "vscode-azureextensiondev": "^0.5.0",
         "vscode-test": "^1.3.0",
         "webpack": "4.28.1",
         "webpack-cli": "^3.1.2"
@@ -1042,6 +1042,7 @@
     "dependencies": {
         "@azure/arm-cosmosdb": "^9.1.0",
         "@azure/arm-postgresql": "^4.4.0",
+        "@azure/ms-rest-azure-env": "2.0.0",
         "@azure/ms-rest-nodeauth": "^3.0.6",
         "antlr4ts": "^0.4.1-alpha.0",
         "bson": "^1.1.3",

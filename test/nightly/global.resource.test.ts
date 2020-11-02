@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
-import { ResourceManagementClient } from 'azure-arm-resource';
+import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { ResourceManagementClient } from '@azure/arm-resources';
 import * as vscode from 'vscode';
 import { TestAzureAccount } from 'vscode-azureextensiondev';
 import { AzExtTreeDataProvider, AzureAccountTreeItemWithAttached, createAzureClient, ext, randomUtils } from '../../extension.bundle';

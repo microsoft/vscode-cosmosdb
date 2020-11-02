@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
-import { DatabaseAccount, DatabaseAccountListKeysResult, DatabaseAccountsListResult } from 'azure-arm-cosmosdb/lib/models';
-import { PostgreSQLManagementClient } from 'azure-arm-postgresql';
-import { Server, ServerListResult } from 'azure-arm-postgresql/lib/models';
+import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { DatabaseAccountGetResults, DatabaseAccountListKeysResult, DatabaseAccountsListResponse, DatabaseAccountsListResult } from '@azure/arm-cosmosdb/src/models';
+import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
+import { Server, ServerListResult } from '@azure/arm-postgresql/src/models';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
@@ -49,12 +49,13 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
         //CosmosDB
         const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
-        const accounts: DatabaseAccountsListResult = await client.databaseAccounts.list();
+        const response: DatabaseAccountsListResponse = await client.databaseAccounts.list();
+        const accounts: DatabaseAccountsListResult = response._response.parsedBody;
         treeItem = await this.createTreeItemsWithErrorHandling(
             accounts,
             'invalidCosmosDBAccount',
-            async (db: DatabaseAccount) => await this.initCosmosDBChild(client, db),
-            (db: DatabaseAccount) => db.name
+            async (db: DatabaseAccountGetResults) => await this.initCosmosDBChild(client, db),
+            (db: DatabaseAccountGetResults) => db.name
         );
 
         treeItem.push(...treeItemPostgres);
@@ -104,7 +105,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         return typeof contextValue !== 'string' || !/attached/i.test(contextValue);
     }
 
-    private async initCosmosDBChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccount): Promise<AzureTreeItem> {
+    private async initCosmosDBChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccountGetResults): Promise<AzureTreeItem> {
         const experience = tryGetExperience(databaseAccount);
         const id: string = nonNullProp(databaseAccount, 'id');
         const name: string = nonNullProp(databaseAccount, 'name');

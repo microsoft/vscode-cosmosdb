@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
-import { Capability } from 'azure-arm-cosmosdb/lib/models';
+import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { Capability, DatabaseAccountsCreateOrUpdateResponse } from '@azure/arm-cosmosdb/src/models';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, createAzureClient } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
@@ -39,10 +39,8 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             options.capabilities.push(<Capability>{ name: defaultExperience.capability });
         }
 
-        wizardContext.databaseAccount = await client.databaseAccounts.createOrUpdate(rgName, accountName, options);
-
-        // createOrUpdate always returns an empty object - so we have to get the DatabaseAccount separately
-        wizardContext.databaseAccount = await client.databaseAccounts.get(rgName, accountName);
+        const response: DatabaseAccountsCreateOrUpdateResponse = await client.databaseAccounts.createOrUpdate(rgName, accountName, options);
+        wizardContext.databaseAccount = response._response.parsedBody;
         ext.outputChannel.appendLog(`Successfully created Cosmos DB account "${accountName}".`);
     }
 

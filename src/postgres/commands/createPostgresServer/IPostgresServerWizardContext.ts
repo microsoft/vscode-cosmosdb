@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Server } from "azure-arm-postgresql/lib/models";
+import { Server } from "@azure/arm-postgresql/src/models";
 import { IAzureDBWizardContext } from "../../../tree/IAzureDBWizardContext";
 
 export interface IPostgresServerWizardContext extends IAzureDBWizardContext {

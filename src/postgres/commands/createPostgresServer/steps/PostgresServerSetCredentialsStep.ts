@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Server } from 'azure-arm-postgresql/lib/models';
+import { Server } from '@azure/arm-postgresql/src/models';
 import * as vscode from 'vscode';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep } from 'vscode-azureextensionui';

@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ServiceClientCredentials } from 'ms-rest';
-import { AzureEnvironment } from 'ms-rest-azure';
+import { Environment } from '@azure/ms-rest-azure-env';
+import { TokenCredentialsBase } from '@azure/ms-rest-nodeauth';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
@@ -375,7 +375,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 class AttachedAccountRoot implements ISubscriptionContext {
     private _error: Error = new Error('Cannot retrieve Azure subscription information for an attached account.');
 
-    public get credentials(): ServiceClientCredentials {
+    public get credentials(): TokenCredentialsBase {
         throw this._error;
     }
 
@@ -399,7 +399,7 @@ class AttachedAccountRoot implements ISubscriptionContext {
         throw this._error;
     }
 
-    public get environment(): AzureEnvironment {
+    public get environment(): Environment {
         throw this._error;
     }
 }

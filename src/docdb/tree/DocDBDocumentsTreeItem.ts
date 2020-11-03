@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosClient, FeedOptions, ItemDefinition, ItemResponse, PartitionKeyDefinition, QueryIterator, Resource } from '@azure/cosmos';
+import { CosmosClient, FeedOptions, ItemDefinition, ItemResponse, PartitionKeyDefinition, QueryIterator } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -46,7 +46,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
         return client.database(this.parent.parent.id).container(this.parent.id).items.readAll(feedOptions);
     }
 
-    public initChild(document: ItemDefinition & Resource): DocDBDocumentTreeItem {
+    public initChild(document: ItemDefinition): DocDBDocumentTreeItem {
         return new DocDBDocumentTreeItem(this, document);
     }
 
@@ -69,7 +69,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
         throw new UserCancelledError();
     }
 
-    public async createDocument(body: ItemDefinition): Promise<ItemDefinition & Resource> {
+    public async createDocument(body: ItemDefinition): Promise<ItemDefinition> {
         const item: ItemResponse<ItemDefinition> = await this.root.getDocumentClient().database(this.parent.id).container(this.id).items.create(body);
         return nonNullProp(item, 'resource');
     }

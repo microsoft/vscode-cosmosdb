@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ContainerDefinition, ContainerRequest, ContainerResponse, CosmosClient, DatabaseDefinition, FeedOptions, PartitionKeyDefinition, QueryIterator, Resource } from '@azure/cosmos';
+import { ContainerDefinition, ContainerResponse, CosmosClient, DatabaseDefinition, FeedOptions, PartitionKeyDefinition, QueryIterator, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { AzureTreeItem, DialogResponses, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -104,7 +104,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
 
         context.showCreatingTreeItem(containerName);
         const client = this.root.getDocumentClient();
-        const containerRequest: ContainerRequest = { id: containerName, partitionKey, throughput };
+        const containerRequest = { id: containerName, partitionKey, throughput };
         const container: ContainerResponse = await client.database(this.id).containers.create(containerRequest);
         return this.initChild(nonNullProp(container, 'resource'));
     }

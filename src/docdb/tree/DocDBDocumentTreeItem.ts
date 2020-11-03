@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosClient, ItemDefinition, PartitionKeyDefinition, RequestOptions } from '@azure/cosmos';
-import { Resource } from 'azure-arm-resource/lib/resource/models';
 import * as vscode from 'vscode';
 import { AzureTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -27,14 +26,12 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
 
-    private readonly _partitionKeyValue: string | undefined | PartitionKeyDefinition;
     private _label: string;
-    private _document: ItemDefinition & Resource;
+    private _document: ItemDefinition;
 
-    constructor(parent: DocDBDocumentsTreeItem, document: ItemDefinition & Resource) {
+    constructor(parent: DocDBDocumentsTreeItem, document: ItemDefinition) {
         super(parent);
         this._document = document;
-        this._partitionKeyValue = this.getPartitionKeyValue();
         this._label = getDocumentTreeItemLabel(this._document);
         ext.fileSystem.fireChangedEvent(this);
     }
@@ -58,7 +55,7 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
         return this.document._self;
     }
 
-    get document(): ItemDefinition & Resource {
+    get document(): ItemDefinition {
         return this._document;
     }
 
@@ -75,7 +72,7 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const client = this.root.getDocumentClient();
-            await client.database(this.parent.parent.parent.id).container(this.parent.parent.id).item(this.id).delete({ this._partitionKeyValue });
+            await client.database(this.parent.parent.parent.id).container(this.parent.parent.id).item(this.id).delete();
         } else {
             throw new UserCancelledError();
         }
@@ -100,7 +97,8 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
             throw new Error(`The "_self" and "_etag" fields are required to update a document`);
         } else {
             const options: RequestOptions = { accessCondition: { type: 'IfMatch', condition: newData._etag } };
-            this._document = await client.database(this.parent.parent.parent.id).container(this.parent.parent.id).item(this.id).replace(newData, options);
+            const response = await client.database(this.parent.parent.parent.id).container(this.parent.parent.id).item(this.id).replace(newData, options);
+            this._document = response.resource;
         }
     }
 

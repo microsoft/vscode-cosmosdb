@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { ItemDefinition } from '@azure/cosmos';
 import { NewDocument } from 'documentdb';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
@@ -128,8 +129,10 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
         throw new Error(`See output for list of documents that do not contain the partition key '${nonNullProp(collectionNode, 'partitionKey').paths[0]}' required by collection '${collectionNode.label}'`);
     }
     for (const document of documents) {
-        const retrieved = await collectionNode.documentsTreeItem.createDocument(document);
-        ids.push(retrieved.id);
+        const retrieved: ItemDefinition = await collectionNode.documentsTreeItem.createDocument(document);
+        if (retrieved.id) {
+            ids.push(retrieved.id);
+        }
     }
     result = `Import into SQL successful. Inserted ${ids.length} document(s). See output for more details.`;
     for (const id of ids) {

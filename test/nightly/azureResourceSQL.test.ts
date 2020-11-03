@@ -3,14 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { CosmosDBManagementModels } from '@azure/arm-cosmosdb';
 import { ContainerDefinition, CosmosClient, DatabaseDefinition, Resource } from '@azure/cosmos';
 import * as assert from 'assert';
-import { CosmosDBManagementModels } from 'azure-arm-cosmosdb';
 import * as vscode from 'vscode';
 import { DialogResponses, getDocumentClient, ParsedDocDBConnectionString, parseDocDBConnectionString, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
 import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
+
 
 suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(20 * 60 * 1000);
@@ -31,7 +32,7 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
     });
 
     test('Create SQL account', async () => {
-        const getAccount: CosmosDBManagementModels.DatabaseAccount | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
+        const getAccount: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
         assert.ok(getAccount);
     });
 
@@ -75,14 +76,14 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
     });
 
     test('Delete SQL account', async () => {
-        const SQLAccount: CosmosDBManagementModels.DatabaseAccount = await client.databaseAccounts.get(resourceGroupName, accountName);
+        const SQLAccount: CosmosDBManagementModels.DatabaseAccountGetResults = await client.databaseAccounts.get(resourceGroupName, accountName);
         assert.ok(SQLAccount);
         const testInputs: string[] = [`${accountName} (SQL)`, DialogResponses.deleteResponse.title];
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.deleteAccount');
         });
         const listAccounts: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupName);
-        const accountExists: CosmosDBManagementModels.DatabaseAccount | undefined = listAccounts.find((account: CosmosDBManagementModels.DatabaseAccount) => account.name === accountName);
+        const accountExists: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = listAccounts.find((account: CosmosDBManagementModels.DatabaseAccountGetResults) => account.name === accountName);
         assert.ifError(accountExists);
     });
 

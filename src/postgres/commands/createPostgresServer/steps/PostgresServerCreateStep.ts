@@ -2,8 +2,8 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-
-import PostgreSQLManagementClient from 'azure-arm-postgresql';
+import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
+import { ServerForCreate } from '@azure/arm-postgresql/src/models';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, callWithMaskHandling, createAzureClient } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
@@ -28,7 +28,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                 const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in several minutes.', wizardContext.newServerName);
                 ext.outputChannel.appendLog(createMessage);
                 progress.report({ message: createMessage });
-                const options = {
+                const options: ServerForCreate = {
                     location: locationName,
                     sku: {
                         name: "B_Gen5_1",

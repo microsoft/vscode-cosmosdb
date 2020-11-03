@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { NameAvailability, NameAvailabilityRequest } from 'azure-arm-postgresql/lib/models';
+import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
+import { NameAvailability, NameAvailabilityRequest } from '@azure/arm-postgresql/src/models';
 import { AzureNameStep, createAzureClient, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';

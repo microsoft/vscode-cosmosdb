@@ -12,7 +12,6 @@ import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
 import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
 
-
 suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(20 * 60 * 1000);
     let resourceGroupName: string;

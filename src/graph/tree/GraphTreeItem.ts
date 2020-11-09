@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CollectionMeta } from 'documentdb';
+import { ContainerDefinition, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { AzureTreeItem, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
@@ -22,10 +22,10 @@ export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
     public readonly commandId: string = 'cosmosDB.openGraphExplorer';
     public readonly parent: GraphCollectionTreeItem;
 
-    private readonly _collection: CollectionMeta;
+    private readonly _collection: ContainerDefinition & Resource;
     private _graphApi: CosmosDBGraphExtensionApi | undefined;
 
-    constructor(parent: GraphCollectionTreeItem, collection: CollectionMeta) {
+    constructor(parent: GraphCollectionTreeItem, collection: ContainerDefinition & Resource) {
         super(parent);
         this._collection = collection;
     }

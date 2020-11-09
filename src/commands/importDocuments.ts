@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ItemDefinition } from '@azure/cosmos';
-import { NewDocument } from 'documentdb';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
 import { IActionContext, parseError } from 'vscode-azureextensionui';
@@ -117,7 +116,7 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
     let i = 0;
     const erroneousFiles: vscode.Uri[] = [];
     for (i = 0; i < documents.length; i++) {
-        const document: NewDocument = documents[i];
+        const document: ItemDefinition = documents[i];
         if (!collectionNode.documentsTreeItem.documentHasPartitionKey(document)) {
             erroneousFiles.push(uris[i]);
         }

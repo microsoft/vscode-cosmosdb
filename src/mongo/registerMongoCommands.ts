@@ -91,7 +91,7 @@ export function registerMongoCommands(): MongoCodeLensProvider {
         if (ext.connectedMongoDB && ext.connectedMongoDB.fullId === node.fullId) {
             setConnectedNode(undefined, codeLensProvider);
             ext.context.globalState.update(connectedMongoKey, undefined);
-            languageClient.disconnect();
+            await languageClient.disconnect();
         }
     });
     registerCommand('cosmosDB.deleteMongoCollection', async (context: IActionContext, node?: MongoCollectionTreeItem) => {

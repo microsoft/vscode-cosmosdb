@@ -35,7 +35,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
             endpoint,
             masterKey,
             isEmulator,
-            getDocumentClient: () => getDocumentClient(endpoint, masterKey, isEmulator)
+            getDocumentClient: () => getDocumentClient(endpoint, masterKey)
         });
     }
 

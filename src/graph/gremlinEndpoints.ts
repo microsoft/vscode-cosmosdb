@@ -4,23 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { nonNullProp, nonNullValue } from '../utils/nonNull';
+import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
+import { nonNullValue } from '../utils/nonNull';
 import { IGremlinEndpoint } from '../vscode-cosmosdbgraph.api';
 
 export async function tryGetGremlinEndpointFromAzure(client: CosmosDBManagementClient, resourceGroup: string, account: string): Promise<IGremlinEndpoint | undefined> {
-    const response = await new Promise((resolve, reject) => {
-        // Use the callback version of get because the Promise one currently doesn't expose gremlinEndpoint (https://github.com/Azure/azure-documentdb-node/issues/227)
-        client.databaseAccounts.get(resourceGroup, account, (error, _result, _httpRequest, innerResponse) => {
-            if (error) {
-                reject(error);
-            } else {
-                resolve(innerResponse);
-            }
-        });
-    });
-
-    const body: string = nonNullProp(<{ body?: string }>response, 'body');
-    const endpointUri = JSON.parse(body).properties?.gremlinEndpoint;
+    const response: DatabaseAccountGetResults = (await client.databaseAccounts.get(resourceGroup, account))._response.parsedBody;
+    const endpointUri = response.documentEndpoint;
     // If it doesn't have gremlinEndpoint in its properties, it must be a pre-GA endpoint
     return endpointUri ? parseEndpointUrl(endpointUri) : undefined;
 }

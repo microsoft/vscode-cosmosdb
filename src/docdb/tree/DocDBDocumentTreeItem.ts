@@ -3,12 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosClient, ItemDefinition, PartitionKeyDefinition, RequestOptions } from '@azure/cosmos';
+import { CosmosClient, Item, ItemDefinition, RequestOptions } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { AzureTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
+import { nonNullProp } from '../../utils/nonNull';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
@@ -25,7 +26,6 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
     public readonly parent: DocDBDocumentsTreeItem;
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
-
     private _label: string;
     private _document: ItemDefinition;
 
@@ -71,8 +71,8 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
         const message: string = `Are you sure you want to delete document '${this.label}'?`;
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
-            const client = this.root.getDocumentClient();
-            await client.database(this.parent.parent.parent.id).container(this.parent.parent.id).item(this.id).delete();
+            const client = this.root.getCosmosClient();
+            await (await this.getDocumentClient(client)).delete();
         } else {
             throw new UserCancelledError();
         }
@@ -92,17 +92,17 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
             newData[field] = this.document[field];
         }
 
-        const client: CosmosClient = this.root.getDocumentClient();
+        const client: CosmosClient = this.root.getCosmosClient();
         if (["_etag"].some((element) => !newData[element])) {
             throw new Error(`The "_self" and "_etag" fields are required to update a document`);
         } else {
             const options: RequestOptions = { accessCondition: { type: 'IfMatch', condition: newData._etag } };
-            const response = await client.database(this.parent.parent.parent.id).container(this.parent.parent.id).item(this.id).replace(newData, options);
+            const response = await (await this.getDocumentClient(client)).replace(newData, options);
             this._document = response.resource;
         }
     }
 
-    private getPartitionKeyValue(): string | undefined | PartitionKeyDefinition {
+    private getPartitionKeyValue(): string | undefined | Object {
         const partitionKey = this.parent.parent.partitionKey;
         if (!partitionKey) { //Fixed collections -> no partitionKeyValue
             return undefined;
@@ -119,5 +119,9 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
             }
         }
         return value;
+    }
+
+    private async getDocumentClient(client: CosmosClient): Promise<Item> {
+        return (await this.parent.getContainerClient(client)).item(nonNullProp(this.document, 'id'), this.getPartitionKeyValue);
     }
 }

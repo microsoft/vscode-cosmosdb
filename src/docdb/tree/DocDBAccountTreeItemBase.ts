@@ -12,7 +12,7 @@ import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { nonNullProp } from '../../utils/nonNull';
 import { rejectOnTimeout } from '../../utils/timeout';
-import { getDocumentClient } from '../getDocumentClient';
+import { getCosmosClient } from '../getCosmosClient';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
@@ -35,7 +35,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
             endpoint,
             masterKey,
             isEmulator,
-            getDocumentClient: () => getDocumentClient(endpoint, masterKey)
+            getCosmosClient: () => getCosmosClient(endpoint, masterKey)
         });
     }
 
@@ -65,7 +65,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
 
         if (databaseName) {
             context.showCreatingTreeItem(databaseName);
-            const client = this.root.getDocumentClient();
+            const client = this.root.getCosmosClient();
             const database: DatabaseResponse = await client.databases.create({ id: databaseName });
             return this.initChild(nonNullProp(database, 'resource'));
         }

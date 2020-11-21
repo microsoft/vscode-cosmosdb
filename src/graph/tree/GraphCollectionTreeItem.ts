@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ContainerDefinition, Resource } from '@azure/cosmos';
+import { Container, ContainerDefinition, CosmosClient, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { AzureParentTreeItem, AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -58,8 +58,8 @@ export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         const message: string = `Are you sure you want to delete graph '${this.label}' and its contents?`;
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
-            const client = this.root.getDocumentClient();
-            await client.database(this.parent.id).container(this.id).delete();
+            const client = this.root.getCosmosClient();
+            await (await this.getContainerClient(client)).delete();
         } else {
             throw new UserCancelledError();
         }
@@ -79,5 +79,10 @@ export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         }
 
         return undefined;
+    }
+
+    public async getContainerClient(client: CosmosClient): Promise<Container> {
+        return (await this.parent.getDatabaseClient(client)).container(this.id);
+
     }
 }

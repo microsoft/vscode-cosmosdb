@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ContainerDefinition, ContainerResponse, CosmosClient, DatabaseDefinition, FeedOptions, PartitionKeyDefinition, QueryIterator, Resource } from '@azure/cosmos';
+import { ContainerDefinition, ContainerResponse, CosmosClient, DatabaseDefinition, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { AzureTreeItem, DialogResponses, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -63,7 +63,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
         const message: string = `Are you sure you want to delete database '${this.label}' and its contents?`;
         const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
-            const client = this.root.getDocumentClient();
+            const client = this.root.getCosmosClient();
             await client.database(this.id).delete();
         } else {
             throw new UserCancelledError();
@@ -78,14 +78,26 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
             validateInput: validateCollectionName
         });
 
-        let partitionKeyInput: string | undefined = await ext.ui.showInputBox({
-            prompt: 'Enter the partition key for the container, or leave blank for fixed size.',
+        const containerDefinition: ContainerDefinition = {
+            id: containerName
+        };
+
+        let partitionKey: string | undefined = await ext.ui.showInputBox({
+            prompt: 'Enter the partition key for the collection, or leave blank for fixed size.',
             ignoreFocusOut: true,
-            validateInput: validatePartitionKeyInput,
+            validateInput: validatePartitionKey,
             placeHolder: 'e.g. address/zipCode'
         });
 
-        const isFixed: boolean = !(partitionKeyInput);
+        if (partitionKey && partitionKey.length && partitionKey[0] !== '/') {
+            partitionKey = '/' + partitionKey;
+        }
+        if (!!partitionKey) {
+            containerDefinition.partitionKey = {
+                paths: [partitionKey]
+            };
+        }
+        const isFixed: boolean = !(containerDefinition.partitionKey);
         const minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
         const throughput: number = Number(await ext.ui.showInputBox({
             value: minThroughput.toString(),
@@ -94,23 +106,17 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
             validateInput: (input: string) => validateThroughput(isFixed, input)
         }));
 
-        let partitionKey: PartitionKeyDefinition | undefined;
-        if (!isFixed) {
-            if (!partitionKeyInput.startsWith('/')) {
-                partitionKeyInput = '/' + partitionKeyInput;
-            }
-            partitionKey = { paths: [partitionKeyInput] };
-        }
+        const options = { offerThroughput: throughput };
 
         context.showCreatingTreeItem(containerName);
-        const client = this.root.getDocumentClient();
-        const containerRequest = { id: containerName, partitionKey, throughput };
-        const container: ContainerResponse = await client.database(this.id).containers.create(containerRequest);
+        const client = this.root.getCosmosClient();
+        const container: ContainerResponse = await client.database(this.id).containers.create(containerDefinition, options);
+
         return this.initChild(nonNullProp(container, 'resource'));
     }
 }
 
-function validatePartitionKeyInput(key: string): string | undefined | null {
+function validatePartitionKey(key: string): string | undefined | null {
     if (/[#?\\]/.test(key)) {
         return "Cannot contain these characters: ?,#,\\, etc.";
     }

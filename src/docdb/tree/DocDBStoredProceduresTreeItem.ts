@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosClient, FeedOptions, QueryIterator, Resource, StoredProcedureDefinition } from '@azure/cosmos';
+import { Container, CosmosClient, FeedOptions, QueryIterator, Resource, StoredProcedureDefinition } from '@azure/cosmos';
 import * as vscode from "vscode";
 import { ICreateChildImplContext } from 'vscode-azureextensionui';
 import { defaultStoredProcedure, getThemeAgnosticIconPath } from '../../constants';
@@ -19,21 +19,6 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
  */
 export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProcedureDefinition> {
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('stored procedures.svg');
-    }
-
-    public get id(): string {
-        return "$StoredProcedures";
-    }
-
-    public get label(): string {
-        return "Stored Procedures";
-    }
-
-    public get link(): string {
-        return this.parent.link;
-    }
     public static contextValue: string = "cosmosDBStoredProceduresGroup";
     public readonly contextValue: string = DocDBStoredProceduresTreeItem.contextValue;
     public readonly childTypeLabel: string = "Stored Procedure";
@@ -47,21 +32,43 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
         return new DocDBStoredProcedureTreeItem(this, resource);
     }
 
+    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
+        return getThemeAgnosticIconPath('stored procedures.svg');
+    }
+
     public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBStoredProcedureTreeItem> {
-        const client = this.root.getDocumentClient();
+        const client = this.root.getCosmosClient();
         const spID = (await ext.ui.showInputBox({
             prompt: "Enter a unique stored procedure ID",
             validateInput: this.validateName
         })).trim();
         const body: StoredProcedureDefinition = { id: spID, body: defaultStoredProcedure };
         context.showCreatingTreeItem(spID);
-        const sproc = await client.database(this.parent.parent.id).container(this.parent.id).scripts.storedProcedures.create(body);
+        const sproc = await (await this.getContainerClient(client)).scripts.storedProcedures.create(body);
 
         return this.initChild(nonNullProp(sproc, 'resource'));
     }
 
+    public get id(): string {
+        return "$StoredProcedures";
+    }
+
+    public get label(): string {
+        return "Stored Procedures";
+    }
+
+    public get link(): string {
+        return this.parent.link;
+    }
+
     public async getIterator(client: CosmosClient, feedOptions: FeedOptions): Promise<QueryIterator<StoredProcedureDefinition & Resource>> {
-        return client.database(this.parent.parent.id).container(this.parent.id).scripts.storedProcedures.readAll(feedOptions);
+        return (await this.getContainerClient(client)).scripts.storedProcedures.readAll(feedOptions);
+    }
+
+    public async getContainerClient(client: CosmosClient): Promise<Container> {
+        return (await (<GraphCollectionTreeItem>this.parent).getContainerClient(client)) ?
+            (await (<GraphCollectionTreeItem>this.parent).getContainerClient(client)) :
+            (await (<DocDBCollectionTreeItem>this.parent).getContainerClient(client));
     }
 
     private validateName(name: string): string | null | undefined {

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosClient, FeedOptions, ItemDefinition, ItemResponse, PartitionKeyDefinition, QueryIterator } from '@azure/cosmos';
+import { Container, CosmosClient, FeedOptions, ItemDefinition, ItemResponse, QueryIterator } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -43,7 +43,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public async getIterator(client: CosmosClient, feedOptions: FeedOptions): Promise<QueryIterator<ItemDefinition>> {
-        return client.database(this.parent.parent.id).container(this.parent.id).items.readAll(feedOptions);
+        return (await this.getContainerClient(client)).items.readAll(feedOptions);
     }
 
     public initChild(document: ItemDefinition): DocDBDocumentTreeItem {
@@ -61,30 +61,29 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
             let body: ItemDefinition = { id: docID };
             body = (await this.promptForPartitionKey(body));
             context.showCreatingTreeItem(docID);
-            const item: ItemResponse<ItemDefinition> = await this.root.getDocumentClient().database(this.parent.parent.id).container(this.parent.id).items.create(body);
+            const item: ItemDefinition = await this.createDocument(body);
 
-            return this.initChild(nonNullProp(item, 'resource'));
+            return this.initChild(item);
         }
 
         throw new UserCancelledError();
     }
 
     public async createDocument(body: ItemDefinition): Promise<ItemDefinition> {
-        const item: ItemResponse<ItemDefinition> = await this.root.getDocumentClient().database(this.parent.id).container(this.id).items.create(body);
+        const item: ItemResponse<ItemDefinition> = await (await this.getContainerClient(this.root.getCosmosClient())).items.create(body);
         return nonNullProp(item, 'resource');
     }
 
     public documentHasPartitionKey(doc: Object): boolean {
         let interim = doc;
-        const partitionKey = this.parent.partitionKey && this.parent.partitionKey;
-        if (!partitionKey?.paths) {
+        let partitionKey: string | undefined = this.parent.partitionKey && this.parent.partitionKey.paths[0];
+        if (!partitionKey) {
             return true;
         }
-        let partitionKeyPath: string = partitionKey.paths[0];
-        if (partitionKeyPath[0] === '/') {
-            partitionKeyPath = partitionKeyPath.slice(1);
+        if (partitionKey[0] === '/') {
+            partitionKey = partitionKey.slice(1);
         }
-        const keyPath = partitionKeyPath.split('/');
+        const keyPath = partitionKey.split('/');
         let i: number;
         for (i = 0; i < keyPath.length - 1; i++) {
             if (interim.hasOwnProperty(keyPath[i])) {
@@ -97,8 +96,8 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public async promptForPartitionKey(body: ItemDefinition): Promise<ItemDefinition> {
-        const partitionKey: PartitionKeyDefinition | undefined = this.parent.partitionKey && this.parent.partitionKey;
-        if (partitionKey?.paths) {
+        const partitionKey: string | undefined = this.parent.partitionKey && this.parent.partitionKey.paths[0];
+        if (partitionKey) {
             const partitionKeyValue: string = await ext.ui.showInputBox({
                 prompt: `Enter a value for the partition key ("${partitionKey}")`
             });
@@ -109,14 +108,17 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
         return body;
     }
 
+    public async getContainerClient(client: CosmosClient): Promise<Container> {
+        return (await this.parent.getContainerClient(client));
+    }
+
     // Create a nested Object given the partition key path and value
-    private createPartitionPathObject(partitionKey: PartitionKeyDefinition, partitionKeyValue: string): Object {
+    private createPartitionPathObject(partitionKey: string, partitionKeyValue: string): Object {
         //remove leading slash
-        let partitionKeyPath = partitionKey?.paths[0];
-        if (partitionKeyPath === '/') {
-            partitionKeyPath = partitionKeyPath.slice(1);
+        if (partitionKey[0] === '/') {
+            partitionKey = partitionKey.slice(1);
         }
-        const keyPath = partitionKeyPath.split('/');
+        const keyPath = partitionKey.split('/');
         const PartitionPath: Object = {};
         let interim: Object = PartitionPath;
         let i: number;

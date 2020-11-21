@@ -13,8 +13,6 @@ import { nonNullProp } from '../../utils/nonNull';
 import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
-const hiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts'];
-
 /**
  * Represents a Cosmos DB DocumentDB (SQL) stored procedure
  */
@@ -28,7 +26,6 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
 
     constructor(parent: DocDBStoredProceduresTreeItem, public procedure: (StoredProcedureDefinition & Resource)) {
         super(parent);
-        this.parent = parent;
         ext.fileSystem.fireChangedEvent(this);
     }
 
@@ -49,11 +46,8 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
     }
 
     public async getFileContent(): Promise<string> {
-        const clonedProcedure: {} = { ...this.procedure?.body?.toString };
-        for (const field of hiddenFields) {
-            delete clonedProcedure[field];
-        }
-        return JSON.stringify(clonedProcedure, null, 2);
+        return typeof this.procedure.body === 'string' ? this.procedure.body : '';
+
     }
 
     public async refreshImpl(): Promise<void> {
@@ -61,8 +55,8 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
     }
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
-        const client = this.root.getDocumentClient();
-        const replace = await client.database(this.parent.parent.parent.id).container(this.parent.parent.id).scripts.storedProcedure(this.id).replace({ id: this.id, body: content });
+        const client = this.root.getCosmosClient();
+        const replace = await (await this.parent.getContainerClient(client)).scripts.storedProcedure(this.id).replace({ id: this.id, body: content });
         this.procedure = nonNullProp(replace, 'resource');
     }
 
@@ -74,8 +68,8 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
         const message: string = `Are you sure you want to delete stored procedure '${this.label}'?`;
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
-            const client = this.root.getDocumentClient();
-            await client.database(this.parent.parent.parent.id).container(this.parent.parent.id).scripts.storedProcedure(this.id).delete();
+            const client = this.root.getCosmosClient();
+            await (await this.parent.getContainerClient(client)).scripts.storedProcedure(this.id).delete();
         } else {
             throw new UserCancelledError();
         }

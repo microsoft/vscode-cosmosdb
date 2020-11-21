@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ContainerDefinition, DatabaseDefinition, Resource } from '@azure/cosmos';
+import { ContainerDefinition, CosmosClient, Database, DatabaseDefinition, Resource } from '@azure/cosmos';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { IGremlinEndpoint } from '../../vscode-cosmosdbgraph.api';
 import { getPossibleGremlinEndpoints } from '../gremlinEndpoints';
@@ -30,5 +30,10 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
 
     get possibleGremlinEndpoints(): IGremlinEndpoint[] {
         return getPossibleGremlinEndpoints(this.root.endpoint);
+    }
+
+    public async getDatabaseClient(client: CosmosClient): Promise<Database> {
+        return client.database(this.id);
+
     }
 }

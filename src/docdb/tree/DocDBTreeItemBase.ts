@@ -36,13 +36,13 @@ export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTre
     public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (clearCache || this._iterator === undefined) {
             this._hasMoreChildren = true;
-            const client = this.root.getDocumentClient();
-            this._iterator = await this.getIterator(client, { maxItemCount: this._batchSize });
+            const client = this.root.getCosmosClient();
+            this._iterator = await this.getIterator(client, { maxItemCount: 1 });
         }
-
         const resources: T[] = [];
         let count: number = 0;
         while (count < this._batchSize) {
+
             const resourceArray: T[] | undefined = (await this._iterator.fetchNext()).resources;
             if (resourceArray === undefined) {
                 this._hasMoreChildren = false;
@@ -53,6 +53,7 @@ export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTre
             }
         }
         this._batchSize *= 2;
+
         return resources.map((resource: T) => this.initChild(resource));
     }
 }

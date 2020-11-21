@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ContainerDefinition, Resource } from '@azure/cosmos';
+import { ContainerDefinition, CosmosClient, Database, Resource } from '@azure/cosmos';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDatabaseTreeItemBase } from './DocDBDatabaseTreeItemBase';
 
@@ -14,5 +14,9 @@ export class DocDBDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
 
     public initChild(container: ContainerDefinition & Resource): DocDBCollectionTreeItem {
         return new DocDBCollectionTreeItem(this, container);
+    }
+
+    public async getDatabaseClient(client: CosmosClient): Promise<Database> {
+        return client.database(this.id);
     }
 }

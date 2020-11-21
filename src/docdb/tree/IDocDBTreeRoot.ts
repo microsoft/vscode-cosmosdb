@@ -11,5 +11,5 @@ export interface IDocDBTreeRoot extends ISubscriptionContext {
     endpoint: string;
     masterKey: string;
     isEmulator: boolean | undefined;
-    getDocumentClient(): CosmosClient;
+    getCosmosClient(): CosmosClient;
 }

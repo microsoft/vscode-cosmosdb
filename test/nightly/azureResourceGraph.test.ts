@@ -29,7 +29,7 @@ suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
     });
 
     test('Create graph account', async () => {
-        const getAccount: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
+        const getAccount: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = (await client.databaseAccounts.get(resourceGroupName, accountName))._response.parsedBody;
         assert.ok(getAccount);
     });
 

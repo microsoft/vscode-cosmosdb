@@ -37,23 +37,18 @@ export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTre
         if (clearCache || this._iterator === undefined) {
             this._hasMoreChildren = true;
             const client = this.root.getCosmosClient();
-            this._iterator = await this.getIterator(client, { maxItemCount: 1 });
+            this._iterator = await this.getIterator(client, { maxItemCount: this._batchSize });
         }
-        const resources: T[] = [];
-        let count: number = 0;
-        while (count < this._batchSize) {
 
-            const resourceArray: T[] | undefined = (await this._iterator.fetchNext()).resources;
-            if (resourceArray === undefined) {
-                this._hasMoreChildren = false;
-                break;
-            } else {
-                resources.push(...resourceArray);
-                count += 1;
-            }
+        const resourceArray: T[] = [];
+        const resourceFeed: T[] | undefined = (await this._iterator.fetchNext()).resources;
+        if (resourceFeed) {
+            resourceArray.push(...resourceFeed);
         }
+        this._hasMoreChildren = this._iterator.hasMoreResults();
+
         this._batchSize *= 2;
 
-        return resources.map((resource: T) => this.initChild(resource));
+        return resourceArray.map((resource: T) => this.initChild(resource));
     }
 }

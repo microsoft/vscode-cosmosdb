@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
-import { DatabaseMeta } from 'documentdb';
+import { DatabaseDefinition, Resource } from '@azure/cosmos';
 import { AzureParentTreeItem } from 'vscode-azureextensionui';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
@@ -22,7 +22,7 @@ export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
         super(parent, id, label, documentEndpoint, masterKey, isEmulator, databaseAccount);
     }
 
-    public initChild(database: DatabaseMeta): GraphDatabaseTreeItem {
+    public initChild(database: DatabaseDefinition & Resource): GraphDatabaseTreeItem {
         return new GraphDatabaseTreeItem(this, this._gremlinEndpoint, database);
     }
 

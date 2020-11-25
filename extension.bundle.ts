@@ -21,7 +21,7 @@ export { ObjectID, ObjectId } from 'bson';
 export * from 'vscode-azureextensionui';
 export { emulatorPassword, isWindows } from './src/constants';
 export { ParsedDocDBConnectionString, parseDocDBConnectionString } from './src/docdb/docDBConnectionStrings';
-export { getDocumentClient } from './src/docdb/getDocumentClient';
+export { getCosmosClient } from './src/docdb/getCosmosClient';
 export { activateInternal, deactivateInternal } from './src/extension';
 export { ext } from './src/extensionVariables';
 export { connectToMongoClient, isCosmosEmulatorConnectionString } from './src/mongo/connectToMongoClient';

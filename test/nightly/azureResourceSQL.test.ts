@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosDBManagementModels } from '@azure/arm-cosmosdb';
+import { ContainerDefinition, CosmosClient, DatabaseDefinition, Resource } from '@azure/cosmos';
 import * as assert from 'assert';
-import { CollectionMeta, DatabaseMeta, DocumentClient, QueryError } from 'documentdb';
 import * as vscode from 'vscode';
-import { DialogResponses, getDocumentClient, ParsedDocDBConnectionString, parseDocDBConnectionString, randomUtils } from '../../extension.bundle';
+import { DialogResponses, getCosmosClient, ParsedDocDBConnectionString, parseDocDBConnectionString, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
 import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
@@ -86,41 +86,29 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         assert.ifError(accountExists);
     });
 
-    async function getClient(resourceName: string): Promise<DocumentClient> {
+    async function getClient(resourceName: string): Promise<CosmosClient> {
         const connectionString: string = await getConnectionString(resourceName);
         const getParsedConnectionString: ParsedDocDBConnectionString = parseDocDBConnectionString(connectionString);
-        return getDocumentClient(getParsedConnectionString.documentEndpoint, getParsedConnectionString.masterKey, false);
+        return getCosmosClient(getParsedConnectionString.documentEndpoint, getParsedConnectionString.masterKey);
     }
 
-    async function getDatabases(docDBClient: DocumentClient): Promise<DatabaseMeta[]> {
-        return new Promise((resolve, reject) => docDBClient.readDatabases().toArray((err: QueryError, res: DatabaseMeta[]) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(res);
-            }
-        }));
+    async function getDatabases(docDBClient: CosmosClient): Promise<(DatabaseDefinition & Resource)[]> {
+        return (await docDBClient.databases.readAll().fetchAll()).resources;
     }
 
-    async function getCollections(docDBClient: DocumentClient, databaseId: string): Promise<CollectionMeta[]> {
-        return new Promise((resolve, reject) => docDBClient.readCollections(`/dbs/${databaseId}`).toArray((err: QueryError, res: CollectionMeta[]) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(res);
-            }
-        }));
+    async function getCollections(docDBClient: CosmosClient, databaseId: string): Promise<(ContainerDefinition & Resource)[]> {
+        return (await docDBClient.database(databaseId).containers.readAll().fetchAll()).resources;
     }
 
-    async function getDatabaseMeta(): Promise<DatabaseMeta | undefined> {
-        const getDocDBClient: DocumentClient = await getClient(accountName);
-        const databaseMetaList: DatabaseMeta[] = await getDatabases(getDocDBClient);
-        return databaseMetaList.find((database: DatabaseMeta) => database.id === databaseName);
+    async function getDatabaseMeta(): Promise<(DatabaseDefinition & Resource) | undefined> {
+        const getDocDBClient: CosmosClient = await getClient(accountName);
+        const databaseMetaList: (DatabaseDefinition & Resource)[] = await getDatabases(getDocDBClient);
+        return databaseMetaList.find((database: DatabaseDefinition & Resource) => database.id === databaseName);
     }
 
-    async function getDocDBCollectionMeta(accountId: string, databaseId: string, collectionId: string): Promise<CollectionMeta | undefined> {
-        const getDocDBClient: DocumentClient = await getClient(accountId);
-        const collectionMetaList: CollectionMeta[] = await getCollections(getDocDBClient, databaseId);
-        return collectionMetaList.find((collection: CollectionMeta) => collection.id === collectionId);
+    async function getDocDBCollectionMeta(accountId: string, databaseId: string, collectionId: string): Promise<(ContainerDefinition & Resource) | undefined> {
+        const getDocDBClient: CosmosClient = await getClient(accountId);
+        const collectionMetaList: (ContainerDefinition & Resource)[] = await getCollections(getDocDBClient, databaseId);
+        return collectionMetaList.find((collection: ContainerDefinition & Resource) => collection.id === collectionId);
     }
 });

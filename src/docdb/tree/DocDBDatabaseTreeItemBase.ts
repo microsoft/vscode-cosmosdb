@@ -3,29 +3,29 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Collection, CollectionMeta, DatabaseMeta, DocumentClient, FeedOptions, QueryIterator } from 'documentdb';
-import { DocumentBase } from 'documentdb/lib';
+import { ContainerDefinition, ContainerResponse, CosmosClient, DatabaseDefinition, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { AzureTreeItem, DialogResponses, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
+import { nonNullProp } from '../../utils/nonNull';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
-const minThroughputFixed = 400;
-const minThroughputPartitioned = 400;
+const minThroughputFixed: number = 400;
+const minThroughputPartitioned: number = 400;
 const maxThroughput: number = 100000;
 
 /**
  * This class provides common logic for DocumentDB, Graph, and Table databases
  * (DocumentDB is the base type for all Cosmos DB accounts)
  */
-export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<CollectionMeta> {
+export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<ContainerDefinition & Resource> {
     public readonly parent: DocDBAccountTreeItemBase;
-    private readonly _database: DatabaseMeta;
+    private readonly _database: DatabaseDefinition & Resource;
 
-    constructor(parent: DocDBAccountTreeItemBase, database: DatabaseMeta) {
+    constructor(parent: DocDBAccountTreeItemBase, database: DatabaseDefinition & Resource) {
         super(parent);
         this._database = database;
     }
@@ -35,27 +35,27 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
     }
 
     public get id(): string {
-        return this._database.id;
+        return nonNullProp(this._database, 'id');
     }
 
     public get label(): string {
-        return this._database.id;
+        return nonNullProp(this._database, 'id');
     }
 
     public get link(): string {
-        return this._database._self;
+        return nonNullProp(this._database, '_self');
     }
 
     public get connectionString(): string {
-        return this.parent.connectionString.concat(`;Database=${this._database.id}`);
+        return this.parent.connectionString.concat(`;Database=${this.id}`);
     }
 
     public get databaseName(): string {
         return this._database.id;
     }
 
-    public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<CollectionMeta>> {
-        return client.readCollections(this.link, feedOptions);
+    public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<ContainerDefinition & Resource> {
+        return client.database(this._database.id).containers.readAll(feedOptions);
     }
 
     // Delete the database
@@ -63,10 +63,8 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
         const message: string = `Are you sure you want to delete database '${this.label}' and its contents?`;
         const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
-            const client = this.root.getDocumentClient();
-            await new Promise((resolve, reject) => {
-                client.deleteDatabase(this.link, err => err ? reject(err) : resolve());
-            });
+            const client = this.root.getCosmosClient();
+            await client.database(this.id).delete();
         } else {
             throw new UserCancelledError();
         }
@@ -74,14 +72,14 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
 
     // Create a DB collection
     public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
-        const collectionName = await ext.ui.showInputBox({
+        const containerName = await ext.ui.showInputBox({
             placeHolder: `Enter an id for your ${this.childTypeLabel}`,
             ignoreFocusOut: true,
             validateInput: validateCollectionName
         });
 
-        const collectionDef: Collection = {
-            id: collectionName
+        const containerDefinition: ContainerDefinition = {
+            id: containerName
         };
 
         let partitionKey: string | undefined = await ext.ui.showInputBox({
@@ -95,12 +93,11 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
             partitionKey = '/' + partitionKey;
         }
         if (!!partitionKey) {
-            collectionDef.partitionKey = {
-                paths: [partitionKey],
-                kind: DocumentBase.PartitionKind.Hash
+            containerDefinition.partitionKey = {
+                paths: [partitionKey]
             };
         }
-        const isFixed: boolean = !(collectionDef.partitionKey);
+        const isFixed: boolean = !(containerDefinition.partitionKey);
         const minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
         const throughput: number = Number(await ext.ui.showInputBox({
             value: minThroughput.toString(),
@@ -111,15 +108,11 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Collec
 
         const options = { offerThroughput: throughput };
 
-        context.showCreatingTreeItem(collectionName);
-        const client = this.root.getDocumentClient();
-        const collection: CollectionMeta = await new Promise<CollectionMeta>((resolve, reject) => {
-            client.createCollection(this.link, collectionDef, options, (err, result) => {
-                err ? reject(err) : resolve(result);
-            });
-        });
+        context.showCreatingTreeItem(containerName);
+        const client = this.root.getCosmosClient();
+        const container: ContainerResponse = await client.database(this.id).containers.create(containerDefinition, options);
 
-        return this.initChild(collection);
+        return this.initChild(nonNullProp(container, 'resource'));
     }
 }
 

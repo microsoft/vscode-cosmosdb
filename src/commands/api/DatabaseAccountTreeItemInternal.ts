@@ -57,7 +57,7 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
     public get docDBData(): { masterKey: string; documentEndpoint: string; } | undefined {
         if (this._accountNode instanceof DocDBAccountTreeItemBase) {
             return {
-                documentEndpoint: this._accountNode.root.documentEndpoint,
+                documentEndpoint: this._accountNode.root.endpoint,
                 masterKey: this._accountNode.root.masterKey
             };
         } else {

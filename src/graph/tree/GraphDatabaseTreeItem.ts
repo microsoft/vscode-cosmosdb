@@ -32,7 +32,7 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
         return getPossibleGremlinEndpoints(this.root.endpoint);
     }
 
-    public async getDatabaseClient(client: CosmosClient): Promise<Database> {
+    public getDatabaseClient(client: CosmosClient): Database {
         return client.database(this.id);
 
     }

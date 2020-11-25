@@ -44,7 +44,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
         })).trim();
         const body: StoredProcedureDefinition = { id: spID, body: defaultStoredProcedure };
         context.showCreatingTreeItem(spID);
-        const sproc = await (await this.getContainerClient(client)).scripts.storedProcedures.create(body);
+        const sproc = await this.getContainerClient(client).scripts.storedProcedures.create(body);
 
         return this.initChild(nonNullProp(sproc, 'resource'));
     }
@@ -61,14 +61,12 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
         return this.parent.link;
     }
 
-    public async getIterator(client: CosmosClient, feedOptions: FeedOptions): Promise<QueryIterator<StoredProcedureDefinition & Resource>> {
-        return (await this.getContainerClient(client)).scripts.storedProcedures.readAll(feedOptions);
+    public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<StoredProcedureDefinition & Resource> {
+        return this.getContainerClient(client).scripts.storedProcedures.readAll(feedOptions);
     }
 
-    public async getContainerClient(client: CosmosClient): Promise<Container> {
-        return (await (<GraphCollectionTreeItem>this.parent).getContainerClient(client)) ?
-            (await (<GraphCollectionTreeItem>this.parent).getContainerClient(client)) :
-            (await (<DocDBCollectionTreeItem>this.parent).getContainerClient(client));
+    public getContainerClient(client: CosmosClient): Container {
+        return this.parent.getContainerClient(client);
     }
 
     private validateName(name: string): string | null | undefined {

@@ -56,7 +56,7 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
         const client = this.root.getCosmosClient();
-        const replace = await (await this.parent.getContainerClient(client)).scripts.storedProcedure(this.id).replace({ id: this.id, body: content });
+        const replace = await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).replace({ id: this.id, body: content });
         this.procedure = nonNullProp(replace, 'resource');
     }
 
@@ -69,7 +69,7 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const client = this.root.getCosmosClient();
-            await (await this.parent.getContainerClient(client)).scripts.storedProcedure(this.id).delete();
+            await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).delete();
         } else {
             throw new UserCancelledError();
         }

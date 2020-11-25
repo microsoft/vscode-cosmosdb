@@ -42,8 +42,8 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
         return this.parent.link;
     }
 
-    public async getIterator(client: CosmosClient, feedOptions: FeedOptions): Promise<QueryIterator<ItemDefinition>> {
-        return (await this.getContainerClient(client)).items.readAll(feedOptions);
+    public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<ItemDefinition> {
+        return this.getContainerClient(client).items.readAll(feedOptions);
     }
 
     public initChild(document: ItemDefinition): DocDBDocumentTreeItem {
@@ -70,7 +70,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public async createDocument(body: ItemDefinition): Promise<ItemDefinition> {
-        const item: ItemResponse<ItemDefinition> = await (await this.getContainerClient(this.root.getCosmosClient())).items.create(body);
+        const item: ItemResponse<ItemDefinition> = await this.getContainerClient(this.root.getCosmosClient()).items.create(body);
         return nonNullProp(item, 'resource');
     }
 
@@ -108,8 +108,8 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
         return body;
     }
 
-    public async getContainerClient(client: CosmosClient): Promise<Container> {
-        return (await this.parent.getContainerClient(client));
+    public getContainerClient(client: CosmosClient): Container {
+        return this.parent.getContainerClient(client);
     }
 
     // Create a nested Object given the partition key path and value

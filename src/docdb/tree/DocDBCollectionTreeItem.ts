@@ -58,7 +58,7 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const client = this.root.getCosmosClient();
-            await (await this.getContainerClient(client)).delete();
+            await this.getContainerClient(client).delete();
         } else {
             throw new UserCancelledError();
         }
@@ -88,7 +88,7 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         return undefined;
     }
 
-    public async getContainerClient(client: CosmosClient): Promise<Container> {
-        return (await this.parent.getDatabaseClient(client)).container(this.id);
+    public getContainerClient(client: CosmosClient): Container {
+        return (this.parent.getDatabaseClient(client)).container(this.id);
     }
 }

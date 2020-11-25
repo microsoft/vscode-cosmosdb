@@ -72,7 +72,7 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
             const client = this.root.getCosmosClient();
-            await (await this.getDocumentClient(client)).delete();
+            await this.getDocumentClient(client).delete();
         } else {
             throw new UserCancelledError();
         }
@@ -97,7 +97,7 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
             throw new Error(`The "_self" and "_etag" fields are required to update a document`);
         } else {
             const options: RequestOptions = { accessCondition: { type: 'IfMatch', condition: newData._etag } };
-            const response = await (await this.getDocumentClient(client)).replace(newData, options);
+            const response = await this.getDocumentClient(client).replace(newData, options);
             this._document = response.resource;
         }
     }
@@ -121,7 +121,7 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
         return value;
     }
 
-    private async getDocumentClient(client: CosmosClient): Promise<Item> {
-        return (await this.parent.getContainerClient(client)).item(nonNullProp(this.document, 'id'), this.getPartitionKeyValue);
+    private getDocumentClient(client: CosmosClient): Item {
+        return this.parent.getContainerClient(client).item(nonNullProp(this.document, 'id'), this.getPartitionKeyValue());
     }
 }

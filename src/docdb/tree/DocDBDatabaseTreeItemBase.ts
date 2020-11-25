@@ -54,7 +54,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
         return this._database.id;
     }
 
-    public async getIterator(client: CosmosClient, feedOptions: FeedOptions): Promise<QueryIterator<ContainerDefinition & Resource>> {
+    public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<ContainerDefinition & Resource> {
         return client.database(this._database.id).containers.readAll(feedOptions);
     }
 

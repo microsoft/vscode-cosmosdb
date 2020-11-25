@@ -16,7 +16,7 @@ export class DocDBDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
         return new DocDBCollectionTreeItem(this, container);
     }
 
-    public async getDatabaseClient(client: CosmosClient): Promise<Database> {
+    public getDatabaseClient(client: CosmosClient): Database {
         return client.database(this.id);
     }
 }

@@ -52,7 +52,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         return getThemeAgnosticIconPath('CosmosDBAccount.svg');
     }
 
-    public async getIterator(client: CosmosClient, feedOptions: FeedOptions): Promise<QueryIterator<DatabaseDefinition & Resource>> {
+    public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<DatabaseDefinition & Resource> {
         return client.databases.readAll(feedOptions);
     }
 

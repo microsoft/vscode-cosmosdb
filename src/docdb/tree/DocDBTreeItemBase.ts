@@ -27,7 +27,7 @@ export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTre
 
     public abstract initChild(resource: T): AzureTreeItem<IDocDBTreeRoot>;
 
-    public abstract getIterator(client: CosmosClient, feedOptions: FeedOptions): Promise<QueryIterator<T>>;
+    public abstract getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<T>;
 
     public async refreshImpl(): Promise<void> {
         this._batchSize = getBatchSizeSetting();
@@ -37,7 +37,7 @@ export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTre
         if (clearCache || this._iterator === undefined) {
             this._hasMoreChildren = true;
             const client = this.root.getCosmosClient();
-            this._iterator = await this.getIterator(client, { maxItemCount: this._batchSize });
+            this._iterator = this.getIterator(client, { maxItemCount: this._batchSize });
         }
 
         const resourceArray: T[] = [];

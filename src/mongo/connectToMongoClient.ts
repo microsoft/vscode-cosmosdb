@@ -13,8 +13,7 @@ export async function connectToMongoClient(connectionString: string, appName: st
         appName: `@${appName}@`,
         // https://github.com/lmammino/mongo-uri-builder/issues/2
         useNewUrlParser: true,
-        useUnifiedTopology: true,
-        serverSelectionTimeoutMS: 1000
+        useUnifiedTopology: true
     };
 
     if (isCosmosEmulatorConnectionString(connectionString)) {

@@ -3,12 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocumentClient, FeedOptions, ProcedureMeta, QueryIterator } from 'documentdb';
+import { Container, CosmosClient, FeedOptions, QueryIterator, Resource, StoredProcedureDefinition } from '@azure/cosmos';
 import * as vscode from "vscode";
 import { ICreateChildImplContext } from 'vscode-azureextensionui';
 import { defaultStoredProcedure, getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
+import { nonNullProp } from '../../utils/nonNull';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -16,7 +17,8 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 /**
  * This class represents the DocumentDB "Stored Procedures" node in the tree
  */
-export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMeta> {
+export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProcedureDefinition> {
+
     public static contextValue: string = "cosmosDBStoredProceduresGroup";
     public readonly contextValue: string = DocDBStoredProceduresTreeItem.contextValue;
     public readonly childTypeLabel: string = "Stored Procedure";
@@ -26,7 +28,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
         super(parent);
     }
 
-    public initChild(resource: ProcedureMeta): DocDBStoredProcedureTreeItem {
+    public initChild(resource: StoredProcedureDefinition & Resource): DocDBStoredProcedureTreeItem {
         return new DocDBStoredProcedureTreeItem(this, resource);
     }
 
@@ -35,24 +37,16 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBStoredProcedureTreeItem> {
-        const client = this.root.getDocumentClient();
+        const client = this.root.getCosmosClient();
         const spID = (await ext.ui.showInputBox({
             prompt: "Enter a unique stored procedure ID",
             validateInput: this.validateName
         })).trim();
-
+        const body: StoredProcedureDefinition = { id: spID, body: defaultStoredProcedure };
         context.showCreatingTreeItem(spID);
-        const sproc: ProcedureMeta = await new Promise<ProcedureMeta>((resolve, reject) => {
-            client.createStoredProcedure(this.link, { id: spID, body: defaultStoredProcedure }, (err, result: ProcedureMeta) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(result);
-                }
-            });
-        });
+        const sproc = await this.getContainerClient(client).scripts.storedProcedures.create(body);
 
-        return this.initChild(sproc);
+        return this.initChild(nonNullProp(sproc, 'resource'));
     }
 
     public get id(): string {
@@ -67,8 +61,12 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<ProcedureMe
         return this.parent.link;
     }
 
-    public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<ProcedureMeta>> {
-        return client.readStoredProcedures(this.link, feedOptions);
+    public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<StoredProcedureDefinition & Resource> {
+        return this.getContainerClient(client).scripts.storedProcedures.readAll(feedOptions);
+    }
+
+    public getContainerClient(client: CosmosClient): Container {
+        return this.parent.getContainerClient(client);
     }
 
     private validateName(name: string): string | null | undefined {

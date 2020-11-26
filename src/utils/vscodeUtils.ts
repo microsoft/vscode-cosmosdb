@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { RetrievedDocument } from 'documentdb';
+import { ItemDefinition } from '@azure/cosmos';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -85,7 +85,7 @@ function isAccountTreeItem(treeItem: AzExtTreeItem): boolean {
     return (treeItem instanceof MongoAccountTreeItem) || (treeItem instanceof DocDBAccountTreeItemBase);
 }
 
-export function getDocumentTreeItemLabel(document: IMongoDocument | RetrievedDocument): string {
+export function getDocumentTreeItemLabel(document: IMongoDocument | ItemDefinition): string {
     for (const field of getDocumentLabelFields()) {
         if (document.hasOwnProperty(field)) {
             const value = document[field];

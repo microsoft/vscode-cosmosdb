@@ -5,10 +5,13 @@
 
 import { CosmosClient } from "@azure/cosmos";
 import * as https from "https";
+import * as vscode from 'vscode';
 import { appendExtensionUserAgent } from "vscode-azureextensionui";
+import { ext } from "../extensionVariables";
 
-export function getCosmosClient(endpoint: string, key: string): CosmosClient {
+export function getCosmosClient(endpoint: string, key: string, isEmulator: boolean | undefined): CosmosClient {
 
-    return new CosmosClient({ endpoint, key, userAgentSuffix: appendExtensionUserAgent(), agent: new https.Agent({ rejectUnauthorized: false }) });
+    const vscodeStrictSSL: boolean | undefined = vscode.workspace.getConfiguration().get<boolean>(ext.settingsKeys.vsCode.proxyStrictSSL);
+    return new CosmosClient({ endpoint, key, userAgentSuffix: appendExtensionUserAgent(), agent: new https.Agent({ rejectUnauthorized: !isEmulator || vscodeStrictSSL }) });
 
 }

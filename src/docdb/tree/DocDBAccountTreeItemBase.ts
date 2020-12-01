@@ -35,7 +35,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
             endpoint,
             masterKey,
             isEmulator,
-            getCosmosClient: () => getCosmosClient(endpoint, masterKey, isEmulator)
+            getCosmosClient: () => getCosmosClient(endpoint, masterKey)
         });
     }
 

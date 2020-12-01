@@ -89,7 +89,7 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
     async function getClient(resourceName: string): Promise<CosmosClient> {
         const connectionString: string = await getConnectionString(resourceName);
         const getParsedConnectionString: ParsedDocDBConnectionString = parseDocDBConnectionString(connectionString);
-        return getCosmosClient(getParsedConnectionString.documentEndpoint, getParsedConnectionString.masterKey, false);
+        return getCosmosClient(getParsedConnectionString.documentEndpoint, getParsedConnectionString.masterKey);
     }
 
     async function getDatabases(docDBClient: CosmosClient): Promise<(DatabaseDefinition & Resource)[]> {

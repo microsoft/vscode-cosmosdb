@@ -12,6 +12,6 @@ import { ext } from "../extensionVariables";
 export function getCosmosClient(endpoint: string, key: string, isEmulator: boolean | undefined): CosmosClient {
 
     const vscodeStrictSSL: boolean | undefined = vscode.workspace.getConfiguration().get<boolean>(ext.settingsKeys.vsCode.proxyStrictSSL);
-    return new CosmosClient({ endpoint, key, userAgentSuffix: appendExtensionUserAgent(), agent: new https.Agent({ rejectUnauthorized: !isEmulator || vscodeStrictSSL }) });
+    return new CosmosClient({ endpoint, key, userAgentSuffix: appendExtensionUserAgent(), agent: new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL }) });
 
 }

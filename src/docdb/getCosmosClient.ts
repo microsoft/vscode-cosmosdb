@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosClient } from "@azure/cosmos";
+import * as https from "https";
 import { appendExtensionUserAgent } from "vscode-azureextensionui";
 
 export function getCosmosClient(endpoint: string, key: string): CosmosClient {
 
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-    return new CosmosClient({ endpoint, key, userAgentSuffix: appendExtensionUserAgent() });
+    return new CosmosClient({ endpoint, key, userAgentSuffix: appendExtensionUserAgent(), agent: new https.Agent({ rejectUnauthorized: false }) });
 
 }

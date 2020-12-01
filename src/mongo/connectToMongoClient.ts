@@ -12,7 +12,8 @@ export async function connectToMongoClient(connectionString: string, appName: st
         // appName should be wrapped in '@'s when trying to connect to a Mongo account, this doesn't effect the appendUserAgent string
         appName: `@${appName}@`,
         // https://github.com/lmammino/mongo-uri-builder/issues/2
-        useNewUrlParser: true
+        useNewUrlParser: true,
+        useUnifiedTopology: true
     };
 
     if (isCosmosEmulatorConnectionString(connectionString)) {

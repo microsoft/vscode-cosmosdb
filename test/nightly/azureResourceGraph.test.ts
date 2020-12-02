@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { CosmosDBManagementModels } from '@azure/arm-cosmosdb';
 import { ContainerDefinition, CosmosClient, DatabaseDefinition, Resource } from '@azure/cosmos';
 import * as assert from 'assert';
-import { CosmosDBManagementModels } from 'azure-arm-cosmosdb';
 import * as vscode from 'vscode';
 import { randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
@@ -29,7 +29,7 @@ suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
     });
 
     test('Create graph account', async () => {
-        const getAccount: CosmosDBManagementModels.DatabaseAccount | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
+        const getAccount: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = (await client.databaseAccounts.get(resourceGroupName, accountName))._response.parsedBody;
         assert.ok(getAccount);
     });
 

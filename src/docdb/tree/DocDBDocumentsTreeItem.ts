@@ -3,11 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocumentClient, FeedOptions, NewDocument, QueryIterator, RetrievedDocument } from 'documentdb';
+import { Container, CosmosClient, FeedOptions, ItemDefinition, ItemResponse, QueryIterator } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
+import { nonNullProp } from '../../utils/nonNull';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -15,7 +16,7 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 /**
  * This class provides logic for DocumentDB collections
  */
-export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument> {
+export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     public static contextValue: string = "cosmosDBDocumentsGroup";
     public readonly contextValue: string = DocDBDocumentsTreeItem.contextValue;
     public readonly childTypeLabel: string = "Documents";
@@ -41,11 +42,11 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
         return this.parent.link;
     }
 
-    public async getIterator(client: DocumentClient, feedOptions: FeedOptions): Promise<QueryIterator<RetrievedDocument>> {
-        return client.readDocuments(this.link, feedOptions);
+    public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<ItemDefinition> {
+        return this.getContainerClient(client).items.readAll(feedOptions);
     }
 
-    public initChild(document: RetrievedDocument): DocDBDocumentTreeItem {
+    public initChild(document: ItemDefinition): DocDBDocumentTreeItem {
         return new DocDBDocumentTreeItem(this, document);
     }
 
@@ -57,27 +58,20 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
 
         if (docID || docID === "") {
             docID = docID.trim();
-            let body = { id: docID };
-            body = <NewDocument>(await this.promptForPartitionKey(body));
+            let body: ItemDefinition = { id: docID };
+            body = (await this.promptForPartitionKey(body));
             context.showCreatingTreeItem(docID);
-            const document = await this.createDocument(body);
+            const item: ItemDefinition = await this.createDocument(body);
 
-            return this.initChild(document);
+            return this.initChild(item);
         }
 
         throw new UserCancelledError();
     }
 
-    public async createDocument(body: NewDocument): Promise<RetrievedDocument> {
-        return await new Promise<RetrievedDocument>((resolve, reject) => {
-            this.root.getDocumentClient().createDocument(this.link, body, (err, result: RetrievedDocument) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(result);
-                }
-            });
-        });
+    public async createDocument(body: ItemDefinition): Promise<ItemDefinition> {
+        const item: ItemResponse<ItemDefinition> = await this.getContainerClient(this.root.getCosmosClient()).items.create(body);
+        return nonNullProp(item, 'resource');
     }
 
     public documentHasPartitionKey(doc: Object): boolean {
@@ -101,7 +95,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
         return true;
     }
 
-    public async promptForPartitionKey(body: Object): Promise<Object> {
+    public async promptForPartitionKey(body: ItemDefinition): Promise<ItemDefinition> {
         const partitionKey: string | undefined = this.parent.partitionKey && this.parent.partitionKey.paths[0];
         if (partitionKey) {
             const partitionKeyValue: string = await ext.ui.showInputBox({
@@ -112,6 +106,10 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<RetrievedDocument>
             Object.assign(body, this.createPartitionPathObject(partitionKey, partitionKeyValue));
         }
         return body;
+    }
+
+    public getContainerClient(client: CosmosClient): Container {
+        return this.parent.getContainerClient(client);
     }
 
     // Create a nested Object given the partition key path and value

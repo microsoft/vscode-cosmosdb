@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { DatabaseListResult, Server } from 'azure-arm-postgresql/lib/models';
+import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
+import { DatabaseListResult, Server } from '@azure/arm-postgresql/src/models';
 import { ClientConfig } from 'pg';
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';

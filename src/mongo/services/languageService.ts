@@ -7,7 +7,8 @@
 
 import { Db } from 'mongodb';
 import { getLanguageService, LanguageService as JsonLanguageService, SchemaConfiguration } from 'vscode-json-languageservice';
-import { CompletionItem, IConnection, InitializeParams, InitializeResult, TextDocumentPositionParams, TextDocuments } from 'vscode-languageserver';
+import { CompletionItem, IConnection, InitializeParams, InitializeResult, TextDocumentPositionParams, TextDocuments, TextDocumentSyncKind } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { MongoScriptDocumentManager } from './mongoScript';
 import { SchemaService } from './schemaService';
@@ -18,7 +19,7 @@ import { SchemaService } from './schemaService';
 // tslint:disable-next-line: export-name
 export class LanguageService {
 
-    private textDocuments: TextDocuments = new TextDocuments();
+    private textDocuments: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
     private readonly mongoDocumentsManager: MongoScriptDocumentManager;
     private db: Db;
 
@@ -36,7 +37,7 @@ export class LanguageService {
         connection.onInitialize((_params: InitializeParams): InitializeResult => {
             return {
                 capabilities: {
-                    textDocumentSync: this.textDocuments.syncKind, // Tell the client that the server works in FULL text document sync mode
+                    textDocumentSync: TextDocumentSyncKind.Full, // Tell the client that the server works in FULL text document sync mode
                     completionProvider: { triggerCharacters: ['.'] }
                 }
             };

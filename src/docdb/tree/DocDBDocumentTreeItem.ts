@@ -3,12 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocumentClient, RetrievedDocument } from 'documentdb';
+import { CosmosClient, Item, ItemDefinition, RequestOptions } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { AzureTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
+import { nonNullProp } from '../../utils/nonNull';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
@@ -25,15 +26,12 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
     public readonly parent: DocDBDocumentsTreeItem;
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
-
-    private readonly _partitionKeyValue: string | undefined | Object;
     private _label: string;
-    private _document: RetrievedDocument;
+    private _document: ItemDefinition;
 
-    constructor(parent: DocDBDocumentsTreeItem, document: RetrievedDocument) {
+    constructor(parent: DocDBDocumentsTreeItem, document: ItemDefinition) {
         super(parent);
         this._document = document;
-        this._partitionKeyValue = this.getPartitionKeyValue();
         this._label = getDocumentTreeItemLabel(this._document);
         ext.fileSystem.fireChangedEvent(this);
     }
@@ -57,7 +55,7 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
         return this.document._self;
     }
 
-    get document(): RetrievedDocument {
+    get document(): ItemDefinition {
         return this._document;
     }
 
@@ -73,18 +71,8 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
         const message: string = `Are you sure you want to delete document '${this.label}'?`;
         const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
         if (result === DialogResponses.deleteResponse) {
-            const client = this.root.getDocumentClient();
-            const options = { partitionKey: this._partitionKeyValue };
-            await new Promise((resolve, reject) => {
-                // Disabling type check in the next line. This helps ensure documents having no partition key value
-                // can still pass an empty object when required. It looks like a disparity between the type settings outlined here
-                // https://github.com/DefinitelyTyped/DefinitelyTyped/blob/01e0ffdbab16b15c702d5b8c87bb122cc6215a59/types/documentdb/index.d.ts#L72
-                // vs. the workaround outlined at https://github.com/Azure/azure-documentdb-node/issues/222#issuecomment-364286027
-                // tslint:disable-next-line:no-any
-                client.deleteDocument(this.link, <any>options, err => {
-                    err ? reject(err) : resolve();
-                });
-            });
+            const client = this.root.getCosmosClient();
+            await this.getDocumentClient(client).delete();
         } else {
             throw new UserCancelledError();
         }
@@ -99,31 +87,18 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
     }
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
-        const newData: RetrievedDocument = JSON.parse(content);
+        const newData = JSON.parse(content);
         for (const field of hiddenFields) {
             newData[field] = this.document[field];
         }
 
-        const client: DocumentClient = this.root.getDocumentClient();
-        const _self: string = this.document._self;
-        if (["_self", "_etag"].some((element) => !newData[element])) {
+        const client: CosmosClient = this.root.getCosmosClient();
+        if (["_etag"].some((element) => !newData[element])) {
             throw new Error(`The "_self" and "_etag" fields are required to update a document`);
         } else {
-            const options = { accessCondition: { type: 'IfMatch', condition: newData._etag }, partitionKey: this._partitionKeyValue };
-            this._document = await new Promise<RetrievedDocument>((resolve, reject) => {
-                client.replaceDocument(
-                    _self,
-                    newData,
-                    //tslint:disable-next-line:no-any
-                    <any>options,
-                    (err, updated: RetrievedDocument) => {
-                        if (err) {
-                            reject(err);
-                        } else {
-                            resolve(updated);
-                        }
-                    });
-            });
+            const options: RequestOptions = { accessCondition: { type: 'IfMatch', condition: newData._etag } };
+            const response = await this.getDocumentClient(client).replace(newData, options);
+            this._document = response.resource;
         }
     }
 
@@ -144,5 +119,9 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
             }
         }
         return value;
+    }
+
+    private getDocumentClient(client: CosmosClient): Item {
+        return this.parent.getContainerClient(client).item(nonNullProp(this.document, 'id'), this.getPartitionKeyValue());
     }
 }

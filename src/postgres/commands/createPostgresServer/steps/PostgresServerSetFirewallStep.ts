@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import PostgreSQLManagementClient from 'azure-arm-postgresql';
-import { FirewallRule } from 'azure-arm-postgresql/lib/models';
+import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
+import { FirewallRule } from '@azure/arm-postgresql/src/models';
 import * as vscode from 'vscode';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, createAzureClient } from 'vscode-azureextensionui';

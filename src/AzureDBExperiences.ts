@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccount } from 'azure-arm-cosmosdb/lib/models';
-import { Server } from 'azure-arm-postgresql/lib/models';
+import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { IAzureQuickPickItem } from 'vscode-azureextensionui';
 import { nonNullProp } from './utils/nonNull';
 
@@ -31,20 +30,21 @@ export function getExperienceFromApi(api: API): Experience {
     return info;
 }
 
-export function getExperienceLabel(resource: DatabaseAccount & Server): string {
-    const experience: Experience | undefined = tryGetExperience(resource);
+export function getExperienceLabel(databaseAccount: DatabaseAccountGetResults): string {
+
+    const experience: Experience | undefined = tryGetExperience(databaseAccount);
     if (experience) {
         return experience.shortName;
     }
-
     // Must be some new kind of resource that we aren't aware of.  Try to get a decent label
-    const defaultExperience: string = <API>(resource && resource.tags && resource.tags.defaultExperience);
-    const firstCapability = resource.capabilities && resource.capabilities[0];
+    const defaultExperience: string = <API>(databaseAccount && databaseAccount.tags && databaseAccount.tags.defaultExperience);
+    const firstCapability = databaseAccount.capabilities && databaseAccount.capabilities[0];
     const firstCapabilityName = firstCapability?.name?.replace(/^Enable/, '');
-    return defaultExperience || firstCapabilityName || nonNullProp(resource, 'kind');
+    return defaultExperience || firstCapabilityName || nonNullProp(databaseAccount, 'kind');
+
 }
 
-export function tryGetExperience(resource: DatabaseAccount): Experience | undefined {
+export function tryGetExperience(resource: DatabaseAccountGetResults): Experience | undefined {
     // defaultExperience in the resource doesn't really mean anything, we can't depend on its value for determining resource type
     if (resource.kind === DBAccountKind.MongoDB) {
         return MongoExperience;

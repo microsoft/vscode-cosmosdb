@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient } from 'azure-arm-cosmosdb';
+import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { AzureNameStep, createAzureClient, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
@@ -40,7 +40,7 @@ async function validateCosmosDBAccountName(name: string, client: CosmosDBManagem
         return `The name must be between ${min} and ${max} characters.`;
     } else if (name.match(/[^a-z0-9-]/)) {
         return "The name can only contain lowercase letters, numbers, and the '-' character.";
-    } else if (await client.databaseAccounts.checkNameExists(name)) {
+    } else if ((await client.databaseAccounts.checkNameExists(name)).body) {
         return `Account name "${name}" is not available.`;
     } else {
         return undefined;

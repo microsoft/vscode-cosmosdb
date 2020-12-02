@@ -52,7 +52,7 @@ export class MongoDBLanguageClient {
         await this.client.sendRequest('connect', <IConnectionParams>{ connectionString: connectionString, databaseName: databaseName, extensionUserAgent: appendExtensionUserAgent() });
     }
 
-    public disconnect(): void {
-        this.client.sendRequest('disconnect');
+    public async disconnect(): Promise<void> {
+        await this.client.sendRequest('disconnect');
     }
 }

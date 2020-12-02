@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CollectionMeta, DatabaseMeta } from 'documentdb';
+import { ContainerDefinition, CosmosClient, Database, DatabaseDefinition, Resource } from '@azure/cosmos';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { IGremlinEndpoint } from '../../vscode-cosmosdbgraph.api';
 import { getPossibleGremlinEndpoints } from '../gremlinEndpoints';
@@ -15,11 +15,11 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
     public readonly contextValue: string = GraphDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Graph';
 
-    constructor(parent: GraphAccountTreeItem, private _gremlinEndpoint: IGremlinEndpoint | undefined, database: DatabaseMeta) {
+    constructor(parent: GraphAccountTreeItem, private _gremlinEndpoint: IGremlinEndpoint | undefined, database: DatabaseDefinition & Resource) {
         super(parent, database);
     }
 
-    public initChild(collection: CollectionMeta): GraphCollectionTreeItem {
+    public initChild(collection: ContainerDefinition & Resource): GraphCollectionTreeItem {
         return new GraphCollectionTreeItem(this, collection);
     }
 
@@ -29,6 +29,11 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
     }
 
     get possibleGremlinEndpoints(): IGremlinEndpoint[] {
-        return getPossibleGremlinEndpoints(this.root.documentEndpoint);
+        return getPossibleGremlinEndpoints(this.root.endpoint);
+    }
+
+    public getDatabaseClient(client: CosmosClient): Database {
+        return client.database(this.id);
+
     }
 }

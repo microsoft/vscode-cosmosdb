@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { Capability, DatabaseAccountsCreateOrUpdateResponse } from '@azure/arm-cosmosdb/src/models';
+import { DatabaseAccountCreateUpdateParameters, DatabaseAccountsCreateOrUpdateResponse } from '@azure/arm-cosmosdb/src/models';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, createAzureClient } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
@@ -26,17 +26,21 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
         ext.outputChannel.appendLog(creatingMessage);
         progress.report({ message: creatingMessage });
 
-        const options = {
+        const options: DatabaseAccountCreateUpdateParameters = {
             location: locationName,
             locations: [{ locationName: locationName }],
             kind: defaultExperience.kind,
             // Note: Setting this tag has no functional effect in the portal, but we'll keep doing it to imitate portal behavior
             tags: { defaultExperience: nonNullProp(defaultExperience, 'tag') },
-            capabilities: <Capability[]>[]
         };
 
+        if (wizardContext.defaultExperience?.api === 'MongoDB') {
+            options.apiProperties = { serverVersion: '3.6' };
+        }
+
         if (defaultExperience.capability) {
-            options.capabilities.push(<Capability>{ name: defaultExperience.capability });
+            options.capabilities = [];
+            options.capabilities.push({ name: defaultExperience.capability });
         }
 
         const response: DatabaseAccountsCreateOrUpdateResponse = await client.databaseAccounts.createOrUpdate(rgName, accountName, options);

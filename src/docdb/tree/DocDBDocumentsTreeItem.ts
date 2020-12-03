@@ -83,11 +83,11 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
         if (partitionKey[0] === '/') {
             partitionKey = partitionKey.slice(1);
         }
-        const keyPath = partitionKey.split('/');
-        let i: number;
-        for (i = 0; i < keyPath.length - 1; i++) {
-            if (interim.hasOwnProperty(keyPath[i])) {
-                interim = interim[keyPath[i]];
+        const partitionKeyPath = partitionKey.split('/');
+
+        for (const prop of partitionKeyPath) {
+            if (interim.hasOwnProperty(prop)) {
+                interim = interim[prop];
             } else {
                 return false;
             }

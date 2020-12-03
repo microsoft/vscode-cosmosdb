@@ -34,13 +34,12 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             tags: { defaultExperience: nonNullProp(defaultExperience, 'tag') },
         };
 
-        if (wizardContext.defaultExperience?.api === 'MongoDB') {
+        if (defaultExperience?.api === 'MongoDB') {
             options.apiProperties = { serverVersion: '3.6' };
         }
 
         if (defaultExperience.capability) {
-            options.capabilities = [];
-            options.capabilities.push({ name: defaultExperience.capability });
+            options.capabilities = [{ name: defaultExperience.capability }];
         }
 
         const response: DatabaseAccountsCreateOrUpdateResponse = await client.databaseAccounts.createOrUpdate(rgName, accountName, options);

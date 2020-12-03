@@ -6,7 +6,7 @@
 import { Environment } from '@azure/ms-rest-azure-env';
 import { TokenCredentialsBase } from '@azure/ms-rest-nodeauth';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
+import { AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, getThemedIconPath } from '../constants';
@@ -15,7 +15,6 @@ import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../extensionVariables';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
-import { connectToMongoClient } from '../mongo/connectToMongoClient';
 import { parseMongoConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
@@ -136,13 +135,9 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         if (defaultExperiencePick) {
             const defaultExperience = defaultExperiencePick.data;
             let placeholder: string;
-            let defaultValue: string | undefined;
             let validateInput: (value: string) => string | undefined | null;
             if (defaultExperience.api === API.MongoDB) {
                 placeholder = 'mongodb://host:port';
-                if (await this.canConnectToLocalMongoDB()) {
-                    defaultValue = placeholder = localMongoConnectionString;
-                }
                 validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
             } else if (defaultExperience.api === API.Postgres) {
                 placeholder = localize('attachedPostgresPlaceholder', '"postgres://username:password@host" or "postgres://username:password@host/database"');
@@ -157,7 +152,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 prompt: 'Enter the connection string for your database account',
                 validateInput: validateInput,
                 ignoreFocusOut: true,
-                value: defaultValue
+                value: placeholder
             })).trim();
 
             if (connectionString) {
@@ -248,18 +243,6 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
 
         return this._attachedAccounts;
-    }
-
-    private async canConnectToLocalMongoDB(): Promise<boolean> {
-        try {
-            const db = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent());
-            // grandfathered in
-            // tslint:disable-next-line: no-floating-promises
-            db.close();
-            return true;
-        } catch (error) {
-            return false;
-        }
     }
 
     private async attachAccount(treeItem: AzureTreeItem, connectionString: string): Promise<void> {

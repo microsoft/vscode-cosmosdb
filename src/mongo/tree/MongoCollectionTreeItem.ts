@@ -60,7 +60,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
             return {
                 replaceOne: {
                     filter: { _id: document._id },
-                    update: _.omit(document, '_id'),
+                    replacement: _.omit(document, '_id'),
                     upsert: false
                 }
             };

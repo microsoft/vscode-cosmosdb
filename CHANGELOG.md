@@ -2,6 +2,22 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.16.0 - 2020-12-04
+### Added
+- MongoDB server defaults to version “3.6”
+
+### Changed
+- Replaced deprecated azure sdk with new sdk:
+  - “documentdb” to “@azure/cosmos”
+  - “azure-arm-cosmosdb” to “@azure/arm-cosmosdb”
+  - “azure-arm-postgresql” to “@azure/arm-postgresql”
+  - Upgraded following packages:
+    - mongodb: "3.3" to "3.6"
+    - “vscode-languageclient" and “vscode-languageserver" to latest versions
+
+### Fixed
+- [Bugs Fixed](https://github.com/microsoft/vscode-cosmosdb/milestone/25)
+
 ## 0.15.0 - 2020-09-15
 ### Added
 - Attach PostgreSQL servers by connection string

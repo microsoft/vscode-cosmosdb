@@ -63,16 +63,20 @@ export async function parseMongoConnectionString(connectionString: string): Prom
         }
     }
 
-    const serverConfig = mongoClient.db(testDb).serverConfig;
+    // tslint:disable-next-line:no-any
+    const serverConfig: any = mongoClient.db(testDb).serverConfig;
 
     // get the first connection string from the servers list
     // this may not be best solution, but the connection (below) gives
     // host name of single server, mongos instance or the primany from replicaSet which is different than what is in the connection string (espcially for Replica sets)
     // "s" is not part of the static definition but can't find any official documentation on it. Yet it is definitely there at runtime. Grandfathering in.
-    // tslint:disable-next-line:no-any
-    const rs: any = serverConfig;
-    host = rs.s.options.servers[0].host;
-    port = rs.s.options.servers[0].port;
+    if (serverConfig.s) {
+        host = serverConfig.s.options.servers[0].host;
+        port = serverConfig.s.options.servers[0].port;
+    } else {
+        host = (serverConfig).host;
+        port = (serverConfig).port;
+    }
 
     return new ParsedMongoConnectionString(connectionString, host, port, getDatabaseNameFromConnectionString(connectionString));
 }

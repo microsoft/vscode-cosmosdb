@@ -2,6 +2,17 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## 0.15.1 - 2020-12-04
+### Added
+- Newly created Azure CosmosDB - MongoDB servers default to version “3.6”
+
+### Changed
+- Minimum version of VS Code is now 1.48.0
+- Improved extension activation time (by switching to the azure-sdk-for-js)
+
+### Fixed
+- [Bugs Fixed](https://github.com/microsoft/vscode-cosmosdb/milestone/25?closed=1)
+
 ## 0.15.0 - 2020-09-15
 ### Added
 - Attach PostgreSQL servers by connection string

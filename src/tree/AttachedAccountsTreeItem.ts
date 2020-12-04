@@ -258,7 +258,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
         async function connect(): Promise<boolean> {
             try {
-                const db: MongoClient | void = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent());
+                const db: MongoClient = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent());
                 // grandfathered in
                 // tslint:disable-next-line: no-floating-promises
                 db.close();

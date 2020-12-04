@@ -34,8 +34,6 @@ interface IPersistedAccount {
 export const AttachedAccountSuffix: string = 'Attached';
 export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start with "mongodb://" or "mongodb+srv://"';
 
-const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
-
 export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     public static contextValue: string = 'cosmosDBAttachedAccounts' + (process.platform === 'win32' ? 'WithEmulator' : 'WithoutEmulator');
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;

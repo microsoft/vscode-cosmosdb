@@ -46,8 +46,6 @@ export function addDatabaseToAccountConnectionString(connectionString: string, d
 }
 
 export async function parseMongoConnectionString(connectionString: string): Promise<ParsedMongoConnectionString> {
-    let host: string;
-    let port: string;
 
     let mongoClient: MongoClient;
     try {
@@ -70,13 +68,8 @@ export async function parseMongoConnectionString(connectionString: string): Prom
     // this may not be best solution, but the connection (below) gives
     // host name of single server, mongos instance or the primany from replicaSet which is different than what is in the connection string (espcially for Replica sets)
     // "s" is not part of the static definition but can't find any official documentation on it. Yet it is definitely there at runtime. Grandfathering in.
-    if (serverConfig.s) {
-        host = serverConfig.s.options.servers[0].host;
-        port = serverConfig.s.options.servers[0].port;
-    } else {
-        host = (serverConfig).host;
-        port = (serverConfig).port;
-    }
+    const host: string = serverConfig?.s?.options?.servers[0]?.host || serverConfig.host;
+    const port: string = serverConfig?.s?.options?.servers[0]?.port || serverConfig.port;
 
     return new ParsedMongoConnectionString(connectionString, host, port, getDatabaseNameFromConnectionString(connectionString));
 }

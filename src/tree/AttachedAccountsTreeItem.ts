@@ -5,8 +5,9 @@
 
 import { Environment } from '@azure/ms-rest-azure-env';
 import { TokenCredentialsBase } from '@azure/ms-rest-nodeauth';
+import { MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
-import { AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, getThemedIconPath } from '../constants';
@@ -15,6 +16,7 @@ import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../extensionVariables';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
+import { connectToMongoClient } from '../mongo/connectToMongoClient';
 import { parseMongoConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
@@ -33,6 +35,8 @@ interface IPersistedAccount {
 
 export const AttachedAccountSuffix: string = 'Attached';
 export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start with "mongodb://" or "mongodb+srv://"';
+
+const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
 
 export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     public static contextValue: string = 'cosmosDBAttachedAccounts' + (process.platform === 'win32' ? 'WithEmulator' : 'WithoutEmulator');
@@ -133,9 +137,13 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         if (defaultExperiencePick) {
             const defaultExperience = defaultExperiencePick.data;
             let placeholder: string;
+            let defaultValue: string | undefined;
             let validateInput: (value: string) => string | undefined | null;
             if (defaultExperience.api === API.MongoDB) {
                 placeholder = 'mongodb://host:port';
+                if (await this.canConnectToLocalMongoDB()) {
+                    defaultValue = placeholder = localMongoConnectionString;
+                }
                 validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
             } else if (defaultExperience.api === API.Postgres) {
                 placeholder = localize('attachedPostgresPlaceholder', '"postgres://username:password@host" or "postgres://username:password@host/database"');
@@ -150,7 +158,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 prompt: 'Enter the connection string for your database account',
                 validateInput: validateInput,
                 ignoreFocusOut: true,
-                value: placeholder
+                value: defaultValue
             })).trim();
 
             if (connectionString) {
@@ -241,6 +249,25 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
 
         return this._attachedAccounts;
+    }
+
+    private async canConnectToLocalMongoDB(): Promise<boolean> {
+        async function timeout(): Promise<boolean> {
+            await delay(1000);
+            return false;
+        }
+        async function connect(): Promise<boolean> {
+            try {
+                const db: MongoClient | void = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent());
+                // grandfathered in
+                // tslint:disable-next-line: no-floating-promises
+                db.close();
+                return true;
+            } catch {
+                return false;
+            }
+        }
+        return await Promise.race([timeout(), connect()]);
     }
 
     private async attachAccount(treeItem: AzureTreeItem, connectionString: string): Promise<void> {
@@ -383,4 +410,11 @@ class AttachedAccountRoot implements ISubscriptionContext {
     public get environment(): Environment {
         throw this._error;
     }
+}
+
+async function delay(milliseconds: number): Promise<void> {
+    return new Promise(resolve => {
+        // tslint:disable-next-line:no-string-based-set-timeout // false positive
+        setTimeout(resolve, milliseconds);
+    });
 }

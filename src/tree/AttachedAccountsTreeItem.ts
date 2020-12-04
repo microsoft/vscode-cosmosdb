@@ -5,6 +5,7 @@
 
 import { Environment } from '@azure/ms-rest-azure-env';
 import { TokenCredentialsBase } from '@azure/ms-rest-nodeauth';
+import { MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
@@ -251,15 +252,22 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     private async canConnectToLocalMongoDB(): Promise<boolean> {
-        try {
-            const db = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent());
-            // grandfathered in
-            // tslint:disable-next-line: no-floating-promises
-            db.close();
-            return true;
-        } catch (error) {
+        async function timeout(): Promise<boolean> {
+            await delay(1000);
             return false;
         }
+        async function connect(): Promise<boolean> {
+            try {
+                const db: MongoClient = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent());
+                // grandfathered in
+                // tslint:disable-next-line: no-floating-promises
+                db.close();
+                return true;
+            } catch {
+                return false;
+            }
+        }
+        return await Promise.race([timeout(), connect()]);
     }
 
     private async attachAccount(treeItem: AzureTreeItem, connectionString: string): Promise<void> {
@@ -402,4 +410,11 @@ class AttachedAccountRoot implements ISubscriptionContext {
     public get environment(): Environment {
         throw this._error;
     }
+}
+
+async function delay(milliseconds: number): Promise<void> {
+    return new Promise(resolve => {
+        // tslint:disable-next-line:no-string-based-set-timeout // false positive
+        setTimeout(resolve, milliseconds);
+    });
 }

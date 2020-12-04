@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { MongoClient, Mongos, ReplSet, Server } from "mongodb";
+import { MongoClient } from "mongodb";
 import { appendExtensionUserAgent, IParsedError, parseError } from "vscode-azureextensionui";
 import { testDb } from "../constants";
 import { ParsedConnectionString } from "../ParsedConnectionString";
@@ -46,8 +46,6 @@ export function addDatabaseToAccountConnectionString(connectionString: string, d
 }
 
 export async function parseMongoConnectionString(connectionString: string): Promise<ParsedMongoConnectionString> {
-    let host: string;
-    let port: string;
 
     let mongoClient: MongoClient;
     try {
@@ -63,23 +61,15 @@ export async function parseMongoConnectionString(connectionString: string): Prom
         }
     }
 
-    const serverConfig: Server | ReplSet | Mongos = mongoClient.db(testDb).serverConfig;
-    // Azure CosmosDB comes back as a ReplSet
-    if (serverConfig instanceof ReplSet) {
-        // get the first connection string from the servers for the ReplSet
-        // this may not be best solution, but the connection (below) gives
-        // the replicaset host name, which is different than what is in the connection string
-        // "s" is not part of ReplSet static definition but can't find any official documentation on it. Yet it is definitely there at runtime. Grandfathering in.
-        // tslint:disable-next-line:no-any
-        const rs: any = serverConfig;
-        host = rs.s.options.servers[0].host;
-        port = rs.s.options.servers[0].port;
-    } else {
-        // tslint:disable-next-line: no-any
-        host = (<any>serverConfig).host;
-        // tslint:disable-next-line: no-any
-        port = (<any>serverConfig).port;
-    }
+    // tslint:disable-next-line:no-any
+    const serverConfig: any = mongoClient.db(testDb).serverConfig;
+
+    // get the first connection string from the servers list
+    // this may not be best solution, but the connection (below) gives
+    // host name of single server, mongos instance or the primany from replicaSet which is different than what is in the connection string (espcially for Replica sets)
+    // "s" is not part of the static definition but can't find any official documentation on it. Yet it is definitely there at runtime. Grandfathering in.
+    const host: string = serverConfig?.s?.options?.servers[0]?.host || serverConfig.host;
+    const port: string = serverConfig?.s?.options?.servers[0]?.port || serverConfig.port;
 
     return new ParsedMongoConnectionString(connectionString, host, port, getDatabaseNameFromConnectionString(connectionString));
 }

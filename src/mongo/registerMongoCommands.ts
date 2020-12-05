@@ -91,7 +91,9 @@ export function registerMongoCommands(): MongoCodeLensProvider {
         if (ext.connectedMongoDB && ext.connectedMongoDB.fullId === node.fullId) {
             setConnectedNode(undefined, codeLensProvider);
             ext.context.globalState.update(connectedMongoKey, undefined);
-            await languageClient.disconnect();
+            // Temporary workaround for https://github.com/microsoft/vscode-cosmosdb/issues/1754
+            // tslint:disable-next-line: no-floating-promises
+            languageClient.disconnect();
         }
     });
     registerCommand('cosmosDB.deleteMongoCollection', async (context: IActionContext, node?: MongoCollectionTreeItem) => {

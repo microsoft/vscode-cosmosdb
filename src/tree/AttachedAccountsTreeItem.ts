@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
-import { emulatorPassword, getThemedIconPath } from '../constants';
+import { emulatorPassword, getThemedIconPath, isWindows } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
@@ -39,7 +39,7 @@ export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start w
 const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
 
 export class AttachedAccountsTreeItem extends AzureParentTreeItem {
-    public static contextValue: string = 'cosmosDBAttachedAccounts' + (process.platform === 'win32' ? 'WithEmulator' : 'WithoutEmulator');
+    public static contextValue: string = 'cosmosDBAttachedAccounts' + (isWindows ? 'WithEmulator' : 'WithoutEmulator');
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
     public readonly id: string = 'cosmosDBAttachedAccounts';
     public readonly label: string = 'Attached Database Accounts';
@@ -108,12 +108,24 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 
         const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
 
-        return attachedAccounts.length > 0 ? attachedAccounts : [new GenericTreeItem(this, {
-            contextValue: 'cosmosDBAttachDatabaseAccount',
-            label: 'Attach Database Account...',
-            commandId: 'cosmosDB.attachDatabaseAccount',
-            includeInTreeItemPicker: true
-        })];
+        if (attachedAccounts.length > 0) {
+            return attachedAccounts;
+        } else {
+            const attachDatabaseAccount = new GenericTreeItem(this, {
+                contextValue: 'cosmosDBAttachDatabaseAccount',
+                label: 'Attach Database Account...',
+                commandId: 'cosmosDB.attachDatabaseAccount',
+                includeInTreeItemPicker: true
+            });
+            const attachEmulator = new GenericTreeItem(this, {
+                contextValue: 'cosmosDBAttachEmulator',
+                label: 'Attach Emulator...',
+                commandId: 'cosmosDB.attachEmulator',
+                includeInTreeItemPicker: true
+            });
+            return isWindows ? [attachDatabaseAccount, attachEmulator] :
+                [attachDatabaseAccount];
+        }
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {

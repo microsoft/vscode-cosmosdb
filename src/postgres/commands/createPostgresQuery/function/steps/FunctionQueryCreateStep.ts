@@ -19,7 +19,7 @@ export class FunctionQueryCreateStep extends AzureWizardExecuteStep<IPostgresFun
     }
 }
 
-const defaultFunctionQuery = (name: string, returnType: string) => `CREATE OR REPLACE FUNCTION ${name}(/* arguments */)
+const defaultFunctionQuery = (name: string, returnType: string) => `CREATE OR REPLACE FUNCTION "${name}"(/* arguments */)
  RETURNS ${returnType}
  LANGUAGE plpgsql
 AS $function$

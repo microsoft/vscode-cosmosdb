@@ -19,7 +19,7 @@ export class StoredProcedureQueryCreateStep extends AzureWizardExecuteStep<IPost
     }
 }
 
-const defaultStoredProcedureQuery = (name: string) => `CREATE OR REPLACE PROCEDURE ${name}(/* arguments */)
+const defaultStoredProcedureQuery = (name: string) => `CREATE OR REPLACE PROCEDURE "${name}"(/* arguments */)
  LANGUAGE plpgsql
 AS $$
     BEGIN

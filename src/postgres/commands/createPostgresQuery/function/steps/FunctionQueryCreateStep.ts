@@ -5,6 +5,7 @@
 
 import { AzureWizardExecuteStep } from "vscode-azureextensionui";
 import { nonNullProp } from "../../../../../utils/nonNull";
+import { wrapArgInQuotes } from "../../../../runPostgresQuery";
 import { IPostgresFunctionQueryWizardContext } from "../IPostgresFunctionQueryWizardContext";
 
 export class FunctionQueryCreateStep extends AzureWizardExecuteStep<IPostgresFunctionQueryWizardContext> {
@@ -19,7 +20,7 @@ export class FunctionQueryCreateStep extends AzureWizardExecuteStep<IPostgresFun
     }
 }
 
-const defaultFunctionQuery = (name: string, returnType: string) => `CREATE OR REPLACE FUNCTION ${name}(/* arguments */)
+const defaultFunctionQuery = (name: string, returnType: string) => `CREATE OR REPLACE FUNCTION ${wrapArgInQuotes(name)}(/* arguments */)
  RETURNS ${returnType}
  LANGUAGE plpgsql
 AS $function$

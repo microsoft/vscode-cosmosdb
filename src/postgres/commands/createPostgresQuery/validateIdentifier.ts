@@ -9,8 +9,11 @@ export function validateIdentifier(identifier: string): string | undefined {
     // Identifier naming rules: https://aka.ms/AA8618j
     identifier = identifier.trim();
 
-    if (!identifier) {
-        return localize('cannotBeEmpty', 'Name cannot be empty.');
+    const min = 1;
+    const max = 63;
+
+    if (identifier.length < min || identifier.length > max) {
+        return localize('postgresResourcesNameLengthCheck', 'The name must be between {0} and {1} characters.', min, max);
     }
 
     if (!identifier[0].match(/[a-z_]/i)) {

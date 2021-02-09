@@ -41,6 +41,7 @@ export namespace ext {
 
         export namespace vsCode {
             export const proxyStrictSSL = "http.proxyStrictSSL";
+            export const autoSave = "files.autoSave";
         }
     }
 }

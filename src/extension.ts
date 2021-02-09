@@ -66,6 +66,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
         ext.fileSystem = new DatabasesFileSystem(ext.tree);
         context.subscriptions.push(vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem));
+        vscode.workspace.getConfiguration().update(ext.settingsKeys.vsCode.autoSave, "off");
 
         const cosmosDBTopLevelContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
         const allAccountsTopLevelContextValues: string[] = [...cosmosDBTopLevelContextValues, PostgresServerTreeItem.contextValue];

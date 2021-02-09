@@ -57,7 +57,7 @@ export async function importDocuments(actionContext: IActionContext, uris: vscod
         }
     );
 
-    await collectionNode.refresh();
+    await collectionNode.refresh(actionContext);
     await vscode.window.showInformationMessage(result);
 }
 

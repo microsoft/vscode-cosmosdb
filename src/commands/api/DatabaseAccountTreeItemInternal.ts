@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { callWithTelemetryAndErrorHandling, IActionContext } from 'vscode-azureextensionui';
 import { API } from '../../AzureDBExperiences';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../../extensionVariables';
@@ -78,10 +79,14 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
     }
 
     public async reveal(): Promise<void> {
-        ext.treeView.reveal(await this.getAccountNode());
+        await callWithTelemetryAndErrorHandling('api.dbAccount.reveal', async (context: IActionContext) => {
+            context.errorHandling.suppressDisplay = true;
+            context.errorHandling.rethrow = true;
+            ext.treeView.reveal(await this.getAccountNode(context));
+        });
     }
 
-    protected async getAccountNode(): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
+    protected async getAccountNode(context: IActionContext): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
         // If this._accountNode is undefined, attach a new node based on connection string
         if (!this._accountNode) {
 
@@ -93,7 +98,7 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
             } else {
                 apiType = API.Core;
             }
-            this._accountNode = await ext.attachedAccountsNode.attachConnectionString(this.connectionString, apiType);
+            this._accountNode = await ext.attachedAccountsNode.attachConnectionString(context, this.connectionString, apiType);
         }
 
         return this._accountNode;

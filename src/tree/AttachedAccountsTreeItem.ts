@@ -3,11 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Environment } from '@azure/ms-rest-azure-env';
-import { TokenCredentialsBase } from '@azure/ms-rest-nodeauth';
 import { MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, IActionContext, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, getThemedIconPath, isWindows } from '../constants';
@@ -182,10 +180,10 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
     }
 
-    public async attachConnectionString(connectionString: string, api: API.MongoDB | API.Core | API.Postgres): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
+    public async attachConnectionString(context: IActionContext, connectionString: string, api: API.MongoDB | API.Core | API.Postgres): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
         const treeItem = <MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem>await this.createTreeItem(connectionString, api);
         await this.attachAccount(treeItem, connectionString);
-        await this.refresh();
+        await this.refresh(context);
         return treeItem;
     }
 
@@ -395,31 +393,31 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 class AttachedAccountRoot implements ISubscriptionContext {
     private _error: Error = new Error('Cannot retrieve Azure subscription information for an attached account.');
 
-    public get credentials(): TokenCredentialsBase {
+    public get credentials(): never {
         throw this._error;
     }
 
-    public get subscriptionDisplayName(): string {
+    public get subscriptionDisplayName(): never {
         throw this._error;
     }
 
-    public get subscriptionId(): string {
+    public get subscriptionId(): never {
         throw this._error;
     }
 
-    public get subscriptionPath(): string {
+    public get subscriptionPath(): never {
         throw this._error;
     }
 
-    public get tenantId(): string {
+    public get tenantId(): never {
         throw this._error;
     }
 
-    public get userId(): string {
+    public get userId(): never {
         throw this._error;
     }
 
-    public get environment(): Environment {
+    public get environment(): never {
         throw this._error;
     }
 }

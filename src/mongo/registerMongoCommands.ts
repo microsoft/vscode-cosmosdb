@@ -71,13 +71,13 @@ export function registerMongoCommands(): MongoCodeLensProvider {
         await languageClient.connect(node.connectionString, node.databaseName);
         ext.context.globalState.update(connectedMongoKey, node.fullId);
         setConnectedNode(node, codeLensProvider);
-        await node.refresh();
+        await node.refresh(context);
 
         if (oldNodeId) {
             // We have to use findTreeItem to get the instance of the old node that's being displayed in the ext.tree. Our specific instance might have been out-of-date
             const oldNode: AzureTreeItem | undefined = await ext.tree.findTreeItem(oldNodeId, context);
             if (oldNode) {
-                await oldNode.refresh();
+                await oldNode.refresh(context);
             }
         }
     });

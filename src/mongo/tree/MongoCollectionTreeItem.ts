@@ -117,7 +117,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
             const documentNode = documentNodes.find((node) => node.document._id.toString() === doc._id.toString());
             if (documentNode) {
                 documentNode.document = doc;
-                await documentNode.refresh();
+                await documentNode.refresh(context);
             }
         }
     }

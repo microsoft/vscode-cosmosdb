@@ -153,11 +153,11 @@ async function executeCommand(context: IActionContext, command: MongoCommand, re
 
 async function refreshTreeAfterCommand(database: MongoDatabaseTreeItem, command: MongoCommand, context: IActionContext): Promise<void> {
     if (command.name === 'drop') {
-        await database.refresh();
+        await database.refresh(context);
     } else if (command.collection && command.name && /^(insert|update|delete|replace|remove|write|bulkWrite)/i.test(command.name)) {
         const collectionNode = await ext.tree.findTreeItem(database.fullId + "/" + command.collection, context);
         if (collectionNode) {
-            await collectionNode.refresh();
+            await collectionNode.refresh(context);
         }
     }
 }

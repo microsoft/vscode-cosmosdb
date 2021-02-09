@@ -6,7 +6,7 @@
 import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
 import { getThemedIconPath } from "../../constants";
 import { IPostgresProceduresQueryRow } from "../getPostgresProcedureQueryRows";
-import { runPostgresQuery } from "../runPostgresQuery";
+import { runPostgresQuery, wrapArgInQuotes } from "../runPostgresQuery";
 import { PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
 
 export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext> {
@@ -44,6 +44,6 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        await runPostgresQuery(this.parent.clientConfig, `DROP FUNCTION ${this.schema}.${this.name}(${this.args});`);
+        await runPostgresQuery(this.parent.clientConfig, `DROP FUNCTION ${this.schema}.${wrapArgInQuotes(this.name)}(${this.args});`);
     }
 }

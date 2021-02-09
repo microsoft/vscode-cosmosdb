@@ -51,5 +51,5 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
 
     treeItem.setCredentials(username, password);
 
-    await treeItem.refresh();
+    await treeItem.refresh(context);
 }

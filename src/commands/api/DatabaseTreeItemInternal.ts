@@ -30,7 +30,7 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
             context.errorHandling.suppressDisplay = true;
             context.errorHandling.rethrow = true;
 
-            const accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem = await this.getAccountNode();
+            const accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem = await this.getAccountNode(context);
             if (!this._dbNode) {
                 const databaseId = `${accountNode.fullId}/${this.databaseName}`;
                 this._dbNode = await ext.tree.findTreeItem(databaseId, context);

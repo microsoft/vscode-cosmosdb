@@ -53,7 +53,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
         }
 
         await node.writeFileContent(context, content.toString());
-        await node.refresh();
+        await node.refresh(context);
 
         const updatedMessage: string = localize('updatedEntity', 'Updated entity "{0}".', nodeEditorLabel);
         ext.outputChannel.appendLog(updatedMessage);

@@ -25,10 +25,10 @@ export async function configurePostgresFirewall(context: IActionContext, treeIte
         { title: DialogResponses.yes.title }
     );
 
-    await setFirewallRule(treeItem, ip);
+    await setFirewallRule(context, treeItem, ip);
 }
 
-export async function setFirewallRule(treeItem: PostgresServerTreeItem, ip: string): Promise<void> {
+export async function setFirewallRule(context: IActionContext, treeItem: PostgresServerTreeItem, ip: string): Promise<void> {
 
     const client: PostgreSQLManagementClient = createAzureClient(treeItem.root, PostgreSQLManagementClient);
     const resourceGroup: string = nonNullProp(treeItem, 'resourceGroup');
@@ -52,7 +52,7 @@ export async function setFirewallRule(treeItem: PostgresServerTreeItem, ip: stri
     const completedMessage: string = localize('addedFirewallRule', 'Successfully added firewall rule for IP "{0}" to server "{1}".', ip, serverName);
     vscode.window.showInformationMessage(completedMessage);
     ext.outputChannel.appendLog(completedMessage);
-    await treeItem.refresh();
+    await treeItem.refresh(context);
 }
 
 export async function getPublicIp(): Promise<string> {

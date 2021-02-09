@@ -88,9 +88,9 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
             await node.deleteTreeItem(actionContext);
         });
-        registerCommand('cosmosDB.attachDatabaseAccount', async () => {
+        registerCommand('cosmosDB.attachDatabaseAccount', async (actionContext: IActionContext) => {
             await ext.attachedAccountsNode.attachNewAccount();
-            await ext.tree.refresh(ext.attachedAccountsNode);
+            await ext.tree.refresh(actionContext, ext.attachedAccountsNode);
         });
         registerCommand('cosmosDB.attachEmulator', async (actionContext: IActionContext) => {
             if (platform() !== 'win32') {
@@ -99,9 +99,9 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             }
 
             await ext.attachedAccountsNode.attachEmulator();
-            await ext.tree.refresh(ext.attachedAccountsNode);
+            await ext.tree.refresh(actionContext, ext.attachedAccountsNode);
         });
-        registerCommand('azureDatabases.refresh', async (_actionContext: IActionContext, node?: AzExtTreeItem) => await ext.tree.refresh(node));
+        registerCommand('azureDatabases.refresh', async (actionContext: IActionContext, node?: AzExtTreeItem) => await ext.tree.refresh(actionContext, node));
         registerCommand('azureDatabases.detachDatabaseAccount', async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzureTreeItem) => {
             const children = await ext.attachedAccountsNode.loadAllChildren(actionContext);
             if (children[0].contextValue === "cosmosDBAttachDatabaseAccount") {
@@ -114,11 +114,11 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 if (node instanceof MongoAccountTreeItem) {
                     if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
                         setConnectedNode(undefined, codeLensProvider);
-                        await node.refresh();
+                        await node.refresh(actionContext);
                     }
                 }
                 await ext.attachedAccountsNode.detach(node);
-                await ext.tree.refresh(ext.attachedAccountsNode);
+                await ext.tree.refresh(actionContext, ext.attachedAccountsNode);
             }
         });
         registerCommand('cosmosDB.importDocument', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => {

@@ -56,5 +56,5 @@ export async function executePostgresQuery(context: IActionContext): Promise<voi
 
         await vscodeUtil.showNewFile(csvData, outputFileName, '.csv');
     }
-    await treeItem.refresh();
+    await treeItem.refresh(context);
 }

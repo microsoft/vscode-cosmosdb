@@ -73,7 +73,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         LocationListStep.addStep(wizardContext, promptSteps);
 
         const executeSteps: AzureWizardExecuteStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[] = [];
-        executeSteps.push(new VerifyProvidersStep(['Microsoft.Web', 'Microsoft.Storage', 'Microsoft.Insights']));
+        executeSteps.push(new VerifyProvidersStep(['Microsoft.DocumentDB', 'Microsoft.DBforPostgreSQL']));
 
         const wizard = new AzureWizard(wizardContext, {
             promptSteps,

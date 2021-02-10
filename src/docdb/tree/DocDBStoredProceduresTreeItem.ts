@@ -5,7 +5,7 @@
 
 import { Container, CosmosClient, FeedOptions, QueryIterator, Resource, StoredProcedureDefinition } from '@azure/cosmos';
 import * as vscode from "vscode";
-import { ICreateChildImplContext } from 'vscode-azureextensionui';
+import { AzExtTreeItem, ICreateChildImplContext } from 'vscode-azureextensionui';
 import { defaultStoredProcedure, getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
@@ -39,12 +39,10 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBStoredProcedureTreeItem> {
         const client = this.root.getCosmosClient();
-        const currStoredProcedureList = await this.getCachedChildren(context);
+        const currStoredProcedureList: AzExtTreeItem[] = await this.getCachedChildren(context);
         const currStoredProcedureNames: string[] = [];
         for (const sp of currStoredProcedureList) {
-            if (sp instanceof DocDBStoredProcedureTreeItem) {
-                currStoredProcedureNames.push(sp.id);
-            }
+            currStoredProcedureNames.push(nonNullProp(sp, "id"));
         }
         const spID = (await ext.ui.showInputBox({
             prompt: "Enter a unique stored procedure ID",
@@ -77,23 +75,21 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
         return this.parent.getContainerClient(client);
     }
 
-    private async validateStoredProcedureName(name: string, currStoredProcedureNames: String[]): Promise<string | null | undefined> {
-        if (name) {
-            if (name.length < 1 || name.length > 255) {
-                return "Name has to be between 1 and 255 chars long";
-            }
-            if (/[/\\?#&]/.test(name)) {
-                return localize("illegalChars", "Name contains illegal chars: /,\\,?,#,&");
-            }
-            if (name[name.length - 1] === " ") {
-                return localize("endsWithSpace", "Name cannot end with a space.");
-            }
-            if (currStoredProcedureNames.includes(name)) {
-                return localize('NameExists', 'Stored Procedure "{0}" already exists.', name);
-            }
-        } else {
-            return localize("noEmptyValue", "Name cannot be empty");
+    private validateStoredProcedureName(name: string, currStoredProcedureNames: String[]): string | undefined {
+        if (!name || name.length < 1 || name.length > 255) {
+            return localize("nameLength", "Name has to be between 1 and 255 chars long");
         }
-        return null;
+
+        if (/[/\\?#&]/.test(name)) {
+            return localize("illegalChars", "Name contains illegal chars: /, \\, ?, #, &");
+        }
+        if (name[name.length - 1] === " ") {
+            return localize("endsWithSpace", "Name cannot end with a space.");
+        }
+        if (currStoredProcedureNames.includes(name)) {
+            return localize('nameExists', 'Stored Procedure "{0}" already exists.', name);
+        }
+
+        return undefined;
     }
 }

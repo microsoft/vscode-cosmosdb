@@ -69,7 +69,7 @@ suite(`mongoCollectionStrings`, () => {
         testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin?ssl=true`, 'admin');
         testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin-master?ssl=true`, 'admin-master');
         // test characters mentioned in : https://docs.mongodb.com/manual/reference/limits/#Restrictions-on-Database-Names-for-Windows
-        testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin!@#%^()-_,[]?ssl=true`, 'admin!@#%^()-_,[]');
+        testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin!@%^()-_,[]?ssl=true`, 'admin!@%^()-_,[]');
 
     });
 
@@ -111,7 +111,7 @@ suite(`mongoCollectionStrings`, () => {
         testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin?ssl=true`);
         // Collection within emulator
         testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin-master', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin-master?ssl=true`);
-        testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin!@#%^()-_,[]', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/${encodeURIComponent("admin!@#%^()-_,[]")}?ssl=true`);
+        testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin!@%^()-_,[]', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/${encodeURIComponent("admin!@%^()-_,[]")}?ssl=true`);
     });
 
     test('isCosmosEmulatorConnectionString', () => {

@@ -75,8 +75,8 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
         return this.parent.getContainerClient(client);
     }
 
-    private validateStoredProcedureName(name: string, currStoredProcedureNames: String[]): string | undefined {
-        if (!name || name.length < 1 || name.length > 255) {
+    private validateStoredProcedureName(name: string, currStoredProcedureNames: string[]): string | undefined {
+        if (name.length < 1 || name.length > 255) {
             return localize("nameLength", "Name has to be between 1 and 255 chars long");
         }
 

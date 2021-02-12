@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardExecuteStep, AzureWizardPromptStep, IAzureQuickPickItem, IWizardOptions } from 'vscode-azureextensionui';
+import { AzureWizardExecuteStep, AzureWizardPromptStep, IAzureQuickPickItem, IWizardOptions, VerifyProvidersStep } from 'vscode-azureextensionui';
 import { API, Experience, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
 import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
@@ -46,14 +46,16 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
             executeSteps = [
                 new PostgresServerCreateStep(),
                 new PostgresServerSetCredentialsStep(),
-                new PostgresServerSetFirewallStep()
+                new PostgresServerSetFirewallStep(),
+                new VerifyProvidersStep(['Microsoft.DBforPostgreSQL'])
             ];
         } else {
             promptSteps = [
                 new CosmosDBAccountNameStep()
             ];
             executeSteps = [
-                new CosmosDBAccountCreateStep()
+                new CosmosDBAccountCreateStep(),
+                new VerifyProvidersStep(['Microsoft.DocumentDB'])
             ];
         }
         return { promptSteps, executeSteps };

@@ -8,7 +8,7 @@ import { DatabaseAccountGetResults, DatabaseAccountListKeysResult, DatabaseAccou
 import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { Server, ServerListResult } from '@azure/arm-postgresql/src/models';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardExecuteStep, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase, VerifyProvidersStep } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { ext } from '../extensionVariables';
@@ -72,12 +72,9 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         ];
         LocationListStep.addStep(wizardContext, promptSteps);
 
-        const executeSteps: AzureWizardExecuteStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[] = [];
-        executeSteps.push(new VerifyProvidersStep(['Microsoft.DocumentDB', 'Microsoft.DBforPostgreSQL']));
-
         const wizard = new AzureWizard(wizardContext, {
             promptSteps,
-            executeSteps,
+            executeSteps: [],
             title: localize('createDBServerMsg', 'Create new Azure Database Server')
         });
 

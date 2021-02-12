@@ -121,13 +121,14 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 
 function validateDatabaseName(database: string): string | undefined | null {
     // https://docs.mongodb.com/manual/reference/limits/#naming-restrictions
+    // "#?" are restricted characters for CosmosDB - MongoDB accounts
     const min = 1;
     const max = 63;
     if (!database || database.length < min || database.length > max) {
         return `Database name must be between ${min} and ${max} characters.`;
     }
-    if (/[/\\. "$]/.test(database)) {
-        return "Database name cannot contain these characters - `/\\. \"$`";
+    if (/[/\\. "$#?]/.test(database)) {
+        return "Database name cannot contain these characters - `/\\. \"$#?`";
     }
     return undefined;
 }

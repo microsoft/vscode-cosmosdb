@@ -62,15 +62,14 @@ suite(`mongoCollectionStrings`, () => {
         testDatabaseNameFromConectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc`, 'abc');
 
         // special characters
-        testDatabaseNameFromConectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc.def`, 'abc.def');
-        testDatabaseNameFromConectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc.def-ghi_jkl`, 'abc.def-ghi_jkl');
+        testDatabaseNameFromConectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/def-ghi_jkl`, 'def-ghi_jkl');
         testDatabaseNameFromConectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/Icantlikespaces`, 'Icantlikespaces');
 
         // emulator: mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@localhost:10255?ssl=true
         testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin?ssl=true`, 'admin');
         testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin-master?ssl=true`, 'admin-master');
         // test characters mentioned in : https://docs.mongodb.com/manual/reference/limits/#Restrictions-on-Database-Names-for-Windows
-        testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin!@#%^*()-_,[]?ssl=true`, 'admin!@#%^*()-_,[]');
+        testDatabaseNameFromConectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin!@%^()-_,[]?ssl=true`, 'admin!@%^()-_,[]');
 
     });
 
@@ -93,29 +92,26 @@ suite(`mongoCollectionStrings`, () => {
         testDatabaseToAccountConnectionString(`mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=mySet&authSource=authDB`, 'MYDB', 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/MYDB?replicaSet=mySet&authSource=authDB');
 
         testDatabaseToAccountConnectionString(`mongodb+srv://server.example.com/?connectTimeoutMS=300000&authSource=aDifferentAuthDB?`, 'basetoadd', 'mongodb+srv://server.example.com/basetoadd?connectTimeoutMS=300000&authSource=aDifferentAuthDB?');
-        testDatabaseToAccountConnectionString(`mongodb+srv://server.example.com/?connectTimeoutMS=300000&authSource=aDifferentAuthDB?`, '/data', 'mongodb+srv://server.example.com//data?connectTimeoutMS=300000&authSource=aDifferentAuthDB?');
 
         testDatabaseToAccountConnectionString(`mongodb+srv://server.example.com/?connectTimeoutMS=300000&authSource=aDifferentAuthDB`, '', 'mongodb+srv://server.example.com/?connectTimeoutMS=300000&authSource=aDifferentAuthDB');
         testDatabaseToAccountConnectionString(`mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/my_db?connectTimeoutMS=300000&replicaSet=mySet&authSource=aDifferentAuthDB`, 'not_mydatabase', 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/not_mydatabase?connectTimeoutMS=300000&replicaSet=mySet&authSource=aDifferentAuthDB');
         testDatabaseToAccountConnectionString(`mongodb://db1.example.net:27017,db2.example.net:2500/?replicaSet=test&connectTimeoutMS=300000`, '', 'mongodb://db1.example.net:27017,db2.example.net:2500/?replicaSet=test&connectTimeoutMS=300000');
         testDatabaseToAccountConnectionString(`mongodb://host.example.com/hello?readPreference=secondary&maxStalenessSeconds=120`, 'hellno', 'mongodb://host.example.com/hellno?readPreference=secondary&maxStalenessSeconds=120');
         testDatabaseToAccountConnectionString(`mongodb://localhost`, '', 'mongodb://localhost/');
-        testDatabaseToAccountConnectionString(`mongodb://localhost/db`, 'new{}db', 'mongodb://localhost/new{}db');
+        testDatabaseToAccountConnectionString(`mongodb://localhost/db`, 'new{}db', `mongodb://localhost/${encodeURIComponent("new{}db")}`);
         testDatabaseToAccountConnectionString(`mongodb://sysop:moon@localhost/records`, 'records', 'mongodb://sysop:moon@localhost/records');
         testDatabaseToAccountConnectionString(`mongodb://%2Ftmp%2Fmongodb-27017.sock/onemorefundatabase`, 'notfun', 'mongodb://%2Ftmp%2Fmongodb-27017.sock/notfun');
         testDatabaseToAccountConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/wowsomethingnew?ssl=true`, 'notsure', 'mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/notsure?ssl=true');
 
         // special characters
-        testDatabaseToAccountConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc...`, 'abc.def', 'mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc.def');
-        testDatabaseToAccountConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/?`, 'abc.def.-ghi_jkl', 'mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc.def.-ghi_jkl?');
+        testDatabaseToAccountConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/?`, 'def-ghi_jkl', 'mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/def-ghi_jkl?');
         testDatabaseToAccountConnectionString(`mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017`, 'icantlikespaces', 'mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/icantlikespaces');
 
         // Emulator
         testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin?ssl=true`);
         // Collection within emulator
-        testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin/level1/level2', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin/level1/level2?ssl=true`);
         testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin-master', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin-master?ssl=true`);
-        testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin!@#%^*()-_,[]', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin!@#%^*()-_,[]?ssl=true`);
+        testDatabaseToAccountConnectionString(`mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`, 'admin!@%^()-_,[]', `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/${encodeURIComponent("admin!@%^()-_,[]")}?ssl=true`);
     });
 
     test('isCosmosEmulatorConnectionString', () => {

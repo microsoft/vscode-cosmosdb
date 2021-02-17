@@ -8,7 +8,7 @@
 import * as fse from 'fs-extra';
 import * as gulp from 'gulp';
 import * as path from 'path';
-import { gulp_installAzureAccount, gulp_installVSCodeExtension, gulp_webpack } from 'vscode-azureextensiondev';
+import { gulp_installAzureAccount, gulp_installResourceGroups, gulp_webpack } from 'vscode-azureextensiondev';
 
 async function prepareForWebpack(): Promise<void> {
     const mainJsPath: string = path.join(__dirname, 'main.js');
@@ -24,10 +24,6 @@ async function cleanReadme(): Promise<void> {
     let data: string = (await fse.readFile(readmePath)).toString();
     data = data.replace(/<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis, '');
     await fse.writeFile(readmePath, data);
-}
-
-export async function gulp_installResourceGroups(): Promise<void> {
-    return gulp_installVSCodeExtension('ms-azuretools', 'vscode-azureresourcegroups');
 }
 
 exports['webpack-dev'] = gulp.series(prepareForWebpack, () => gulp_webpack('development'));

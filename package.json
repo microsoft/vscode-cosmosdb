@@ -42,6 +42,7 @@
         "onCommand:azureDatabases.loadMore",
         "onCommand:azureDatabases.refresh",
         "onCommand:azureDatabases.openInPortal",
+        "onCommand:azureDatabases.reportIssue",
         "onCommand:cosmosDB.attachDatabaseAccount",
         "onCommand:cosmosDB.attachEmulator",
         "onCommand:azureDatabases.createServer",
@@ -372,6 +373,11 @@
                 "category": "Azure Databases",
                 "command": "azureDatabases.loadMore",
                 "title": "Load More"
+            },
+            {
+                "category": "Azure Databases",
+                "command": "azureDatabases.reportIssue",
+                "title": "Report Issue..."
             },
             {
                 "category": "Cosmos DB",

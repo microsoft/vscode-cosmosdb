@@ -2,6 +2,13 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
+## Unreleased
+### Added
+- Now depends on the "Azure Resources" extension, which provides a "Resource Groups" and "Help and Feedback" view
+
+### Changed
+- "Report an Issue" button was removed from errors. Use the "Help and Feedback" view or command palette instead
+
 ## 0.15.1 - 2020-12-04
 ### Added
 - Newly created Azure CosmosDB - MongoDB servers default to version “3.6”

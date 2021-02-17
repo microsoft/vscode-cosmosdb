@@ -93,15 +93,6 @@
         "onFileSystem:azureDatabases"
     ],
     "contributes": {
-        "viewsContainers": {
-            "activitybar": [
-                {
-                    "id": "azure",
-                    "title": "Azure",
-                    "icon": "resources/azure.svg"
-                }
-            ]
-        },
         "views": {
             "azure": [
                 {
@@ -999,12 +990,6 @@
                 "key": "ctrl+shift+;",
                 "mac": "cmd+shift+;",
                 "when": "editorLangId == 'mongo' && editorTextFocus"
-            },
-            {
-                "command": "workbench.view.extension.azure",
-                "key": "ctrl+shift+a",
-                "mac": "cmd+shift+a",
-                "linux": "shift+alt+a"
             }
         ],
         "configuration": {
@@ -1149,6 +1134,7 @@
         "vscode-uri": "^1.0.1"
     },
     "extensionDependencies": [
-        "ms-vscode.azure-account"
+        "ms-vscode.azure-account",
+        "ms-azuretools.vscode-azureresourcegroups"
     ]
 }

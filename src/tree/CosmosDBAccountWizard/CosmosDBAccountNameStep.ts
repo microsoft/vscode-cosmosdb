@@ -17,7 +17,7 @@ export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContex
             prompt: "Provide a Cosmos DB account name",
             validateInput: (name: string) => validateCosmosDBAccountName(name, client)
         })).trim();
-
+        wizardContext.valuesToMask.push(wizardContext.newServerName);
         wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.newServerName, resourceGroupNamingRules);
     }
 

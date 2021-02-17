@@ -19,7 +19,7 @@ export class PostgresServerNameStep extends AzureNameStep<IPostgresServerWizardC
             prompt: localize('enterServerNamePrompt', 'Provide a name for the PostgreSQL Server.'),
             validateInput: (name: string) => validatePostgresServerName(name, client)
         })).trim();
-
+        wizardContext.valuesToMask.push(wizardContext.newServerName);
         wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.newServerName, resourceGroupNamingRules);
     }
 

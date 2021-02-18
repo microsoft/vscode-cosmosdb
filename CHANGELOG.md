@@ -2,7 +2,7 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
-## 0.16.0 - 2020-02-23
+## 0.16.0 - 2021-02-23
 ### Added
 - Now depends on the "Azure Resources" extension, which provides a "Resource Groups" and "Help and Feedback" view
 - "Attached Emulator..." option added to Attach Database Accounts contest menu

@@ -117,14 +117,14 @@ To select which subscriptions show up in the extension's explorer, click on the 
 # Contributing
 There are several ways you can contribute to our [repo](https://github.com/Microsoft/vscode-cosmosdb):
 
-- **Ideas, feature requests and bugs**: We are open to all ideas and we want to get rid of bugs! Use the [Issues](https://github.com/Microsoft/vscode-cosmosdb/issues) section to report a new issue, provide your ideas or contribute to existing threads.
-
-- **Documentation**: Found a typo or strangely worded sentences? Submit a PR!
-- **Code**: Contribute bug fixes, features or design changes:
-  - Clone the repository locally and open in VS Code.
-  - Open the terminal (press `CTRL+`\`) and run `npm install`.
-  - To build, press `F1` and type in `Tasks: Run Build Task`.
-  - Debug: press `F5` to start debugging the extension.
+* **Ideas, feature requests and bugs**: We are open to all ideas and we want to get rid of bugs! Use the [Issues](https://github.com/Microsoft/vscode-cosmosdb/issues) section to report a new issue, provide your ideas or contribute to existing threads.
+* **Documentation**: Found a typo or strangely worded sentences? Submit a PR!
+* **Code**: Contribute bug fixes, features or design changes:
+  * Clone the repository locally and open in VS Code.
+  * Run "Extensions: Show Recommended Extensions" from the [command palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) and install all extensions listed under "Workspace Recommendations"
+  * Open the terminal (press <kbd>CTRL</kbd>+ <kbd>\`</kbd>) and run `npm install`.
+  * To build, press <kbd>F1</kbd> and type in `Tasks: Run Build Task`.
+  * Debug: press <kbd>F5</kbd> to start debugging the extension.
 
 ## Legal
 Before we can accept your pull request you will need to sign a **Contribution License Agreement**. All you need to do is to submit a pull request, then the PR will get appropriately labelled (e.g. `cla-required`, `cla-norequired`, `cla-signed`, `cla-already-signed`). If you already signed the agreement we will continue with reviewing the PR, otherwise system will tell you how you can sign the CLA. Once you sign the CLA all future PR's will be labeled as `cla-signed`.

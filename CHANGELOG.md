@@ -2,12 +2,17 @@
 
 All notable changes to the "azure-cosmosdb" extension will be documented in this file.
 
-## Unreleased
+## 0.16.0 - 2020-02-23
 ### Added
 - Now depends on the "Azure Resources" extension, which provides a "Resource Groups" and "Help and Feedback" view
+- "Attached Emulator..." option added to Attach Database Accounts contest menu
 
 ### Changed
 - "Report an Issue" button was removed from errors. Use the "Help and Feedback" view or command palette instead
+- Grouped items in all context menus to improve access and readability
+
+### Fixed
+- [Bugs Fixed](https://github.com/microsoft/vscode-cosmosdb/milestone/29?closed=1)
 
 ## 0.15.1 - 2020-12-04
 ### Added

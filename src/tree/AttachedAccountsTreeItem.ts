@@ -420,6 +420,10 @@ class AttachedAccountRoot implements ISubscriptionContext {
     public get environment(): never {
         throw this._error;
     }
+
+    public get isCustomCloud(): never {
+        throw this._error;
+    }
 }
 
 async function delay(milliseconds: number): Promise<void> {

@@ -12,7 +12,6 @@
 const process = require('process');
 const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const StringReplacePlugin = require("string-replace-webpack-plugin");
 const dev = require("vscode-azureextensiondev");
 
 let DEBUG_WEBPACK = !!process.env.DEBUG_WEBPACK;
@@ -62,10 +61,7 @@ let config = dev.getDefaultWebpackConfig({
                 // getCoreNodeModule.js -> dist/node_modules/getCoreNodeModule.js
                 { from: './out/src/utils/getCoreNodeModule.js', to: 'node_modules' },
             ]
-        }),
-
-        // An instance of the StringReplacePlugin plugin must be present for it to work (its use is configured in modules).
-        new StringReplacePlugin()
+        })
     ]
 });
 

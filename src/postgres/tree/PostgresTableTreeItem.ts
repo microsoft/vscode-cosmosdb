@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
-import { getThemedIconPath } from '../../constants';
+import { AzureParentTreeItem, ISubscriptionContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { IPostgresTable } from '../getTables';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresColumnTreeItem } from './PostgresColumnTreeItem';
@@ -37,8 +36,8 @@ export class PostgresTableTreeItem extends AzureParentTreeItem<ISubscriptionCont
         return this._isDuplicate ? this.table.schemaName : undefined;
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemedIconPath('window.svg');
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('window');
     }
 
     public hasMoreChildrenImpl(): boolean {

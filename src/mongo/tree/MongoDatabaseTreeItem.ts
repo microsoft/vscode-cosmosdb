@@ -8,8 +8,7 @@ import { Collection, Db, DbCollectionOptions } from 'mongodb';
 import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzureParentTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { appendExtensionUserAgent, AzureParentTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
 import { nonNullProp, nonNullValue } from '../../utils/nonNull';
@@ -53,8 +52,8 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         return this.databaseName;
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('DocDatabase.svg');
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('database');
     }
 
     public hasMoreChildrenImpl(): boolean {

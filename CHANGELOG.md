@@ -1,6 +1,8 @@
 # Change Log
 
-All notable changes to the "azure-cosmosdb" extension will be documented in this file.
+## Unreleased
+### Changed
+- Icons updated to match VS Code's theme. Install new product icon themes [here](https://marketplace.visualstudio.com/search?term=tag%3Aproduct-icon-theme&target=VSCode)
 
 ## 0.16.0 - 2021-02-23
 ### Added

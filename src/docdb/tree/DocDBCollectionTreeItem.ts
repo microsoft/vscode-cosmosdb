@@ -5,8 +5,7 @@
 
 import { Container, ContainerDefinition, CosmosClient, PartitionKeyDefinition, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { AzureParentTreeItem, AzureTreeItem, DialogResponses, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
@@ -41,8 +40,8 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         return this._container.id;
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('Collection.svg');
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('files');
     }
 
     public get link(): string {

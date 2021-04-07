@@ -5,10 +5,10 @@
 
 import { MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, IActionContext, ISubscriptionContext, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, IActionContext, ISubscriptionContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
-import { emulatorPassword, getThemedIconPath, isWindows } from '../constants';
+import { emulatorPassword, isWindows } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
@@ -59,8 +59,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         return this._root;
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemedIconPath('ConnectPlugged.svg');
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('plug');
     }
 
     public static validateMongoConnectionString(value: string): string | undefined {

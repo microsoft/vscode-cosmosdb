@@ -5,8 +5,7 @@
 
 import { CosmosClient, Item, ItemDefinition, RequestOptions } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzureTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { AzureTreeItem, DialogResponses, IActionContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { nonNullProp } from '../../utils/nonNull';
@@ -63,8 +62,8 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
         return this._label;
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('Document.svg');
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('file');
     }
 
     public async deleteTreeItemImpl(): Promise<void> {

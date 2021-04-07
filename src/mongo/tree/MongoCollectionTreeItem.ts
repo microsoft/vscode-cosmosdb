@@ -7,8 +7,7 @@ import * as assert from 'assert';
 import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, DeleteWriteOpResultObject, InsertOneWriteOpResult, InsertWriteOpResult, MongoCountPreferences } from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { AzExtTreeItem, AzureParentTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { nonNullValue } from '../../utils/nonNull';
@@ -98,8 +97,8 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
         return this.collection.collectionName;
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('Collection.svg');
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('files');
     }
 
     public get filePath(): string {

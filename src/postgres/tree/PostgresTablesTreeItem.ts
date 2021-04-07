@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ClientConfig } from "pg";
-import { Uri } from 'vscode';
-import { getThemedIconPath } from "../../constants";
+import { ThemeIcon } from 'vscode';
+import { TreeItemIconPath } from "vscode-azureextensionui";
 import { getTables, IPostgresTable } from "../getTables";
 import { PostgresDatabaseTreeItem } from "./PostgresDatabaseTreeItem";
 import { PostgresResourcesTreeItemBase } from "./PostgresResourcesTreeItemBase";
@@ -22,8 +22,8 @@ export class PostgresTablesTreeItem extends PostgresResourcesTreeItemBase {
         this.clientConfig = clientConfig;
     }
 
-    public get iconPath(): string | Uri | { light: string | Uri; dark: string | Uri } {
-        return getThemedIconPath('window.svg');
+    public get iconPath(): TreeItemIconPath {
+        return new ThemeIcon('window');
     }
 
     public hasMoreChildrenImpl(): boolean {

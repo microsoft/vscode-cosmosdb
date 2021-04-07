@@ -6,8 +6,7 @@
 import { Collection, DeleteWriteOpResultObject, ObjectID, UpdateWriteOpResult } from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { AzureTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { AzureTreeItem, DialogResponses, IActionContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
@@ -51,8 +50,8 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> impleme
         return this._label;
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('Document.svg');
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('file');
     }
 
     public get filePath(): string {

@@ -140,10 +140,7 @@
             {
                 "command": "cosmosDB.selectSubscriptions",
                 "title": "Select Subscriptions...",
-                "icon": {
-                    "light": "resources/icons/light/filter.svg",
-                    "dark": "resources/icons/dark/filter.svg"
-                }
+                "icon": "$(filter)"
             },
             {
                 "category": "MongoDB",
@@ -164,10 +161,7 @@
                 "category": "Cosmos DB",
                 "command": "cosmosDB.attachDatabaseAccount",
                 "title": "Attach Database Account...",
-                "icon": {
-                    "light": "resources/icons/light/plug.svg",
-                    "dark": "resources/icons/dark/plug.svg"
-                }
+                "icon": "$(plug)"
             },
             {
                 "category": "Cosmos DB",
@@ -178,10 +172,7 @@
                 "category": "Azure Databases",
                 "command": "azureDatabases.createServer",
                 "title": "Create Server...",
-                "icon": {
-                    "light": "resources/icons/light/add.svg",
-                    "dark": "resources/icons/dark/add.svg"
-                }
+                "icon": "$(add)"
             },
             {
                 "category": "Cosmos DB",
@@ -322,19 +313,13 @@
                 "category": "MongoDB",
                 "command": "cosmosDB.newMongoScrapbook",
                 "title": "New Mongo Scrapbook",
-                "icon": {
-                    "light": "resources/icons/light/new-file.svg",
-                    "dark": "resources/icons/dark/new-file.svg"
-                }
+                "icon": "$(new-file)"
             },
             {
                 "category": "Azure Databases",
                 "command": "azureDatabases.refresh",
                 "title": "Refresh",
-                "icon": {
-                    "light": "resources/icons/light/refresh.svg",
-                    "dark": "resources/icons/dark/refresh.svg"
-                }
+                "icon": "$(refresh)"
             },
             {
                 "category": "Azure Databases",
@@ -355,10 +340,7 @@
                 "category": "Azure Databases",
                 "command": "azureDatabases.update",
                 "title": "Update to Cloud",
-                "icon": {
-                    "light": "/resources/icons/theme-agnostic/UpdateOutline.svg",
-                    "dark": "/resources/icons/theme-agnostic/UpdateOutline.svg"
-                }
+                "icon": "$(cloud-upload)"
             },
             {
                 "category": "Azure Databases",
@@ -1124,7 +1106,7 @@
         "public-ip": "^4.0.0",
         "semver": "^7.2.2",
         "underscore": "^1.8.3",
-        "vscode-azureextensionui": "^0.41.1",
+        "vscode-azureextensionui": "^0.41.3",
         "vscode-json-languageservice": "^3.0.8",
         "vscode-languageclient": "^6.1.3",
         "vscode-languageserver": "^6.1.1",

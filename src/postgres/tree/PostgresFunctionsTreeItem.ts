@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ClientConfig } from 'pg';
+import { ThemeIcon } from 'vscode';
 import { TreeItemIconPath } from "vscode-azureextensionui";
-import { getThemedIconPath } from "../../constants";
 import { getPostgresProcedureQueryRows, IPostgresProceduresQueryRow } from '../getPostgresProcedureQueryRows';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionTreeItem } from "./PostgresFunctionTreeItem";
@@ -23,7 +23,7 @@ export class PostgresFunctionsTreeItem extends PostgresResourcesTreeItemBase {
     }
 
     public get iconPath(): TreeItemIconPath {
-        return getThemedIconPath('function.svg');
+        return new ThemeIcon('symbol-function');
     }
 
     public hasMoreChildrenImpl(): boolean {

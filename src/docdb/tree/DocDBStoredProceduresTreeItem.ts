@@ -5,8 +5,8 @@
 
 import { Container, CosmosClient, FeedOptions, QueryIterator, Resource, StoredProcedureDefinition } from '@azure/cosmos';
 import * as vscode from "vscode";
-import { AzExtTreeItem, ICreateChildImplContext } from 'vscode-azureextensionui';
-import { defaultStoredProcedure, getThemeAgnosticIconPath } from '../../constants';
+import { AzExtTreeItem, ICreateChildImplContext, TreeItemIconPath } from 'vscode-azureextensionui';
+import { defaultStoredProcedure } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { localize } from '../../utils/localize';
@@ -33,8 +33,8 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
         return new DocDBStoredProcedureTreeItem(this, resource);
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('stored procedures.svg');
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('server-process');
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBStoredProcedureTreeItem> {

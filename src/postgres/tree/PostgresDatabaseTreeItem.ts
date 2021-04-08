@@ -4,8 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ClientConfig } from 'pg';
+import { ThemeIcon } from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
+import { postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { getClientConfig } from '../getClientConfig';
@@ -44,7 +45,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     }
 
     public get iconPath(): TreeItemIconPath {
-        return getThemeAgnosticIconPath('Database.svg');
+        return new ThemeIcon('database');
     }
 
     public hasMoreChildrenImpl(): boolean {

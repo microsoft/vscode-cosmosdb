@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { AzureTreeItem, ISubscriptionContext } from 'vscode-azureextensionui';
-import { getThemedIconPath } from '../../constants';
+import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { PostgresTableTreeItem } from './PostgresTableTreeItem';
 
 export class PostgresColumnTreeItem extends AzureTreeItem<ISubscriptionContext> {
@@ -27,8 +26,8 @@ export class PostgresColumnTreeItem extends AzureTreeItem<ISubscriptionContext> 
         return this.columnName;
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemedIconPath('split-horizontal.svg');
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('split-horizontal');
     }
 
 }

@@ -3,18 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementModels } from '@azure/arm-cosmosdb';
 import { ContainerDefinition, CosmosClient, DatabaseDefinition, Resource } from '@azure/cosmos';
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
-import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
+import { AccountApi, accountList, testAccount } from './global.resource.test';
 
 suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
-    this.timeout(20 * 60 * 1000);
-    let resourceGroupName: string;
+    this.timeout(5 * 60 * 1000);
     let accountName: string;
     let databaseName: string;
 
@@ -23,14 +21,8 @@ suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
             this.skip();
         }
         this.timeout(2 * 60 * 1000);
-        resourceGroupName = resourceGroupList[AccountApi.Graph];
         accountName = accountList[AccountApi.Graph];
         databaseName = randomUtils.getRandomHexString(12);
-    });
-
-    test('Create graph account', async () => {
-        const getAccount: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = (await client.databaseAccounts.get(resourceGroupName, accountName))._response.parsedBody;
-        assert.ok(getAccount);
     });
 
     test('Create graph Database', async () => {

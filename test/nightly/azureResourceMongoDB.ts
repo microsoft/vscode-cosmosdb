@@ -3,18 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementModels } from '@azure/arm-cosmosdb';
 import * as assert from 'assert';
 import { Collection, MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
 import { appendExtensionUserAgent, connectToMongoClient, DialogResponses, IDatabaseInfo, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
-import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
+import { AccountApi, accountList, testAccount } from './global.resource.test';
 
 suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
-    this.timeout(20 * 60 * 1000);
-    let resourceGroupName: string;
+    this.timeout(5 * 60 * 1000);
     let accountName: string;
     let databaseName1: string;
     let databaseName2: string;
@@ -25,16 +23,10 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
             this.skip();
         }
         this.timeout(2 * 60 * 1000);
-        resourceGroupName = resourceGroupList[AccountApi.MongoDB];
         accountName = accountList[AccountApi.MongoDB];
         databaseName1 = randomUtils.getRandomHexString(12);
         databaseName2 = randomUtils.getRandomHexString(12);
         collectionName1 = randomUtils.getRandomHexString(12);
-    });
-
-    test('Create MongoDB account', async () => {
-        const getAccount: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
-        assert.ok(getAccount);
     });
 
     test('Create Mongo Database', async () => {
@@ -74,18 +66,6 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
         assert.ifError(mongoDatabase);
     });
 
-    test('Delete Mongo account', async () => {
-        const mongoAccount: CosmosDBManagementModels.DatabaseAccountGetResults = await client.databaseAccounts.get(resourceGroupName, accountName);
-        assert.ok(mongoAccount);
-        const testInputs: string[] = [`${accountName} (MongoDB)`, DialogResponses.deleteResponse.title];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteAccount');
-        });
-        const listAccounts: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupName);
-        const accountExists: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = listAccounts.find((account: CosmosDBManagementModels.DatabaseAccountGetResults) => account.name === accountName);
-        assert.ifError(accountExists);
-    });
-
     async function getMongoClient(resourceName: string): Promise<MongoClient> {
         const connectionString: string = await getConnectionString(resourceName);
         return await connectToMongoClient(connectionString, appendExtensionUserAgent());
@@ -101,6 +81,5 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
         const mongoClient: MongoClient | undefined = await getMongoClient(mongodbAccountName);
         const listCollections: Collection[] = await mongoClient.db(databasebName).collections();
         return listCollections.find((collection: Collection) => collection.collectionName === collectionName);
-
     }
 });

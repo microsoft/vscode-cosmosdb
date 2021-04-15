@@ -18,3 +18,9 @@ suiteSetup(async function (this: Mocha.Context): Promise<void> {
     ext.outputChannel = new TestOutputChannel();
     ext.ui = testUserInput;
 });
+
+require('../test/nightly/createAccount');
+require('../test/nightly/azureResourceGraph');
+require('../test/nightly/azureResourceMongoDB');
+require('../test/nightly/azureResourceSQL');
+require('../test/nightly/deleteAccount');

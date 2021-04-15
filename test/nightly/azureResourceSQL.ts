@@ -3,18 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementModels } from '@azure/arm-cosmosdb';
 import { ContainerDefinition, CosmosClient, DatabaseDefinition, Resource } from '@azure/cosmos';
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { DialogResponses, getCosmosClient, ParsedDocDBConnectionString, parseDocDBConnectionString, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
-import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
+import { AccountApi, accountList, testAccount } from './global.resource.test';
 
 suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
-    this.timeout(20 * 60 * 1000);
-    let resourceGroupName: string;
+    this.timeout(5 * 60 * 1000);
     let accountName: string;
     let databaseName: string;
     let collectionId2: string;
@@ -24,15 +22,9 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
             this.skip();
         }
         this.timeout(2 * 60 * 1000);
-        resourceGroupName = resourceGroupList[AccountApi.Core];
         accountName = accountList[AccountApi.Core];
         databaseName = randomUtils.getRandomHexString(12);
         collectionId2 = randomUtils.getRandomHexString(12);
-    });
-
-    test('Create SQL account', async () => {
-        const getAccount: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
-        assert.ok(getAccount);
     });
 
     test('Create SQL Database', async () => {
@@ -72,18 +64,6 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
             await vscode.commands.executeCommand('cosmosDB.deleteDocDBDatabase');
         });
         assert.ifError(await getDatabaseMeta());
-    });
-
-    test('Delete SQL account', async () => {
-        const SQLAccount: CosmosDBManagementModels.DatabaseAccountGetResults = await client.databaseAccounts.get(resourceGroupName, accountName);
-        assert.ok(SQLAccount);
-        const testInputs: string[] = [`${accountName} (SQL)`, DialogResponses.deleteResponse.title];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteAccount');
-        });
-        const listAccounts: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupName);
-        const accountExists: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = listAccounts.find((account: CosmosDBManagementModels.DatabaseAccountGetResults) => account.name === accountName);
-        assert.ifError(accountExists);
     });
 
     async function getClient(resourceName: string): Promise<CosmosClient> {

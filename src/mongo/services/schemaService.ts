@@ -2,17 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unsafe-member-access */
+
 import { Cursor, Db } from 'mongodb';
 import { SchemaConfiguration } from 'vscode-json-languageservice';
 import { JSONSchema } from 'vscode-json-languageservice/lib/umd/jsonSchema';
 
-// tslint:disable:no-reserved-keywords // Grandfathered in ("type")
-// tslint:disable:no-any
-
-// grandfathered-in
-// tslint:disable: no-non-null-assertion
-
-// tslint:disable-next-line: export-name
 export class SchemaService {
 
     private _db: Db;
@@ -126,6 +122,7 @@ export class SchemaService {
 
     private setSchemaForDocumentProperty(parent: string, property: string, document: any, schema: JSONSchema): void {
         const scopedProperty = parent ? `${parent}.${property}` : property;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         const value = document[property];
         const type = this.getMongoDocumentType(value);
 
@@ -207,13 +204,13 @@ Use the $where operator to pass either a string containing a JavaScript expressi
         };
     }
 
-    // tslint:disable-next-line: max-func-body-length
     private setOperatorProperties(type: string, schema: JSONSchema): void {
         if (!schema.properties) {
             schema.properties = {};
         }
 
         const expressionSchema = {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             properties: <any>{}
         };
         // Comparison operators
@@ -379,10 +376,12 @@ Use the $where operator to pass either a string containing a JavaScript expressi
             description: 'Matches numeric or binary values in which any bit from a set of bit positions has a value of 0'
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         schema.properties = { ...expressionSchema.properties };
         schema.properties!.$not = {
             type: 'object',
             description: 'Inverts the effect of a query expression and returns documents that do not match the query expression',
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             properties: { ...expressionSchema.properties }
         };
         schema.properties!.$elemMatch = {
@@ -390,7 +389,6 @@ Use the $where operator to pass either a string containing a JavaScript expressi
         };
     }
 
-    // tslint:disable-next-line: max-func-body-length
     private getAggregateStagePropertiesSchema(querySchemaUri: string): JSONSchema {
         const schemas: JSONSchema[] = [];
         schemas.push({
@@ -613,17 +611,13 @@ Use the $where operator to pass either a string containing a JavaScript expressi
             return;
         }
 
-        // grandfathered in
-        // tslint:disable-next-line: no-floating-promises
-        cursor.hasNext().then(hasNext => {
+        void cursor.hasNext().then(hasNext => {
             if (!hasNext) {
                 callback(result);
                 return;
             }
 
-            // grandfathered in
-            // tslint:disable-next-line: no-floating-promises
-            cursor.next().then(doc => {
+            void cursor.next().then(doc => {
                 result.push(doc);
                 this.readNext(result, cursor, batchSize, callback);
             });

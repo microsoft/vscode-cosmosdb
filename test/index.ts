@@ -7,7 +7,6 @@ import * as glob from 'glob';
 import * as Mocha from 'mocha';
 import * as path from 'path';
 
-// tslint:disable-next-line: export-name
 export async function run(): Promise<void> {
     const options: Mocha.MochaOptions = {
         ui: 'tdd',
@@ -45,12 +44,10 @@ function addEnvVarsToMochaOptions(options: Mocha.MochaOptions): void {
         const match: RegExpMatchArray | null = envVar.match(/^mocha_(.+)/i);
         if (match) {
             const [, option] = match;
-            // tslint:disable-next-line:strict-boolean-expressions
             let value: string | number = process.env[envVar] || '';
             if (typeof value === 'string' && !isNaN(parseInt(value))) {
                 value = parseInt(value);
             }
-            // tslint:disable-next-line: no-any
             (<any>options)[option] = value;
         }
     }

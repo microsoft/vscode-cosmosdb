@@ -18,7 +18,7 @@ export class ParserErrorListener implements ANTLRErrorListener<Token> {
     }
 
     public syntaxError(
-        // tslint:disable-next-line:no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         _recognizer: Recognizer<Token, any>,
         _offendingSymbol: Token | undefined,
         line: number,
@@ -46,7 +46,7 @@ export class LexerErrorListener implements ANTLRErrorListener<number> {
     }
 
     public syntaxError(
-        // tslint:disable-next-line:no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         _recognizer: Recognizer<number, any>,
         _offendingSymbol: number | undefined,
         line: number,

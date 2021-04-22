@@ -91,7 +91,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
         if (partitionKey && partitionKey.length && partitionKey[0] !== '/') {
             partitionKey = '/' + partitionKey;
         }
-        if (!!partitionKey) {
+        if (partitionKey) {
             containerDefinition.partitionKey = {
                 paths: [partitionKey]
             };

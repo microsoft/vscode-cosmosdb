@@ -11,7 +11,6 @@ export interface MongoCommand {
     text: string;
     collection?: string;
     name?: string;
-    // tslint:disable-next-line:no-banned-terms
     arguments?: string[];
     argumentObjects?: Object[];
     errors?: ErrorDescription[];

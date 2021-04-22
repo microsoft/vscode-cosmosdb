@@ -70,6 +70,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
                 }];
             } else {
                 // https://mongodb.github.io/node-mongodb-native/3.1/api/index.html
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 const result: { databases: IDatabaseInfo[] } = await mongoClient.db(testDb).admin().listDatabases();
                 databases = result.databases;
             }
@@ -79,15 +80,14 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         } catch (error) {
             const message = parseError(error).message;
             if (this._root.isEmulator && message.includes("ECONNREFUSED")) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 error.message = `Unable to reach emulator. See ${Links.LocalConnectionDebuggingTips} for debugging tips.\n${message}`;
             }
             throw error;
         }
         finally {
             if (mongoClient) {
-                // grandfathered in
-                // tslint:disable-next-line: no-floating-promises
-                mongoClient.close();
+                void mongoClient.close();
             }
         }
     }

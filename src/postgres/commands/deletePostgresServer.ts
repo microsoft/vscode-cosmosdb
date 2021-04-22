@@ -20,7 +20,7 @@ export async function deletePostgresServer(context: IActionContext, node?: Postg
     if (result === DialogResponses.deleteResponse) {
         await node.deleteTreeItem(context);
         const deleteMessage: string = localize("deleteServerMsg", 'Successfully deleted server "{0}".', node.label);
-        vscode.window.showInformationMessage(deleteMessage);
+        void vscode.window.showInformationMessage(deleteMessage);
         ext.outputChannel.appendLog(deleteMessage);
     }
 }

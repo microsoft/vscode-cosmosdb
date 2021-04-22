@@ -67,7 +67,6 @@ export function registerDocDBCommands(): void {
             node = <DocDBStoredProcedureTreeItem>await ext.tree.showTreeItemPicker([DocDBStoredProcedureTreeItem.contextValue], context);
         }
         await ext.fileSystem.showTextDocument(node);
-        // tslint:disable-next-line:align
     }, doubleClickDebounceDelay);
     registerCommand('cosmosDB.deleteDocDBDocument', async (context: IActionContext, node?: DocDBDocumentTreeItem) => {
         const suppressCreateContext: ITreeItemPickerContext = context;

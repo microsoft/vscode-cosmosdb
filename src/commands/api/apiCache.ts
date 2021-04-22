@@ -13,6 +13,7 @@ import { DatabaseAccountTreeItem, DatabaseTreeItem } from '../../vscode-cosmosdb
  * This cache is used to speed up api calls from other extensions to the Cosmos DB extension
  * For now, it only helps on a per-session basis
  */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const sessionCache: Map<string, DatabaseAccountTreeItem | DatabaseTreeItem> = new Map();
 
 export function cacheTreeItem(parsedCS: ParsedConnectionString, treeItem: DatabaseAccountTreeItem | DatabaseTreeItem): void {

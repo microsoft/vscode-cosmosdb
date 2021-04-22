@@ -20,10 +20,11 @@ import { LanguageService } from './services/languageService';
 
 // Create a connection for the server
 const connection: IConnection = createConnection();
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 console.log = connection.console.log.bind(connection.console);
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 console.error = connection.console.error.bind(connection.console);
 
-// tslint:disable-next-line:no-unused-expression
 new LanguageService(connection);
 
 // Listen on the connection

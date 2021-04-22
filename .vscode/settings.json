@@ -1,6 +1,6 @@
 {
     "editor.codeActionsOnSave": {
-        "source.fixAll.tslint": true,
+        "source.fixAll.eslint": true,
         "source.organizeImports": true
     },
     "editor.detectIndentation": false,
@@ -14,7 +14,6 @@
         "**/node_modules": true,
         ".vscode-test": true
     },
-    "tslint.ignoreDefinitionFiles": true,
     "typescript.preferences.importModuleSpecifier": "relative",
     "typescript.tsdk": "node_modules/typescript/lib",
     "antlr4.generation": {

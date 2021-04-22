@@ -28,5 +28,5 @@ export async function copyConnectionString(context: IActionContext, node: Postgr
 
     await vscode.env.clipboard.writeText(connectionString);
     const message = localize('copiedPostgresConnectStringMsg', 'The connection string has been copied to the clipboard');
-    vscode.window.showInformationMessage(message);
+    void vscode.window.showInformationMessage(message);
 }

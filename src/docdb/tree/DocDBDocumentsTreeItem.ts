@@ -85,7 +85,9 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
         const partitionKeyPath = partitionKey.split('/');
 
         for (const prop of partitionKeyPath) {
+            // eslint-disable-next-line no-prototype-builtins
             if (interim.hasOwnProperty(prop)) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 interim = interim[prop];
             } else {
                 return false;
@@ -123,6 +125,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
         let i: number;
         for (i = 0; i < keyPath.length - 1; i++) {
             interim[keyPath[i]] = {};
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             interim = interim[keyPath[i]];
         }
         interim[keyPath[i]] = partitionKeyValue;

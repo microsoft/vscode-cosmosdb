@@ -49,6 +49,7 @@ export async function executePostgresQuery(context: IActionContext): Promise<voi
         for (const row of queryResult.rows) {
             const fieldValues: string[] = [];
             for (const field of fields) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 fieldValues.push(row[field]);
             }
             csvData += `${fieldValues.join(',')}${EOL}`;

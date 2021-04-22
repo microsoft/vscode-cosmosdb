@@ -20,7 +20,6 @@ suite(`attachedAccountsTreeItem`, () => {
 
         test('allows "mongodb+srv://"', () => assertConnectionValid(`mongodb+srv://usr:pwd@mongodb.net:27017`, undefined));
 
-        // tslint:disable-next-line: no-http-string
         test('rejects bad prefix', () => assertConnectionValid(`http://localhost/`, MONGO_CONNECTION_EXPECTED));
 
         test('rejects null', () => assertConnectionValid(null!, MONGO_CONNECTION_EXPECTED));

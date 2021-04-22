@@ -23,16 +23,14 @@ export function dispose<T extends IDisposable>(disposables: T[]): T[] {
     return [];
 }
 
-// tslint:disable-next-line:no-shadowed-variable
 export function toDisposable(dispose: () => void): IDisposable {
     return { dispose };
 }
 
 export async function showNewFile(data: string, fileName: string, fileExtension: string, column?: vscode.ViewColumn): Promise<void> {
-    let uri: vscode.Uri;
     const folderPath: string = getRootPath() || ext.context.extensionPath;
     const fullFileName: string | undefined = await getUniqueFileName(folderPath, fileName, fileExtension);
-    uri = vscode.Uri.file(path.join(folderPath, fullFileName)).with({ scheme: 'untitled' });
+    const uri: vscode.Uri = vscode.Uri.file(path.join(folderPath, fullFileName)).with({ scheme: 'untitled' });
     const textDocument = await vscode.workspace.openTextDocument(uri);
     const editor = await vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true);
     await writeToEditor(editor, data);
@@ -87,7 +85,9 @@ function isAccountTreeItem(treeItem: AzExtTreeItem): boolean {
 
 export function getDocumentTreeItemLabel(document: IMongoDocument | ItemDefinition): string {
     for (const field of getDocumentLabelFields()) {
+        // eslint-disable-next-line no-prototype-builtins
         if (document.hasOwnProperty(field)) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const value = document[field];
             if (value !== undefined && typeof value !== 'object') {
                 return String(value);

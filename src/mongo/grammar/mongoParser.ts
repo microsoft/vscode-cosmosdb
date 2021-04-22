@@ -6,7 +6,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-/*tslint:disable */
 
 
 import { ATN } from 'antlr4ts/atn/ATN';
@@ -114,7 +113,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public mongoCommands(): MongoCommandsContext {
-		let _localctx: MongoCommandsContext = new MongoCommandsContext(this._ctx, this.state);
+		const _localctx: MongoCommandsContext = new MongoCommandsContext(this._ctx, this.state);
 		this.enterRule(_localctx, 0, mongoParser.RULE_mongoCommands);
 		try {
 			this.enterOuterAlt(_localctx, 1);
@@ -141,7 +140,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public commands(): CommandsContext {
-		let _localctx: CommandsContext = new CommandsContext(this._ctx, this.state);
+		const _localctx: CommandsContext = new CommandsContext(this._ctx, this.state);
 		this.enterRule(_localctx, 2, mongoParser.RULE_commands);
 		let _la: number;
 		try {
@@ -200,7 +199,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public command(): CommandContext {
-		let _localctx: CommandContext = new CommandContext(this._ctx, this.state);
+		const _localctx: CommandContext = new CommandContext(this._ctx, this.state);
 		this.enterRule(_localctx, 4, mongoParser.RULE_command);
 		let _la: number;
 		try {
@@ -264,7 +263,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public emptyCommand(): EmptyCommandContext {
-		let _localctx: EmptyCommandContext = new EmptyCommandContext(this._ctx, this.state);
+		const _localctx: EmptyCommandContext = new EmptyCommandContext(this._ctx, this.state);
 		this.enterRule(_localctx, 6, mongoParser.RULE_emptyCommand);
 		try {
 			this.enterOuterAlt(_localctx, 1);
@@ -289,7 +288,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public collection(): CollectionContext {
-		let _localctx: CollectionContext = new CollectionContext(this._ctx, this.state);
+		const _localctx: CollectionContext = new CollectionContext(this._ctx, this.state);
 		this.enterRule(_localctx, 8, mongoParser.RULE_collection);
 		try {
 			let _alt: number;
@@ -333,7 +332,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public functionCall(): FunctionCallContext {
-		let _localctx: FunctionCallContext = new FunctionCallContext(this._ctx, this.state);
+		const _localctx: FunctionCallContext = new FunctionCallContext(this._ctx, this.state);
 		this.enterRule(_localctx, 10, mongoParser.RULE_functionCall);
 		try {
 			this.enterOuterAlt(_localctx, 1);
@@ -360,7 +359,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public arguments(): ArgumentsContext {
-		let _localctx: ArgumentsContext = new ArgumentsContext(this._ctx, this.state);
+		const _localctx: ArgumentsContext = new ArgumentsContext(this._ctx, this.state);
 		this.enterRule(_localctx, 12, mongoParser.RULE_arguments);
 		let _la: number;
 		try {
@@ -414,7 +413,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public argument(): ArgumentContext {
-		let _localctx: ArgumentContext = new ArgumentContext(this._ctx, this.state);
+		const _localctx: ArgumentContext = new ArgumentContext(this._ctx, this.state);
 		this.enterRule(_localctx, 14, mongoParser.RULE_argument);
 		try {
 			this.state = 88;
@@ -465,7 +464,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public objectLiteral(): ObjectLiteralContext {
-		let _localctx: ObjectLiteralContext = new ObjectLiteralContext(this._ctx, this.state);
+		const _localctx: ObjectLiteralContext = new ObjectLiteralContext(this._ctx, this.state);
 		this.enterRule(_localctx, 16, mongoParser.RULE_objectLiteral);
 		let _la: number;
 		try {
@@ -513,7 +512,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public arrayLiteral(): ArrayLiteralContext {
-		let _localctx: ArrayLiteralContext = new ArrayLiteralContext(this._ctx, this.state);
+		const _localctx: ArrayLiteralContext = new ArrayLiteralContext(this._ctx, this.state);
 		this.enterRule(_localctx, 18, mongoParser.RULE_arrayLiteral);
 		let _la: number;
 		try {
@@ -551,7 +550,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public elementList(): ElementListContext {
-		let _localctx: ElementListContext = new ElementListContext(this._ctx, this.state);
+		const _localctx: ElementListContext = new ElementListContext(this._ctx, this.state);
 		this.enterRule(_localctx, 20, mongoParser.RULE_elementList);
 		let _la: number;
 		try {
@@ -593,7 +592,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public propertyNameAndValueList(): PropertyNameAndValueListContext {
-		let _localctx: PropertyNameAndValueListContext = new PropertyNameAndValueListContext(this._ctx, this.state);
+		const _localctx: PropertyNameAndValueListContext = new PropertyNameAndValueListContext(this._ctx, this.state);
 		this.enterRule(_localctx, 22, mongoParser.RULE_propertyNameAndValueList);
 		try {
 			let _alt: number;
@@ -637,7 +636,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public propertyAssignment(): PropertyAssignmentContext {
-		let _localctx: PropertyAssignmentContext = new PropertyAssignmentContext(this._ctx, this.state);
+		const _localctx: PropertyAssignmentContext = new PropertyAssignmentContext(this._ctx, this.state);
 		this.enterRule(_localctx, 24, mongoParser.RULE_propertyAssignment);
 		try {
 			this.enterOuterAlt(_localctx, 1);
@@ -666,7 +665,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public propertyValue(): PropertyValueContext {
-		let _localctx: PropertyValueContext = new PropertyValueContext(this._ctx, this.state);
+		const _localctx: PropertyValueContext = new PropertyValueContext(this._ctx, this.state);
 		this.enterRule(_localctx, 26, mongoParser.RULE_propertyValue);
 		try {
 			this.state = 129;
@@ -724,7 +723,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public literal(): LiteralContext {
-		let _localctx: LiteralContext = new LiteralContext(this._ctx, this.state);
+		const _localctx: LiteralContext = new LiteralContext(this._ctx, this.state);
 		this.enterRule(_localctx, 28, mongoParser.RULE_literal);
 		let _la: number;
 		try {
@@ -784,7 +783,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public propertyName(): PropertyNameContext {
-		let _localctx: PropertyNameContext = new PropertyNameContext(this._ctx, this.state);
+		const _localctx: PropertyNameContext = new PropertyNameContext(this._ctx, this.state);
 		this.enterRule(_localctx, 30, mongoParser.RULE_propertyName);
 		let _la: number;
 		try {
@@ -820,7 +819,7 @@ export class mongoParser extends Parser {
 	}
 	@RuleVersion(0)
 	public comment(): CommentContext {
-		let _localctx: CommentContext = new CommentContext(this._ctx, this.state);
+		const _localctx: CommentContext = new CommentContext(this._ctx, this.state);
 		this.enterRule(_localctx, 32, mongoParser.RULE_comment);
 		let _la: number;
 		try {

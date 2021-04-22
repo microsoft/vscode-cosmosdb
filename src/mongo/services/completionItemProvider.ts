@@ -2,6 +2,9 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
@@ -15,10 +18,6 @@ import * as mongoParser from './../grammar/mongoParser';
 import { MongoVisitor } from './../grammar/visitors';
 import { SchemaService } from './schemaService';
 
-// grandfathered-in
-// tslint:disable: no-non-null-assertion
-
-// tslint:disable-next-line: export-name
 export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[]>> {
     private at: Position;
 

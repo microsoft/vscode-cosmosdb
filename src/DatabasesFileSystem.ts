@@ -121,7 +121,7 @@ function addFindArgsToQuery(query: AzExtItemQuery, commandArgs: {}[]): void {
 function getFindArgsFromQuery(query: AzExtItemQuery): {}[] | undefined {
     const result: {}[] = [];
     let count: number = 0;
-    // tslint:disable-next-line: no-constant-condition
+    // eslint-disable-next-line no-constant-condition
     while (true) {
         const key: string = getFindArgKey(count);
         const value: string | string[] | undefined = query[key];

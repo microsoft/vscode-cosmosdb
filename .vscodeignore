@@ -8,7 +8,6 @@ src/**
 .gitignore
 .travis.yml
 tsconfig.json
-tslint.json
 .github/**
 test-results.xml
 .azure-pipelines/**

@@ -76,14 +76,15 @@ async function askForDocuments(): Promise<vscode.Uri[]> {
     return await ext.ui.showOpenDialog(openDialogOptions);
 }
 
-// tslint:disable-next-line:no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
-    // tslint:disable-next-line:no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let documents: any[] = [];
     let errorFoundFlag: boolean = false;
     for (const uri of uris) {
         let parsed;
         try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             parsed = await fse.readJSON(uri.fsPath);
         } catch (e) {
             if (!errorFoundFlag) {
@@ -106,16 +107,17 @@ async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
         throw new Error(`Errors found in some documents. Please see the output, fix these and try again.`);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return documents;
 }
 
-// tslint:disable-next-line:no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem, documents: any[], uris: vscode.Uri[]): Promise<string> {
-    let result: string;
     const ids: string[] = [];
     let i = 0;
     const erroneousFiles: vscode.Uri[] = [];
     for (i = 0; i < documents.length; i++) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const document: ItemDefinition = documents[i];
         if (!collectionNode.documentsTreeItem.documentHasPartitionKey(document)) {
             erroneousFiles.push(uris[i]);
@@ -133,14 +135,14 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
             ids.push(retrieved.id);
         }
     }
-    result = `Import into SQL successful. Inserted ${ids.length} document(s). See output for more details.`;
+    const result: string = `Import into SQL successful. Inserted ${ids.length} document(s). See output for more details.`;
     for (const id of ids) {
         ext.outputChannel.appendLine(`Inserted document: ${id}`);
     }
     return result;
 }
 
-// tslint:disable-next-line:no-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function insertDocumentsIntoMongo(node: MongoCollectionTreeItem, documents: any[]): Promise<string> {
     let output = "";
     const parsed = await node.collection.insertMany(documents);

@@ -269,9 +269,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         async function connect(): Promise<boolean> {
             try {
                 const db: MongoClient = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent());
-                // grandfathered in
-                // tslint:disable-next-line: no-floating-promises
-                db.close();
+                void db.close();
                 return true;
             } catch {
                 return false;
@@ -284,7 +282,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
 
         if (attachedAccounts.find(s => s.id === treeItem.id)) {
-            vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`);
+            void vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`);
         } else {
             attachedAccounts.push(treeItem);
             if (ext.keytar) {
@@ -299,6 +297,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         const value: string | undefined = ext.context.globalState.get(this._serviceName);
         const keytar = ext.keytar;
         if (value && keytar) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const accounts: (string | IPersistedAccount)[] = JSON.parse(value);
             await Promise.all(accounts.map(async account => {
                 let id: string;
@@ -328,7 +327,6 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 
     private async createTreeItem(connectionString: string, api: API, label?: string, id?: string, isEmulator?: boolean): Promise<AzureTreeItem> {
         let treeItem: AzureTreeItem;
-        // tslint:disable-next-line:possible-timing-attack // not security related
         if (api === API.MongoDB) {
             if (id === undefined) {
                 const parsedCS = await parseMongoConnectionString(connectionString);
@@ -337,7 +335,6 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 
             label = label || `${id} (${getExperienceFromApi(api).shortName})`;
             treeItem = new MongoAccountTreeItem(this, id, label, connectionString, isEmulator);
-            // tslint:disable-next-line: possible-timing-attack // not security related
         } else if (api === API.Postgres) {
             const parsedPostgresConnString = parsePostgresConnectionString(connectionString);
             treeItem = new PostgresServerTreeItem(this, parsedPostgresConnString);
@@ -428,7 +425,6 @@ class AttachedAccountRoot implements ISubscriptionContext {
 
 async function delay(milliseconds: number): Promise<void> {
     return new Promise(resolve => {
-        // tslint:disable-next-line:no-string-based-set-timeout // false positive
         setTimeout(resolve, milliseconds);
     });
 }

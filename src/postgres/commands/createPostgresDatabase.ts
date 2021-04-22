@@ -18,6 +18,6 @@ export async function createPostgresDatabase(context: IActionContext, node?: Pos
     const newDatabase: PostgresDatabaseTreeItem = await node.createChild(context);
     await connectPostgresDatabase(context, newDatabase);
     const createMessage: string = localize('createPostgresDatabaseMsg', 'Successfully created database "{0}".', newDatabase.databaseName);
-    vscode.window.showInformationMessage(createMessage);
+    void vscode.window.showInformationMessage(createMessage);
     ext.outputChannel.appendLog(createMessage);
 }

@@ -36,7 +36,7 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
                 this._dbNode = await ext.tree.findTreeItem(databaseId, context);
             }
 
-            ext.treeView.reveal(this._dbNode || accountNode);
+            await ext.treeView.reveal(this._dbNode || accountNode);
         });
     }
 }

@@ -34,13 +34,10 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
 
-        let treeItemPostgres: AzExtTreeItem[];
-        let treeItem: AzExtTreeItem[];
-
         //Postgres
         const postgresClient: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
         const postgresServers: ServerListResult = await postgresClient.servers.list();
-        treeItemPostgres = await this.createTreeItemsWithErrorHandling(
+        const treeItemPostgres: AzExtTreeItem[] = await this.createTreeItemsWithErrorHandling(
             postgresServers,
             'invalidPostgreSQLAccount',
             async (server: Server) => await this.initPostgresChild(server),
@@ -51,7 +48,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
         const response: DatabaseAccountsListResponse = await client.databaseAccounts.list();
         const accounts: DatabaseAccountsListResult = response._response.parsedBody;
-        treeItem = await this.createTreeItemsWithErrorHandling(
+        const treeItem: AzExtTreeItem[] = await this.createTreeItemsWithErrorHandling(
             accounts,
             'invalidCosmosDBAccount',
             async (db: DatabaseAccountGetResults) => await this.initCosmosDBChild(client, db),
@@ -87,7 +84,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         await wizard.execute();
         if (wizardContext.defaultExperience?.api === API.Postgres) {
             const createMessage: string = localize('createdServerOutput', 'Successfully created PostgreSQL server "{0}".', wizardContext.newServerName);
-            vscode.window.showInformationMessage(createMessage);
+            void vscode.window.showInformationMessage(createMessage);
             ext.outputChannel.appendLog(createMessage);
             const server = nonNullProp(wizardContext, 'server');
             const host = nonNullProp(server, 'fullyQualifiedDomainName');

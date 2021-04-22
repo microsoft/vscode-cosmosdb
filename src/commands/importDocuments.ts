@@ -76,7 +76,7 @@ async function askForDocuments(): Promise<vscode.Uri[]> {
     return await ext.ui.showOpenDialog(openDialogOptions);
 }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let documents: any[] = [];
@@ -111,7 +111,7 @@ async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
     return documents;
 }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem, documents: any[], uris: vscode.Uri[]): Promise<string> {
     const ids: string[] = [];
     let i = 0;

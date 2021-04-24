@@ -8,12 +8,14 @@ import { ResourceManagementClient } from '@azure/arm-resources';
 import * as vscode from 'vscode';
 import { TestAzureAccount } from 'vscode-azureextensiondev';
 import { AzExtTreeDataProvider, AzureAccountTreeItemWithAttached, createAzureClient, ext, randomUtils } from '../../extension.bundle';
+import { CapacityModelName } from '../../src/AzureDBExperiences';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 
 export let testAccount: TestAzureAccount;
 export let client: CosmosDBManagementClient;
 export const resourceGroupsToDelete: string[] = [];
 export const accountList: {} = {};
+export const serverlessAccountList: {} = {};
 export const resourceGroupList: {} = {};
 export enum AccountApi {
     MongoDB = 'MongoDB',
@@ -31,7 +33,12 @@ suiteSetup(async function (this: Mocha.Context): Promise<void> {
         client = createAzureClient(testAccount.getSubscriptionContext(), CosmosDBManagementClient);
 
         // Create account
-        await Promise.all([delayCreateAccount(5, /graph/), delayCreateAccount(10, /MongoDB/), delayCreateAccount(15, /SQL/)]);
+        await Promise.all([
+            delayCreateAccount(5, /graph/),
+            delayCreateAccount(10, /MongoDB/),
+            delayCreateAccount(15, /SQL/),
+            delayCreateAccount(10, /MongoDB/, "Serverless"),
+            delayCreateAccount(15, /SQL/, "Serverless")]);
     }
 });
 
@@ -57,24 +64,25 @@ async function deleteResourceGroups(): Promise<void> {
     }));
 }
 
-async function createAccount(accountType: RegExp): Promise<void> {
+async function createAccount(accountType: RegExp, capacityModel?: CapacityModelName): Promise<void> {
     // Cosmos DB account must have lower case name
     const accountName: string = randomUtils.getRandomHexString(12).toLowerCase();
     const resourceGroupName: string = randomUtils.getRandomHexString(12);
     accountList[accountType.source] = accountName;
+    serverlessAccountList[accountType.source] = accountType;
     resourceGroupList[accountType.source] = resourceGroupName;
     resourceGroupsToDelete.push(resourceGroupName);
-    const testInputs: (string | RegExp)[] = [accountType, accountName, '$(plus) Create new resource group', resourceGroupName, 'West US'];
+    const testInputs: (string | RegExp)[] = [accountType, accountName, (capacityModel === 'Serverless' ? /Serverless/ : /Provisioned Throughput/), '$(plus) Create new resource group', resourceGroupName, 'West US'];
     await testUserInput.runWithInputs(testInputs, async () => {
         await vscode.commands.executeCommand('azureDatabases.createServer');
     });
 }
 
-async function delayCreateAccount(ms: number, accountType: RegExp): Promise<void> {
+async function delayCreateAccount(ms: number, accountType: RegExp, capacityModel?: CapacityModelName): Promise<void> {
     await new Promise<void>((resolve: () => void): void => {
         setTimeout(async () => {
             try {
-                await createAccount(accountType);
+                await createAccount(accountType, capacityModel);
             } catch {
             }
             finally {

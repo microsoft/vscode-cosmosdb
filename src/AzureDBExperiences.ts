@@ -22,6 +22,10 @@ export enum DBAccountKind {
 
 export type CapabilityName = 'EnableGremlin' | 'EnableTable';
 
+export type CapacityModelName = 'Provisioned' | 'Serverless';
+
+export const SERVERLESS_CAPABILITY_NAME = 'EnableServerless';
+
 export function getExperienceFromApi(api: API): Experience {
     let info = experiencesMap.get(api);
     if (!info) {
@@ -45,15 +49,24 @@ export function getExperienceLabel(databaseAccount: DatabaseAccountGetResults): 
 }
 
 export function tryGetExperience(resource: DatabaseAccountGetResults): Experience | undefined {
+    let experience: Experience | undefined;
+
     // defaultExperience in the resource doesn't really mean anything, we can't depend on its value for determining resource type
     if (resource.kind === DBAccountKind.MongoDB) {
-        return MongoExperience;
+        experience = MongoExperience;
     } else if (resource.capabilities?.find(cap => cap.name === 'EnableGremlin')) {
-        return GremlinExperience;
+        experience = GremlinExperience;
     } else if (resource.capabilities?.find(cap => cap.name === 'EnableTable')) {
-        return TableExperience;
+        experience = TableExperience;
     } else if (resource.capabilities?.length === 0) {
-        return CoreExperience;
+        experience = CoreExperience;
+    }
+
+    // Check for serverless capability
+    if (!!experience && resource.capabilities?.find(cap => cap.name === SERVERLESS_CAPABILITY_NAME)) {
+        experience.capacityModel = "Serverless";
+    } else if (!!experience) {
+        experience.capacityModel = "Provisioned";
     }
 
     return undefined;
@@ -72,6 +85,7 @@ export interface Experience {
     // These properties are what the portal actually looks at to determine the difference between APIs
     kind?: DBAccountKind;
     capability?: CapabilityName;
+    capacityModel?: CapacityModelName;
 
     // The defaultExperience tag to place into the resource (has no actual effect in Azure, just imitating the portal)
     tag?: string;

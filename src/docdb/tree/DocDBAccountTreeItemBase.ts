@@ -7,6 +7,7 @@ import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { CosmosClient, DatabaseDefinition, DatabaseResponse, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
+import { SERVERLESS_CAPABILITY_NAME } from '../../AzureDBExperiences';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { ext } from '../../extensionVariables';
@@ -50,6 +51,10 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
         return getThemeAgnosticIconPath('CosmosDBAccount.svg');
+    }
+
+    public get isServerless(): boolean {
+        return !!this.databaseAccount?.capabilities?.find(cap => cap.name === SERVERLESS_CAPABILITY_NAME);
     }
 
     public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<DatabaseDefinition & Resource> {

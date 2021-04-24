@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ContainerDefinition, ContainerResponse, CosmosClient, DatabaseDefinition, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
+import { ContainerDefinition, ContainerResponse, CosmosClient, DatabaseDefinition, FeedOptions, QueryIterator, RequestOptions, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
 import { AzureTreeItem, DialogResponses, ICreateChildImplContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
@@ -96,19 +96,25 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
                 paths: [partitionKey]
             };
         }
-        const isFixed: boolean = !(containerDefinition.partitionKey);
-        const minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
-        const throughput: number = Number(await ext.ui.showInputBox({
-            value: minThroughput.toString(),
-            ignoreFocusOut: true,
-            prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput}`,
-            validateInput: (input: string) => validateThroughput(isFixed, input)
-        }));
 
-        const options = { offerThroughput: throughput };
+        const options: RequestOptions = {};
+
+        if (!this.parent.isServerless) {
+            const isFixed: boolean = !(containerDefinition.partitionKey);
+            const minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
+            const throughput: number = Number(await ext.ui.showInputBox({
+                value: minThroughput.toString(),
+                ignoreFocusOut: true,
+                prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput}`,
+                validateInput: (input: string) => validateThroughput(isFixed, input)
+            }));
+
+            options.offerThroughput = throughput;
+        }
 
         context.showCreatingTreeItem(containerName);
         const client = this.root.getCosmosClient();
+
         const container: ContainerResponse = await client.database(this.id).containers.create(containerDefinition, options);
 
         return this.initChild(nonNullProp(container, 'resource'));

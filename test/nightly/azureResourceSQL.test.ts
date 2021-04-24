@@ -16,6 +16,7 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(20 * 60 * 1000);
     let resourceGroupName: string;
     let accountName: string;
+    let serverlessAccountName: string;
     let databaseName: string;
     let collectionId2: string;
 
@@ -26,6 +27,7 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         this.timeout(2 * 60 * 1000);
         resourceGroupName = resourceGroupList[AccountApi.Core];
         accountName = accountList[AccountApi.Core];
+        serverlessAccountName = accountList[AccountApi.Core];
         databaseName = randomUtils.getRandomHexString(12);
         collectionId2 = randomUtils.getRandomHexString(12);
     });
@@ -39,7 +41,13 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         const collectionId1: string = randomUtils.getRandomHexString(12);
         // Partition key cannot begin with a digit
         const partitionKey1: string = `f${randomUtils.getRandomHexString(12)}`;
-        const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (SQL)`, databaseName, collectionId1, partitionKey1, '1000'];
+        const testInputs: (string | RegExp)[] = [
+            testAccount.getSubscriptionContext().subscriptionDisplayName,
+            `${accountName} (SQL)`,
+            databaseName,
+            collectionId1,
+            partitionKey1,
+            '1000'];
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createDocDBDatabase');
         });
@@ -49,7 +57,47 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
     test('Create SQL collection', async () => {
         // Partition key cannot begin with a digit
         const partitionKey2: string = `f${randomUtils.getRandomHexString(12)}`;
-        const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (SQL)`, databaseName, collectionId2, partitionKey2, '1000'];
+        const testInputs: (string | RegExp)[] = [
+            testAccount.getSubscriptionContext().subscriptionDisplayName,
+            `${accountName} (SQL)`,
+            databaseName,
+            collectionId2,
+            partitionKey2,
+            '1000'];
+        await testUserInput.runWithInputs(testInputs, async () => {
+            await vscode.commands.executeCommand('cosmosDB.createDocDBCollection');
+        });
+        assert.ok(await getDocDBCollectionMeta(accountName, databaseName, collectionId2));
+    });
+
+    // create collection on serverless (w/o throughput)
+    test('Create SQL Database', async () => {
+        const collectionId1: string = randomUtils.getRandomHexString(12);
+        // Partition key cannot begin with a digit
+        const partitionKey1: string = `f${randomUtils.getRandomHexString(12)}`;
+        const testInputs: (string | RegExp)[] = [
+            testAccount.getSubscriptionContext().subscriptionDisplayName,
+            `${serverlessAccountName} (SQL)`,
+            databaseName,
+            collectionId1,
+            partitionKey1
+        ];
+        await testUserInput.runWithInputs(testInputs, async () => {
+            await vscode.commands.executeCommand('cosmosDB.createDocDBDatabase');
+        });
+        assert.ok(await getDatabaseMeta());
+    });
+
+    test('Create SQL collection', async () => {
+        // Partition key cannot begin with a digit
+        const partitionKey2: string = `f${randomUtils.getRandomHexString(12)}`;
+        const testInputs: (string | RegExp)[] = [
+            testAccount.getSubscriptionContext().subscriptionDisplayName,
+            `${serverlessAccountName} (SQL)`,
+            databaseName,
+            collectionId2,
+            partitionKey2
+        ];
         await testUserInput.runWithInputs(testInputs, async () => {
             await vscode.commands.executeCommand('cosmosDB.createDocDBCollection');
         });

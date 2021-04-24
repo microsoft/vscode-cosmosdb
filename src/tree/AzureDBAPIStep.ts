@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep, AzureWizardPromptStep, IAzureQuickPickItem, IWizardOptions, VerifyProvidersStep } from 'vscode-azureextensionui';
-import { API, Experience, getExperienceQuickPicks } from '../AzureDBExperiences';
+import { API, CapacityModelName, Experience, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
 import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
 import { PostgresServerConfirmPWStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerConfirmPWStep';
@@ -28,6 +28,18 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
         const result: IAzureQuickPickItem<Experience> = await ext.ui.showQuickPick(picks, {
             placeHolder: localize('selectDBServerMsg', 'Select an Azure Database Server.')
         });
+
+        if (result.data?.api !== API.Postgres) {
+            const modelPicks: IAzureQuickPickItem<CapacityModelName>[] = [
+                {label: "Provisioned Throughput", data: "Provisioned"},
+                {label: "Serverless", data: "Serverless"}
+            ];
+            const modelResult: IAzureQuickPickItem<CapacityModelName> = await ext.ui.showQuickPick(modelPicks, {
+                placeHolder: localize('selectDBServerMsg', 'Select a capacity model.')
+            });
+
+            result.data.capacityModel = modelResult.data;
+        }
 
         wizardContext.defaultExperience = result.data;
     }

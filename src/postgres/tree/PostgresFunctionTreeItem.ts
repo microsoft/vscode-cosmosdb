@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { ThemeIcon } from "vscode";
 import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
-import { getThemedIconPath } from "../../constants";
 import { IPostgresProceduresQueryRow } from "../getPostgresProcedureQueryRows";
 import { runPostgresQuery, wrapArgInQuotes } from "../runPostgresQuery";
 import { PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
@@ -40,7 +40,7 @@ export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext
     }
 
     public get iconPath(): TreeItemIconPath {
-        return getThemedIconPath('function.svg');
+        return new ThemeIcon('symbol-function');
     }
 
     public async deleteTreeItemImpl(): Promise<void> {

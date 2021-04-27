@@ -5,9 +5,8 @@
 
 import { ContainerDefinition, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzureTreeItem, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureTreeItem, IActionContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
 import { AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
-import { getThemeAgnosticIconPath } from '../../constants';
 import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
@@ -42,8 +41,8 @@ export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
         return this._collection._self;
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('Collection.svg');
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('files');
     }
 
     public async showExplorer(context: IActionContext): Promise<void> {

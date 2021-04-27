@@ -5,8 +5,7 @@
 
 import { Container, ContainerDefinition, CosmosClient, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, AzureTreeItem, DialogResponses, UserCancelledError } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { AzureParentTreeItem, AzureTreeItem, DialogResponses, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from '../../docdb/tree/DocDBStoredProcedureTreeItem';
 import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
@@ -42,8 +41,8 @@ export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         return this._collection._self;
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('Collection.svg');
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('files');
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem<IDocDBTreeRoot>[]> {

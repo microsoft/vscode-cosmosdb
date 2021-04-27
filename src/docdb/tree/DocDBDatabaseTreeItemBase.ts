@@ -5,8 +5,7 @@
 
 import { ContainerDefinition, ContainerResponse, CosmosClient, DatabaseDefinition, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzureTreeItem, DialogResponses, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { AzureTreeItem, DialogResponses, ICreateChildImplContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import { nonNullProp } from '../../utils/nonNull';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
@@ -30,8 +29,8 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
         this._database = database;
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
-        return getThemeAgnosticIconPath('DocDatabase.svg');
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('database');
     }
 
     public get id(): string {

@@ -140,10 +140,7 @@
             {
                 "command": "cosmosDB.selectSubscriptions",
                 "title": "Select Subscriptions...",
-                "icon": {
-                    "light": "resources/icons/light/filter.svg",
-                    "dark": "resources/icons/dark/filter.svg"
-                }
+                "icon": "$(filter)"
             },
             {
                 "category": "MongoDB",
@@ -164,10 +161,7 @@
                 "category": "Cosmos DB",
                 "command": "cosmosDB.attachDatabaseAccount",
                 "title": "Attach Database Account...",
-                "icon": {
-                    "light": "resources/icons/light/plug.svg",
-                    "dark": "resources/icons/dark/plug.svg"
-                }
+                "icon": "$(plug)"
             },
             {
                 "category": "Cosmos DB",
@@ -178,10 +172,7 @@
                 "category": "Azure Databases",
                 "command": "azureDatabases.createServer",
                 "title": "Create Server...",
-                "icon": {
-                    "light": "resources/icons/light/add.svg",
-                    "dark": "resources/icons/dark/add.svg"
-                }
+                "icon": "$(add)"
             },
             {
                 "category": "Cosmos DB",
@@ -322,19 +313,13 @@
                 "category": "MongoDB",
                 "command": "cosmosDB.newMongoScrapbook",
                 "title": "New Mongo Scrapbook",
-                "icon": {
-                    "light": "resources/icons/light/new-file.svg",
-                    "dark": "resources/icons/dark/new-file.svg"
-                }
+                "icon": "$(new-file)"
             },
             {
                 "category": "Azure Databases",
                 "command": "azureDatabases.refresh",
                 "title": "Refresh",
-                "icon": {
-                    "light": "resources/icons/light/refresh.svg",
-                    "dark": "resources/icons/dark/refresh.svg"
-                }
+                "icon": "$(refresh)"
             },
             {
                 "category": "Azure Databases",
@@ -355,10 +340,7 @@
                 "category": "Azure Databases",
                 "command": "azureDatabases.update",
                 "title": "Update to Cloud",
-                "icon": {
-                    "light": "/resources/icons/theme-agnostic/UpdateOutline.svg",
-                    "dark": "/resources/icons/theme-agnostic/UpdateOutline.svg"
-                }
+                "icon": "$(cloud-upload)"
             },
             {
                 "category": "Azure Databases",
@@ -1099,16 +1081,15 @@
         "mocha": "^7.1.1",
         "mocha-junit-reporter": "^1.18.0",
         "mocha-multi-reporters": "^1.1.7",
-        "string-replace-webpack-plugin": "^0.1.3",
         "ts-node": "^7.0.1",
         "tslint": "^5.7.0",
         "tslint-microsoft-contrib": "5.0.1",
         "typescript": "^3.8.3",
-        "vsce": "^1.37.5",
-        "vscode-azureextensiondev": "^0.8.0",
-        "vscode-test": "^1.3.0",
-        "webpack": "4.46.0",
-        "webpack-cli": "^3.1.2"
+        "vsce": "^1.87.0",
+        "vscode-azureextensiondev": "^0.9.2",
+        "vscode-test": "^1.5.2",
+        "webpack": "^5.28.0",
+        "webpack-cli": "^4.6.0"
     },
     "dependencies": {
         "@azure/arm-cosmosdb": "^9.1.0",
@@ -1125,7 +1106,7 @@
         "public-ip": "^4.0.0",
         "semver": "^7.2.2",
         "underscore": "^1.8.3",
-        "vscode-azureextensionui": "^0.40.1",
+        "vscode-azureextensionui": "^0.41.3",
         "vscode-json-languageservice": "^3.0.8",
         "vscode-languageclient": "^6.1.3",
         "vscode-languageserver": "^6.1.1",

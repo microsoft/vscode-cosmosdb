@@ -18,14 +18,3 @@ suiteSetup(async function (this: Mocha.Context): Promise<void> {
     ext.outputChannel = new TestOutputChannel();
     ext.ui = testUserInput;
 });
-
-// tslint:disable-next-line: no-var-requires : no-require-imports
-require('../test/nightly/createAccount');
-// tslint:disable-next-line: no-var-requires : no-require-imports
-require('../test/nightly/azureResourceGraph');
-// tslint:disable-next-line: no-var-requires : no-require-imports
-require('../test/nightly/azureResourceMongoDB');
-// tslint:disable-next-line: no-var-requires : no-require-imports
-require('../test/nightly/azureResourceSQL');
-// tslint:disable-next-line: no-var-requires : no-require-imports
-require('../test/nightly/deleteAccount');

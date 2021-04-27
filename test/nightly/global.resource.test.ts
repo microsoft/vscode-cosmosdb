@@ -32,6 +32,17 @@ suiteSetup(async function (this: Mocha.Context): Promise<void> {
     }
 });
 
+// tslint:disable-next-line: no-var-requires : no-require-imports
+require('./createAccount');
+// tslint:disable-next-line: no-var-requires : no-require-imports
+require('./azureResourceGraph');
+// tslint:disable-next-line: no-var-requires : no-require-imports
+require('./azureResourceMongoDB');
+// tslint:disable-next-line: no-var-requires : no-require-imports
+require('./azureResourceSQL');
+// tslint:disable-next-line: no-var-requires : no-require-imports
+require('./deleteAccount');
+
 suiteTeardown(async function (this: Mocha.Context): Promise<void> {
     if (longRunningTestsEnabled) {
         this.timeout(10 * 60 * 1000);
@@ -52,4 +63,18 @@ async function deleteResourceGroups(): Promise<void> {
             console.log(`Ignoring resource group "${resourceGroup}" because it does not exist.`);
         }
     }));
+}
+
+export async function delayOpAccount(ms: number, accountType: RegExp, callback: (arg0: RegExp) => Promise<void>): Promise<void> {
+    await new Promise<void>((resolve: () => void): void => {
+        setTimeout(async () => {
+            try {
+                await callback(accountType);
+            } catch {
+            }
+            finally {
+                resolve();
+            }
+        }, ms);
+    });
 }

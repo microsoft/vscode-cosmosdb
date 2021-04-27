@@ -8,7 +8,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
-import { AccountApi, accountList, client, resourceGroupList, resourceGroupsToDelete } from './global.resource.test';
+import { AccountApi, accountList, client, delayOpAccount, resourceGroupList, resourceGroupsToDelete } from './global.resource.test';
 
 suite('Create Account', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(10 * 60 * 1000);
@@ -17,7 +17,7 @@ suite('Create Account', async function (this: Mocha.Suite): Promise<void> {
         if (!longRunningTestsEnabled) {
             this.skip();
         }
-        await Promise.all([delayCreateAccount(5, /graph/), delayCreateAccount(10, /MongoDB/), delayCreateAccount(15, /SQL/)]);
+        await Promise.all([delayOpAccount(5000, /graph/, createAccount), delayOpAccount(10000, /MongoDB/, createAccount), delayOpAccount(15000, /SQL/, createAccount)]);
     });
 
     test('Create SQL account', async () => {
@@ -46,19 +46,5 @@ async function createAccount(accountType: RegExp): Promise<void> {
     const testInputs: (string | RegExp)[] = [accountType, accountName, '$(plus) Create new resource group', resourceGroupName, 'West US'];
     await testUserInput.runWithInputs(testInputs, async () => {
         await vscode.commands.executeCommand('azureDatabases.createServer');
-    });
-}
-
-async function delayCreateAccount(ms: number, accountType: RegExp): Promise<void> {
-    await new Promise<void>((resolve: () => void): void => {
-        setTimeout(async () => {
-            try {
-                await createAccount(accountType);
-            } catch {
-            }
-            finally {
-                resolve();
-            }
-        }, ms * 1000);
     });
 }

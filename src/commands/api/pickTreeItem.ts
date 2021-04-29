@@ -72,6 +72,7 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
                 break;
             case 'DatabaseAccount':
                 contextValuesToFind = options.apiType ? options.apiType.map(getAccountContextValue) : accountContextValues;
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
                 contextValuesToFind = contextValuesToFind.concat(contextValuesToFind.map((val: string) => val + AttachedAccountSuffix));
                 break;
             default:

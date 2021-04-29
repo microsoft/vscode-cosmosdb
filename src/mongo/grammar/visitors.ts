@@ -45,15 +45,15 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
     }
 
     visitChildren(ctx: ParserRuleContext): T {
-        var result = this.defaultResult(ctx);
-        var n = ctx.childCount
-        for (var i = 0; i < n; i++) {
+        let result = this.defaultResult(ctx);
+        const n = ctx.childCount
+        for (let i = 0; i < n; i++) {
             if (!this.shouldVisitNextChild(ctx, result)) {
                 break;
             }
 
-            var childNode = ctx.getChild(i);
-            var childResult = childNode.accept(this);
+            const childNode = ctx.getChild(i);
+            const childResult = childNode.accept(this);
             result = this.aggregateResult(result, childResult);
         }
         return result;
@@ -76,6 +76,7 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
         return !nextResult ? aggregate : nextResult;
     }
 
+    // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
     shouldVisitNextChild(_node, _currentResult: T): boolean {
         return true;
     }

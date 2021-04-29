@@ -19,6 +19,6 @@ export async function deletePostgresTable(context: IActionContext, node?: Postgr
     await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
     await node.deleteTreeItem(context);
     const deleteMessage: string = localize('successfullyDeletedTable', 'Successfully deleted table "{0}".', node.label);
-    window.showInformationMessage(deleteMessage);
+    void window.showInformationMessage(deleteMessage);
     ext.outputChannel.appendLog(deleteMessage);
 }

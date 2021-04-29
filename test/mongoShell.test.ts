@@ -16,9 +16,6 @@ import { IDisposable } from '../src/utils/vscodeUtils';
 import { runWithSetting } from './runWithSetting';
 import { setEnvironmentVariables } from './util/setEnvironmentVariables';
 
-// grandfathered in
-// tslint:disable: no-octal-literal
-
 const VERBOSE = false; // If true, the output from the Mongo server and shell will be sent to the console for debugging purposes
 
 let testsSupported: boolean = true;
@@ -93,8 +90,6 @@ suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
 
     async function delay(milliseconds: number): Promise<void> {
         return new Promise(resolve => {
-            // grandfathered in
-            // tslint:disable-next-line: no-string-based-set-timeout
             setTimeout(resolve, milliseconds);
         });
     }

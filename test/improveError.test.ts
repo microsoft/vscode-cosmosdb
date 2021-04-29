@@ -7,9 +7,6 @@ import * as assert from 'assert';
 import { parseError } from 'vscode-azureextensionui';
 import { improveError } from '../extension.bundle';
 
-// grandfathered in
-// tslint:disable: no-octal-literal
-
 suite("improveError", () => {
     test("no change", () => {
         const msg: string = "where is c:\\Program Files\\MongoDB\Server\\4.0\\bin\\mongo.exe?";

@@ -45,6 +45,5 @@ export function registerGraphCommands(): void {
             node = <GraphTreeItem>await ext.tree.showTreeItemPicker(GraphTreeItem.contextValue, context);
         }
         await node.showExplorer(context);
-        // tslint:disable-next-line:align
     }, doubleClickDebounceDelay);
 }

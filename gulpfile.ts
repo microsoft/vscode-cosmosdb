@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// tslint:disable:no-implicit-dependencies (this allows the use of dev dependencies)
-
 import * as fse from 'fs-extra';
 import * as gulp from 'gulp';
 import * as path from 'path';

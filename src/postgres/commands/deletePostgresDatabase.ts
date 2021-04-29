@@ -21,6 +21,6 @@ export async function deletePostgresDatabase(context: IActionContext, node?: Pos
         await node.deleteTreeItem(context);
     }
     const deleteMessage: string = localize('deletePostgresDatabaseMsg', 'Successfully deleted database "{0}".', node.databaseName);
-    vscode.window.showInformationMessage(deleteMessage);
+    void vscode.window.showInformationMessage(deleteMessage);
     ext.outputChannel.appendLog(deleteMessage);
 }

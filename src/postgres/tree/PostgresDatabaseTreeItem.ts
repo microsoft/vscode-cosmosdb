@@ -69,8 +69,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
             const parsedError: IParsedError = parseError(error);
 
             if (this.parent.azureName && parsedError.errorType === invalidCredentialsErrorType) {
-                // tslint:disable-next-line: no-floating-promises
-                ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
+                void ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
                 const credentialsTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
                     contextValue: 'postgresCredentials',
                     label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),

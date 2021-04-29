@@ -5,8 +5,6 @@ grammar mongo;
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-
- /*tslint:disable */
 }
 
 @lexer::members {
@@ -28,7 +26,7 @@ collection: IDENTIFIER (DOT IDENTIFIER)*;
 functionCall: FUNCTION_NAME = IDENTIFIER arguments;
 
 arguments:
-    OPEN_PARENTHESIS = '(' (argument ( ',' argument)*)? CLOSED_PARENTHESIS = ')';
+	OPEN_PARENTHESIS = '(' (argument ( ',' argument)*)? CLOSED_PARENTHESIS = ')';
 
 argument: literal | objectLiteral | arrayLiteral;
 
@@ -39,39 +37,39 @@ arrayLiteral: '[' elementList? ']';
 elementList: propertyValue ( ',' propertyValue)*;
 
 propertyNameAndValueList:
-    propertyAssignment (',' propertyAssignment)*;
+	propertyAssignment (',' propertyAssignment)*;
 
 propertyAssignment: propertyName ':' propertyValue;
 
 propertyValue:
-    literal
-    | objectLiteral
-    | arrayLiteral
-    | functionCall;
+	literal
+	| objectLiteral
+	| arrayLiteral
+	| functionCall;
 
 literal: (NullLiteral | BooleanLiteral | StringLiteral)
-    | RegexLiteral
-    | NumericLiteral;
+	| RegexLiteral
+	| NumericLiteral;
 
 propertyName: StringLiteral | IDENTIFIER;
 
 comment: SingleLineComment | MultiLineComment;
 
 RegexLiteral:
-    '/' (~[/\n\r*] | '\\/') (~[/\n\r] | '\\/')* '/' (RegexFlag)*;
+	'/' (~[/\n\r*] | '\\/') (~[/\n\r] | '\\/')* '/' (RegexFlag)*;
 // Disallow '*' to succeed the opening '/'. This ensures we don't wrongly parse multi-line comments.
 // Disallow carriage returns too.
 
 fragment RegexFlag: [gimuy];
 
 SingleLineComment:
-    '//' ~[\r\n\u2028\u2029]* -> channel(HIDDEN);
+	'//' ~[\r\n\u2028\u2029]* -> channel(HIDDEN);
 
 MultiLineComment: '/*' .*? '*/' -> channel(HIDDEN);
 
 StringLiteral:
-    SINGLE_QUOTED_STRING_LITERAL
-    | DOUBLE_QUOTED_STRING_LITERAL;
+	SINGLE_QUOTED_STRING_LITERAL
+	| DOUBLE_QUOTED_STRING_LITERAL;
 
 NullLiteral: 'null';
 
@@ -80,9 +78,9 @@ BooleanLiteral: 'true' | 'false';
 NumericLiteral: '-'? DecimalLiteral;
 
 DecimalLiteral:
-    DecimalIntegerLiteral '.' DecimalDigit+ ExponentPart?
-    | '.' DecimalDigit+ ExponentPart?
-    | DecimalIntegerLiteral ExponentPart?;
+	DecimalIntegerLiteral '.' DecimalDigit+ ExponentPart?
+	| '.' DecimalDigit+ ExponentPart?
+	| DecimalIntegerLiteral ExponentPart?;
 
 LineTerminator: [\r\n\u2028\u2029] -> channel(HIDDEN);
 
@@ -96,9 +94,9 @@ DB: 'db';
 IDENTIFIER: ((~[[\]"',\\ \t\n\r:.;(){}\-]) | STRING_ESCAPE)+ {!this.isExternalIdentifierText(this.text)
         }?;
 DOUBLE_QUOTED_STRING_LITERAL:
-    '"' ((~["\\]) | STRING_ESCAPE)* '"';
+	'"' ((~["\\]) | STRING_ESCAPE)* '"';
 SINGLE_QUOTED_STRING_LITERAL:
-    '\'' ((~['\\]) | STRING_ESCAPE)* '\'';
+	'\'' ((~['\\]) | STRING_ESCAPE)* '\'';
 
 fragment STRING_ESCAPE: '\\' [\\"\\'];
 

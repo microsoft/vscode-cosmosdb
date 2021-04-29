@@ -23,7 +23,6 @@ const connectedMongoKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 let diagnosticsCollection: vscode.DiagnosticCollection;
 const mongoLanguageId: string = 'mongo';
 
-// tslint:disable-next-line: max-func-body-length
 export function registerMongoCommands(): MongoCodeLensProvider {
     const languageClient: MongoDBLanguageClient = new MongoDBLanguageClient();
 
@@ -69,7 +68,7 @@ export function registerMongoCommands(): MongoCodeLensProvider {
 
         const oldNodeId: string | undefined = ext.connectedMongoDB && ext.connectedMongoDB.fullId;
         await languageClient.connect(node.connectionString, node.databaseName);
-        ext.context.globalState.update(connectedMongoKey, node.fullId);
+        void ext.context.globalState.update(connectedMongoKey, node.fullId);
         setConnectedNode(node, codeLensProvider);
         await node.refresh(context);
 
@@ -90,10 +89,9 @@ export function registerMongoCommands(): MongoCodeLensProvider {
         await node.deleteTreeItem(context);
         if (ext.connectedMongoDB && ext.connectedMongoDB.fullId === node.fullId) {
             setConnectedNode(undefined, codeLensProvider);
-            ext.context.globalState.update(connectedMongoKey, undefined);
+            void ext.context.globalState.update(connectedMongoKey, undefined);
             // Temporary workaround for https://github.com/microsoft/vscode-cosmosdb/issues/1754
-            // tslint:disable-next-line: no-floating-promises
-            languageClient.disconnect();
+            void languageClient.disconnect();
         }
     });
     registerCommand('cosmosDB.deleteMongoCollection', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
@@ -164,8 +162,7 @@ function launchMongoShell(): void {
 
 function setUpErrorReporting(): void {
     // Update errors immediately in case a scrapbook is already open
-    // tslint:disable-next-line: no-floating-promises
-    callWithTelemetryAndErrorHandling(
+    void callWithTelemetryAndErrorHandling(
         "initialUpdateErrorsInActiveDocument",
         async (context: IActionContext) => {
             updateErrorsInScrapbook(context, vscode.window.activeTextEditor?.document);

@@ -22,7 +22,7 @@ export async function deleteCosmosDBAccount(node: AzureTreeItem): Promise<void> 
             await client.databaseAccounts.deleteMethod(resourceGroup, accountName);
         });
         const deleteMessage: string = localize("deleteAccountMsg", `Successfully deleted account "{0}".`, accountName);
-        vscode.window.showInformationMessage(deleteMessage);
+        void vscode.window.showInformationMessage(deleteMessage);
         ext.outputChannel.appendLog(deleteMessage);
     } else {
         throw new UserCancelledError();

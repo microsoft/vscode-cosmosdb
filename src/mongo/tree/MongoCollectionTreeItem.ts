@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import * as assert from 'assert';
 import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, DeleteWriteOpResultObject, InsertOneWriteOpResult, InsertWriteOpResult, MongoCountPreferences } from 'mongodb';
 import * as _ from 'underscore';
@@ -16,7 +18,7 @@ import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { MongoCommand } from '../MongoCommand';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
-// tslint:disable:no-var-requires no-require-imports
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const EJSON = require("mongodb-extended-json");
 
 type MongoFunction = (...args: ({} | {}[] | undefined)[]) => Thenable<string>;
@@ -54,11 +56,13 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
     }
 
     public async writeFileContent(context: IActionContext, content: string): Promise<void> {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const documents: IMongoDocument[] = EJSON.parse(content);
         const operations = documents.map((document) => {
             return {
                 replaceOne: {
                     filter: { _id: document._id },
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
                     replacement: _.omit(document, '_id'),
                     upsert: false
                 }
@@ -86,6 +90,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 
     public async getFileContent(context: IActionContext): Promise<string> {
         const children = <MongoDocumentTreeItem[]>await this.getCachedChildren(context);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         return EJSON.stringify(children.map(c => c.document), null, 2);
     }
 
@@ -156,6 +161,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDocumentTreeItem> {
         context.showCreatingTreeItem("");
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const result: InsertOneWriteOpResult<MongoDocument> = await this.collection.insertOne({});
         const newDocument: IMongoDocument = nonNullValue(await this.collection.findOne({ _id: result.insertedId }), 'newDocument');
         return new MongoDocumentTreeItem(this, newDocument);
@@ -177,11 +183,13 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
             remove: new FunctionDescriptor(this.remove, 'Deleting document(s)', 1, 2, 1)
         };
 
+        // eslint-disable-next-line no-prototype-builtins
         if (command.name && functions.hasOwnProperty(command.name)) {
             // currently no logic to handle chained commands so just defer to the shell right away
             if (command.chained) {
                 return { deferToShell: true, result: undefined };
             }
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const descriptor: FunctionDescriptor = functions[command.name];
 
             if (parameters.length < descriptor.minShellArgs) {
@@ -214,6 +222,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
             await this.collection.drop();
             return `Dropped collection '${this.collection.collectionName}'.`;
         } catch (e) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const error: { code?: number, name?: string } = e;
             const NamespaceNotFoundCode = 26;
             if (error.name === 'MongoError' && error.code === NamespaceNotFoundCode) {
@@ -225,9 +234,11 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
     }
 
     private async findOne(query?: Object, fieldsOption?: Object): Promise<string> {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const result = await this.collection.findOne(query || {}, { fields: fieldsOption });
         // findOne is the only command in this file whose output requires EJSON support.
         // Hence that's the only function which uses EJSON.stringify rather than this.stringify.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         return EJSON.stringify(result, null, '\t');
     }
 
@@ -240,25 +251,29 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
         return this.stringify(insertResult);
     }
 
-    // tslint:disable-next-line:no-any
     private async insertOne(document: Object, options?: any): Promise<string> {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         const insertOneResult: InsertOneWriteOpResult<MongoDocument> = await this.collection.insertOne(document, { w: options && options.writeConcern });
         return this.stringify(insertOneResult);
     }
 
-    //tslint:disable:no-any
     private async insertMany(documents: any[], options?: any): Promise<string> {
         assert.notEqual(documents.length, 0, "Array of documents cannot be empty");
         const insertManyOptions: CollectionInsertManyOptions = {};
         if (options) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             if (options.ordered) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
                 insertManyOptions.ordered = options.ordered;
             }
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             if (options.writeConcern) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
                 insertManyOptions.w = options.writeConcern;
             }
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const insertManyResult: InsertWriteOpResult<MongoDocument> = await this.collection.insertMany(documents, insertManyOptions);
         return this.stringify(insertManyResult);
     }
@@ -283,7 +298,6 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
         return this.stringify(count);
     }
 
-    // tslint:disable-next-line:no-any
     private stringify(result: any): string {
         return JSON.stringify(result, null, '\t');
     }
@@ -300,11 +314,12 @@ function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
         });
 }
 
-// tslint:disable-next-line:no-any
 function parseJSContent(content: string): any {
     try {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         return EJSON.parse(content);
     } catch (error) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         throw error.message;
     }
 }

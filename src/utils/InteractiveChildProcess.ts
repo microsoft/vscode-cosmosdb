@@ -114,14 +114,15 @@ export class InteractiveChildProcess {
         });
 
         // Wait for the process to start up
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises, no-async-promise-executor
         await new Promise<void>(async (resolve, reject) => {
             const started = Date.now();
-            // tslint:disable-next-line:promise-must-complete no-constant-condition
+            // eslint-disable-next-line no-constant-condition
             while (true) {
                 if (!!this._error || this._isKilling) {
                     reject(this._error);
                     break;
-                } else if (!!this._childProc.pid) {
+                } else if (this._childProc.pid) {
                     resolve();
                     break;
                 } else {
@@ -170,7 +171,6 @@ export class InteractiveChildProcess {
 
 async function delay(milliseconds: number): Promise<void> {
     return new Promise(resolve => {
-        // tslint:disable-next-line:no-string-based-set-timeout // false positive
         setTimeout(resolve, milliseconds);
     });
 }

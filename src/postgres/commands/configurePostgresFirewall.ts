@@ -50,7 +50,7 @@ export async function setFirewallRule(context: IActionContext, treeItem: Postgre
         await client.firewallRules.createOrUpdate(resourceGroup, serverName, firewallRuleName, newFirewallRule);
     });
     const completedMessage: string = localize('addedFirewallRule', 'Successfully added firewall rule for IP "{0}" to server "{1}".', ip, serverName);
-    vscode.window.showInformationMessage(completedMessage);
+    void vscode.window.showInformationMessage(completedMessage);
     ext.outputChannel.appendLog(completedMessage);
     await treeItem.refresh(context);
 }

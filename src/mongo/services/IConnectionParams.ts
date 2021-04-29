@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-interface IConnectionParams {
+export interface IConnectionParams {
     connectionString: string;
     databaseName: string;
     extensionUserAgent: string;

@@ -37,7 +37,6 @@ import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
 import { tryGetKeyTar } from './utils/keytar';
 import { localize } from './utils/localize';
 
-// tslint:disable-next-line: max-func-body-length
 export async function activateInternal(context: vscode.ExtensionContext, perfStats: { loadStartTime: number, loadEndTime: number }, ignoreBundle?: boolean): Promise<AzureExtensionApiProvider> {
     ext.context = context;
     ext.ignoreBundle = ignoreBundle;
@@ -47,7 +46,6 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     context.subscriptions.push(ext.outputChannel);
     registerUIExtensionVariables(ext);
 
-    // tslint:disable-next-line: max-func-body-length
     await callWithTelemetryAndErrorHandling('cosmosDB.activate', async (activateContext: IActionContext) => {
         activateContext.telemetry.properties.isActivationEvent = 'true';
         activateContext.telemetry.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
@@ -106,7 +104,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             const children = await ext.attachedAccountsNode.loadAllChildren(actionContext);
             if (children[0].contextValue === "cosmosDBAttachDatabaseAccount") {
                 const message = localize('noAttachedAccounts', 'There are no Attached Accounts.');
-                vscode.window.showInformationMessage(message);
+                void vscode.window.showInformationMessage(message);
             } else {
                 if (!node) {
                     node = await ext.tree.showTreeItemPicker<AzureTreeItem>(cosmosDBTopLevelContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
@@ -142,7 +140,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             }
 
             await copyConnectionString(node);
-            vscode.window.showInformationMessage(message);
+            void vscode.window.showInformationMessage(message);
         });
         registerCommand('cosmosDB.openDocument', async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
             if (!node) {
@@ -152,7 +150,6 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             // Clear un-uploaded local changes to the document before opening https://github.com/microsoft/vscode-cosmosdb/issues/1619
             ext.fileSystem.fireChangedEvent(node);
             await ext.fileSystem.showTextDocument(node);
-            // tslint:disable-next-line:align
         }, doubleClickDebounceDelay);
         registerCommand('azureDatabases.update', async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri));
         registerCommand('azureDatabases.loadMore', async (actionContext: IActionContext, node: AzExtTreeItem) => await ext.tree.loadMore(node, actionContext));

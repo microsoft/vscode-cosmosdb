@@ -7,10 +7,10 @@ import { appendExtensionUserAgent } from 'vscode-azureextensionui';
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
 import * as nls from 'vscode-nls';
 import { ext } from '../extensionVariables';
+import { IConnectionParams } from './services/IConnectionParams';
 
 const localize = nls.loadMessageBundle();
 
-// tslint:disable-next-line: export-name
 export class MongoDBLanguageClient {
 
     public client: LanguageClient;

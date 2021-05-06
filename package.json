@@ -1107,7 +1107,7 @@
         "pg-structure": "^6.2.0",
         "public-ip": "^4.0.0",
         "semver": "^7.2.2",
-        "underscore": "^1.8.3",
+        "underscore": "^1.12.1",
         "vscode-azureextensionui": "^0.41.3",
         "vscode-json-languageservice": "^3.0.8",
         "vscode-languageclient": "^6.1.3",

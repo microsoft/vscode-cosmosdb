@@ -48,7 +48,7 @@ const availableSkus: Array<SkuOption> = [
             tier: "Basic",
             capacity: 1,
             family: "Gen5",
-            size: "5000"
+            size: "5120"
         }
     },
     {
@@ -58,7 +58,7 @@ const availableSkus: Array<SkuOption> = [
             tier: "Basic",
             capacity: 2,
             family: "Gen5",
-            size: "50000"
+            size: "51200"
         }
     },
     {
@@ -68,7 +68,7 @@ const availableSkus: Array<SkuOption> = [
             tier: "GeneralPurpose",
             capacity: 2,
             family: "Gen5",
-            size: "50000"
+            size: "51200"
         }
     },
     {
@@ -78,7 +78,7 @@ const availableSkus: Array<SkuOption> = [
             tier: "GeneralPurpose",
             capacity: 4,
             family: "Gen5",
-            size: "50000"
+            size: "51200"
         }
     },
     {
@@ -88,7 +88,7 @@ const availableSkus: Array<SkuOption> = [
             tier: "GeneralPurpose",
             capacity: 8,
             family: "Gen5",
-            size: "200000"
+            size: "204800"
         }
     },
     {
@@ -98,7 +98,7 @@ const availableSkus: Array<SkuOption> = [
             tier: "GeneralPurpose",
             capacity: 16,
             family: "Gen5",
-            size: "200000"
+            size: "204800"
         }
     },
     {
@@ -108,7 +108,7 @@ const availableSkus: Array<SkuOption> = [
             tier: "GeneralPurpose",
             capacity: 32,
             family: "Gen5",
-            size: "200000"
+            size: "204800"
         }
     },
     {
@@ -118,7 +118,7 @@ const availableSkus: Array<SkuOption> = [
             tier: "GeneralPurpose",
             capacity: 64,
             family: "Gen5",
-            size: "200000"
+            size: "204800"
         }
     }
 ];

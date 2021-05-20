@@ -56,7 +56,7 @@ const availableSkus: Array<SkuOption> = [
         sku: {
             name: "B_Gen5_2",
             tier: "Basic",
-            capacity: 1,
+            capacity: 2,
             family: "Gen5",
             size: "50000"
         }
@@ -66,7 +66,7 @@ const availableSkus: Array<SkuOption> = [
         sku: {
             name: "GP_Gen5_2",
             tier: "GeneralPurpose",
-            capacity: 1,
+            capacity: 2,
             family: "Gen5",
             size: "50000"
         }
@@ -76,7 +76,7 @@ const availableSkus: Array<SkuOption> = [
         sku: {
             name: "GP_Gen5_4",
             tier: "GeneralPurpose",
-            capacity: 1,
+            capacity: 4,
             family: "Gen5",
             size: "50000"
         }
@@ -86,7 +86,7 @@ const availableSkus: Array<SkuOption> = [
         sku: {
             name: "GP_Gen5_8",
             tier: "GeneralPurpose",
-            capacity: 1,
+            capacity: 8,
             family: "Gen5",
             size: "200000"
         }
@@ -96,7 +96,7 @@ const availableSkus: Array<SkuOption> = [
         sku: {
             name: "GP_Gen5_16",
             tier: "GeneralPurpose",
-            capacity: 1,
+            capacity: 16,
             family: "Gen5",
             size: "200000"
         }
@@ -106,7 +106,7 @@ const availableSkus: Array<SkuOption> = [
         sku: {
             name: "GP_Gen5_32",
             tier: "GeneralPurpose",
-            capacity: 1,
+            capacity: 32,
             family: "Gen5",
             size: "200000"
         }
@@ -116,7 +116,7 @@ const availableSkus: Array<SkuOption> = [
         sku: {
             name: "GP_Gen5_64",
             tier: "GeneralPurpose",
-            capacity: 1,
+            capacity: 64,
             family: "Gen5",
             size: "200000"
         }

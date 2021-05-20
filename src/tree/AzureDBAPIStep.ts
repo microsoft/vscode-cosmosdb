@@ -15,6 +15,7 @@ import { PostgresServerFirewallStep } from '../postgres/commands/createPostgresS
 import { PostgresServerNameStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerNameStep';
 import { PostgresServerSetCredentialsStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerSetCredentialsStep';
 import { PostgresServerSetFirewallStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerSetFirewallStep';
+import { PostgresServerSkuStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerSkuStep';
 import { localize } from '../utils/localize';
 import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccountCreateStep';
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
@@ -38,6 +39,7 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
         if (wizardContext.defaultExperience?.api === API.Postgres) {
             promptSteps = [
                 new PostgresServerNameStep(),
+                new PostgresServerSkuStep(),
                 new PostgresServerCredUserStep(),
                 new PostgresServerCredPWStep(),
                 new PostgresServerConfirmPWStep(),

@@ -1020,6 +1020,11 @@
                     ],
                     "description": "The field values to display as labels in the treeview for Cosmos DB and MongoDB documents, in priority order"
                 },
+                "cosmosDB.enableEndpointDiscovery": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Flag to enable/disable automatic redirecting of requests based on read/write operations."
+                },
                 "cosmosDB.showSavePrompt": {
                     "type": "boolean",
                     "default": true,

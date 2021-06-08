@@ -45,7 +45,7 @@ suiteTeardown(async function (this: Mocha.Context): Promise<void> {
         await Promise.all([delayOpAccount(5, accountList[AccountApi.Graph], deleteAccount), delayOpAccount(10, accountList[AccountApi.MongoDB], deleteAccount), delayOpAccount(15, accountList[AccountApi.Core], deleteAccount)]);
         try {
             // If two or more of the following asserts fail, only one error will be thrown as a result.
-            for (const key in accountList) {
+            for (const key of Object.keys(accountList)) {
                 const accountName: string = accountList[key];
                 assert.ok(accountItem[accountName]);
                 const getDatabaseAccount: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupList[key]);
@@ -113,8 +113,8 @@ async function delayOpAccount(s: number, accountTypeOrName: RegExp | string, cal
 }
 
 export async function getAccountType(dictionary: {}, value: string): Promise<string> {
-    for (const key in dictionary) {
-        if (Object.prototype.hasOwnProperty.call(dictionary, key) && dictionary[key] == value) {
+    for (const key of Object.keys(dictionary)) {
+        if (dictionary[key] === value) {
             return key;
         }
     }

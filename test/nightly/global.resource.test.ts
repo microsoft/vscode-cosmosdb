@@ -17,6 +17,11 @@ export const resourceGroupsToDelete: string[] = [];
 export const accountList: {} = {};
 export const resourceGroupList: {} = {};
 const accountItem: {} = {};
+export enum AccountApi {
+    MongoDB = 'MongoDB',
+    Graph = 'Gremlin',
+    Core = 'SQL'
+}
 
 suiteSetup(async function (this: Mocha.Context): Promise<void> {
     if (longRunningTestsEnabled) {
@@ -37,11 +42,11 @@ suiteTeardown(async function (this: Mocha.Context): Promise<void> {
         this.timeout(10 * 60 * 1000);
 
         // Delete account
-        await Promise.all([delayOpAccount(5, accountList['Gremlin'], deleteAccount), delayOpAccount(10, accountList['MongoDB'], deleteAccount), delayOpAccount(15, accountList['SQL'], deleteAccount)]);
+        await Promise.all([delayOpAccount(5, accountList[AccountApi.Graph], deleteAccount), delayOpAccount(10, accountList[AccountApi.MongoDB], deleteAccount), delayOpAccount(15, accountList[AccountApi.Core], deleteAccount)]);
         try {
             // If two or more of the following asserts fail, only one error will be thrown as a result.
             for (const key in accountList) {
-                const accountName: string = accountList[key]
+                const accountName: string = accountList[key];
                 assert.ok(accountItem[accountName]);
                 const getDatabaseAccount: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupList[key]);
                 const accountExists: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = getDatabaseAccount.find((account: CosmosDBManagementModels.DatabaseAccountGetResults) => account.name === accountName);

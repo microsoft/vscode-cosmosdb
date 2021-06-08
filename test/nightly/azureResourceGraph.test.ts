@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
-import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
+import { accountList, client, resourceGroupList, testAccount } from './global.resource.test';
 
 suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(20 * 60 * 1000);
@@ -23,8 +23,8 @@ suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
             this.skip();
         }
         this.timeout(2 * 60 * 1000);
-        resourceGroupName = resourceGroupList[AccountApi.Graph];
-        accountName = accountList[AccountApi.Graph];
+        resourceGroupName = resourceGroupList['Gremlin'];
+        accountName = accountList['Gremlin'];
         databaseName = randomUtils.getRandomHexString(12);
     });
 

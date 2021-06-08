@@ -17,11 +17,6 @@ export const resourceGroupsToDelete: string[] = [];
 export const accountList: {} = {};
 export const resourceGroupList: {} = {};
 const accountItem: {} = {};
-export enum AccountApi {
-    MongoDB = 'MongoDB',
-    Graph = 'graph',
-    Core = 'SQL'
-}
 
 suiteSetup(async function (this: Mocha.Context): Promise<void> {
     if (longRunningTestsEnabled) {
@@ -33,7 +28,7 @@ suiteSetup(async function (this: Mocha.Context): Promise<void> {
         client = createAzureClient(testAccount.getSubscriptionContext(), CosmosDBManagementClient);
 
         // Create account
-        await Promise.all([delayOpAccount(5, /graph/, createAccount), delayOpAccount(10, /MongoDB/, createAccount), delayOpAccount(15, /SQL/, createAccount)]);
+        await Promise.all([delayOpAccount(5, /Gremlin/, createAccount), delayOpAccount(10, /MongoDB/, createAccount), delayOpAccount(15, /SQL/, createAccount)]);
     }
 });
 
@@ -42,11 +37,16 @@ suiteTeardown(async function (this: Mocha.Context): Promise<void> {
         this.timeout(10 * 60 * 1000);
 
         // Delete account
-        await Promise.all([delayOpAccount(5, /MongoDB/, deleteAccount), delayOpAccount(10, /SQL/, deleteAccount)]);
+        await Promise.all([delayOpAccount(5, accountList['Gremlin'], deleteAccount), delayOpAccount(10, accountList['MongoDB'], deleteAccount), delayOpAccount(15, accountList['SQL'], deleteAccount)]);
         try {
             // If two or more of the following asserts fail, only one error will be thrown as a result.
-            await doesAccountExsit(AccountApi.MongoDB);
-            await doesAccountExsit(AccountApi.Core);
+            for (const key in accountList) {
+                const accountName: string = accountList[key]
+                assert.ok(accountItem[accountName]);
+                const getDatabaseAccount: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupList[key]);
+                const accountExists: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = getDatabaseAccount.find((account: CosmosDBManagementModels.DatabaseAccountGetResults) => account.name === accountName);
+                assert.ifError(accountExists);
+            }
         } catch (error) {
             throw new Error(error);
         }
@@ -84,27 +84,20 @@ async function createAccount(accountType: RegExp): Promise<void> {
     });
 }
 
-async function doesAccountExsit(accountType: string): Promise<void> {
-    assert.ok(accountItem[accountType], `${accountType} account does not exist`);
-    const getDatabaseAccount: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupList[accountType]);
-    const accountExists: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = getDatabaseAccount.find((account: CosmosDBManagementModels.DatabaseAccountGetResults) => account.name === accountList[accountType]);
-    assert.ifError(accountExists);
-}
-
-async function deleteAccount(accountType: RegExp): Promise<void> {
-    const getAccount: CosmosDBManagementModels.DatabaseAccountGetResults = await client.databaseAccounts.get(resourceGroupList[accountType.source], accountList[accountType.source]);
-    accountItem[accountType.source] = getAccount;
-    const testInputs: string[] = [`${accountList[accountType.source]} (${accountType.source})`, DialogResponses.deleteResponse.title];
+async function deleteAccount(name: string): Promise<void> {
+    const accountType: string = await getAccountType(accountList, name);
+    accountItem[name] = await client.databaseAccounts.get(resourceGroupList[accountType], name);
+    const testInputs: string[] = [`${name} (${accountType})`, DialogResponses.deleteResponse.title];
     await testUserInput.runWithInputs(testInputs, async () => {
         await vscode.commands.executeCommand('cosmosDB.deleteAccount');
     });
 }
 
-async function delayOpAccount(s: number, accountType: RegExp, callback: (arg0: RegExp) => Promise<void>): Promise<void> {
+async function delayOpAccount(s: number, accountTypeOrName: RegExp | string, callback: (arg0: RegExp | string) => Promise<void>): Promise<void> {
     await new Promise<void>((resolve: () => void): void => {
         setTimeout(async () => {
             try {
-                await callback(accountType);
+                await callback(accountTypeOrName);
             } catch {
             }
             finally {
@@ -112,4 +105,13 @@ async function delayOpAccount(s: number, accountType: RegExp, callback: (arg0: R
             }
         }, s * 1000);
     });
+}
+
+export async function getAccountType(dictionary: {}, value: string): Promise<string> {
+    for (const key in dictionary) {
+        if (dictionary.hasOwnProperty(key) && dictionary[key] == value) {
+            return key;
+        }
+    }
+    return '';
 }

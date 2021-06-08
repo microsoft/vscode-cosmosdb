@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { appendExtensionUserAgent, connectToMongoClient, DialogResponses, IDatabaseInfo, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled, testUserInput } from '../global.test';
 import { getConnectionString } from './getConnectionString';
-import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
+import { accountList, client, resourceGroupList, testAccount } from './global.resource.test';
 
 suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
     this.timeout(20 * 60 * 1000);
@@ -25,8 +25,8 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
             this.skip();
         }
         this.timeout(2 * 60 * 1000);
-        resourceGroupName = resourceGroupList[AccountApi.MongoDB];
-        accountName = accountList[AccountApi.MongoDB];
+        resourceGroupName = resourceGroupList['MongoDB'];
+        accountName = accountList['MongoDB'];
         databaseName1 = randomUtils.getRandomHexString(12);
         databaseName2 = randomUtils.getRandomHexString(12);
         collectionName1 = randomUtils.getRandomHexString(12);

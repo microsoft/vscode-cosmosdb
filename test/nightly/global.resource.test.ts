@@ -109,7 +109,7 @@ async function delayOpAccount(s: number, accountTypeOrName: RegExp | string, cal
 
 export async function getAccountType(dictionary: {}, value: string): Promise<string> {
     for (const key in dictionary) {
-        if (dictionary.hasOwnProperty(key) && dictionary[key] == value) {
+        if (Object.prototype.hasOwnProperty.call(dictionary, key) && dictionary[key] == value) {
             return key;
         }
     }

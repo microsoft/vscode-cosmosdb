@@ -52,8 +52,8 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
             ];
         } else {
             promptSteps = [
-                new CosmosDBAccountCapacityStep(),
                 new CosmosDBAccountNameStep(),
+                new CosmosDBAccountCapacityStep(),
             ];
             executeSteps = [
                 new CosmosDBAccountCreateStep(),

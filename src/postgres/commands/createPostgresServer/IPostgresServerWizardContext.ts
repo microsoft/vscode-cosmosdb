@@ -18,9 +18,6 @@ export interface IPostgresServerWizardContext extends IAzureDBWizardContext {
     longUserName?: string;
     adminPassword?: string;
 
-    addFirewall?: boolean;
-    publicIp?: string;
-
     server?: Server;
 
 }

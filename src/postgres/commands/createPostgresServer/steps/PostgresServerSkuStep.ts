@@ -40,7 +40,7 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
     }
 }
 
-const availableSkus: Array<SkuOption> = [
+const availableSkus: ISkuOption[] = [
     {
         label: "Basic, 1 vCore, 2GiB Memory, 5GB storage",
         sku: {

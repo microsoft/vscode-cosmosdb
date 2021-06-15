@@ -10,21 +10,15 @@ import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
-class SkuOption {
+interface ISkuOption {
     label: string
     sku: Sku
 }
 
 export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
-    public postgresDefaultStorageSizeMB: number = 51200;
-
-
     public async prompt(wizardContext: IPostgresServerWizardContext): Promise<void> {
-
         const placeHolder: string = localize('selectPostgresSku', 'Select the Postgres SKU and options.');
-
         wizardContext.sku = (await ext.ui.showQuickPick(this.getPicks(), { placeHolder })).data;
-
     }
 
     public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {

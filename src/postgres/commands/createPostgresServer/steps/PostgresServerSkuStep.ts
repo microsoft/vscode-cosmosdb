@@ -10,7 +10,7 @@ import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
-class SkuOption {
+interface ISkuOption {
     label: string
     sku: Sku
 }

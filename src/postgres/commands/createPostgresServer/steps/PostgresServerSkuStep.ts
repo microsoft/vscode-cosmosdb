@@ -12,6 +12,7 @@ import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 interface ISkuOption {
     label: string
+    detail: string
     sku: Sku
 }
 
@@ -28,7 +29,7 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
     public async getPicks(): Promise<IAzureQuickPickItem<Sku>[]> {
         const options: IAzureQuickPickItem<Sku>[] = [];
         availableSkus.forEach(option => {
-            options.push({ label: localize(nonNullProp(option.sku, 'name'), option.label), data: option.sku });
+            options.push({ label: option.label, description: localize(nonNullProp(option.sku, 'name'), option.detail), data: option.sku });
         });
         return options;
     }
@@ -36,7 +37,8 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
 
 const availableSkus: ISkuOption[] = [
     {
-        label: "Basic, 1 vCore, 2GiB Memory, 5GB storage",
+        label: "B1",
+        detail: "Basic, 1 vCore, 2GiB Memory, 5GB storage",
         sku: {
             name: "B_Gen5_1",
             tier: "Basic",
@@ -46,7 +48,8 @@ const availableSkus: ISkuOption[] = [
         }
     },
     {
-        label: "Basic, 2 vCores, 4GiB Memory, 50GB storage",
+        label: "B2",
+        detail: "Basic, 2 vCores, 4GiB Memory, 50GB storage",
         sku: {
             name: "B_Gen5_2",
             tier: "Basic",
@@ -56,7 +59,8 @@ const availableSkus: ISkuOption[] = [
         }
     },
     {
-        label: "General, 2 vCores, 10GiB Memory, 50GB storage",
+        label: "GP2",
+        detail: "General Purpose, 2 vCores, 10GiB Memory, 50GB storage",
         sku: {
             name: "GP_Gen5_2",
             tier: "GeneralPurpose",
@@ -66,7 +70,8 @@ const availableSkus: ISkuOption[] = [
         }
     },
     {
-        label: "General, 4 vCores, 20GiB Memory, 50GB storage",
+        label: "GP4",
+        detail: "General Purpose, 4 vCores, 20GiB Memory, 50GB storage",
         sku: {
             name: "GP_Gen5_4",
             tier: "GeneralPurpose",
@@ -76,7 +81,8 @@ const availableSkus: ISkuOption[] = [
         }
     },
     {
-        label: "General, 8 vCores, 40GiB Memory, 200GB storage",
+        label: "GP8",
+        detail: "General Purpose, 8 vCores, 40GiB Memory, 200GB storage",
         sku: {
             name: "GP_Gen5_8",
             tier: "GeneralPurpose",
@@ -86,7 +92,8 @@ const availableSkus: ISkuOption[] = [
         }
     },
     {
-        label: "General, 16 vCores, 80GiB Memory, 200GB storage",
+        label: "GP16",
+        detail: "General Purpose, 16 vCores, 80GiB Memory, 200GB storage",
         sku: {
             name: "GP_Gen5_16",
             tier: "GeneralPurpose",
@@ -96,7 +103,8 @@ const availableSkus: ISkuOption[] = [
         }
     },
     {
-        label: "General, 32 vCores, 160GiB Memory, 200GB storage",
+        label: "GP32",
+        detail: "General Purpose, 32 vCores, 160GiB Memory, 200GB storage",
         sku: {
             name: "GP_Gen5_32",
             tier: "GeneralPurpose",
@@ -106,7 +114,8 @@ const availableSkus: ISkuOption[] = [
         }
     },
     {
-        label: "General, 64 vCores, 320GiB Memory, 200GB storage",
+        label: "GP64",
+        detail: "General Purpose, 64 vCores, 320GiB Memory, 200GB storage",
         sku: {
             name: "GP_Gen5_64",
             tier: "GeneralPurpose",

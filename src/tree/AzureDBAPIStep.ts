@@ -15,6 +15,7 @@ import { PostgresServerNameStep } from '../postgres/commands/createPostgresServe
 import { PostgresServerSetCredentialsStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerSetCredentialsStep';
 import { PostgresServerSkuStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerSkuStep';
 import { localize } from '../utils/localize';
+import { CosmosDBAccountCapacityStep } from './CosmosDBAccountWizard/CosmosDBAccountCapacityStep';
 import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccountCreateStep';
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
@@ -49,7 +50,8 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
             ];
         } else {
             promptSteps = [
-                new CosmosDBAccountNameStep()
+                new CosmosDBAccountNameStep(),
+                new CosmosDBAccountCapacityStep(),
             ];
             executeSteps = [
                 new CosmosDBAccountCreateStep(),

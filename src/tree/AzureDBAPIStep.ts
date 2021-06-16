@@ -11,10 +11,8 @@ import { PostgresServerConfirmPWStep } from '../postgres/commands/createPostgres
 import { PostgresServerCreateStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerCreateStep';
 import { PostgresServerCredPWStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerCredPWStep';
 import { PostgresServerCredUserStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerCredUserStep';
-import { PostgresServerFirewallStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerFirewallStep';
 import { PostgresServerNameStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerNameStep';
 import { PostgresServerSetCredentialsStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerSetCredentialsStep';
-import { PostgresServerSetFirewallStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerSetFirewallStep';
 import { PostgresServerSkuStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerSkuStep';
 import { localize } from '../utils/localize';
 import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccountCreateStep';
@@ -43,12 +41,10 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
                 new PostgresServerCredUserStep(),
                 new PostgresServerCredPWStep(),
                 new PostgresServerConfirmPWStep(),
-                new PostgresServerFirewallStep()
             ];
             executeSteps = [
                 new PostgresServerCreateStep(),
                 new PostgresServerSetCredentialsStep(),
-                new PostgresServerSetFirewallStep(),
                 new VerifyProvidersStep(['Microsoft.DBforPostgreSQL'])
             ];
         } else {

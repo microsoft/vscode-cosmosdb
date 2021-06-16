@@ -5,7 +5,7 @@
 import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { ServerForCreate } from '@azure/arm-postgresql/src/models';
 import { Progress } from 'vscode';
-import { AzureWizardExecuteStep, callWithMaskHandling, createAzureClient } from 'vscode-azureextensionui';
+import { AzureWizardExecuteStep, callWithMaskHandling, createAzureClient, LocationListStep } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
@@ -16,7 +16,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
 
     public async execute(wizardContext: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
-        const locationName = nonNullProp(nonNullProp(wizardContext, 'location'), 'name');
+        const locationName = (await LocationListStep.getLocation(wizardContext)).name;
         const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
         const storageMB: string = nonNullProp(nonNullProp(wizardContext, 'sku'), 'size');
         const newServerName = nonNullProp(wizardContext, 'newServerName');

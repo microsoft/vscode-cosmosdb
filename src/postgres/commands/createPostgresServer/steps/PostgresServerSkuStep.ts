@@ -2,21 +2,19 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-
 import { Sku } from "@azure/arm-postgresql/src/models";
-import {
-    AzureWizardPromptStep,
-    IAzureQuickPickItem
-} from "vscode-azureextensionui";
+import { AzureWizardPromptStep, IAzureQuickPickItem } from "vscode-azureextensionui";
 import { ext } from "../../../../extensionVariables";
 import { localize } from "../../../../utils/localize";
 import { nonNullProp } from "../../../../utils/nonNull";
+import { openUrl } from "../../../../utils/openUrl";
 import { IPostgresServerWizardContext } from "../IPostgresServerWizardContext";
 
 interface ISkuOption {
     label: string;
     description: string;
     sku: Sku;
+    group?: string;
 }
 
 export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
@@ -27,17 +25,23 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
             "selectPostgresSku",
             "Select the Postgres SKU and options."
         );
+        const pricingTiers: IAzureQuickPickItem<Sku | undefined>[] = await this.getPicks();
+        pricingTiers.push({ label: localize('ShowPricingCalculator', '$(link-external) Show pricing information...'), data: undefined, suppressPersistence: true });
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         wizardContext.sku = (
-            await ext.ui.showQuickPick(this.getPicks(), { placeHolder })
+            await ext.ui.showQuickPick(this.getPicks(), { placeHolder, enableGrouping: true })
         ).data;
+        if (!wizardContext.sku) {
+            await openUrl('https://aka.ms/AAcxhvm');
+        }
     }
 
     public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {
         return wizardContext.sku === undefined;
     }
 
-    public async getPicks(): Promise<IAzureQuickPickItem<Sku>[]> {
-        const options: IAzureQuickPickItem<Sku>[] = [];
+    public async getPicks(): Promise<IAzureQuickPickItem<Sku | undefined>[]> {
+        const options: IAzureQuickPickItem<Sku | undefined>[] = [];
         availableSkus.forEach((option) => {
             options.push({
                 label: option.label,
@@ -46,12 +50,14 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
                     option.description
                 ),
                 data: option.sku,
+                group: option.group || localize('addlOptions', 'Additional Options')
             });
         });
         return options;
     }
 }
 
+const recommendedGroup = localize('recommendGroup', 'Recommended');
 const availableSkus: ISkuOption[] = [
     {
         label: "B1",
@@ -63,6 +69,7 @@ const availableSkus: ISkuOption[] = [
             family: "Gen5",
             size: "5120",
         },
+        group: recommendedGroup
     },
     {
         label: "B2",
@@ -85,6 +92,7 @@ const availableSkus: ISkuOption[] = [
             family: "Gen5",
             size: "51200",
         },
+        group: recommendedGroup
     },
     {
         label: "GP4",

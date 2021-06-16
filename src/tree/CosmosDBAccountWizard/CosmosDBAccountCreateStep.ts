@@ -6,7 +6,7 @@
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { DatabaseAccountCreateUpdateParameters, DatabaseAccountsCreateOrUpdateResponse } from '@azure/arm-cosmosdb/src/models';
 import { Progress } from 'vscode';
-import { AzureWizardExecuteStep, createAzureClient, LocationListStep } from 'vscode-azureextensionui';
+import { AzureWizardExecuteStep, createAzureClient } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
@@ -16,8 +16,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
     public priority: number = 130;
 
     public async execute(wizardContext: ICosmosDBWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
-        /* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
-        const locationName: string = (await LocationListStep.getLocation(wizardContext)).name;
+        const locationName: string = nonNullProp(nonNullProp(wizardContext, 'location'), 'name');
         const defaultExperience = nonNullProp(wizardContext, 'defaultExperience');
         const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
         const accountName = nonNullProp(wizardContext, 'newServerName');

@@ -53,7 +53,8 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     public get isServerless(): boolean {
-        return !!this.databaseAccount?.capabilities?.find(cap => cap.name === SERVERLESS_CAPABILITY_NAME);
+        return this.databaseAccount?.capabilities ? this.databaseAccount.capabilities.some(cap => cap.name === SERVERLESS_CAPABILITY_NAME) : false;
+
     }
 
     public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<DatabaseDefinition & Resource> {

@@ -18,7 +18,7 @@ export class CosmosDBAccountCapacityStep extends AzureWizardPromptStep<ICosmosDB
             { label: localize('provisionedOption', 'Provisioned Throughput'), data: false },
             { label: localize('serverlessOption', 'Serverless'), data: true },
         ];
-        const learnMore: IAzureQuickPickItem = { label: localize('learnMore', '$(link-external) Learn more...'), description: '', data: undefined };
+        const learnMore: IAzureQuickPickItem = { label: localize('learnMore', '$(link-external) Learn more...'), data: undefined };
         picks.push(learnMore);
         let pick: IAzureQuickPickItem<boolean | undefined>;
 
@@ -33,14 +33,9 @@ export class CosmosDBAccountCapacityStep extends AzureWizardPromptStep<ICosmosDB
             wizardContext.isServerless = pick.data;
             wizardContext.telemetry.properties.isServerless = pick.data ? 'true' : 'false';
         }
-
-
-
     }
-
 
     public shouldPrompt(wizardContext: ICosmosDBWizardContext): boolean {
         return wizardContext.isServerless === undefined;
     }
 }
-

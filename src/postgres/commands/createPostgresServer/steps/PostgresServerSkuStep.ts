@@ -26,13 +26,18 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
             "Select the Postgres SKU and options."
         );
         const pricingTiers: IAzureQuickPickItem<Sku | undefined>[] = await this.getPicks();
-        pricingTiers.push({ label: localize('ShowPricingCalculator', '$(link-external) Show pricing information...'), data: undefined, suppressPersistence: true });
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        wizardContext.sku = (
-            await ext.ui.showQuickPick(this.getPicks(), { placeHolder, enableGrouping: true })
-        ).data;
-        if (!wizardContext.sku) {
-            await openUrl('https://aka.ms/AAcxhvm');
+        const moreInfo: IAzureQuickPickItem = { label: localize('ShowPricingCalculator', '$(link-external) Show pricing information...'), data: undefined }
+        pricingTiers.push(moreInfo);
+        let pick: IAzureQuickPickItem<Sku | undefined>;
+        do {
+            pick = await ext.ui.showQuickPick(pricingTiers, { placeHolder, suppressPersistence: true, enableGrouping: true });
+            if (pick === moreInfo) {
+                await openUrl('https://aka.ms/AAcxhvm');
+            }
+        } while (pick === moreInfo);
+
+        if (pick.data) {
+            wizardContext.sku = pick.data;
         }
     }
 

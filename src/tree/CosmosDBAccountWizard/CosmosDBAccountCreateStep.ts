@@ -7,6 +7,7 @@ import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { DatabaseAccountCreateUpdateParameters, DatabaseAccountsCreateOrUpdateResponse } from '@azure/arm-cosmosdb/src/models';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, createAzureClient, LocationListStep } from 'vscode-azureextensionui';
+import { SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
@@ -31,6 +32,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             location: locationName,
             locations: [{ locationName: locationName }],
             kind: defaultExperience.kind,
+            capabilities: [],
             // Note: Setting this tag has no functional effect in the portal, but we'll keep doing it to imitate portal behavior
             tags: { defaultExperience: nonNullProp(defaultExperience, 'tag') },
         };
@@ -40,7 +42,11 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
         }
 
         if (defaultExperience.capability) {
-            options.capabilities = [{ name: defaultExperience.capability }];
+            options.capabilities?.push({ name: defaultExperience.capability });
+        }
+
+        if (wizardContext.isServerless) {
+            options.capabilities?.push({ name: SERVERLESS_CAPABILITY_NAME });
         }
 
         const response: DatabaseAccountsCreateOrUpdateResponse = await client.databaseAccounts.createOrUpdate(rgName, accountName, options);

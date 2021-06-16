@@ -13,5 +13,6 @@ export interface ICosmosDBWizardContext extends IAzureDBWizardContext {
      * This will be defined after `CosmosDBAccountStep.execute` occurs.
      */
     databaseAccount?: DatabaseAccountGetResults;
+    isServerless?: boolean;
 
 }

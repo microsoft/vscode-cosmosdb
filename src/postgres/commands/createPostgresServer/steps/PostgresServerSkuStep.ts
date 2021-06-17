@@ -33,10 +33,7 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
             }, data: undefined
         });
 
-        const pick: IAzureQuickPickItem<Sku | undefined> = await ext.ui.showQuickPick(pricingTiers, { placeHolder, suppressPersistence: true, enableGrouping: true });
-        if (pick.data) {
-            wizardContext.sku = pick.data;
-        }
+        wizardContext.sku = (await ext.ui.showQuickPick(pricingTiers, { placeHolder, suppressPersistence: true, enableGrouping: true })).data;
     }
 
     public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {

@@ -16,7 +16,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
 
     public async execute(wizardContext: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
-        const locationName: string = (await LocationListStep.getLocation(wizardContext)).name
+        const locationName: string = (await LocationListStep.getLocation(wizardContext)).name;
         const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
         const storageMB: string = nonNullProp(nonNullProp(wizardContext, 'sku'), 'size');
         const newServerName = nonNullProp(wizardContext, 'newServerName');

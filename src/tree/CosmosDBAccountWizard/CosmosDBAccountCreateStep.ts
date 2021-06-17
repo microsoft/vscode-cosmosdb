@@ -17,7 +17,6 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
     public priority: number = 130;
 
     public async execute(wizardContext: ICosmosDBWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
-
         const locationName: string = (await LocationListStep.getLocation(wizardContext)).name;
         const defaultExperience = nonNullProp(wizardContext, 'defaultExperience');
         const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');

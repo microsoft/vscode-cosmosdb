@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
-import { DatabaseListResult, Server } from '@azure/arm-postgresql/src/models';
+import { DatabaseListResult } from '@azure/arm-postgresql/src/models';
 import { ClientConfig } from 'pg';
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
@@ -14,6 +14,7 @@ import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
+import { PostgresAbstractServer } from '../abstract/models';
 import { getClientConfig } from '../getClientConfig';
 import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
@@ -42,7 +43,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     private _azureId: string | undefined;
     private _serverVersion: string | undefined;
 
-    constructor(parent: AzureParentTreeItem, connectionString: ParsedPostgresConnectionString, server?: Server) {
+    constructor(parent: AzureParentTreeItem, connectionString: ParsedPostgresConnectionString, server?: PostgresAbstractServer) {
         super(parent);
         this.partialConnectionString = connectionString;
         if (server) {

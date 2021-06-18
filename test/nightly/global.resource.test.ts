@@ -39,7 +39,7 @@ suiteSetup(async function (this: Mocha.Context): Promise<void> {
 
 suiteTeardown(async function (this: Mocha.Context): Promise<void> {
     if (longRunningTestsEnabled) {
-        this.timeout(10 * 60 * 1000);
+        this.timeout(20 * 60 * 1000);
 
         // Delete account
         await Promise.all([delayOpAccount(5, accountList[AccountApi.Graph], deleteAccount), delayOpAccount(10, accountList[AccountApi.MongoDB], deleteAccount), delayOpAccount(15, accountList[AccountApi.Core], deleteAccount)]);
@@ -119,4 +119,14 @@ async function getAccountType(dictionary: {}, value: string): Promise<string> {
         }
     }
     throw new Error(`Account type of the ${value} resource can't be found.`);
+}
+
+async function doesAccountExist(): Promise<void> {
+    for (const key of Object.keys(accountList)) {
+        const accountName: string = accountList[key];
+        assert.ok(accountItem[accountName]);
+        const getDatabaseAccount: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupList[key]);
+        const accountExists: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = getDatabaseAccount.find((account: CosmosDBManagementModels.DatabaseAccountGetResults) => account.name === accountName);
+        assert.ifError(accountExists);
+    }
 }

@@ -6,5 +6,6 @@
 import * as Models from './models';
 
 export interface IAbstractPostgresClient {
+    listDatabases(serverType: Models.PostgresServerType, resourceGroup: string, name: string): Promise<Models.PostgresAbstractDatabaseList>;
     listServers(): Promise<Models.PostgresAbstractServerList>;
 }

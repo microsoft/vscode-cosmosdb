@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
-import { DatabaseListResult } from '@azure/arm-postgresql/src/models';
 import { ClientConfig } from 'pg';
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
@@ -14,7 +13,9 @@ import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { PostgresAbstractServer } from '../abstract/models';
+import { AbstractPostgresClient } from '../abstract/AbstractPostgresClient';
+import { IAbstractPostgresClient } from '../abstract/IAbstractPostgresClient';
+import { PostgresAbstractServer, PostgresServerType } from '../abstract/models';
 import { getClientConfig } from '../getClientConfig';
 import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
@@ -42,6 +43,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
 
     private _azureId: string | undefined;
     private _serverVersion: string | undefined;
+    private _serverType: PostgresServerType;
 
     constructor(parent: AzureParentTreeItem, connectionString: ParsedPostgresConnectionString, server?: PostgresAbstractServer) {
         super(parent);
@@ -51,6 +53,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             this._serverVersion = server?.version;
             this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
             this.azureName = server?.name;
+            this._serverType = server.serverType;
         }
     }
 
@@ -70,7 +73,14 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get description(): string | undefined {
-        return "PostgreSQL";
+        switch(this._serverType){
+            case PostgresServerType.Flexible:
+                return "PostgreSQL Flexible";
+            case PostgresServerType.Single:
+                return "PostgreSQL Single";
+            default:
+                return "PostgreSQL";
+        }
     }
 
     public hasMoreChildrenImpl(): boolean {
@@ -80,8 +90,8 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
         let dbNames: (string | undefined)[];
         if (this.azureName) {
-            const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
-            const listOfDatabases: DatabaseListResult = await client.databases.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
+            const client: IAbstractPostgresClient = createAzureClient(this.root, AbstractPostgresClient);
+            const listOfDatabases = await client.listDatabases(this._serverType, nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
             dbNames = listOfDatabases.map(db => db?.name);
         } else if (this.partialConnectionString.databaseName) {
             dbNames = [this.partialConnectionString.databaseName];

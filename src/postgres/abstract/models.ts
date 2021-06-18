@@ -3,6 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+export enum PostgresServerType {
+    Flexible,
+    Single
+}
+
 export interface PostgresAbstractServer {
     /**
      * Fully qualified resource ID for the resource. Ex -
@@ -23,6 +28,26 @@ export interface PostgresAbstractServer {
      * Server version.
      */
     version?: string;
+    /**
+     * Azure Service type.
+     */
+    serverType: PostgresServerType;
 }
 
-export type PostgresAbstractServerList = Array<PostgresAbstractServer>
+export type PostgresAbstractServerList = Array<PostgresAbstractServer>;
+
+export interface PostgresAbstractDatabase {
+    /**
+     * Fully qualified resource ID for the resource. Ex -
+     * /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+     * **NOTE: This property will not be serialized. It can only be populated by the server.**
+     */
+     readonly id?: string;
+     /**
+      * The name of the resource
+      * **NOTE: This property will not be serialized. It can only be populated by the server.**
+      */
+     readonly name?: string;
+}
+
+export type PostgresAbstractDatabaseList = Array<PostgresAbstractDatabase>;

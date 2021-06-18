@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { ClientConfig } from 'pg';
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
@@ -143,10 +142,10 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        const client: PostgreSQLManagementClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        const client: IAbstractPostgresClient = createAzureClient(this.root, AbstractPostgresClient);
         const deletingMessage: string = `Deleting server "${this.label}"...`;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
-            await client.servers.deleteMethod(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
+            await client.deleteServer(this._serverType, nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
             await this.deletePostgresCredentials();
         });
     }

@@ -35,4 +35,15 @@ export class AbstractPostgresClient implements IAbstractPostgresClient  {
                 throw new Error("Service not implemented.");
         }
     }
+
+    async deleteServer(serverType: PostgresServerType, resourceGroup: string, name: string): Promise<msRest.RestResponse> {
+        switch (serverType){
+            case PostgresServerType.Flexible:
+                return this.postgresFlexibleClient.servers.deleteMethod(resourceGroup, name);
+            case PostgresServerType.Single:
+                return this.postgresSingleClient.servers.deleteMethod(resourceGroup, name);
+            default:
+                throw new Error("Service not implemented.");
+        }
+    }
 }

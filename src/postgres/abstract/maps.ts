@@ -65,8 +65,8 @@ export function asSingleParameters(parameters: AbstractServerCreate) : SingleMod
         },
         properties: {
             administratorLogin: parameters.administratorLogin,
-            administratorLoginPassword: parameters.administratorLogin,
-            sslEnforcement: parameters.sslEnforcement as SingleModels.SslEnforcementEnum,
+            administratorLoginPassword: parameters.administratorLoginPassword,
+            sslEnforcement: "Enabled",
             createMode: "Default",
             version: parameters.version as SingleModels.ServerVersion,
             storageProfile: {

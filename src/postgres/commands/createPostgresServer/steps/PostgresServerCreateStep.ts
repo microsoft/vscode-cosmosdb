@@ -36,12 +36,11 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                     sku: nonNullProp(wizardContext, 'sku'),
                     administratorLogin: nonNullProp(wizardContext, 'shortUserName'),
                     administratorLoginPassword: password,
-                    sslEnforcement: "Enabled",
                     version: this.defaultVersion,
                     storageMB: parseInt(storageMB)
                 };
 
-                wizardContext.server = await client.createServer(serverType, rgName, newServerName, options) ;
+                wizardContext.server = await client.createServer(serverType, rgName, newServerName, options);
             },
             password);
     }

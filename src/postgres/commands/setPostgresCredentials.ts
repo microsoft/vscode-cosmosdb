@@ -15,6 +15,7 @@ export async function setPostgresCredentials(username: string, password: string,
     if (ext.keytar) {
         const serviceName: string = PostgresServerTreeItem.serviceName;
         const storedValue: string | undefined = ext.context.globalState.get(serviceName);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         let servers: IPersistedServer[] = storedValue ? JSON.parse(storedValue) : [];
 
         // Remove this server from the cache if it's there

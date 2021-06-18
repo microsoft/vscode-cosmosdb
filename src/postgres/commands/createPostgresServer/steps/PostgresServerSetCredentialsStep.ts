@@ -29,7 +29,7 @@ export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPo
 
         await setPostgresCredentials(user, password, nonNullProp(server, 'id'));
         const completedMessage: string = localize('addedCredentialsMessage', 'Successfully setup credentials for server "{0}".', newServerName);
-        vscode.window.showInformationMessage(completedMessage);
+        void vscode.window.showInformationMessage(completedMessage);
         ext.outputChannel.appendLog(completedMessage);
     }
 

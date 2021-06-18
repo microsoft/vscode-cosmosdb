@@ -23,7 +23,7 @@ suite("timeout Tests", () => {
             let executed = false;
 
             await rejectOnTimeout(1, () => {
-                return new Promise((resolve, _reject) => {
+                return new Promise<void>((resolve, _reject) => {
                     executed = true;
                     resolve();
                 });
@@ -36,7 +36,7 @@ suite("timeout Tests", () => {
             let executed = false;
 
             await rejectOnTimeout(1000, () => {
-                return new Promise((resolve, _reject) => {
+                return new Promise<void>((resolve, _reject) => {
                     setTimeout(() => { executed = true; resolve(); }, 1);
                 });
             });
@@ -48,7 +48,7 @@ suite("timeout Tests", () => {
 
             try {
                 await rejectOnTimeout(1, async () => {
-                    await new Promise((resolve, _reject) => {
+                    await new Promise<void>((resolve, _reject) => {
                         setTimeout(() => { executed = true; resolve(); }, 1000);
                     });
                 });
@@ -66,7 +66,6 @@ suite("timeout Tests", () => {
 
             try {
                 await rejectOnTimeout(1000, async () => {
-                    // tslint:disable-next-line: promise-must-complete
                     await new Promise((_resolve, _reject) => {
                         throw new Error("I threw up");
                     });

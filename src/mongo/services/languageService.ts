@@ -10,13 +10,10 @@ import { getLanguageService, LanguageService as JsonLanguageService, SchemaConfi
 import { CompletionItem, IConnection, InitializeParams, InitializeResult, TextDocumentPositionParams, TextDocuments, TextDocumentSyncKind } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { connectToMongoClient } from '../connectToMongoClient';
+import { IConnectionParams } from './IConnectionParams';
 import { MongoScriptDocumentManager } from './mongoScript';
 import { SchemaService } from './schemaService';
 
-// grandfathered-in
-// tslint:disable: no-non-null-assertion
-
-// tslint:disable-next-line: export-name
 export class LanguageService {
 
     private textDocuments: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
@@ -48,12 +45,10 @@ export class LanguageService {
         });
 
         connection.onRequest('connect', (connectionParams: IConnectionParams) => {
-            // grandfathered in
-            // tslint:disable-next-line: no-floating-promises
-            connectToMongoClient(connectionParams.connectionString, connectionParams.extensionUserAgent)
+            void connectToMongoClient(connectionParams.connectionString, connectionParams.extensionUserAgent)
                 .then(account => {
                     this.db = account.db(connectionParams.databaseName);
-                    this.schemaService.registerSchemas(this.db)
+                    void this.schemaService.registerSchemas(this.db)
                         .then(schemas => {
                             this.configureSchemas(schemas);
                         });
@@ -61,6 +56,7 @@ export class LanguageService {
         });
 
         connection.onRequest('disconnect', () => {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             this.db = null!;
             for (const schema of this.schemas) {
                 this.jsonLanguageService.resetSchema(schema.uri);
@@ -77,6 +73,7 @@ export class LanguageService {
 
     public provideCompletionItems(positionParams: TextDocumentPositionParams): Promise<CompletionItem[]> {
         const textDocument = this.textDocuments.get(positionParams.textDocument.uri);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const mongoScriptDocument = this.mongoDocumentsManager.getDocument(textDocument!, this.db);
         return mongoScriptDocument.provideCompletionItemsAt(positionParams.position);
     }

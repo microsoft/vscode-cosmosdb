@@ -36,6 +36,7 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
     }
 
     public get id(): string {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return this.document._rid || `${this.document.id}:${this.getPartitionKeyValue()}`;
         // Every document has an _rid field, even though the type definitions call it optional. The second clause is fallback.
         // The toString implicit conversion handles undefined and {} as expected. toString satisfies the uniqueness criterion.
@@ -51,6 +52,7 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
     }
 
     public get link(): string {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return this.document._self;
     }
 
@@ -86,17 +88,22 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
     }
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const newData = JSON.parse(content);
         for (const field of hiddenFields) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
             newData[field] = this.document[field];
         }
 
         const client: CosmosClient = this.root.getCosmosClient();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         if (["_etag"].some((element) => !newData[element])) {
             throw new Error(`The "_self" and "_etag" fields are required to update a document`);
         } else {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
             const options: RequestOptions = { accessCondition: { type: 'IfMatch', condition: newData._etag } };
             const response = await this.getDocumentClient(client).replace(newData, options);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             this._document = response.resource;
         }
     }
@@ -112,11 +119,13 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
         }
         let value;
         for (const field of fields) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
             value = value ? value[field] : this.document[field];
             if (!value) { //Partition Key exists, but this document doesn't have a value
                 return '';
             }
         }
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return value;
     }
 

@@ -30,8 +30,7 @@ export function registerPostgresCommands(): void {
     ext.postgresCodeLensProvider = new PostgresCodeLensProvider();
     ext.context.subscriptions.push(languages.registerCodeLensProvider(postgresLanguageId, ext.postgresCodeLensProvider));
 
-    // tslint:disable-next-line: no-floating-promises
-    loadPersistedPostgresDatabase();
+    void loadPersistedPostgresDatabase();
 
     //update defaults.database of 'pg'
     defaults.database = postgresDefaultDatabase;

@@ -12,14 +12,14 @@ import { ext } from '../../extensionVariables';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
-// tslint:disable:no-var-requires no-require-imports
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const EJSON = require("mongodb-extended-json");
 
 export interface IMongoDocument {
     _id: string | ObjectID;
 
     // custom properties
-    // tslint:disable-next-line:no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
 }
 
@@ -42,7 +42,7 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> impleme
     }
 
     public get id(): string {
-        // tslint:disable-next-line:no-non-null-assertion
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         return String(this.document!._id);
     }
 
@@ -63,6 +63,7 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> impleme
             throw new Error(`The "_id" field is required to update a document.`);
         }
         const filter: object = { _id: newDocument._id };
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const result: UpdateWriteOpResult = await collection.replaceOne(filter, _.omit(newDocument, '_id'));
         if (result.modifiedCount !== 1) {
             throw new Error(`Failed to update document with _id '${newDocument._id}'.`);
@@ -71,6 +72,7 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> impleme
     }
 
     public async getFileContent(): Promise<string> {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         return EJSON.stringify(this.document, null, 2);
     }
 
@@ -93,6 +95,7 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> impleme
     }
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const newDocument: IMongoDocument = EJSON.parse(content);
         this.document = await MongoDocumentTreeItem.update(this.parent.collection, newDocument);
     }

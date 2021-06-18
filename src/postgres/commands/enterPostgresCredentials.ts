@@ -46,7 +46,7 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
     });
 
     const completedMessage: string = localize('setupCredentialsMessage', 'Successfully added credentials to server "{0}".', serverName);
-    vscode.window.showInformationMessage(completedMessage);
+    void vscode.window.showInformationMessage(completedMessage);
     ext.outputChannel.appendLog(completedMessage);
 
     treeItem.setCredentials(username, password);

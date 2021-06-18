@@ -25,7 +25,7 @@ import { ErrorDescription, MongoCommand } from './MongoCommand';
 import { MongoCollectionTreeItem } from './tree/MongoCollectionTreeItem';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
 import { IMongoDocument, MongoDocumentTreeItem } from './tree/MongoDocumentTreeItem';
-// tslint:disable:no-var-requires no-require-imports
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const EJSON = require("mongodb-extended-json");
 
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
@@ -124,6 +124,7 @@ async function executeCommand(context: IActionContext, command: MongoCommand, re
                     throw new Error(`Could not find any documents`);
                 }
 
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
                 const document: IMongoDocument = EJSON.parse(result);
                 const collectionName: string = nonNullProp(command, 'collection');
 
@@ -261,11 +262,13 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
                 if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
                     const lastCommand = this.commands[this.commands.length - 1];
                     const argAsObject = this.contextToObject(ctx);
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
                     const argText = EJSON.stringify(argAsObject);
                     nonNullProp(lastCommand, 'arguments').push(argText);
                     const escapeHandled = this.deduplicateEscapesForRegex(argText);
                     let ejsonParsed = {};
                     try {
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
                         ejsonParsed = EJSON.parse(escapeHandled);
                     } catch (error) { //EJSON parse failed due to a wrong flag, etc.
                         const parsedError: IParsedError = parseError(error);
@@ -316,6 +319,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         } else if (tokenType === mongoParser.mongoParser.RegexLiteral) {
             return this.regexLiteralContextToObject(ctx, text);
         } else if (nonStringLiterals.indexOf(tokenType) > -1) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return JSON.parse(text);
         } else {
             this.addErrorToCommand(`Unrecognized token. Token text: ${text}`, ctx);
@@ -340,8 +344,6 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         }
     }
 
-    // grandfathered in
-    // tslint:disable-next-line: typedef
     private arrayLiteralContextToObject(child: mongoParser.ArrayLiteralContext) {
         const elementList = findType(child.children, mongoParser.ElementListContext);
         if (elementList) {
@@ -449,6 +451,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
             // validate the pattern and flags.
             // It is intended for the errors thrown here to be handled by the catch block.
             let tokenObject = new RegExp(pattern, flags);
+            // eslint-disable-next-line no-self-assign, @typescript-eslint/no-unused-vars
             tokenObject = tokenObject;
             // we are passing back a $regex annotation, hence we ensure parity wit the $regex syntax
             return { $regex: this.regexToStringNotation(pattern), $options: flags };

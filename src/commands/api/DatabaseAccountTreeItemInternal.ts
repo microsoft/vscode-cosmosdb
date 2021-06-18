@@ -82,7 +82,7 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
         await callWithTelemetryAndErrorHandling('api.dbAccount.reveal', async (context: IActionContext) => {
             context.errorHandling.suppressDisplay = true;
             context.errorHandling.rethrow = true;
-            ext.treeView.reveal(await this.getAccountNode(context));
+            await ext.treeView.reveal(await this.getAccountNode(context));
         });
     }
 

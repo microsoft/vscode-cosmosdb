@@ -6,28 +6,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
- /*tslint:disable */
 
 
 import { ParseTreeListener } from 'antlr4ts/tree/ParseTreeListener';
+import { ArgumentContext, ArgumentsContext, ArrayLiteralContext, CollectionContext, CommandContext, CommandsContext, CommentContext, ElementListContext, EmptyCommandContext, FunctionCallContext, LiteralContext, MongoCommandsContext, ObjectLiteralContext, PropertyAssignmentContext, PropertyNameAndValueListContext, PropertyNameContext, PropertyValueContext } from './mongoParser';
 
-import { MongoCommandsContext } from './mongoParser';
-import { CommandsContext } from './mongoParser';
-import { CommandContext } from './mongoParser';
-import { EmptyCommandContext } from './mongoParser';
-import { CollectionContext } from './mongoParser';
-import { FunctionCallContext } from './mongoParser';
-import { ArgumentsContext } from './mongoParser';
-import { ArgumentContext } from './mongoParser';
-import { ObjectLiteralContext } from './mongoParser';
-import { ArrayLiteralContext } from './mongoParser';
-import { ElementListContext } from './mongoParser';
-import { PropertyNameAndValueListContext } from './mongoParser';
-import { PropertyAssignmentContext } from './mongoParser';
-import { PropertyValueContext } from './mongoParser';
-import { LiteralContext } from './mongoParser';
-import { PropertyNameContext } from './mongoParser';
-import { CommentContext } from './mongoParser';
 
 
 /**

@@ -11,11 +11,11 @@ import { PostgresServerConfirmPWStep } from '../postgres/commands/createPostgres
 import { PostgresServerCreateStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerCreateStep';
 import { PostgresServerCredPWStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerCredPWStep';
 import { PostgresServerCredUserStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerCredUserStep';
-import { PostgresServerFirewallStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerFirewallStep';
 import { PostgresServerNameStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerNameStep';
 import { PostgresServerSetCredentialsStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerSetCredentialsStep';
-import { PostgresServerSetFirewallStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerSetFirewallStep';
+import { PostgresServerSkuStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerSkuStep';
 import { localize } from '../utils/localize';
+import { CosmosDBAccountCapacityStep } from './CosmosDBAccountWizard/CosmosDBAccountCapacityStep';
 import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccountCreateStep';
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
@@ -38,20 +38,20 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
         if (wizardContext.defaultExperience?.api === API.Postgres) {
             promptSteps = [
                 new PostgresServerNameStep(),
+                new PostgresServerSkuStep(),
                 new PostgresServerCredUserStep(),
                 new PostgresServerCredPWStep(),
                 new PostgresServerConfirmPWStep(),
-                new PostgresServerFirewallStep()
             ];
             executeSteps = [
                 new PostgresServerCreateStep(),
                 new PostgresServerSetCredentialsStep(),
-                new PostgresServerSetFirewallStep(),
                 new VerifyProvidersStep(['Microsoft.DBforPostgreSQL'])
             ];
         } else {
             promptSteps = [
-                new CosmosDBAccountNameStep()
+                new CosmosDBAccountNameStep(),
+                new CosmosDBAccountCapacityStep(),
             ];
             executeSteps = [
                 new CosmosDBAccountCreateStep(),

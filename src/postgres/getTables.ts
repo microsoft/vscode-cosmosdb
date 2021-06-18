@@ -27,6 +27,7 @@ export async function getTables(clientConfig: ClientConfig): Promise<IPostgresTa
     const tableInfoRows: QueryResult = await runPostgresQuery(clientConfig, tablesQuery);
     const tablesArray: IPostgresTable[] = [];
     for (const row of tableInfoRows.rows) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         tablesArray.push({ schemaName: row.schemaname, name: row.tablename, oid: row.oid, columnNames: row.columnnames });
     }
     return tablesArray;

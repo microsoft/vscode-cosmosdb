@@ -8,9 +8,6 @@ import { Position } from 'vscode';
 import { parseError } from 'vscode-azureextensionui';
 import { findCommandAtPosition, getAllCommandsFromText, MongoCommand, nonNullProp, ObjectID, ObjectId } from '../extension.bundle';
 
-// grandfathered in
-// tslint:disable: no-octal-literal
-
 function expectSingleCommand(text: string): MongoCommand {
     const commands = getAllCommandsFromText(text);
     if (commands.length > 1) {
@@ -1009,7 +1006,6 @@ suite("scrapbook parsing Tests", () => {
         });
     });
 
-    // tslint:disable-next-line: no-suspicious-comment
     //TODO: Tests to simulate cases where the user hasn't completed typing
 
     test("test user issues: https://github.com/Microsoft/vscode-cosmosdb/issues/688", () => {

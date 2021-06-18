@@ -79,6 +79,7 @@ export class MongoShell extends vscode.Disposable {
 
         const disposables: vscode.Disposable[] = [];
         try {
+            // eslint-disable-next-line @typescript-eslint/no-misused-promises, no-async-promise-executor
             const result = await new Promise<string>(async (resolve, reject) => {
                 try {
                     startScriptTimeout(this._timeoutSeconds, reject);
@@ -87,7 +88,7 @@ export class MongoShell extends vscode.Disposable {
                     disposables.push(
                         this._process.onStdOut(text => {
                             stdOut += text;
-                            // tslint:disable-next-line: prefer-const
+                            // eslint-disable-next-line prefer-const
                             let { text: stdOutNoSentinel, removed } = removeSentinel(stdOut, sentinel);
                             if (removed) {
                                 // The sentinel was found, which means we are done.
@@ -129,6 +130,7 @@ export class MongoShell extends vscode.Disposable {
                     if ((<{ code?: string }>error).code === 'EPIPE') {
                         // Give a chance for start-up errors to show up before rejecting with this more general error message
                         await delay(500);
+                        // eslint-disable-next-line no-ex-assign
                         error = new Error("The process exited prematurely.");
                     }
 
@@ -175,7 +177,6 @@ function removeSentinel(text: string, sentinel: string): { text: string; removed
 
 async function delay(milliseconds: number): Promise<void> {
     return new Promise(resolve => {
-        // tslint:disable-next-line:no-string-based-set-timeout // false positive
         setTimeout(resolve, milliseconds);
     });
 }

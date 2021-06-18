@@ -123,6 +123,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         // db.createCollection() doesn't create empty collections for some reason
         // However, we can 'insert' and then 'delete' a document, which has the side-effect of creating an empty collection
         const result = await newCollection.insertOne({});
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         await newCollection.deleteOne({ _id: result.insertedId });
         return new MongoCollectionTreeItem(this, newCollection);
     }
@@ -172,13 +173,12 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
             } else {
                 // If all else fails, prompt the user for the mongo path
 
-                // tslint:disable-next-line:no-constant-condition
                 const openFile: vscode.MessageItem = { title: `Browse to ${mongoExecutableFileName}` };
                 const browse: vscode.MessageItem = { title: 'Open installation page' };
                 const noMongoError: string = 'This functionality requires the Mongo DB shell, but we could not find it in the path or using the mongo.shell.path setting.';
                 const response = await vscode.window.showErrorMessage(noMongoError, browse, openFile);
                 if (response === openFile) {
-                    // tslint:disable-next-line:no-constant-condition
+                    // eslint-disable-next-line no-constant-condition
                     while (true) {
                         const newPath: vscode.Uri[] | undefined = await vscode.window.showOpenDialog({
                             filters: { 'Executable Files': [process.platform === 'win32' ? 'exe' : ''] },
@@ -206,7 +206,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
                         }
                     }
                 } else if (response === browse) {
-                    vscode.commands.executeCommand('vscode.open', vscode.Uri.parse('https://docs.mongodb.com/manual/installation/'));
+                    void vscode.commands.executeCommand('vscode.open', vscode.Uri.parse('https://docs.mongodb.com/manual/installation/'));
                     // default down to cancel error because MongoShell.create errors out if undefined is passed as the shellPath
                 }
 

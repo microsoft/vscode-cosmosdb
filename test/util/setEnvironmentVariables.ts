@@ -17,7 +17,6 @@ export function setEnvironmentVariables(env: { [key: string]: string }): IDispos
 class SetRestoreEnv implements IDisposable {
     private _previousValues: { [key: string]: string } = {};
 
-    // tslint:disable-next-line: no-reserved-keywords
     public set(env: { [key: string]: string }): void {
         for (const key of Object.keys(env || {})) {
             [this._previousValues[key], process.env[key]] = [process.env[key]!, env[key]];

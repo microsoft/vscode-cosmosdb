@@ -6,21 +6,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
- /*tslint:disable */
-
-
 import { ATN } from 'antlr4ts/atn/ATN';
 import { ATNDeserializer } from 'antlr4ts/atn/ATNDeserializer';
-import { CharStream } from 'antlr4ts/CharStream';
-import { Lexer } from 'antlr4ts/Lexer';
 import { LexerATNSimulator } from 'antlr4ts/atn/LexerATNSimulator';
-import { NotNull } from 'antlr4ts/Decorators';
-import { Override } from 'antlr4ts/Decorators';
+import { CharStream } from 'antlr4ts/CharStream';
+import { NotNull, Override } from 'antlr4ts/Decorators';
+import { Lexer } from 'antlr4ts/Lexer';
+import * as Utils from 'antlr4ts/misc/Utils';
 import { RuleContext } from 'antlr4ts/RuleContext';
 import { Vocabulary } from 'antlr4ts/Vocabulary';
 import { VocabularyImpl } from 'antlr4ts/VocabularyImpl';
 
-import * as Utils from 'antlr4ts/misc/Utils';
 
 
 export class mongoLexer extends Lexer {
@@ -53,24 +49,24 @@ export class mongoLexer extends Lexer {
 	];
 
 	public static readonly ruleNames: string[] = [
-		"T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6", "T__7", "RegexLiteral", 
-		"RegexFlag", "SingleLineComment", "MultiLineComment", "StringLiteral", 
-		"NullLiteral", "BooleanLiteral", "NumericLiteral", "DecimalLiteral", "LineTerminator", 
-		"SEMICOLON", "DOT", "DB", "IDENTIFIER", "DOUBLE_QUOTED_STRING_LITERAL", 
-		"SINGLE_QUOTED_STRING_LITERAL", "STRING_ESCAPE", "DecimalIntegerLiteral", 
+		"T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6", "T__7", "RegexLiteral",
+		"RegexFlag", "SingleLineComment", "MultiLineComment", "StringLiteral",
+		"NullLiteral", "BooleanLiteral", "NumericLiteral", "DecimalLiteral", "LineTerminator",
+		"SEMICOLON", "DOT", "DB", "IDENTIFIER", "DOUBLE_QUOTED_STRING_LITERAL",
+		"SINGLE_QUOTED_STRING_LITERAL", "STRING_ESCAPE", "DecimalIntegerLiteral",
 		"ExponentPart", "DecimalDigit", "WHITESPACE"
 	];
 
 	private static readonly _LITERAL_NAMES: (string | undefined)[] = [
-		undefined, "'('", "','", "')'", "'{'", "'}'", "'['", "']'", "':'", undefined, 
-		undefined, undefined, undefined, "'null'", undefined, undefined, undefined, 
+		undefined, "'('", "','", "')'", "'{'", "'}'", "'['", "']'", "':'", undefined,
+		undefined, undefined, undefined, "'null'", undefined, undefined, undefined,
 		undefined, "';'", "'.'", "'db'"
 	];
 	private static readonly _SYMBOLIC_NAMES: (string | undefined)[] = [
-		undefined, undefined, undefined, undefined, undefined, undefined, undefined, 
-		undefined, undefined, "RegexLiteral", "SingleLineComment", "MultiLineComment", 
-		"StringLiteral", "NullLiteral", "BooleanLiteral", "NumericLiteral", "DecimalLiteral", 
-		"LineTerminator", "SEMICOLON", "DOT", "DB", "IDENTIFIER", "DOUBLE_QUOTED_STRING_LITERAL", 
+		undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+		undefined, undefined, "RegexLiteral", "SingleLineComment", "MultiLineComment",
+		"StringLiteral", "NullLiteral", "BooleanLiteral", "NumericLiteral", "DecimalLiteral",
+		"LineTerminator", "SEMICOLON", "DOT", "DB", "IDENTIFIER", "DOUBLE_QUOTED_STRING_LITERAL",
 		"SINGLE_QUOTED_STRING_LITERAL", "WHITESPACE"
 	];
 	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(mongoLexer._LITERAL_NAMES, mongoLexer._SYMBOLIC_NAMES, []);

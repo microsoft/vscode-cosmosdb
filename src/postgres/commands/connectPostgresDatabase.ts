@@ -12,14 +12,14 @@ import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
 export async function connectPostgresDatabase(context: IActionContext, treeItem?: Uri | PostgresDatabaseTreeItem): Promise<void> {
     if (!treeItem || treeItem instanceof Uri) {
         if (treeItem) {
-            window.showTextDocument(treeItem);
+            void window.showTextDocument(treeItem);
         }
 
         treeItem = <PostgresDatabaseTreeItem>await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
     }
 
     const oldTreeItemId: string | undefined = ext.connectedPostgresDB && ext.connectedPostgresDB.fullId;
-    ext.context.globalState.update(connectedPostgresKey, treeItem.fullId);
+    void ext.context.globalState.update(connectedPostgresKey, treeItem.fullId);
     ext.connectedPostgresDB = treeItem;
     const database = treeItem && treeItem.label;
     if (ext.postgresCodeLensProvider) {

@@ -88,6 +88,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             const config = await getClientConfig(this, postgresDefaultDatabase);
             const query = `SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false;`;
             const queryResult = await runPostgresQuery(config, query);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
             dbNames = queryResult.rows.map(db => db?.datname);
         }
 
@@ -146,12 +147,14 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
 
     public async supportsStoredProcedures(clientConfig: ClientConfig): Promise<boolean> {
         // `semver.gte` complains when a version doesn't have decimals (i.e. "10"), so attempt to convert version to SemVer
-        let version: SemVer | null;
         if (!this._serverVersion) {
             const result = await runPostgresQuery(clientConfig, `SHOW server_version;`);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
             this._serverVersion = result.rows[0].server_version;
         }
-        version = coerce(this._serverVersion);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+        const version: SemVer | null = coerce(this._serverVersion);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
         return gte(version, '11.0.0');
     }
 
@@ -159,6 +162,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         if (ext.keytar) {
             const serviceName: string = PostgresServerTreeItem.serviceName;
             const storedValue: string | undefined = ext.context.globalState.get(serviceName);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             let servers: IPersistedServer[] = storedValue ? JSON.parse(storedValue) : [];
 
             // Remove this server from the cache
@@ -174,6 +178,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         if (this._azureId && !(this.partialConnectionString.username && this.partialConnectionString.password)) {
             const storedValue: string | undefined = ext.context.globalState.get(PostgresServerTreeItem.serviceName);
             if (storedValue && ext.keytar) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 const servers: IPersistedServer[] = JSON.parse(storedValue);
                 for (const server of servers) {
                     if (server.id === this.id) {

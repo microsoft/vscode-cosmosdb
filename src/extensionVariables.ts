@@ -36,6 +36,7 @@ export namespace ext {
         export const mongoShellPath = 'mongo.shell.path';
         export const mongoShellArgs = 'mongo.shell.args';
         export const documentLabelFields = 'cosmosDB.documentLabelFields';
+        export const enableEndpointDiscovery = 'cosmosDB.enableEndpointDiscovery';
         export const mongoShellTimeout = 'mongo.shell.timeout';
         export const batchSize = 'azureDatabases.batchSize';
 

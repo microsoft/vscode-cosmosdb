@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import internal = require("node:stream");
-
 export enum PostgresServerType {
     Flexible,
     Single
@@ -79,7 +77,7 @@ export type PostgresAbstractDatabaseList = Array<PostgresAbstractDatabase>;
      * The family of hardware.
      */
     family?: string;
-  }
+}
 
 export interface AbstractServerCreate {
     location: string;
@@ -89,4 +87,30 @@ export interface AbstractServerCreate {
     sslEnforcement: string;
     version: string;
     storageMB: number;
+}
+
+export interface AbstractNameAvailability {
+    /**
+     * Error Message.
+     */
+    message?: string;
+    /**
+    * Indicates whether the resource name is available.
+    */
+    nameAvailable?: boolean;
+    /**
+    * Reason for name being unavailable.
+    */
+    reason?: string;
+}
+
+export interface AbstractFirewallRule {
+    /**
+     * The start IP address of the server firewall rule. Must be IPv4 format.
+     */
+    startIpAddress: string;
+    /**
+     * The end IP address of the server firewall rule. Must be IPv4 format.
+     */
+    endIpAddress: string;
 }

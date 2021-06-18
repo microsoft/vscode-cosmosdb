@@ -11,4 +11,6 @@ export interface IAbstractPostgresClient {
     listDatabases(serverType: Models.PostgresServerType, resourceGroup: string, name: string): Promise<Models.PostgresAbstractDatabaseList>;
     listServers(): Promise<Models.PostgresAbstractServerList>;
     createServer(serverType: Models.PostgresServerType, resourceGroup: string, name: string, options: Models.AbstractServerCreate): Promise<Models.PostgresAbstractServer>;
+    checkNameAvailability(serverType: Models.PostgresServerType, name: string) : Promise<Models.AbstractNameAvailability>;
+    createFirewallRule(serverType: Models.PostgresServerType, resourceGroup: string, name: string, ruleName: string, rule: Models.AbstractFirewallRule) : Promise<Models.AbstractFirewallRule>;
 }

@@ -3,21 +3,22 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
-import { NameAvailability, NameAvailabilityRequest } from '@azure/arm-postgresql/src/models';
 import { AzureNameStep, createAzureClient, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';
+import { nonNullProp } from '../../../../utils/nonNull';
+import { AbstractPostgresClient } from '../../../abstract/AbstractPostgresClient';
+import { AbstractNameAvailability, PostgresServerType } from '../../../abstract/models';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerNameStep extends AzureNameStep<IPostgresServerWizardContext> {
 
     public async prompt(wizardContext: IPostgresServerWizardContext): Promise<void> {
-        const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
+        const client = createAzureClient(wizardContext, AbstractPostgresClient);
         wizardContext.newServerName = (await ext.ui.showInputBox({
             placeHolder: localize('serverNamePlaceholder', 'Server name'),
             prompt: localize('enterServerNamePrompt', 'Provide a name for the PostgreSQL Server.'),
-            validateInput: (name: string) => validatePostgresServerName(name, client)
+            validateInput: (name: string) => validatePostgresServerName(name, client, nonNullProp(wizardContext, "serverType"))
         })).trim();
         wizardContext.valuesToMask.push(wizardContext.newServerName);
         wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.newServerName, resourceGroupNamingRules);
@@ -32,7 +33,7 @@ export class PostgresServerNameStep extends AzureNameStep<IPostgresServerWizardC
     }
 }
 
-async function validatePostgresServerName(name: string, client: PostgreSQLManagementClient): Promise<string | undefined> {
+async function validatePostgresServerName(name: string, client: AbstractPostgresClient, serverType: PostgresServerType): Promise<string | undefined> {
     name = name ? name.trim() : '';
 
     const min = 3;
@@ -46,8 +47,7 @@ async function validatePostgresServerName(name: string, client: PostgreSQLManage
         return localize('serverNamePrefixSuffixCheck', 'Server name must not start or end in a hyphen.');
     }
 
-    const availabilityRequest: NameAvailabilityRequest = { name: name, type: "Microsoft.DBforPostgreSQL" };
-    const availability: NameAvailability = (await client.checkNameAvailability.execute(availabilityRequest));
+    const availability: AbstractNameAvailability = (await client.checkNameAvailability(serverType, name));
 
     if (!availability.nameAvailable) {
         if (availability.reason === 'AlreadyExists') {

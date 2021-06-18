@@ -8,7 +8,7 @@ import { PostgreSQLFlexibleManagementClient } from "@azure/arm-postgresql-flexib
 import * as msRest from "@azure/ms-rest-js";
 import { IAbstractPostgresClient } from "./IAbstractPostgresClient";
 import { asAbstractDatabase, asFlexibleParameters, asSingleParameters, flexibleAsAbstractServer, singleAsAbstractServer } from "./maps";
-import { AbstractServerCreate, PostgresAbstractDatabaseList, PostgresAbstractServer, PostgresAbstractServerList, PostgresServerType } from "./models";
+import * as Models from "./models";
 
 export class AbstractPostgresClient implements IAbstractPostgresClient  {
     private postgresFlexibleClient: PostgreSQLFlexibleManagementClient;
@@ -19,40 +19,62 @@ export class AbstractPostgresClient implements IAbstractPostgresClient  {
         this.postgresSingleClient = new PostgreSQLManagementClient(credentials, subscriptionId);
     }
 
-    async createServer(serverType: PostgresServerType, resourceGroup: string, name: string, parameters: AbstractServerCreate): Promise<PostgresAbstractServer> {
+    async checkNameAvailability(serverType: Models.PostgresServerType, name: string) : Promise<Models.AbstractNameAvailability> {
         switch (serverType){
-            case PostgresServerType.Flexible:
+            case Models.PostgresServerType.Flexible:
+                return this.postgresFlexibleClient.checkNameAvailability.execute({name: name, type: "Microsoft.DBforPostgreSQL"});
+            case Models.PostgresServerType.Single:
+                return this.postgresSingleClient.checkNameAvailability.execute({name: name, type: "Microsoft.DBforPostgreSQL"});
+            default:
+                throw new Error("Service not implemented.");
+        }
+    }
+
+    async createFirewallRule(serverType: Models.PostgresServerType, resourceGroup: string, name: string, ruleName: string, rule: Models.AbstractFirewallRule): Promise<Models.AbstractFirewallRule> {
+        switch (serverType){
+            case Models.PostgresServerType.Flexible:
+                return this.postgresFlexibleClient.firewallRules.createOrUpdate(resourceGroup, name, ruleName, rule);
+            case Models.PostgresServerType.Single:
+                return this.postgresSingleClient.firewallRules.createOrUpdate(resourceGroup, name, ruleName, rule);
+            default:
+                throw new Error("Service not implemented.");
+        }
+    }
+
+    async createServer(serverType: Models.PostgresServerType, resourceGroup: string, name: string, parameters: Models.AbstractServerCreate): Promise<Models.PostgresAbstractServer> {
+        switch (serverType){
+            case Models.PostgresServerType.Flexible:
                 return flexibleAsAbstractServer(await this.postgresFlexibleClient.servers.create(resourceGroup, name, asFlexibleParameters(parameters)));
-            case PostgresServerType.Single:
+            case Models.PostgresServerType.Single:
                 return singleAsAbstractServer(await this.postgresSingleClient.servers.create(resourceGroup, name, asSingleParameters(parameters)));
             default:
                 throw new Error("Service not implemented.");
         }
     }
 
-    async listServers(): Promise<PostgresAbstractServerList> {
-        const flexServers = (await this.postgresFlexibleClient.servers.list()).map(flexibleAsAbstractServer);
-        const singleServers = (await this.postgresSingleClient.servers.list()).map(singleAsAbstractServer);
-        return Array<PostgresAbstractServer>().concat(flexServers, singleServers);
-    }
-
-    async listDatabases(serverType: PostgresServerType, resourceGroup: string, name: string): Promise<PostgresAbstractDatabaseList> {
+    async deleteServer(serverType: Models.PostgresServerType, resourceGroup: string, name: string): Promise<msRest.RestResponse> {
         switch (serverType){
-            case PostgresServerType.Flexible:
-                return (await this.postgresFlexibleClient.databases.listByServer(resourceGroup, name)).map(asAbstractDatabase);
-            case PostgresServerType.Single:
-                return (await this.postgresSingleClient.databases.listByServer(resourceGroup, name)).map(asAbstractDatabase);
+            case Models.PostgresServerType.Flexible:
+                return this.postgresFlexibleClient.servers.deleteMethod(resourceGroup, name);
+            case Models.PostgresServerType.Single:
+                return this.postgresSingleClient.servers.deleteMethod(resourceGroup, name);
             default:
                 throw new Error("Service not implemented.");
         }
     }
 
-    async deleteServer(serverType: PostgresServerType, resourceGroup: string, name: string): Promise<msRest.RestResponse> {
+    async listServers(): Promise<Models.PostgresAbstractServerList> {
+        const flexServers = (await this.postgresFlexibleClient.servers.list()).map(flexibleAsAbstractServer);
+        const singleServers = (await this.postgresSingleClient.servers.list()).map(singleAsAbstractServer);
+        return Array<Models.PostgresAbstractServer>().concat(flexServers, singleServers);
+    }
+
+    async listDatabases(serverType: Models.PostgresServerType, resourceGroup: string, name: string): Promise<Models.PostgresAbstractDatabaseList> {
         switch (serverType){
-            case PostgresServerType.Flexible:
-                return this.postgresFlexibleClient.servers.deleteMethod(resourceGroup, name);
-            case PostgresServerType.Single:
-                return this.postgresSingleClient.servers.deleteMethod(resourceGroup, name);
+            case Models.PostgresServerType.Flexible:
+                return (await this.postgresFlexibleClient.databases.listByServer(resourceGroup, name)).map(asAbstractDatabase);
+            case Models.PostgresServerType.Single:
+                return (await this.postgresSingleClient.databases.listByServer(resourceGroup, name)).map(asAbstractDatabase);
             default:
                 throw new Error("Service not implemented.");
         }

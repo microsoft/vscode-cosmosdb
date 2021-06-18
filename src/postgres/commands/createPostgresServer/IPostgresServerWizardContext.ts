@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Server, Sku } from "@azure/arm-postgresql/src/models";
 import { IAzureDBWizardContext } from "../../../tree/IAzureDBWizardContext";
+import { AbstractSku, PostgresAbstractServer, PostgresServerType } from "../../abstract/models";
 
 export interface IPostgresServerWizardContext extends IAzureDBWizardContext {
     /**
@@ -17,6 +17,7 @@ export interface IPostgresServerWizardContext extends IAzureDBWizardContext {
     longUserName?: string;
     adminPassword?: string;
 
-    server?: Server;
-    sku?: Sku;
+    server?: PostgresAbstractServer;
+    sku?: AbstractSku;
+    serverType?: PostgresServerType;
 }

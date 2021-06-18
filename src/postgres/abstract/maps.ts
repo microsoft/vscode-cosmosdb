@@ -5,7 +5,7 @@
 
 import * as FlexibleModels from "@azure/arm-postgresql-flexible/esm/models";
 import * as SingleModels from "@azure/arm-postgresql/esm/models";
-import { PostgresAbstractDatabase, PostgresAbstractServer, PostgresServerType } from "./models";
+import { AbstractServerCreate, PostgresAbstractDatabase, PostgresAbstractServer, PostgresServerType } from "./models";
 
 
 
@@ -34,5 +34,44 @@ export function asAbstractDatabase(db: FlexibleModels.Database | SingleModels.Da
     return {
         id: db.id,
         name: db.name,
+    }
+}
+
+export function asFlexibleParameters(parameters: AbstractServerCreate) : FlexibleModels.Server {
+    return {
+        location: parameters.location,
+        version: parameters.version as FlexibleModels.ServerVersion,
+        administratorLogin: parameters.administratorLogin,
+        administratorLoginPassword: parameters.administratorLoginPassword,
+        storageProfile: {
+            storageMB: parameters.storageMB
+        },
+        sku: {
+            name: parameters.sku.name,
+            tier: parameters.sku.tier as FlexibleModels.SkuTier
+        },
+    }
+}
+
+export function asSingleParameters(parameters: AbstractServerCreate) : SingleModels.ServerForCreate {
+    return {
+        location: parameters.location,
+        sku: {
+            name: parameters.sku.name,
+            capacity: parameters.sku.capacity,
+            size: parameters.sku.size,
+            family: parameters.sku.family,
+            tier: parameters.sku.tier as SingleModels.SkuTier
+        },
+        properties: {
+            administratorLogin: parameters.administratorLogin,
+            administratorLoginPassword: parameters.administratorLogin,
+            sslEnforcement: parameters.sslEnforcement as SingleModels.SslEnforcementEnum,
+            createMode: "Default",
+            version: parameters.version as SingleModels.ServerVersion,
+            storageProfile: {
+                storageMB: parameters.storageMB
+            }
+        }
     }
 }

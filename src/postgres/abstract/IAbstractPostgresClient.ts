@@ -10,4 +10,5 @@ export interface IAbstractPostgresClient {
     deleteServer(serverType: Models.PostgresServerType, resourceGroup: string, name: string): Promise<msRest.RestResponse>;
     listDatabases(serverType: Models.PostgresServerType, resourceGroup: string, name: string): Promise<Models.PostgresAbstractDatabaseList>;
     listServers(): Promise<Models.PostgresAbstractServerList>;
+    createServer(serverType: Models.PostgresServerType, resourceGroup: string, name: string, options: Models.AbstractServerCreate): Promise<Models.PostgresAbstractServer>;
 }

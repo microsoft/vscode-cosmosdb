@@ -2,18 +2,18 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { Sku } from "@azure/arm-postgresql/src/models";
 import { AzureWizardPromptStep, IAzureQuickPickItem } from "vscode-azureextensionui";
 import { ext } from "../../../../extensionVariables";
 import { localize } from "../../../../utils/localize";
 import { nonNullProp } from "../../../../utils/nonNull";
 import { openUrl } from "../../../../utils/openUrl";
+import { AbstractSku, PostgresServerType } from "../../../abstract/models";
 import { IPostgresServerWizardContext } from "../IPostgresServerWizardContext";
 
 interface ISkuOption {
     label: string;
     description: string;
-    sku: Sku;
+    sku: AbstractSku;
     group?: string;
 }
 
@@ -25,7 +25,7 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
             "selectPostgresSku",
             "Select the Postgres SKU and options."
         );
-        const pricingTiers: IAzureQuickPickItem<Sku | undefined>[] = await this.getPicks();
+        const pricingTiers: IAzureQuickPickItem<AbstractSku | undefined>[] = await this.getPicks(nonNullProp(wizardContext, 'serverType'));
         pricingTiers.push({
             label: localize('ShowPricingCalculator', '$(link-external) Show pricing information...'),
             onPicked: async () => {
@@ -40,9 +40,11 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
         return wizardContext.sku === undefined;
     }
 
-    public async getPicks(): Promise<IAzureQuickPickItem<Sku | undefined>[]> {
-        const options: IAzureQuickPickItem<Sku | undefined>[] = [];
-        availableSkus.forEach((option) => {
+    public async getPicks(serverType: PostgresServerType): Promise<IAzureQuickPickItem<AbstractSku | undefined>[]> {
+        const options: IAzureQuickPickItem<AbstractSku | undefined>[] = [];
+        const skuOptions: ISkuOption[] = serverType == PostgresServerType.Single ? singleServerSkus : flexibleServerSkus ;
+
+        skuOptions.forEach((option) => {
             options.push({
                 label: option.label,
                 description: localize(
@@ -58,7 +60,7 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
 }
 
 const recommendedGroup = localize('recommendGroup', 'Recommended');
-const availableSkus: ISkuOption[] = [
+const singleServerSkus: ISkuOption[] = [
     {
         label: "B1",
         description: "Basic, 1 vCore, 2GiB Memory, 5GB storage",
@@ -147,6 +149,31 @@ const availableSkus: ISkuOption[] = [
             capacity: 64,
             family: "Gen5",
             size: "204800",
+        },
+    },
+];
+
+// Official storage sizes are 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216
+const flexibleServerSkus: ISkuOption[] = [
+    {
+        label: "B1ms",
+        description: "Basic, 1 vCore, 2GiB Memory, 32GB storage",
+        sku: {
+            name: "Standard_B1ms",
+            tier: "Burstable",
+            capacity: 1,
+            size: "32768",
+        },
+        group: recommendedGroup
+    },
+    {
+        label: "B2s",
+        description: "Basic, 2 vCore, 4GiB Memory, 32GB storage",
+        sku: {
+            name: "Standard_B2s",
+            tier: "Burstable",
+            capacity: 2,
+            size: "32768",
         },
     },
 ];

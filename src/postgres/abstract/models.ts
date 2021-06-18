@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import internal = require("node:stream");
+
 export enum PostgresServerType {
     Flexible,
     Single
@@ -51,3 +53,40 @@ export interface PostgresAbstractDatabase {
 }
 
 export type PostgresAbstractDatabaseList = Array<PostgresAbstractDatabase>;
+
+/**
+ * Billing information related properties of a server.
+ */
+ export interface AbstractSku {
+    /**
+     * The name of the sku, typically, tier + family + cores, e.g. B_Gen4_1, GP_Gen5_8.
+     */
+    name: string;
+    /**
+     * The tier of the particular SKU, e.g. Basic. Possible values include: 'Basic',
+     * 'GeneralPurpose', 'MemoryOptimized'
+     */
+    tier?: string;
+    /**
+     * The scale up/out capacity, representing server's compute units.
+     */
+    capacity?: number;
+    /**
+     * The size code, to be interpreted by resource as appropriate.
+     */
+    size?: string;
+    /**
+     * The family of hardware.
+     */
+    family?: string;
+  }
+
+export interface AbstractServerCreate {
+    location: string;
+    sku: AbstractSku;
+    administratorLogin: string;
+    administratorLoginPassword: string;
+    sslEnforcement: string;
+    version: string;
+    storageMB: number;
+}

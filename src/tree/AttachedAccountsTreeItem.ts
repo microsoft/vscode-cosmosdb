@@ -155,7 +155,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                     defaultValue = placeholder = localMongoConnectionString;
                 }
                 validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
-            } else if (defaultExperience.api === API.Postgres) {
+            } else if (defaultExperience.api === API.Postgres || defaultExperience.api === API.PostgresFlexible) {
                 placeholder = localize('attachedPostgresPlaceholder', '"postgres://username:password@host" or "postgres://username:password@host/database"');
                 validateInput = AttachedAccountsTreeItem.validatePostgresConnectionString;
             } else {
@@ -335,7 +335,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 
             label = label || `${id} (${getExperienceFromApi(api).shortName})`;
             treeItem = new MongoAccountTreeItem(this, id, label, connectionString, isEmulator);
-        } else if (api === API.Postgres) {
+        } else if (api === API.Postgres || api === API.PostgresFlexible) {
             const parsedPostgresConnString = parsePostgresConnectionString(connectionString);
             treeItem = new PostgresServerTreeItem(this, parsedPostgresConnString);
         } else {

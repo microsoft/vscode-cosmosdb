@@ -7,8 +7,8 @@ import { PostgreSQLManagementClient } from "@azure/arm-postgresql";
 import { PostgreSQLFlexibleManagementClient } from "@azure/arm-postgresql-flexible";
 import * as msRest from "@azure/ms-rest-js";
 import { IAbstractPostgresClient } from "./IAbstractPostgresClient";
-import { asAbstractDatabase, flexibleAsAbstractServer, singleAsAbstractServer } from "./maps";
-import { PostgresAbstractDatabaseList, PostgresAbstractServer, PostgresAbstractServerList, PostgresServerType } from "./models";
+import { asAbstractDatabase, asFlexibleParameters, asSingleParameters, flexibleAsAbstractServer, singleAsAbstractServer } from "./maps";
+import { AbstractServerCreate, PostgresAbstractDatabaseList, PostgresAbstractServer, PostgresAbstractServerList, PostgresServerType } from "./models";
 
 export class AbstractPostgresClient implements IAbstractPostgresClient  {
     private postgresFlexibleClient: PostgreSQLFlexibleManagementClient;
@@ -17,6 +17,17 @@ export class AbstractPostgresClient implements IAbstractPostgresClient  {
     constructor(credentials: msRest.ServiceClientCredentials, subscriptionId: string) {
         this.postgresFlexibleClient = new PostgreSQLFlexibleManagementClient(credentials, subscriptionId);
         this.postgresSingleClient = new PostgreSQLManagementClient(credentials, subscriptionId);
+    }
+
+    async createServer(serverType: PostgresServerType, resourceGroup: string, name: string, parameters: AbstractServerCreate): Promise<PostgresAbstractServer> {
+        switch (serverType){
+            case PostgresServerType.Flexible:
+                return flexibleAsAbstractServer(await this.postgresFlexibleClient.servers.create(resourceGroup, name, asFlexibleParameters(parameters)));
+            case PostgresServerType.Single:
+                return singleAsAbstractServer(await this.postgresSingleClient.servers.create(resourceGroup, name, asSingleParameters(parameters)));
+            default:
+                throw new Error("Service not implemented.");
+        }
     }
 
     async listServers(): Promise<PostgresAbstractServerList> {

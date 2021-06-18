@@ -6,6 +6,7 @@
 import { AzureWizardExecuteStep, AzureWizardPromptStep, IAzureQuickPickItem, IWizardOptions, VerifyProvidersStep } from 'vscode-azureextensionui';
 import { API, Experience, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
+import { PostgresServerType } from '../postgres/abstract/models';
 import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
 import { PostgresServerConfirmPWStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerConfirmPWStep';
 import { PostgresServerCreateStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerCreateStep';
@@ -35,7 +36,15 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
     public async getSubWizard(wizardContext: IAzureDBWizardContext): Promise<IWizardOptions<IPostgresServerWizardContext | ICosmosDBWizardContext>> {
         let promptSteps: AzureWizardPromptStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[];
         let executeSteps: AzureWizardExecuteStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[];
-        if (wizardContext.defaultExperience?.api === API.Postgres) {
+        if (wizardContext.defaultExperience?.api === API.Postgres || wizardContext.defaultExperience?.api === API.PostgresFlexible) {
+            switch (wizardContext.defaultExperience?.api){
+                case API.PostgresFlexible:
+                    (wizardContext as IPostgresServerWizardContext).serverType = PostgresServerType.Flexible;
+                    break;
+                case API.Postgres:
+                    (wizardContext as IPostgresServerWizardContext).serverType = PostgresServerType.Single;
+                    break;
+            }
             promptSteps = [
                 new PostgresServerNameStep(),
                 new PostgresServerSkuStep(),

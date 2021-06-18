@@ -2,17 +2,19 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
-import { ServerForCreate } from '@azure/arm-postgresql/src/models';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, callWithMaskHandling, createAzureClient, LocationListStep } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
+import { AbstractPostgresClient } from '../../../abstract/AbstractPostgresClient';
+import { IAbstractPostgresClient } from '../../../abstract/IAbstractPostgresClient';
+import { AbstractServerCreate } from '../../../abstract/models';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresServerWizardContext> {
     public priority: number = 150;
+    public defaultVersion: string = "11";
 
     public async execute(wizardContext: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
@@ -24,26 +26,22 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
 
         return await callWithMaskHandling(
             async () => {
-                const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
+                const serverType = nonNullProp(wizardContext, 'serverType');
+                const client: IAbstractPostgresClient = createAzureClient(wizardContext, AbstractPostgresClient);
                 const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in several minutes.', wizardContext.newServerName);
                 ext.outputChannel.appendLog(createMessage);
                 progress.report({ message: createMessage });
-                const options: ServerForCreate = {
+                const options: AbstractServerCreate = {
                     location: locationName,
                     sku: nonNullProp(wizardContext, 'sku'),
-                    properties: {
-                        administratorLogin: nonNullProp(wizardContext, 'shortUserName'),
-                        administratorLoginPassword: password,
-                        sslEnforcement: "Enabled",
-                        createMode: "Default",
-                        version: "10",
-                        storageProfile: {
-                            storageMB: parseInt(storageMB)
-                        }
-                    },
+                    administratorLogin: nonNullProp(wizardContext, 'shortUserName'),
+                    administratorLoginPassword: password,
+                    sslEnforcement: "Enabled",
+                    version: this.defaultVersion,
+                    storageMB: parseInt(storageMB)
                 };
 
-                wizardContext.server = await client.servers.create(rgName, newServerName, options);
+                wizardContext.server = await client.createServer(serverType, rgName, newServerName, options) ;
             },
             password);
     }

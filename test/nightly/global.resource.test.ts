@@ -120,13 +120,3 @@ async function getAccountType(dictionary: {}, value: string): Promise<string> {
     }
     throw new Error(`Account type of the ${value} resource can't be found.`);
 }
-
-async function doesAccountExist(): Promise<void> {
-    for (const key of Object.keys(accountList)) {
-        const accountName: string = accountList[key];
-        assert.ok(accountItem[accountName]);
-        const getDatabaseAccount: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupList[key]);
-        const accountExists: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = getDatabaseAccount.find((account: CosmosDBManagementModels.DatabaseAccountGetResults) => account.name === accountName);
-        assert.ifError(accountExists);
-    }
-}

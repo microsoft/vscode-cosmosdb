@@ -112,11 +112,11 @@ async function delayOpAccount(s: number, accountTypeOrName: RegExp | string, cal
     });
 }
 
-export async function getAccountType(dictionary: {}, value: string): Promise<string> {
+async function getAccountType(dictionary: {}, value: string): Promise<string> {
     for (const key of Object.keys(dictionary)) {
         if (dictionary[key] === value) {
             return key;
         }
     }
-    return '';
+    throw new Error(`Account type of the ${value} resoure can't be found.`);
 }

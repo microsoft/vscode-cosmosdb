@@ -13,6 +13,10 @@ export function singleAsAbstractServer(server: SingleModels.Server) : PostgresAb
     return {
         id: server.id,
         name: server.name,
+        type: server.type,
+        tags: server.tags,
+        location: server.location,
+        identity: server.identity,
         fullyQualifiedDomainName: server.fullyQualifiedDomainName,
         version: server.version,
         serverType: PostgresServerType.Single
@@ -24,6 +28,10 @@ export function flexibleAsAbstractServer(server: FlexibleModels.Server) : Postgr
     return {
         id: server.id,
         name: server.name,
+        type: server.type,
+        tags: server.tags,
+        location: server.location,
+        identity: server.identity,
         fullyQualifiedDomainName: server.fullyQualifiedDomainName,
         version: server.version,
         serverType: PostgresServerType.Flexible

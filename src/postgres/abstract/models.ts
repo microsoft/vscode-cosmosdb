@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { ResourceIdentity } from "@azure/arm-postgresql/esm/models";
+
 export enum PostgresServerType {
     Flexible,
     Single
@@ -21,6 +23,20 @@ export interface PostgresAbstractServer {
      */
     readonly name?: string;
     /**
+     * The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or
+     * "Microsoft.Storage/storageAccounts"
+     * **NOTE: This property will not be serialized. It can only be populated by the server.**
+     */
+    readonly type?: string;
+    /**
+     * Resource tags.
+     */
+    tags?: { [propertyName: string]: string };
+    /**
+     * The geo-location where the resource lives
+     */
+    location: string;
+    /**
      * The fully qualified domain name of a server.
      */
     fullyQualifiedDomainName?: string;
@@ -32,6 +48,10 @@ export interface PostgresAbstractServer {
      * Azure Service type.
      */
     serverType: PostgresServerType;
+    /**
+     * The Azure Active Directory identity of the server.
+     */
+    identity?: ResourceIdentity;
 }
 
 export type PostgresAbstractServerList = Array<PostgresAbstractServer>;

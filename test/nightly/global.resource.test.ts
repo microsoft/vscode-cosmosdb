@@ -83,7 +83,7 @@ async function createAccount(accountType: RegExp): Promise<void> {
     accountList[accountType.source] = accountName;
     resourceGroupList[accountType.source] = resourceGroupName;
     resourceGroupsToDelete.push(resourceGroupName);
-    const testInputs: (string | RegExp)[] = [accountType, accountName, '$(plus) Create new resource group', resourceGroupName, 'West US'];
+    const testInputs: (string | RegExp)[] = [accountType, accountName, 'Provisioned Throughput', '$(plus) Create new resource group', resourceGroupName, 'West US'];
     await testUserInput.runWithInputs(testInputs, async () => {
         await vscode.commands.executeCommand('azureDatabases.createServer');
     });
@@ -118,5 +118,5 @@ async function getAccountType(dictionary: {}, value: string): Promise<string> {
             return key;
         }
     }
-    throw new Error(`Account type of the ${value} resoure can't be found.`);
+    throw new Error(`Account type of the ${value} resource can't be found.`);
 }

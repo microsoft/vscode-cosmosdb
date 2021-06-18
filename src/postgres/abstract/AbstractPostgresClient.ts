@@ -6,6 +6,7 @@
 import { PostgreSQLManagementClient } from "@azure/arm-postgresql";
 import { PostgreSQLFlexibleManagementClient } from "@azure/arm-postgresql-flexible";
 import * as msRest from "@azure/ms-rest-js";
+import { IMinimumServiceClientOptions } from "vscode-azureextensionui";
 import { IAbstractPostgresClient } from "./IAbstractPostgresClient";
 import { asAbstractDatabase, asFlexibleParameters, asSingleParameters, flexibleAsAbstractServer, singleAsAbstractServer } from "./maps";
 import * as Models from "./models";
@@ -14,9 +15,9 @@ export class AbstractPostgresClient implements IAbstractPostgresClient  {
     private postgresFlexibleClient: PostgreSQLFlexibleManagementClient;
     private postgresSingleClient: PostgreSQLManagementClient;
 
-    constructor(credentials: msRest.ServiceClientCredentials, subscriptionId: string) {
-        this.postgresFlexibleClient = new PostgreSQLFlexibleManagementClient(credentials, subscriptionId);
-        this.postgresSingleClient = new PostgreSQLManagementClient(credentials, subscriptionId);
+    constructor(credentials: msRest.ServiceClientCredentials, subscriptionId: string, options?: IMinimumServiceClientOptions) {
+        this.postgresFlexibleClient = new PostgreSQLFlexibleManagementClient(credentials, subscriptionId, options);
+        this.postgresSingleClient = new PostgreSQLManagementClient(credentials, subscriptionId, options);
     }
 
     async checkNameAvailability(serverType: Models.PostgresServerType, name: string) : Promise<Models.AbstractNameAvailability> {

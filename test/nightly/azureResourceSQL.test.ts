@@ -74,18 +74,6 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         assert.ifError(await getDatabaseMeta());
     });
 
-    test('Delete SQL account', async () => {
-        const SQLAccount: CosmosDBManagementModels.DatabaseAccountGetResults = await client.databaseAccounts.get(resourceGroupName, accountName);
-        assert.ok(SQLAccount);
-        const testInputs: string[] = [`${accountName} (SQL)`, DialogResponses.deleteResponse.title];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteAccount');
-        });
-        const listAccounts: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupName);
-        const accountExists: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = listAccounts.find((account: CosmosDBManagementModels.DatabaseAccountGetResults) => account.name === accountName);
-        assert.ifError(accountExists);
-    });
-
     async function getClient(resourceName: string): Promise<CosmosClient> {
         const connectionString: string = await getConnectionString(resourceName);
         const getParsedConnectionString: ParsedDocDBConnectionString = parseDocDBConnectionString(connectionString);

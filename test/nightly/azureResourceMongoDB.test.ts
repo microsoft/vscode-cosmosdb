@@ -74,18 +74,6 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
         assert.ifError(mongoDatabase);
     });
 
-    test('Delete Mongo account', async () => {
-        const mongoAccount: CosmosDBManagementModels.DatabaseAccountGetResults = await client.databaseAccounts.get(resourceGroupName, accountName);
-        assert.ok(mongoAccount);
-        const testInputs: string[] = [`${accountName} (MongoDB)`, DialogResponses.deleteResponse.title];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteAccount');
-        });
-        const listAccounts: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupName);
-        const accountExists: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = listAccounts.find((account: CosmosDBManagementModels.DatabaseAccountGetResults) => account.name === accountName);
-        assert.ifError(accountExists);
-    });
-
     async function getMongoClient(resourceName: string): Promise<MongoClient> {
         const connectionString: string = await getConnectionString(resourceName);
         return await connectToMongoClient(connectionString, appendExtensionUserAgent());

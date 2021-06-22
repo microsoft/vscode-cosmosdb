@@ -47,7 +47,7 @@ async function validatePostgresServerName(name: string, client: AbstractPostgres
         return localize('serverNamePrefixSuffixCheck', 'Server name must not start or end in a hyphen.');
     }
 
-    const availability: AbstractNameAvailability = (await client.checkNameAvailability(serverType, name));
+    const availability: AbstractNameAvailability = await client.checkNameAvailability(serverType, name);
 
     if (!availability.nameAvailable) {
         if (availability.reason === 'AlreadyExists') {

@@ -155,7 +155,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                     defaultValue = placeholder = localMongoConnectionString;
                 }
                 validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
-            } else if (defaultExperience.api === API.Postgres || defaultExperience.api === API.PostgresFlexible) {
+            } else if (defaultExperience.api === API.PostgresSingle || defaultExperience.api === API.PostgresFlexible) {
                 placeholder = localize('attachedPostgresPlaceholder', '"postgres://username:password@host" or "postgres://username:password@host/database"');
                 validateInput = AttachedAccountsTreeItem.validatePostgresConnectionString;
             } else {
@@ -180,7 +180,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
     }
 
-    public async attachConnectionString(context: IActionContext, connectionString: string, api: API.MongoDB | API.Core | API.Postgres): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
+    public async attachConnectionString(context: IActionContext, connectionString: string, api: API.MongoDB | API.Core | API.PostgresSingle): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
         const treeItem = <MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem>await this.createTreeItem(connectionString, api);
         await this.attachAccount(treeItem, connectionString);
         await this.refresh(context);
@@ -335,7 +335,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
 
             label = label || `${id} (${getExperienceFromApi(api).shortName})`;
             treeItem = new MongoAccountTreeItem(this, id, label, connectionString, isEmulator);
-        } else if (api === API.Postgres || api === API.PostgresFlexible) {
+        } else if (api === API.PostgresSingle || api === API.PostgresFlexible) {
             const parsedPostgresConnString = parsePostgresConnectionString(connectionString);
             treeItem = new PostgresServerTreeItem(this, parsedPostgresConnString);
         } else {
@@ -377,7 +377,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             } else if (node instanceof DocDBAccountTreeItem) {
                 api = API.Core;
             } else if (node instanceof PostgresServerTreeItem) {
-                api = API.Postgres;
+                api = API.PostgresSingle;
             } else {
                 throw new Error(`Unexpected account node "${node.constructor.name}".`);
             }

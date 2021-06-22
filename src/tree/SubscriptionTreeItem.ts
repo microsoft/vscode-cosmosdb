@@ -14,7 +14,6 @@ import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { AbstractPostgresClient } from '../postgres/abstract/AbstractPostgresClient';
-import { IAbstractPostgresClient } from '../postgres/abstract/IAbstractPostgresClient';
 import { PostgresAbstractServer, PostgresAbstractServerList } from '../postgres/abstract/models';
 import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
 import { createPostgresConnectionString, ParsedPostgresConnectionString, parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
@@ -36,8 +35,8 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
 
         //Postgres
-        const postgresClient: IAbstractPostgresClient = createAzureClient(this.root, AbstractPostgresClient);
-        const postgresServers: PostgresAbstractServerList = await postgresClient.listServers() as PostgresAbstractServerList;
+        const postgresClient = createAzureClient(this.root, AbstractPostgresClient);
+        const postgresServers: PostgresAbstractServerList = await postgresClient.listAllServers();
         const treeItemPostgres: AzExtTreeItem[] = await this.createTreeItemsWithErrorHandling(
             postgresServers,
             'invalidPostgreSQLAccount',
@@ -83,7 +82,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const newServerName: string = nonNullProp(wizardContext, 'newServerName');
         context.showCreatingTreeItem(newServerName);
         await wizard.execute();
-        if (wizardContext.defaultExperience?.api === API.Postgres || wizardContext.defaultExperience?.api === API.PostgresFlexible) {
+        if (wizardContext.defaultExperience?.api === API.PostgresSingle || wizardContext.defaultExperience?.api === API.PostgresFlexible) {
             const createMessage: string = localize('createdServerOutput', 'Successfully created PostgreSQL server "{0}".', wizardContext.newServerName);
             void vscode.window.showInformationMessage(createMessage);
             ext.outputChannel.appendLog(createMessage);

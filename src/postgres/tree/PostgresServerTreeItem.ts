@@ -13,7 +13,6 @@ import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { AbstractPostgresClient } from '../abstract/AbstractPostgresClient';
-import { IAbstractPostgresClient } from '../abstract/IAbstractPostgresClient';
 import { PostgresAbstractServer, PostgresServerType } from '../abstract/models';
 import { getClientConfig } from '../getClientConfig';
 import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
@@ -90,7 +89,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
         let dbNames: (string | undefined)[];
         if (this.azureName) {
-            const client: IAbstractPostgresClient = createAzureClient(this.root, AbstractPostgresClient);
+            const client = createAzureClient(this.root, AbstractPostgresClient);
             const listOfDatabases = await client.listDatabases(this.serverType, nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
             dbNames = listOfDatabases.map(db => db?.name);
         } else if (this.partialConnectionString.databaseName) {
@@ -143,7 +142,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        const client: IAbstractPostgresClient = createAzureClient(this.root, AbstractPostgresClient);
+        const client = createAzureClient(this.root, AbstractPostgresClient);
         const deletingMessage: string = `Deleting server "${this.label}"...`;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
             await client.deleteServer(this.serverType, nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));

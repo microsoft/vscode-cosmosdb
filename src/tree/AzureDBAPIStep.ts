@@ -36,12 +36,12 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
     public async getSubWizard(wizardContext: IAzureDBWizardContext): Promise<IWizardOptions<IPostgresServerWizardContext | ICosmosDBWizardContext>> {
         let promptSteps: AzureWizardPromptStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[];
         let executeSteps: AzureWizardExecuteStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[];
-        if (wizardContext.defaultExperience?.api === API.Postgres || wizardContext.defaultExperience?.api === API.PostgresFlexible) {
+        if (wizardContext.defaultExperience?.api === API.PostgresSingle || wizardContext.defaultExperience?.api === API.PostgresFlexible) {
             switch (wizardContext.defaultExperience?.api){
                 case API.PostgresFlexible:
                     (wizardContext as IPostgresServerWizardContext).serverType = PostgresServerType.Flexible;
                     break;
-                case API.Postgres:
+                case API.PostgresSingle:
                     (wizardContext as IPostgresServerWizardContext).serverType = PostgresServerType.Single;
                     break;
             }

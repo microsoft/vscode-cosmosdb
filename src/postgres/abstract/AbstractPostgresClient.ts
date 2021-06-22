@@ -7,11 +7,10 @@ import { PostgreSQLManagementClient } from "@azure/arm-postgresql";
 import { PostgreSQLFlexibleManagementClient } from "@azure/arm-postgresql-flexible";
 import * as msRest from "@azure/ms-rest-js";
 import { IMinimumServiceClientOptions } from "vscode-azureextensionui";
-import { IAbstractPostgresClient } from "./IAbstractPostgresClient";
 import { asAbstractDatabase, asFlexibleParameters, asSingleParameters, flexibleAsAbstractServer, singleAsAbstractServer } from "./maps";
 import * as Models from "./models";
 
-export class AbstractPostgresClient implements IAbstractPostgresClient  {
+export class AbstractPostgresClient {
     private postgresFlexibleClient: PostgreSQLFlexibleManagementClient;
     private postgresSingleClient: PostgreSQLManagementClient;
 
@@ -31,7 +30,7 @@ export class AbstractPostgresClient implements IAbstractPostgresClient  {
         }
     }
 
-    async createFirewallRule(serverType: Models.PostgresServerType, resourceGroup: string, name: string, ruleName: string, rule: Models.AbstractFirewallRule): Promise<Models.AbstractFirewallRule> {
+    async createOrUpdateFirewallRule(serverType: Models.PostgresServerType, resourceGroup: string, name: string, ruleName: string, rule: Models.AbstractFirewallRule): Promise<Models.AbstractFirewallRule> {
         switch (serverType){
             case Models.PostgresServerType.Flexible:
                 return this.postgresFlexibleClient.firewallRules.createOrUpdate(resourceGroup, name, ruleName, rule);
@@ -64,7 +63,7 @@ export class AbstractPostgresClient implements IAbstractPostgresClient  {
         }
     }
 
-    async listServers(): Promise<Models.PostgresAbstractServerList> {
+    async listAllServers(): Promise<Models.PostgresAbstractServerList> {
         const flexServers = (await this.postgresFlexibleClient.servers.list()).map(flexibleAsAbstractServer);
         const singleServers = (await this.postgresSingleClient.servers.list()).map(singleAsAbstractServer);
         return Array<Models.PostgresAbstractServer>().concat(flexServers, singleServers);

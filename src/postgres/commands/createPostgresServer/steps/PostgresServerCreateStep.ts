@@ -8,7 +8,6 @@ import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
 import { AbstractPostgresClient } from '../../../abstract/AbstractPostgresClient';
-import { IAbstractPostgresClient } from '../../../abstract/IAbstractPostgresClient';
 import { AbstractServerCreate } from '../../../abstract/models';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
@@ -27,7 +26,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
         return await callWithMaskHandling(
             async () => {
                 const serverType = nonNullProp(wizardContext, 'serverType');
-                const client: IAbstractPostgresClient = createAzureClient(wizardContext, AbstractPostgresClient);
+                const client = createAzureClient(wizardContext, AbstractPostgresClient);
                 const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in several minutes.', wizardContext.newServerName);
                 ext.outputChannel.appendLog(createMessage);
                 progress.report({ message: createMessage });

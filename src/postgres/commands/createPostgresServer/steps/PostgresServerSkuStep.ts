@@ -177,4 +177,75 @@ const flexibleServerSkus: ISkuOption[] = [
             size: "32768",
         },
     },
+    {
+        label: "D2s_v3",
+        description: "General Purpose, 2 vCore, 8GiB Memory, 32GB storage",
+        sku: {
+            name: "Standard_D2s_v3",
+            tier: "GeneralPurpose",
+            capacity: 2,
+            size: "32768",
+        },
+        group: recommendedGroup
+    },
+    {
+        label: "D4s_v3",
+        description: "General Purpose, 4 vCore, 16GiB Memory, 32GB storage",
+        sku: {
+            name: "Standard_D4s_v3",
+            tier: "GeneralPurpose",
+            capacity: 4,
+            size: "32768",
+        },
+    },
+    {
+        label: "D8s_v3",
+        description: "General Purpose, 8 vCore, 32GiB Memory, 64GB storage",
+        sku: {
+            name: "Standard_D8s_v3",
+            tier: "GeneralPurpose",
+            capacity: 8,
+            size: "65536",
+        },
+    },
+    {
+        label: "D16s_v3",
+        description: "General Purpose, 16 vCore, 64GiB Memory, 64GB storage",
+        sku: {
+            name: "Standard_D16s_v3",
+            tier: "GeneralPurpose",
+            capacity: 16,
+            size: "65536",
+        },
+    },
+    {
+        label: "D32s_v3",
+        description: "General Purpose, 32 vCore, 128GiB Memory, 64GB storage",
+        sku: {
+            name: "Standard_D32s_v3",
+            tier: "GeneralPurpose",
+            capacity: 32,
+            size: "65536",
+        },
+    },
+    {
+        label: "D48s_v3",
+        description: "General Purpose, 48 vCore, 192GiB Memory, 256GB storage",
+        sku: {
+            name: "Standard_D48s_v3",
+            tier: "GeneralPurpose",
+            capacity: 48,
+            size: "262144",
+        },
+    },
+    {
+        label: "D64s_v3",
+        description: "General Purpose, 64 vCore, 256GiB Memory, 256GB storage",
+        sku: {
+            name: "Standard_D64s_v3",
+            tier: "GeneralPurpose",
+            capacity: 64,
+            size: "262144",
+        },
+    },
 ];

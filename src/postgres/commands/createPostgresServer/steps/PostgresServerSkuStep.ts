@@ -154,6 +154,7 @@ const singleServerSkus: ISkuOption[] = [
 ];
 
 // Official storage sizes are 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216
+// See https://docs.microsoft.com/en-au/azure/postgresql/flexible-server/concepts-compute-storage#storage
 const flexibleServerSkus: ISkuOption[] = [
     {
         label: "B1ms",

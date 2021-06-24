@@ -16,6 +16,7 @@ export class PostgresTablesTreeItem extends PostgresResourcesTreeItemBase {
     public readonly contextValue: string = PostgresTablesTreeItem.contextValue;
     public readonly childTypeLabel: string = "Table";
     public readonly label: string = 'Tables';
+    public suppressMaskLabel = true;
 
     constructor(parent: PostgresDatabaseTreeItem, clientConfig: ClientConfig) {
         super(parent);

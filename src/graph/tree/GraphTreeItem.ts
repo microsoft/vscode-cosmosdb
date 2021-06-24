@@ -20,6 +20,7 @@ export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
     public readonly contextValue: string = GraphTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openGraphExplorer';
     public readonly parent: GraphCollectionTreeItem;
+    public suppressMaskLabel = true;
 
     private readonly _collection: ContainerDefinition & Resource;
     private _graphApi: CosmosDBGraphExtensionApi | undefined;

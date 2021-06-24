@@ -16,6 +16,7 @@ export class PostgresStoredProceduresTreeItem extends PostgresResourcesTreeItemB
     public readonly contextValue: string = PostgresStoredProceduresTreeItem.contextValue;
     public readonly label: string = 'Stored Procedures';
     public readonly childTypeLabel: string = 'Stored Procedure';
+    public suppressMaskLabel = true;
 
     constructor(parent: PostgresDatabaseTreeItem, clientConfig: ClientConfig) {
         super(parent);

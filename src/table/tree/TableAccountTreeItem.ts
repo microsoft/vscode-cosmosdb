@@ -21,10 +21,12 @@ export class TableAccountTreeItem extends DocDBAccountTreeItemBase {
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
-        return [new GenericTreeItem(this, {
+        const tableNotFoundTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
             contextValue: 'tableNotSupported',
             label: 'Table Accounts are not supported yet.'
-        })];
+        });
+        tableNotFoundTreeItem.suppressMaskLabel = true;
+        return [tableNotFoundTreeItem];
     }
 
     public async deleteTreeItemImpl(): Promise<void> {

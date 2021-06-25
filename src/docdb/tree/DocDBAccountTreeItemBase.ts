@@ -37,6 +37,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
             isEmulator,
             getCosmosClient: () => getCosmosClient(endpoint, masterKey, isEmulator)
         });
+        this.valuesToMask.push(id, endpoint, masterKey);
     }
 
     // overrides ISubscriptionContext with an object that also has DocDB info

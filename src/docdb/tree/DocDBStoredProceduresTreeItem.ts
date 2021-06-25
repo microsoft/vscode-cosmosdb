@@ -24,6 +24,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
     public readonly contextValue: string = DocDBStoredProceduresTreeItem.contextValue;
     public readonly childTypeLabel: string = "Stored Procedure";
     public readonly parent: DocDBCollectionTreeItem | GraphCollectionTreeItem;
+    public suppressMaskLabel = true;
 
     constructor(parent: DocDBCollectionTreeItem | GraphCollectionTreeItem) {
         super(parent);

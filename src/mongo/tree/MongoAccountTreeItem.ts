@@ -34,6 +34,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         this.label = label;
         this.connectionString = connectionString;
         this._root = Object.assign({}, parent.root, { isEmulator });
+        this.valuesToMask.push(connectionString);
     }
 
     // overrides ISubscriptionContext with an object that also has Mongo info

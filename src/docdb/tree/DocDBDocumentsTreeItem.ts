@@ -20,6 +20,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     public readonly contextValue: string = DocDBDocumentsTreeItem.contextValue;
     public readonly childTypeLabel: string = "Documents";
     public readonly parent: DocDBCollectionTreeItem;
+    public suppressMaskLabel = true;
 
     constructor(parent: DocDBCollectionTreeItem) {
         super(parent);

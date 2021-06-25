@@ -42,6 +42,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     public readonly id: string = 'cosmosDBAttachedAccounts';
     public readonly label: string = 'Attached Database Accounts';
     public childTypeLabel: string = 'Account';
+    public suppressMaskLabel = true;
 
     private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.connectionStrings";
     private _attachedAccounts: AzureTreeItem[] | undefined;

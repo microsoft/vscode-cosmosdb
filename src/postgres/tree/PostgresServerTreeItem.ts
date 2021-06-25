@@ -51,6 +51,10 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
             this.azureName = server?.name;
         }
+        this.valuesToMask.push(connectionString.accountId, connectionString.connectionString, connectionString.fullId, connectionString.hostName, connectionString.port);
+        if (connectionString.databaseName) {
+            this.valuesToMask.push(connectionString.databaseName);
+        }
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {

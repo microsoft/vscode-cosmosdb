@@ -5,8 +5,6 @@
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { DatabaseAccountGetResults, DatabaseAccountListKeysResult, DatabaseAccountsListResponse, DatabaseAccountsListResult } from '@azure/arm-cosmosdb/src/models';
-import * as PostgresFlexibleModels from "@azure/arm-postgresql-flexible/esm/models";
-import * as PostgresSingleModels from "@azure/arm-postgresql/esm/models";
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
@@ -39,13 +37,10 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         //Postgres
         const postgresSingleClient = createAbstractPostgresClient(PostgresServerType.Single, this.root);
         const postgresFlexibleClient = createAbstractPostgresClient(PostgresServerType.Flexible, this.root);
-        let postgresServers = Array<PostgresAbstractServer>();
-        const postgresSingleServers = await postgresSingleClient.servers.list() as PostgresSingleModels.ServerListResult;
-        const postgresFlexibleServers= await postgresFlexibleClient.servers.list() as PostgresFlexibleModels.ServerListResult;
-
-        postgresServers = Array<PostgresAbstractServer>().concat(
-            postgresFlexibleServers.map(this.flexibleAsAbstractServer),
-            postgresSingleServers.map(this.singleAsAbstractServer));
+        const postgresServers: PostgresAbstractServer[] = [
+            ...(await postgresSingleClient.servers.list()).map(s => Object.assign(s, { serverType: PostgresServerType.Single })),
+            ...(await postgresFlexibleClient.servers.list()).map(s => Object.assign(s, { serverType: PostgresServerType.Flexible })),
+        ];
 
         const treeItemPostgres: AzExtTreeItem[] = await this.createTreeItemsWithErrorHandling(
             postgresServers,
@@ -157,13 +152,5 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const connectionString: string = createPostgresConnectionString(nonNullProp(server, 'fullyQualifiedDomainName'));
         const parsedCS: ParsedPostgresConnectionString = parsePostgresConnectionString(connectionString);
         return new PostgresServerTreeItem(this, parsedCS, server);
-    }
-
-    private singleAsAbstractServer(server: PostgresSingleModels.Server): PostgresAbstractServer {
-        return Object.assign(server, { serverType: PostgresServerType.Single });
-    }
-
-    private flexibleAsAbstractServer(server: PostgresFlexibleModels.Server): PostgresAbstractServer {
-        return Object.assign(server, { serverType: PostgresServerType.Flexible });
     }
 }

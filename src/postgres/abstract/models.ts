@@ -13,11 +13,7 @@ export enum PostgresServerType {
 
 export type PostgresAbstractServer = (SingleModels.Server | FlexibleModels.Server) & { serverType?: PostgresServerType; }
 
-export type PostgresAbstractServerList = Array<PostgresAbstractServer>;
-
 export type PostgresAbstractDatabase = SingleModels.Database | FlexibleModels.Database;
-
-export type PostgresAbstractDatabaseList = Array<PostgresAbstractDatabase>;
 
 /**
  * Billing information related properties of a server.

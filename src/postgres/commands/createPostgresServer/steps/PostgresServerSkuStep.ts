@@ -42,7 +42,7 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
 
     public async getPicks(serverType: PostgresServerType): Promise<IAzureQuickPickItem<AbstractSku | undefined>[]> {
         const options: IAzureQuickPickItem<AbstractSku | undefined>[] = [];
-        const skuOptions: ISkuOption[] = serverType == PostgresServerType.Single ? singleServerSkus : flexibleServerSkus ;
+        const skuOptions: ISkuOption[] = serverType === PostgresServerType.Single ? singleServerSkus : flexibleServerSkus ;
 
         skuOptions.forEach((option) => {
             options.push({

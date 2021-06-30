@@ -50,9 +50,7 @@ async function validatePostgresServerName(name: string, client: AbstractPostgres
     const availability: AbstractNameAvailability = await client.checkNameAvailability.execute({name: name, type: "Microsoft.DBforPostgreSQL"});
 
     if (!availability.nameAvailable) {
-        if (availability.message === 'AlreadyExists') {
-            return localize('serverNameAvailabilityCheck', 'A server named "{0}" already exists.', name);
-        }
+        return localize('serverNameAvailabilityCheck', 'Server name "{0}" is not available.', name);
     }
 
     return undefined;

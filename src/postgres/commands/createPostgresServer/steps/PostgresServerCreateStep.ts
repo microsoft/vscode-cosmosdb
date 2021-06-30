@@ -2,10 +2,8 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { PostgreSQLManagementClient } from "@azure/arm-postgresql";
-import { PostgreSQLFlexibleManagementClient } from "@azure/arm-postgresql-flexible";
-import * as FlexibleModels from "@azure/arm-postgresql-flexible/esm/models";
-import * as SingleModels from "@azure/arm-postgresql/esm/models";
+import { PostgreSQLManagementClient, PostgreSQLManagementModels as SingleModels } from "@azure/arm-postgresql";
+import { PostgreSQLFlexibleManagementClient, PostgreSQLFlexibleManagementModels as FlexibleModels } from "@azure/arm-postgresql-flexible";
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep, callWithMaskHandling, createAzureClient, LocationListStep } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';

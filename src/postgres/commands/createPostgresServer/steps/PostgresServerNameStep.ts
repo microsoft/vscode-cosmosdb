@@ -3,22 +3,22 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureNameStep, createAzureClient, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
+import { AzureNameStep, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
-import { AbstractPostgresClient } from '../../../abstract/AbstractPostgresClient';
-import { AbstractNameAvailability, PostgresServerType } from '../../../abstract/models';
+import { AbstractPostgresClient, createAbstractPostgresClient } from '../../../abstract/AbstractPostgresClient';
+import { AbstractNameAvailability } from '../../../abstract/models';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerNameStep extends AzureNameStep<IPostgresServerWizardContext> {
 
     public async prompt(wizardContext: IPostgresServerWizardContext): Promise<void> {
-        const client = createAzureClient(wizardContext, AbstractPostgresClient);
+        const client = createAbstractPostgresClient(nonNullProp(wizardContext, "serverType"), wizardContext);
         wizardContext.newServerName = (await ext.ui.showInputBox({
             placeHolder: localize('serverNamePlaceholder', 'Server name'),
             prompt: localize('enterServerNamePrompt', 'Provide a name for the PostgreSQL Server.'),
-            validateInput: (name: string) => validatePostgresServerName(name, client, nonNullProp(wizardContext, "serverType"))
+            validateInput: (name: string) => validatePostgresServerName(name, client)
         })).trim();
         wizardContext.valuesToMask.push(wizardContext.newServerName);
         wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.newServerName, resourceGroupNamingRules);
@@ -33,7 +33,7 @@ export class PostgresServerNameStep extends AzureNameStep<IPostgresServerWizardC
     }
 }
 
-async function validatePostgresServerName(name: string, client: AbstractPostgresClient, serverType: PostgresServerType): Promise<string | undefined> {
+async function validatePostgresServerName(name: string, client: AbstractPostgresClient): Promise<string | undefined> {
     name = name ? name.trim() : '';
 
     const min = 3;
@@ -47,10 +47,10 @@ async function validatePostgresServerName(name: string, client: AbstractPostgres
         return localize('serverNamePrefixSuffixCheck', 'Server name must not start or end in a hyphen.');
     }
 
-    const availability: AbstractNameAvailability = await client.checkNameAvailability(serverType, name);
+    const availability: AbstractNameAvailability = await client.checkNameAvailability.execute({name: name, type: "Microsoft.DBforPostgreSQL"});
 
     if (!availability.nameAvailable) {
-        if (availability.reason === 'AlreadyExists') {
+        if (availability.message === 'AlreadyExists') {
             return localize('serverNameAvailabilityCheck', 'A server named "{0}" already exists.', name);
         }
     }

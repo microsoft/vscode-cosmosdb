@@ -5,11 +5,11 @@
 
 import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
-import { createAzureClient, DialogResponses, IActionContext } from "vscode-azureextensionui";
+import { DialogResponses, IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { nonNullProp } from '../../utils/nonNull';
-import { AbstractPostgresClient } from '../abstract/AbstractPostgresClient';
+import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { AbstractFirewallRule, PostgresServerType } from '../abstract/models';
 import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
 
@@ -30,10 +30,10 @@ export async function configurePostgresFirewall(context: IActionContext, treeIte
 
 export async function setFirewallRule(context: IActionContext, treeItem: PostgresServerTreeItem, ip: string): Promise<void> {
 
-    const client = createAzureClient(treeItem.root, AbstractPostgresClient);
+    const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
+    const client = createAbstractPostgresClient(serverType, treeItem.root);
     const resourceGroup: string = nonNullProp(treeItem, 'resourceGroup');
     const serverName: string = nonNullProp(treeItem, 'azureName');
-    const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
 
     const firewallRuleName: string = "azureDatabasesForVSCode-publicIp";
 
@@ -49,7 +49,7 @@ export async function setFirewallRule(context: IActionContext, treeItem: Postgre
     };
     ext.outputChannel.appendLog(progressMessage);
     await vscode.window.withProgress(options, async () => {
-        await client.createOrUpdateFirewallRule(serverType, resourceGroup, serverName, firewallRuleName, newFirewallRule);
+        await client.firewallRules.createOrUpdate(resourceGroup, serverName, firewallRuleName, newFirewallRule);
     });
     const completedMessage: string = localize('addedFirewallRule', 'Successfully added firewall rule for IP "{0}" to server "{1}".', ip, serverName);
     void vscode.window.showInformationMessage(completedMessage);

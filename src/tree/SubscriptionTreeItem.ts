@@ -5,6 +5,8 @@
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { DatabaseAccountGetResults, DatabaseAccountListKeysResult, DatabaseAccountsListResponse, DatabaseAccountsListResult } from '@azure/arm-cosmosdb/src/models';
+import * as PostgresFlexibleModels from "@azure/arm-postgresql-flexible/esm/models";
+import * as PostgresSingleModels from "@azure/arm-postgresql/esm/models";
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
@@ -13,8 +15,8 @@ import { ext } from '../extensionVariables';
 import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { AbstractPostgresClient } from '../postgres/abstract/AbstractPostgresClient';
-import { PostgresAbstractServer, PostgresAbstractServerList } from '../postgres/abstract/models';
+import { createAbstractPostgresClient } from '../postgres/abstract/AbstractPostgresClient';
+import { PostgresAbstractServer, PostgresServerType } from '../postgres/abstract/models';
 import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
 import { createPostgresConnectionString, ParsedPostgresConnectionString, parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
@@ -35,8 +37,16 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
 
         //Postgres
-        const postgresClient = createAzureClient(this.root, AbstractPostgresClient);
-        const postgresServers: PostgresAbstractServerList = await postgresClient.listAllServers();
+        const postgresSingleClient = createAbstractPostgresClient(PostgresServerType.Single, this.root);
+        const postgresFlexibleClient = createAbstractPostgresClient(PostgresServerType.Flexible, this.root);
+        let postgresServers = Array<PostgresAbstractServer>();
+        const postgresSingleServers = await postgresSingleClient.servers.list() as PostgresSingleModels.ServerListResult;
+        const postgresFlexibleServers= await postgresFlexibleClient.servers.list() as PostgresFlexibleModels.ServerListResult;
+
+        postgresServers = Array<PostgresAbstractServer>().concat(
+            postgresFlexibleServers.map(this.flexibleAsAbstractServer),
+            postgresSingleServers.map(this.singleAsAbstractServer));
+
         const treeItemPostgres: AzExtTreeItem[] = await this.createTreeItemsWithErrorHandling(
             postgresServers,
             'invalidPostgreSQLAccount',
@@ -147,5 +157,13 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const connectionString: string = createPostgresConnectionString(nonNullProp(server, 'fullyQualifiedDomainName'));
         const parsedCS: ParsedPostgresConnectionString = parsePostgresConnectionString(connectionString);
         return new PostgresServerTreeItem(this, parsedCS, server);
+    }
+
+    private singleAsAbstractServer(server: PostgresSingleModels.Server): PostgresAbstractServer {
+        return Object.assign(server, { serverType: PostgresServerType.Single });
+    }
+
+    private flexibleAsAbstractServer(server: PostgresFlexibleModels.Server): PostgresAbstractServer {
+        return Object.assign(server, { serverType: PostgresServerType.Flexible });
     }
 }

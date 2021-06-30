@@ -6,13 +6,13 @@
 import { ClientConfig } from 'pg';
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, createAzureClient, ICreateChildImplContext, ISubscriptionContext } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, ICreateChildImplContext, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { AbstractPostgresClient } from '../abstract/AbstractPostgresClient';
+import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { PostgresAbstractServer, PostgresServerType } from '../abstract/models';
 import { getClientConfig } from '../getClientConfig';
 import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
@@ -52,7 +52,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             this._serverVersion = server?.version;
             this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
             this.azureName = server?.name;
-            this.serverType = server.serverType;
+            this.serverType = nonNullProp(server, 'serverType');
         }
     }
 
@@ -89,8 +89,8 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
         let dbNames: (string | undefined)[];
         if (this.azureName) {
-            const client = createAzureClient(this.root, AbstractPostgresClient);
-            const listOfDatabases = await client.listDatabases(this.serverType, nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
+            const client = createAbstractPostgresClient(this.serverType, this.root);
+            const listOfDatabases = await client.databases.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
             dbNames = listOfDatabases.map(db => db?.name);
         } else if (this.partialConnectionString.databaseName) {
             dbNames = [this.partialConnectionString.databaseName];
@@ -142,10 +142,10 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        const client = createAzureClient(this.root, AbstractPostgresClient);
+        const client = createAbstractPostgresClient(this.serverType, this.root);
         const deletingMessage: string = `Deleting server "${this.label}"...`;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
-            await client.deleteServer(this.serverType, nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
+            await client.servers.deleteMethod(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
             await this.deletePostgresCredentials();
         });
     }

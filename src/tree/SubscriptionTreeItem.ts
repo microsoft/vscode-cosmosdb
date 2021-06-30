@@ -5,6 +5,8 @@
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { DatabaseAccountGetResults, DatabaseAccountListKeysResult, DatabaseAccountsListResponse, DatabaseAccountsListResult } from '@azure/arm-cosmosdb/src/models';
+import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
+import { PostgreSQLFlexibleManagementClient } from '@azure/arm-postgresql-flexible';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
@@ -13,7 +15,6 @@ import { ext } from '../extensionVariables';
 import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { createAbstractPostgresClient } from '../postgres/abstract/AbstractPostgresClient';
 import { PostgresAbstractServer, PostgresServerType } from '../postgres/abstract/models';
 import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
 import { createPostgresConnectionString, ParsedPostgresConnectionString, parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
@@ -35,8 +36,8 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
 
         //Postgres
-        const postgresSingleClient = createAbstractPostgresClient(PostgresServerType.Single, this.root);
-        const postgresFlexibleClient = createAbstractPostgresClient(PostgresServerType.Flexible, this.root);
+        const postgresSingleClient = createAzureClient(this.root, PostgreSQLManagementClient);
+        const postgresFlexibleClient = createAzureClient(this.root, PostgreSQLFlexibleManagementClient);
         const postgresServers: PostgresAbstractServer[] = [
             ...(await postgresSingleClient.servers.list()).map(s => Object.assign(s, { serverType: PostgresServerType.Single })),
             ...(await postgresFlexibleClient.servers.list()).map(s => Object.assign(s, { serverType: PostgresServerType.Flexible })),

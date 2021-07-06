@@ -4,13 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ext } from "../extensionVariables";
-import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
 import { MongoDatabaseTreeItem } from "./tree/MongoDatabaseTreeItem";
 
-export function setConnectedNode(node: MongoDatabaseTreeItem | undefined, codeLensProvider: MongoCodeLensProvider): void {
+export function setConnectedNode(node: MongoDatabaseTreeItem | undefined): void {
     ext.connectedMongoDB = node;
     const dbName = node && node.label;
-    if (codeLensProvider) {
-        codeLensProvider.setConnectedDatabase(dbName);
-    }
+    ext.mongoCodeLensProvider.setConnectedDatabase(dbName);
 }

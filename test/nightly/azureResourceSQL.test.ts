@@ -6,9 +6,9 @@
 import { CosmosDBManagementModels } from '@azure/arm-cosmosdb';
 import { ContainerDefinition, CosmosClient, DatabaseDefinition, Resource } from '@azure/cosmos';
 import * as assert from 'assert';
-import * as vscode from 'vscode';
-import { DialogResponses, getCosmosClient, ParsedDocDBConnectionString, parseDocDBConnectionString, randomUtils } from '../../extension.bundle';
-import { longRunningTestsEnabled, testUserInput } from '../global.test';
+import { runWithTestActionContext } from 'vscode-azureextensiondev';
+import { createDocDBCollection, createDocDBDatabase, deleteDocDBCollection, deleteDocDBDatabase, DialogResponses, getCosmosClient, ParsedDocDBConnectionString, parseDocDBConnectionString, randomUtils } from '../../extension.bundle';
+import { longRunningTestsEnabled } from '../global.test';
 import { getConnectionString } from './getConnectionString';
 import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
 
@@ -40,8 +40,10 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         // Partition key cannot begin with a digit
         const partitionKey1: string = `f${randomUtils.getRandomHexString(12)}`;
         const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (SQL)`, databaseName, collectionId1, partitionKey1, '1000'];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createDocDBDatabase');
+        await runWithTestActionContext('createDocDBDatabase', async context => {
+            await context.ui.runWithInputs(testInputs, async () => {
+                await createDocDBDatabase(context);
+            });
         });
         assert.ok(await getDatabaseMeta());
     });
@@ -50,8 +52,10 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
         // Partition key cannot begin with a digit
         const partitionKey2: string = `f${randomUtils.getRandomHexString(12)}`;
         const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (SQL)`, databaseName, collectionId2, partitionKey2, '1000'];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createDocDBCollection');
+        await runWithTestActionContext('createDocDBCollection', async context => {
+            await context.ui.runWithInputs(testInputs, async () => {
+                await createDocDBCollection(context);
+            });
         });
         assert.ok(await getDocDBCollectionMeta(accountName, databaseName, collectionId2));
     });
@@ -59,8 +63,10 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
     test('Delete SQL collection', async () => {
         assert.ok(await getDocDBCollectionMeta(accountName, databaseName, collectionId2));
         const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (SQL)`, databaseName, collectionId2, DialogResponses.deleteResponse.title];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteDocDBCollection');
+        await runWithTestActionContext('deleteDocDBCollection', async context => {
+            await context.ui.runWithInputs(testInputs, async () => {
+                await deleteDocDBCollection(context);
+            });
         });
         assert.ifError(await getDocDBCollectionMeta(accountName, databaseName, collectionId2));
     });
@@ -68,8 +74,10 @@ suite('SQL action', async function (this: Mocha.Suite): Promise<void> {
     test('Delete SQL Database', async () => {
         assert.ok(await getDatabaseMeta());
         const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (SQL)`, databaseName, DialogResponses.deleteResponse.title];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteDocDBDatabase');
+        await runWithTestActionContext('deleteDocDBDatabase', async context => {
+            await context.ui.runWithInputs(testInputs, async () => {
+                await deleteDocDBDatabase(context);
+            });
         });
         assert.ifError(await getDatabaseMeta());
     });

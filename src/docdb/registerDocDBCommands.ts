@@ -17,19 +17,8 @@ import { DocDBStoredProceduresTreeItem } from "./tree/DocDBStoredProceduresTreeI
 import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
 
 export function registerDocDBCommands(): void {
-    registerCommand('cosmosDB.createDocDBDatabase', async (context: IActionContext, node?: DocDBAccountTreeItem) => {
-        if (!node) {
-            node = <DocDBAccountTreeItem>await ext.tree.showTreeItemPicker([DocDBAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue + AttachedAccountSuffix], context);
-        }
-        const databaseNode: DocDBDatabaseTreeItem = <DocDBDatabaseTreeItem>await node.createChild(context);
-        await databaseNode.createChild(context);
-    });
-    registerCommand('cosmosDB.createDocDBCollection', async (context: IActionContext, node?: DocDBDatabaseTreeItem) => {
-        if (!node) {
-            node = <DocDBDatabaseTreeItem>await ext.tree.showTreeItemPicker(DocDBDatabaseTreeItem.contextValue, context);
-        }
-        await node.createChild(context);
-    });
+    registerCommand('cosmosDB.createDocDBDatabase', createDocDBDatabase);
+    registerCommand('cosmosDB.createDocDBCollection', createDocDBCollection);
     registerCommand('cosmosDB.createDocDBDocument', async (context: IActionContext, node?: DocDBDocumentsTreeItem) => {
         if (!node) {
             node = <DocDBDocumentsTreeItem>await ext.tree.showTreeItemPicker(DocDBDocumentsTreeItem.contextValue, context);
@@ -46,22 +35,8 @@ export function registerDocDBCommands(): void {
         await commands.executeCommand("cosmosDB.openStoredProcedure", childNode);
 
     });
-    registerCommand('cosmosDB.deleteDocDBDatabase', async (context: IActionContext, node?: DocDBDatabaseTreeItem) => {
-        const suppressCreateContext: ITreeItemPickerContext = context;
-        suppressCreateContext.suppressCreatePick = true;
-        if (!node) {
-            node = <DocDBDatabaseTreeItem>await ext.tree.showTreeItemPicker(DocDBDatabaseTreeItem.contextValue, context);
-        }
-        await node.deleteTreeItem(context);
-    });
-    registerCommand('cosmosDB.deleteDocDBCollection', async (context: IActionContext, node?: DocDBCollectionTreeItem) => {
-        const suppressCreateContext: ITreeItemPickerContext = context;
-        suppressCreateContext.suppressCreatePick = true;
-        if (!node) {
-            node = <DocDBCollectionTreeItem>await ext.tree.showTreeItemPicker(DocDBCollectionTreeItem.contextValue, context);
-        }
-        await node.deleteTreeItem(context);
-    });
+    registerCommand('cosmosDB.deleteDocDBDatabase', deleteDocDBDatabase);
+    registerCommand('cosmosDB.deleteDocDBCollection', deleteDocDBCollection);
     registerCommand('cosmosDB.openStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
         if (!node) {
             node = <DocDBStoredProcedureTreeItem>await ext.tree.showTreeItemPicker([DocDBStoredProcedureTreeItem.contextValue], context);
@@ -84,4 +59,37 @@ export function registerDocDBCommands(): void {
         }
         await node.deleteTreeItem(context);
     });
+}
+
+export async function createDocDBDatabase(context: IActionContext, node?: DocDBAccountTreeItem): Promise<void> {
+    if (!node) {
+        node = <DocDBAccountTreeItem>await ext.tree.showTreeItemPicker([DocDBAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue + AttachedAccountSuffix], context);
+    }
+    const databaseNode: DocDBDatabaseTreeItem = <DocDBDatabaseTreeItem>await node.createChild(context);
+    await databaseNode.createChild(context);
+}
+
+export async function createDocDBCollection(context: IActionContext, node?: DocDBDatabaseTreeItem): Promise<void> {
+    if (!node) {
+        node = <DocDBDatabaseTreeItem>await ext.tree.showTreeItemPicker(DocDBDatabaseTreeItem.contextValue, context);
+    }
+    await node.createChild(context);
+}
+
+export async function deleteDocDBDatabase(context: IActionContext, node?: DocDBDatabaseTreeItem): Promise<void> {
+    const suppressCreateContext: ITreeItemPickerContext = context;
+    suppressCreateContext.suppressCreatePick = true;
+    if (!node) {
+        node = <DocDBDatabaseTreeItem>await ext.tree.showTreeItemPicker(DocDBDatabaseTreeItem.contextValue, context);
+    }
+    await node.deleteTreeItem(context);
+}
+
+export async function deleteDocDBCollection(context: IActionContext, node?: DocDBCollectionTreeItem): Promise<void> {
+    const suppressCreateContext: ITreeItemPickerContext = context;
+    suppressCreateContext.suppressCreatePick = true;
+    if (!node) {
+        node = <DocDBCollectionTreeItem>await ext.tree.showTreeItemPicker(DocDBCollectionTreeItem.contextValue, context);
+    }
+    await node.deleteTreeItem(context);
 }

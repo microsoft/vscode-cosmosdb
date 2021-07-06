@@ -14,25 +14,25 @@ import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresServerWizardContext> {
     public priority: number = 150;
 
-    public async execute(wizardContext: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
+    public async execute(context: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
-        const locationName: string = (await LocationListStep.getLocation(wizardContext)).name;
-        const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
-        const storageMB: string = nonNullProp(nonNullProp(wizardContext, 'sku'), 'size');
-        const newServerName = nonNullProp(wizardContext, 'newServerName');
-        const password: string = nonNullProp(wizardContext, 'adminPassword');
+        const locationName: string = (await LocationListStep.getLocation(context)).name;
+        const rgName: string = nonNullProp(nonNullProp(context, 'resourceGroup'), 'name');
+        const storageMB: string = nonNullProp(nonNullProp(context, 'sku'), 'size');
+        const newServerName = nonNullProp(context, 'newServerName');
+        const password: string = nonNullProp(context, 'adminPassword');
 
         return await callWithMaskHandling(
             async () => {
-                const client: PostgreSQLManagementClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
-                const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in several minutes.', wizardContext.newServerName);
+                const client: PostgreSQLManagementClient = createAzureClient(context, PostgreSQLManagementClient);
+                const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in several minutes.', context.newServerName);
                 ext.outputChannel.appendLog(createMessage);
                 progress.report({ message: createMessage });
                 const options: ServerForCreate = {
                     location: locationName,
-                    sku: nonNullProp(wizardContext, 'sku'),
+                    sku: nonNullProp(context, 'sku'),
                     properties: {
-                        administratorLogin: nonNullProp(wizardContext, 'shortUserName'),
+                        administratorLogin: nonNullProp(context, 'shortUserName'),
                         administratorLoginPassword: password,
                         sslEnforcement: "Enabled",
                         createMode: "Default",
@@ -43,12 +43,12 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                     },
                 };
 
-                wizardContext.server = await client.servers.create(rgName, newServerName, options);
+                context.server = await client.servers.create(rgName, newServerName, options);
             },
             password);
     }
 
-    public shouldExecute(wizardContext: IPostgresServerWizardContext): boolean {
-        return !wizardContext.server;
+    public shouldExecute(context: IPostgresServerWizardContext): boolean {
+        return !context.server;
     }
 }

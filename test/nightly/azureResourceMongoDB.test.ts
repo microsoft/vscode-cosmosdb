@@ -6,9 +6,9 @@
 import { CosmosDBManagementModels } from '@azure/arm-cosmosdb';
 import * as assert from 'assert';
 import { Collection, MongoClient } from 'mongodb';
-import * as vscode from 'vscode';
-import { appendExtensionUserAgent, connectToMongoClient, DialogResponses, IDatabaseInfo, randomUtils } from '../../extension.bundle';
-import { longRunningTestsEnabled, testUserInput } from '../global.test';
+import { runWithTestActionContext } from 'vscode-azureextensiondev';
+import { appendExtensionUserAgent, connectToMongoClient, createMongoCollection, createMongoDatabase, deleteMongoCollection, deleteMongoDB, DialogResponses, IDatabaseInfo, randomUtils } from '../../extension.bundle';
+import { longRunningTestsEnabled } from '../global.test';
 import { getConnectionString } from './getConnectionString';
 import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
 
@@ -40,16 +40,20 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
     test('Create Mongo Database', async () => {
         const collectionName2: string = randomUtils.getRandomHexString(12);
         const testInputs: string[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (MongoDB)`, databaseName1, collectionName2];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createMongoDatabase');
+        await runWithTestActionContext('createMongoDatabase', async context => {
+            await context.ui.runWithInputs(testInputs, async () => {
+                await createMongoDatabase(context);
+            });
         });
         assert.ok(await doesMongoDatabaseExist(accountName, databaseName1));
     });
 
     test('Create Mongo Collection', async () => {
         const testInputs: string[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (MongoDB)`, '$(plus) Create new Database...', databaseName2, collectionName1];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createMongoCollection');
+        await runWithTestActionContext('createMongoCollection', async context => {
+            await context.ui.runWithInputs(testInputs, async () => {
+                await createMongoCollection(context);
+            });
         });
         assert.ok(await doesMongoCollectionExist(accountName, databaseName2, collectionName1));
     });
@@ -57,8 +61,10 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
     test('Delete Mongo Collection', async () => {
         assert.ok(await doesMongoCollectionExist(accountName, databaseName2, collectionName1));
         const testInputs: string[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (MongoDB)`, databaseName2, collectionName1, DialogResponses.deleteResponse.title];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteMongoCollection');
+        await runWithTestActionContext('deleteMongoCollection', async context => {
+            await context.ui.runWithInputs(testInputs, async () => {
+                await deleteMongoCollection(context);
+            });
         });
         const mongoCollection: Collection | undefined = await doesMongoCollectionExist(accountName, databaseName2, collectionName1);
         assert.ifError(mongoCollection);
@@ -67,8 +73,10 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
     test('Delete Mongo Database', async () => {
         assert.ok(await doesMongoDatabaseExist(accountName, databaseName1));
         const testInputs: string[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (MongoDB)`, databaseName1, DialogResponses.deleteResponse.title];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.deleteMongoDB');
+        await runWithTestActionContext('deleteMongoDB', async context => {
+            await context.ui.runWithInputs(testInputs, async () => {
+                await deleteMongoDB(context);
+            });
         });
         const mongoDatabase: IDatabaseInfo | undefined = await doesMongoDatabaseExist(accountName, databaseName1);
         assert.ifError(mongoDatabase);

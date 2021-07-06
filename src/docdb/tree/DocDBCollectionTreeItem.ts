@@ -5,8 +5,7 @@
 
 import { Container, ContainerDefinition, CosmosClient, PartitionKeyDefinition, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, AzureTreeItem, DialogResponses, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
-import { ext } from '../../extensionVariables';
+import { AzureParentTreeItem, AzureTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
@@ -52,15 +51,11 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         return this._container.partitionKey;
     }
 
-    public async deleteTreeItemImpl(): Promise<void> {
+    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete collection '${this.label}' and its contents?`;
-        const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
-        if (result === DialogResponses.deleteResponse) {
-            const client = this.root.getCosmosClient();
-            await this.getContainerClient(client).delete();
-        } else {
-            throw new UserCancelledError();
-        }
+        await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+        const client = this.root.getCosmosClient();
+        await this.getContainerClient(client).delete();
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem<IDocDBTreeRoot>[]> {

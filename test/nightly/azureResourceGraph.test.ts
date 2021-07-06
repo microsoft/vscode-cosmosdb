@@ -6,9 +6,9 @@
 import { CosmosDBManagementModels } from '@azure/arm-cosmosdb';
 import { ContainerDefinition, CosmosClient, DatabaseDefinition, Resource } from '@azure/cosmos';
 import * as assert from 'assert';
-import * as vscode from 'vscode';
-import { randomUtils } from '../../extension.bundle';
-import { longRunningTestsEnabled, testUserInput } from '../global.test';
+import { runWithTestActionContext } from 'vscode-azureextensiondev';
+import { createGraph, createGraphDatabase, randomUtils } from '../../extension.bundle';
+import { longRunningTestsEnabled } from '../global.test';
 import { getConnectionString } from './getConnectionString';
 import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
 
@@ -35,9 +35,11 @@ suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
 
     test('Create graph Database', async () => {
         const testInputs: (string | RegExp)[] = [`${accountName} (Gremlin)`, databaseName];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createGraphDatabase');
-        });
+        await runWithTestActionContext('createGraphDatabase', async context => {
+            await context.ui.runWithInputs(testInputs, async () => {
+                await createGraphDatabase(context);
+            });
+        })
         const connectionString: string = await getConnectionString(accountName);
         const graphClient: CosmosClient = new CosmosClient(connectionString);
         const listDatabases: (DatabaseDefinition & Resource)[] = (await graphClient.databases.readAll().fetchAll()).resources;
@@ -50,8 +52,10 @@ suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
         // partition key name cannot begin with a digit
         const partitionKey: string = `f${randomUtils.getRandomHexString(12)}`;
         const testInputs: (string | RegExp)[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (Gremlin)`, databaseName, graphId, partitionKey, '1000'];
-        await testUserInput.runWithInputs(testInputs, async () => {
-            await vscode.commands.executeCommand('cosmosDB.createGraph');
+        await runWithTestActionContext('createGraph', async context => {
+            await context.ui.runWithInputs(testInputs, async () => {
+                await createGraph(context);
+            });
         });
         const connectionString: string = await getConnectionString(accountName);
         const graphClient: CosmosClient = new CosmosClient(connectionString);

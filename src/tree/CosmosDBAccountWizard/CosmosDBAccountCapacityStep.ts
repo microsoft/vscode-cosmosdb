@@ -4,14 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep, IAzureQuickPickItem } from 'vscode-azureextensionui';
-import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { openUrl } from '../../utils/openUrl';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountCapacityStep extends AzureWizardPromptStep<ICosmosDBWizardContext> {
 
-    public async prompt(wizardContext: ICosmosDBWizardContext): Promise<void> {
+    public async prompt(context: ICosmosDBWizardContext): Promise<void> {
 
         const placeHolder: string = localize('selectDBServerMsg', 'Select a capacity model.')
         const picks: IAzureQuickPickItem<boolean | undefined>[] = [
@@ -23,19 +22,19 @@ export class CosmosDBAccountCapacityStep extends AzureWizardPromptStep<ICosmosDB
         let pick: IAzureQuickPickItem<boolean | undefined>;
 
         do {
-            pick = await ext.ui.showQuickPick(picks, { placeHolder, suppressPersistence: true });
+            pick = await context.ui.showQuickPick(picks, { placeHolder, suppressPersistence: true });
             if (pick === learnMore) {
                 await openUrl('https://aka.ms/cosmos-models');
             }
         } while (pick === learnMore);
 
         if (pick.data) {
-            wizardContext.isServerless = pick.data;
-            wizardContext.telemetry.properties.isServerless = pick.data ? 'true' : 'false';
+            context.isServerless = pick.data;
+            context.telemetry.properties.isServerless = pick.data ? 'true' : 'false';
         }
     }
 
-    public shouldPrompt(wizardContext: ICosmosDBWizardContext): boolean {
-        return wizardContext.isServerless === undefined;
+    public shouldPrompt(context: ICosmosDBWizardContext): boolean {
+        return context.isServerless === undefined;
     }
 }

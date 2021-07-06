@@ -6,7 +6,7 @@
 import { Collection, DeleteWriteOpResultObject, ObjectID, UpdateWriteOpResult } from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { AzureTreeItem, DialogResponses, IActionContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
@@ -81,16 +81,12 @@ export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> impleme
         ext.fileSystem.fireChangedEvent(this);
     }
 
-    public async deleteTreeItemImpl(): Promise<void> {
+    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete document '${this._label}'?`;
-        const dialogResult = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
-        if (dialogResult === DialogResponses.deleteResponse) {
-            const deleteResult: DeleteWriteOpResultObject = await this.parent.collection.deleteOne({ _id: this.document._id });
-            if (deleteResult.deletedCount !== 1) {
-                throw new Error(`Failed to delete document with _id '${this.document._id}'.`);
-            }
-        } else {
-            throw new UserCancelledError();
+        await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+        const deleteResult: DeleteWriteOpResultObject = await this.parent.collection.deleteOne({ _id: this.document._id });
+        if (deleteResult.deletedCount !== 1) {
+            throw new Error(`Failed to delete document with _id '${this.document._id}'.`);
         }
     }
 

@@ -5,8 +5,7 @@
 
 import { ContainerDefinition, ContainerResponse, CosmosClient, DatabaseDefinition, FeedOptions, QueryIterator, RequestOptions, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzureTreeItem, DialogResponses, ICreateChildImplContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
-import { ext } from '../../extensionVariables';
+import { AzureTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { nonNullProp } from '../../utils/nonNull';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -58,22 +57,17 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
     }
 
     // Delete the database
-    public async deleteTreeItemImpl(): Promise<void> {
+    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete database '${this.label}' and its contents?`;
-        const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
-        if (result === DialogResponses.deleteResponse) {
-            const client = this.root.getCosmosClient();
-            await client.database(this.id).delete();
-        } else {
-            throw new UserCancelledError();
-        }
+        await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+        const client = this.root.getCosmosClient();
+        await client.database(this.id).delete();
     }
 
     // Create a DB collection
     public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
-        const containerName = await ext.ui.showInputBox({
+        const containerName = await context.ui.showInputBox({
             placeHolder: `Enter an id for your ${this.childTypeLabel}`,
-            ignoreFocusOut: true,
             validateInput: validateCollectionName
         });
 
@@ -81,9 +75,8 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
             id: containerName
         };
 
-        let partitionKey: string | undefined = await ext.ui.showInputBox({
+        let partitionKey: string | undefined = await context.ui.showInputBox({
             prompt: 'Enter the partition key for the collection, or leave blank for fixed size.',
-            ignoreFocusOut: true,
             validateInput: validatePartitionKey,
             placeHolder: 'e.g. address/zipCode'
         });
@@ -101,9 +94,8 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
         if (!this.parent.isServerless) {
             const isFixed: boolean = !(containerDefinition.partitionKey);
             const minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
-            const throughput: number = Number(await ext.ui.showInputBox({
+            const throughput: number = Number(await context.ui.showInputBox({
                 value: minThroughput.toString(),
-                ignoreFocusOut: true,
                 prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput}`,
                 validateInput: (input: string) => validateThroughput(isFixed, input)
             }));

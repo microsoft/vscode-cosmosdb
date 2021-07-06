@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { PostgreSQLManagementModels as SingleModels } from "@azure/arm-postgresql";
-import { PostgreSQLFlexibleManagementModels as FlexibleModels } from "@azure/arm-postgresql-flexible";
+import { PostgreSQLManagementModels as FlexibleModels } from "@azure/arm-postgresql-flexible";
 
 export enum PostgresServerType {
     Flexible,

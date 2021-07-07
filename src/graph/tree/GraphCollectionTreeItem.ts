@@ -5,7 +5,7 @@
 
 import { Container, ContainerDefinition, CosmosClient, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, AzureTreeItem, DialogResponses, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
+import { AzureParentTreeItem, AzureTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from '../../docdb/tree/DocDBStoredProcedureTreeItem';
 import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
@@ -53,15 +53,11 @@ export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         return false;
     }
 
-    public async deleteTreeItemImpl(): Promise<void> {
+    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete graph '${this.label}' and its contents?`;
-        const result = await vscode.window.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
-        if (result === DialogResponses.deleteResponse) {
-            const client = this.root.getCosmosClient();
-            await this.getContainerClient(client).delete();
-        } else {
-            throw new UserCancelledError();
-        }
+        await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+        const client = this.root.getCosmosClient();
+        await this.getContainerClient(client).delete();
     }
 
     public pickTreeItemImpl(expectedContextValues: (string | RegExp)[]): AzureTreeItem<IDocDBTreeRoot> | undefined {

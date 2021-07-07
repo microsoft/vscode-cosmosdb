@@ -44,7 +44,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
         const nodeEditorLabel: string = getNodeEditorLabel(node);
         if (this._showSaveConfirmation && getWorkspaceSetting<boolean>(showSavePromptKey, undefined, prefix)) {
             const message: string = localize('saveConfirmation', 'Saving "{0}" will update the entity "{1}" to the cloud.', node.filePath, nodeEditorLabel);
-            const result: MessageItem | undefined = await ext.ui.showWarningMessage(message, DialogResponses.upload, DialogResponses.alwaysUpload, DialogResponses.dontUpload);
+            const result: MessageItem | undefined = await context.ui.showWarningMessage(message, DialogResponses.upload, DialogResponses.alwaysUpload, DialogResponses.dontUpload);
             if (result === DialogResponses.alwaysUpload) {
                 await updateGlobalSetting(showSavePromptKey, false, prefix);
             } else if (result === DialogResponses.dontUpload) {

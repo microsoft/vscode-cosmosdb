@@ -6,10 +6,9 @@
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, parseError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, IActionContext, ICreateChildImplContext, parseError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { getThemeAgnosticIconPath, Links, testDb } from '../../constants';
-import { ext } from '../../extensionVariables';
 import { nonNullProp } from '../../utils/nonNull';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
@@ -94,7 +93,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDatabaseTreeItem> {
-        const databaseName = await ext.ui.showInputBox({
+        const databaseName = await context.ui.showInputBox({
             placeHolder: "Database Name",
             prompt: "Enter the name of the database",
             validateInput: validateDatabaseName
@@ -115,8 +114,8 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         }
     }
 
-    public async deleteTreeItemImpl(): Promise<void> {
-        await deleteCosmosDBAccount(this);
+    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
+        await deleteCosmosDBAccount(context, this);
     }
 }
 

@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 import { Sku } from "@azure/arm-postgresql/src/models";
 import { AzureWizardPromptStep, IAzureQuickPickItem } from "vscode-azureextensionui";
-import { ext } from "../../../../extensionVariables";
 import { localize } from "../../../../utils/localize";
 import { nonNullProp } from "../../../../utils/nonNull";
 import { openUrl } from "../../../../utils/openUrl";
@@ -18,13 +17,8 @@ interface ISkuOption {
 }
 
 export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
-    public async prompt(
-        wizardContext: IPostgresServerWizardContext
-    ): Promise<void> {
-        const placeHolder: string = localize(
-            "selectPostgresSku",
-            "Select the Postgres SKU and options."
-        );
+    public async prompt(context: IPostgresServerWizardContext): Promise<void> {
+        const placeHolder: string = localize("selectPostgresSku", "Select the Postgres SKU and options.");
         const pricingTiers: IAzureQuickPickItem<Sku | undefined>[] = await this.getPicks();
         pricingTiers.push({
             label: localize('ShowPricingCalculator', '$(link-external) Show pricing information...'),
@@ -33,11 +27,11 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
             }, data: undefined
         });
 
-        wizardContext.sku = (await ext.ui.showQuickPick(pricingTiers, { placeHolder, suppressPersistence: true, enableGrouping: true })).data;
+        context.sku = (await context.ui.showQuickPick(pricingTiers, { placeHolder, suppressPersistence: true, enableGrouping: true })).data;
     }
 
-    public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {
-        return wizardContext.sku === undefined;
+    public shouldPrompt(context: IPostgresServerWizardContext): boolean {
+        return context.sku === undefined;
     }
 
     public async getPicks(): Promise<IAzureQuickPickItem<Sku | undefined>[]> {

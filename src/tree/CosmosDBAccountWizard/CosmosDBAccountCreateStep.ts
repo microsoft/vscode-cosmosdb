@@ -16,13 +16,13 @@ import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBWizardContext> {
     public priority: number = 130;
 
-    public async execute(wizardContext: ICosmosDBWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
-        const locationName: string = (await LocationListStep.getLocation(wizardContext)).name;
-        const defaultExperience = nonNullProp(wizardContext, 'defaultExperience');
-        const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
-        const accountName = nonNullProp(wizardContext, 'newServerName');
+    public async execute(context: ICosmosDBWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
+        const locationName: string = (await LocationListStep.getLocation(context)).name;
+        const defaultExperience = nonNullProp(context, 'defaultExperience');
+        const rgName: string = nonNullProp(nonNullProp(context, 'resourceGroup'), 'name');
+        const accountName = nonNullProp(context, 'newServerName');
 
-        const client: CosmosDBManagementClient = createAzureClient(wizardContext, CosmosDBManagementClient);
+        const client: CosmosDBManagementClient = createAzureClient(context, CosmosDBManagementClient);
         const creatingMessage: string = localize('creatingCosmosDBAccount', 'Creating Cosmos DB account "{0}" with the "{1}" API... It should be ready in several minutes.', accountName, defaultExperience.shortName);
         ext.outputChannel.appendLog(creatingMessage);
         progress.report({ message: creatingMessage });
@@ -44,16 +44,16 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             options.capabilities?.push({ name: defaultExperience.capability });
         }
 
-        if (wizardContext.isServerless) {
+        if (context.isServerless) {
             options.capabilities?.push({ name: SERVERLESS_CAPABILITY_NAME });
         }
 
         const response: DatabaseAccountsCreateOrUpdateResponse = await client.databaseAccounts.createOrUpdate(rgName, accountName, options);
-        wizardContext.databaseAccount = response._response.parsedBody;
+        context.databaseAccount = response._response.parsedBody;
         ext.outputChannel.appendLog(`Successfully created Cosmos DB account "${accountName}".`);
     }
 
-    public shouldExecute(wizardContext: ICosmosDBWizardContext): boolean {
-        return !wizardContext.databaseAccount;
+    public shouldExecute(context: ICosmosDBWizardContext): boolean {
+        return !context.databaseAccount;
     }
 }

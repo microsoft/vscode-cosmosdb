@@ -4,20 +4,19 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from "vscode-azureextensionui";
-import { ext } from "../../../../../extensionVariables";
 import { localize } from "../../../../../utils/localize";
 import { validateIdentifier } from "../../validateIdentifier";
 import { IPostgresFunctionQueryWizardContext } from "../IPostgresFunctionQueryWizardContext";
 
 export class FunctionQueryNameStep extends AzureWizardPromptStep<IPostgresFunctionQueryWizardContext> {
-    public async prompt(wizardContext: IPostgresFunctionQueryWizardContext): Promise<void> {
-        wizardContext.name = (await ext.ui.showInputBox({
+    public async prompt(context: IPostgresFunctionQueryWizardContext): Promise<void> {
+        context.name = (await context.ui.showInputBox({
             prompt: localize('provideFunctionName', 'Provide function name'),
             validateInput: validateIdentifier
         })).trim();
     }
 
-    public shouldPrompt(wizardContext: IPostgresFunctionQueryWizardContext): boolean {
-        return !wizardContext.name;
+    public shouldPrompt(context: IPostgresFunctionQueryWizardContext): boolean {
+        return !context.name;
     }
 }

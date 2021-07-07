@@ -12,18 +12,8 @@ import { GraphDatabaseTreeItem } from "./tree/GraphDatabaseTreeItem";
 import { GraphTreeItem } from "./tree/GraphTreeItem";
 
 export function registerGraphCommands(): void {
-    registerCommand('cosmosDB.createGraphDatabase', async (context: IActionContext, node?: GraphAccountTreeItem) => {
-        if (!node) {
-            node = <GraphAccountTreeItem>await ext.tree.showTreeItemPicker(GraphAccountTreeItem.contextValue, context);
-        }
-        await node.createChild(context);
-    });
-    registerCommand('cosmosDB.createGraph', async (context: IActionContext, node?: GraphDatabaseTreeItem) => {
-        if (!node) {
-            node = <GraphDatabaseTreeItem>await ext.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
-        }
-        await node.createChild(context);
-    });
+    registerCommand('cosmosDB.createGraphDatabase', createGraphDatabase);
+    registerCommand('cosmosDB.createGraph', createGraph);
     registerCommand('cosmosDB.deleteGraphDatabase', async (context: IActionContext, node?: GraphDatabaseTreeItem) => {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
@@ -46,4 +36,18 @@ export function registerGraphCommands(): void {
         }
         await node.showExplorer(context);
     }, doubleClickDebounceDelay);
+}
+
+export async function createGraphDatabase(context: IActionContext, node?: GraphAccountTreeItem): Promise<void> {
+    if (!node) {
+        node = <GraphAccountTreeItem>await ext.tree.showTreeItemPicker(GraphAccountTreeItem.contextValue, context);
+    }
+    await node.createChild(context);
+}
+
+export async function createGraph(context: IActionContext, node?: GraphDatabaseTreeItem): Promise<void> {
+    if (!node) {
+        node = <GraphDatabaseTreeItem>await ext.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
+    }
+    await node.createChild(context);
 }

@@ -4,12 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { testUserInput } from '../global.test';
+import { runWithTestActionContext } from 'vscode-azureextensiondev';
+import { cosmosDBCopyConnectionString } from '../../extension.bundle';
 
 export async function getConnectionString(accountName: string): Promise<string> {
     await vscode.env.clipboard.writeText('');
-    await testUserInput.runWithInputs([new RegExp(accountName)], async () => {
-        await vscode.commands.executeCommand('cosmosDB.copyConnectionString');
-    });
+    await runWithTestActionContext('cosmosDBCopyConnectionString', async context => {
+        await context.ui.runWithInputs([new RegExp(accountName)], async () => {
+            await cosmosDBCopyConnectionString(context);
+        });
+    })
     return await vscode.env.clipboard.readText();
 }

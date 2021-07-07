@@ -67,26 +67,21 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<MongoCollectionTreeItem> {
-        const collectionName = await ext.ui.showInputBox({
+        const collectionName = await context.ui.showInputBox({
             placeHolder: "Collection Name",
             prompt: "Enter the name of the collection",
-            validateInput: validateMongoCollectionName,
-            ignoreFocusOut: true
+            validateInput: validateMongoCollectionName
         });
 
         context.showCreatingTreeItem(collectionName);
         return await this.createCollection(collectionName);
     }
 
-    public async deleteTreeItemImpl(): Promise<void> {
+    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete database '${this.label}'?`;
-        const result = await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse, DialogResponses.cancel);
-        if (result === DialogResponses.deleteResponse) {
-            const db = await this.connectToDb();
-            await db.dropDatabase();
-        } else {
-            throw new UserCancelledError();
-        }
+        await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+        const db = await this.connectToDb();
+        await db.dropDatabase();
     }
 
     public async connectToDb(): Promise<Db> {
@@ -139,7 +134,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         // CONSIDER: Re-using the shell instead of disposing it each time would allow us to keep state
         //  (JavaScript variables, etc.), but we would need to deal with concurrent requests, or timed-out
         //  requests.
-        const shell = await this.createShell();
+        const shell = await this.createShell(context);
         try {
             await shell.useDatabase(this.databaseName);
             return await shell.executeScript(command.text);
@@ -148,14 +143,14 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         }
     }
 
-    private async createShell(): Promise<MongoShell> {
+    private async createShell(context: IActionContext): Promise<MongoShell> {
         const config = vscode.workspace.getConfiguration();
         let shellPath: string | undefined = config.get(ext.settingsKeys.mongoShellPath);
         const shellArgs: string[] = config.get(ext.settingsKeys.mongoShellArgs, []);
 
         if (!shellPath || !this._cachedShellPathOrCmd || this._previousShellPathSetting !== shellPath) {
             // Only do this if setting changed since last time
-            shellPath = await this._determineShellPathOrCmd(shellPath);
+            shellPath = await this._determineShellPathOrCmd(context, shellPath);
             this._previousShellPathSetting = shellPath;
         }
         this._cachedShellPathOrCmd = shellPath;
@@ -164,7 +159,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         return MongoShell.create(shellPath, shellArgs, this.connectionString, this.root.isEmulator, ext.outputChannel, timeout);
     }
 
-    private async _determineShellPathOrCmd(shellPathSetting: string | undefined): Promise<string> {
+    private async _determineShellPathOrCmd(context: IActionContext, shellPathSetting: string | undefined): Promise<string> {
         if (!shellPathSetting) {
             // User hasn't specified the path
             if (await cpUtils.commandSucceeds('mongo', '--version')) {
@@ -176,34 +171,30 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
                 const openFile: vscode.MessageItem = { title: `Browse to ${mongoExecutableFileName}` };
                 const browse: vscode.MessageItem = { title: 'Open installation page' };
                 const noMongoError: string = 'This functionality requires the Mongo DB shell, but we could not find it in the path or using the mongo.shell.path setting.';
-                const response = await vscode.window.showErrorMessage(noMongoError, browse, openFile);
+                const response = await context.ui.showWarningMessage(noMongoError, browse, openFile);
                 if (response === openFile) {
                     // eslint-disable-next-line no-constant-condition
                     while (true) {
-                        const newPath: vscode.Uri[] | undefined = await vscode.window.showOpenDialog({
+                        const newPath: vscode.Uri[] = await context.ui.showOpenDialog({
                             filters: { 'Executable Files': [process.platform === 'win32' ? 'exe' : ''] },
                             openLabel: `Select ${mongoExecutableFileName}`
                         });
-                        if (newPath && newPath.length) {
-                            const fsPath = newPath[0].fsPath;
-                            const baseName = path.basename(fsPath);
-                            if (baseName !== mongoExecutableFileName) {
-                                const useAnyway: vscode.MessageItem = { title: 'Use anyway' };
-                                const tryAgain: vscode.MessageItem = { title: 'Try again' };
-                                const response2 = await ext.ui.showWarningMessage(
-                                    `Expected a file named "${mongoExecutableFileName}, but the selected filename is "${baseName}"`,
-                                    useAnyway,
-                                    tryAgain);
-                                if (response2 === tryAgain) {
-                                    continue;
-                                }
+                        const fsPath = newPath[0].fsPath;
+                        const baseName = path.basename(fsPath);
+                        if (baseName !== mongoExecutableFileName) {
+                            const useAnyway: vscode.MessageItem = { title: 'Use anyway' };
+                            const tryAgain: vscode.MessageItem = { title: 'Try again' };
+                            const response2 = await context.ui.showWarningMessage(
+                                `Expected a file named "${mongoExecutableFileName}, but the selected filename is "${baseName}"`,
+                                useAnyway,
+                                tryAgain);
+                            if (response2 === tryAgain) {
+                                continue;
                             }
-
-                            await vscode.workspace.getConfiguration().update(ext.settingsKeys.mongoShellPath, fsPath, vscode.ConfigurationTarget.Global);
-                            return fsPath;
-                        } else {
-                            throw new UserCancelledError();
                         }
+
+                        await vscode.workspace.getConfiguration().update(ext.settingsKeys.mongoShellPath, fsPath, vscode.ConfigurationTarget.Global);
+                        return fsPath;
                     }
                 } else if (response === browse) {
                     void vscode.commands.executeCommand('vscode.open', vscode.Uri.parse('https://docs.mongodb.com/manual/installation/'));

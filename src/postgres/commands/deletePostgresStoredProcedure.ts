@@ -17,7 +17,7 @@ export async function deletePostgresStoredProcedure(context: IActionContext, tre
     }
 
     const message: string = localize('deleteStoredProcedure', 'Are you sure you want to delete stored procedure "{0}"?', treeItem.label);
-    await ext.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+    await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
     await treeItem.deleteTreeItem(context);
     const deleteMessage: string = localize('successfullyDeletedStoredProcedure', 'Successfully deleted stored procedure "{0}".', treeItem.label);
     void window.showInformationMessage(deleteMessage);

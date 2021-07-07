@@ -23,35 +23,21 @@ const connectedMongoKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 let diagnosticsCollection: vscode.DiagnosticCollection;
 const mongoLanguageId: string = 'mongo';
 
-export function registerMongoCommands(): MongoCodeLensProvider {
-    const languageClient: MongoDBLanguageClient = new MongoDBLanguageClient();
+export function registerMongoCommands(): void {
+    ext.mongoLanguageClient = new MongoDBLanguageClient();
 
-    const codeLensProvider = new MongoCodeLensProvider();
-    ext.context.subscriptions.push(vscode.languages.registerCodeLensProvider(mongoLanguageId, codeLensProvider));
+    ext.mongoCodeLensProvider = new MongoCodeLensProvider();
+    ext.context.subscriptions.push(vscode.languages.registerCodeLensProvider(mongoLanguageId, ext.mongoCodeLensProvider));
 
     diagnosticsCollection = vscode.languages.createDiagnosticCollection('cosmosDB.mongo');
     ext.context.subscriptions.push(diagnosticsCollection);
 
     setUpErrorReporting();
 
-    const loadPersistedMongoDBTask: Promise<void> = loadPersistedMongoDB(languageClient, codeLensProvider);
+    const loadPersistedMongoDBTask: Promise<void> = loadPersistedMongoDB();
 
-    registerCommand('cosmosDB.createMongoDatabase', async (context: IActionContext, node?: MongoAccountTreeItem) => {
-        if (!node) {
-            node = <MongoAccountTreeItem>await ext.tree.showTreeItemPicker([MongoAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue + AttachedAccountSuffix], context);
-        }
-        const databaseNode = <MongoDatabaseTreeItem>await node.createChild(context);
-        await databaseNode.createChild(context);
-
-        await vscode.commands.executeCommand('cosmosDB.connectMongoDB', databaseNode);
-    });
-    registerCommand('cosmosDB.createMongoCollection', async (context: IActionContext, node?: MongoDatabaseTreeItem) => {
-        if (!node) {
-            node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
-        }
-        const collectionNode = await node.createChild(context);
-        await vscode.commands.executeCommand('cosmosDB.connectMongoDB', collectionNode.parent);
-    });
+    registerCommand('cosmosDB.createMongoDatabase', createMongoDatabase);
+    registerCommand('cosmosDB.createMongoCollection', createMongoCollection);
     registerCommand('cosmosDB.createMongoDocument', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
         if (!node) {
             node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
@@ -67,9 +53,9 @@ export function registerMongoCommands(): MongoCodeLensProvider {
         }
 
         const oldNodeId: string | undefined = ext.connectedMongoDB && ext.connectedMongoDB.fullId;
-        await languageClient.connect(node.connectionString, node.databaseName);
+        await ext.mongoLanguageClient.connect(node.connectionString, node.databaseName);
         void ext.context.globalState.update(connectedMongoKey, node.fullId);
-        setConnectedNode(node, codeLensProvider);
+        setConnectedNode(node);
         await node.refresh(context);
 
         if (oldNodeId) {
@@ -80,28 +66,8 @@ export function registerMongoCommands(): MongoCodeLensProvider {
             }
         }
     });
-    registerCommand('cosmosDB.deleteMongoDB', async (context: IActionContext, node?: MongoDatabaseTreeItem) => {
-        const suppressCreateContext: ITreeItemPickerContext = context;
-        suppressCreateContext.suppressCreatePick = true;
-        if (!node) {
-            node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
-        }
-        await node.deleteTreeItem(context);
-        if (ext.connectedMongoDB && ext.connectedMongoDB.fullId === node.fullId) {
-            setConnectedNode(undefined, codeLensProvider);
-            void ext.context.globalState.update(connectedMongoKey, undefined);
-            // Temporary workaround for https://github.com/microsoft/vscode-cosmosdb/issues/1754
-            void languageClient.disconnect();
-        }
-    });
-    registerCommand('cosmosDB.deleteMongoCollection', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
-        const suppressCreateContext: ITreeItemPickerContext = context;
-        suppressCreateContext.suppressCreatePick = true;
-        if (!node) {
-            node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
-        }
-        await node.deleteTreeItem(context);
-    });
+    registerCommand('cosmosDB.deleteMongoDB', deleteMongoDB);
+    registerCommand('cosmosDB.deleteMongoCollection', deleteMongoCollection);
     registerCommand('cosmosDB.deleteMongoDocument', async (context: IActionContext, node?: MongoDocumentTreeItem) => {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
@@ -126,11 +92,9 @@ export function registerMongoCommands(): MongoCodeLensProvider {
         await loadPersistedMongoDBTask;
         await executeAllCommandsFromActiveEditor(context);
     });
-
-    return codeLensProvider;
 }
 
-async function loadPersistedMongoDB(languageClient: MongoDBLanguageClient, codeLensProvider: MongoCodeLensProvider): Promise<void> {
+async function loadPersistedMongoDB(): Promise<void> {
     // NOTE: We want to make sure this function never throws or returns a rejected promise because it gets awaited multiple times
     await callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', async (context: IActionContext) => {
         context.errorHandling.suppressDisplay = true;
@@ -141,14 +105,14 @@ async function loadPersistedMongoDB(languageClient: MongoDBLanguageClient, codeL
             if (persistedNodeId) {
                 const persistedNode = await ext.tree.findTreeItem(persistedNodeId, context);
                 if (persistedNode) {
-                    await languageClient.client.onReady();
+                    await ext.mongoLanguageClient.client.onReady();
                     await vscode.commands.executeCommand('cosmosDB.connectMongoDB', persistedNode);
                 }
             }
         } finally {
             // Get code lens provider out of initializing state if there's no connected DB
             if (!ext.connectedMongoDB) {
-                codeLensProvider.setConnectedDatabase(undefined);
+                ext.mongoCodeLensProvider.setConnectedDatabase(undefined);
             }
         }
     });
@@ -205,4 +169,46 @@ function updateErrorsInScrapbook(context: IActionContext, document: vscode.TextD
     } else {
         context.telemetry.suppressIfSuccessful = true;
     }
+}
+
+export async function createMongoDatabase(context: IActionContext, node?: MongoAccountTreeItem): Promise<void> {
+    if (!node) {
+        node = <MongoAccountTreeItem>await ext.tree.showTreeItemPicker([MongoAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue + AttachedAccountSuffix], context);
+    }
+    const databaseNode = <MongoDatabaseTreeItem>await node.createChild(context);
+    await databaseNode.createChild(context);
+
+    await vscode.commands.executeCommand('cosmosDB.connectMongoDB', databaseNode);
+}
+
+export async function createMongoCollection(context: IActionContext, node?: MongoDatabaseTreeItem): Promise<void> {
+    if (!node) {
+        node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
+    }
+    const collectionNode = await node.createChild(context);
+    await vscode.commands.executeCommand('cosmosDB.connectMongoDB', collectionNode.parent);
+}
+
+export async function deleteMongoDB(context: IActionContext, node?: MongoDatabaseTreeItem): Promise<void> {
+    const suppressCreateContext: ITreeItemPickerContext = context;
+    suppressCreateContext.suppressCreatePick = true;
+    if (!node) {
+        node = <MongoDatabaseTreeItem>await ext.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
+    }
+    await node.deleteTreeItem(context);
+    if (ext.connectedMongoDB && ext.connectedMongoDB.fullId === node.fullId) {
+        setConnectedNode(undefined);
+        void ext.context.globalState.update(connectedMongoKey, undefined);
+        // Temporary workaround for https://github.com/microsoft/vscode-cosmosdb/issues/1754
+        void ext.mongoLanguageClient.disconnect();
+    }
+}
+
+export async function deleteMongoCollection(context: IActionContext, node?: MongoCollectionTreeItem): Promise<void> {
+    const suppressCreateContext: ITreeItemPickerContext = context;
+    suppressCreateContext.suppressCreatePick = true;
+    if (!node) {
+        node = <MongoCollectionTreeItem>await ext.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
+    }
+    await node.deleteTreeItem(context);
 }

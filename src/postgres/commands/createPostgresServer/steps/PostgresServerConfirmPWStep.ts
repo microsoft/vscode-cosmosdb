@@ -4,26 +4,25 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from "vscode-azureextensionui";
-import { ext } from "../../../../extensionVariables";
 import { localize } from "../../../../utils/localize";
 import { IPostgresServerWizardContext } from "../IPostgresServerWizardContext";
 
 export class PostgresServerConfirmPWStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
-    public async prompt(wizardContext: IPostgresServerWizardContext): Promise<void> {
+    public async prompt(context: IPostgresServerWizardContext): Promise<void> {
         const prompt: string = localize('confirmPW', 'Confirm your password');
-        await ext.ui.showInputBox({
+        await context.ui.showInputBox({
             prompt,
             password: true,
-            validateInput: async (value: string | undefined): Promise<string | undefined> => await this.validatePassword(wizardContext, value)
+            validateInput: async (value: string | undefined): Promise<string | undefined> => await this.validatePassword(context, value)
         });
     }
 
-    public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {
-        return !!wizardContext.adminPassword;
+    public shouldPrompt(context: IPostgresServerWizardContext): boolean {
+        return !!context.adminPassword;
     }
 
-    private async validatePassword(wizardContext: IPostgresServerWizardContext, passphrase: string | undefined): Promise<string | undefined> {
-        if (passphrase !== wizardContext.adminPassword) {
+    private async validatePassword(context: IPostgresServerWizardContext, passphrase: string | undefined): Promise<string | undefined> {
+        if (passphrase !== context.adminPassword) {
             return localize('pwMatch', 'The passwords must match.');
         }
 

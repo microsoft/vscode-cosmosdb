@@ -124,7 +124,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             throw new Error(localize('noPermissionToCreateDatabase', `This attached account does not have permissions to create a database.`));
         }
         const getChildrenTask: Promise<AzExtTreeItem[]> = this.getCachedChildren(context);
-        const databaseName = await ext.ui.showInputBox({
+        const databaseName = await context.ui.showInputBox({
             placeHolder: "Database Name",
             prompt: "Enter the name of the database",
             validateInput: (name: string) => validateDatabaseName(name, getChildrenTask)

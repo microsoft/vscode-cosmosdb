@@ -4,27 +4,26 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep, IAzureQuickPickItem, IWizardOptions } from "vscode-azureextensionui";
-import { ext } from "../../../../../extensionVariables";
 import { localize } from "../../../../../utils/localize";
 import { IPostgresFunctionQueryWizardContext } from "../IPostgresFunctionQueryWizardContext";
 import { FunctionQueryCustomReturnTypeStep } from "./FunctionQueryCustomReturnTypeStep";
 
 export class FunctionQueryReturnTypeStep extends AzureWizardPromptStep<IPostgresFunctionQueryWizardContext> {
-    public async prompt(wizardContext: IPostgresFunctionQueryWizardContext): Promise<void> {
+    public async prompt(context: IPostgresFunctionQueryWizardContext): Promise<void> {
         const returnTypeQuickPicks: IAzureQuickPickItem<string | undefined>[] = returnTypes.map(r => { return { label: r, data: r }; });
         returnTypeQuickPicks.push({ label: localize('enterCustomReturnType', '$(pencil) Enter custom return type...'), data: undefined });
 
-        wizardContext.returnType = (await ext.ui.showQuickPick(returnTypeQuickPicks, {
+        context.returnType = (await context.ui.showQuickPick(returnTypeQuickPicks, {
             placeHolder: localize('selectReturnType', 'Select return type')
         })).data;
     }
 
-    public shouldPrompt(wizardContext: IPostgresFunctionQueryWizardContext): boolean {
-        return !wizardContext.returnType;
+    public shouldPrompt(context: IPostgresFunctionQueryWizardContext): boolean {
+        return !context.returnType;
     }
 
-    public async getSubWizard(wizardContext: IPostgresFunctionQueryWizardContext): Promise<IWizardOptions<IPostgresFunctionQueryWizardContext> | undefined> {
-        return wizardContext.returnType ? undefined : { promptSteps: [new FunctionQueryCustomReturnTypeStep()] };
+    public async getSubWizard(context: IPostgresFunctionQueryWizardContext): Promise<IWizardOptions<IPostgresFunctionQueryWizardContext> | undefined> {
+        return context.returnType ? undefined : { promptSteps: [new FunctionQueryCustomReturnTypeStep()] };
     }
 }
 

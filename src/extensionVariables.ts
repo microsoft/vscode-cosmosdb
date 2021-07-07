@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ExtensionContext, TreeView } from "vscode";
-import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel, IAzureUserInput } from "vscode-azureextensionui";
+import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel } from "vscode-azureextensionui";
 import { DatabasesFileSystem } from "./DatabasesFileSystem";
 import { MongoDBLanguageClient } from "./mongo/languageClient";
 import { MongoCodeLensProvider } from "./mongo/services/MongoCodeLensProvider";
@@ -21,7 +21,6 @@ import { KeyTar } from "./utils/keytar";
 export namespace ext {
     export let connectedMongoDB: MongoDatabaseTreeItem | undefined;
     export let connectedPostgresDB: PostgresDatabaseTreeItem | undefined;
-    export let ui: IAzureUserInput;
     export let context: ExtensionContext;
     export let outputChannel: IAzExtOutputChannel;
     export let tree: AzExtTreeDataProvider;

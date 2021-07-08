@@ -5,7 +5,7 @@
 
 import { ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IActionContext, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
 import { postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
@@ -52,7 +52,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         return false;
     }
 
-    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
+    public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
         try {
             const clientConfig: ClientConfig = await getClientConfig(this.parent, this.databaseName);
             const children: AzExtTreeItem[] = [
@@ -69,7 +69,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
             const parsedError: IParsedError = parseError(error);
 
             if (this.parent.azureName && parsedError.errorType === invalidCredentialsErrorType) {
-                void ext.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
+                void context.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message));
                 const credentialsTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
                     contextValue: 'postgresCredentials',
                     label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),

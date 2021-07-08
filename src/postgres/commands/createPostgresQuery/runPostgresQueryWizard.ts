@@ -12,12 +12,12 @@ import { PostgresStoredProceduresTreeItem } from "../../tree/PostgresStoredProce
 import { connectPostgresDatabase } from "../connectPostgresDatabase";
 import { IPostgresQueryWizardContext } from "./IPostgresQueryWizardContext";
 
-export async function runPostgresQueryWizard(wizard: AzureWizard<IPostgresQueryWizardContext>, wizardContext: IPostgresQueryWizardContext, treeItem?: PostgresFunctionsTreeItem | PostgresStoredProceduresTreeItem): Promise<void> {
+export async function runPostgresQueryWizard(wizard: AzureWizard<IPostgresQueryWizardContext>, context: IPostgresQueryWizardContext, treeItem?: PostgresFunctionsTreeItem | PostgresStoredProceduresTreeItem): Promise<void> {
     await wizard.prompt();
     await wizard.execute();
-    await vscodeUtil.showNewFile(nonNullProp(wizardContext, 'query'), postgresBaseFileName, postgresFileExtension);
+    await vscodeUtil.showNewFile(nonNullProp(context, 'query'), postgresBaseFileName, postgresFileExtension);
 
     if (treeItem) {
-        await connectPostgresDatabase(wizardContext, treeItem.parent);
+        await connectPostgresDatabase(context, treeItem.parent);
     }
 }

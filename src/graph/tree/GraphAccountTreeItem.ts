@@ -20,6 +20,10 @@ export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
 
     constructor(parent: AzureParentTreeItem, id: string, label: string, documentEndpoint: string, private _gremlinEndpoint: IGremlinEndpoint | undefined, masterKey: string, isEmulator: boolean | undefined, readonly databaseAccount?: DatabaseAccountGetResults) {
         super(parent, id, label, documentEndpoint, masterKey, isEmulator, databaseAccount);
+        this.valuesToMask.push(documentEndpoint);
+        if (_gremlinEndpoint) {
+            this.valuesToMask.push(_gremlinEndpoint.host);
+        }
     }
 
     public initChild(database: DatabaseDefinition & Resource): GraphDatabaseTreeItem {

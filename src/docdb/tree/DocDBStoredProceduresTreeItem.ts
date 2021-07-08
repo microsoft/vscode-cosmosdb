@@ -7,7 +7,6 @@ import { Container, CosmosClient, FeedOptions, QueryIterator, Resource, StoredPr
 import * as vscode from "vscode";
 import { AzExtTreeItem, ICreateChildImplContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { defaultStoredProcedure } from '../../constants';
-import { ext } from '../../extensionVariables';
 import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
@@ -24,6 +23,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
     public readonly contextValue: string = DocDBStoredProceduresTreeItem.contextValue;
     public readonly childTypeLabel: string = "Stored Procedure";
     public readonly parent: DocDBCollectionTreeItem | GraphCollectionTreeItem;
+    public suppressMaskLabel = true;
 
     constructor(parent: DocDBCollectionTreeItem | GraphCollectionTreeItem) {
         super(parent);
@@ -44,7 +44,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
         for (const sp of currStoredProcedureList) {
             currStoredProcedureNames.push(nonNullProp(sp, "id"));
         }
-        const spID = (await ext.ui.showInputBox({
+        const spID = (await context.ui.showInputBox({
             prompt: "Enter a unique stored procedure ID",
             validateInput: (name: string) => this.validateStoredProcedureName(name, currStoredProcedureNames)
         })).trim();

@@ -16,7 +16,7 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
         treeItem = <PostgresServerTreeItem>await ext.tree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
     }
 
-    let username: string = await ext.ui.showInputBox({
+    let username: string = await context.ui.showInputBox({
         prompt: localize('enterUsername', 'Enter username for server "{0}"', treeItem.label),
         validateInput: (value: string) => { return (value && value.length) ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.'); }
     });
@@ -27,7 +27,7 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
         username += usernameSuffix;
     }
 
-    const password: string = await ext.ui.showInputBox({
+    const password: string = await context.ui.showInputBox({
         prompt: localize('enterPassword', 'Enter password for server "{0}"', treeItem.label),
         password: true,
         validateInput: (value: string) => { return (value && value.length) ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.'); }

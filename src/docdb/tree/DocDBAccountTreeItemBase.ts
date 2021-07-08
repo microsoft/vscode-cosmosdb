@@ -6,10 +6,9 @@
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { CosmosClient, DatabaseDefinition, DatabaseResponse, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, ICreateChildImplContext, UserCancelledError } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, IActionContext, ICreateChildImplContext } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { getThemeAgnosticIconPath, SERVERLESS_CAPABILITY_NAME } from '../../constants';
-import { ext } from '../../extensionVariables';
 import { nonNullProp } from '../../utils/nonNull';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { getCosmosClient } from '../getCosmosClient';
@@ -37,6 +36,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
             isEmulator,
             getCosmosClient: () => getCosmosClient(endpoint, masterKey, isEmulator)
         });
+        this.valuesToMask.push(id, endpoint, masterKey);
     }
 
     // overrides ISubscriptionContext with an object that also has DocDB info
@@ -62,20 +62,15 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
-        const databaseName = await ext.ui.showInputBox({
+        const databaseName = await context.ui.showInputBox({
             placeHolder: 'Database Name',
-            validateInput: validateDatabaseName,
-            ignoreFocusOut: true
+            validateInput: validateDatabaseName
         });
 
-        if (databaseName) {
-            context.showCreatingTreeItem(databaseName);
-            const client = this.root.getCosmosClient();
-            const database: DatabaseResponse = await client.databases.create({ id: databaseName });
-            return this.initChild(nonNullProp(database, 'resource'));
-        }
-
-        throw new UserCancelledError();
+        context.showCreatingTreeItem(databaseName);
+        const client = this.root.getCosmosClient();
+        const database: DatabaseResponse = await client.databases.create({ id: databaseName });
+        return this.initChild(nonNullProp(database, 'resource'));
     }
 
     public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
@@ -87,8 +82,8 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         }
     }
 
-    public async deleteTreeItemImpl(): Promise<void> {
-        await deleteCosmosDBAccount(this);
+    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
+        await deleteCosmosDBAccount(context, this);
     }
 }
 

@@ -5,6 +5,9 @@
 
 import { AzureNameStep, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
+import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
+import { NameAvailability, NameAvailabilityRequest } from '@azure/arm-postgresql/src/models';
+import { AzureNameStep, createAzureClient, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
 import { AbstractPostgresClient, createAbstractPostgresClient } from '../../../abstract/AbstractPostgresClient';
@@ -13,23 +16,23 @@ import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerNameStep extends AzureNameStep<IPostgresServerWizardContext> {
 
-    public async prompt(wizardContext: IPostgresServerWizardContext): Promise<void> {
-        const client = createAbstractPostgresClient(nonNullProp(wizardContext, "serverType"), wizardContext);
-        wizardContext.newServerName = (await ext.ui.showInputBox({
+    public async prompt(context: IPostgresServerWizardContext): Promise<void> {
+        const client = createAbstractPostgresClient(nonNullProp(context, "serverType"), context);
+        context.newServerName = (await context.ui.showInputBox({
             placeHolder: localize('serverNamePlaceholder', 'Server name'),
             prompt: localize('enterServerNamePrompt', 'Provide a name for the PostgreSQL Server.'),
             validateInput: (name: string) => validatePostgresServerName(name, client)
         })).trim();
-        wizardContext.valuesToMask.push(wizardContext.newServerName);
-        wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.newServerName, resourceGroupNamingRules);
+        context.valuesToMask.push(context.newServerName);
+        context.relatedNameTask = this.generateRelatedName(context, context.newServerName, resourceGroupNamingRules);
     }
 
-    public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {
-        return !wizardContext.newServerName;
+    public shouldPrompt(context: IPostgresServerWizardContext): boolean {
+        return !context.newServerName;
     }
 
-    protected async isRelatedNameAvailable(wizardContext: IPostgresServerWizardContext, name: string): Promise<boolean> {
-        return await ResourceGroupListStep.isNameAvailable(wizardContext, name);
+    protected async isRelatedNameAvailable(context: IPostgresServerWizardContext, name: string): Promise<boolean> {
+        return await ResourceGroupListStep.isNameAvailable(context, name);
     }
 }
 

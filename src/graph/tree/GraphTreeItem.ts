@@ -8,7 +8,6 @@ import * as vscode from 'vscode';
 import { AzureTreeItem, IActionContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
 import { AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
 import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
-import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { CosmosDBGraphExtensionApi } from '../../vscode-cosmosdbgraph.api';
@@ -20,6 +19,7 @@ export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
     public readonly contextValue: string = GraphTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openGraphExplorer';
     public readonly parent: GraphCollectionTreeItem;
+    public suppressMaskLabel = true;
 
     private readonly _collection: ContainerDefinition & Resource;
     private _graphApi: CosmosDBGraphExtensionApi | undefined;
@@ -76,7 +76,7 @@ export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
                 const viewExt: vscode.MessageItem = { title: localize('viewExt', 'View Extension') };
                 const message: string = localize('mustInstallGraph', 'You must install the Cosmos DB Graph extension to view a graph.');
                 context.telemetry.properties.cancelStep = 'installGraphExtPreMessage';
-                await ext.ui.showWarningMessage(message, { modal: true }, viewExt);
+                await context.ui.showWarningMessage(message, { modal: true }, viewExt);
                 context.telemetry.properties.cancelStep = 'installGraphExtPostMessage';
                 await vscode.commands.executeCommand('extension.open', graphExtId);
                 throw new UserCancelledError();

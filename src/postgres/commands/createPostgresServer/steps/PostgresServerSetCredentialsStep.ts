@@ -16,16 +16,16 @@ import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPostgresServerWizardContext> {
     public priority: number = 200;
 
-    public async execute(wizardContext: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
+    public async execute(context: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
-        const user: string = nonNullProp(wizardContext, 'longUserName');
-        const newServerName: string = nonNullProp(wizardContext, 'newServerName');
+        const user: string = nonNullProp(context, 'longUserName');
+        const newServerName: string = nonNullProp(context, 'newServerName');
 
         const setupMessage: string = localize('setupCredentialsMessage', 'Setting up Credentials for server "{0}"...', newServerName);
         progress.report({ message: setupMessage });
         ext.outputChannel.appendLog(setupMessage);
-        const password: string = nonNullProp(wizardContext, 'adminPassword');
-        const server: PostgresAbstractServer = nonNullProp(wizardContext, 'server');
+        const password: string = nonNullProp(context, 'adminPassword');
+        const server: PostgresAbstractServer = nonNullProp(context, 'server');
 
         await setPostgresCredentials(user, password, nonNullProp(server, 'id'));
         const completedMessage: string = localize('addedCredentialsMessage', 'Successfully setup credentials for server "{0}".', newServerName);

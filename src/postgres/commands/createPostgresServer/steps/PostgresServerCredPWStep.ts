@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from 'vscode-azureextensionui';
-import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
@@ -12,10 +11,9 @@ import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 const pwConditionMsg = localize('passwordConditionMsg', 'Password must contain characters from three of the following categories - uppercase letters, lowercase letters, numbers (0-9), and non-alphanumeric characters (!, $, etc.).');
 
 export class PostgresServerCredPWStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
-
-    public async prompt(wizardContext: IPostgresServerWizardContext): Promise<void> {
-        const user = nonNullProp(wizardContext, 'shortUserName');
-        wizardContext.adminPassword = (await ext.ui.showInputBox({
+    public async prompt(context: IPostgresServerWizardContext): Promise<void> {
+        const user = nonNullProp(context, 'shortUserName');
+        context.adminPassword = (await context.ui.showInputBox({
             placeHolder: localize('pwPlaceholder', 'Administrator Password'),
             prompt: pwConditionMsg,
             password: true,
@@ -23,8 +21,8 @@ export class PostgresServerCredPWStep extends AzureWizardPromptStep<IPostgresSer
         }));
     }
 
-    public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {
-        return !wizardContext.adminPassword;
+    public shouldPrompt(context: IPostgresServerWizardContext): boolean {
+        return !context.adminPassword;
     }
 }
 

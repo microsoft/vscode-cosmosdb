@@ -4,8 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ExtensionContext, TreeView } from "vscode";
-import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel, IAzureUserInput } from "vscode-azureextensionui";
+import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel } from "vscode-azureextensionui";
 import { DatabasesFileSystem } from "./DatabasesFileSystem";
+import { MongoDBLanguageClient } from "./mongo/languageClient";
+import { MongoCodeLensProvider } from "./mongo/services/MongoCodeLensProvider";
 import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 import { PostgresCodeLensProvider } from "./postgres/services/PostgresCodeLensProvider";
 import { PostgresDatabaseTreeItem } from "./postgres/tree/PostgresDatabaseTreeItem";
@@ -19,7 +21,6 @@ import { KeyTar } from "./utils/keytar";
 export namespace ext {
     export let connectedMongoDB: MongoDatabaseTreeItem | undefined;
     export let connectedPostgresDB: PostgresDatabaseTreeItem | undefined;
-    export let ui: IAzureUserInput;
     export let context: ExtensionContext;
     export let outputChannel: IAzExtOutputChannel;
     export let tree: AzExtTreeDataProvider;
@@ -31,6 +32,8 @@ export namespace ext {
     export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;
     export const prefix: string = 'azureDatabases';
     export let fileSystem: DatabasesFileSystem;
+    export let mongoCodeLensProvider: MongoCodeLensProvider;
+    export let mongoLanguageClient: MongoDBLanguageClient;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import { AzureWizardPromptStep, IAzureQuickPickItem } from "vscode-azureextensionui";
-import { ext } from "../../../../extensionVariables";
 import { localize } from "../../../../utils/localize";
 import { nonNullProp } from "../../../../utils/nonNull";
 import { openUrl } from "../../../../utils/openUrl";
@@ -19,13 +18,13 @@ interface ISkuOption {
 
 export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
     public async prompt(
-        wizardContext: IPostgresServerWizardContext
+        context: IPostgresServerWizardContext
     ): Promise<void> {
         const placeHolder: string = localize(
             "selectPostgresSku",
             "Select the Postgres SKU and options."
         );
-        const pricingTiers: IAzureQuickPickItem<AbstractSku | undefined>[] = await this.getPicks(nonNullProp(wizardContext, 'serverType'));
+        const pricingTiers: IAzureQuickPickItem<AbstractSku | undefined>[] = await this.getPicks(nonNullProp(context, 'serverType'));
         pricingTiers.push({
             label: localize('ShowPricingCalculator', '$(link-external) Show pricing information...'),
             onPicked: async () => {
@@ -33,11 +32,11 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
             }, data: undefined
         });
 
-        wizardContext.sku = (await ext.ui.showQuickPick(pricingTiers, { placeHolder, suppressPersistence: true, enableGrouping: true })).data;
+        context.sku = (await context.ui.showQuickPick(pricingTiers, { placeHolder, suppressPersistence: true, enableGrouping: true })).data;
     }
 
-    public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {
-        return wizardContext.sku === undefined;
+    public shouldPrompt(context: IPostgresServerWizardContext): boolean {
+        return context.sku === undefined;
     }
 
     public async getPicks(serverType: PostgresServerType): Promise<IAzureQuickPickItem<AbstractSku | undefined>[]> {

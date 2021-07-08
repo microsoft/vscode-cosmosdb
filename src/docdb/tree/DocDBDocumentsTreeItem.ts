@@ -5,8 +5,7 @@
 
 import { Container, CosmosClient, FeedOptions, ItemDefinition, ItemResponse, QueryIterator } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { ICreateChildImplContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
-import { ext } from '../../extensionVariables';
+import { IActionContext, ICreateChildImplContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { nonNullProp } from '../../utils/nonNull';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
@@ -20,6 +19,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     public readonly contextValue: string = DocDBDocumentsTreeItem.contextValue;
     public readonly childTypeLabel: string = "Documents";
     public readonly parent: DocDBCollectionTreeItem;
+    public suppressMaskLabel = true;
 
     constructor(parent: DocDBCollectionTreeItem) {
         super(parent);
@@ -50,22 +50,15 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBDocumentTreeItem> {
-        let docID = await vscode.window.showInputBox({
-            prompt: "Enter a document ID or leave blank for a generated ID",
-            ignoreFocusOut: true
-        });
+        let docID = await context.ui.showInputBox({ prompt: "Enter a document ID or leave blank for a generated ID" });
 
-        if (docID || docID === "") {
-            docID = docID.trim();
-            let body: ItemDefinition = { id: docID };
-            body = (await this.promptForPartitionKey(body));
-            context.showCreatingTreeItem(docID);
-            const item: ItemDefinition = await this.createDocument(body);
+        docID = docID.trim();
+        let body: ItemDefinition = { id: docID };
+        body = (await this.promptForPartitionKey(context, body));
+        context.showCreatingTreeItem(docID);
+        const item: ItemDefinition = await this.createDocument(body);
 
-            return this.initChild(item);
-        }
-
-        throw new UserCancelledError();
+        return this.initChild(item);
     }
 
     public async createDocument(body: ItemDefinition): Promise<ItemDefinition> {
@@ -96,10 +89,10 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
         return true;
     }
 
-    public async promptForPartitionKey(body: ItemDefinition): Promise<ItemDefinition> {
+    public async promptForPartitionKey(context: IActionContext, body: ItemDefinition): Promise<ItemDefinition> {
         const partitionKey: string | undefined = this.parent.partitionKey && this.parent.partitionKey.paths[0];
         if (partitionKey) {
-            const partitionKeyValue: string = await ext.ui.showInputBox({
+            const partitionKeyValue: string = await context.ui.showInputBox({
                 prompt: `Enter a value for the partition key ("${partitionKey}")`
             });
             // Unlike delete/replace, createDocument does not accept a partition key value via an options parameter.

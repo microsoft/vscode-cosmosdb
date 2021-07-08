@@ -11,8 +11,8 @@ import { IPostgresQueryWizardContext } from "../../IPostgresQueryWizardContext";
 export class StoredProcedureQueryCreateStep extends AzureWizardExecuteStep<IPostgresQueryWizardContext> {
     public priority: number = 100;
 
-    public async execute(wizardContext: IPostgresQueryWizardContext): Promise<void> {
-        wizardContext.query = defaultStoredProcedureQuery(nonNullProp(wizardContext, 'name'));
+    public async execute(context: IPostgresQueryWizardContext): Promise<void> {
+        context.query = defaultStoredProcedureQuery(nonNullProp(context, 'name'));
     }
 
     public shouldExecute(): boolean {

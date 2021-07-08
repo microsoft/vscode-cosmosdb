@@ -16,24 +16,25 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
     public priority: number = 150;
     public defaultVersion: string = "11";
 
-    public async execute(wizardContext: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
+    public async execute(context: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
-        const locationName: string = (await LocationListStep.getLocation(wizardContext)).name;
-        const rgName: string = nonNullProp(nonNullProp(wizardContext, 'resourceGroup'), 'name');
-        const storageMB: string = nonNullProp(nonNullProp(wizardContext, 'sku'), 'size');
-        const newServerName = nonNullProp(wizardContext, 'newServerName');
-        const password: string = nonNullProp(wizardContext, 'adminPassword');
+        const locationName: string = (await LocationListStep.getLocation(context)).name;
+        const rgName: string = nonNullProp(nonNullProp(context, 'resourceGroup'), 'name');
+        const storageMB: string = nonNullProp(nonNullProp(context, 'sku'), 'size');
+        const newServerName = nonNullProp(context, 'newServerName');
+        const password: string = nonNullProp(context, 'adminPassword');
 
         return await callWithMaskHandling(
             async () => {
                 const serverType = nonNullProp(wizardContext, 'serverType');
-                const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in several minutes.', wizardContext.newServerName);
+                const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in several minutes.', context.newServerName);
+
                 ext.outputChannel.appendLog(createMessage);
                 progress.report({ message: createMessage });
                 const options: AbstractServerCreate = {
                     location: locationName,
-                    sku: nonNullProp(wizardContext, 'sku'),
-                    administratorLogin: nonNullProp(wizardContext, 'shortUserName'),
+                    sku: nonNullProp(context, 'sku'),
+                    administratorLogin: nonNullProp(context, 'shortUserName'),
                     administratorLoginPassword: password,
                     version: this.defaultVersion,
                     storageMB: parseInt(storageMB)
@@ -41,21 +42,21 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
 
                 switch (serverType){
                     case PostgresServerType.Single:
-                        const singleClient = createAzureClient(wizardContext, PostgreSQLManagementClient);
-                        wizardContext.server = await singleClient.servers.create(rgName, newServerName, this.asSingleParameters(options));
+                        const singleClient = createAzureClient(context, PostgreSQLManagementClient);
+                        context.server = await singleClient.servers.create(rgName, newServerName, this.asSingleParameters(options));
                         break;
                     case PostgresServerType.Flexible:
-                        const flexiClient = createAzureClient(wizardContext, PostgreSQLFlexibleManagementClient);
-                        wizardContext.server = await flexiClient.servers.create(rgName, newServerName, this.asFlexibleParameters(options));
+                        const flexiClient = createAzureClient(context, PostgreSQLFlexibleManagementClient);
+                        context.server = await flexiClient.servers.create(rgName, newServerName, this.asFlexibleParameters(options));
                         break;
                 }
-                wizardContext.server.serverType = serverType;
+                context.server.serverType = serverType;
             },
             password);
     }
 
-    public shouldExecute(wizardContext: IPostgresServerWizardContext): boolean {
-        return !wizardContext.server;
+    public shouldExecute(context: IPostgresServerWizardContext): boolean {
+        return !context.server;
     }
 
 

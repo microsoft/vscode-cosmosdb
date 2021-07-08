@@ -5,7 +5,7 @@
 
 import { MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, IActionContext, ISubscriptionContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, IActionContext, ISubscriptionContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, isWindows } from '../constants';
@@ -42,6 +42,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     public readonly id: string = 'cosmosDBAttachedAccounts';
     public readonly label: string = 'Attached Database Accounts';
     public childTypeLabel: string = 'Account';
+    public suppressMaskLabel = true;
 
     private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.connectionStrings";
     private _attachedAccounts: AzureTreeItem[] | undefined;
@@ -142,85 +143,75 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
     }
 
-    public async attachNewAccount(): Promise<void> {
-        const defaultExperiencePick = await vscode.window.showQuickPick(getExperienceQuickPicks(true), { placeHolder: "Select a Database type...", ignoreFocusOut: true });
-        if (defaultExperiencePick) {
-            const defaultExperience = defaultExperiencePick.data;
-            let placeholder: string;
-            let defaultValue: string | undefined;
-            let validateInput: (value: string) => string | undefined | null;
-            if (defaultExperience.api === API.MongoDB) {
-                placeholder = 'mongodb://host:port';
-                if (await this.canConnectToLocalMongoDB()) {
-                    defaultValue = placeholder = localMongoConnectionString;
-                }
-                validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
-            } else if (defaultExperience.api === API.PostgresSingle || defaultExperience.api === API.PostgresFlexible) {
-                placeholder = localize('attachedPostgresPlaceholder', '"postgres://username:password@host" or "postgres://username:password@host/database"');
-                validateInput = AttachedAccountsTreeItem.validatePostgresConnectionString;
-            } else {
-                placeholder = 'AccountEndpoint=...;AccountKey=...';
-                validateInput = AttachedAccountsTreeItem.validateDocDBConnectionString;
+    public async attachNewAccount(context: IActionContext): Promise<void> {
+        const defaultExperiencePick = await context.ui.showQuickPick(getExperienceQuickPicks(true), { placeHolder: "Select a Database type..." });
+        const defaultExperience = defaultExperiencePick.data;
+        let placeholder: string;
+        let defaultValue: string | undefined;
+        let validateInput: (value: string) => string | undefined | null;
+        if (defaultExperience.api === API.MongoDB) {
+            placeholder = 'mongodb://host:port';
+            if (await this.canConnectToLocalMongoDB()) {
+                defaultValue = placeholder = localMongoConnectionString;
             }
-
-            const connectionString = (await ext.ui.showInputBox({
-                placeHolder: placeholder,
-                prompt: 'Enter the connection string for your database account',
-                validateInput: validateInput,
-                ignoreFocusOut: true,
-                value: defaultValue
-            })).trim();
-
-            if (connectionString) {
-                const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);
-                await this.attachAccount(treeItem, connectionString);
-            }
+            validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
+        } else if (defaultExperience.api === API.PostgresSingle || defaultExperience.api === API.PostgresFlexible) {
+            placeholder = localize('attachedPostgresPlaceholder', '"postgres://username:password@host" or "postgres://username:password@host/database"');
+            validateInput = AttachedAccountsTreeItem.validatePostgresConnectionString;
         } else {
-            throw new UserCancelledError();
+            placeholder = 'AccountEndpoint=...;AccountKey=...';
+            validateInput = AttachedAccountsTreeItem.validateDocDBConnectionString;
         }
+
+        const connectionString = (await context.ui.showInputBox({
+            placeHolder: placeholder,
+            prompt: 'Enter the connection string for your database account',
+            validateInput: validateInput,
+            value: defaultValue
+        })).trim();
+
+        const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);
+        await this.attachAccount(context, treeItem, connectionString);
     }
 
     public async attachConnectionString(context: IActionContext, connectionString: string, api: API.MongoDB | API.Core | API.PostgresSingle): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
         const treeItem = <MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem>await this.createTreeItem(connectionString, api);
-        await this.attachAccount(treeItem, connectionString);
+        await this.attachAccount(context, treeItem, connectionString);
         await this.refresh(context);
         return treeItem;
     }
 
-    public async attachEmulator(): Promise<void> {
+    public async attachEmulator(context: IActionContext): Promise<void> {
         let connectionString: string;
-        const defaultExperiencePick = await vscode.window.showQuickPick(
+        const defaultExperiencePick = await context.ui.showQuickPick(
             [
                 getExperienceQuickPick(API.MongoDB),
                 getExperienceQuickPick(API.Core)
             ],
             {
-                placeHolder: "Select a Database Account API...",
-                ignoreFocusOut: true
+                placeHolder: "Select a Database Account API..."
             });
-        if (defaultExperiencePick) {
-            const defaultExperience = defaultExperiencePick.data;
-            let port: number | undefined;
+        const defaultExperience = defaultExperiencePick.data;
+        let port: number | undefined;
+        if (defaultExperience.api === API.MongoDB) {
+            port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.mongoPort");
+        } else {
+            port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.port");
+        }
+        if (port) {
             if (defaultExperience.api === API.MongoDB) {
-                port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.mongoPort");
+                // Mongo shell doesn't parse passwords with slashes, so we need to URI encode it. The '/' before the options is required by mongo conventions
+                connectionString = `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:${port}/?ssl=true`;
             } else {
-                port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.port");
+                connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=${emulatorPassword};`;
             }
-            if (port) {
-                if (defaultExperience.api === API.MongoDB) {
-                    // Mongo shell doesn't parse passwords with slashes, so we need to URI encode it. The '/' before the options is required by mongo conventions
-                    connectionString = `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:${port}/?ssl=true`;
-                } else {
-                    connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=${emulatorPassword};`;
-                }
-                const label = `${defaultExperience.shortName} Emulator`;
-                const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api, label);
-                if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem || treeItem instanceof MongoAccountTreeItem) {
-                    // CONSIDER: Why isn't this passed in to createTreeItem above?
-                    treeItem.root.isEmulator = true;
-                }
-                await this.attachAccount(treeItem, connectionString);
+            const label = `${defaultExperience.shortName} Emulator`;
+            const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api, label);
+            if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem || treeItem instanceof MongoAccountTreeItem) {
+                // CONSIDER: Why isn't this passed in to createTreeItem above?
+                treeItem.root.isEmulator = true;
             }
+            await this.attachAccount(context, treeItem, connectionString);
         }
     }
 
@@ -278,11 +269,11 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         return await Promise.race([timeout(), connect()]);
     }
 
-    private async attachAccount(treeItem: AzureTreeItem, connectionString: string): Promise<void> {
+    private async attachAccount(context: IActionContext, treeItem: AzureTreeItem, connectionString: string): Promise<void> {
         const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
 
         if (attachedAccounts.find(s => s.id === treeItem.id)) {
-            void vscode.window.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`);
+            void context.ui.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`);
         } else {
             attachedAccounts.push(treeItem);
             if (ext.keytar) {

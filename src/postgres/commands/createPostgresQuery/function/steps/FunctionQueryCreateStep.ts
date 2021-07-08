@@ -11,8 +11,8 @@ import { IPostgresFunctionQueryWizardContext } from "../IPostgresFunctionQueryWi
 export class FunctionQueryCreateStep extends AzureWizardExecuteStep<IPostgresFunctionQueryWizardContext> {
     public priority: number = 100;
 
-    public async execute(wizardContext: IPostgresFunctionQueryWizardContext): Promise<void> {
-        wizardContext.query = defaultFunctionQuery(nonNullProp(wizardContext, 'name'), nonNullProp(wizardContext, 'returnType'));
+    public async execute(context: IPostgresFunctionQueryWizardContext): Promise<void> {
+        context.query = defaultFunctionQuery(nonNullProp(context, 'name'), nonNullProp(context, 'returnType'));
     }
 
     public shouldExecute(): boolean {

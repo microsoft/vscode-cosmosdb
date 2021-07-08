@@ -5,28 +5,27 @@
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { AzureNameStep, createAzureClient, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
-import { ext } from '../../extensionVariables';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContext> {
 
-    public async prompt(wizardContext: ICosmosDBWizardContext): Promise<void> {
-        const client: CosmosDBManagementClient = createAzureClient(wizardContext, CosmosDBManagementClient);
-        wizardContext.newServerName = (await ext.ui.showInputBox({
+    public async prompt(context: ICosmosDBWizardContext): Promise<void> {
+        const client: CosmosDBManagementClient = createAzureClient(context, CosmosDBManagementClient);
+        context.newServerName = (await context.ui.showInputBox({
             placeHolder: "Account name",
             prompt: "Provide a Cosmos DB account name",
             validateInput: (name: string) => validateCosmosDBAccountName(name, client)
         })).trim();
-        wizardContext.valuesToMask.push(wizardContext.newServerName);
-        wizardContext.relatedNameTask = this.generateRelatedName(wizardContext, wizardContext.newServerName, resourceGroupNamingRules);
+        context.valuesToMask.push(context.newServerName);
+        context.relatedNameTask = this.generateRelatedName(context, context.newServerName, resourceGroupNamingRules);
     }
 
-    public shouldPrompt(wizardContext: ICosmosDBWizardContext): boolean {
-        return !wizardContext.newServerName;
+    public shouldPrompt(context: ICosmosDBWizardContext): boolean {
+        return !context.newServerName;
     }
 
-    protected async isRelatedNameAvailable(wizardContext: ICosmosDBWizardContext, name: string): Promise<boolean> {
-        return await ResourceGroupListStep.isNameAvailable(wizardContext, name);
+    protected async isRelatedNameAvailable(context: ICosmosDBWizardContext, name: string): Promise<boolean> {
+        return await ResourceGroupListStep.isNameAvailable(context, name);
     }
 }
 

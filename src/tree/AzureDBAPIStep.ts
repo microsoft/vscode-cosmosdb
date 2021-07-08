@@ -23,20 +23,20 @@ import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardC
 import { IAzureDBWizardContext } from './IAzureDBWizardContext';
 
 export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardContext | ICosmosDBWizardContext> {
-    public async prompt(wizardContext: IAzureDBWizardContext): Promise<void> {
+    public async prompt(context: IAzureDBWizardContext): Promise<void> {
         const picks: IAzureQuickPickItem<Experience>[] = getExperienceQuickPicks();
 
-        const result: IAzureQuickPickItem<Experience> = await ext.ui.showQuickPick(picks, {
+        const result: IAzureQuickPickItem<Experience> = await context.ui.showQuickPick(picks, {
             placeHolder: localize('selectDBServerMsg', 'Select an Azure Database Server.')
         });
 
-        wizardContext.defaultExperience = result.data;
+        context.defaultExperience = result.data;
     }
 
-    public async getSubWizard(wizardContext: IAzureDBWizardContext): Promise<IWizardOptions<IPostgresServerWizardContext | ICosmosDBWizardContext>> {
+    public async getSubWizard(context: IAzureDBWizardContext): Promise<IWizardOptions<IPostgresServerWizardContext | ICosmosDBWizardContext>> {
         let promptSteps: AzureWizardPromptStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[];
         let executeSteps: AzureWizardExecuteStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[];
-        if (wizardContext.defaultExperience?.api === API.PostgresSingle || wizardContext.defaultExperience?.api === API.PostgresFlexible) {
+        if (context.defaultExperience?.api === API.PostgresSingle || context.defaultExperience?.api === API.PostgresFlexible) {
             switch (wizardContext.defaultExperience?.api){
                 case API.PostgresFlexible:
                     (wizardContext as IPostgresServerWizardContext).serverType = PostgresServerType.Flexible;
@@ -70,7 +70,7 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
         return { promptSteps, executeSteps };
     }
 
-    public shouldPrompt(wizardContext: IAzureDBWizardContext): boolean {
-        return !wizardContext.defaultExperience;
+    public shouldPrompt(context: IAzureDBWizardContext): boolean {
+        return !context.defaultExperience;
     }
 }

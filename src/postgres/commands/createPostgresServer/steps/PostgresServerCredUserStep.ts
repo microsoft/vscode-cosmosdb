@@ -4,24 +4,22 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from 'vscode-azureextensionui';
-import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerCredUserStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
-
-    public async prompt(wizardContext: IPostgresServerWizardContext): Promise<void> {
-        wizardContext.shortUserName = (await ext.ui.showInputBox({
+    public async prompt(context: IPostgresServerWizardContext): Promise<void> {
+        context.shortUserName = (await context.ui.showInputBox({
             placeHolder: localize('usernamePlaceholder', 'Administrator Username'),
             validateInput: validateUser,
         })).trim();
-        const usernameSuffix: string = `@${nonNullProp(wizardContext, 'newServerName')}`;
-        wizardContext.longUserName = wizardContext.shortUserName + usernameSuffix;
+        const usernameSuffix: string = `@${nonNullProp(context, 'newServerName')}`;
+        context.longUserName = context.shortUserName + usernameSuffix;
     }
 
-    public shouldPrompt(wizardContext: IPostgresServerWizardContext): boolean {
-        return !wizardContext.shortUserName;
+    public shouldPrompt(context: IPostgresServerWizardContext): boolean {
+        return !context.shortUserName;
     }
 }
 

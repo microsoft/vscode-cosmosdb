@@ -3,21 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { CosmosDBManagementClient, CosmosDBManagementModels } from '@azure/arm-cosmosdb';
 import { ResourceManagementClient } from '@azure/arm-resources';
+import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { TestAzureAccount } from 'vscode-azureextensiondev';
-import { AzExtTreeDataProvider, AzureAccountTreeItemWithAttached, createAzureClient, ext, randomUtils } from '../../extension.bundle';
-import { longRunningTestsEnabled, testUserInput } from '../global.test';
+import { runWithTestActionContext, TestAzureAccount } from 'vscode-azureextensiondev';
+import { AzExtTreeDataProvider, AzureAccountTreeItemWithAttached, createAzureClient, createServer, deleteAccount, DialogResponses, ext, randomUtils } from '../../extension.bundle';
+import { longRunningTestsEnabled } from '../global.test';
 
 export let testAccount: TestAzureAccount;
 export let client: CosmosDBManagementClient;
 export const resourceGroupsToDelete: string[] = [];
 export const accountList: {} = {};
 export const resourceGroupList: {} = {};
+const accountItem: {} = {};
 export enum AccountApi {
     MongoDB = 'MongoDB',
-    Graph = 'graph',
+    Graph = 'Gremlin',
     Core = 'SQL'
 }
 
@@ -31,15 +33,32 @@ suiteSetup(async function (this: Mocha.Context): Promise<void> {
         client = createAzureClient(testAccount.getSubscriptionContext(), CosmosDBManagementClient);
 
         // Create account
-        await Promise.all([delayCreateAccount(5, /graph/), delayCreateAccount(10, /MongoDB/), delayCreateAccount(15, /SQL/)]);
+        await Promise.all([delayOpAccount(5, /Gremlin/, createTestAccount), delayOpAccount(10, /MongoDB/, createTestAccount), delayOpAccount(15, /SQL/, createTestAccount)]);
     }
 });
 
 suiteTeardown(async function (this: Mocha.Context): Promise<void> {
     if (longRunningTestsEnabled) {
-        this.timeout(10 * 60 * 1000);
-        await deleteResourceGroups();
-        ext.azureAccountTreeItem.dispose();
+        this.timeout(20 * 60 * 1000);
+
+        // Delete account
+        await Promise.all([delayOpAccount(5, accountList[AccountApi.Graph], deleteTestAccount), delayOpAccount(10, accountList[AccountApi.MongoDB], deleteTestAccount), delayOpAccount(15, accountList[AccountApi.Core], deleteTestAccount)]);
+        try {
+            // If two or more of the following asserts fail, only one error will be thrown as a result.
+            for (const key of Object.keys(accountList)) {
+                const accountName: string = accountList[key];
+                assert.ok(accountItem[accountName]);
+                const getDatabaseAccount: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupList[key]);
+                const accountExists: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = getDatabaseAccount.find((account: CosmosDBManagementModels.DatabaseAccountGetResults) => account.name === accountName);
+                assert.ifError(accountExists);
+            }
+        } catch (error) {
+            throw new Error(error);
+        }
+        finally {
+            await deleteResourceGroups();
+            ext.azureAccountTreeItem.dispose();
+        }
     }
 });
 
@@ -57,29 +76,51 @@ async function deleteResourceGroups(): Promise<void> {
     }));
 }
 
-async function createAccount(accountType: RegExp): Promise<void> {
+async function createTestAccount(accountType: RegExp): Promise<void> {
     // Cosmos DB account must have lower case name
     const accountName: string = randomUtils.getRandomHexString(12).toLowerCase();
     const resourceGroupName: string = randomUtils.getRandomHexString(12);
     accountList[accountType.source] = accountName;
     resourceGroupList[accountType.source] = resourceGroupName;
     resourceGroupsToDelete.push(resourceGroupName);
-    const testInputs: (string | RegExp)[] = [accountType, accountName, '$(plus) Create new resource group', resourceGroupName, 'West US'];
-    await testUserInput.runWithInputs(testInputs, async () => {
-        await vscode.commands.executeCommand('azureDatabases.createServer');
+    const testInputs: (string | RegExp)[] = [accountType, accountName, 'Provisioned Throughput', '$(plus) Create new resource group', resourceGroupName, 'West US'];
+    await runWithTestActionContext('createServer', async context => {
+        await context.ui.runWithInputs(testInputs, async () => {
+            await createServer(context);
+        });
     });
 }
 
-async function delayCreateAccount(ms: number, accountType: RegExp): Promise<void> {
+async function deleteTestAccount(name: string): Promise<void> {
+    const accountType: string = await getAccountType(accountList, name);
+    accountItem[name] = await client.databaseAccounts.get(resourceGroupList[accountType], name);
+    const testInputs: string[] = [`${name} (${accountType})`, DialogResponses.deleteResponse.title];
+    await runWithTestActionContext('deleteAccount', async context => {
+        await context.ui.runWithInputs(testInputs, async () => {
+            await deleteAccount(context);
+        });
+    });
+}
+
+async function delayOpAccount(s: number, accountTypeOrName: RegExp | string, callback: (arg0: RegExp | string) => Promise<void>): Promise<void> {
     await new Promise<void>((resolve: () => void): void => {
         setTimeout(async () => {
             try {
-                await createAccount(accountType);
+                await callback(accountTypeOrName);
             } catch {
             }
             finally {
                 resolve();
             }
-        }, ms * 1000);
+        }, s * 1000);
     });
+}
+
+async function getAccountType(dictionary: {}, value: string): Promise<string> {
+    for (const key of Object.keys(dictionary)) {
+        if (dictionary[key] === value) {
+            return key;
+        }
+    }
+    throw new Error(`Account type of the ${value} resource can't be found.`);
 }

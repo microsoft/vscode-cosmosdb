@@ -13,9 +13,9 @@ import { MongoCollectionTreeItem } from '../mongo/tree/MongoCollectionTreeItem';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { getRootPath } from '../utils/workspacUtils';
 
-export async function importDocuments(actionContext: IActionContext, uris: vscode.Uri[] | undefined, collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | undefined): Promise<void> {
+export async function importDocuments(context: IActionContext, uris: vscode.Uri[] | undefined, collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | undefined): Promise<void> {
     if (!uris) {
-        uris = await askForDocuments();
+        uris = await askForDocuments(context);
     }
     const ignoredUris: vscode.Uri[] = []; //account for https://github.com/Microsoft/vscode/issues/59782
     uris = uris.filter((uri) => {
@@ -32,7 +32,7 @@ export async function importDocuments(actionContext: IActionContext, uris: vscod
         ext.outputChannel.show();
     }
     if (!collectionNode) {
-        collectionNode = <MongoCollectionTreeItem | DocDBCollectionTreeItem>await ext.tree.showTreeItemPicker([MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue], actionContext);
+        collectionNode = <MongoCollectionTreeItem | DocDBCollectionTreeItem>await ext.tree.showTreeItemPicker([MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue], context);
     }
     let result: string;
     result = await vscode.window.withProgress(
@@ -57,11 +57,11 @@ export async function importDocuments(actionContext: IActionContext, uris: vscod
         }
     );
 
-    await collectionNode.refresh(actionContext);
+    await collectionNode.refresh(context);
     await vscode.window.showInformationMessage(result);
 }
 
-async function askForDocuments(): Promise<vscode.Uri[]> {
+async function askForDocuments(context: IActionContext): Promise<vscode.Uri[]> {
     const openDialogOptions: vscode.OpenDialogOptions = {
         canSelectMany: true,
         openLabel: "Import",
@@ -73,7 +73,7 @@ async function askForDocuments(): Promise<vscode.Uri[]> {
     if (rootPath) {
         openDialogOptions.defaultUri = vscode.Uri.file(rootPath);
     }
-    return await ext.ui.showOpenDialog(openDialogOptions);
+    return await context.ui.showOpenDialog(openDialogOptions);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -17,6 +17,7 @@ export class DocDBAccountTreeItem extends DocDBAccountTreeItemBase {
     public contextValue: string = DocDBAccountTreeItem.contextValue;
 
     public initChild(resource: DatabaseDefinition & Resource): DocDBDatabaseTreeItem {
+        this.valuesToMask.push(resource._rid, resource._self);
         return new DocDBDatabaseTreeItem(this, resource);
     }
 

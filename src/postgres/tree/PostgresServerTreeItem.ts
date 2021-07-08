@@ -54,6 +54,10 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             this.azureName = server?.name;
             this.serverType = nonNullProp(server, 'serverType');
         }
+        this.valuesToMask.push(connectionString.accountId, connectionString.connectionString, connectionString.fullId, connectionString.hostName, connectionString.port);
+        if (connectionString.databaseName) {
+            this.valuesToMask.push(connectionString.databaseName);
+        }
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
@@ -130,7 +134,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             throw new Error(localize('noPermissionToCreateDatabase', `This attached account does not have permissions to create a database.`));
         }
         const getChildrenTask: Promise<AzExtTreeItem[]> = this.getCachedChildren(context);
-        const databaseName = await ext.ui.showInputBox({
+        const databaseName = await context.ui.showInputBox({
             placeHolder: "Database Name",
             prompt: "Enter the name of the database",
             validateInput: (name: string) => validateDatabaseName(name, getChildrenTask)

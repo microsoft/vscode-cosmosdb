@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Server } from '@azure/arm-postgresql/src/models';
 import * as vscode from 'vscode';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
+import { PostgresAbstractServer } from '../../../abstract/models';
 import { setPostgresCredentials } from '../../setPostgresCredentials';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
@@ -25,7 +25,7 @@ export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPo
         progress.report({ message: setupMessage });
         ext.outputChannel.appendLog(setupMessage);
         const password: string = nonNullProp(context, 'adminPassword');
-        const server: Server = nonNullProp(context, 'server');
+        const server: PostgresAbstractServer = nonNullProp(context, 'server');
 
         await setPostgresCredentials(user, password, nonNullProp(server, 'id'));
         const completedMessage: string = localize('addedCredentialsMessage', 'Successfully setup credentials for server "{0}".', newServerName);

@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
-import { FirewallRule } from '@azure/arm-postgresql/src/models';
 import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
-import { createAzureClient, DialogResponses, IActionContext } from "vscode-azureextensionui";
+import { DialogResponses, IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { nonNullProp } from '../../utils/nonNull';
+import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
+import { AbstractFirewallRule, PostgresServerType } from '../abstract/models';
 import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
 
 export async function configurePostgresFirewall(context: IActionContext, treeItem?: PostgresServerTreeItem): Promise<void> {
@@ -30,12 +30,14 @@ export async function configurePostgresFirewall(context: IActionContext, treeIte
 
 export async function setFirewallRule(context: IActionContext, treeItem: PostgresServerTreeItem, ip: string): Promise<void> {
 
-    const client: PostgreSQLManagementClient = createAzureClient(treeItem.root, PostgreSQLManagementClient);
+    const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
+    const client = createAbstractPostgresClient(serverType, treeItem.root);
     const resourceGroup: string = nonNullProp(treeItem, 'resourceGroup');
     const serverName: string = nonNullProp(treeItem, 'azureName');
+
     const firewallRuleName: string = "azureDatabasesForVSCode-publicIp";
 
-    const newFirewallRule: FirewallRule = {
+    const newFirewallRule: AbstractFirewallRule = {
         startIpAddress: ip,
         endIpAddress: ip
     };

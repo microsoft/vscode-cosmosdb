@@ -94,7 +94,7 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
             if (this._parsedCS instanceof ParsedMongoConnectionString) {
                 apiType = API.MongoDB;
             } else if (this._parsedCS instanceof ParsedPostgresConnectionString) {
-                apiType = API.Postgres;
+                apiType = API.PostgresSingle;
             } else {
                 apiType = API.Core;
             }

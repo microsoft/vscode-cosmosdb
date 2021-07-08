@@ -14,7 +14,6 @@ import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresServerWizardContext> {
     public priority: number = 150;
-    public defaultVersion: string = "11";
 
     public async execute(context: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
@@ -36,7 +35,6 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                     sku: nonNullProp(context, 'sku'),
                     administratorLogin: nonNullProp(context, 'shortUserName'),
                     administratorLoginPassword: password,
-                    version: this.defaultVersion,
                     storageMB: parseInt(storageMB)
                 };
 
@@ -63,7 +61,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
     private asFlexibleParameters(parameters: AbstractServerCreate) : FlexibleModels.Server {
         return {
             location: parameters.location,
-            version: parameters.version as FlexibleModels.ServerVersion,
+            version: "12",
             administratorLogin: parameters.administratorLogin,
             administratorLoginPassword: parameters.administratorLoginPassword,
             storageProfile: {
@@ -91,7 +89,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                 administratorLoginPassword: parameters.administratorLoginPassword,
                 sslEnforcement: "Enabled",
                 createMode: "Default",
-                version: parameters.version as SingleModels.ServerVersion,
+                version: "11",
                 storageProfile: {
                     storageMB: parameters.storageMB
                 }

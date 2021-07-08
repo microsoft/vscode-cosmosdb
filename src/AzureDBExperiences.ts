@@ -111,7 +111,7 @@ export const MongoExperience: Experience = { api: API.MongoDB, longName: "Azure 
 const TableExperience: Experience = { api: API.Table, longName: "Azure Table", shortName: "Table", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableTable', tag: "Azure Table" };
 const GremlinExperience: Experience = { api: API.Graph, longName: "Gremlin", description: "(graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableGremlin', tag: "Gremlin (graph)" };
 const PostgresSingleExperience: Experience = { api: API.PostgresSingle, longName: "PostgreSQL Single Server", shortName: "PostgreSQLSingle"};
-const PostgresFlexibleExperience: Experience = { api: API.PostgresFlexible, longName: "PostgreSQL Flexible Server", shortName: "PostgreSQLFlexible"};
+const PostgresFlexibleExperience: Experience = { api: API.PostgresFlexible, longName: "PostgreSQL Flexible Server (Preview)", shortName: "PostgreSQLFlexible"};
 
 const cosmosExperiencesArray: Experience[] = [CoreExperience, MongoExperience, TableExperience, GremlinExperience];
 const experiencesArray: Experience[] = [...cosmosExperiencesArray, PostgresSingleExperience, PostgresFlexibleExperience];

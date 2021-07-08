@@ -47,7 +47,6 @@ export interface AbstractServerCreate {
     sku: AbstractSku;
     administratorLogin: string;
     administratorLoginPassword: string;
-    version: string;
     storageMB: number;
 }
 

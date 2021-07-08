@@ -4,10 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureNameStep, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
-import { ext } from '../../../../extensionVariables';
-import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
-import { NameAvailability, NameAvailabilityRequest } from '@azure/arm-postgresql/src/models';
-import { AzureNameStep, createAzureClient, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
 import { AbstractPostgresClient, createAbstractPostgresClient } from '../../../abstract/AbstractPostgresClient';

@@ -26,7 +26,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
 
         return await callWithMaskHandling(
             async () => {
-                const serverType = nonNullProp(wizardContext, 'serverType');
+                const serverType = nonNullProp(context, 'serverType');
                 const createMessage: string = localize('creatingPostgresServer', 'Creating PostgreSQL Server "{0}"... It should be ready in several minutes.', context.newServerName);
 
                 ext.outputChannel.appendLog(createMessage);

@@ -7,7 +7,7 @@ import { AzureNameStep, ResourceGroupListStep, resourceGroupNamingRules } from '
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
 import { AbstractPostgresClient, createAbstractPostgresClient } from '../../../abstract/AbstractPostgresClient';
-import { AbstractNameAvailability } from '../../../abstract/models';
+import { AbstractNameAvailability, PostgresServerType } from '../../../abstract/models';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerNameStep extends AzureNameStep<IPostgresServerWizardContext> {
@@ -17,7 +17,7 @@ export class PostgresServerNameStep extends AzureNameStep<IPostgresServerWizardC
         context.newServerName = (await context.ui.showInputBox({
             placeHolder: localize('serverNamePlaceholder', 'Server name'),
             prompt: localize('enterServerNamePrompt', 'Provide a name for the PostgreSQL Server.'),
-            validateInput: (name: string) => validatePostgresServerName(name, client)
+            validateInput: (name: string) => validatePostgresServerName(name, client, nonNullProp(context, "serverType"))
         })).trim();
         context.valuesToMask.push(context.newServerName);
         context.relatedNameTask = this.generateRelatedName(context, context.newServerName, resourceGroupNamingRules);
@@ -32,7 +32,7 @@ export class PostgresServerNameStep extends AzureNameStep<IPostgresServerWizardC
     }
 }
 
-async function validatePostgresServerName(name: string, client: AbstractPostgresClient): Promise<string | undefined> {
+async function validatePostgresServerName(name: string, client: AbstractPostgresClient, serverType: PostgresServerType): Promise<string | undefined> {
     name = name ? name.trim() : '';
 
     const min = 3;
@@ -45,11 +45,13 @@ async function validatePostgresServerName(name: string, client: AbstractPostgres
     } else if (name.startsWith('-') || name.endsWith('-')) {
         return localize('serverNamePrefixSuffixCheck', 'Server name must not start or end in a hyphen.');
     }
-
-    const availability: AbstractNameAvailability = await client.checkNameAvailability.execute({name: name, type: "Microsoft.DBforPostgreSQL"});
+    const resourceType = serverType === PostgresServerType.Single ? "Microsoft.DBforPostgreSQL" : "Microsoft.DBforPostgreSQL/flexibleServers";
+    const availability: AbstractNameAvailability = await client.checkNameAvailability.execute({name: name, type: resourceType});
 
     if (!availability.nameAvailable) {
-        return localize('serverNameAvailabilityCheck', 'Server name "{0}" is not available.', name);
+        return availability.message ?
+            availability.message :
+            localize('serverNameAvailabilityCheck', 'Server name "{0}" is not available.', name);
     }
 
     return undefined;

@@ -14,14 +14,7 @@ import { GraphTreeItem } from "./tree/GraphTreeItem";
 export function registerGraphCommands(): void {
     registerCommand('cosmosDB.createGraphDatabase', createGraphDatabase);
     registerCommand('cosmosDB.createGraph', createGraph);
-    registerCommand('cosmosDB.deleteGraphDatabase', async (context: IActionContext, node?: GraphDatabaseTreeItem) => {
-        const suppressCreateContext: ITreeItemPickerContext = context;
-        suppressCreateContext.suppressCreatePick = true;
-        if (!node) {
-            node = <GraphDatabaseTreeItem>await ext.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
-        }
-        await node.deleteTreeItem(context);
-    });
+    registerCommand('cosmosDB.deleteGraphDatabase', deleteGraphDatabase);
     registerCommand('cosmosDB.deleteGraph', async (context: IActionContext, node?: GraphCollectionTreeItem) => {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
@@ -51,3 +44,14 @@ export async function createGraph(context: IActionContext, node?: GraphDatabaseT
     }
     await node.createChild(context);
 }
+
+export async function deleteGraphDatabase(context: IActionContext, node?: GraphDatabaseTreeItem): Promise<void> {
+    const suppressCreateContext: ITreeItemPickerContext = context;
+    suppressCreateContext.suppressCreatePick = true;
+    if (!node) {
+        node = <GraphDatabaseTreeItem>await ext.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
+    }
+    await node.deleteTreeItem(context);
+}
+
+

@@ -7,7 +7,7 @@ import { CosmosDBManagementModels } from '@azure/arm-cosmosdb';
 import { ContainerDefinition, CosmosClient, DatabaseDefinition, Resource } from '@azure/cosmos';
 import * as assert from 'assert';
 import { runWithTestActionContext } from 'vscode-azureextensiondev';
-import { createGraph, createGraphDatabase, randomUtils } from '../../extension.bundle';
+import { createGraph, createGraphDatabase, deleteGraphDatabase, DialogResponses, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled } from '../global.test';
 import { getConnectionString } from './getConnectionString';
 import { AccountApi, accountList, client, resourceGroupList, testAccount } from './global.resource.test';
@@ -40,11 +40,7 @@ suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
                 await createGraphDatabase(context);
             });
         })
-        const connectionString: string = await getConnectionString(accountName);
-        const graphClient: CosmosClient = new CosmosClient(connectionString);
-        const listDatabases: (DatabaseDefinition & Resource)[] = (await graphClient.databases.readAll().fetchAll()).resources;
-        const databaseExists: (DatabaseDefinition & Resource) | undefined = listDatabases.find((database: DatabaseDefinition & Resource) => database.id === databaseName);
-        assert.ok(databaseExists);
+        assert.ok(await doesGraphDatabaseExist());
     });
 
     test('Create graph', async () => {
@@ -63,4 +59,23 @@ suite('Graph action', async function (this: Mocha.Suite): Promise<void> {
         const graphIdExists: (ContainerDefinition & Resource) | undefined = listGraphIds.find((graph: ContainerDefinition & Resource) => graph.id === graphId);
         assert.ok(graphIdExists);
     });
+
+    test('Delete graph Database', async () => {
+        assert.ok(await doesGraphDatabaseExist());
+        const testInputs: string[] = [testAccount.getSubscriptionContext().subscriptionDisplayName, `${accountName} (Gremlin)`, databaseName, DialogResponses.deleteResponse.title];
+        await runWithTestActionContext('deleteGraphDatabase', async context => {
+            await context.ui.runWithInputs(testInputs, async () => {
+                await deleteGraphDatabase(context);
+            });
+        });
+        const graphDatabase: (DatabaseDefinition & Resource) | undefined = await doesGraphDatabaseExist();
+        assert.ifError(graphDatabase);
+    });
+
+    async function doesGraphDatabaseExist(): Promise<(DatabaseDefinition & Resource) | undefined> {
+        const connectionString: string = await getConnectionString(accountName);
+        const graphClient: CosmosClient = new CosmosClient(connectionString);
+        const listDatabases: (DatabaseDefinition & Resource)[] = (await graphClient.databases.readAll().fetchAll()).resources;
+        return listDatabases.find((database: DatabaseDefinition & Resource) => database.id === databaseName);
+    }
 });

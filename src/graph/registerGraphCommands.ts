@@ -53,5 +53,3 @@ export async function deleteGraphDatabase(context: IActionContext, node?: GraphD
     }
     await node.deleteTreeItem(context);
 }
-
-

@@ -50,7 +50,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBDocumentTreeItem> {
-        let docID = await context.ui.showInputBox({ prompt: "Enter a document ID or leave blank for a generated ID" });
+        let docID = await context.ui.showInputBox({ prompt: "Enter a document ID or leave blank for a generated ID", stepName: 'createDocument' });
 
         docID = docID.trim();
         let body: ItemDefinition = { id: docID };
@@ -93,7 +93,8 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
         const partitionKey: string | undefined = this.parent.partitionKey && this.parent.partitionKey.paths[0];
         if (partitionKey) {
             const partitionKeyValue: string = await context.ui.showInputBox({
-                prompt: `Enter a value for the partition key ("${partitionKey}")`
+                prompt: `Enter a value for the partition key ("${partitionKey}")`,
+                stepName: 'valueforParititionKey'
             });
             // Unlike delete/replace, createDocument does not accept a partition key value via an options parameter.
             // We need to present the partitionKey value as part of the document contents

@@ -12,7 +12,7 @@ import { localize } from '../utils/localize';
 
 export async function deleteCosmosDBAccount(context: IActionContext, node: AzureTreeItem): Promise<void> {
     const message: string = `Are you sure you want to delete account '${node.label}' and its contents?`;
-    await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+    await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteCosmosBDAccount' }, DialogResponses.deleteResponse);
     const client: CosmosDBManagementClient = createAzureClient(node.root, CosmosDBManagementClient);
     const resourceGroup: string = azureUtils.getResourceGroupFromId(node.fullId);
     const accountName: string = azureUtils.getAccountNameFromId(node.fullId);

@@ -64,7 +64,8 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
         const databaseName = await context.ui.showInputBox({
             placeHolder: 'Database Name',
-            validateInput: validateDatabaseName
+            validateInput: validateDatabaseName,
+            stepName: 'createDatabase'
         });
 
         context.showCreatingTreeItem(databaseName);

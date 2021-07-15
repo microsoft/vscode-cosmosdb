@@ -96,6 +96,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         const databaseName = await context.ui.showInputBox({
             placeHolder: "Database Name",
             prompt: "Enter the name of the database",
+            stepName: 'createMongoDatabase',
             validateInput: validateDatabaseName
         });
         context.showCreatingTreeItem(databaseName);

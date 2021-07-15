@@ -65,7 +65,7 @@ export class DocDBStoredProcedureTreeItem extends AzureTreeItem<IDocDBTreeRoot> 
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete stored procedure '${this.label}'?`;
-        await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteStoredProcedure' }, DialogResponses.deleteResponse);
         const client = this.root.getCosmosClient();
         await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).delete();
     }

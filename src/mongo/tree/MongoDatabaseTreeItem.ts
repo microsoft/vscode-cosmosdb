@@ -70,6 +70,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         const collectionName = await context.ui.showInputBox({
             placeHolder: "Collection Name",
             prompt: "Enter the name of the collection",
+            stepName: 'createMongoCollection',
             validateInput: validateMongoCollectionName
         });
 
@@ -79,7 +80,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete database '${this.label}'?`;
-        await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteMongoDatabase' }, DialogResponses.deleteResponse);
         const db = await this.connectToDb();
         await db.dropDatabase();
     }
@@ -167,17 +168,17 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
                 return 'mongo';
             } else {
                 // If all else fails, prompt the user for the mongo path
-
                 const openFile: vscode.MessageItem = { title: `Browse to ${mongoExecutableFileName}` };
                 const browse: vscode.MessageItem = { title: 'Open installation page' };
                 const noMongoError: string = 'This functionality requires the Mongo DB shell, but we could not find it in the path or using the mongo.shell.path setting.';
-                const response = await context.ui.showWarningMessage(noMongoError, browse, openFile);
+                const response = await context.ui.showWarningMessage(noMongoError, { stepName: 'promptForMongoPath' }, browse, openFile);
                 if (response === openFile) {
                     // eslint-disable-next-line no-constant-condition
                     while (true) {
                         const newPath: vscode.Uri[] = await context.ui.showOpenDialog({
                             filters: { 'Executable Files': [process.platform === 'win32' ? 'exe' : ''] },
-                            openLabel: `Select ${mongoExecutableFileName}`
+                            openLabel: `Select ${mongoExecutableFileName}`,
+                            stepName: 'openMongoExeFile',
                         });
                         const fsPath = newPath[0].fsPath;
                         const baseName = path.basename(fsPath);
@@ -186,6 +187,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
                             const tryAgain: vscode.MessageItem = { title: 'Try again' };
                             const response2 = await context.ui.showWarningMessage(
                                 `Expected a file named "${mongoExecutableFileName}, but the selected filename is "${baseName}"`,
+                                { stepName: 'confirmMongoExeFile' },
                                 useAnyway,
                                 tryAgain);
                             if (response2 === tryAgain) {
@@ -201,7 +203,7 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
                     // default down to cancel error because MongoShell.create errors out if undefined is passed as the shellPath
                 }
 
-                throw new UserCancelledError();
+                throw new UserCancelledError('createShell');
             }
         } else {
             // User has specified the path or command.  Sometimes they set the folder instead of a path to the file, let's check that and auto fix

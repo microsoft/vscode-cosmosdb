@@ -17,7 +17,7 @@ export async function deletePostgresFunction(context: IActionContext, treeItem?:
     }
 
     const message: string = localize('deleteFunction', 'Are you sure you want to delete function "{0}"?', treeItem.label);
-    await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+    await context.ui.showWarningMessage(message, { modal: true, stepName: 'deletePostgresFunction' }, DialogResponses.deleteResponse);
     await treeItem.deleteTreeItem(context);
     const deleteMessage: string = localize('successfullyDeletedFunction', 'Successfully deleted function "{0}".', treeItem.label);
     void window.showInformationMessage(deleteMessage);

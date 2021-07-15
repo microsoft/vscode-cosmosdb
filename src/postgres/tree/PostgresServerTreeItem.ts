@@ -76,7 +76,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     }
 
     public get description(): string | undefined {
-        switch(this.serverType){
+        switch (this.serverType) {
             case PostgresServerType.Flexible:
                 return "PostgreSQL Flexible";
             case PostgresServerType.Single:
@@ -137,6 +137,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         const databaseName = await context.ui.showInputBox({
             placeHolder: "Database Name",
             prompt: "Enter the name of the database",
+            stepName: 'createPostgresDatabase',
             validateInput: (name: string) => validateDatabaseName(name, getChildrenTask)
         });
         const config = await getClientConfig(this, postgresDefaultDatabase);

@@ -18,6 +18,7 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
 
     let username: string = await context.ui.showInputBox({
         prompt: localize('enterUsername', 'Enter username for server "{0}"', treeItem.label),
+        stepName: 'enterPostgresUsername',
         validateInput: (value: string) => { return (value && value.length) ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.'); }
     });
 
@@ -29,6 +30,7 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
 
     const password: string = await context.ui.showInputBox({
         prompt: localize('enterPassword', 'Enter password for server "{0}"', treeItem.label),
+        stepName: 'enterPostgresPassword',
         password: true,
         validateInput: (value: string) => { return (value && value.length) ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.'); }
     });

@@ -21,7 +21,10 @@ export async function configurePostgresFirewall(context: IActionContext, treeIte
     const ip: string = await getPublicIp();
     await context.ui.showWarningMessage(
         localize('firewallRuleWillBeAdded', 'A firewall rule for your IP ({0}) will be added to server "{1}". Would you like to continue?', ip, treeItem.label),
-        { modal: true },
+        {
+            modal: true,
+            stepName: 'postgresAddFirewallRule'
+        },
         { title: DialogResponses.yes.title }
     );
 

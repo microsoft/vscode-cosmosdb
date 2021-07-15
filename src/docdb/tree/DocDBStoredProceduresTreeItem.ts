@@ -46,6 +46,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
         }
         const spID = (await context.ui.showInputBox({
             prompt: "Enter a unique stored procedure ID",
+            stepName: 'createStoredProcedure',
             validateInput: (name: string) => this.validateStoredProcedureName(name, currStoredProcedureNames)
         })).trim();
         const body: StoredProcedureDefinition = { id: spID, body: defaultStoredProcedure };

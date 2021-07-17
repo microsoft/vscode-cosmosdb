@@ -18,7 +18,14 @@ export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPo
 
     public async execute(context: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
-        const user: string = nonNullProp(context, 'longUserName');
+        let user: string;
+        // Username doesn't contain servername prefix for Postgres Flexible Servers only
+        // https://docs.microsoft.com/en-us/azure/postgresql/howto-configure-sign-in-aad-authentication
+        if (context.serverType && context.serverType.toString() === 'Flexible') {
+            user = nonNullProp(context, 'shortUserName');
+        } else {
+            user = nonNullProp(context, 'longUserName');
+        }
         const newServerName: string = nonNullProp(context, 'newServerName');
 
         const setupMessage: string = localize('setupCredentialsMessage', 'Setting up Credentials for server "{0}"...', newServerName);

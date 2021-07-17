@@ -9,6 +9,7 @@ import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IActionContext, IP
 import { postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
+import { checkAuthentication } from '../commands/checkAuthentication';
 import { getClientConfig } from '../getClientConfig';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
@@ -54,7 +55,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
     public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
         try {
-            const clientConfig: ClientConfig = await getClientConfig(this.parent, this.databaseName);
+            const clientConfig: ClientConfig = await checkAuthentication(context, this);
             const children: AzExtTreeItem[] = [
                 new PostgresFunctionsTreeItem(this, clientConfig),
                 new PostgresTablesTreeItem(this, clientConfig)

@@ -9,7 +9,7 @@ import { AzureWizardExecuteStep } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
-import { PostgresAbstractServer } from '../../../abstract/models';
+import { PostgresAbstractServer, PostgresServerType } from '../../../abstract/models';
 import { setPostgresCredentials } from '../../setPostgresCredentials';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
@@ -21,10 +21,10 @@ export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPo
         let user: string;
         // Username doesn't contain servername prefix for Postgres Flexible Servers only
         // https://docs.microsoft.com/en-us/azure/postgresql/howto-configure-sign-in-aad-authentication
-        if (context.serverType && context.serverType.toString() === 'Flexible') {
-            user = nonNullProp(context, 'shortUserName');
-        } else {
+        if (context.serverType && context.serverType === PostgresServerType.Single) {
             user = nonNullProp(context, 'longUserName');
+        } else {
+            user = nonNullProp(context, 'shortUserName');
         }
         const newServerName: string = nonNullProp(context, 'newServerName');
 

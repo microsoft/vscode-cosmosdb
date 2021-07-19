@@ -31,4 +31,3 @@ export async function checkAuthentication(context: IActionContext, treeItem: Pos
     }
     return clientConfig;
 }
-

@@ -25,7 +25,7 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
 
     const serverName: string = nonNullProp(treeItem, 'azureName');
     // Username doesn't contain servername prefix for Postgres Flexible Servers only
-    // https://docs.microsoft.com/en-us/azure/postgresql/howto-configure-sign-in-aad-authentication
+    // As present on the portal for any Flexbile Server instance
     const usernameSuffix: string = `@${serverName}`;
     if (treeItem.serverType === PostgresServerType.Single && !username.includes(usernameSuffix)) {
         username += usernameSuffix;

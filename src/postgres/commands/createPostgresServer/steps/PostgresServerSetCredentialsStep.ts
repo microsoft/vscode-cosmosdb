@@ -20,7 +20,7 @@ export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPo
 
         let user: string;
         // Username doesn't contain servername prefix for Postgres Flexible Servers only
-        // https://docs.microsoft.com/en-us/azure/postgresql/howto-configure-sign-in-aad-authentication
+        // As present on the portal for any Flexbile Server instance
         if (context.serverType && context.serverType === PostgresServerType.Single) {
             user = nonNullProp(context, 'longUserName');
         } else {

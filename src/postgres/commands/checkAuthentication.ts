@@ -44,6 +44,7 @@ export async function isFirewallRuleSet(treeItem: PostgresServerTreeItem): Promi
     const client = createAbstractPostgresClient(serverType, treeItem.root);
     client.firewallRules.listByServer
     const result: FirewallRuleListResult = (await client.firewallRules.listByServer(nonNullProp(treeItem, 'resourceGroup'), nonNullProp(treeItem, 'azureName')))._response.parsedBody;
-    return (result.some(async value => value.name === 'azureDatabasesForVSCode-publicIp' && value.startIpAddress === await getPublicIp()));
+    const publicIp: string = await getPublicIp();
+    return (result.some(async value => value.startIpAddress <= publicIp && publicIp <= value.endIpAddress));
 }
 

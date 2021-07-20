@@ -101,7 +101,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         await runPostgresQuery(config, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
     }
 
-    private async isFirewallRuleSet(treeItem: PostgresServerTreeItem): Promise<boolean> {
+    public async isFirewallRuleSet(treeItem: PostgresServerTreeItem): Promise<boolean> {
         const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
         const client = createAbstractPostgresClient(serverType, treeItem.root);
         const result: FirewallRuleListResult = (await client.firewallRules.listByServer(nonNullProp(treeItem, 'resourceGroup'), nonNullProp(treeItem, 'azureName')))._response.parsedBody;

@@ -3,12 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { FirewallRuleListResult } from '@azure/arm-postgresql/esm/models';
 import { ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IActionContext, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
-import { postgresDefaultDatabase } from '../../constants';
+import { IPersistedServer, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
+import { nonNullProp } from '../../utils/nonNull';
+import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
+import { PostgresServerType } from '../abstract/models';
+import { getPublicIp } from '../commands/configurePostgresFirewall';
+import { createOrUpdateGlobalPersistedServer } from '../commands/createOrUpdateGlobalPersistedServer';
 import { getClientConfig } from '../getClientConfig';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
@@ -54,6 +60,12 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
     public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
         try {
+            if (this.parent.resourceGroup) {
+                const initialSetup = await this.getInitialSetup();
+                if (initialSetup) {
+                    return [initialSetup];
+                }
+            }
             const clientConfig: ClientConfig = await getClientConfig(this.parent, this.databaseName);
             const children: AzExtTreeItem[] = [
                 new PostgresFunctionsTreeItem(this, clientConfig),
@@ -70,21 +82,9 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
 
             if (this.parent.azureName && parsedError.errorType === invalidCredentialsErrorType) {
                 void context.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message), { stepName: 'loadPostgresDatabases' });
-                const credentialsTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
-                    contextValue: 'postgresCredentials',
-                    label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
-                    commandId: 'postgreSQL.enterCredentials'
-                });
-                credentialsTreeItem.commandArgs = [this.parent];
-                return [credentialsTreeItem];
+                return [this.getCredentialsTreeItem()];
             } else if (this.parent.azureName && parsedError.errorType === firewallNotConfiguredErrorType) {
-                const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
-                    contextValue: 'postgresFirewall',
-                    label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
-                    commandId: 'postgreSQL.configureFirewall'
-                });
-                firewallTreeItem.commandArgs = [this.parent];
-                return [firewallTreeItem];
+                return [this.getFirewallTreeItem()];
             } else {
                 throw error;
             }
@@ -94,5 +94,49 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     public async deleteTreeItemImpl(): Promise<void> {
         const config = await getClientConfig(this.parent, postgresDefaultDatabase);
         await runPostgresQuery(config, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
+    }
+
+    private async getInitialSetup(): Promise<AzExtTreeItem | undefined> {
+        this.parent.updatePersistedServer();
+        if (!this.parent.persistedServer?.username) {
+            return this.getCredentialsTreeItem();
+        } else if (!this.parent.persistedServer.isFirewallRuleSet) {
+            if (!(await this.isFirewallRuleSetOnPortal(this.parent))) {
+                return this.getFirewallTreeItem();
+            } else {
+                this.parent.updatePersistedServer(undefined, true);
+                const persistedServer: IPersistedServer = this.parent.persistedServer
+                await createOrUpdateGlobalPersistedServer(persistedServer);
+            }
+        }
+        return undefined;
+    }
+
+    private getFirewallTreeItem(): AzExtTreeItem {
+        const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
+            contextValue: 'postgresFirewall',
+            label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
+            commandId: 'postgreSQL.configureFirewall'
+        });
+        firewallTreeItem.commandArgs = [this.parent];
+        return firewallTreeItem;
+    }
+
+    private getCredentialsTreeItem(): AzExtTreeItem {
+        const credentialsTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
+            contextValue: 'postgresCredentials',
+            label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
+            commandId: 'postgreSQL.enterCredentials'
+        });
+        credentialsTreeItem.commandArgs = [this.parent];
+        return credentialsTreeItem;
+    }
+
+    private async isFirewallRuleSetOnPortal(treeItem: PostgresServerTreeItem): Promise<boolean> {
+        const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
+        const client = createAbstractPostgresClient(serverType, treeItem.root);
+        const result: FirewallRuleListResult = (await client.firewallRules.listByServer(nonNullProp(treeItem, 'resourceGroup'), nonNullProp(treeItem, 'azureName')))._response.parsedBody;
+        const publicIp: string = await getPublicIp();
+        return (result.some(async value => value.startIpAddress === publicIp));
     }
 }

@@ -6,11 +6,12 @@
 import * as vscode from 'vscode';
 import { Progress } from 'vscode';
 import { AzureWizardExecuteStep } from 'vscode-azureextensionui';
+import { IPersistedServer } from '../../../../constants';
 import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
 import { PostgresAbstractServer } from '../../../abstract/models';
-import { setPostgresCredentials } from '../../setPostgresCredentials';
+import { createOrUpdateGlobalPersistedServer } from '../../createOrUpdateGlobalPersistedServer';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPostgresServerWizardContext> {
@@ -27,7 +28,8 @@ export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPo
         const password: string = nonNullProp(context, 'adminPassword');
         const server: PostgresAbstractServer = nonNullProp(context, 'server');
 
-        await setPostgresCredentials(user, password, nonNullProp(server, 'id'));
+        const persistedServer: IPersistedServer = { id: nonNullProp(server, 'id'), username: user, isFirewallRuleSet: false };
+        await createOrUpdateGlobalPersistedServer(persistedServer, password);
         const completedMessage: string = localize('addedCredentialsMessage', 'Successfully setup credentials for server "{0}".', newServerName);
         void vscode.window.showInformationMessage(completedMessage);
         ext.outputChannel.appendLog(completedMessage);

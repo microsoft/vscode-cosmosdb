@@ -101,6 +101,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         await runPostgresQuery(config, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
     }
 
+    // Flexible servers throw a generic 'ETIMEDOUT' error instead of the firewall-specific error, so we have to check the firewall rules
     public async isFirewallRuleSet(treeItem: PostgresServerTreeItem): Promise<boolean> {
         const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
         const client = createAbstractPostgresClient(serverType, treeItem.root);

@@ -3,12 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { FirewallRuleListResult } from '@azure/arm-postgresql/esm/models';
 import { ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IActionContext, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
 import { postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
+import { nonNullProp } from '../../utils/nonNull';
+import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
+import { PostgresServerType } from '../abstract/models';
+import { getPublicIp } from '../commands/configurePostgresFirewall';
 import { getClientConfig } from '../getClientConfig';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
@@ -77,7 +82,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 });
                 credentialsTreeItem.commandArgs = [this.parent];
                 return [credentialsTreeItem];
-            } else if (this.parent.azureName && parsedError.errorType === firewallNotConfiguredErrorType) {
+            } else if (this.parent.azureName && (parsedError.errorType === firewallNotConfiguredErrorType || (parsedError.errorType === 'ETIMEDOUT' && !(await this.isFirewallRuleSet(this.parent))))) {
                 const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
                     contextValue: 'postgresFirewall',
                     label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
@@ -94,5 +99,14 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
     public async deleteTreeItemImpl(): Promise<void> {
         const config = await getClientConfig(this.parent, postgresDefaultDatabase);
         await runPostgresQuery(config, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
+    }
+
+    // Flexible servers throw a generic 'ETIMEDOUT' error instead of the firewall-specific error, so we have to check the firewall rules
+    public async isFirewallRuleSet(treeItem: PostgresServerTreeItem): Promise<boolean> {
+        const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
+        const client = createAbstractPostgresClient(serverType, treeItem.root);
+        const result: FirewallRuleListResult = (await client.firewallRules.listByServer(nonNullProp(treeItem, 'resourceGroup'), nonNullProp(treeItem, 'azureName')))._response.parsedBody;
+        const publicIp: string = await getPublicIp();
+        return (result.some(async value => value.startIpAddress === publicIp));
     }
 }

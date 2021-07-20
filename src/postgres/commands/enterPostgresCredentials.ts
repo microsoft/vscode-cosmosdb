@@ -8,6 +8,7 @@ import { IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { nonNullProp } from '../../utils/nonNull';
+import { PostgresServerType } from '../abstract/models';
 import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
 import { setPostgresCredentials } from "./setPostgresCredentials";
 
@@ -23,8 +24,10 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
     });
 
     const serverName: string = nonNullProp(treeItem, 'azureName');
+    // Username doesn't contain servername prefix for Postgres Flexible Servers only
+    // As present on the portal for any Flexbile Server instance
     const usernameSuffix: string = `@${serverName}`;
-    if (!username.includes(usernameSuffix)) {
+    if (treeItem.serverType === PostgresServerType.Single && !username.includes(usernameSuffix)) {
         username += usernameSuffix;
     }
 

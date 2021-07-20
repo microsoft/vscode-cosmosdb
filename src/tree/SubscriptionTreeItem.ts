@@ -94,7 +94,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             ext.outputChannel.appendLog(createMessage);
             const server = nonNullProp(wizardContext, 'server');
             const host = nonNullProp(server, 'fullyQualifiedDomainName');
-            const username: string = nonNullProp(wizardContext, 'longUserName');
+            const username: string = wizardContext.serverType === PostgresServerType.Flexible ? nonNullProp(wizardContext, 'shortUserName') : nonNullProp(wizardContext, 'longUserName');
             const password: string = nonNullProp(wizardContext, 'adminPassword');
             const connectionString: string = createPostgresConnectionString(host, undefined, username, password);
             const parsedCS: ParsedPostgresConnectionString = parsePostgresConnectionString(connectionString);

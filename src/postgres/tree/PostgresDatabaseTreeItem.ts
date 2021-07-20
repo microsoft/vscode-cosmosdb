@@ -82,7 +82,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
                 });
                 credentialsTreeItem.commandArgs = [this.parent];
                 return [credentialsTreeItem];
-            } else if (this.parent.azureName && (parsedError.errorType === firewallNotConfiguredErrorType || 'ETIMEDOUT') && !(await this.isFirewallRuleSet(this.parent))) {
+            } else if (this.parent.azureName && (parsedError.errorType === firewallNotConfiguredErrorType || (parsedError.errorType === 'ETIMEDOUT' && !(await this.isFirewallRuleSet(this.parent))))) {
                 const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
                     contextValue: 'postgresFirewall',
                     label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),

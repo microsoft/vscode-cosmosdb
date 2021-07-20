@@ -22,7 +22,7 @@ export async function checkAuthentication(context: IActionContext, treeItem: Pos
                 await enterPostgresCredentials(context, treeItem.parent);
 
                 // Need to configure firewall only for Azure Subscritption accounts
-            } else if (treeItem.parent.resourceGroup && (parsedError.errorType === firewallNotConfiguredErrorType || 'ETIMEDOUT') && !(await treeItem.isFirewallRuleSet(treeItem.parent))) {
+            } else if (treeItem.parent.resourceGroup && (parsedError.errorType === firewallNotConfiguredErrorType || (parsedError.errorType === 'ETIMEDOUT' && !(await treeItem.isFirewallRuleSet(treeItem.parent))))) {
                 await configurePostgresFirewall(context, treeItem.parent);
             } else {
                 throw error;

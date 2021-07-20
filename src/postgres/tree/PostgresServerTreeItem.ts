@@ -7,7 +7,7 @@ import { ClientConfig } from 'pg';
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
 import { AzExtTreeItem, AzureParentTreeItem, ICreateChildImplContext, ISubscriptionContext } from 'vscode-azureextensionui';
-import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
+import { getThemeAgnosticIconPath, IPersistedServer, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
@@ -25,11 +25,6 @@ import { PostgresStoredProcedureTreeItem } from './PostgresStoredProcedureTreeIt
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 import { PostgresTableTreeItem } from './PostgresTableTreeItem';
 
-interface IPersistedServer {
-    id: string;
-    username: string;
-}
-
 export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
     public static contextValue: string = "postgresServer";
     public static serviceName: string = "ms-azuretools.vscode-azuredatabases.postgresPasswords";
@@ -40,6 +35,7 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public resourceGroup: string | undefined;
     public azureName: string | undefined;
     public partialConnectionString: ParsedPostgresConnectionString;
+    public persistedServer: IPersistedServer;
 
     private _azureId: string | undefined;
     private _serverVersion: string | undefined;
@@ -53,7 +49,9 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
             this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
             this.azureName = server?.name;
             this.serverType = nonNullProp(server, 'serverType');
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         }
+        this.persistedServer = { id: this.id, username: undefined };
         this.valuesToMask.push(connectionString.accountId, connectionString.connectionString, connectionString.fullId, connectionString.hostName, connectionString.port);
         if (connectionString.databaseName) {
             this.valuesToMask.push(connectionString.databaseName);
@@ -191,22 +189,38 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
     public async getFullConnectionString(): Promise<ParsedPostgresConnectionString> {
 
         if (this._azureId && !(this.partialConnectionString.username && this.partialConnectionString.password)) {
-            const storedValue: string | undefined = ext.context.globalState.get(PostgresServerTreeItem.serviceName);
-            if (storedValue && ext.keytar) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                const servers: IPersistedServer[] = JSON.parse(storedValue);
-                for (const server of servers) {
-                    if (server.id === this.id) {
-                        this.partialConnectionString.username = server.username;
-                        this.partialConnectionString.password = await ext.keytar.getPassword(PostgresServerTreeItem.serviceName, this.id) || undefined;
-                        break;
-                    }
-                }
+            if (!this.persistedServer.username) {
+                this.updatePersistedServer();
+            }
+            if (this.persistedServer?.username && ext.keytar) {
+                this.partialConnectionString.username = this.persistedServer.username;
+                this.partialConnectionString.password = await ext.keytar.getPassword(PostgresServerTreeItem.serviceName, this.id) || undefined;
             }
         }
         return this.partialConnectionString;
     }
 
+    public updatePersistedServer(username?: string, isFirewallRuleSet?: boolean): void {
+        if (username || isFirewallRuleSet) {
+            if (username) this.persistedServer.username = username;
+            if (isFirewallRuleSet) this.persistedServer.isFirewallRuleSet = isFirewallRuleSet;
+        } else {
+            const storedValue: string | undefined = ext.context.globalState.get(PostgresServerTreeItem.serviceName);
+            if (storedValue) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                const servers: IPersistedServer[] = JSON.parse(storedValue);
+                for (const server of servers) {
+                    if (server.id === this.id) {
+                        this.persistedServer.username = server.username;
+                        if (this.persistedServer.isFirewallRuleSet) {
+                            this.persistedServer.isFirewallRuleSet = server.isFirewallRuleSet;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
 }
 
 async function validateDatabaseName(name: string, getChildrenTask: Promise<AzExtTreeItem[]>): Promise<string | undefined | null> {

@@ -83,3 +83,8 @@ export const postgresBaseFileName: string = 'query';
 export const postgresDefaultPort = '5432';
 export const postgresDefaultDatabase = 'postgres';
 export const SERVERLESS_CAPABILITY_NAME = 'EnableServerless';
+export interface IPersistedServer {
+    id: string;
+    username: string | undefined;
+    isFirewallRuleSet?: boolean;
+}

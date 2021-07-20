@@ -5,11 +5,12 @@
 
 import * as vscode from 'vscode';
 import { IActionContext } from "vscode-azureextensionui";
+import { IPersistedServer } from '../../constants';
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
-import { setPostgresCredentials } from "./setPostgresCredentials";
+import { createOrUpdateGlobalPersistedServer } from "./createOrUpdateGlobalPersistedServer";
 
 export async function enterPostgresCredentials(context: IActionContext, treeItem?: PostgresServerTreeItem): Promise<void> {
     if (!treeItem) {
@@ -44,7 +45,8 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
     };
 
     await vscode.window.withProgress(options, async () => {
-        await setPostgresCredentials(username, password, id);
+        const persistedServer: IPersistedServer = { id: id, username, isFirewallRuleSet: treeItem?.persistedServer.isFirewallRuleSet };
+        await createOrUpdateGlobalPersistedServer(persistedServer, password);
     });
 
     const completedMessage: string = localize('setupCredentialsMessage', 'Successfully added credentials to server "{0}".', serverName);
@@ -52,6 +54,7 @@ export async function enterPostgresCredentials(context: IActionContext, treeItem
     ext.outputChannel.appendLog(completedMessage);
 
     treeItem.setCredentials(username, password);
+    if (treeItem.persistedServer?.username) treeItem.persistedServer.username = username;
 
     await treeItem.refresh(context);
 }

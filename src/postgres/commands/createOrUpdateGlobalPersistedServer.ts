@@ -3,15 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { IPersistedServer } from "../../constants";
 import { ext } from "../../extensionVariables";
 import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
 
-interface IPersistedServer {
-    id: string;
-    username: string;
-}
-
-export async function setPostgresCredentials(username: string, password: string, serverId: string): Promise<void> {
+export async function createOrUpdateGlobalPersistedServer(persistedServer: IPersistedServer, password?: string,): Promise<void> {
     if (ext.keytar) {
         const serviceName: string = PostgresServerTreeItem.serviceName;
         const storedValue: string | undefined = ext.context.globalState.get(serviceName);
@@ -19,15 +15,12 @@ export async function setPostgresCredentials(username: string, password: string,
         let servers: IPersistedServer[] = storedValue ? JSON.parse(storedValue) : [];
 
         // Remove this server from the cache if it's there
-        servers = servers.filter((server: IPersistedServer) => { return server.id !== serverId; });
+        servers = servers.filter((server: IPersistedServer) => { return server.id !== persistedServer.id; });
 
-        const newServer: IPersistedServer = {
-            id: serverId,
-            username
-        };
-
-        servers.push(newServer);
+        servers.push(persistedServer);
         await ext.context.globalState.update(serviceName, JSON.stringify(servers));
-        await ext.keytar.setPassword(serviceName, serverId, password);
+        if (password) {
+            await ext.keytar.setPassword(serviceName, persistedServer.id, password);
+        }
     }
 }

@@ -12,6 +12,7 @@ import { nonNullProp } from '../../utils/nonNull';
 import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { AbstractFirewallRule, PostgresServerType } from '../abstract/models';
 import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
+import { createOrUpdateGlobalPersistedServer } from './createOrUpdateGlobalPersistedServer';
 
 export async function configurePostgresFirewall(context: IActionContext, treeItem?: PostgresServerTreeItem): Promise<void> {
     if (!treeItem) {
@@ -29,6 +30,8 @@ export async function configurePostgresFirewall(context: IActionContext, treeIte
     );
 
     await setFirewallRule(context, treeItem, ip);
+    void treeItem.updatePersistedServer(undefined, true);
+    await createOrUpdateGlobalPersistedServer(treeItem.persistedServer);
 }
 
 export async function setFirewallRule(context: IActionContext, treeItem: PostgresServerTreeItem, ip: string): Promise<void> {

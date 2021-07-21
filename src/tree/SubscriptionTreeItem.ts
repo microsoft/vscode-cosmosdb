@@ -150,8 +150,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         }
     }
     private async initPostgresChild(server: PostgresAbstractServer, context: IActionContext): Promise<AzureTreeItem> {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        context.telemetry.properties.serverType = ((server.serverType === PostgresServerType.Flexible) ? PostgresServerType.Flexible : PostgresServerType.Single)!;
+        context.telemetry.properties.serverType = server.serverType;
         const connectionString: string = createPostgresConnectionString(nonNullProp(server, 'fullyQualifiedDomainName'));
         const parsedCS: ParsedPostgresConnectionString = parsePostgresConnectionString(connectionString);
         return new PostgresServerTreeItem(this, parsedCS, server);

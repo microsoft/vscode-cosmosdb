@@ -98,7 +98,7 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
         const client = createAbstractPostgresClient(serverType, treeItem.root);
         const result: FirewallRuleListResult = (await client.firewallRules.listByServer(nonNullProp(treeItem, 'resourceGroup'), nonNullProp(treeItem, 'azureName')))._response.parsedBody;
-        const publicIp: string = await getPublicIp();
+        const publicIp: string = await getPublicIp('Getting Public IP to verify server connectivity...');
         return (result.some(async value => value.startIpAddress === publicIp));
     }
 

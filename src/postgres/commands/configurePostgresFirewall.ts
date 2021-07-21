@@ -18,7 +18,7 @@ export async function configurePostgresFirewall(context: IActionContext, treeIte
         treeItem = <PostgresServerTreeItem>await ext.tree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
     }
 
-    const ip: string = await getPublicIp();
+    const ip: string = await getPublicIp('Getting public IP to configure firewall rule...');
     await context.ui.showWarningMessage(
         localize('firewallRuleWillBeAdded', 'A firewall rule for your IP ({0}) will be added to server "{1}". Would you like to continue?', ip, treeItem.label),
         {
@@ -60,10 +60,10 @@ export async function setFirewallRule(context: IActionContext, treeItem: Postgre
     await treeItem.refresh(context);
 }
 
-export async function getPublicIp(): Promise<string> {
+export async function getPublicIp(message: string): Promise<string> {
     const options: vscode.ProgressOptions = {
         location: vscode.ProgressLocation.Notification,
-        title: localize('gettingPublicIp', 'Getting public IP...')
+        title: localize('gettingPublicIp', message)
     };
 
     return await vscode.window.withProgress(options, async () => {

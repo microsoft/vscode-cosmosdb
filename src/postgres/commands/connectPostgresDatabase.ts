@@ -21,9 +21,16 @@ export async function connectPostgresDatabase(context: IActionContext, treeItem?
     const oldTreeItemId: string | undefined = ext.connectedPostgresDB && ext.connectedPostgresDB.fullId;
     void ext.context.globalState.update(connectedPostgresKey, treeItem.fullId);
     ext.connectedPostgresDB = treeItem;
+    const username: string | undefined = (await treeItem.parent.getFullConnectionString()).username;
+    const serverId: string = treeItem.parent.id;
+    let serverName: string | undefined = serverId;
+    if (username) {
+        serverName = username.includes(serverId) ? username : username + `@{serverId}`;
+    }
     const database = treeItem && treeItem.label;
+
     if (ext.postgresCodeLensProvider) {
-        ext.postgresCodeLensProvider.setConnectedDatabase(database);
+        ext.postgresCodeLensProvider.setConnectedDatabase(database, serverName);
     }
     await treeItem.refresh(context);
 

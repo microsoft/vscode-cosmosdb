@@ -69,7 +69,7 @@ export async function loadPersistedPostgresDatabase(): Promise<void> {
         } finally {
             // Get code lens provider out of initializing state if there's no connected DB
             if (!ext.connectedPostgresDB && ext.postgresCodeLensProvider) {
-                ext.postgresCodeLensProvider.setConnectedDatabase(undefined);
+                ext.postgresCodeLensProvider.setConnectedDatabase(undefined, undefined);
             }
         }
     });

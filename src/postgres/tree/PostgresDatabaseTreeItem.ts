@@ -6,7 +6,7 @@
 import { FirewallRuleListResult } from '@azure/arm-postgresql/esm/models';
 import { ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IActionContext, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, GenericTreeItem, IParsedError, ISubscriptionContext, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
 import { postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
@@ -57,8 +57,13 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         return false;
     }
 
-    public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
         try {
+            if (this.parent.azureName && !(await this.parent.getFullConnectionString()).username) {
+                return [this.getCredentialsTreeItem()];
+            } else if ((this.parent.serverType === PostgresServerType.Flexible) && !(await this.isFirewallRuleSet(this.parent))) {
+                return [this.getFirewallTreeItem()];
+            }
             const clientConfig: ClientConfig = await getClientConfig(this.parent, this.databaseName);
             const children: AzExtTreeItem[] = [
                 new PostgresFunctionsTreeItem(this, clientConfig),
@@ -73,23 +78,8 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         } catch (error) {
             const parsedError: IParsedError = parseError(error);
 
-            if (this.parent.azureName && parsedError.errorType === invalidCredentialsErrorType) {
-                void context.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message), { stepName: 'loadPostgresDatabases' });
-                const credentialsTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
-                    contextValue: 'postgresCredentials',
-                    label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
-                    commandId: 'postgreSQL.enterCredentials'
-                });
-                credentialsTreeItem.commandArgs = [this.parent];
-                return [credentialsTreeItem];
-            } else if (this.parent.azureName && (parsedError.errorType === firewallNotConfiguredErrorType || (parsedError.errorType === 'ETIMEDOUT' && !(await this.isFirewallRuleSet(this.parent))))) {
-                const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
-                    contextValue: 'postgresFirewall',
-                    label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
-                    commandId: 'postgreSQL.configureFirewall'
-                });
-                firewallTreeItem.commandArgs = [this.parent];
-                return [firewallTreeItem];
+            if (this.parent.azureName && (parsedError.errorType === firewallNotConfiguredErrorType || (parsedError.errorType === 'ETIMEDOUT' && !(await this.isFirewallRuleSet(this.parent))))) {
+                return [this.getFirewallTreeItem()];
             } else {
                 throw error;
             }
@@ -108,5 +98,25 @@ export class PostgresDatabaseTreeItem extends AzureParentTreeItem<ISubscriptionC
         const result: FirewallRuleListResult = (await client.firewallRules.listByServer(nonNullProp(treeItem, 'resourceGroup'), nonNullProp(treeItem, 'azureName')))._response.parsedBody;
         const publicIp: string = await getPublicIp();
         return (result.some(async value => value.startIpAddress === publicIp));
+    }
+
+    private getCredentialsTreeItem(): AzExtTreeItem {
+        const credentialsTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
+            contextValue: 'postgresCredentials',
+            label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
+            commandId: 'postgreSQL.enterCredentials'
+        });
+        credentialsTreeItem.commandArgs = [this.parent];
+        return credentialsTreeItem;
+    }
+
+    private getFirewallTreeItem(): AzExtTreeItem {
+        const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
+            contextValue: 'postgresFirewall',
+            label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
+            commandId: 'postgreSQL.configureFirewall'
+        });
+        firewallTreeItem.commandArgs = [this.parent];
+        return firewallTreeItem;
     }
 }

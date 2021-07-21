@@ -8,7 +8,7 @@ import { DatabaseAccountGetResults, DatabaseAccountListKeysResult, DatabaseAccou
 import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { PostgreSQLManagementClient as PostgreSQLFlexibleManagementClient } from '@azure/arm-postgresql-flexible';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, IActionContext, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { ext } from '../extensionVariables';
@@ -33,7 +33,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         return false;
     }
 
-    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
+    public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
 
         //Postgres
         const postgresSingleClient = createAzureClient(this.root, PostgreSQLManagementClient);
@@ -46,7 +46,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const treeItemPostgres: AzExtTreeItem[] = await this.createTreeItemsWithErrorHandling(
             postgresServers,
             'invalidPostgreSQLAccount',
-            async (server: PostgresAbstractServer) => await this.initPostgresChild(server),
+            async (server: PostgresAbstractServer) => await this.initPostgresChild(server, context),
             (server: PostgresAbstractServer) => server.name
         );
 
@@ -149,7 +149,8 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             }
         }
     }
-    private async initPostgresChild(server: PostgresAbstractServer): Promise<AzureTreeItem> {
+    private async initPostgresChild(server: PostgresAbstractServer, context: IActionContext): Promise<AzureTreeItem> {
+        context.telemetry.properties.serverType = server.serverType?.toString();
         const connectionString: string = createPostgresConnectionString(nonNullProp(server, 'fullyQualifiedDomainName'));
         const parsedCS: ParsedPostgresConnectionString = parsePostgresConnectionString(connectionString);
         return new PostgresServerTreeItem(this, parsedCS, server);

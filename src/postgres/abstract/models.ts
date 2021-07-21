@@ -7,8 +7,8 @@ import { PostgreSQLManagementModels as SingleModels } from "@azure/arm-postgresq
 import { PostgreSQLManagementModels as FlexibleModels } from "@azure/arm-postgresql-flexible";
 
 export enum PostgresServerType {
-    Flexible,
-    Single
+    Flexible = 'Flexible',
+    Single = 'Single'
 }
 
 export type PostgresAbstractServer = (SingleModels.Server | FlexibleModels.Server) & { serverType?: PostgresServerType; }
@@ -18,7 +18,7 @@ export type PostgresAbstractDatabase = SingleModels.Database | FlexibleModels.Da
 /**
  * Billing information related properties of a server.
  */
- export interface AbstractSku {
+export interface AbstractSku {
     /**
      * The name of the sku, typically, tier + family + cores, e.g. B_Gen4_1, GP_Gen5_8.
      */

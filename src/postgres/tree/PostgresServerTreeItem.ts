@@ -6,7 +6,7 @@
 import { ClientConfig } from 'pg';
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, ICreateChildImplContext, ISubscriptionContext } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureParentTreeItem, IActionContext, ICreateChildImplContext, ISubscriptionContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
@@ -90,7 +90,8 @@ export class PostgresServerTreeItem extends AzureParentTreeItem<ISubscriptionCon
         return false;
     }
 
-    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
+    public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
+        context.telemetry.properties.serverType = this.serverType;
         let dbNames: (string | undefined)[];
         if (this.azureName) {
             const client = createAbstractPostgresClient(this.serverType, this.root);

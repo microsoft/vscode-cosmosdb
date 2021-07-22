@@ -25,7 +25,7 @@ export async function connectPostgresDatabase(context: IActionContext, treeItem?
     const serverId: string = treeItem.parent.id;
     let serverName: string | undefined = serverId;
     if (username) {
-        serverName = username.includes(serverId) ? username : username + `@{serverId}`;
+        serverName = username.includes(serverId) ? username : username + `@${serverId}`;
     }
     const database = treeItem && treeItem.label;
 

@@ -2,7 +2,7 @@
 
 ## 0.18.0 - 2021-07-21
 ### Added
-- Postgres Flexible Servers (Preview): CRUD support for Databases, Functions and Stored Procedures
+- Postgres Flexible Servers (Preview) includes support for Databases, Functions and Stored Procedures
 ### Changed
 - Postgres Single Server defaults to version "11"
 ### Fixed

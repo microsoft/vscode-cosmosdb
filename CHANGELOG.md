@@ -4,7 +4,7 @@
 ### Added
 - Postgres Flexible Servers (Preview): CRUD support for Databases, Functions and Stored Procedures
 ### Changed
-- Postgres Single Server defaults to version "11" with Create
+- Postgres Single Server defaults to version "11"
 ### Fixed
 - [Bugs Fixed](https://github.com/microsoft/vscode-cosmosdb/milestone/26?closed=1)
 

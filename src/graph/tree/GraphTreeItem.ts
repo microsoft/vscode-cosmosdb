@@ -75,11 +75,9 @@ export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
             } else {
                 const viewExt: vscode.MessageItem = { title: localize('viewExt', 'View Extension') };
                 const message: string = localize('mustInstallGraph', 'You must install the Cosmos DB Graph extension to view a graph.');
-                context.telemetry.properties.cancelStep = 'installGraphExtPreMessage';
-                await context.ui.showWarningMessage(message, { modal: true }, viewExt);
-                context.telemetry.properties.cancelStep = 'installGraphExtPostMessage';
+                await context.ui.showWarningMessage(message, { modal: true, stepName: 'installGraphExt' }, viewExt);
                 await vscode.commands.executeCommand('extension.open', graphExtId);
-                throw new UserCancelledError();
+                throw new UserCancelledError('installGraphExtPostMessage');
             }
         }
     }

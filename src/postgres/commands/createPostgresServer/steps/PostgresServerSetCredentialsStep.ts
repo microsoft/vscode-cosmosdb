@@ -9,7 +9,7 @@ import { AzureWizardExecuteStep } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
-import { PostgresAbstractServer } from '../../../abstract/models';
+import { PostgresAbstractServer, PostgresServerType } from '../../../abstract/models';
 import { setPostgresCredentials } from '../../setPostgresCredentials';
 import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
@@ -18,7 +18,14 @@ export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPo
 
     public async execute(context: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
 
-        const user: string = nonNullProp(context, 'longUserName');
+        let user: string;
+        // Username doesn't contain servername prefix for Postgres Flexible Servers only
+        // As present on the portal for any Flexbile Server instance
+        if (context.serverType && context.serverType === PostgresServerType.Single) {
+            user = nonNullProp(context, 'longUserName');
+        } else {
+            user = nonNullProp(context, 'shortUserName');
+        }
         const newServerName: string = nonNullProp(context, 'newServerName');
 
         const setupMessage: string = localize('setupCredentialsMessage', 'Setting up Credentials for server "{0}"...', newServerName);

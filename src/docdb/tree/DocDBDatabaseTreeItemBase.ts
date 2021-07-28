@@ -59,7 +59,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
     // Delete the database
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete database '${this.label}' and its contents?`;
-        await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteDatabase' }, DialogResponses.deleteResponse);
         const client = this.root.getCosmosClient();
         await client.database(this.id).delete();
     }
@@ -68,7 +68,8 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
     public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
         const containerName = await context.ui.showInputBox({
             placeHolder: `Enter an id for your ${this.childTypeLabel}`,
-            validateInput: validateCollectionName
+            validateInput: validateCollectionName,
+            stepName: `create${this.childTypeLabel}`
         });
 
         const containerDefinition: ContainerDefinition = {
@@ -77,6 +78,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
 
         let partitionKey: string | undefined = await context.ui.showInputBox({
             prompt: 'Enter the partition key for the collection, or leave blank for fixed size.',
+            stepName: 'partitionKeyForCollection',
             validateInput: validatePartitionKey,
             placeHolder: 'e.g. address/zipCode'
         });
@@ -97,6 +99,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
             const throughput: number = Number(await context.ui.showInputBox({
                 value: minThroughput.toString(),
                 prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput}`,
+                stepName: 'throughputCapacity',
                 validateInput: (input: string) => validateThroughput(isFixed, input)
             }));
 

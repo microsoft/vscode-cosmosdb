@@ -53,7 +53,7 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete collection '${this.label}' and its contents?`;
-        await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteCollection' }, DialogResponses.deleteResponse);
         const client = this.root.getCosmosClient();
         await this.getContainerClient(client).delete();
     }

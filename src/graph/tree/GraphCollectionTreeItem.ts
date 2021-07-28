@@ -55,7 +55,7 @@ export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete graph '${this.label}' and its contents?`;
-        await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteGraphCollection' }, DialogResponses.deleteResponse);
         const client = this.root.getCosmosClient();
         await this.getContainerClient(client).delete();
     }

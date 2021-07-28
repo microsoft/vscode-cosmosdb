@@ -1,11 +1,23 @@
 # Change Log
 
+## 0.18.0 - 2021-07-21
+### Added
+- Postgres Flexible Servers (Preview) includes support for Databases, Functions and Stored Procedures
+
+### Changed
+- Postgres Single Server defaults to version "11"
+
+### Fixed
+- [Bugs Fixed](https://github.com/microsoft/vscode-cosmosdb/milestone/26?closed=1)
+
 ## 0.17.0 - 2021-06-22
 ### Added
 - SKU type option is now available while creating PostgreSQL servers
 - Option to select either "Provisioned throughput" or "Serverless" model while creating CosmosDB accounts
+
 ### Changed
 - Icons updated to match VS Code's theme. Install new product icon themes [here](https://marketplace.visualstudio.com/search?term=tag%3Aproduct-icon-theme&target=VSCode)
+
 ### Fixed
 - [Bugs Fixed](https://github.com/microsoft/vscode-cosmosdb/milestone/30?closed=1)
 

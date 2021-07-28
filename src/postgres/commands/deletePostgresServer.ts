@@ -16,7 +16,7 @@ export async function deletePostgresServer(context: IActionContext, node?: Postg
         node = <PostgresServerTreeItem>await ext.tree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
     }
     const message: string = localize('deleteServerConfirmPrompt', 'Are you sure you want to delete server "{0}" and its contents?', node.label);
-    await context.ui.showWarningMessage(message, { modal: true }, DialogResponses.deleteResponse);
+    await context.ui.showWarningMessage(message, { modal: true, stepName: 'deletePostgresServer' }, DialogResponses.deleteResponse);
     await node.deleteTreeItem(context);
     const deleteMessage: string = localize("deleteServerMsg", 'Successfully deleted server "{0}".', node.label);
     void vscode.window.showInformationMessage(deleteMessage);

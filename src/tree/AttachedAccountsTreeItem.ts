@@ -144,7 +144,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
     }
 
     public async attachNewAccount(context: IActionContext): Promise<void> {
-        const defaultExperiencePick = await context.ui.showQuickPick(getExperienceQuickPicks(true), { placeHolder: "Select a Database type..." });
+        const defaultExperiencePick = await context.ui.showQuickPick(getExperienceQuickPicks(true), { placeHolder: "Select a Database type...", stepName: 'attachNewAccount' });
         const defaultExperience = defaultExperiencePick.data;
         let placeholder: string;
         let defaultValue: string | undefined;
@@ -166,6 +166,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         const connectionString = (await context.ui.showInputBox({
             placeHolder: placeholder,
             prompt: 'Enter the connection string for your database account',
+            stepName: 'attachNewAccountConnectionString',
             validateInput: validateInput,
             value: defaultValue
         })).trim();
@@ -189,7 +190,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 getExperienceQuickPick(API.Core)
             ],
             {
-                placeHolder: "Select a Database Account API..."
+                placeHolder: "Select a Database Account API...",
+                stepName: 'attachEmulator'
             });
         const defaultExperience = defaultExperiencePick.data;
         let port: number | undefined;
@@ -273,7 +275,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
 
         if (attachedAccounts.find(s => s.id === treeItem.id)) {
-            void context.ui.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`);
+            void context.ui.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`, { stepName: 'attachAccount' });
         } else {
             attachedAccounts.push(treeItem);
             if (ext.keytar) {

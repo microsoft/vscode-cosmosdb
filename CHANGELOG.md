@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.18.2 - 2021-07-30
+### Fixed
+- [Fix for Timing Out issue when loading Postgres Flexible Servers](https://github.com/microsoft/vscode-cosmosdb/issues/1913)
+
 ## 0.18.0 - 2021-07-21
 ### Added
 - Postgres Flexible Servers (Preview) includes support for Databases, Functions and Stored Procedures

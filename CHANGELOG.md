@@ -1,8 +1,8 @@
 # Change Log
 
-## 0.18.2 - 2021-07-30
+## 0.18.1 - 2021-08-10
 ### Fixed
-- [Fix for Timing Out issue when loading Postgres Flexible Servers](https://github.com/microsoft/vscode-cosmosdb/issues/1913)
+- Fix time out issue when loading Postgres Flexible Servers [#1913](https://github.com/microsoft/vscode-cosmosdb/issues/1913)
 
 ## 0.18.0 - 2021-07-21
 ### Added

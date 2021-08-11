@@ -39,7 +39,8 @@ export async function setFirewallRule(context: IActionContext, treeItem: Postgre
     const resourceGroup: string = nonNullProp(treeItem, 'resourceGroup');
     const serverName: string = nonNullProp(treeItem, 'azureName');
 
-    const firewallRuleName: string = "azDbVSCode-Ip" + `-${randomUtils.getPseudononymousStringHash(ip, 'hex').substring(0, 80)}`;
+    // firewall rule name on the portal is restricted to 80 characters or less
+    const firewallRuleName: string = "azDbVSCode-Ip" + `-${randomUtils.getPseudononymousStringHash(ip, 'hex')}`;
 
     const newFirewallRule: AbstractFirewallRule = {
         startIpAddress: ip,

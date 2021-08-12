@@ -5,12 +5,10 @@
 
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
-import { ParserRuleContext } from 'antlr4ts';
-/* eslint-disable import/no-internal-modules */
+import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
-/* eslint-enable import/no-internal-modules */
 import { Db } from 'mongodb';
 import { LanguageService as JsonLanguageService } from 'vscode-json-languageservice';
 import { CompletionItem, CompletionItemKind, Position, Range } from 'vscode-languageserver';

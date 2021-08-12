@@ -2,7 +2,7 @@
 
 ## 0.18.1 - 2021-08-11
 ### [Fixed](https://github.com/microsoft/vscode-cosmosdb/milestone/32?closed=1)
-- Fixed the ETIMEDOUT issue "...when signing the PostgreSQL Flexible server on another virtual machine"
+- Fixed the ETIMEDOUT issue when signing into a PostgreSQL Flexible server on multiple machines
 
 ## 0.18.0 - 2021-07-21
 ### Added

@@ -9,6 +9,7 @@ import { DialogResponses, IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { nonNullProp } from '../../utils/nonNull';
+import { randomUtils } from '../../utils/randomUtils';
 import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { AbstractFirewallRule, PostgresServerType } from '../abstract/models';
 import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
@@ -38,7 +39,7 @@ export async function setFirewallRule(context: IActionContext, treeItem: Postgre
     const resourceGroup: string = nonNullProp(treeItem, 'resourceGroup');
     const serverName: string = nonNullProp(treeItem, 'azureName');
 
-    const firewallRuleName: string = "azureDatabasesForVSCode-publicIp";
+    const firewallRuleName: string = "azDbVSCode-Ip" + `-${randomUtils.getRandomHexString(6)}`;
 
     const newFirewallRule: AbstractFirewallRule = {
         startIpAddress: ip,

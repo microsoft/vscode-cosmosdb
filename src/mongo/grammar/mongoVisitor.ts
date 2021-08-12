@@ -8,6 +8,7 @@
 
 
 
+// eslint-disable-next-line import/no-internal-modules
 import { ParseTreeVisitor } from 'antlr4ts/tree/ParseTreeVisitor';
 import { ArgumentContext, ArgumentsContext, ArrayLiteralContext, CollectionContext, CommandContext, CommandsContext, CommentContext, ElementListContext, EmptyCommandContext, FunctionCallContext, LiteralContext, MongoCommandsContext, ObjectLiteralContext, PropertyAssignmentContext, PropertyNameAndValueListContext, PropertyNameContext, PropertyValueContext } from './mongoParser';
 

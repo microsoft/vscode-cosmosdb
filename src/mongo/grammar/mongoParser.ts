@@ -8,21 +8,15 @@
 
 
 
+import { NoViableAltException, Parser, ParserRuleContext, RecognitionException, RuleVersion, Token, TokenStream, Vocabulary, VocabularyImpl } from 'antlr4ts';
+/* eslint-disable import/no-internal-modules */
 import { ATN } from 'antlr4ts/atn/ATN';
 import { ATNDeserializer } from 'antlr4ts/atn/ATNDeserializer';
 import { ParserATNSimulator } from 'antlr4ts/atn/ParserATNSimulator';
 import { NotNull, Override } from 'antlr4ts/Decorators';
 import * as Utils from 'antlr4ts/misc/Utils';
-import { NoViableAltException } from 'antlr4ts/NoViableAltException';
-import { Parser } from 'antlr4ts/Parser';
-import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
-import { RecognitionException } from 'antlr4ts/RecognitionException';
-import { RuleVersion } from 'antlr4ts/RuleVersion';
-import { Token } from 'antlr4ts/Token';
-import { TokenStream } from 'antlr4ts/TokenStream';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
-import { Vocabulary } from 'antlr4ts/Vocabulary';
-import { VocabularyImpl } from 'antlr4ts/VocabularyImpl';
+/* eslint-enable import/no-internal-modules */
 import { mongoListener } from './mongoListener';
 import { mongoVisitor } from './mongoVisitor';
 

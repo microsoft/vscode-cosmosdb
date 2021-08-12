@@ -3,10 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
+import { ParserRuleContext } from 'antlr4ts';
+/* eslint-disable import/no-internal-modules */
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
+/* eslint-enable import/no-internal-modules */
 import { ArgumentContext, ArgumentsContext, CollectionContext, CommandContext, CommandsContext, FunctionCallContext, MongoCommandsContext } from './mongoParser';
 import { mongoVisitor } from './mongoVisitor';
 

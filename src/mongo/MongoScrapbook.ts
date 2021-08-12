@@ -3,11 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
-import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
+import { ANTLRInputStream as InputStream, CommonTokenStream } from 'antlr4ts';
+/* eslint-disable import/no-internal-modules */
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
+/* eslint-enable import/no-internal-modules */
 import { ObjectID } from 'bson';
 import { Collection } from 'mongodb';
 import { EOL } from 'os';

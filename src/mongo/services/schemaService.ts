@@ -399,7 +399,16 @@ Use the $where operator to pass either a string containing a JavaScript expressi
                 }
             }
 
- });
+        });
+        schemas.push({
+            type: 'object',
+            properties: {
+                $project: {
+                    type: 'object',
+                    description: 'Reshapes each document in the stream, such as by adding new fields or removing existing fields. For each input document, outputs one document'
+                }
+            }
+        });
         schemas.push({
             type: 'object',
             properties: {

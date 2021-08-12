@@ -39,7 +39,7 @@ export async function setFirewallRule(context: IActionContext, treeItem: Postgre
     const resourceGroup: string = nonNullProp(treeItem, 'resourceGroup');
     const serverName: string = nonNullProp(treeItem, 'azureName');
 
-    const firewallRuleName: string = "azDbVSCode-Ip" + `-${randomUtils.getPseudononymousStringHash(ip, 'hex').substring(0, 10)}`;
+    const firewallRuleName: string = "azDbVSCode-Ip" + `-${randomUtils.getRandomHexString(6)}`;
 
     const newFirewallRule: AbstractFirewallRule = {
         startIpAddress: ip,

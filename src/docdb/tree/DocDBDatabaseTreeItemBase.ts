@@ -5,7 +5,7 @@
 
 import { ContainerDefinition, ContainerResponse, CosmosClient, DatabaseDefinition, FeedOptions, QueryIterator, RequestOptions, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzureTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath } from 'vscode-azureextensionui';
+import { AzExtTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { nonNullProp } from '../../utils/nonNull';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -26,6 +26,10 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
     constructor(parent: DocDBAccountTreeItemBase, database: DatabaseDefinition & Resource) {
         super(parent);
         this._database = database;
+    }
+
+    public get root(): IDocDBTreeRoot {
+        return this.parent.root;
     }
 
     public get iconPath(): TreeItemIconPath {
@@ -65,7 +69,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
     }
 
     // Create a DB collection
-    public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
+    public async createChildImpl(context: ICreateChildImplContext): Promise<AzExtTreeItem> {
         const containerName = await context.ui.showInputBox({
             placeHolder: `Enter an id for your ${this.childTypeLabel}`,
             validateInput: validateCollectionName,

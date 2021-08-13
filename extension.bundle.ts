@@ -36,6 +36,7 @@ export { IDatabaseInfo } from './src/mongo/tree/MongoAccountTreeItem';
 export { addDatabaseToConnectionString } from './src/postgres/postgresConnectionStrings';
 export { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from './src/tree/AttachedAccountsTreeItem';
 export { AzureAccountTreeItemWithAttached } from './src/tree/AzureAccountTreeItemWithAttached';
+export * from './src/utils/azureClients';
 export { improveError } from './src/utils/improveError';
 export * from './src/utils/nonNull';
 export { randomUtils } from './src/utils/randomUtils';

@@ -9,14 +9,13 @@ import * as assert from 'assert';
 import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, DeleteWriteOpResultObject, InsertOneWriteOpResult, InsertWriteOpResult, MongoCountPreferences } from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath } from 'vscode-azureextensionui';
+import { AzExtParentTreeItem, AzExtTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { nonNullValue } from '../../utils/nonNull';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { MongoCommand } from '../MongoCommand';
-import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const EJSON = require("mongodb-extended-json");
@@ -28,12 +27,12 @@ class FunctionDescriptor {
     }
 }
 
-export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot> implements IEditableTreeItem {
+export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEditableTreeItem {
     public static contextValue: string = "MongoCollection";
     public readonly contextValue: string = MongoCollectionTreeItem.contextValue;
     public readonly childTypeLabel: string = "Document";
     public readonly collection: Collection;
-    public parent: AzureParentTreeItem;
+    public parent: AzExtParentTreeItem;
     public findArgs?: {}[];
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
@@ -44,7 +43,7 @@ export class MongoCollectionTreeItem extends AzureParentTreeItem<IMongoTreeRoot>
     private _hasMoreChildren: boolean = true;
     private _batchSize: number = getBatchSizeSetting();
 
-    constructor(parent: AzureParentTreeItem, collection: Collection, findArgs?: {}[]) {
+    constructor(parent: AzExtParentTreeItem, collection: Collection, findArgs?: {}[]) {
         super(parent);
         this.collection = collection;
         this.findArgs = findArgs;

@@ -4,13 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, ISubscriptionContext, TreeItemIconPath } from 'vscode-azureextensionui';
+import { AzExtParentTreeItem, TreeItemIconPath } from 'vscode-azureextensionui';
 import { IPostgresTable } from '../getTables';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresColumnTreeItem } from './PostgresColumnTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
-export class PostgresTableTreeItem extends AzureParentTreeItem<ISubscriptionContext> {
+export class PostgresTableTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = "postgresTable";
     public readonly contextValue: string = PostgresTableTreeItem.contextValue;
     public readonly table: IPostgresTable;

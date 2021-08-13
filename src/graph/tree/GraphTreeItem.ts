@@ -5,16 +5,15 @@
 
 import { ContainerDefinition, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzureTreeItem, IActionContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
+import { AzExtTreeItem, IActionContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
 import { AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
-import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { CosmosDBGraphExtensionApi } from '../../vscode-cosmosdbgraph.api';
 import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 
-export class GraphTreeItem extends AzureTreeItem<IDocDBTreeRoot> {
+export class GraphTreeItem extends AzExtTreeItem {
     public static contextValue: string = "cosmosDBGraphGraph";
     public readonly contextValue: string = GraphTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openGraphExplorer';

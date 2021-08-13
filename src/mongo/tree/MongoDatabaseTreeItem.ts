@@ -8,7 +8,7 @@ import { Collection, Db, DbCollectionOptions } from 'mongodb';
 import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzureParentTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzExtParentTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
 import { nonNullProp, nonNullValue } from '../../utils/nonNull';
@@ -23,7 +23,7 @@ import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 const mongoExecutableFileName = process.platform === 'win32' ? 'mongo.exe' : 'mongo';
 const executingInShellMsg = "Executing command in Mongo shell";
 
-export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
+export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = "mongoDb";
     public readonly contextValue: string = MongoDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = "Collection";
@@ -38,6 +38,10 @@ export class MongoDatabaseTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         super(parent);
         this.databaseName = databaseName;
         this.connectionString = addDatabaseToAccountConnectionString(connectionString, this.databaseName);
+    }
+
+    public get root(): IMongoTreeRoot {
+        return this.parent.root;
     }
 
     public get label(): string {

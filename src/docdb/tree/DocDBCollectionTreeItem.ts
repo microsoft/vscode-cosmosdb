@@ -5,7 +5,7 @@
 
 import { Container, ContainerDefinition, CosmosClient, PartitionKeyDefinition, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, AzureTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from 'vscode-azureextensionui';
+import { AzExtParentTreeItem, AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
@@ -16,7 +16,7 @@ import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 /**
  * Represents a DocumentDB collection
  */
-export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot> {
+export class DocDBCollectionTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = "cosmosDBDocumentCollection";
     public readonly contextValue: string = DocDBCollectionTreeItem.contextValue;
     public readonly documentsTreeItem: DocDBDocumentsTreeItem;
@@ -29,6 +29,10 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         this.parent = parent;
         this.documentsTreeItem = new DocDBDocumentsTreeItem(this);
         this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this);
+    }
+
+    public get root(): IDocDBTreeRoot {
+        return this.parent.root;
     }
 
     public get id(): string {
@@ -58,7 +62,7 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         await this.getContainerClient(client).delete();
     }
 
-    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem<IDocDBTreeRoot>[]> {
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
         return [this.documentsTreeItem, this._storedProceduresTreeItem];
     }
 
@@ -66,7 +70,7 @@ export class DocDBCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         return false;
     }
 
-    public pickTreeItemImpl(expectedContextValues: (string | RegExp)[]): AzureTreeItem<IDocDBTreeRoot> | undefined {
+    public pickTreeItemImpl(expectedContextValues: (string | RegExp)[]): AzExtTreeItem | undefined {
         for (const expectedContextValue of expectedContextValues) {
             switch (expectedContextValue) {
                 case DocDBDocumentsTreeItem.contextValue:

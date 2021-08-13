@@ -3,10 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, AzureTreeItem, GenericTreeItem, IActionContext } from "vscode-azureextensionui";
+import { AzExtTreeItem, GenericTreeItem, IActionContext } from "vscode-azureextensionui";
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { DocDBAccountTreeItemBase } from "../../docdb/tree/DocDBAccountTreeItemBase";
-import { IDocDBTreeRoot } from "../../docdb/tree/IDocDBTreeRoot";
 
 export class TableAccountTreeItem extends DocDBAccountTreeItemBase {
     public static contextValue: string = "cosmosDBTableAccount";
@@ -16,7 +15,7 @@ export class TableAccountTreeItem extends DocDBAccountTreeItemBase {
         return false;
     }
 
-    public initChild(): AzureTreeItem<IDocDBTreeRoot> {
+    public initChild(): AzExtTreeItem {
         throw new Error('Table Accounts are not supported yet.');
     }
 

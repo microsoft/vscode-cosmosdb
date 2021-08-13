@@ -6,7 +6,7 @@
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { CosmosClient, DatabaseDefinition, DatabaseResponse, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, IActionContext, ICreateChildImplContext } from 'vscode-azureextensionui';
+import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplContext } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { getThemeAgnosticIconPath, SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
@@ -26,20 +26,19 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
 
     private _root: IDocDBTreeRoot;
 
-    constructor(parent: AzureParentTreeItem, id: string, label: string, endpoint: string, masterKey: string, isEmulator: boolean | undefined, readonly databaseAccount?: DatabaseAccountGetResults) {
+    constructor(parent: AzExtParentTreeItem, id: string, label: string, endpoint: string, masterKey: string, isEmulator: boolean | undefined, readonly databaseAccount?: DatabaseAccountGetResults) {
         super(parent);
         this.id = id;
         this.label = label;
-        this._root = Object.assign({}, parent.root, {
+        this._root = {
             endpoint,
             masterKey,
             isEmulator,
             getCosmosClient: () => getCosmosClient(endpoint, masterKey, isEmulator)
-        });
+        };
         this.valuesToMask.push(id, endpoint, masterKey);
     }
 
-    // overrides ISubscriptionContext with an object that also has DocDB info
     public get root(): IDocDBTreeRoot {
         return this._root;
     }
@@ -61,7 +60,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         return client.databases.readAll(feedOptions);
     }
 
-    public async createChildImpl(context: ICreateChildImplContext): Promise<AzureTreeItem<IDocDBTreeRoot>> {
+    public async createChildImpl(context: ICreateChildImplContext): Promise<AzExtTreeItem> {
         const databaseName = await context.ui.showInputBox({
             placeHolder: 'Database Name',
             validateInput: validateDatabaseName,

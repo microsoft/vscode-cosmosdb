@@ -7,7 +7,7 @@
 
 import { platform } from 'os';
 import * as vscode from 'vscode';
-import { AzExtTreeDataProvider, AzExtTreeItem, AzureTreeItem, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, ITreeItemPickerContext, registerCommand, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from 'vscode-azureextensionui';
+import { AzExtTreeDataProvider, AzExtTreeItem, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, ITreeItemPickerContext, openInPortal, registerCommand, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from 'vscode-azureextensionui';
 import { AzureExtensionApi, AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
@@ -85,14 +85,14 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             await ext.tree.refresh(actionContext, ext.attachedAccountsNode);
         });
         registerCommand('azureDatabases.refresh', async (actionContext: IActionContext, node?: AzExtTreeItem) => await ext.tree.refresh(actionContext, node));
-        registerCommand('azureDatabases.detachDatabaseAccount', async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzureTreeItem) => {
+        registerCommand('azureDatabases.detachDatabaseAccount', async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzExtTreeItem) => {
             const children = await ext.attachedAccountsNode.loadAllChildren(actionContext);
             if (children[0].contextValue === "cosmosDBAttachDatabaseAccount") {
                 const message = localize('noAttachedAccounts', 'There are no Attached Accounts.');
                 void vscode.window.showInformationMessage(message);
             } else {
                 if (!node) {
-                    node = await ext.tree.showTreeItemPicker<AzureTreeItem>(cosmosDBTopLevelContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
+                    node = await ext.tree.showTreeItemPicker<AzExtTreeItem>(cosmosDBTopLevelContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
                 }
                 if (node instanceof MongoAccountTreeItem) {
                     if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
@@ -111,12 +111,12 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 await importDocuments(actionContext, undefined, selectedNode);
             }
         });
-        registerCommand('azureDatabases.openInPortal', async (actionContext: IActionContext, node?: AzureTreeItem) => {
+        registerCommand('azureDatabases.openInPortal', async (actionContext: IActionContext, node?: AzExtTreeItem) => {
             if (!node) {
-                node = await ext.tree.showTreeItemPicker<AzureTreeItem>(allAccountsTopLevelContextValues, actionContext);
+                node = await ext.tree.showTreeItemPicker<AzExtTreeItem>(allAccountsTopLevelContextValues, actionContext);
             }
 
-            await node.openInPortal();
+            await openInPortal(node, node.fullId)
         });
         registerCommand('cosmosDB.copyConnectionString', cosmosDBCopyConnectionString);
         registerCommand('cosmosDB.openDocument', async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
@@ -167,11 +167,11 @@ export async function createServer(context: IActionContext, node?: SubscriptionT
     await node.createChild(context);
 }
 
-export async function deleteAccount(context: IActionContext, node?: AzureTreeItem): Promise<void> {
+export async function deleteAccount(context: IActionContext, node?: AzExtTreeItem): Promise<void> {
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
-        node = await ext.tree.showTreeItemPicker<AzureTreeItem>(cosmosDBTopLevelContextValues, context);
+        node = await ext.tree.showTreeItemPicker<AzExtTreeItem>(cosmosDBTopLevelContextValues, context);
     }
 
     await node.deleteTreeItem(context);

@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from 'vscode-azureextensionui';
+import { AzExtTreeItem, TreeItemIconPath } from 'vscode-azureextensionui';
 import { PostgresTableTreeItem } from './PostgresTableTreeItem';
 
-export class PostgresColumnTreeItem extends AzureTreeItem<ISubscriptionContext> {
+export class PostgresColumnTreeItem extends AzExtTreeItem {
     public static contextValue: string = "postgresColumn";
     public readonly contextValue: string = PostgresColumnTreeItem.contextValue;
     public readonly columnName: string;

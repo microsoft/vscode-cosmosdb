@@ -4,15 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosClient, FeedOptions, QueryIterator } from '@azure/cosmos';
-import { AzExtTreeItem, AzureParentTreeItem, AzureTreeItem } from 'vscode-azureextensionui';
+import { AzExtParentTreeItem, AzExtTreeItem } from 'vscode-azureextensionui';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
  * This class provides common iteration logic for DocumentDB accounts, databases, and collections
  */
-export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTreeRoot> {
-    public abstract readonly id: string;
+export abstract class DocDBTreeItemBase<T> extends AzExtParentTreeItem {
     public abstract readonly label: string;
     public abstract readonly contextValue: string;
     public abstract readonly childTypeLabel: string;
@@ -25,7 +24,9 @@ export abstract class DocDBTreeItemBase<T> extends AzureParentTreeItem<IDocDBTre
         return this._hasMoreChildren;
     }
 
-    public abstract initChild(resource: T): AzureTreeItem<IDocDBTreeRoot>;
+    public abstract get root(): IDocDBTreeRoot;
+
+    public abstract initChild(resource: T): AzExtTreeItem;
 
     public abstract getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<T>;
 

@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ClientConfig } from "pg";
-import { AzureParentTreeItem, ISubscriptionContext } from "vscode-azureextensionui";
+import { AzExtParentTreeItem } from "vscode-azureextensionui";
 import { PostgresDatabaseTreeItem } from "./PostgresDatabaseTreeItem";
 
 // Base class for Postgres tree items whose children are individual resources
-export abstract class PostgresResourcesTreeItemBase extends AzureParentTreeItem<ISubscriptionContext> {
+export abstract class PostgresResourcesTreeItemBase extends AzExtParentTreeItem {
     public parent: PostgresDatabaseTreeItem;
     public clientConfig: ClientConfig;
     public resourcesAndSchemas: { [key: string]: string[] }; // Resource name to list of schemas

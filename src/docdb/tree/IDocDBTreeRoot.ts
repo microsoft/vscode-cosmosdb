@@ -5,9 +5,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosClient } from "@azure/cosmos";
-import { ISubscriptionContext } from "vscode-azureextensionui";
 
-export interface IDocDBTreeRoot extends ISubscriptionContext {
+export interface IDocDBTreeRoot {
     endpoint: string;
     masterKey: string;
     isEmulator: boolean | undefined;

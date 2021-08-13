@@ -6,7 +6,7 @@
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzureParentTreeItem, AzureTreeItem, IActionContext, ICreateChildImplContext, parseError } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplContext, parseError } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { getThemeAgnosticIconPath, Links, testDb } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
@@ -17,22 +17,21 @@ import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoDatabaseTreeItem } from './MongoDatabaseTreeItem';
 import { MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 
-export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
+export class MongoAccountTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = "cosmosDBMongoServer";
     public readonly contextValue: string = MongoAccountTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
-    public readonly id: string;
     public readonly label: string;
     public readonly connectionString: string;
 
     private _root: IMongoTreeRoot;
 
-    constructor(parent: AzureParentTreeItem, id: string, label: string, connectionString: string, isEmulator: boolean | undefined, readonly databaseAccount?: DatabaseAccountGetResults) {
+    constructor(parent: AzExtParentTreeItem, id: string, label: string, connectionString: string, isEmulator: boolean | undefined, readonly databaseAccount?: DatabaseAccountGetResults) {
         super(parent);
         this.id = id;
         this.label = label;
         this.connectionString = connectionString;
-        this._root = Object.assign({}, parent.root, { isEmulator });
+        this._root = { isEmulator };
         this.valuesToMask.push(connectionString);
     }
 
@@ -49,7 +48,7 @@ export class MongoAccountTreeItem extends AzureParentTreeItem<IMongoTreeRoot> {
         return false;
     }
 
-    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem<IMongoTreeRoot>[]> {
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
         let mongoClient: MongoClient | undefined;
         try {
             let databases: IDatabaseInfo[];

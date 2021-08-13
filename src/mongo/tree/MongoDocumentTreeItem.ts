@@ -6,11 +6,10 @@
 import { Collection, DeleteWriteOpResultObject, ObjectID, UpdateWriteOpResult } from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { AzureTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from 'vscode-azureextensionui';
+import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
-import { IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const EJSON = require("mongodb-extended-json");
@@ -23,7 +22,7 @@ export interface IMongoDocument {
     [key: string]: any;
 }
 
-export class MongoDocumentTreeItem extends AzureTreeItem<IMongoTreeRoot> implements IEditableTreeItem {
+export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTreeItem {
     public static contextValue: string = "MongoDocument";
     public readonly contextValue: string = MongoDocumentTreeItem.contextValue;
     public readonly commandId: string = 'cosmosDB.openDocument';

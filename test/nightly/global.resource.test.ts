@@ -7,8 +7,8 @@ import { CosmosDBManagementClient, CosmosDBManagementModels } from '@azure/arm-c
 import { ResourceManagementClient } from '@azure/arm-resources';
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { runWithTestActionContext, TestAzureAccount } from 'vscode-azureextensiondev';
-import { AzExtTreeDataProvider, AzureAccountTreeItemWithAttached, createAzureClient, createServer, deleteAccount, DialogResponses, ext, randomUtils } from '../../extension.bundle';
+import { createTestActionContext, runWithTestActionContext, TestAzureAccount } from 'vscode-azureextensiondev';
+import { AzExtTreeDataProvider, AzureAccountTreeItemWithAttached, createAzureClient, createCosmosDBClient, createServer, deleteAccount, DialogResponses, ext, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled } from '../global.test';
 
 export let testAccount: TestAzureAccount;
@@ -30,7 +30,7 @@ suiteSetup(async function (this: Mocha.Context): Promise<void> {
         await testAccount.signIn();
         ext.azureAccountTreeItem = new AzureAccountTreeItemWithAttached(testAccount);
         ext.tree = new AzExtTreeDataProvider(ext.azureAccountTreeItem, 'azureDatabases.loadMore');
-        client = createAzureClient(testAccount.getSubscriptionContext(), CosmosDBManagementClient);
+        client = await createCosmosDBClient([await createTestActionContext(), testAccount.getSubscriptionContext()]);
 
         // Create account
         await Promise.all([delayOpAccount(5, /Gremlin/, createTestAccount), delayOpAccount(10, /MongoDB/, createTestAccount), delayOpAccount(15, /SQL/, createTestAccount)]);
@@ -63,7 +63,7 @@ suiteTeardown(async function (this: Mocha.Context): Promise<void> {
 });
 
 async function deleteResourceGroups(): Promise<void> {
-    const rmClient: ResourceManagementClient = createAzureClient(testAccount.getSubscriptionContext(), ResourceManagementClient);
+    const rmClient: ResourceManagementClient = createAzureClient([await createTestActionContext(), testAccount.getSubscriptionContext()], ResourceManagementClient);
     await Promise.all(resourceGroupsToDelete.map(async resourceGroup => {
         if (await rmClient.resourceGroups.checkExistence(resourceGroup)) {
             console.log(`Deleting resource group "${resourceGroup}"...`);

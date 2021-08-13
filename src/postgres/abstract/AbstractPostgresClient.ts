@@ -5,17 +5,18 @@
 
 import { PostgreSQLManagementClient } from "@azure/arm-postgresql";
 import { PostgreSQLManagementClient as PostgreSQLFlexibleManagementClient } from "@azure/arm-postgresql-flexible";
-import { createAzureClient, ISubscriptionContext } from "vscode-azureextensionui";
+import { AzExtClientContext } from "vscode-azureextensionui";
+import { createPostgreSQLClient, createPostgreSQLFlexibleClient } from "../../utils/azureClients";
 import { PostgresServerType } from "./models";
 
 export type AbstractPostgresClient = PostgreSQLFlexibleManagementClient | PostgreSQLManagementClient;
 
-export function createAbstractPostgresClient(serverType: PostgresServerType, clientInfo: ISubscriptionContext): AbstractPostgresClient {
+export async function createAbstractPostgresClient(serverType: PostgresServerType, context: AzExtClientContext): Promise<AbstractPostgresClient> {
     switch (serverType) {
         case PostgresServerType.Flexible:
-            return createAzureClient(clientInfo, PostgreSQLFlexibleManagementClient);
+            return await createPostgreSQLFlexibleClient(context)
         case PostgresServerType.Single:
-            return createAzureClient(clientInfo, PostgreSQLManagementClient);
+            return await createPostgreSQLClient(context)
         default:
             throw new Error("Service not implemented.");
     }

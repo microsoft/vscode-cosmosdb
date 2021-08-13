@@ -7,6 +7,7 @@
 
 import { Cursor, Db } from 'mongodb';
 import { SchemaConfiguration } from 'vscode-json-languageservice';
+// eslint-disable-next-line import/no-internal-modules
 import { JSONSchema } from 'vscode-json-languageservice/lib/umd/jsonSchema';
 
 export class SchemaService {

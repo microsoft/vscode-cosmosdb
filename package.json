@@ -1071,6 +1071,7 @@
     },
     "devDependencies": {
         "@azure/arm-resources": "^4.0.0",
+        "@microsoft/eslint-config-azuretools": "^0.1.0",
         "@types/copy-webpack-plugin": "^6.4.0",
         "@types/documentdb": "^1.10.2",
         "@types/fs-extra": "^8.1.0",
@@ -1080,7 +1081,6 @@
         "@types/node": "^12.19.3",
         "@types/vscode": "^1.48.0",
         "@typescript-eslint/eslint-plugin": "^4.14.2",
-        "@typescript-eslint/parser": "^4.14.2",
         "antlr4ts-cli": "^0.4.0-alpha.4",
         "copy-webpack-plugin": "^6.4.0",
         "eslint": "^7.19.0",

@@ -11,8 +11,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { isNumber } from 'util';
 import * as vscode from 'vscode';
-import { ext, isWindows, MongoShell, parseError } from '../extension.bundle';
-import { IDisposable } from '../src/utils/vscodeUtils';
+import { ext, IDisposable, isWindows, MongoShell, parseError } from '../extension.bundle';
 import { runWithSetting } from './runWithSetting';
 import { setEnvironmentVariables } from './util/setEnvironmentVariables';
 

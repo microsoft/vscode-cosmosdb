@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+// eslint-disable-next-line import/no-internal-modules
 import { FirewallRuleListResult } from '@azure/arm-postgresql/esm/models';
 import { ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';

@@ -5,10 +5,8 @@
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { DatabaseAccountGetResults, DatabaseAccountListKeysResult, DatabaseAccountsListResponse, DatabaseAccountsListResult } from '@azure/arm-cosmosdb/src/models';
-import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
-import { PostgreSQLManagementClient as PostgreSQLFlexibleManagementClient } from '@azure/arm-postgresql-flexible';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureTreeItem, AzureWizard, AzureWizardPromptStep, createAzureClient, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
+import { AzExtTreeItem, AzureWizard, AzureWizardPromptStep, IActionContext, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { ext } from '../extensionVariables';
@@ -20,6 +18,7 @@ import { IPostgresServerWizardContext } from '../postgres/commands/createPostgre
 import { createPostgresConnectionString, ParsedPostgresConnectionString, parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
+import { createCosmosDBClient, createPostgreSQLClient, createPostgreSQLFlexibleClient } from '../utils/azureClients';
 import { azureUtils } from '../utils/azureUtils';
 import { localize } from '../utils/localize';
 import { nonNullProp } from '../utils/nonNull';
@@ -33,11 +32,11 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         return false;
     }
 
-    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
+    public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
 
         //Postgres
-        const postgresSingleClient = createAzureClient(this.root, PostgreSQLManagementClient);
-        const postgresFlexibleClient = createAzureClient(this.root, PostgreSQLFlexibleManagementClient);
+        const postgresSingleClient = await createPostgreSQLClient([context, this]);
+        const postgresFlexibleClient = await createPostgreSQLFlexibleClient([context, this]);
         const postgresServers: PostgresAbstractServer[] = [
             ...(await postgresSingleClient.servers.list()).map(s => Object.assign(s, { serverType: PostgresServerType.Single })),
             ...(await postgresFlexibleClient.servers.list()).map(s => Object.assign(s, { serverType: PostgresServerType.Flexible })),
@@ -51,7 +50,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         );
 
         //CosmosDB
-        const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
+        const client = await createCosmosDBClient([context, this]);
         const response: DatabaseAccountsListResponse = await client.databaseAccounts.list();
         const accounts: DatabaseAccountsListResult = response._response.parsedBody;
         const treeItem: AzExtTreeItem[] = await this.createTreeItemsWithErrorHandling(
@@ -65,9 +64,9 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         return treeItem;
     }
 
-    public async createChildImpl(context: ICreateChildImplContext & { defaultExperience?: Experience }): Promise<AzureTreeItem> {
-        const client: CosmosDBManagementClient = createAzureClient(this.root, CosmosDBManagementClient);
-        const wizardContext: IPostgresServerWizardContext & ICosmosDBWizardContext = Object.assign(context, this.root);
+    public async createChildImpl(context: ICreateChildImplContext & { defaultExperience?: Experience }): Promise<AzExtTreeItem> {
+        const client = await createCosmosDBClient([context, this]);
+        const wizardContext: IPostgresServerWizardContext & ICosmosDBWizardContext = Object.assign(context, this.subscription);
 
         const promptSteps: AzureWizardPromptStep<ILocationWizardContext>[] = [
             new AzureDBAPIStep(),
@@ -108,7 +107,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         return typeof contextValue !== 'string' || !/attached/i.test(contextValue);
     }
 
-    private async initCosmosDBChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccountGetResults): Promise<AzureTreeItem> {
+    private async initCosmosDBChild(client: CosmosDBManagementClient, databaseAccount: DatabaseAccountGetResults): Promise<AzExtTreeItem> {
         const experience = tryGetExperience(databaseAccount);
         const id: string = nonNullProp(databaseAccount, 'id');
         const name: string = nonNullProp(databaseAccount, 'name');
@@ -149,7 +148,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             }
         }
     }
-    private async initPostgresChild(server: PostgresAbstractServer): Promise<AzureTreeItem> {
+    private async initPostgresChild(server: PostgresAbstractServer): Promise<AzExtTreeItem> {
         const connectionString: string = createPostgresConnectionString(nonNullProp(server, 'fullyQualifiedDomainName'));
         const parsedCS: ParsedPostgresConnectionString = parsePostgresConnectionString(connectionString);
         return new PostgresServerTreeItem(this, parsedCS, server);

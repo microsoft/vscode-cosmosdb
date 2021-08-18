@@ -5,7 +5,7 @@
 
 import { CosmosClient, Item, ItemDefinition, RequestOptions } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzureTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from 'vscode-azureextensionui';
+import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { nonNullProp } from '../../utils/nonNull';
@@ -18,10 +18,9 @@ const hiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts']
 /**
  * Represents a Cosmos DB DocumentDB (SQL) document
  */
-export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> implements IEditableTreeItem {
+export class DocDBDocumentTreeItem extends AzExtTreeItem implements IEditableTreeItem {
     public static contextValue: string = "cosmosDBDocument";
     public readonly contextValue: string = DocDBDocumentTreeItem.contextValue;
-    public readonly commandId: string = 'cosmosDB.openDocument';
     public readonly parent: DocDBDocumentsTreeItem;
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
@@ -33,6 +32,11 @@ export class DocDBDocumentTreeItem extends AzureTreeItem<IDocDBTreeRoot> impleme
         this._document = document;
         this._label = getDocumentTreeItemLabel(this._document);
         ext.fileSystem.fireChangedEvent(this);
+        this.commandId = 'cosmosDB.openDocument';
+    }
+
+    public get root(): IDocDBTreeRoot {
+        return this.parent.root;
     }
 
     public get id(): string {

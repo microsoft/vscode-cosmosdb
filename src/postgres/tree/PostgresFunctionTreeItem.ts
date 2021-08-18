@@ -4,12 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ThemeIcon } from "vscode";
-import { AzureTreeItem, ISubscriptionContext, TreeItemIconPath } from "vscode-azureextensionui";
+import { AzExtTreeItem, TreeItemIconPath } from "vscode-azureextensionui";
 import { IPostgresProceduresQueryRow } from "../getPostgresProcedureQueryRows";
 import { runPostgresQuery, wrapArgInQuotes } from "../runPostgresQuery";
 import { PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
 
-export class PostgresFunctionTreeItem extends AzureTreeItem<ISubscriptionContext> {
+export class PostgresFunctionTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'postgresFunction';
     public readonly contextValue: string = PostgresFunctionTreeItem.contextValue;
     public readonly commandId: string = 'postgreSQL.openFunction';

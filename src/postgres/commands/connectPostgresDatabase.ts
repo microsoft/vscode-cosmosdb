@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Uri, window } from 'vscode';
-import { AzureTreeItem, IActionContext } from "vscode-azureextensionui";
+import { AzExtTreeItem, IActionContext } from "vscode-azureextensionui";
 import { connectedPostgresKey } from '../../constants';
 import { ext } from "../../extensionVariables";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
@@ -29,7 +29,7 @@ export async function connectPostgresDatabase(context: IActionContext, treeItem?
 
     if (oldTreeItemId) {
         // We have to use findTreeItem to get the instance of the old tree item that's being displayed in the ext.tree. Our specific instance might have been out-of-date
-        const oldTreeItem: AzureTreeItem | undefined = await ext.tree.findTreeItem(oldTreeItemId, context);
+        const oldTreeItem: AzExtTreeItem | undefined = await ext.tree.findTreeItem(oldTreeItemId, context);
         if (oldTreeItem) {
             await oldTreeItem.refresh(context);
         }

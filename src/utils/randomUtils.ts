@@ -6,7 +6,7 @@
 import * as crypto from "crypto";
 
 export namespace randomUtils {
-    export function getPseudononymousStringHash(s: string, encoding: crypto.HexBase64Latin1Encoding = 'base64'): string {
+    export function getPseudononymousStringHash(s: string, encoding: crypto.BinaryToTextEncoding = 'base64'): string {
         return crypto.createHash('sha256').update(s).digest(encoding);
     }
 

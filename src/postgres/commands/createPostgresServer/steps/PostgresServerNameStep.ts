@@ -13,7 +13,7 @@ import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 export class PostgresServerNameStep extends AzureNameStep<IPostgresServerWizardContext> {
 
     public async prompt(context: IPostgresServerWizardContext): Promise<void> {
-        const client = createAbstractPostgresClient(nonNullProp(context, "serverType"), context);
+        const client = await createAbstractPostgresClient(nonNullProp(context, "serverType"), context);
         context.newServerName = (await context.ui.showInputBox({
             placeHolder: localize('serverNamePlaceholder', 'Server name'),
             prompt: localize('enterServerNamePrompt', 'Provide a name for the PostgreSQL Server.'),
@@ -46,7 +46,7 @@ async function validatePostgresServerName(name: string, client: AbstractPostgres
         return localize('serverNamePrefixSuffixCheck', 'Server name must not start or end in a hyphen.');
     }
     const resourceType = serverType === PostgresServerType.Single ? "Microsoft.DBforPostgreSQL" : "Microsoft.DBforPostgreSQL/flexibleServers";
-    const availability: AbstractNameAvailability = await client.checkNameAvailability.execute({name: name, type: resourceType});
+    const availability: AbstractNameAvailability = await client.checkNameAvailability.execute({ name: name, type: resourceType });
 
     if (!availability.nameAvailable) {
         return availability.message ?

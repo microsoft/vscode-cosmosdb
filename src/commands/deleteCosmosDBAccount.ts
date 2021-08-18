@@ -5,15 +5,16 @@
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import * as vscode from 'vscode';
-import { AzureTreeItem, createAzureClient, DialogResponses, IActionContext } from 'vscode-azureextensionui';
+import { AzExtTreeItem, DialogResponses, IActionContext } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
+import { createCosmosDBClient } from '../utils/azureClients';
 import { azureUtils } from '../utils/azureUtils';
 import { localize } from '../utils/localize';
 
-export async function deleteCosmosDBAccount(context: IActionContext, node: AzureTreeItem): Promise<void> {
+export async function deleteCosmosDBAccount(context: IActionContext, node: AzExtTreeItem): Promise<void> {
     const message: string = `Are you sure you want to delete account '${node.label}' and its contents?`;
     await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteCosmosBDAccount' }, DialogResponses.deleteResponse);
-    const client: CosmosDBManagementClient = createAzureClient(node.root, CosmosDBManagementClient);
+    const client: CosmosDBManagementClient = await createCosmosDBClient([context, node]);
     const resourceGroup: string = azureUtils.getResourceGroupFromId(node.fullId);
     const accountName: string = azureUtils.getAccountNameFromId(node.fullId);
     const deletingMessage: string = `Deleting account "${accountName}"...`;

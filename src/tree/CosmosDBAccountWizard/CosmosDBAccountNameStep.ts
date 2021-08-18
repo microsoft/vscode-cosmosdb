@@ -4,13 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { AzureNameStep, createAzureClient, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
+import { AzureNameStep, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
+import { createCosmosDBClient } from '../../utils/azureClients';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContext> {
 
     public async prompt(context: ICosmosDBWizardContext): Promise<void> {
-        const client: CosmosDBManagementClient = createAzureClient(context, CosmosDBManagementClient);
+        const client = await createCosmosDBClient(context);
         context.newServerName = (await context.ui.showInputBox({
             placeHolder: "Account name",
             prompt: "Provide a Cosmos DB account name",

@@ -2,11 +2,12 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { PostgreSQLManagementClient, PostgreSQLManagementModels as SingleModels } from "@azure/arm-postgresql";
-import { PostgreSQLManagementClient as PostgreSQLFlexibleManagementClient, PostgreSQLManagementModels as FlexibleModels } from "@azure/arm-postgresql-flexible";
+import { PostgreSQLManagementModels as SingleModels } from "@azure/arm-postgresql";
+import { PostgreSQLManagementModels as FlexibleModels } from "@azure/arm-postgresql-flexible";
 import { Progress } from 'vscode';
-import { AzureWizardExecuteStep, callWithMaskHandling, createAzureClient, LocationListStep } from 'vscode-azureextensionui';
+import { AzureWizardExecuteStep, callWithMaskHandling, LocationListStep } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
+import { createPostgreSQLClient, createPostgreSQLFlexibleClient } from "../../../../utils/azureClients";
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
 import { AbstractServerCreate, PostgresServerType } from '../../../abstract/models';
@@ -38,13 +39,13 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                     storageMB: parseInt(storageMB)
                 };
 
-                switch (serverType){
+                switch (serverType) {
                     case PostgresServerType.Single:
-                        const singleClient = createAzureClient(context, PostgreSQLManagementClient);
+                        const singleClient = await createPostgreSQLClient(context);
                         context.server = await singleClient.servers.create(rgName, newServerName, this.asSingleParameters(options));
                         break;
                     case PostgresServerType.Flexible:
-                        const flexiClient = createAzureClient(context, PostgreSQLFlexibleManagementClient);
+                        const flexiClient = await createPostgreSQLFlexibleClient(context);
                         context.server = await flexiClient.servers.create(rgName, newServerName, this.asFlexibleParameters(options));
                         break;
                 }
@@ -58,7 +59,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
     }
 
 
-    private asFlexibleParameters(parameters: AbstractServerCreate) : FlexibleModels.Server {
+    private asFlexibleParameters(parameters: AbstractServerCreate): FlexibleModels.Server {
         return {
             location: parameters.location,
             version: "12",
@@ -74,7 +75,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
         }
     }
 
-    private asSingleParameters(parameters: AbstractServerCreate) : SingleModels.ServerForCreate {
+    private asSingleParameters(parameters: AbstractServerCreate): SingleModels.ServerForCreate {
         return {
             location: parameters.location,
             sku: {

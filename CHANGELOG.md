@@ -1,5 +1,10 @@
 # Change Log
 
+## Unreleased
+
+### Changed
+- Minimum version of VS Code is now 1.57.0
+
 ## 0.18.1 - 2021-08-11
 ### [Fixed](https://github.com/microsoft/vscode-cosmosdb/milestone/32?closed=1)
 - Fixed the ETIMEDOUT issue when signing into a PostgreSQL Flexible server on multiple machines

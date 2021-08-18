@@ -5,7 +5,7 @@
 
 import { MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, AzureParentTreeItem, AzureTreeItem, GenericTreeItem, IActionContext, ISubscriptionContext, TreeItemIconPath } from 'vscode-azureextensionui';
+import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, GenericTreeItem, IActionContext, ISubscriptionContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, isWindows } from '../constants';
@@ -36,24 +36,24 @@ export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start w
 
 const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
 
-export class AttachedAccountsTreeItem extends AzureParentTreeItem {
+export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = 'cosmosDBAttachedAccounts' + (isWindows ? 'WithEmulator' : 'WithoutEmulator');
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
-    public readonly id: string = 'cosmosDBAttachedAccounts';
     public readonly label: string = 'Attached Database Accounts';
     public childTypeLabel: string = 'Account';
     public suppressMaskLabel = true;
 
     private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.connectionStrings";
-    private _attachedAccounts: AzureTreeItem[] | undefined;
+    private _attachedAccounts: AzExtTreeItem[] | undefined;
 
     private _root: ISubscriptionContext;
-    private _loadPersistedAccountsTask: Promise<AzureTreeItem[]>;
+    private _loadPersistedAccountsTask: Promise<AzExtTreeItem[]>;
 
     constructor(parent: AzExtParentTreeItem) {
         super(parent);
         this._root = new AttachedAccountRoot();
         this._loadPersistedAccountsTask = this.loadPersistedAccounts();
+        this.id = 'cosmosDBAttachedAccounts';
     }
 
     public get root(): ISubscriptionContext {
@@ -105,7 +105,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             this._loadPersistedAccountsTask = this.loadPersistedAccounts();
         }
 
-        const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
+        const attachedAccounts: AzExtTreeItem[] = await this.getAttachedAccounts();
 
         if (attachedAccounts.length > 0) {
             return attachedAccounts;
@@ -171,7 +171,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             value: defaultValue
         })).trim();
 
-        const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);
+        const treeItem: AzExtTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);
         await this.attachAccount(context, treeItem, connectionString);
     }
 
@@ -208,7 +208,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
                 connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=${emulatorPassword};`;
             }
             const label = `${defaultExperience.shortName} Emulator`;
-            const treeItem: AzureTreeItem = await this.createTreeItem(connectionString, defaultExperience.api, label);
+            const treeItem: AzExtTreeItem = await this.createTreeItem(connectionString, defaultExperience.api, label);
             if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem || treeItem instanceof MongoAccountTreeItem) {
                 // CONSIDER: Why isn't this passed in to createTreeItem above?
                 treeItem.root.isEmulator = true;
@@ -217,8 +217,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
     }
 
-    public async detach(node: AzureTreeItem): Promise<void> {
-        const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
+    public async detach(node: AzExtTreeItem): Promise<void> {
+        const attachedAccounts: AzExtTreeItem[] = await this.getAttachedAccounts();
 
         const index = attachedAccounts.findIndex((account) => account.fullId === node.fullId);
         if (index !== -1) {
@@ -241,7 +241,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
     }
 
-    private async getAttachedAccounts(): Promise<AzureTreeItem[]> {
+    private async getAttachedAccounts(): Promise<AzExtTreeItem[]> {
         if (!this._attachedAccounts) {
             try {
                 this._attachedAccounts = await this._loadPersistedAccountsTask;
@@ -271,8 +271,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         return await Promise.race([timeout(), connect()]);
     }
 
-    private async attachAccount(context: IActionContext, treeItem: AzureTreeItem, connectionString: string): Promise<void> {
-        const attachedAccounts: AzureTreeItem[] = await this.getAttachedAccounts();
+    private async attachAccount(context: IActionContext, treeItem: AzExtTreeItem, connectionString: string): Promise<void> {
+        const attachedAccounts: AzExtTreeItem[] = await this.getAttachedAccounts();
 
         if (attachedAccounts.find(s => s.id === treeItem.id)) {
             void context.ui.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`, { stepName: 'attachAccount' });
@@ -285,8 +285,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         }
     }
 
-    private async loadPersistedAccounts(): Promise<AzureTreeItem[]> {
-        const persistedAccounts: AzureTreeItem[] = [];
+    private async loadPersistedAccounts(): Promise<AzExtTreeItem[]> {
+        const persistedAccounts: AzExtTreeItem[] = [];
         const value: string | undefined = ext.context.globalState.get(this._serviceName);
         const keytar = ext.keytar;
         if (value && keytar) {
@@ -318,8 +318,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         return persistedAccounts;
     }
 
-    private async createTreeItem(connectionString: string, api: API, label?: string, id?: string, isEmulator?: boolean): Promise<AzureTreeItem> {
-        let treeItem: AzureTreeItem;
+    private async createTreeItem(connectionString: string, api: API, label?: string, id?: string, isEmulator?: boolean): Promise<AzExtTreeItem> {
+        let treeItem: AzExtTreeItem;
         if (api === API.MongoDB) {
             if (id === undefined) {
                 const parsedCS = await parseMongoConnectionString(connectionString);
@@ -354,8 +354,8 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
         return treeItem;
     }
 
-    private async persistIds(attachedAccounts: AzureTreeItem[]): Promise<void> {
-        const value: IPersistedAccount[] = attachedAccounts.map((node: AzureTreeItem) => {
+    private async persistIds(attachedAccounts: AzExtTreeItem[]): Promise<void> {
+        const value: IPersistedAccount[] = attachedAccounts.map((node: AzExtTreeItem) => {
             let api: API;
             let isEmulator: boolean | undefined;
             if (node instanceof MongoAccountTreeItem || node instanceof DocDBAccountTreeItem || node instanceof GraphAccountTreeItem || node instanceof TableAccountTreeItem) {
@@ -374,7 +374,7 @@ export class AttachedAccountsTreeItem extends AzureParentTreeItem {
             } else {
                 throw new Error(`Unexpected account node "${node.constructor.name}".`);
             }
-            return { id: node.id, defaultExperience: api, isEmulator: isEmulator };
+            return { id: nonNullProp(node, 'id'), defaultExperience: api, isEmulator: isEmulator };
         });
         await ext.context.globalState.update(this._serviceName, JSON.stringify(value));
     }

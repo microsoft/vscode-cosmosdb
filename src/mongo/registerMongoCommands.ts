@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { AzureTreeItem, callWithTelemetryAndErrorHandling, IActionContext, IErrorHandlerContext, ITreeItemPickerContext, registerCommand, registerErrorHandler, registerEvent } from "vscode-azureextensionui";
+import { AzExtTreeItem, callWithTelemetryAndErrorHandling, IActionContext, IErrorHandlerContext, ITreeItemPickerContext, registerCommand, registerErrorHandler, registerEvent } from "vscode-azureextensionui";
 import { Experience, MongoExperience } from '../AzureDBExperiences';
 import { ext } from "../extensionVariables";
 import { AttachedAccountSuffix } from '../tree/AttachedAccountsTreeItem';
@@ -60,7 +60,7 @@ export function registerMongoCommands(): void {
 
         if (oldNodeId) {
             // We have to use findTreeItem to get the instance of the old node that's being displayed in the ext.tree. Our specific instance might have been out-of-date
-            const oldNode: AzureTreeItem | undefined = await ext.tree.findTreeItem(oldNodeId, context);
+            const oldNode: AzExtTreeItem | undefined = await ext.tree.findTreeItem(oldNodeId, context);
             if (oldNode) {
                 await oldNode.refresh(context);
             }

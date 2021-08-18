@@ -5,14 +5,14 @@
 
 import { Container, ContainerDefinition, CosmosClient, Resource } from '@azure/cosmos';
 import * as vscode from 'vscode';
-import { AzureParentTreeItem, AzureTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from 'vscode-azureextensionui';
+import { AzExtParentTreeItem, AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from '../../docdb/tree/DocDBStoredProcedureTreeItem';
 import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 import { GraphTreeItem } from './GraphTreeItem';
 
-export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot> {
+export class GraphCollectionTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = "cosmosDBGraph";
     public readonly contextValue: string = GraphCollectionTreeItem.contextValue;
     public readonly parent: GraphDatabaseTreeItem;
@@ -27,6 +27,10 @@ export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         this._collection = collection;
         this._graphTreeItem = new GraphTreeItem(this, this._collection);
         this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this);
+    }
+
+    public get root(): IDocDBTreeRoot {
+        return this.parent.root;
     }
 
     public get id(): string {
@@ -45,7 +49,7 @@ export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         return new vscode.ThemeIcon('files');
     }
 
-    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzureTreeItem<IDocDBTreeRoot>[]> {
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
         return [this._graphTreeItem, this._storedProceduresTreeItem];
     }
 
@@ -60,7 +64,7 @@ export class GraphCollectionTreeItem extends AzureParentTreeItem<IDocDBTreeRoot>
         await this.getContainerClient(client).delete();
     }
 
-    public pickTreeItemImpl(expectedContextValues: (string | RegExp)[]): AzureTreeItem<IDocDBTreeRoot> | undefined {
+    public pickTreeItemImpl(expectedContextValues: (string | RegExp)[]): AzExtTreeItem | undefined {
         for (const expectedContextValue of expectedContextValues) {
             switch (expectedContextValue) {
                 case GraphTreeItem.contextValue:

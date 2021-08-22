@@ -11,13 +11,15 @@ export class PostgresCodeLensProvider implements CodeLensProvider {
     private _onDidChangeEmitter: EventEmitter<void> = new EventEmitter<void>();
     private _connectedDatabase: string | undefined;
     private _connectedDatabaseInitialized: boolean;
+    private _serverName: string | undefined;
 
     public get onDidChangeCodeLenses(): Event<void> {
         return this._onDidChangeEmitter.event;
     }
 
-    public setConnectedDatabase(database: string | undefined): void {
+    public setConnectedDatabase(database: string | undefined, serverName: string | undefined): void {
         this._connectedDatabase = database;
+        this._serverName = serverName;
         this._connectedDatabaseInitialized = true;
         this._onDidChangeEmitter.fire();
     }
@@ -36,7 +38,8 @@ export class PostgresCodeLensProvider implements CodeLensProvider {
             if (!isInitialized) {
                 title = localize('initializing', 'Initializing...');
             } else if (isConnected) {
-                title = localize('connectedToDatabase', 'Connected to "{0}"', database);
+                const label = this._serverName ? `${database}/${this._serverName}` : database;
+                title = localize('connectedToDatabase', 'Connected to "{0}"', label);
             } else {
                 title = localize('connectToDatabase', 'Connect to a database');
             }

@@ -25,7 +25,6 @@ export interface IMongoDocument {
 export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTreeItem {
     public static contextValue: string = "MongoDocument";
     public readonly contextValue: string = MongoDocumentTreeItem.contextValue;
-    public readonly commandId: string = 'cosmosDB.openDocument';
     public document: IMongoDocument;
     public readonly parent: MongoCollectionTreeItem;
     public readonly cTime: number = Date.now();
@@ -37,6 +36,7 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
         super(parent);
         this.document = document;
         this._label = getDocumentTreeItemLabel(this.document);
+        this.commandId = 'cosmosDB.openDocument';
         ext.fileSystem.fireChangedEvent(this);
     }
 

@@ -20,7 +20,6 @@ import { IDocDBTreeRoot } from './IDocDBTreeRoot';
  * (DocumentDB is the base type for all Cosmos DB accounts)
  */
 export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<DatabaseDefinition & Resource> {
-    public readonly id: string;
     public readonly label: string;
     public readonly childTypeLabel: string = "Database";
 

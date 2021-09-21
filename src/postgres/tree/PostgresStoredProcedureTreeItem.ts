@@ -12,11 +12,9 @@ import { PostgresStoredProceduresTreeItem } from "./PostgresStoredProceduresTree
 export class PostgresStoredProcedureTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'postgresStoredProcedure';
     public readonly contextValue: string = PostgresStoredProcedureTreeItem.contextValue;
-    public readonly commandId: string = 'postgreSQL.openStoredProcedure';
     public readonly parent: PostgresStoredProceduresTreeItem;
     public readonly schema: string;
     public readonly name: string;
-    public readonly id: string;
     public readonly args: string;
     public readonly isDuplicate: boolean;
     public definition: string;
@@ -26,6 +24,7 @@ export class PostgresStoredProcedureTreeItem extends AzExtTreeItem {
         this.schema = row.schema;
         this.name = row.name;
         this.id = String(row.oid);
+        this.commandId = 'postgreSQL.openStoredProcedure';
         this.args = row.args;
         this.definition = row.definition;
         this.isDuplicate = isDuplicate;

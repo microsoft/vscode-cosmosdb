@@ -8,6 +8,8 @@ import * as gulp from 'gulp';
 import * as path from 'path';
 import { gulp_installAzureAccount, gulp_installResourceGroups, gulp_webpack } from 'vscode-azureextensiondev';
 
+declare let exports: { [key: string]: unknown };
+
 async function prepareForWebpack(): Promise<void> {
     const mainJsPath: string = path.join(__dirname, 'main.js');
     let contents: string = (await fse.readFile(mainJsPath)).toString();

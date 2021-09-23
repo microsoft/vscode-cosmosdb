@@ -16,7 +16,6 @@ import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 export class GraphTreeItem extends AzExtTreeItem {
     public static contextValue: string = "cosmosDBGraphGraph";
     public readonly contextValue: string = GraphTreeItem.contextValue;
-    public readonly commandId: string = 'cosmosDB.openGraphExplorer';
     public readonly parent: GraphCollectionTreeItem;
     public suppressMaskLabel = true;
 
@@ -25,6 +24,7 @@ export class GraphTreeItem extends AzExtTreeItem {
 
     constructor(parent: GraphCollectionTreeItem, collection: ContainerDefinition & Resource) {
         super(parent);
+        this.commandId = 'cosmosDB.openGraphExplorer';
         this._collection = collection;
     }
 

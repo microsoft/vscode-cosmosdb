@@ -12,11 +12,9 @@ import { PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
 export class PostgresFunctionTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'postgresFunction';
     public readonly contextValue: string = PostgresFunctionTreeItem.contextValue;
-    public readonly commandId: string = 'postgreSQL.openFunction';
     public readonly parent: PostgresFunctionsTreeItem;
     public readonly schema: string;
     public readonly name: string;
-    public readonly id: string;
     public readonly args: string;
     public readonly isDuplicate: boolean;
     public definition: string;
@@ -26,6 +24,7 @@ export class PostgresFunctionTreeItem extends AzExtTreeItem {
         this.schema = row.schema;
         this.name = row.name;
         this.id = String(row.oid);
+        this.commandId = 'postgreSQL.openFunction';
         this.args = row.args;
         this.definition = row.definition;
         this.isDuplicate = isDuplicate;

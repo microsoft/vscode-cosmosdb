@@ -36,61 +36,61 @@
     },
     "main": "./main",
     "activationEvents": [
-        "onLanguage:mongo",
-        "onView:azureDatabasesExplorer",
-        "onCommand:azureDatabases.update",
+        "onCommand:azureDatabases.createServer",
+        "onCommand:azureDatabases.detachDatabaseAccount",
         "onCommand:azureDatabases.loadMore",
-        "onCommand:azureDatabases.refresh",
         "onCommand:azureDatabases.openInPortal",
+        "onCommand:azureDatabases.refresh",
         "onCommand:azureDatabases.reportIssue",
+        "onCommand:azureDatabases.update",
         "onCommand:cosmosDB.attachDatabaseAccount",
         "onCommand:cosmosDB.attachEmulator",
-        "onCommand:azureDatabases.createServer",
-        "onCommand:cosmosDB.deleteAccount",
-        "onCommand:azureDatabases.detachDatabaseAccount",
-        "onCommand:cosmosDB.createMongoDatabase",
-        "onCommand:cosmosDB.createMongoCollection",
-        "onCommand:cosmosDB.createMongoDocument",
-        "onCommand:cosmosDB.createDocDBDatabase",
+        "onCommand:cosmosDB.connectMongoDB",
+        "onCommand:cosmosDB.copyConnectionString",
         "onCommand:cosmosDB.createDocDBCollection",
+        "onCommand:cosmosDB.createDocDBDatabase",
         "onCommand:cosmosDB.createDocDBDocument",
         "onCommand:cosmosDB.createDocDBStoredProcedure",
-        "onCommand:cosmosDB.createGraphDatabase",
         "onCommand:cosmosDB.createGraph",
-        "onCommand:cosmosDB.connectMongoDB",
-        "onCommand:cosmosDB.deleteMongoDB",
-        "onCommand:cosmosDB.deleteMongoCollection",
-        "onCommand:cosmosDB.deleteMongoDocument",
-        "onCommand:cosmosDB.deleteDocDBDatabase",
+        "onCommand:cosmosDB.createGraphDatabase",
+        "onCommand:cosmosDB.createMongoCollection",
+        "onCommand:cosmosDB.createMongoDatabase",
+        "onCommand:cosmosDB.createMongoDocument",
+        "onCommand:cosmosDB.deleteAccount",
         "onCommand:cosmosDB.deleteDocDBCollection",
+        "onCommand:cosmosDB.deleteDocDBDatabase",
         "onCommand:cosmosDB.deleteDocDBDocument",
-        "onCommand:cosmosDB.deleteGraphDatabase",
         "onCommand:cosmosDB.deleteGraph",
+        "onCommand:cosmosDB.deleteGraphDatabase",
+        "onCommand:cosmosDB.deleteMongoCollection",
+        "onCommand:cosmosDB.deleteMongoDB",
+        "onCommand:cosmosDB.deleteMongoDocument",
         "onCommand:cosmosDB.executeAllMongoCommands",
         "onCommand:cosmosDB.executeMongoCommand",
         "onCommand:cosmosDB.importDocument",
-        "onCommand:cosmosDB.newMongoScrapbook",
-        "onCommand:cosmosDB.openDocument",
-        "onCommand:cosmosDB.openStoredProcedure",
-        "onCommand:cosmosDB.openCollection",
-        "onCommand:cosmosDB.copyConnectionString",
         "onCommand:cosmosDB.launchMongoShell",
+        "onCommand:cosmosDB.newMongoScrapbook",
+        "onCommand:cosmosDB.openCollection",
+        "onCommand:cosmosDB.openDocument",
         "onCommand:cosmosDB.openGraphExplorer",
-        "onCommand:postgreSQL.deleteServer",
-        "onCommand:postgreSQL.createDatabase",
-        "onCommand:postgreSQL.deleteDatabase",
-        "onCommand:postgreSQL.deleteTable",
-        "onCommand:postgreSQL.openFunction",
-        "onCommand:postgreSQL.openStoredProcedure",
-        "onCommand:postgreSQL.deleteFunction",
-        "onCommand:postgreSQL.deleteStoredProcedure",
-        "onCommand:postgreSQL.enterCredentials",
+        "onCommand:cosmosDB.openStoredProcedure",
         "onCommand:postgreSQL.configureFirewall",
         "onCommand:postgreSQL.connectDatabase",
+        "onCommand:postgreSQL.createDatabase",
         "onCommand:postgreSQL.createFunctionQuery",
         "onCommand:postgreSQL.createStoredProcedureQuery",
+        "onCommand:postgreSQL.deleteDatabase",
+        "onCommand:postgreSQL.deleteFunction",
+        "onCommand:postgreSQL.deleteServer",
+        "onCommand:postgreSQL.deleteStoredProcedure",
+        "onCommand:postgreSQL.deleteTable",
+        "onCommand:postgreSQL.enterCredentials",
         "onCommand:postgreSQL.executeQuery",
-        "onFileSystem:azureDatabases"
+        "onCommand:postgreSQL.openFunction",
+        "onCommand:postgreSQL.openStoredProcedure",
+        "onFileSystem:azureDatabases",
+        "onLanguage:mongo",
+        "onView:azureDatabasesExplorer"
     ],
     "contributes": {
         "views": {
@@ -138,24 +138,42 @@
         ],
         "commands": [
             {
-                "command": "cosmosDB.selectSubscriptions",
-                "title": "Select Subscriptions...",
-                "icon": "$(filter)"
+                "category": "Azure Databases",
+                "command": "azureDatabases.createServer",
+                "title": "Create Server...",
+                "icon": "$(add)"
             },
             {
-                "category": "MongoDB",
-                "command": "cosmosDB.executeMongoCommand",
-                "title": "Execute MongoDB Command"
+                "category": "Cosmos DB",
+                "command": "azureDatabases.detachDatabaseAccount",
+                "title": "Detach"
             },
             {
-                "category": "MongoDB",
-                "command": "cosmosDB.executeAllMongoCommands",
-                "title": "Execute All MongoDB Commands"
+                "category": "Azure Databases",
+                "command": "azureDatabases.loadMore",
+                "title": "Load More"
             },
             {
-                "category": "MongoDB",
-                "command": "cosmosDB.launchMongoShell",
-                "title": "Launch Shell"
+                "category": "Azure Databases",
+                "command": "azureDatabases.openInPortal",
+                "title": "Open in Portal"
+            },
+            {
+                "category": "Azure Databases",
+                "command": "azureDatabases.refresh",
+                "title": "Refresh",
+                "icon": "$(refresh)"
+            },
+            {
+                "category": "Azure Databases",
+                "command": "azureDatabases.reportIssue",
+                "title": "Report Issue..."
+            },
+            {
+                "category": "Azure Databases",
+                "command": "azureDatabases.update",
+                "title": "Update to Cloud",
+                "icon": "$(cloud-upload)"
             },
             {
                 "category": "Cosmos DB",
@@ -169,50 +187,24 @@
                 "title": "Attach Emulator..."
             },
             {
-                "category": "Azure Databases",
-                "command": "azureDatabases.createServer",
-                "title": "Create Server...",
-                "icon": "$(add)"
+                "category": "MongoDB",
+                "command": "cosmosDB.connectMongoDB",
+                "title": "Connect to Database..."
             },
             {
                 "category": "Cosmos DB",
-                "command": "cosmosDB.deleteAccount",
-                "title": "Delete Account..."
-            },
-            {
-                "category": "PostgreSQL",
-                "command": "postgreSQL.deleteServer",
-                "title": "Delete Server..."
-            },
-            {
-                "category": "MongoDB",
-                "command": "cosmosDB.createMongoDatabase",
-                "title": "Create Database..."
-            },
-            {
-                "category": "MongoDB",
-                "command": "cosmosDB.createMongoCollection",
-                "title": "Create Collection..."
-            },
-            {
-                "category": "MongoDB",
-                "command": "cosmosDB.createMongoDocument",
-                "title": "Create Document"
-            },
-            {
-                "category": "Core (SQL)",
-                "command": "cosmosDB.createDocDBDatabase",
-                "title": "Create Database..."
-            },
-            {
-                "category": "MongoDB",
-                "command": "cosmosDB.openCollection",
-                "title": "Open Collection"
+                "command": "cosmosDB.copyConnectionString",
+                "title": "Copy Connection String"
             },
             {
                 "category": "Core (SQL)",
                 "command": "cosmosDB.createDocDBCollection",
                 "title": "Create Collection..."
+            },
+            {
+                "category": "Core (SQL)",
+                "command": "cosmosDB.createDocDBDatabase",
+                "title": "Create Database..."
             },
             {
                 "category": "Core (SQL)",
@@ -226,53 +218,43 @@
             },
             {
                 "category": "Graph (Gremlin)",
-                "command": "cosmosDB.createGraphDatabase",
-                "title": "Create Database..."
-            },
-            {
-                "category": "Graph (Gremlin)",
                 "command": "cosmosDB.createGraph",
                 "title": "Create Graph..."
             },
             {
-                "category": "PostgreSQL",
-                "command": "postgreSQL.createDatabase",
+                "category": "Graph (Gremlin)",
+                "command": "cosmosDB.createGraphDatabase",
                 "title": "Create Database..."
             },
             {
+                "category": "MongoDB",
+                "command": "cosmosDB.createMongoCollection",
+                "title": "Create Collection..."
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.createMongoDatabase",
+                "title": "Create Database..."
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.createMongoDocument",
+                "title": "Create Document"
+            },
+            {
                 "category": "Cosmos DB",
-                "command": "azureDatabases.detachDatabaseAccount",
-                "title": "Detach"
-            },
-            {
-                "category": "MongoDB",
-                "command": "cosmosDB.connectMongoDB",
-                "title": "Connect to Database..."
-            },
-            {
-                "category": "MongoDB",
-                "command": "cosmosDB.deleteMongoDB",
-                "title": "Delete Database..."
-            },
-            {
-                "category": "MongoDB",
-                "command": "cosmosDB.deleteMongoCollection",
-                "title": "Delete Collection..."
-            },
-            {
-                "category": "MongoDB",
-                "command": "cosmosDB.deleteMongoDocument",
-                "title": "Delete Document..."
-            },
-            {
-                "category": "Core (SQL)",
-                "command": "cosmosDB.deleteDocDBDatabase",
-                "title": "Delete Database..."
+                "command": "cosmosDB.deleteAccount",
+                "title": "Delete Account..."
             },
             {
                 "category": "Core (SQL)",
                 "command": "cosmosDB.deleteDocDBCollection",
                 "title": "Delete Collection..."
+            },
+            {
+                "category": "Core (SQL)",
+                "command": "cosmosDB.deleteDocDBDatabase",
+                "title": "Delete Database..."
             },
             {
                 "category": "Core (SQL)",
@@ -286,28 +268,48 @@
             },
             {
                 "category": "Graph (Gremlin)",
-                "command": "cosmosDB.deleteGraphDatabase",
-                "title": "Delete Database..."
-            },
-            {
-                "category": "PostgreSQL",
-                "command": "postgreSQL.deleteDatabase",
-                "title": "Delete Database..."
-            },
-            {
-                "category": "PostgreSQL",
-                "command": "postgreSQL.deleteTable",
-                "title": "Delete Table..."
-            },
-            {
-                "category": "Graph (Gremlin)",
                 "command": "cosmosDB.deleteGraph",
                 "title": "Delete Graph..."
             },
             {
                 "category": "Graph (Gremlin)",
-                "command": "cosmosDB.openGraphExplorer",
-                "title": "Open Graph Explorer"
+                "command": "cosmosDB.deleteGraphDatabase",
+                "title": "Delete Database..."
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.deleteMongoCollection",
+                "title": "Delete Collection..."
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.deleteMongoDB",
+                "title": "Delete Database..."
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.deleteMongoDocument",
+                "title": "Delete Document..."
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.executeAllMongoCommands",
+                "title": "Execute All MongoDB Commands"
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.executeMongoCommand",
+                "title": "Execute MongoDB Command"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.importDocument",
+                "title": "Import Document into a Collection..."
+            },
+            {
+                "category": "MongoDB",
+                "command": "cosmosDB.launchMongoShell",
+                "title": "Launch Shell"
             },
             {
                 "category": "MongoDB",
@@ -316,41 +318,9 @@
                 "icon": "$(new-file)"
             },
             {
-                "category": "Azure Databases",
-                "command": "azureDatabases.refresh",
-                "title": "Refresh",
-                "icon": "$(refresh)"
-            },
-            {
-                "category": "Azure Databases",
-                "command": "azureDatabases.openInPortal",
-                "title": "Open in Portal"
-            },
-            {
-                "category": "Cosmos DB",
-                "command": "cosmosDB.copyConnectionString",
-                "title": "Copy Connection String"
-            },
-            {
-                "category": "PostgreSQL",
-                "command": "postgreSQL.copyConnectionString",
-                "title": "Copy Connection String"
-            },
-            {
-                "category": "Azure Databases",
-                "command": "azureDatabases.update",
-                "title": "Update to Cloud",
-                "icon": "$(cloud-upload)"
-            },
-            {
-                "category": "Azure Databases",
-                "command": "azureDatabases.loadMore",
-                "title": "Load More"
-            },
-            {
-                "category": "Azure Databases",
-                "command": "azureDatabases.reportIssue",
-                "title": "Report Issue..."
+                "category": "MongoDB",
+                "command": "cosmosDB.openCollection",
+                "title": "Open Collection"
             },
             {
                 "category": "Cosmos DB",
@@ -358,9 +328,9 @@
                 "title": "Open Document"
             },
             {
-                "category": "Cosmos DB",
-                "command": "cosmosDB.importDocument",
-                "title": "Import Document into a Collection..."
+                "category": "Graph (Gremlin)",
+                "command": "cosmosDB.openGraphExplorer",
+                "title": "Open Graph Explorer"
             },
             {
                 "category": "Cosmos DB",
@@ -368,29 +338,9 @@
                 "title": "Open Stored Procedure"
             },
             {
-                "category": "PostgreSQL",
-                "command": "postgreSQL.openFunction",
-                "title": "Open Function"
-            },
-            {
-                "category": "PostgreSQL",
-                "command": "postgreSQL.openStoredProcedure",
-                "title": "Open Stored Procedure"
-            },
-            {
-                "category": "PostgreSQL",
-                "command": "postgreSQL.deleteFunction",
-                "title": "Delete Function..."
-            },
-            {
-                "category": "PostgreSQL",
-                "command": "postgreSQL.deleteStoredProcedure",
-                "title": "Delete Stored Procedure..."
-            },
-            {
-                "category": "PostgreSQL",
-                "command": "postgreSQL.enterCredentials",
-                "title": "Enter Server Credentials"
+                "command": "cosmosDB.selectSubscriptions",
+                "title": "Select Subscriptions...",
+                "icon": "$(filter)"
             },
             {
                 "category": "PostgreSQL",
@@ -404,6 +354,16 @@
             },
             {
                 "category": "PostgreSQL",
+                "command": "postgreSQL.copyConnectionString",
+                "title": "Copy Connection String"
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.createDatabase",
+                "title": "Create Database..."
+            },
+            {
+                "category": "PostgreSQL",
                 "command": "postgreSQL.createFunctionQuery",
                 "title": "Create Function Query..."
             },
@@ -414,20 +374,52 @@
             },
             {
                 "category": "PostgreSQL",
+                "command": "postgreSQL.deleteDatabase",
+                "title": "Delete Database..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.deleteFunction",
+                "title": "Delete Function..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.deleteServer",
+                "title": "Delete Server..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.deleteStoredProcedure",
+                "title": "Delete Stored Procedure..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.deleteTable",
+                "title": "Delete Table..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.enterCredentials",
+                "title": "Enter Server Credentials"
+            },
+            {
+                "category": "PostgreSQL",
                 "command": "postgreSQL.executeQuery",
                 "title": "Execute Query..."
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.openFunction",
+                "title": "Open Function"
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.openStoredProcedure",
+                "title": "Open Stored Procedure"
             }
         ],
         "menus": {
             "editor/context": [
-                {
-                    "command": "cosmosDB.executeMongoCommand",
-                    "when": "resourceLangId==mongo"
-                },
-                {
-                    "command": "cosmosDB.executeAllMongoCommands",
-                    "when": "resourceLangId==mongo"
-                },
                 {
                     "command": "azureDatabases.update",
                     "when": "resourceFilename==cosmos-result.json"
@@ -443,6 +435,14 @@
                 {
                     "command": "azureDatabases.update",
                     "when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)/"
+                },
+                {
+                    "command": "cosmosDB.executeAllMongoCommands",
+                    "when": "resourceLangId==mongo"
+                },
+                {
+                    "command": "cosmosDB.executeMongoCommand",
+                    "when": "resourceLangId==mongo"
                 },
                 {
                     "command": "cosmosDB.importDocument",
@@ -477,12 +477,12 @@
             ],
             "view/title": [
                 {
-                    "command": "azureDatabases.refresh",
+                    "command": "azureDatabases.createServer",
                     "when": "view == azureDatabasesExplorer",
                     "group": "navigation"
                 },
                 {
-                    "command": "azureDatabases.createServer",
+                    "command": "azureDatabases.refresh",
                     "when": "view == azureDatabasesExplorer",
                     "group": "navigation"
                 },
@@ -931,15 +931,11 @@
             ],
             "commandPalette": [
                 {
-                    "command": "cosmosDB.selectSubscriptions",
+                    "command": "azureDatabases.loadMore",
                     "when": "never"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "never"
-                },
-                {
-                    "command": "azureDatabases.loadMore",
                     "when": "never"
                 },
                 {
@@ -953,6 +949,10 @@
                 {
                     "command": "cosmosDB.executeMongoCommand",
                     "when": "editorLangId == 'mongo'"
+                },
+                {
+                    "command": "cosmosDB.selectSubscriptions",
+                    "when": "never"
                 },
                 {
                     "command": "postgreSQL.executeQuery",

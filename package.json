@@ -1067,7 +1067,8 @@
         "webpack": "npm run build && gulp webpack-dev",
         "webpack-prod": "npm run build && gulp webpack-prod",
         "webpack-profile": "webpack --profile --json --mode production > webpack-stats.json && echo Use http://webpack.github.io/analyse to analyze the stats",
-        "all": "npm i && npm run lint && npm test"
+        "all": "npm i && npm run lint && npm test",
+        "prepare": "husky install"
     },
     "devDependencies": {
         "@azure/arm-resources": "^4.0.0",
@@ -1088,13 +1089,14 @@
         "eslint-plugin-import": "^2.22.1",
         "glob": "^7.1.6",
         "gulp": "^4.0.0",
+        "husky": "^7.0.2",
         "mocha": "^7.1.1",
         "mocha-junit-reporter": "^1.18.0",
         "mocha-multi-reporters": "^1.1.7",
         "ts-node": "^7.0.1",
         "typescript": "^4.4.3",
         "vsce": "^1.87.0",
-        "vscode-azureextensiondev": "^0.10.0",
+        "vscode-azureextensiondev": "^0.10.2",
         "vscode-test": "^1.5.2",
         "webpack": "^5.28.0",
         "webpack-cli": "^4.6.0",

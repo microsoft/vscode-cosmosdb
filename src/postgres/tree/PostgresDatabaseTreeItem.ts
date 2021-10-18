@@ -7,13 +7,12 @@
 import { FirewallRuleListResult } from '@azure/arm-postgresql/esm/models';
 import { ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';
+import { createAbstractPostgresClient, PostgresServerType } from 'vscode-azuredatabases';
 import { AzExtParentTreeItem, AzExtTreeItem, GenericTreeItem, IActionContext, IParsedError, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
 import { postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
-import { PostgresServerType } from '../abstract/models';
 import { getPublicIp } from '../commands/configurePostgresFirewall';
 import { getClientConfig } from '../getClientConfig';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';

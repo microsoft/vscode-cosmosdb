@@ -5,10 +5,9 @@
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import * as vscode from 'vscode';
+import { azureUtils, createCosmosDBClient } from 'vscode-azuredatabases';
 import { AzExtTreeItem, DialogResponses, IActionContext } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
-import { createCosmosDBClient } from '../utils/azureClients';
-import { azureUtils } from '../utils/azureUtils';
 import { localize } from '../utils/localize';
 
 export async function deleteCosmosDBAccount(context: IActionContext, node: AzExtTreeItem): Promise<void> {

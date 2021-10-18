@@ -5,13 +5,12 @@
 
 import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
+import { AbstractFirewallRule, createAbstractPostgresClient, PostgresServerType } from 'vscode-azuredatabases';
 import { DialogResponses, IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { nonNullProp } from '../../utils/nonNull';
 import { randomUtils } from '../../utils/randomUtils';
-import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
-import { AbstractFirewallRule, PostgresServerType } from '../abstract/models';
 import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
 
 export async function configurePostgresFirewall(context: IActionContext, treeItem?: PostgresServerTreeItem): Promise<void> {

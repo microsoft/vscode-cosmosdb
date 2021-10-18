@@ -6,14 +6,12 @@
 import { ClientConfig } from 'pg';
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
+import { azureUtils, createAbstractPostgresClient, PostgresAbstractServer, PostgresServerType } from 'vscode-azuredatabases';
 import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
-import { PostgresAbstractServer, PostgresServerType } from '../abstract/models';
 import { getClientConfig } from '../getClientConfig';
 import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';

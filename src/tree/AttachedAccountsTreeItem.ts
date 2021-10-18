@@ -5,8 +5,8 @@
 
 import { MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
+import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from 'vscode-azuredatabases';
 import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, GenericTreeItem, IActionContext, ISubscriptionContext, TreeItemIconPath } from 'vscode-azureextensionui';
-import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, isWindows } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';

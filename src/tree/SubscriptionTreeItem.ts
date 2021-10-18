@@ -6,24 +6,18 @@
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { DatabaseAccountGetResults, DatabaseAccountListKeysResult, DatabaseAccountsListResponse, DatabaseAccountsListResult } from '@azure/arm-cosmosdb/src/models';
 import * as vscode from 'vscode';
+import { API, AzureDBAPIStep, azureUtils, createCosmosDBClient, createPostgreSQLClient, createPostgreSQLFlexibleClient, Experience, getExperienceLabel, ICosmosDBWizardContext, IPostgresServerWizardContext, PostgresAbstractServer, PostgresServerType, tryGetExperience } from 'vscode-azuredatabases';
 import { AzExtTreeItem, AzureWizard, AzureWizardPromptStep, IActionContext, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
-import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { ext } from '../extensionVariables';
 import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { PostgresAbstractServer, PostgresServerType } from '../postgres/abstract/models';
-import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
 import { createPostgresConnectionString, ParsedPostgresConnectionString, parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
-import { createCosmosDBClient, createPostgreSQLClient, createPostgreSQLFlexibleClient } from '../utils/azureClients';
-import { azureUtils } from '../utils/azureUtils';
 import { localize } from '../utils/localize';
 import { nonNullProp } from '../utils/nonNull';
-import { AzureDBAPIStep } from './AzureDBAPIStep';
-import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
 
 export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
     public childTypeLabel: string = 'Account';

@@ -5,10 +5,10 @@
 
 import { Client, ClientConfig } from "pg";
 import { ConnectionOptions } from "tls";
+import { PostgresServerType } from "vscode-azuredatabases";
 import { postgresDefaultPort } from "../constants";
 import { localize } from "../utils/localize";
 import { nonNullProp } from "../utils/nonNull";
-import { PostgresServerType } from "./abstract/models";
 import { addDatabaseToConnectionString } from "./postgresConnectionStrings";
 import { invalidCredentialsErrorType } from "./tree/PostgresDatabaseTreeItem";
 import { PostgresServerTreeItem } from "./tree/PostgresServerTreeItem";

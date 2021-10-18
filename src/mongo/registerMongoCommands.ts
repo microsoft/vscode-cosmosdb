@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
+import { Experience, MongoExperience } from 'vscode-azuredatabases';
 import { AzExtTreeItem, callWithTelemetryAndErrorHandling, IActionContext, IErrorHandlerContext, ITreeItemPickerContext, registerCommand, registerErrorHandler, registerEvent } from "vscode-azureextensionui";
-import { Experience, MongoExperience } from '../AzureDBExperiences';
 import { ext } from "../extensionVariables";
 import { AttachedAccountSuffix } from '../tree/AttachedAccountsTreeItem';
 import * as vscodeUtil from '../utils/vscodeUtils';

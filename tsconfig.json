@@ -5,7 +5,8 @@
         "outDir": "out",
         "lib": [
             "es6",
-            "dom"
+            "dom",
+            "ES2020.Promise"
         ],
         "sourceMap": true,
         "noImplicitThis": true,

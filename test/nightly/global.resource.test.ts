@@ -64,7 +64,8 @@ suiteTeardown(async function (this: Mocha.Context): Promise<void> {
 
 async function deleteResourceGroups(): Promise<void> {
     const rmClient: ResourceManagementClient = createAzureClient([await createTestActionContext(), testAccount.getSubscriptionContext()], ResourceManagementClient);
-    await Promise.all(resourceGroupsToDelete.map(async resourceGroup => {
+    // Promise.allSettled resolves when all of the provided Promises resolve or reject.
+    await Promise.allSettled(resourceGroupsToDelete.map(async resourceGroup => {
         if (await rmClient.resourceGroups.checkExistence(resourceGroup)) {
             console.log(`Deleting resource group "${resourceGroup}"...`);
             await rmClient.resourceGroups.beginDeleteMethod(resourceGroup);

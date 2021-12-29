@@ -34,7 +34,7 @@
             "_justification": "Should be covered by scanning the pre-bundled files and it's unclear why the 'map' file in particular is getting flagged."
         },
         {
-            "file": "dist\\test\\mongoGetCommand.test.js",
+            "file": "test\\mongoGetCommand.test.ts",
             "_justification": "Fake credentials used for unit tests."
         }
     ]

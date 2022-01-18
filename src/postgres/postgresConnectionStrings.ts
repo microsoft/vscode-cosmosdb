@@ -25,8 +25,7 @@ export function createPostgresConnectionString(hostName: string, port: string = 
         const encodedUsername = encodeURIComponent(username);
         if (password) {
             const encodedPassword = encodeURIComponent(password);
-            const encodedPasswordWithQuotes = "'" + encodedPassword + "'";
-            connectionString += `${encodedUsername}:${encodedPasswordWithQuotes}@`;
+            connectionString += `${encodedUsername}:${encodedPassword}@`;
         } else {
             connectionString += `${encodedUsername}@`;
         }

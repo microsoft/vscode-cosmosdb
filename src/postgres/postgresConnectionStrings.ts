@@ -38,6 +38,26 @@ export function createPostgresConnectionString(hostName: string, port: string = 
     return connectionString;
 }
 
+export function copyPostgresConnectionString(hostName: string, port: string = postgresDefaultPort, username?: string | undefined, password?: string | undefined, databaseName?: string | undefined): string {
+    let connectionString: string = `postgres://`;
+    if (username) {
+        const encodedUsername = encodeURIComponent(username);
+        if (password) {
+            const encodedPassword = encodeURIComponent(password);
+            const encodedPasswordWithQuotes = "'" + encodedPassword + "'";
+            connectionString += `${encodedUsername}:${encodedPasswordWithQuotes}@`;
+        } else {
+            connectionString += `${encodedUsername}@`;
+        }
+    }
+    connectionString += `${hostName}:${port}`;
+    if (databaseName) {
+        const encodeDatabaseName = encodeURIComponent(databaseName);
+        connectionString += `/${encodeDatabaseName}`;
+    }
+    return connectionString;
+}
+
 export class ParsedPostgresConnectionString extends ParsedConnectionString {
     public readonly hostName: string;
     public username: string | undefined;

@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { IActionContext } from 'vscode-azureextensionui';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
-import { addDatabaseToConnectionString, createPostgresConnectionString } from '../postgresConnectionStrings';
+import { addDatabaseToConnectionString, copyPostgresConnectionString } from '../postgresConnectionStrings';
 import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
 import { checkAuthentication } from './checkAuthentication';
 
@@ -21,7 +21,7 @@ export async function copyConnectionString(context: IActionContext, node: Postgr
     let connectionString: string;
     if (node.parent.azureName) {
         const parsedCS = await node.parent.getFullConnectionString();
-        connectionString = createPostgresConnectionString(parsedCS.hostName, parsedCS.port, parsedCS.username, parsedCS.password, node.databaseName);
+        connectionString = copyPostgresConnectionString(parsedCS.hostName, parsedCS.port, parsedCS.username, parsedCS.password, node.databaseName);
     } else {
         connectionString = addDatabaseToConnectionString(parsedConnectionString.connectionString, node.databaseName);
     }

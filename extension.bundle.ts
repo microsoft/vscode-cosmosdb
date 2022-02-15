@@ -12,6 +12,7 @@
 // Export activate/deactivate for main.js
 // The tests use instanceof against these and therefore we need to make sure we're using the same version of the bson module in the tests as in the bundle,
 //   so export it from the bundle itself.
+export { ObjectID, ObjectId } from 'bson';
 // Exports for tests
 // The tests are not packaged with the webpack bundle and therefore only have access to code exported from this file.
 //
@@ -19,7 +20,6 @@
 // At runtime the tests live in dist/tests and will therefore pick up the main webpack bundle at dist/extension.bundle.js.
 export { AzureAccountTreeItemBase, createAzureClient } from '@microsoft/vscode-azext-azureutils';
 export * from '@microsoft/vscode-azext-utils';
-export { ObjectID, ObjectId } from 'bson';
 export { emulatorPassword, isWindows } from './src/constants';
 export { ParsedDocDBConnectionString, parseDocDBConnectionString } from './src/docdb/docDBConnectionStrings';
 export { getCosmosClient } from './src/docdb/getCosmosClient';

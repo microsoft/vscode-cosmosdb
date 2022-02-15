@@ -47,7 +47,7 @@ export interface AbstractServerCreate {
     sku: AbstractSku;
     administratorLogin: string;
     administratorLoginPassword: string;
-    storageGB: number;
+    size: number;
 }
 
 export type AbstractNameAvailability = SingleModels.NameAvailability | FlexibleModels.NameAvailability;

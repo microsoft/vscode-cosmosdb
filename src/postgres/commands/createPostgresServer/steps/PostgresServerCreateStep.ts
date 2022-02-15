@@ -21,7 +21,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
 
         const locationName: string = (await LocationListStep.getLocation(context)).name;
         const rgName: string = nonNullProp(nonNullProp(context, 'resourceGroup'), 'name');
-        const storageMB: string = nonNullProp(nonNullProp(context, 'sku'), 'size');
+        const size: string = nonNullProp(nonNullProp(context, 'sku'), 'size');
         const newServerName = nonNullProp(context, 'newServerName');
         const password: string = nonNullProp(context, 'adminPassword');
 
@@ -37,7 +37,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                     sku: nonNullProp(context, 'sku'),
                     administratorLogin: nonNullProp(context, 'shortUserName'),
                     administratorLoginPassword: password,
-                    storageGB: parseInt(storageMB)
+                    size: parseInt(size)
                 };
 
                 switch (serverType) {
@@ -67,7 +67,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
             administratorLogin: parameters.administratorLogin,
             administratorLoginPassword: parameters.administratorLoginPassword,
             storage: {
-                storageSizeGB: parameters.storageGB
+                storageSizeGB: parameters.size
             },
             sku: {
                 name: parameters.sku.name,
@@ -93,7 +93,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                 createMode: "Default",
                 version: "11",
                 storageProfile: {
-                    storageMB: parameters.storageGB
+                    storageMB: parameters.size
                 }
             }
         }

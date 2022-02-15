@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { parseError } from '@microsoft/vscode-azext-utils';
 import * as assert from 'assert';
 import * as os from 'os';
-import { parseError } from 'vscode-azureextensionui';
 import { wrapError } from '../extension.bundle';
 
 suite("wrapError", () => {

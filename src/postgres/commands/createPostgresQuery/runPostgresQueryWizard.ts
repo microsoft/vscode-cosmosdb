@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizard } from "vscode-azureextensionui";
+import { AzureWizard } from "@microsoft/vscode-azext-utils";
 import { postgresBaseFileName, postgresFileExtension } from "../../../constants";
 import { nonNullProp } from "../../../utils/nonNull";
 import * as vscodeUtil from '../../../utils/vscodeUtils';

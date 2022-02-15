@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { callWithTelemetryAndErrorHandling, IActionContext } from "@microsoft/vscode-azext-utils";
 import * as vscode from "vscode";
-import { callWithTelemetryAndErrorHandling, IActionContext } from "vscode-azureextensionui";
 import { getAllCommandsFromTextDocument } from "../MongoScrapbook";
 
 export class MongoCodeLensProvider implements vscode.CodeLensProvider {

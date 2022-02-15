@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizard, IActionContext } from "vscode-azureextensionui";
+import { AzureWizard, IActionContext } from "@microsoft/vscode-azext-utils";
 import { PostgresFunctionsTreeItem } from "../../../tree/PostgresFunctionsTreeItem";
 import { runPostgresQueryWizard } from "../runPostgresQueryWizard";
 import { IPostgresFunctionQueryWizardContext } from "./IPostgresFunctionQueryWizardContext";

@@ -3,16 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as SingleModels from '@azure/arm-postgresql';
+import * as FlexibleModels from '@azure/arm-postgresql-flexible';
+import { uiUtils } from '@microsoft/vscode-azext-azureutils';
+import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
 import { ClientConfig } from 'pg';
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
-import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplContext } from 'vscode-azureextensionui';
 import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
+import { AbstractPostgresClient, createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { PostgresAbstractServer, PostgresServerType } from '../abstract/models';
 import { getClientConfig } from '../getClientConfig';
 import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
@@ -94,9 +97,9 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
         context.telemetry.properties.serverType = this.serverType;
         let dbNames: (string | undefined)[];
         if (this.azureName) {
-            const client = await createAbstractPostgresClient(this.serverType, [context, this]);
-            const listOfDatabases = await client.databases.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
-            dbNames = listOfDatabases.map(db => db?.name);
+            const client: AbstractPostgresClient = await createAbstractPostgresClient(this.serverType, [context, this]);
+            const listOfDatabases: (SingleModels.Database | FlexibleModels.Database)[] = await uiUtils.listAllIterator(client.databases.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName')));
+            dbNames = listOfDatabases.map(db => db.name);
         } else if (this.partialConnectionString.databaseName) {
             dbNames = [this.partialConnectionString.databaseName];
         } else {
@@ -151,7 +154,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
         const client = await createAbstractPostgresClient(this.serverType, [context, this]);
         const deletingMessage: string = `Deleting server "${this.label}"...`;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
-            await client.servers.deleteMethod(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
+            await client.servers.beginDeleteAndWait(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
             await this.deletePostgresCredentials();
         });
     }

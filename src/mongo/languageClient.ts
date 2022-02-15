@@ -2,8 +2,8 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
 import * as path from 'path';
-import { appendExtensionUserAgent } from 'vscode-azureextensionui';
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
 import * as nls from 'vscode-nls';
 import { ext } from '../extensionVariables';

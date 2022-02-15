@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosClient, FeedOptions, QueryIterator } from '@azure/cosmos';
-import { AzExtParentTreeItem, AzExtTreeItem } from 'vscode-azureextensionui';
+import { AzExtParentTreeItem, AzExtTreeItem } from '@microsoft/vscode-azext-utils';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 

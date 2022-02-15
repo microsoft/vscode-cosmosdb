@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { callWithTelemetryAndErrorHandling, IActionContext } from "@microsoft/vscode-azext-utils";
 import { CodeLens, CodeLensProvider, Event, EventEmitter, Position, ProviderResult, Range } from "vscode";
-import { callWithTelemetryAndErrorHandling, IActionContext } from "vscode-azureextensionui";
 import { localize } from "../../utils/localize";
 
 export class PostgresCodeLensProvider implements CodeLensProvider {

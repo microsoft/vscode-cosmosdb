@@ -4,15 +4,16 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
-import { FirewallRuleListResult } from '@azure/arm-postgresql/esm/models';
+import { FirewallRule } from '@azure/arm-postgresql';
+import { uiUtils } from '@microsoft/vscode-azext-azureutils';
+import { AzExtParentTreeItem, AzExtTreeItem, GenericTreeItem, IActionContext, IParsedError, parseError, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import { ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';
-import { AzExtParentTreeItem, AzExtTreeItem, GenericTreeItem, IActionContext, IParsedError, parseError, TreeItemIconPath } from 'vscode-azureextensionui';
 import { postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
+import { AbstractPostgresClient, createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { PostgresServerType } from '../abstract/models';
 import { getPublicIp } from '../commands/configurePostgresFirewall';
 import { getClientConfig } from '../getClientConfig';
@@ -105,9 +106,9 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     // Flexible servers throw a generic 'ETIMEDOUT' error instead of the firewall-specific error, so we have to check the firewall rules
     public async isFirewallRuleSet(context: IActionContext, treeItem: PostgresServerTreeItem): Promise<boolean> {
         const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
-        const client = await createAbstractPostgresClient(serverType, [context, treeItem]);
-        const result: FirewallRuleListResult = (await client.firewallRules.listByServer(nonNullProp(treeItem, 'resourceGroup'), nonNullProp(treeItem, 'azureName')))._response.parsedBody;
+        const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [context, treeItem]);
+        const results: FirewallRule[] = (await uiUtils.listAllIterator(client.firewallRules.listByServer(nonNullProp(treeItem, 'resourceGroup'), nonNullProp(treeItem, 'azureName'))));
         const publicIp: string = await getPublicIp();
-        return (Object.values(result).some(value => value.startIpAddress === publicIp));
+        return (results.some((value: FirewallRule) => value.startIpAddress === publicIp));
     }
 }

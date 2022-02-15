@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementModels } from '@azure/arm-cosmosdb';
+import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import * as assert from 'assert';
 import { Collection, MongoClient } from 'mongodb';
 import { runWithTestActionContext } from 'vscode-azureextensiondev';
@@ -33,7 +33,7 @@ suite('MongoDB action', async function (this: Mocha.Suite): Promise<void> {
     });
 
     test('Create MongoDB account', async () => {
-        const getAccount: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
+        const getAccount: DatabaseAccountGetResults | undefined = await client.databaseAccounts.get(resourceGroupName, accountName);
         assert.ok(getAccount);
     });
 

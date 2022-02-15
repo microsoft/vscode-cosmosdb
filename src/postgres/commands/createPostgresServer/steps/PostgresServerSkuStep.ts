@@ -2,7 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { AzureWizardPromptStep, IAzureQuickPickItem } from "vscode-azureextensionui";
+import { AzureWizardPromptStep, IAzureQuickPickItem } from "@microsoft/vscode-azext-utils";
 import { localize } from "../../../../utils/localize";
 import { nonNullProp } from "../../../../utils/nonNull";
 import { openUrl } from "../../../../utils/openUrl";
@@ -41,7 +41,7 @@ export class PostgresServerSkuStep extends AzureWizardPromptStep<IPostgresServer
 
     public async getPicks(serverType: PostgresServerType): Promise<IAzureQuickPickItem<AbstractSku | undefined>[]> {
         const options: IAzureQuickPickItem<AbstractSku | undefined>[] = [];
-        const skuOptions: ISkuOption[] = serverType === PostgresServerType.Single ? singleServerSkus : flexibleServerSkus ;
+        const skuOptions: ISkuOption[] = serverType === PostgresServerType.Single ? singleServerSkus : flexibleServerSkus;
 
         skuOptions.forEach((option) => {
             options.push({
@@ -162,7 +162,7 @@ const flexibleServerSkus: ISkuOption[] = [
             name: "Standard_B1ms",
             tier: "Burstable",
             capacity: 1,
-            size: "32768",
+            size: "32",
         },
         group: recommendedGroup
     },
@@ -173,7 +173,7 @@ const flexibleServerSkus: ISkuOption[] = [
             name: "Standard_B2s",
             tier: "Burstable",
             capacity: 2,
-            size: "32768",
+            size: "32",
         },
     },
     {
@@ -183,7 +183,7 @@ const flexibleServerSkus: ISkuOption[] = [
             name: "Standard_D2s_v3",
             tier: "GeneralPurpose",
             capacity: 2,
-            size: "32768",
+            size: "32",
         },
         group: recommendedGroup
     },
@@ -194,7 +194,7 @@ const flexibleServerSkus: ISkuOption[] = [
             name: "Standard_D4s_v3",
             tier: "GeneralPurpose",
             capacity: 4,
-            size: "32768",
+            size: "32",
         },
     },
     {
@@ -204,7 +204,7 @@ const flexibleServerSkus: ISkuOption[] = [
             name: "Standard_D8s_v3",
             tier: "GeneralPurpose",
             capacity: 8,
-            size: "65536",
+            size: "64",
         },
     },
     {
@@ -214,7 +214,7 @@ const flexibleServerSkus: ISkuOption[] = [
             name: "Standard_D16s_v3",
             tier: "GeneralPurpose",
             capacity: 16,
-            size: "65536",
+            size: "64",
         },
     },
     {
@@ -224,7 +224,7 @@ const flexibleServerSkus: ISkuOption[] = [
             name: "Standard_D32s_v3",
             tier: "GeneralPurpose",
             capacity: 32,
-            size: "65536",
+            size: "64",
         },
     },
     {
@@ -234,7 +234,7 @@ const flexibleServerSkus: ISkuOption[] = [
             name: "Standard_D48s_v3",
             tier: "GeneralPurpose",
             capacity: 48,
-            size: "262144",
+            size: "256",
         },
     },
     {
@@ -244,7 +244,7 @@ const flexibleServerSkus: ISkuOption[] = [
             name: "Standard_D64s_v3",
             tier: "GeneralPurpose",
             capacity: 64,
-            size: "262144",
+            size: "256",
         },
     },
 ];

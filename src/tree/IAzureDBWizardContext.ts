@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IResourceGroupWizardContext } from 'vscode-azureextensionui';
+import { IResourceGroupWizardContext } from '@microsoft/vscode-azext-azureutils';
 import { Experience } from '../AzureDBExperiences';
 
 export interface IAzureDBWizardContext extends IResourceGroupWizardContext {

@@ -4,7 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { AzureNameStep, ResourceGroupListStep, resourceGroupNamingRules } from 'vscode-azureextensionui';
+import { ResourceGroupListStep, resourceGroupNamingRules } from '@microsoft/vscode-azext-azureutils';
+import { AzureNameStep } from '@microsoft/vscode-azext-utils';
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardExecuteStep } from "vscode-azureextensionui";
+import { AzureWizardExecuteStep } from "@microsoft/vscode-azext-utils";
 import { nonNullProp } from "../../../../../utils/nonNull";
 import { wrapArgInQuotes } from "../../../../runPostgresQuery";
 import { IPostgresFunctionQueryWizardContext } from "../IPostgresFunctionQueryWizardContext";

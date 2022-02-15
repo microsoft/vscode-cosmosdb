@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { AzExtTreeItem, TreeItemIconPath } from "@microsoft/vscode-azext-utils";
 import { ThemeIcon } from "vscode";
-import { AzExtTreeItem, TreeItemIconPath } from "vscode-azureextensionui";
 import { IPostgresProceduresQueryRow } from "../getPostgresProcedureQueryRows";
 import { runPostgresQuery } from "../runPostgresQuery";
 import { PostgresStoredProceduresTreeItem } from "./PostgresStoredProceduresTreeItem";

@@ -3,9 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccountCreateUpdateParameters, DatabaseAccountsCreateOrUpdateResponse } from '@azure/arm-cosmosdb/src/models';
+import { DatabaseAccountCreateUpdateParameters } from '@azure/arm-cosmosdb/src/models';
+import { LocationListStep } from '@microsoft/vscode-azext-azureutils';
+import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import { Progress } from 'vscode';
-import { AzureWizardExecuteStep, LocationListStep } from 'vscode-azureextensionui';
 import { SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { createCosmosDBClient } from '../../utils/azureClients';
@@ -32,6 +33,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             locations: [{ locationName: locationName }],
             kind: defaultExperience.kind,
             capabilities: [],
+            databaseAccountOfferType: 'Standard',
             // Note: Setting this tag has no functional effect in the portal, but we'll keep doing it to imitate portal behavior
             tags: { defaultExperience: nonNullProp(defaultExperience, 'tag') },
         };
@@ -48,8 +50,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             options.capabilities?.push({ name: SERVERLESS_CAPABILITY_NAME });
         }
 
-        const response: DatabaseAccountsCreateOrUpdateResponse = await client.databaseAccounts.createOrUpdate(rgName, accountName, options);
-        context.databaseAccount = response._response.parsedBody;
+        context.databaseAccount = await client.databaseAccounts.beginCreateOrUpdateAndWait(rgName, accountName, options);
         ext.outputChannel.appendLog(`Successfully created Cosmos DB account "${accountName}".`);
     }
 

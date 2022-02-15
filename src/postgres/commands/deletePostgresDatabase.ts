@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { DialogResponses, IActionContext, ITreeItemPickerContext } from "@microsoft/vscode-azext-utils";
 import * as vscode from 'vscode';
-import { DialogResponses, IActionContext, ITreeItemPickerContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";

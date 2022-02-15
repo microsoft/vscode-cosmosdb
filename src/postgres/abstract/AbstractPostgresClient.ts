@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { PostgreSQLManagementClient } from "@azure/arm-postgresql";
+import { PostgreSQLManagementClient as PostgreSQLSingleManagementClient } from "@azure/arm-postgresql";
 import { PostgreSQLManagementClient as PostgreSQLFlexibleManagementClient } from "@azure/arm-postgresql-flexible";
-import { AzExtClientContext } from "vscode-azureextensionui";
+import { AzExtClientContext } from "@microsoft/vscode-azext-azureutils";
 import { createPostgreSQLClient, createPostgreSQLFlexibleClient } from "../../utils/azureClients";
 import { PostgresServerType } from "./models";
 
-export type AbstractPostgresClient = PostgreSQLFlexibleManagementClient | PostgreSQLManagementClient;
+export type AbstractPostgresClient = PostgreSQLFlexibleManagementClient | PostgreSQLSingleManagementClient;
 
 export async function createAbstractPostgresClient(serverType: PostgresServerType, context: AzExtClientContext): Promise<AbstractPostgresClient> {
     switch (serverType) {

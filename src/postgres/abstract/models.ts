@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { PostgreSQLManagementModels as SingleModels } from "@azure/arm-postgresql";
-import { PostgreSQLManagementModels as FlexibleModels } from "@azure/arm-postgresql-flexible";
+import * as SingleModels from "@azure/arm-postgresql";
+import * as FlexibleModels from "@azure/arm-postgresql-flexible";
 
 export enum PostgresServerType {
     Flexible = 'Flexible',
@@ -27,7 +27,7 @@ export interface AbstractSku {
      * The tier of the particular SKU, e.g. Basic. Possible values include: 'Basic',
      * 'GeneralPurpose', 'MemoryOptimized'
      */
-    tier?: SingleModels.SkuTier | FlexibleModels.SkuTier;
+    tier: SingleModels.SkuTier | FlexibleModels.SkuTier;
     /**
      * The scale up/out capacity, representing server's compute units.
      */
@@ -47,7 +47,7 @@ export interface AbstractServerCreate {
     sku: AbstractSku;
     administratorLogin: string;
     administratorLoginPassword: string;
-    storageMB: number;
+    storageGB: number;
 }
 
 export type AbstractNameAvailability = SingleModels.NameAvailability | FlexibleModels.NameAvailability;

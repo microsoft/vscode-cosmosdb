@@ -5,7 +5,7 @@
 
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { DatabaseDefinition, Resource } from '@azure/cosmos';
-import { AzExtParentTreeItem } from 'vscode-azureextensionui';
+import { AzExtParentTreeItem } from '@microsoft/vscode-azext-utils';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from '../../docdb/tree/DocDBStoredProcedureTreeItem';

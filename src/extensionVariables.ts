@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel } from "@microsoft/vscode-azext-utils";
 import { ExtensionContext, TreeView } from "vscode";
-import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel } from "vscode-azureextensionui";
 import { DatabasesFileSystem } from "./DatabasesFileSystem";
 import { MongoDBLanguageClient } from "./mongo/languageClient";
 import { MongoCodeLensProvider } from "./mongo/services/MongoCodeLensProvider";

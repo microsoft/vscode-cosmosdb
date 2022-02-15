@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { parseError } from '@microsoft/vscode-azext-utils';
 import * as cp from 'child_process';
 import * as os from 'os';
 import { isNumber } from 'util';
 import * as vscode from 'vscode';
 import { Event, EventEmitter } from 'vscode';
-import { parseError } from 'vscode-azureextensionui';
 import { improveError } from './improveError';
 
 // We add these when we display to the output window

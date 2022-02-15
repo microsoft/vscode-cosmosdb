@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosClient } from "@azure/cosmos";
+import { appendExtensionUserAgent } from "@microsoft/vscode-azext-utils";
 import * as https from "https";
 import * as vscode from 'vscode';
-import { appendExtensionUserAgent } from "vscode-azureextensionui";
 import { ext } from "../extensionVariables";
 
 export function getCosmosClient(endpoint: string, key: string, isEmulator: boolean | undefined): CosmosClient {

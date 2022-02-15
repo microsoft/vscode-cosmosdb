@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Container, ContainerDefinition, CosmosClient, Resource } from '@azure/cosmos';
+import { AzExtParentTreeItem, AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { AzExtParentTreeItem, AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from '../../docdb/tree/DocDBStoredProcedureTreeItem';
 import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';

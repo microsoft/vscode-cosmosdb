@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { appendExtensionUserAgent, IParsedError, parseError } from "@microsoft/vscode-azext-utils";
 import { MongoClient } from "mongodb";
-import { appendExtensionUserAgent, IParsedError, parseError } from "vscode-azureextensionui";
 import { testDb } from "../constants";
 import { ParsedConnectionString } from "../ParsedConnectionString";
 import { nonNullValue } from "../utils/nonNull";

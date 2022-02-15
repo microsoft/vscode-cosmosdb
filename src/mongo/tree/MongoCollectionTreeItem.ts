@@ -5,11 +5,11 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { AzExtParentTreeItem, AzExtTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as assert from 'assert';
 import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, DeleteWriteOpResultObject, InsertOneWriteOpResult, InsertWriteOpResult, MongoCountPreferences } from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { AzExtParentTreeItem, AzExtTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { nonNullValue } from '../../utils/nonNull';

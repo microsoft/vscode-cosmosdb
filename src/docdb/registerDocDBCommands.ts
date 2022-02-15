@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { IActionContext, ITreeItemPickerContext, registerCommand } from "@microsoft/vscode-azext-utils";
 import { commands } from "vscode";
-import { IActionContext, ITreeItemPickerContext, registerCommand } from "vscode-azureextensionui";
 import { doubleClickDebounceDelay } from "../constants";
 import { ext } from "../extensionVariables";
 import { AttachedAccountSuffix } from "../tree/AttachedAccountsTreeItem";

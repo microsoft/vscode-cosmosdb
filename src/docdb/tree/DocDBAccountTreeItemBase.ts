@@ -5,8 +5,8 @@
 
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { CosmosClient, DatabaseDefinition, DatabaseResponse, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
+import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplContext } from 'vscode-azureextensionui';
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { getThemeAgnosticIconPath, SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';

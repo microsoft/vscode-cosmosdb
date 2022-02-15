@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardExecuteStep, AzureWizardPromptStep, IAzureQuickPickItem, IWizardOptions, VerifyProvidersStep } from 'vscode-azureextensionui';
+import { VerifyProvidersStep } from '@microsoft/vscode-azext-azureutils';
+import { AzureWizardExecuteStep, AzureWizardPromptStep, IAzureQuickPickItem, IWizardOptions } from '@microsoft/vscode-azext-utils';
 import { API, Experience, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { PostgresServerType } from '../postgres/abstract/models';
 import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
@@ -36,7 +37,7 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
         let promptSteps: AzureWizardPromptStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[];
         let executeSteps: AzureWizardExecuteStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[];
         if (context.defaultExperience?.api === API.PostgresSingle || context.defaultExperience?.api === API.PostgresFlexible) {
-            switch (context.defaultExperience?.api){
+            switch (context.defaultExperience?.api) {
                 case API.PostgresFlexible:
                     (context as IPostgresServerWizardContext).serverType = PostgresServerType.Flexible;
                     break;

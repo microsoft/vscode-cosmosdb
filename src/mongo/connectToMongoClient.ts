@@ -24,7 +24,7 @@ export async function connectToMongoClient(connectionString: string, appName: st
     try {
         return await MongoClient.connect(connectionString, options);
     } catch (err) {
-        // Note: This file can't use `parseError` from `vscode-azureextensionui` because it's used by languageService.ts - see that file for more info
+        // Note: This file can't use `parseError` from `@microsoft/vscode-azext-utils` because it's used by languageService.ts - see that file for more info
         const error = <{ message?: string, name?: string }>err;
         const message = error && error.message;
 

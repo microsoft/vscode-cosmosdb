@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { AzExtTreeItem, IActionContext } from "@microsoft/vscode-azext-utils";
 import { Uri, window } from 'vscode';
-import { AzExtTreeItem, IActionContext } from "vscode-azureextensionui";
 import { connectedPostgresKey } from '../../constants';
 import { ext } from "../../extensionVariables";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";

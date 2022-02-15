@@ -4,9 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { DatabaseAccountGetResults, DatabaseAccountListKeysResult, DatabaseAccountsListResponse, DatabaseAccountsListResult } from '@azure/arm-cosmosdb/src/models';
+import { DatabaseAccountGetResults, DatabaseAccountListKeysResult } from '@azure/arm-cosmosdb/src/models';
+import { ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase, uiUtils } from '@microsoft/vscode-azext-azureutils';
+import { AzExtTreeItem, AzureWizard, AzureWizardPromptStep, IActionContext, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, AzureWizard, AzureWizardPromptStep, IActionContext, ICreateChildImplContext, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase } from 'vscode-azureextensionui';
 import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { ext } from '../extensionVariables';
@@ -38,8 +39,8 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const postgresSingleClient = await createPostgreSQLClient([context, this]);
         const postgresFlexibleClient = await createPostgreSQLFlexibleClient([context, this]);
         const postgresServers: PostgresAbstractServer[] = [
-            ...(await postgresSingleClient.servers.list()).map(s => Object.assign(s, { serverType: PostgresServerType.Single })),
-            ...(await postgresFlexibleClient.servers.list()).map(s => Object.assign(s, { serverType: PostgresServerType.Flexible })),
+            ...(await uiUtils.listAllIterator(postgresSingleClient.servers.list())).map(s => Object.assign(s, { serverType: PostgresServerType.Single })),
+            ...(await uiUtils.listAllIterator(postgresFlexibleClient.servers.list())).map(s => Object.assign(s, { serverType: PostgresServerType.Flexible })),
         ];
 
         const treeItemPostgres: AzExtTreeItem[] = await this.createTreeItemsWithErrorHandling(
@@ -51,8 +52,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
 
         //CosmosDB
         const client = await createCosmosDBClient([context, this]);
-        const response: DatabaseAccountsListResponse = await client.databaseAccounts.list();
-        const accounts: DatabaseAccountsListResult = response._response.parsedBody;
+        const accounts = await uiUtils.listAllIterator(client.databaseAccounts.list());
         const treeItem: AzExtTreeItem[] = await this.createTreeItemsWithErrorHandling(
             accounts,
             'invalidCosmosDBAccount',

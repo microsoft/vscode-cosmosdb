@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { IActionContext, IParsedError, openReadOnlyContent, parseError, ReadOnlyContent } from '@microsoft/vscode-azext-utils';
 import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
@@ -12,7 +13,6 @@ import { ObjectID } from 'bson';
 import { Collection } from 'mongodb';
 import { EOL } from 'os';
 import * as vscode from 'vscode';
-import { IActionContext, IParsedError, openReadOnlyContent, parseError, ReadOnlyContent } from 'vscode-azureextensionui';
 import { ext } from '../extensionVariables';
 import { filterType, findType } from '../utils/array';
 import { localize } from '../utils/localize';

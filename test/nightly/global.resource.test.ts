@@ -3,8 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient, CosmosDBManagementModels } from '@azure/arm-cosmosdb';
+import { CosmosDBManagementClient, DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { ResourceManagementClient } from '@azure/arm-resources';
+import { uiUtils } from '@microsoft/vscode-azext-azureutils';
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { createTestActionContext, runWithTestActionContext, TestAzureAccount } from 'vscode-azureextensiondev';
@@ -48,8 +49,8 @@ suiteTeardown(async function (this: Mocha.Context): Promise<void> {
             for (const key of Object.keys(accountList)) {
                 const accountName: string = accountList[key];
                 assert.ok(accountItem[accountName]);
-                const getDatabaseAccount: CosmosDBManagementModels.DatabaseAccountsListResult = await client.databaseAccounts.listByResourceGroup(resourceGroupList[key]);
-                const accountExists: CosmosDBManagementModels.DatabaseAccountGetResults | undefined = getDatabaseAccount.find((account: CosmosDBManagementModels.DatabaseAccountGetResults) => account.name === accountName);
+                const getDatabaseAccount = client.databaseAccounts.listByResourceGroup(resourceGroupList[key]);
+                const accountExists: DatabaseAccountGetResults | undefined = (await uiUtils.listAllIterator(getDatabaseAccount)).find((account: DatabaseAccountGetResults) => account.name === accountName);
                 assert.ifError(accountExists);
             }
         } catch (error) {

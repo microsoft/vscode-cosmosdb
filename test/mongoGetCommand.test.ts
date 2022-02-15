@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { parseError } from '@microsoft/vscode-azext-utils';
 import * as assert from 'assert';
 import { Position } from 'vscode';
-import { parseError } from 'vscode-azureextensionui';
 import { findCommandAtPosition, getAllCommandsFromText, MongoCommand, nonNullProp, ObjectID, ObjectId } from '../extension.bundle';
 
 function expectSingleCommand(text: string): MongoCommand {

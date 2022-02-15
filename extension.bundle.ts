@@ -18,7 +18,8 @@ export { ObjectID, ObjectId } from 'bson';
 //
 // The tests should import '../extension.bundle.ts'. At design-time they live in tests/ and so will pick up this file (extension.bundle.ts).
 // At runtime the tests live in dist/tests and will therefore pick up the main webpack bundle at dist/extension.bundle.js.
-export * from 'vscode-azureextensionui';
+export { AzureAccountTreeItemBase, createAzureClient } from '@microsoft/vscode-azext-azureutils';
+export * from '@microsoft/vscode-azext-utils';
 export { emulatorPassword, isWindows } from './src/constants';
 export { ParsedDocDBConnectionString, parseDocDBConnectionString } from './src/docdb/docDBConnectionStrings';
 export { getCosmosClient } from './src/docdb/getCosmosClient';
@@ -38,7 +39,6 @@ export { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from './src/tree/
 export { AzureAccountTreeItemWithAttached } from './src/tree/AzureAccountTreeItemWithAttached';
 export * from './src/utils/azureClients';
 export { improveError } from './src/utils/improveError';
-export * from './src/utils/nonNull';
 export { randomUtils } from './src/utils/randomUtils';
 export { getGlobalSetting, updateGlobalSetting } from './src/utils/settingUtils';
 export { rejectOnTimeout, valueOnTimeout } from './src/utils/timeout';

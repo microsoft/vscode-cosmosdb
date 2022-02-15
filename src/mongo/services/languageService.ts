@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// NOTE: This file may not take a dependencey on vscode or anything that takes a dependency on it (such as vscode-azureextensionui)
+// NOTE: This file may not take a dependencey on vscode or anything that takes a dependency on it (such as @microsoft/vscode-azext-utils)
 
 import { Db } from 'mongodb';
 import { getLanguageService, LanguageService as JsonLanguageService, SchemaConfiguration } from 'vscode-json-languageservice';

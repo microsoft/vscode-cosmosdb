@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { parseError } from '@microsoft/vscode-azext-utils';
 import * as os from 'os';
 import * as vscode from 'vscode';
-import { parseError } from 'vscode-azureextensionui';
 import { InteractiveChildProcess } from '../utils/InteractiveChildProcess';
 import { randomUtils } from '../utils/randomUtils';
 import { getBatchSizeSetting } from '../utils/workspacUtils';

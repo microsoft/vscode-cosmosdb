@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Resource, StoredProcedureDefinition } from '@azure/cosmos';
+import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as vscode from "vscode";
-import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { nonNullProp } from '../../utils/nonNull';

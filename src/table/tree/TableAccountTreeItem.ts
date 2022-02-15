@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, GenericTreeItem, IActionContext } from "vscode-azureextensionui";
+import { AzExtTreeItem, GenericTreeItem, IActionContext } from "@microsoft/vscode-azext-utils";
 import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
 import { DocDBAccountTreeItemBase } from "../../docdb/tree/DocDBAccountTreeItemBase";
 

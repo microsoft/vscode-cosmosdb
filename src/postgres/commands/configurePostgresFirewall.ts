@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { DialogResponses, IActionContext } from "@microsoft/vscode-azext-utils";
 import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
-import { DialogResponses, IActionContext } from "vscode-azureextensionui";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { nonNullProp } from '../../utils/nonNull';
 import { randomUtils } from '../../utils/randomUtils';
-import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
+import { AbstractPostgresClient, createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { AbstractFirewallRule, PostgresServerType } from '../abstract/models';
 import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
 
@@ -35,7 +35,7 @@ export async function configurePostgresFirewall(context: IActionContext, treeIte
 export async function setFirewallRule(context: IActionContext, treeItem: PostgresServerTreeItem, ip: string): Promise<void> {
 
     const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
-    const client = await createAbstractPostgresClient(serverType, [context, treeItem]);
+    const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [context, treeItem]);
     const resourceGroup: string = nonNullProp(treeItem, 'resourceGroup');
     const serverName: string = nonNullProp(treeItem, 'azureName');
 
@@ -53,7 +53,7 @@ export async function setFirewallRule(context: IActionContext, treeItem: Postgre
     };
     ext.outputChannel.appendLog(progressMessage);
     await vscode.window.withProgress(options, async () => {
-        await client.firewallRules.createOrUpdate(resourceGroup, serverName, firewallRuleName, newFirewallRule);
+        await client.firewallRules.beginCreateOrUpdateAndWait(resourceGroup, serverName, firewallRuleName, newFirewallRule);
     });
     const completedMessage: string = localize('addedFirewallRule', 'Successfully added firewall rule for IP "{0}" to server "{1}".', ip, serverName);
     void vscode.window.showInformationMessage(completedMessage);

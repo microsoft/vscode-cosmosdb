@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Container, CosmosClient, FeedOptions, QueryIterator, Resource, StoredProcedureDefinition } from '@azure/cosmos';
+import { AzExtTreeItem, ICreateChildImplContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as vscode from "vscode";
-import { AzExtTreeItem, ICreateChildImplContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { defaultStoredProcedure } from '../../constants';
 import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { localize } from '../../utils/localize';

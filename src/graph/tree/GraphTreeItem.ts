@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ContainerDefinition, Resource } from '@azure/cosmos';
+import { AzExtTreeItem, IActionContext, TreeItemIconPath, UserCancelledError } from '@microsoft/vscode-azext-utils';
+import { AzureExtensionApiProvider } from '@microsoft/vscode-azext-utils/api';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, IActionContext, TreeItemIconPath, UserCancelledError } from 'vscode-azureextensionui';
-import { AzureExtensionApiProvider } from 'vscode-azureextensionui/api';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { CosmosDBGraphExtensionApi } from '../../vscode-cosmosdbgraph.api';

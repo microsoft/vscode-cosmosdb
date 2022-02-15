@@ -2,10 +2,11 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { PostgreSQLManagementModels as SingleModels } from "@azure/arm-postgresql";
-import { PostgreSQLManagementModels as FlexibleModels } from "@azure/arm-postgresql-flexible";
+import * as SingleModels from "@azure/arm-postgresql";
+import * as FlexibleModels from "@azure/arm-postgresql-flexible";
+import { LocationListStep } from "@microsoft/vscode-azext-azureutils";
+import { AzureWizardExecuteStep, callWithMaskHandling } from '@microsoft/vscode-azext-utils';
 import { Progress } from 'vscode';
-import { AzureWizardExecuteStep, callWithMaskHandling, LocationListStep } from 'vscode-azureextensionui';
 import { ext } from '../../../../extensionVariables';
 import { createPostgreSQLClient, createPostgreSQLFlexibleClient } from "../../../../utils/azureClients";
 import { localize } from '../../../../utils/localize';
@@ -20,7 +21,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
 
         const locationName: string = (await LocationListStep.getLocation(context)).name;
         const rgName: string = nonNullProp(nonNullProp(context, 'resourceGroup'), 'name');
-        const storageMB: string = nonNullProp(nonNullProp(context, 'sku'), 'size');
+        const size: string = nonNullProp(nonNullProp(context, 'sku'), 'size');
         const newServerName = nonNullProp(context, 'newServerName');
         const password: string = nonNullProp(context, 'adminPassword');
 
@@ -36,17 +37,17 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                     sku: nonNullProp(context, 'sku'),
                     administratorLogin: nonNullProp(context, 'shortUserName'),
                     administratorLoginPassword: password,
-                    storageMB: parseInt(storageMB)
+                    size: parseInt(size)
                 };
 
                 switch (serverType) {
                     case PostgresServerType.Single:
-                        const singleClient = await createPostgreSQLClient(context);
-                        context.server = await singleClient.servers.create(rgName, newServerName, this.asSingleParameters(options));
+                        const singleClient: SingleModels.PostgreSQLManagementClient = await createPostgreSQLClient(context);
+                        context.server = await singleClient.servers.beginCreateAndWait(rgName, newServerName, this.asSingleParameters(options));
                         break;
                     case PostgresServerType.Flexible:
-                        const flexiClient = await createPostgreSQLFlexibleClient(context);
-                        context.server = await flexiClient.servers.create(rgName, newServerName, this.asFlexibleParameters(options));
+                        const flexiClient: FlexibleModels.PostgreSQLManagementClient = await createPostgreSQLFlexibleClient(context);
+                        context.server = await flexiClient.servers.beginCreateAndWait(rgName, newServerName, this.asFlexibleParameters(options));
                         break;
                 }
                 context.server.serverType = serverType;
@@ -65,12 +66,12 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
             version: "12",
             administratorLogin: parameters.administratorLogin,
             administratorLoginPassword: parameters.administratorLoginPassword,
-            storageProfile: {
-                storageMB: parameters.storageMB
+            storage: {
+                storageSizeGB: parameters.size
             },
             sku: {
                 name: parameters.sku.name,
-                tier: parameters.sku.tier as FlexibleModels.SkuTier
+                tier: parameters.sku.tier
             },
         }
     }
@@ -92,7 +93,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                 createMode: "Default",
                 version: "11",
                 storageProfile: {
-                    storageMB: parameters.storageMB
+                    storageMB: parameters.size
                 }
             }
         }

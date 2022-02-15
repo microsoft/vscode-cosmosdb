@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { IActionContext, IParsedError, parseError } from "@microsoft/vscode-azext-utils";
 import { ClientConfig } from "pg";
-import { IActionContext, IParsedError, parseError } from "vscode-azureextensionui";
 import { getClientConfig } from "../getClientConfig";
 import { firewallNotConfiguredErrorType, invalidCredentialsErrorType, PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";

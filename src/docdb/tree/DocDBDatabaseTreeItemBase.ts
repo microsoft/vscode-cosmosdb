@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ContainerDefinition, ContainerResponse, CosmosClient, DatabaseDefinition, FeedOptions, QueryIterator, RequestOptions, Resource } from '@azure/cosmos';
+import { AzExtTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { AzExtTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath } from 'vscode-azureextensionui';
 import { nonNullProp } from '../../utils/nonNull';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';

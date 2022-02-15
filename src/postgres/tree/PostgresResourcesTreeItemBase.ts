@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { AzExtParentTreeItem } from "@microsoft/vscode-azext-utils";
 import { ClientConfig } from "pg";
-import { AzExtParentTreeItem } from "vscode-azureextensionui";
 import { PostgresDatabaseTreeItem } from "./PostgresDatabaseTreeItem";
 
 // Base class for Postgres tree items whose children are individual resources

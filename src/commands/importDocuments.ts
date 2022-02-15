@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ItemDefinition } from '@azure/cosmos';
+import { IActionContext, parseError } from '@microsoft/vscode-azext-utils';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
-import { IActionContext, parseError } from 'vscode-azureextensionui';
 import { DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
 import { MongoCollectionTreeItem } from '../mongo/tree/MongoCollectionTreeItem';

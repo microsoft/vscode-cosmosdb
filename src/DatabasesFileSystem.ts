@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { AzExtItemQuery, AzExtItemUriParts, AzExtTreeFileSystem, AzExtTreeItem, DialogResponses, IActionContext, UserCancelledError } from '@microsoft/vscode-azext-utils';
 import { Collection, Db } from "mongodb";
 import { basename, dirname } from 'path';
 import { FileStat, FileType, MessageItem, Uri, workspace } from "vscode";
-import { AzExtItemQuery, AzExtItemUriParts, AzExtTreeFileSystem, AzExtTreeItem, DialogResponses, IActionContext, UserCancelledError } from 'vscode-azureextensionui';
 import { FileChangeType } from "vscode-languageclient";
 import { ext } from "./extensionVariables";
 import { MongoCollectionTreeItem } from "./mongo/tree/MongoCollectionTreeItem";

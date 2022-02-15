@@ -9,9 +9,9 @@ import { IGremlinEndpoint } from '../vscode-cosmosdbgraph.api';
 
 export async function tryGetGremlinEndpointFromAzure(client: CosmosDBManagementClient, resourceGroup: string, account: string): Promise<IGremlinEndpoint | undefined> {
     // Only 'bodyOfText' property of 'response' contains the 'gremlinEndpoint' property in the @azure/arm-cosmosdb@9 sdk
-    const response: string = (await client.databaseAccounts.get(resourceGroup, account))._response.bodyAsText;
+    const response = await client.databaseAccounts.get(resourceGroup, account);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    const endpointUri = JSON.parse(response).properties.gremlinEndpoint;
+    const endpointUri = response.documentEndpoint;
     // If it doesn't have gremlinEndpoint in its properties, it must be a pre-GA endpoint
     return endpointUri ? parseEndpointUrl(endpointUri) : undefined;
 }

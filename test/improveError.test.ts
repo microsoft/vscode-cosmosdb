@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { parseError } from '@microsoft/vscode-azext-utils';
 import * as assert from 'assert';
-import { parseError } from 'vscode-azureextensionui';
 import { improveError } from '../extension.bundle';
 
 suite("improveError", () => {

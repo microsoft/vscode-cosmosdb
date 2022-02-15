@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { callWithTelemetryAndErrorHandling, IActionContext, registerCommand } from "@microsoft/vscode-azext-utils";
 import { defaults } from "pg";
 import { languages } from "vscode";
-import { callWithTelemetryAndErrorHandling, IActionContext, registerCommand } from "vscode-azureextensionui";
 import { connectedPostgresKey, doubleClickDebounceDelay, postgresDefaultDatabase, postgresLanguageId } from "../../constants";
 import { ext } from "../../extensionVariables";
 import { PostgresCodeLensProvider } from "../services/PostgresCodeLensProvider";

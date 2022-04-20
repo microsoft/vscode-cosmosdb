@@ -4,9 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
+import { ExecuteActivityContext } from '@microsoft/vscode-azext-utils';
 import { IAzureDBWizardContext } from '../IAzureDBWizardContext';
 
-export interface ICosmosDBWizardContext extends IAzureDBWizardContext {
+export interface ICosmosDBWizardContext extends IAzureDBWizardContext, ExecuteActivityContext {
 
     /**
      * The newly created Cosmos DB account

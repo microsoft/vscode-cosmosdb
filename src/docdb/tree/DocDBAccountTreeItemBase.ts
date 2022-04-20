@@ -13,7 +13,6 @@ import { nonNullProp } from '../../utils/nonNull';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { getCosmosClient } from '../getCosmosClient';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
-import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
  * This class provides common logic for DocumentDB, Graph, and Table accounts
@@ -23,23 +22,19 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     public readonly label: string;
     public readonly childTypeLabel: string = "Database";
 
-    private _root: IDocDBTreeRoot;
 
     constructor(parent: AzExtParentTreeItem, id: string, label: string, endpoint: string, masterKey: string, isEmulator: boolean | undefined, readonly databaseAccount?: DatabaseAccountGetResults) {
         super(parent);
         this.id = id;
         this.label = label;
-        this._root = {
+        this.root = {
             endpoint,
             masterKey,
             isEmulator,
             getCosmosClient: () => getCosmosClient(endpoint, masterKey, isEmulator)
         };
-        this.valuesToMask.push(id, endpoint, masterKey);
-    }
 
-    public get root(): IDocDBTreeRoot {
-        return this._root;
+        this.valuesToMask.push(id, endpoint, masterKey);
     }
 
     public get connectionString(): string {
@@ -66,14 +61,13 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
             stepName: 'createDatabase'
         });
 
-        context.showCreatingTreeItem(databaseName);
         const client = this.root.getCosmosClient();
         const database: DatabaseResponse = await client.databases.create({ id: databaseName });
         return this.initChild(nonNullProp(database, 'resource'));
     }
 
     public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
-        if (this._root.isEmulator) {
+        if (this.root.isEmulator) {
             const unableToReachEmulatorMessage: string = "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.";
             return await rejectOnTimeout(2000, () => super.loadMoreChildrenImpl(clearCache), unableToReachEmulatorMessage);
         } else {

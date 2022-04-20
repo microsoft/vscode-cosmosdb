@@ -9,7 +9,6 @@ import * as vscode from 'vscode';
 import { nonNullProp } from '../../utils/nonNull';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
-import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 const minThroughputFixed: number = 400;
 const minThroughputPartitioned: number = 400;
@@ -26,10 +25,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
     constructor(parent: DocDBAccountTreeItemBase, database: DatabaseDefinition & Resource) {
         super(parent);
         this._database = database;
-    }
-
-    public get root(): IDocDBTreeRoot {
-        return this.parent.root;
+        this.root = this.parent.root;
     }
 
     public get iconPath(): TreeItemIconPath {

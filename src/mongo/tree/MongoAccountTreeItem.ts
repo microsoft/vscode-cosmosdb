@@ -119,7 +119,7 @@ export class MongoAccountTreeItem extends AzExtParentTreeItem {
     }
 }
 
-function validateDatabaseName(database: string): string | undefined | null {
+export function validateDatabaseName(database: string): string | undefined | null {
     // https://docs.mongodb.com/manual/reference/limits/#naming-restrictions
     // "#?" are restricted characters for CosmosDB - MongoDB accounts
     const min = 1;

@@ -13,7 +13,6 @@ import { nonNullProp } from '../../utils/nonNull';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
-import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
  * This class represents the DocumentDB "Stored Procedures" node in the tree
@@ -28,10 +27,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
 
     constructor(parent: DocDBCollectionTreeItem | GraphCollectionTreeItem) {
         super(parent);
-    }
-
-    public get root(): IDocDBTreeRoot {
-        return this.parent.root;
+        this.root = this.parent.root;
     }
 
     public initChild(resource: StoredProcedureDefinition & Resource): DocDBStoredProcedureTreeItem {

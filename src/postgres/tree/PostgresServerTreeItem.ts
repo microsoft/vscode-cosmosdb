@@ -44,18 +44,18 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
     public azureName: string | undefined;
     public partialConnectionString: ParsedPostgresConnectionString;
 
-    private _azureId: string | undefined;
-    private _serverVersion: string | undefined;
+    public azureId: string | undefined;
+    public serverVersion: string | undefined;
 
     constructor(parent: AzExtParentTreeItem, connectionString: ParsedPostgresConnectionString, server?: PostgresAbstractServer) {
         super(parent);
         this.partialConnectionString = connectionString;
         if (server) {
-            this._azureId = server?.id;
-            this._serverVersion = server?.version;
+            this.azureId = server?.id;
+            this.serverVersion = server?.version;
             this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
             this.azureName = server?.name;
-            this.serverType = nonNullProp(server, 'serverType');
+            this.serverType = azureUtils.getProviderFromId(this.fullId).toLowerCase().includes('flexible') ? PostgresServerType.Flexible : PostgresServerType.Single;
         }
         this.valuesToMask.push(connectionString.accountId, connectionString.connectionString, connectionString.fullId, connectionString.hostName, connectionString.port);
         if (connectionString.databaseName) {
@@ -72,8 +72,8 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
     }
 
     public get id(): string {
-        if (this._azureId) {
-            return this._azureId;
+        if (this.azureId) {
+            return this.azureId;
         }
         return this.partialConnectionString.fullId;
     }
@@ -97,7 +97,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
         context.telemetry.properties.serverType = this.serverType;
         let dbNames: (string | undefined)[];
         if (this.azureName) {
-            const client: AbstractPostgresClient = await createAbstractPostgresClient(this.serverType, [context, this]);
+            const client: AbstractPostgresClient = await createAbstractPostgresClient(this.serverType, [context, this.subscription]);
             const listOfDatabases: (SingleModels.Database | FlexibleModels.Database)[] = await uiUtils.listAllIterator(client.databases.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName')));
             dbNames = listOfDatabases.map(db => db.name);
         } else if (this.partialConnectionString.databaseName) {
@@ -151,7 +151,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
     }
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
-        const client = await createAbstractPostgresClient(this.serverType, [context, this]);
+        const client = await createAbstractPostgresClient(this.serverType, [context, this.subscription]);
         const deletingMessage: string = `Deleting server "${this.label}"...`;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
             await client.servers.beginDeleteAndWait(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
@@ -166,13 +166,13 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
 
     public async supportsStoredProcedures(clientConfig: ClientConfig): Promise<boolean> {
         // `semver.gte` complains when a version doesn't have decimals (i.e. "10"), so attempt to convert version to SemVer
-        if (!this._serverVersion) {
+        if (!this.serverVersion) {
             const result = await runPostgresQuery(clientConfig, `SHOW server_version;`);
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-            this._serverVersion = result.rows[0].server_version;
+            this.serverVersion = result.rows[0].server_version;
         }
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-        const version: SemVer | null = coerce(this._serverVersion);
+        const version: SemVer | null = coerce(this.serverVersion);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
         return gte(version, '11.0.0');
     }
@@ -194,7 +194,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
 
     public async getFullConnectionString(): Promise<ParsedPostgresConnectionString> {
 
-        if (this._azureId && !(this.partialConnectionString.username && this.partialConnectionString.password)) {
+        if (this.azureId && !(this.partialConnectionString.username && this.partialConnectionString.password)) {
             const storedValue: string | undefined = ext.context.globalState.get(PostgresServerTreeItem.serviceName);
             if (storedValue && ext.keytar) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

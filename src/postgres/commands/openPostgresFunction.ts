@@ -10,7 +10,7 @@ import { PostgresFunctionTreeItem } from "../tree/PostgresFunctionTreeItem";
 
 export async function openPostgresFunction(context: IActionContext, treeItem?: PostgresFunctionTreeItem): Promise<void> {
     if (!treeItem) {
-        treeItem = <PostgresFunctionTreeItem>await ext.tree.showTreeItemPicker(PostgresFunctionTreeItem.contextValue, context);
+        treeItem = <PostgresFunctionTreeItem>await ext.rgApi.tree.showTreeItemPicker(PostgresFunctionTreeItem.contextValue, context);
     }
 
     await showPostgresQuery(treeItem);

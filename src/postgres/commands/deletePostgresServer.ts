@@ -13,7 +13,7 @@ export async function deletePostgresServer(context: IActionContext, node?: Postg
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
-        node = <PostgresServerTreeItem>await ext.tree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
+        node = <PostgresServerTreeItem>await ext.rgApi.tree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
     }
     const message: string = localize('deleteServerConfirmPrompt', 'Are you sure you want to delete server "{0}" and its contents?', node.label);
     await context.ui.showWarningMessage(message, { modal: true, stepName: 'deletePostgresServer' }, DialogResponses.deleteResponse);

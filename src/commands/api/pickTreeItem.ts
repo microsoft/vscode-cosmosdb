@@ -79,7 +79,7 @@ export async function pickTreeItem(options: PickTreeItemOptions): Promise<Databa
                 throw new RangeError(`Unsupported resource type "${options.resourceType}".`);
         }
 
-        const pickedItem = await ext.tree.showTreeItemPicker(contextValuesToFind, context);
+        const pickedItem = await ext.rgApi.tree.showTreeItemPicker(contextValuesToFind, context);
 
         let parsedCS: ParsedConnectionString;
         let accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem;

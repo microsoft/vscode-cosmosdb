@@ -32,7 +32,7 @@ export async function importDocuments(context: IActionContext, uris: vscode.Uri[
         ext.outputChannel.show();
     }
     if (!collectionNode) {
-        collectionNode = <MongoCollectionTreeItem | DocDBCollectionTreeItem>await ext.tree.showTreeItemPicker([MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue], context);
+        collectionNode = <MongoCollectionTreeItem | DocDBCollectionTreeItem>await ext.rgApi.tree.showTreeItemPicker([MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue], context);
     }
     let result: string;
     result = await vscode.window.withProgress(

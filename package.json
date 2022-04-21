@@ -27,7 +27,7 @@
     "preview": true,
     "homepage": "https://github.com/microsoft/vscode-cosmosdb/blob/main/README.md",
     "bugs": {
-        "url": "https://github.com/microsoft/vscode-cosmosdb$/issues"
+        "url": "https://github.com/microsoft/vscode-cosmosdb/issues"
     },
     "license": "SEE LICENSE IN LICENSE.md",
     "repository": {

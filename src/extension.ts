@@ -13,6 +13,7 @@ import * as vscode from 'vscode';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
+import { deleteDatabaseAccount } from './commands/deleteDatabaseAccount/deleteDatabaseAccount';
 import { importDocuments } from './commands/importDocuments';
 import { doubleClickDebounceDelay } from './constants';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
@@ -178,7 +179,7 @@ export async function deleteAccount(context: IActionContext, node?: AzExtTreeIte
         node = await ext.rgApi.tree.showTreeItemPicker<AzExtTreeItem>(cosmosDBTopLevelContextValues, context);
     }
 
-    await node.deleteTreeItem(context);
+    await deleteDatabaseAccount(context, node, false)
 }
 
 export async function cosmosDBCopyConnectionString(context: IActionContext, node?: MongoAccountTreeItem | DocDBAccountTreeItemBase): Promise<void> {

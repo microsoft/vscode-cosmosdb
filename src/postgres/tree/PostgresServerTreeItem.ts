@@ -156,6 +156,10 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
             await client.servers.beginDeleteAndWait(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'));
             await this.deletePostgresCredentials();
+
+            const deleteMessage: string = localize("deleteServerMsg", 'Successfully deleted server "{0}".', this.label);
+            void vscode.window.showInformationMessage(deleteMessage);
+            ext.outputChannel.appendLog(deleteMessage);
         });
     }
 

@@ -5,9 +5,10 @@
 
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { CosmosClient, DatabaseDefinition, DatabaseResponse, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
-import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
+import { AzExtParentTreeItem, AzExtTreeItem, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
+import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
+import { IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
 import { getThemeAgnosticIconPath, SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
 import { rejectOnTimeout } from '../../utils/timeout';
@@ -75,7 +76,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         }
     }
 
-    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
+    public async deleteTreeItemImpl(context: IDeleteWizardContext): Promise<void> {
         await deleteCosmosDBAccount(context, this);
     }
 }

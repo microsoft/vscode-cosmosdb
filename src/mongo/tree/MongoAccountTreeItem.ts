@@ -4,10 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
-import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplContext, parseError } from '@microsoft/vscode-azext-utils';
+import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, ICreateChildImplContext, parseError } from '@microsoft/vscode-azext-utils';
 import { MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
-import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
+import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
+import { IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
 import { getThemeAgnosticIconPath, Links, testDb } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
 import { connectToMongoClient } from '../connectToMongoClient';
@@ -114,7 +115,7 @@ export class MongoAccountTreeItem extends AzExtParentTreeItem {
         }
     }
 
-    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
+    public async deleteTreeItemImpl(context: IDeleteWizardContext): Promise<void> {
         await deleteCosmosDBAccount(context, this);
     }
 }

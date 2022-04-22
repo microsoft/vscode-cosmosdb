@@ -89,17 +89,11 @@
         "onCommand:postgreSQL.openFunction",
         "onCommand:postgreSQL.openStoredProcedure",
         "onFileSystem:azureDatabases",
-        "onLanguage:mongo",
-        "onView:azureResourceGroups"
+        "onLanguage:mongo"
     ],
     "contributes": {
         "x-azResources": {
             "activation": {
-                "onFetch": [
-                    "microsoft.documentdb/databaseaccounts",
-                    "microsoft.dbforpostgresql/servers",
-                    "microsoft.dbforpostgresql/flexibleservers"
-                ],
                 "onResolve": [
                     "microsoft.documentdb/databaseaccounts",
                     "microsoft.dbforpostgresql/servers",
@@ -468,17 +462,17 @@
                 },
                 {
                     "command": "azureDatabases.update",
-                    "when": "resourceFilename=~/(.*cosmos-document[.]json)$/i",
+                    "when": "resourceFilename=~/(.*cosmos-document[.]json)(?![a-z])/i",
                     "group": "navigation"
                 },
                 {
                     "command": "azureDatabases.update",
-                    "when": "resourceFilename=~/(.*cosmos-collection[.]json)$/i",
+                    "when": "resourceFilename=~/(.*cosmos-collection[.]json)(?![a-z])/i",
                     "group": "navigation"
                 },
                 {
                     "command": "azureDatabases.update",
-                    "when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)$/i",
+                    "when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)(?![a-z])/i",
                     "group": "navigation"
                 }
             ],
@@ -500,27 +494,27 @@
                 },
                 {
                     "command": "cosmosDB.deleteAccount",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBMongoServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBMongoServer(?![a-z])/i",
                     "group": "1@2"
                 },
                 {
                     "command": "cosmosDB.deleteAccount",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBDocumentServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
                     "group": "1@2"
                 },
                 {
                     "command": "cosmosDB.deleteAccount",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBGraphAccount$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBGraphAccount(?![a-z])/i",
                     "group": "1@2"
                 },
                 {
                     "command": "cosmosDB.deleteAccount",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBTableAccount$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBTableAccount(?![a-z])/i",
                     "group": "1@2"
                 },
                 {
                     "command": "postgreSQL.deleteServer",
-                    "when": "view == azureResourceGroups && viewItem =~ /postgresServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /postgresServer(?![a-z])/i",
                     "group": "1@2"
                 },
                 {
@@ -530,7 +524,7 @@
                 },
                 {
                     "command": "cosmosDB.createMongoDatabase",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBMongoServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBMongoServer(?![a-z])/i",
                     "group": "1@1"
                 },
                 {
@@ -560,7 +554,7 @@
                 },
                 {
                     "command": "cosmosDB.createDocDBDatabase",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBDocumentServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
                     "group": "1@1"
                 },
                 {
@@ -570,7 +564,7 @@
                 },
                 {
                     "command": "cosmosDB.createGraphDatabase",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBGraphAccount$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBGraphAccount(?![a-z])/i",
                     "group": "1@1"
                 },
                 {
@@ -585,7 +579,7 @@
                 },
                 {
                     "command": "postgreSQL.createDatabase",
-                    "when": "view == azureResourceGroups && viewItem =~ /postgresServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /postgresServer(?![a-z])/i",
                     "group": "1@1"
                 },
                 {
@@ -690,7 +684,7 @@
                 },
                 {
                     "command": "cosmosDB.attachDatabaseAccount",
-                    "when": "view == azureResourceGroups && viewItem =~ /^cosmosDBAttachedAccounts$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /^cosmosDBAttachedAccounts(?![a-z])/i",
                     "group": "1@1"
                 },
                 {
@@ -700,27 +694,27 @@
                 },
                 {
                     "command": "azureDatabases.openInPortal",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBMongoServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBMongoServer(?![a-z])/i",
                     "group": "3@1"
                 },
                 {
                     "command": "azureDatabases.openInPortal",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBTableAccount$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBTableAccount(?![a-z])/i",
                     "group": "3@1"
                 },
                 {
                     "command": "azureDatabases.openInPortal",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBDocumentServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
                     "group": "3@1"
                 },
                 {
                     "command": "azureDatabases.openInPortal",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBGraphAccount$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBGraphAccount(?![a-z])/i",
                     "group": "3@1"
                 },
                 {
                     "command": "azureDatabases.openInPortal",
-                    "when": "view == azureResourceGroups && viewItem =~ /postgresServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /postgresServer(?![a-z])/i",
                     "group": "2@1"
                 },
                 {
@@ -730,22 +724,22 @@
                 },
                 {
                     "command": "cosmosDB.copyConnectionString",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBMongoServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBMongoServer(?![a-z])/i",
                     "group": "2@1"
                 },
                 {
                     "command": "cosmosDB.copyConnectionString",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBGraphAccount$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBGraphAccount(?![a-z])/i",
                     "group": "2@1"
                 },
                 {
                     "command": "cosmosDB.copyConnectionString",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBDocumentServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
                     "group": "2@1"
                 },
                 {
                     "command": "cosmosDB.copyConnectionString",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBTableAccount$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBTableAccount(?![a-z])/i",
                     "group": "2@1"
                 },
                 {
@@ -775,7 +769,7 @@
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBMongoServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBMongoServer(?![a-z])/i",
                     "group": "3@2"
                 },
                 {
@@ -800,12 +794,12 @@
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBDocumentServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
                     "group": "3@2"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem =~ /postgresServer$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /postgresServer(?![a-z])/i",
                     "group": "2@2"
                 },
                 {
@@ -835,7 +829,7 @@
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBGraphAccount$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBGraphAccount(?![a-z])/i",
                     "group": "3@2"
                 },
                 {
@@ -870,7 +864,7 @@
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem =~ /^cosmosDBAttachedAccounts$/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /^cosmosDBAttachedAccounts(?![a-z])/i",
                     "group": "2@1"
                 },
                 {

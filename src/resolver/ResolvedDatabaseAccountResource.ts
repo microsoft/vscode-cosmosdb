@@ -11,7 +11,7 @@ import { PostgresServerTreeItem } from "../postgres/tree/PostgresServerTreeItem"
 
 export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase {
     public id: string;
-    public contextValuesToAdd?: string[] | undefined = [];
+    public contextValuesToAdd: string[] = [];
     public description: string | undefined;
 
     // private _databaseTreeItem: AzExtParentTreeItem;
@@ -48,7 +48,7 @@ export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase 
         this.refreshImpl = ti.refreshImpl;
         this.isAncestorOfImpl = ti.isAncestorOfImpl;
 
-        this.contextValuesToAdd?.push(ti.contextValue)
+        this.contextValuesToAdd.push(ti.contextValue)
         this.maskedValuestoAdd.push(...ti.valuesToMask);
     }
 }

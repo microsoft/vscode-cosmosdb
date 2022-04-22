@@ -18,7 +18,7 @@ export function registerGraphCommands(): void {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
         if (!node) {
-            node = <GraphDatabaseTreeItem>await ext.rgApi.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
+            node = <GraphDatabaseTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
         }
         await node.deleteTreeItem(context);
     });
@@ -26,13 +26,13 @@ export function registerGraphCommands(): void {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
         if (!node) {
-            node = <GraphCollectionTreeItem>await ext.rgApi.tree.showTreeItemPicker(GraphCollectionTreeItem.contextValue, context);
+            node = <GraphCollectionTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(GraphCollectionTreeItem.contextValue, context);
         }
         await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.openGraphExplorer', async (context: IActionContext, node: GraphTreeItem) => {
         if (!node) {
-            node = <GraphTreeItem>await ext.rgApi.tree.showTreeItemPicker(GraphTreeItem.contextValue, context);
+            node = <GraphTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(GraphTreeItem.contextValue, context);
         }
         await node.showExplorer(context);
     }, doubleClickDebounceDelay);
@@ -40,14 +40,14 @@ export function registerGraphCommands(): void {
 
 export async function createGraphDatabase(context: IActionContext, node?: GraphAccountTreeItem): Promise<void> {
     if (!node) {
-        node = <GraphAccountTreeItem>await ext.rgApi.tree.showTreeItemPicker(GraphAccountTreeItem.contextValue, context);
+        node = <GraphAccountTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(GraphAccountTreeItem.contextValue, context);
     }
     await node.createChild(context);
 }
 
 export async function createGraph(context: IActionContext, node?: GraphDatabaseTreeItem): Promise<void> {
     if (!node) {
-        node = <GraphDatabaseTreeItem>await ext.rgApi.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
+        node = <GraphDatabaseTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
     }
     await node.createChild(context);
 }

@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel } from "@microsoft/vscode-azext-utils";
+import { AzureHostExtensionApi } from "@microsoft/vscode-azext-utils/hostapi";
 import { ExtensionContext, TreeView } from "vscode";
-import { AzureResourceGroupsExtensionApi } from "./api";
 import { DatabasesFileSystem } from "./DatabasesFileSystem";
 import { MongoDBLanguageClient } from "./mongo/languageClient";
 import { MongoCodeLensProvider } from "./mongo/services/MongoCodeLensProvider";
@@ -35,7 +35,7 @@ export namespace ext {
     export let fileSystem: DatabasesFileSystem;
     export let mongoCodeLensProvider: MongoCodeLensProvider;
     export let mongoLanguageClient: MongoDBLanguageClient;
-    export let rgApi: AzureResourceGroupsExtensionApi;
+    export let rgApi: AzureHostExtensionApi;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

@@ -7,7 +7,7 @@
 
 import { CosmosClient, DatabaseDefinition, FeedOptions, QueryIterator, Resource } from "@azure/cosmos";
 import { AzExtTreeItem } from "@microsoft/vscode-azext-utils";
-import { AppResource, ResolvedAppResourceBase } from "../api";
+import { AppResource, ResolvedAppResourceBase } from "@microsoft/vscode-azext-utils/hostapi";
 import { DocDBAccountTreeItemBase } from "../docdb/tree/DocDBAccountTreeItemBase";
 import { IDocDBTreeRoot } from "../docdb/tree/IDocDBTreeRoot";
 import { ResolvedDatabaseAccountResource } from "./ResolvedDatabaseAccountResource";

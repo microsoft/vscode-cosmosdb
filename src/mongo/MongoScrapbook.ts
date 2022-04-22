@@ -129,7 +129,7 @@ async function executeCommand(context: IActionContext, command: MongoCommand, re
                 const collectionName: string = nonNullProp(command, 'collection');
 
                 const collectionId: string = `${database.fullId}/${collectionName}`;
-                const colNode: MongoCollectionTreeItem | undefined = await ext.rgApi.tree.findTreeItem(collectionId, context);
+                const colNode: MongoCollectionTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(collectionId, context);
                 if (!colNode) {
                     throw new Error(localize('failedToFind', 'Failed to find collection "{0}".', collectionName));
                 }
@@ -156,7 +156,7 @@ async function refreshTreeAfterCommand(database: MongoDatabaseTreeItem, command:
     if (command.name === 'drop') {
         await database.refresh(context);
     } else if (command.collection && command.name && /^(insert|update|delete|replace|remove|write|bulkWrite)/i.test(command.name)) {
-        const collectionNode = await ext.rgApi.tree.findTreeItem(database.fullId + "/" + command.collection, context);
+        const collectionNode = await ext.rgApi.appResourceTree.findTreeItem(database.fullId + "/" + command.collection, context);
         if (collectionNode) {
             await collectionNode.refresh(context);
         }

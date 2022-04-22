@@ -40,7 +40,7 @@ export function registerMongoCommands(): void {
     registerCommand('cosmosDB.createMongoCollection', createMongoCollection);
     registerCommand('cosmosDB.createMongoDocument', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
         if (!node) {
-            node = <MongoCollectionTreeItem>await ext.rgApi.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
+            node = <MongoCollectionTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
         }
         const documentNode = await node.createChild(context);
         await vscode.commands.executeCommand("cosmosDB.openDocument", documentNode);
@@ -49,7 +49,7 @@ export function registerMongoCommands(): void {
         if (!node) {
             // Include defaultExperience in the context to prevent https://github.com/microsoft/vscode-cosmosdb/issues/1517
             const experienceContext: ITreeItemPickerContext & { defaultExperience?: Experience } = { ...context, defaultExperience: MongoExperience };
-            node = <MongoDatabaseTreeItem>await ext.rgApi.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, experienceContext);
+            node = <MongoDatabaseTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, experienceContext);
         }
 
         const oldNodeId: string | undefined = ext.connectedMongoDB && ext.connectedMongoDB.fullId;
@@ -59,8 +59,8 @@ export function registerMongoCommands(): void {
         await node.refresh(context);
 
         if (oldNodeId) {
-            // We have to use findTreeItem to get the instance of the old node that's being displayed in the ext.rgApi.tree. Our specific instance might have been out-of-date
-            const oldNode: AzExtTreeItem | undefined = await ext.rgApi.tree.findTreeItem(oldNodeId, context);
+            // We have to use findTreeItem to get the instance of the old node that's being displayed in the ext.rgApi.appResourceTree. Our specific instance might have been out-of-date
+            const oldNode: AzExtTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(oldNodeId, context);
             if (oldNode) {
                 await oldNode.refresh(context);
             }
@@ -72,13 +72,13 @@ export function registerMongoCommands(): void {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
         if (!node) {
-            node = <MongoDocumentTreeItem>await ext.rgApi.tree.showTreeItemPicker(MongoDocumentTreeItem.contextValue, context);
+            node = <MongoDocumentTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(MongoDocumentTreeItem.contextValue, context);
         }
         await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.openCollection', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
         if (!node) {
-            node = <MongoCollectionTreeItem>await ext.rgApi.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
+            node = <MongoCollectionTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
         }
         await ext.fileSystem.showTextDocument(node);
     });
@@ -103,7 +103,7 @@ async function loadPersistedMongoDB(): Promise<void> {
         try {
             const persistedNodeId: string | undefined = ext.context.globalState.get(connectedMongoKey);
             if (persistedNodeId) {
-                const persistedNode = await ext.rgApi.tree.findTreeItem(persistedNodeId, context);
+                const persistedNode = await ext.rgApi.appResourceTree.findTreeItem(persistedNodeId, context);
                 if (persistedNode) {
                     await ext.mongoLanguageClient.client.onReady();
                     await vscode.commands.executeCommand('cosmosDB.connectMongoDB', persistedNode);
@@ -173,7 +173,7 @@ function updateErrorsInScrapbook(context: IActionContext, document: vscode.TextD
 
 export async function createMongoDatabase(context: IActionContext, node?: MongoAccountTreeItem): Promise<void> {
     if (!node) {
-        node = <MongoAccountTreeItem>await ext.rgApi.tree.showTreeItemPicker([MongoAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue + AttachedAccountSuffix], context);
+        node = <MongoAccountTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker([MongoAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue + AttachedAccountSuffix], context);
     }
     const databaseNode = <MongoDatabaseTreeItem>await node.createChild(context);
     await databaseNode.createChild(context);
@@ -183,7 +183,7 @@ export async function createMongoDatabase(context: IActionContext, node?: MongoA
 
 export async function createMongoCollection(context: IActionContext, node?: MongoDatabaseTreeItem): Promise<void> {
     if (!node) {
-        node = <MongoDatabaseTreeItem>await ext.rgApi.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
+        node = <MongoDatabaseTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
     }
     const collectionNode = await node.createChild(context);
     await vscode.commands.executeCommand('cosmosDB.connectMongoDB', collectionNode.parent);
@@ -193,7 +193,7 @@ export async function deleteMongoDB(context: IActionContext, node?: MongoDatabas
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
-        node = <MongoDatabaseTreeItem>await ext.rgApi.tree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
+        node = <MongoDatabaseTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(MongoDatabaseTreeItem.contextValue, context);
     }
     await node.deleteTreeItem(context);
     if (ext.connectedMongoDB && ext.connectedMongoDB.fullId === node.fullId) {
@@ -208,7 +208,7 @@ export async function deleteMongoCollection(context: IActionContext, node?: Mong
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
-        node = <MongoCollectionTreeItem>await ext.rgApi.tree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
+        node = <MongoCollectionTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
     }
     await node.deleteTreeItem(context);
 }

@@ -6,6 +6,7 @@
 import { DatabaseAccountCreateUpdateParameters } from '@azure/arm-cosmosdb/src/models';
 import { LocationListStep } from '@microsoft/vscode-azext-azureutils';
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import { AppResource } from '@microsoft/vscode-azext-utils/hostapi';
 import { Progress } from 'vscode';
 import { SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { ext } from '../../extensionVariables';
@@ -51,6 +52,8 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
         }
 
         context.databaseAccount = await client.databaseAccounts.beginCreateOrUpdateAndWait(rgName, accountName, options);
+        context.activityResult = context.databaseAccount as AppResource;
+
         ext.outputChannel.appendLog(`Successfully created Cosmos DB account "${accountName}".`);
     }
 

@@ -90,7 +90,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
         let node: IEditableTreeItem | undefined = await super.findItem(context, query);
         if (!node) {
             const parentId: string = dirname(query.id);
-            const parentNode: IEditableTreeItem | undefined = await ext.tree.findTreeItem(parentId, context);
+            const parentNode: IEditableTreeItem | undefined = await ext.rgApi.tree.findTreeItem(parentId, context);
             if (parentNode instanceof MongoDatabaseTreeItem) {
                 const db: Db = await parentNode.connectToDb();
                 const collectionName: string = basename(query.id);

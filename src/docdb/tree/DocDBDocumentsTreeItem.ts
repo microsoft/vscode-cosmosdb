@@ -10,7 +10,6 @@ import { nonNullProp } from '../../utils/nonNull';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
-import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
  * This class provides logic for DocumentDB collections
@@ -24,10 +23,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
 
     constructor(parent: DocDBCollectionTreeItem) {
         super(parent);
-    }
-
-    public get root(): IDocDBTreeRoot {
-        return this.parent.root;
+        this.root = this.parent.root;
     }
 
     public get iconPath(): TreeItemIconPath {

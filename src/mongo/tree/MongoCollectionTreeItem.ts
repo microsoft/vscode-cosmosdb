@@ -73,7 +73,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
 
         // The current tree item may have been a temporary one used to execute a scrapbook command.
         // We want to refresh children for this one _and_ the actual one in the tree (if it's different)
-        const nodeInTree: MongoCollectionTreeItem | undefined = await ext.tree.findTreeItem(this.fullId, context);
+        const nodeInTree: MongoCollectionTreeItem | undefined = await ext.rgApi.tree.findTreeItem(this.fullId, context);
         const nodesToRefresh: MongoCollectionTreeItem[] = [this];
         if (nodeInTree && this !== nodeInTree) {
             nodesToRefresh.push(nodeInTree);

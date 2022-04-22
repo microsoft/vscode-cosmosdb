@@ -6,6 +6,7 @@ import * as SingleModels from "@azure/arm-postgresql";
 import * as FlexibleModels from "@azure/arm-postgresql-flexible";
 import { LocationListStep } from "@microsoft/vscode-azext-azureutils";
 import { AzureWizardExecuteStep, callWithMaskHandling } from '@microsoft/vscode-azext-utils';
+import { AppResource } from "@microsoft/vscode-azext-utils/hostapi";
 import { Progress } from 'vscode';
 import { ext } from '../../../../extensionVariables';
 import { createPostgreSQLClient, createPostgreSQLFlexibleClient } from "../../../../utils/azureClients";
@@ -51,6 +52,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                         break;
                 }
                 context.server.serverType = serverType;
+                context.activityResult = context.server as AppResource;
             },
             password);
     }

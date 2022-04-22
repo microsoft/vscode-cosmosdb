@@ -24,7 +24,7 @@ export abstract class DocDBTreeItemBase<T> extends AzExtParentTreeItem {
         return this._hasMoreChildren;
     }
 
-    public abstract get root(): IDocDBTreeRoot;
+    public root: IDocDBTreeRoot;
 
     public abstract initChild(resource: T): AzExtTreeItem;
 

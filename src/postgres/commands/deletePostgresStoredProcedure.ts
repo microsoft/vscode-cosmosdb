@@ -13,7 +13,7 @@ export async function deletePostgresStoredProcedure(context: IActionContext, tre
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!treeItem) {
-        treeItem = <PostgresStoredProcedureTreeItem>await ext.tree.showTreeItemPicker(PostgresStoredProcedureTreeItem.contextValue, { ...context, suppressCreatePick: true });
+        treeItem = <PostgresStoredProcedureTreeItem>await ext.rgApi.tree.showTreeItemPicker(PostgresStoredProcedureTreeItem.contextValue, { ...context, suppressCreatePick: true });
     }
 
     const message: string = localize('deleteStoredProcedure', 'Are you sure you want to delete stored procedure "{0}"?', treeItem.label);

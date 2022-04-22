@@ -14,7 +14,7 @@ import { setPostgresCredentials } from "./setPostgresCredentials";
 
 export async function enterPostgresCredentials(context: IActionContext, treeItem?: PostgresServerTreeItem): Promise<void> {
     if (!treeItem) {
-        treeItem = <PostgresServerTreeItem>await ext.tree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
+        treeItem = <PostgresServerTreeItem>await ext.rgApi.tree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
     }
 
     let username: string = await context.ui.showInputBox({

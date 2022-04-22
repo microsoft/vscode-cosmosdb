@@ -13,7 +13,7 @@ export async function deletePostgresTable(context: IActionContext, node?: Postgr
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
-        node = <PostgresTableTreeItem>await ext.tree.showTreeItemPicker(PostgresTableTreeItem.contextValue, context);
+        node = <PostgresTableTreeItem>await ext.rgApi.tree.showTreeItemPicker(PostgresTableTreeItem.contextValue, context);
     }
     const message: string = localize('deletesPostgresTable', 'Are you sure you want to delete table "{0}"?', node.label);
     await context.ui.showWarningMessage(message, { modal: true, stepName: 'deletePostgresTable' }, DialogResponses.deleteResponse);

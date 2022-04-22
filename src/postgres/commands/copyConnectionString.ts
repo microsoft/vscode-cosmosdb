@@ -13,7 +13,7 @@ import { checkAuthentication } from './checkAuthentication';
 
 export async function copyConnectionString(context: IActionContext, node: PostgresDatabaseTreeItem): Promise<void> {
     if (!node) {
-        node = <PostgresDatabaseTreeItem>await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
+        node = <PostgresDatabaseTreeItem>await ext.rgApi.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
     }
 
     await checkAuthentication(context, node);

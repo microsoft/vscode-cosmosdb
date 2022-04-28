@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtTreeItem, callWithTelemetryAndErrorHandling, IActionContext, ISubscriptionContext, nonNullProp } from "@microsoft/vscode-azext-utils";
-import { AppResource, AppResourceResolver } from "../api";
+import { AppResource, AppResourceResolver } from "@microsoft/vscode-azext-utils/hostapi";
 import { tryGetExperience } from "../AzureDBExperiences";
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { ext } from "../extensionVariables";

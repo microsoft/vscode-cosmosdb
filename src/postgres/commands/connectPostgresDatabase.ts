@@ -15,7 +15,7 @@ export async function connectPostgresDatabase(context: IActionContext, treeItem?
             void window.showTextDocument(treeItem);
         }
 
-        treeItem = <PostgresDatabaseTreeItem>await ext.rgApi.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
+        treeItem = <PostgresDatabaseTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
     }
 
     const oldTreeItemId: string | undefined = ext.connectedPostgresDB && ext.connectedPostgresDB.fullId;
@@ -28,8 +28,8 @@ export async function connectPostgresDatabase(context: IActionContext, treeItem?
     await treeItem.refresh(context);
 
     if (oldTreeItemId) {
-        // We have to use findTreeItem to get the instance of the old tree item that's being displayed in the ext.rgApi.tree. Our specific instance might have been out-of-date
-        const oldTreeItem: AzExtTreeItem | undefined = await ext.rgApi.tree.findTreeItem(oldTreeItemId, context);
+        // We have to use findTreeItem to get the instance of the old tree item that's being displayed in the ext.rgApi.appResourceTree. Our specific instance might have been out-of-date
+        const oldTreeItem: AzExtTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(oldTreeItemId, context);
         if (oldTreeItem) {
             await oldTreeItem.refresh(context);
         }

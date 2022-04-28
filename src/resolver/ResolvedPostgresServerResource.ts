@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtTreeItem } from "@microsoft/vscode-azext-utils";
+import { AppResource, ResolvedAppResourceBase } from "@microsoft/vscode-azext-utils/hostapi";
 import { ClientConfig } from "pg";
-import { AppResource, ResolvedAppResourceBase } from "../api";
 import { PostgresServerType } from "../postgres/abstract/models";
 import { ParsedPostgresConnectionString } from "../postgres/postgresConnectionStrings";
 import { PostgresServerTreeItem } from "../postgres/tree/PostgresServerTreeItem";

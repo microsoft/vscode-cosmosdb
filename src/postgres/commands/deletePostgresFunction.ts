@@ -13,7 +13,7 @@ export async function deletePostgresFunction(context: IActionContext, treeItem?:
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!treeItem) {
-        treeItem = <PostgresFunctionTreeItem>await ext.rgApi.tree.showTreeItemPicker(PostgresFunctionTreeItem.contextValue, { ...context, suppressCreatePick: true });
+        treeItem = <PostgresFunctionTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(PostgresFunctionTreeItem.contextValue, { ...context, suppressCreatePick: true });
     }
 
     const message: string = localize('deleteFunction', 'Are you sure you want to delete function "{0}"?', treeItem.label);

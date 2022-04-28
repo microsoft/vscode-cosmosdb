@@ -23,7 +23,7 @@ export async function executePostgresQuery(context: IActionContext): Promise<voi
     if (ext.connectedPostgresDB) {
         treeItem = ext.connectedPostgresDB;
     } else {
-        treeItem = <PostgresDatabaseTreeItem>await ext.rgApi.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
+        treeItem = <PostgresDatabaseTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
     }
 
     const clientConfig: ClientConfig = await checkAuthentication(context, treeItem);

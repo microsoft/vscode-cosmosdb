@@ -16,7 +16,7 @@ import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
 
 export async function configurePostgresFirewall(context: IActionContext, treeItem?: PostgresServerTreeItem): Promise<void> {
     if (!treeItem) {
-        treeItem = <PostgresServerTreeItem>await ext.rgApi.tree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
+        treeItem = <PostgresServerTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
     }
 
     const ip: string = await getPublicIp();

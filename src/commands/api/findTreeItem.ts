@@ -56,7 +56,7 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
 
         // 3. Search subscriptions
         if (!result) {
-            const rootNodes = await ext.rgApi.tree.getChildren();
+            const rootNodes = await ext.rgApi.appResourceTree.getChildren();
             for (const rootNode of rootNodes) {
                 if (Date.now() > maxTime) {
                     break;

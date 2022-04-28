@@ -12,7 +12,7 @@ export async function deletePostgresServer(context: IActionContext, node?: Postg
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
-        node = <PostgresServerTreeItem>await ext.rgApi.tree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
+        node = <PostgresServerTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
     }
 
     await deleteDatabaseAccount(context, node, true)

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtTreeItem, IActionContext, ICreateChildImplContext, TreeItemIconPath } from "@microsoft/vscode-azext-utils";
-import { AppResource, ResolvedAppResourceBase } from "../api";
+import { AppResource, ResolvedAppResourceBase } from "@microsoft/vscode-azext-utils/hostapi";
 import { DocDBAccountTreeItemBase } from "../docdb/tree/DocDBAccountTreeItemBase";
 import { MongoAccountTreeItem } from "../mongo/tree/MongoAccountTreeItem";
 import { PostgresServerTreeItem } from "../postgres/tree/PostgresServerTreeItem";

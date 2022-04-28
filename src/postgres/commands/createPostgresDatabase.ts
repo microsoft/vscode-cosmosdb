@@ -13,7 +13,7 @@ import { connectPostgresDatabase } from './connectPostgresDatabase';
 
 export async function createPostgresDatabase(context: IActionContext, node?: PostgresServerTreeItem): Promise<void> {
     if (!node) {
-        node = <PostgresServerTreeItem>await ext.rgApi.tree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
+        node = <PostgresServerTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
     }
     const newDatabase: PostgresDatabaseTreeItem = await node.createChild(context);
     await connectPostgresDatabase(context, newDatabase);

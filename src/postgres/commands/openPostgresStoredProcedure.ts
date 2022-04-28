@@ -10,7 +10,7 @@ import { PostgresStoredProcedureTreeItem } from "../tree/PostgresStoredProcedure
 
 export async function openPostgresStoredProcedure(context: IActionContext, treeItem?: PostgresStoredProcedureTreeItem): Promise<void> {
     if (!treeItem) {
-        treeItem = <PostgresStoredProcedureTreeItem>await ext.rgApi.tree.showTreeItemPicker(PostgresStoredProcedureTreeItem.contextValue, context);
+        treeItem = <PostgresStoredProcedureTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(PostgresStoredProcedureTreeItem.contextValue, context);
     }
 
     await showPostgresQuery(treeItem);

@@ -378,6 +378,10 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         });
         await ext.context.globalState.update(this._serviceName, JSON.stringify(value));
     }
+
+    public get tooltip(): string {
+        return this.contextValue;
+    }
 }
 
 class AttachedAccountRoot implements ISubscriptionContext {

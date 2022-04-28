@@ -70,7 +70,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         ext.rgApi = await getResourceGroupsApi();
         ext.rgApi.registerApplicationResourceResolver('ms-azuretools.vscode-cosmosdb', new DatabaseResolver());
         ext.rgApi.registerWorkspaceResourceProvider('ms-azuretools.vscode-cosmosdb', new DatabaseWorkspaceProvider());
-        ext.fileSystem = new DatabasesFileSystem(ext.rgApi.appResourceTree);
+        ext.fileSystem = new DatabasesFileSystem(ext.rgApi.workspaceResourceTree);
 
         context.subscriptions.push(vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem));
 
@@ -112,7 +112,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
             }
         });
-        registerCommand('cosmosDB.importDocument', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => {
+        registerCommand('cosmosDB.importDocufment', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => {
             if (selectedNode instanceof vscode.Uri) {
                 await importDocuments(actionContext, uris || [selectedNode], undefined);
             } else {

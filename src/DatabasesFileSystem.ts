@@ -24,6 +24,8 @@ export interface IEditableTreeItem extends AzExtTreeItem {
 }
 
 export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> {
+    public static appScheme = 'azureDatabases';
+    public static workspaceScheme = 'azureDatabasesWorkspace';
     public scheme: string;
     private _showSaveConfirmation: boolean = true;
 

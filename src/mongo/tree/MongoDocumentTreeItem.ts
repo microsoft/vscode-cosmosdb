@@ -37,7 +37,7 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
         this.document = document;
         this._label = getDocumentTreeItemLabel(this.document);
         this.commandId = 'cosmosDB.openDocument';
-        ext.fileSystem.fireChangedEvent(this);
+        ext.getFileSystem(this).fireChangedEvent(this);
     }
 
     public get id(): string {
@@ -77,7 +77,7 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
 
     public async refreshImpl(): Promise<void> {
         this._label = getDocumentTreeItemLabel(this.document);
-        ext.fileSystem.fireChangedEvent(this);
+        ext.getFileSystem(this).fireChangedEvent(this);
     }
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {

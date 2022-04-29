@@ -70,9 +70,12 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         ext.rgApi = await getResourceGroupsApi();
         ext.rgApi.registerApplicationResourceResolver('ms-azuretools.vscode-cosmosdb', new DatabaseResolver());
         ext.rgApi.registerWorkspaceResourceProvider('ms-azuretools.vscode-cosmosdb', new DatabaseWorkspaceProvider());
-        ext.fileSystem = new DatabasesFileSystem(ext.rgApi.workspaceResourceTree);
+        ext.appResourceFileSystem = new DatabasesFileSystem(ext.rgApi.appResourceTree, 'azureDatabases');
+        ext.workspaceFileSystem = new DatabasesFileSystem(ext.rgApi.workspaceResourceTree, 'azureDatabasesWorkspace');
+        ext.getFileSystem = node => node.treeDataProvider === ext.rgApi.appResourceTree ? ext.appResourceFileSystem : ext.workspaceFileSystem;
 
-        context.subscriptions.push(vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem));
+        context.subscriptions.push(vscode.workspace.registerFileSystemProvider('azureDatabases', ext.appResourceFileSystem));
+        context.subscriptions.push(vscode.workspace.registerFileSystemProvider('azureDatabasesWorkspace', ext.workspaceFileSystem));
 
         registerCommand('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
 
@@ -112,7 +115,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
             }
         });
-        registerCommand('cosmosDB.importDocufment', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => {
+        registerCommand('cosmosDB.importDocument', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => {
             if (selectedNode instanceof vscode.Uri) {
                 await importDocuments(actionContext, uris || [selectedNode], undefined);
             } else {
@@ -133,10 +136,11 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             }
 
             // Clear un-uploaded local changes to the document before opening https://github.com/microsoft/vscode-cosmosdb/issues/1619
-            ext.fileSystem.fireChangedEvent(node);
-            await ext.fileSystem.showTextDocument(node);
+            ext.getFileSystem(node).fireChangedEvent(node);
+            await ext.getFileSystem(node).showTextDocument(node);
+
         }, doubleClickDebounceDelay);
-        registerCommand('azureDatabases.update', async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri));
+        registerCommand('azureDatabases.update', async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.appResourceFileSystem.updateWithoutPrompt(uri));
         registerCommand('azureDatabases.loadMore', async (actionContext: IActionContext, node: AzExtTreeItem) => await ext.rgApi.appResourceTree.loadMore(node, actionContext));
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',

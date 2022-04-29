@@ -32,7 +32,9 @@ export namespace ext {
     export let keytar: KeyTar | undefined;
     export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;
     export const prefix: string = 'azureDatabases';
-    export let fileSystem: DatabasesFileSystem;
+    export let getFileSystem: (node: AzExtTreeItem) => DatabasesFileSystem;
+    export let appResourceFileSystem: DatabasesFileSystem;
+    export let workspaceFileSystem: DatabasesFileSystem;
     export let mongoCodeLensProvider: MongoCodeLensProvider;
     export let mongoLanguageClient: MongoDBLanguageClient;
     export let rgApi: AzureHostExtensionApi;

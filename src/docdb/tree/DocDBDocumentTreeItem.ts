@@ -31,7 +31,7 @@ export class DocDBDocumentTreeItem extends AzExtTreeItem implements IEditableTre
         super(parent);
         this._document = document;
         this._label = getDocumentTreeItemLabel(this._document);
-        ext.fileSystem.fireChangedEvent(this);
+        ext.getFileSystem(this).fireChangedEvent(this);
         this.commandId = 'cosmosDB.openDocument';
     }
 
@@ -52,7 +52,7 @@ export class DocDBDocumentTreeItem extends AzExtTreeItem implements IEditableTre
 
     public async refreshImpl(): Promise<void> {
         this._label = getDocumentTreeItemLabel(this._document);
-        ext.fileSystem.fireChangedEvent(this);
+        ext.getFileSystem(this).fireChangedEvent(this);
     }
 
     public get link(): string {

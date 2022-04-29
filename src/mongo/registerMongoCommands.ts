@@ -80,7 +80,7 @@ export function registerMongoCommands(): void {
         if (!node) {
             node = <MongoCollectionTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(MongoCollectionTreeItem.contextValue, context);
         }
-        await ext.fileSystem.showTextDocument(node);
+        await ext.getFileSystem(node).showTextDocument(node);
     });
     registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
     registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', 'Scrapbook', '.mongo'));

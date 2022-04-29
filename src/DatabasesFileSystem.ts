@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtItemQuery, AzExtItemUriParts, AzExtTreeFileSystem, AzExtTreeItem, DialogResponses, IActionContext, UserCancelledError } from '@microsoft/vscode-azext-utils';
+import { AzExtItemQuery, AzExtItemUriParts, AzExtTreeDataProvider, AzExtTreeFileSystem, AzExtTreeItem, DialogResponses, IActionContext, UserCancelledError } from '@microsoft/vscode-azext-utils';
 import { Collection, Db } from "mongodb";
 import { basename, dirname } from 'path';
 import { FileStat, FileType, MessageItem, Uri, workspace } from "vscode";
@@ -24,9 +24,13 @@ export interface IEditableTreeItem extends AzExtTreeItem {
 }
 
 export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> {
-    public static scheme: string = 'azureDatabases';
-    public scheme: string = DatabasesFileSystem.scheme;
+    public scheme: string;
     private _showSaveConfirmation: boolean = true;
+
+    public constructor(tree: AzExtTreeDataProvider, scheme: string) {
+        super(tree);
+        this.scheme = scheme;
+    }
 
     public async statImpl(context: IActionContext, node: IEditableTreeItem): Promise<FileStat> {
         const size: number = Buffer.byteLength(await node.getFileContent(context));

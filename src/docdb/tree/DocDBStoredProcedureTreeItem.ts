@@ -24,7 +24,7 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
 
     constructor(parent: DocDBStoredProceduresTreeItem, public procedure: (StoredProcedureDefinition & Resource)) {
         super(parent);
-        ext.fileSystem.fireChangedEvent(this);
+        ext.getFileSystem(this).fireChangedEvent(this);
         this.commandId = 'cosmosDB.openStoredProcedure';
     }
 
@@ -54,7 +54,7 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
     }
 
     public async refreshImpl(): Promise<void> {
-        ext.fileSystem.fireChangedEvent(this);
+        ext.getFileSystem(this).fireChangedEvent(this);
     }
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {

@@ -51,7 +51,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
             this._query = findArgs[0];
             this._projection = findArgs.length > 1 ? findArgs[1] : undefined;
         }
-        ext.fileSystem.fireChangedEvent(this);
+        ext.getFileSystem(this).fireChangedEvent(this);
     }
 
     public async writeFileContent(context: IActionContext, content: string): Promise<void> {
@@ -83,7 +83,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
 
         if (nodeInTree && this !== nodeInTree) {
             // Don't need to fire a changed event on the item being saved at the moment. Just the node in the tree if it's different
-            ext.fileSystem.fireChangedEvent(nodeInTree);
+            ext.getFileSystem(nodeInTree).fireChangedEvent(nodeInTree);
         }
     }
 
@@ -111,7 +111,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
 
     public async refreshImpl(): Promise<void> {
         this._batchSize = getBatchSizeSetting();
-        ext.fileSystem.fireChangedEvent(this);
+        ext.getFileSystem(this).fireChangedEvent(this);
     }
 
     public async refreshChildren(context: IActionContext, docs: IMongoDocument[]): Promise<void> {

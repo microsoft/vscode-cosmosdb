@@ -5,7 +5,7 @@
 
 'use strict';
 
-import { openInPortal, registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
+import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
 import { AzExtTreeItem, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, ITreeItemPickerContext, registerCommand, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
 import { AzureExtensionApi, AzureExtensionApiProvider } from '@microsoft/vscode-azext-utils/api';
 import { platform } from 'os';
@@ -91,8 +91,14 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             await ext.attachedAccountsNode.attachEmulator(actionContext);
             await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
         });
-        registerCommand('azureDatabases.refresh', async (actionContext: IActionContext, node?: AzExtTreeItem) => await ext.rgApi.appResourceTree.refresh(actionContext, node));
-        registerCommand('azureDatabases.refreshWorkspace', async (actionContext: IActionContext, node?: AzExtTreeItem) => await ext.rgApi.workspaceResourceTree.refresh(actionContext, node));
+        registerCommand('azureDatabases.refresh', async (actionContext: IActionContext, node?: AzExtTreeItem) => {
+            if (node) {
+                await node.refresh(actionContext);
+            } else {
+                await ext.rgApi.appResourceTree.refresh(actionContext, node);
+            }
+        });
+
         registerCommand('azureDatabases.detachDatabaseAccount', async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzExtTreeItem) => {
             const children = await ext.attachedAccountsNode.loadAllChildren(actionContext);
             if (children[0].contextValue === "cosmosDBAttachDatabaseAccount") {
@@ -118,13 +124,6 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             } else {
                 await importDocuments(actionContext, undefined, selectedNode);
             }
-        });
-        registerCommand('azureDatabases.openInPortal', async (actionContext: IActionContext, node?: AzExtTreeItem) => {
-            if (!node) {
-                node = await ext.rgApi.appResourceTree.showTreeItemPicker<AzExtTreeItem>(allAccountsTopLevelContextValues, actionContext);
-            }
-
-            await openInPortal(node, node.fullId)
         });
         registerCommand('cosmosDB.copyConnectionString', cosmosDBCopyConnectionString);
         registerCommand('cosmosDB.openDocument', async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {

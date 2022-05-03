@@ -1,6 +1,6 @@
 {
     "name": "vscode-cosmosdb",
-    "version": "0.18.2-alpha.4",
+    "version": "0.18.2-alpha.5",
     "aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
     "publisher": "ms-azuretools",
     "displayName": "Azure Databases",
@@ -39,9 +39,7 @@
         "onCommand:azureDatabases.createServer",
         "onCommand:azureDatabases.detachDatabaseAccount",
         "onCommand:azureDatabases.loadMore",
-        "onCommand:azureDatabases.openInPortal",
         "onCommand:azureDatabases.refresh",
-        "onCommand:azureDatabases.refreshWorkspace",
         "onCommand:azureDatabases.reportIssue",
         "onCommand:azureDatabases.update",
         "onCommand:cosmosDB.attachDatabaseAccount",
@@ -163,19 +161,9 @@
             },
             {
                 "category": "Azure Databases",
-                "command": "azureDatabases.openInPortal",
-                "title": "Open in Portal"
-            },
-            {
-                "category": "Azure Databases",
                 "command": "azureDatabases.refresh",
                 "title": "Refresh",
                 "icon": "$(refresh)"
-            },
-            {
-                "category": "Azure Databases",
-                "command": "azureDatabases.refreshWorkspace",
-                "title": "Refresh"
             },
             {
                 "category": "Azure Databases",
@@ -490,11 +478,6 @@
                     "group": "1@1"
                 },
                 {
-                    "command": "azureDatabases.openInPortal",
-                    "when": "view == azureResourceGroups && viewItem == azureextensionui.azureSubscription",
-                    "group": "2@1"
-                },
-                {
                     "command": "azureDatabases.refresh",
                     "when": "view == azureResourceGroups && viewItem == azureextensionui.azureSubscription",
                     "group": "2@2"
@@ -700,33 +683,8 @@
                     "group": "1@2"
                 },
                 {
-                    "command": "azureDatabases.openInPortal",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBMongoServer(?![a-z])/i",
-                    "group": "3@1"
-                },
-                {
-                    "command": "azureDatabases.openInPortal",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBTableAccount(?![a-z])/i",
-                    "group": "3@1"
-                },
-                {
-                    "command": "azureDatabases.openInPortal",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
-                    "group": "3@1"
-                },
-                {
-                    "command": "azureDatabases.openInPortal",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBGraphAccount(?![a-z])/i",
-                    "group": "3@1"
-                },
-                {
-                    "command": "azureDatabases.openInPortal",
-                    "when": "view == azureResourceGroups && viewItem =~ /postgresServer(?![a-z])/i",
-                    "group": "2@1"
-                },
-                {
                     "command": "cosmosDB.openCollection",
-                    "when": "view == azureResourceGroups && viewItem == MongoCollection",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == MongoCollection",
                     "group": "1@2"
                 },
                 {
@@ -771,106 +729,101 @@
                 },
                 {
                     "command": "postgreSQL.copyConnectionString",
-                    "when": "view == azureResourceGroups && viewItem == postgresDatabase",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == postgresDatabase",
                     "group": "2@1"
                 },
                 {
-                    "command": "azureDatabases.refreshWorkspace",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBMongoServer(?![a-z])/i",
+                    "command": "azureDatabases.refresh",
+                    "when": "view == azureWorkspace && viewItem == cosmosDBMongoServerAttached",
                     "group": "3@2"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem == cosmosDBDocumentCollection",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == cosmosDBDocumentCollection",
                     "group": "2@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem == cosmosDBDocumentDatabase",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == cosmosDBDocumentDatabase",
                     "group": "4@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem == cosmosDBDocumentsGroup",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == cosmosDBDocumentsGroup",
                     "group": "2@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem == cosmosDBStoredProceduresGroup",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == cosmosDBStoredProceduresGroup",
                     "group": "2@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
                     "group": "3@2"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem =~ /postgresServer(?![a-z])/i",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem =~ /postgresServer(?![a-z])/i",
                     "group": "2@2"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem == postgresDatabase",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == postgresDatabase",
                     "group": "3@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem == postgresTables",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == postgresTables",
                     "group": "1@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem == postgresFunctions",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == postgresFunctions",
                     "group": "2@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem == postgresStoredProcedures",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == postgresStoredProcedures",
                     "group": "2@1"
                 },
                 {
-                    "command": "azureDatabases.refreshWorkspace",
+                    "command": "azureDatabases.refresh",
                     "when": "view == azureWorkspace && viewItem == cosmosDBDocumentServerAttached",
                     "group": "3@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem =~ /cosmosDBGraphAccount(?![a-z])/i",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem =~ /cosmosDBGraphAccount(?![a-z])/i",
                     "group": "3@2"
                 },
                 {
-                    "command": "azureDatabases.refreshWorkspace",
+                    "command": "azureDatabases.refresh",
                     "when": "view == azureWorkspace && viewItem == cosmosDBGraphAccountAttached",
                     "group": "3@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem == cosmosDBGraphDatabase",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == cosmosDBGraphDatabase",
                     "group": "2@1"
                 },
                 {
-                    "command": "azureDatabases.refreshWorkspace",
-                    "when": "view == azureWorkspace && viewItem == cosmosDBMongoServerAttached",
-                    "group": "3@1"
-                },
-                {
-                    "command": "azureDatabases.refreshWorkspace",
+                    "command": "azureDatabases.refresh",
                     "when": "view == azureWorkspace && viewItem == postgresServerAttached",
                     "group": "2@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem == mongoDb",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == mongoDb",
                     "group": "3@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem == MongoCollection",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == MongoCollection",
                     "group": "4@1"
                 },
                 {
-                    "command": "azureDatabases.refreshWorkspace",
+                    "command": "azureDatabases.refresh",
                     "when": "view == azureWorkspace && viewItem =~ /^cosmosDBAttachedAccounts(?![a-z])/gi",
                     "group": "2@1"
                 },

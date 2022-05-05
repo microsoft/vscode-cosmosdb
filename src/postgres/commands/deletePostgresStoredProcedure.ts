@@ -5,6 +5,7 @@
 
 import { DialogResponses, IActionContext, ITreeItemPickerContext } from "@microsoft/vscode-azext-utils";
 import { window } from 'vscode';
+import { postgresFlexibleFilter, postgresSingleFilter } from "../../constants";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { PostgresStoredProcedureTreeItem } from '../tree/PostgresStoredProcedureTreeItem';
@@ -13,7 +14,10 @@ export async function deletePostgresStoredProcedure(context: IActionContext, tre
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!treeItem) {
-        treeItem = <PostgresStoredProcedureTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(PostgresStoredProcedureTreeItem.contextValue, { ...context, suppressCreatePick: true });
+        treeItem = await ext.rgApi.pickAppResource<PostgresStoredProcedureTreeItem>({ ...context, suppressCreatePick: true }, {
+            filter: [postgresSingleFilter, postgresFlexibleFilter],
+            expectedChildContextValue: PostgresStoredProcedureTreeItem.contextValue
+        });
     }
 
     const message: string = localize('deleteStoredProcedure', 'Are you sure you want to delete stored procedure "{0}"?', treeItem.label);

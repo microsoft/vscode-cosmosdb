@@ -5,6 +5,7 @@
 
 import { IActionContext, ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
 import { deleteDatabaseAccount } from '../../commands/deleteDatabaseAccount/deleteDatabaseAccount';
+import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
 
@@ -12,7 +13,9 @@ export async function deletePostgresServer(context: IActionContext, node?: Postg
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
-        node = <PostgresServerTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
+        node = await ext.rgApi.pickAppResource<PostgresServerTreeItem>(context, {
+            filter: [postgresSingleFilter, postgresFlexibleFilter]
+        });
     }
 
     await deleteDatabaseAccount(context, node, true)

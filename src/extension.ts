@@ -15,7 +15,7 @@ import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
 import { deleteDatabaseAccount } from './commands/deleteDatabaseAccount/deleteDatabaseAccount';
 import { importDocuments } from './commands/importDocuments';
-import { doubleClickDebounceDelay } from './constants';
+import { cosmosMongoFilter, cosmosTableFilter, doubleClickDebounceDelay, sqlFilter } from './constants';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
@@ -32,7 +32,6 @@ import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { registerPostgresCommands } from './postgres/commands/registerPostgresCommands';
-import { PostgresServerTreeItem } from './postgres/tree/PostgresServerTreeItem';
 import { DatabaseResolver } from './resolver/AppResolver';
 import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
@@ -43,7 +42,6 @@ import { tryGetKeyTar } from './utils/keytar';
 import { localize } from './utils/localize';
 
 const cosmosDBTopLevelContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
-const allAccountsTopLevelContextValues: string[] = [...cosmosDBTopLevelContextValues, PostgresServerTreeItem.contextValue];
 
 export async function activateInternal(context: vscode.ExtensionContext, perfStats: { loadStartTime: number, loadEndTime: number }, ignoreBundle?: boolean): Promise<AzureExtensionApiProvider> {
     ext.context = context;
@@ -128,7 +126,13 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         registerCommand('cosmosDB.copyConnectionString', cosmosDBCopyConnectionString);
         registerCommand('cosmosDB.openDocument', async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
             if (!node) {
-                node = await ext.rgApi.appResourceTree.showTreeItemPicker<MongoDocumentTreeItem | DocDBDocumentTreeItem>([MongoDocumentTreeItem.contextValue, DocDBDocumentTreeItem.contextValue], actionContext);
+                node = await ext.rgApi.pickAppResource<MongoDocumentTreeItem | DocDBDocumentTreeItem>(actionContext, {
+                    filter: [
+                        cosmosMongoFilter,
+                        sqlFilter
+                    ],
+                    expectedChildContextValue: [MongoDocumentTreeItem.contextValue, DocDBDocumentTreeItem.contextValue]
+                });
             }
 
             // Clear un-uploaded local changes to the document before opening https://github.com/microsoft/vscode-cosmosdb/issues/1619
@@ -178,7 +182,12 @@ export async function deleteAccount(context: IActionContext, node?: AzExtTreeIte
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
-        node = await ext.rgApi.appResourceTree.showTreeItemPicker<AzExtTreeItem>(cosmosDBTopLevelContextValues, context);
+        node = await ext.rgApi.pickAppResource<AzExtTreeItem>(context, {
+            filter: [
+                cosmosMongoFilter,
+                cosmosTableFilter
+            ]
+        });
     }
 
     await deleteDatabaseAccount(context, node, false)
@@ -187,7 +196,12 @@ export async function deleteAccount(context: IActionContext, node?: AzExtTreeIte
 export async function cosmosDBCopyConnectionString(context: IActionContext, node?: MongoAccountTreeItem | DocDBAccountTreeItemBase): Promise<void> {
     const message = 'The connection string has been copied to the clipboard';
     if (!node) {
-        node = await ext.rgApi.appResourceTree.showTreeItemPicker<MongoAccountTreeItem | DocDBAccountTreeItemBase>(cosmosDBTopLevelContextValues, context);
+        node = await ext.rgApi.pickAppResource<MongoAccountTreeItem | DocDBAccountTreeItemBase>(context, {
+            filter: [
+                cosmosMongoFilter,
+                cosmosTableFilter
+            ]
+        });
     }
 
     await vscode.env.clipboard.writeText(node.connectionString);

@@ -18,6 +18,8 @@ export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase 
     iconPath: TreeItemIconPath | undefined;
     label: string;
 
+    readonly childTypeLabel: string;
+
     loadMoreChildrenImpl?(clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]>;
     createChildImpl?(context: ICreateChildImplContext): Promise<AzExtTreeItem>;
     hasMoreChildrenImpl?(): boolean;
@@ -37,6 +39,7 @@ export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase 
         this.description = ti instanceof PostgresServerTreeItem ? undefined : ti.description;
         this.iconPath = ti.iconPath;
         this.label = ti.label;
+        this.childTypeLabel = ti.childTypeLabel;
 
         this.loadMoreChildrenImpl = ti.loadMoreChildrenImpl;
         this.createChildImpl = ti.createChildImpl;

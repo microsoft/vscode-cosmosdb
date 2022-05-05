@@ -3,11 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext, ITreeItemPickerContext, registerCommand } from "@microsoft/vscode-azext-utils";
+import { AzExtTreeItem, IActionContext, ITreeItemPickerContext, registerCommand } from "@microsoft/vscode-azext-utils";
 import { commands } from "vscode";
-import { doubleClickDebounceDelay } from "../constants";
+import { doubleClickDebounceDelay, sqlFilter } from "../constants";
 import { ext } from "../extensionVariables";
-import { AttachedAccountSuffix } from "../tree/AttachedAccountsTreeItem";
 import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
 import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
@@ -21,7 +20,7 @@ export function registerDocDBCommands(): void {
     registerCommand('cosmosDB.createDocDBCollection', createDocDBCollection);
     registerCommand('cosmosDB.createDocDBDocument', async (context: IActionContext, node?: DocDBDocumentsTreeItem) => {
         if (!node) {
-            node = <DocDBDocumentsTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(DocDBDocumentsTreeItem.contextValue, context);
+            node = await pickDocDBAccount<DocDBDocumentsTreeItem>(context, DocDBDocumentsTreeItem.contextValue);
         }
         const documentNode = <DocDBDocumentTreeItem>await node.createChild(context);
         await commands.executeCommand("cosmosDB.openDocument", documentNode);
@@ -29,7 +28,7 @@ export function registerDocDBCommands(): void {
     });
     registerCommand('cosmosDB.createDocDBStoredProcedure', async (context: IActionContext, node?: DocDBStoredProceduresTreeItem) => {
         if (!node) {
-            node = <DocDBStoredProceduresTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(DocDBStoredProceduresTreeItem.contextValue, context);
+            node = await pickDocDBAccount<DocDBStoredProceduresTreeItem>(context, DocDBStoredProceduresTreeItem.contextValue);
         }
         const childNode = await node.createChild(context);
         await commands.executeCommand("cosmosDB.openStoredProcedure", childNode);
@@ -39,7 +38,7 @@ export function registerDocDBCommands(): void {
     registerCommand('cosmosDB.deleteDocDBCollection', deleteDocDBCollection);
     registerCommand('cosmosDB.openStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
         if (!node) {
-            node = <DocDBStoredProcedureTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker([DocDBStoredProcedureTreeItem.contextValue], context);
+            node = await pickDocDBAccount<DocDBStoredProcedureTreeItem>(context, DocDBStoredProcedureTreeItem.contextValue);
         }
         await ext.fileSystem.showTextDocument(node);
     }, doubleClickDebounceDelay);
@@ -47,7 +46,7 @@ export function registerDocDBCommands(): void {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
         if (!node) {
-            node = <DocDBDocumentTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(DocDBDocumentTreeItem.contextValue, context);
+            node = await pickDocDBAccount<DocDBDocumentTreeItem>(context, DocDBDocumentTreeItem.contextValue);
         }
         await node.deleteTreeItem(context);
     });
@@ -55,7 +54,8 @@ export function registerDocDBCommands(): void {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
         if (!node) {
-            node = <DocDBStoredProcedureTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(DocDBStoredProcedureTreeItem.contextValue, context);
+            node = await pickDocDBAccount<DocDBStoredProcedureTreeItem>(context, DocDBStoredProcedureTreeItem.contextValue);
+
         }
         await node.deleteTreeItem(context);
     });
@@ -63,7 +63,7 @@ export function registerDocDBCommands(): void {
 
 export async function createDocDBDatabase(context: IActionContext, node?: DocDBAccountTreeItem): Promise<void> {
     if (!node) {
-        node = <DocDBAccountTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker([DocDBAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue + AttachedAccountSuffix], context);
+        node = await pickDocDBAccount<DocDBAccountTreeItem>(context);
     }
     const databaseNode: DocDBDatabaseTreeItem = <DocDBDatabaseTreeItem>await node.createChild(context);
     await databaseNode.createChild(context);
@@ -71,7 +71,7 @@ export async function createDocDBDatabase(context: IActionContext, node?: DocDBA
 
 export async function createDocDBCollection(context: IActionContext, node?: DocDBDatabaseTreeItem): Promise<void> {
     if (!node) {
-        node = <DocDBDatabaseTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(DocDBDatabaseTreeItem.contextValue, context);
+        node = await pickDocDBAccount<DocDBDatabaseTreeItem>(context, DocDBDatabaseTreeItem.contextValue);
     }
     await node.createChild(context);
 }
@@ -80,7 +80,7 @@ export async function deleteDocDBDatabase(context: IActionContext, node?: DocDBD
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
-        node = <DocDBDatabaseTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(DocDBDatabaseTreeItem.contextValue, context);
+        node = await pickDocDBAccount<DocDBDatabaseTreeItem>(context, DocDBDatabaseTreeItem.contextValue);
     }
     await node.deleteTreeItem(context);
 }
@@ -89,7 +89,16 @@ export async function deleteDocDBCollection(context: IActionContext, node?: DocD
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
-        node = <DocDBCollectionTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(DocDBCollectionTreeItem.contextValue, context);
+        node = await pickDocDBAccount<DocDBCollectionTreeItem>(context, DocDBCollectionTreeItem.contextValue);
     }
     await node.deleteTreeItem(context);
+}
+
+async function pickDocDBAccount<T extends AzExtTreeItem>(context: IActionContext, expectedContextValue?: string | RegExp | (string | RegExp)[]): Promise<T> {
+    return await ext.rgApi.pickAppResource<T>(context, {
+        filter: [
+            sqlFilter
+        ],
+        expectedChildContextValue: expectedContextValue
+    });
 }

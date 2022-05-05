@@ -6,6 +6,7 @@
 import { DialogResponses, IActionContext } from "@microsoft/vscode-azext-utils";
 import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
+import { postgresFlexibleFilter, postgresSingleFilter } from "../../constants";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { nonNullProp } from '../../utils/nonNull';
@@ -16,7 +17,9 @@ import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
 
 export async function configurePostgresFirewall(context: IActionContext, treeItem?: PostgresServerTreeItem): Promise<void> {
     if (!treeItem) {
-        treeItem = <PostgresServerTreeItem>await ext.rgApi.appResourceTree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
+        treeItem = await ext.rgApi.pickAppResource<PostgresServerTreeItem>(context, {
+            filter: [postgresSingleFilter, postgresFlexibleFilter]
+        });
     }
 
     const ip: string = await getPublicIp();

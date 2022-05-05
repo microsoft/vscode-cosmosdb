@@ -5,6 +5,7 @@
 
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
+import { gremlinDefaultExperienceTag, mongoDefaultExperienceTag, sqlDefaultExperienceTag, tableDefaultExperienceTag } from './constants';
 import { nonNullProp } from './utils/nonNull';
 
 export enum API {
@@ -106,10 +107,10 @@ export function getExperienceQuickPickForAttached(api: API): IAzureQuickPickItem
 
 // Mongo is distinguished by having kind="MongoDB". All others have kind="GlobalDocumentDB"
 // Table and Gremlin are distinguished from SQL by their capabilities
-const CoreExperience: Experience = { api: API.Core, longName: "Core", description: "(SQL)", shortName: "SQL", kind: DBAccountKind.GlobalDocumentDB, tag: "Core (SQL)" };
-export const MongoExperience: Experience = { api: API.MongoDB, longName: "Azure Cosmos DB for MongoDB API", shortName: "MongoDB", kind: DBAccountKind.MongoDB, tag: "Azure Cosmos DB for MongoDB API" };
-const TableExperience: Experience = { api: API.Table, longName: "Azure Table", shortName: "Table", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableTable', tag: "Azure Table" };
-const GremlinExperience: Experience = { api: API.Graph, longName: "Gremlin", description: "(graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableGremlin', tag: "Gremlin (graph)" };
+export const CoreExperience: Experience = { api: API.Core, longName: "Core", description: "(SQL)", shortName: "SQL", kind: DBAccountKind.GlobalDocumentDB, tag: sqlDefaultExperienceTag } as const;
+export const MongoExperience: Experience = { api: API.MongoDB, longName: "Azure Cosmos DB for MongoDB API", shortName: "MongoDB", kind: DBAccountKind.MongoDB, tag: mongoDefaultExperienceTag } as const;
+export const TableExperience: Experience = { api: API.Table, longName: "Azure Table", shortName: "Table", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableTable', tag: tableDefaultExperienceTag } as const;
+export const GremlinExperience: Experience = { api: API.Graph, longName: "Gremlin", description: "(graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableGremlin', tag: gremlinDefaultExperienceTag } as const;
 const PostgresSingleExperience: Experience = { api: API.PostgresSingle, longName: "PostgreSQL Single Server", shortName: "PostgreSQLSingle" };
 const PostgresFlexibleExperience: Experience = { api: API.PostgresFlexible, longName: "PostgreSQL Flexible Server (Preview)", shortName: "PostgreSQLFlexible" };
 

@@ -478,11 +478,6 @@
                     "group": "1@1"
                 },
                 {
-                    "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem == azureextensionui.azureSubscription",
-                    "group": "2@2"
-                },
-                {
                     "command": "cosmosDB.deleteAccount",
                     "when": "view == azureResourceGroups && viewItem =~ /cosmosDBMongoServer(?![a-z])/i",
                     "group": "1@2"

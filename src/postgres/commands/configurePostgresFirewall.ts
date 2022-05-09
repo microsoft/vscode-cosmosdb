@@ -38,7 +38,7 @@ export async function configurePostgresFirewall(context: IActionContext, treeIte
 export async function setFirewallRule(context: IActionContext, treeItem: PostgresServerTreeItem, ip: string): Promise<void> {
 
     const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
-    const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [context, treeItem]);
+    const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [context, treeItem.subscription]);
     const resourceGroup: string = nonNullProp(treeItem, 'resourceGroup');
     const serverName: string = nonNullProp(treeItem, 'azureName');
 

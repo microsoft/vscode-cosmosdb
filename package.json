@@ -474,7 +474,7 @@
             "view/item/context": [
                 {
                     "command": "azureDatabases.createServer",
-                    "when": "view == azureResourceGroups && viewItem =~ /(azureextensionui.azureSubscription|azureResourceTypeGroup/(microsoft.documentdb/databaseaccounts|microsoft.dbforpostgresql/(servers|flexibleservers)))/",
+                    "when": "view == azureResourceGroups && viewItem =~ /azureResourceTypeGroup.*(microsoft.documentdb/databaseaccounts|microsoft.dbforpostgresql/(servers|flexibleservers))/",
                     "group": "1@1"
                 },
                 {

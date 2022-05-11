@@ -1,6 +1,6 @@
 {
     "name": "vscode-cosmosdb",
-    "version": "0.18.2-alpha.6",
+    "version": "0.18.2-alpha.7",
     "aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
     "publisher": "ms-azuretools",
     "displayName": "Azure Databases",
@@ -474,13 +474,8 @@
             "view/item/context": [
                 {
                     "command": "azureDatabases.createServer",
-                    "when": "view == azureResourceGroups && viewItem =~ /(azureextensionui.azureSubscription|azureResourceTypeGroup/(microsoft.documentdb/databaseaccounts|microsoft.dbforpostgresql/(servers|flexibleservers)))/",
+                    "when": "view == azureResourceGroups && viewItem =~ /azureResourceTypeGroup.*(microsoft.documentdb/databaseaccounts|microsoft.dbforpostgresql/(servers|flexibleservers))/",
                     "group": "1@1"
-                },
-                {
-                    "command": "azureDatabases.refresh",
-                    "when": "view == azureResourceGroups && viewItem == azureextensionui.azureSubscription",
-                    "group": "2@2"
                 },
                 {
                     "command": "cosmosDB.deleteAccount",

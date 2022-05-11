@@ -103,8 +103,9 @@
             "commands": [
                 {
                     "command": "azureDatabases.createServer",
-                    "title": "Create Server...",
-                    "type": "microsoft.documentdb/databaseaccounts"
+                    "title": "Create Database Server...",
+                    "type": "microsoft.documentdb/databaseaccounts",
+                    "detail": "SQL or NoSQL databases for your web apps."
                 }
             ]
         },

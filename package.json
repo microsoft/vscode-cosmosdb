@@ -1,6 +1,6 @@
 {
     "name": "vscode-cosmosdb",
-    "version": "0.18.2-alpha.7",
+    "version": "0.18.2-alpha.8",
     "aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
     "publisher": "ms-azuretools",
     "displayName": "Azure Databases",
@@ -103,8 +103,9 @@
             "commands": [
                 {
                     "command": "azureDatabases.createServer",
-                    "title": "Create Server...",
-                    "type": "microsoft.documentdb/databaseaccounts"
+                    "title": "Create Database Server...",
+                    "type": "microsoft.documentdb/databaseaccounts",
+                    "detail": "SQL or NoSQL databases for your web apps."
                 }
             ]
         },

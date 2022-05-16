@@ -85,7 +85,7 @@ export const postgresDefaultPort = '5432';
 export const postgresDefaultDatabase = 'postgres';
 export const SERVERLESS_CAPABILITY_NAME = 'EnableServerless';
 
-const databaseAccountType = 'Microsoft.DocumentDB/databaseAccounts';
+export const databaseAccountType = 'Microsoft.DocumentDB/databaseAccounts';
 
 export const mongoDefaultExperienceTag = "Azure Cosmos DB for MongoDB API";
 

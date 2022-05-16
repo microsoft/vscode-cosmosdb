@@ -7,12 +7,10 @@ import { callWithTelemetryAndErrorHandling, IActionContext } from '@microsoft/vs
 import { PickAppResourceOptions } from '@microsoft/vscode-azext-utils/hostapi';
 import { databaseAccountType } from '../../constants';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
-import { DocDBAccountTreeItem } from '../../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBDatabaseTreeItem } from '../../docdb/tree/DocDBDatabaseTreeItem';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
-import { GraphAccountTreeItem } from '../../graph/tree/GraphAccountTreeItem';
 import { GraphDatabaseTreeItem } from '../../graph/tree/GraphDatabaseTreeItem';
 import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
@@ -20,7 +18,6 @@ import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
-import { TableAccountTreeItem } from '../../table/tree/TableAccountTreeItem';
 import { localize } from '../../utils/localize';
 import { AzureDatabasesApiType, DatabaseAccountTreeItem, DatabaseTreeItem, PickTreeItemOptions } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem } from './apiCache';
@@ -28,7 +25,6 @@ import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemIntern
 import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
 const databaseContextValues = [MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue, GraphDatabaseTreeItem.contextValue, PostgresDatabaseTreeItem.contextValue];
-const accountContextValues = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue, PostgresServerTreeItem.contextValue];
 function getDatabaseContextValue(apiType: AzureDatabasesApiType): string {
     switch (apiType) {
         case 'Mongo':
@@ -44,22 +40,6 @@ function getDatabaseContextValue(apiType: AzureDatabasesApiType): string {
     }
 }
 
-function getAccountContextValue(apiType: AzureDatabasesApiType): string {
-    switch (apiType) {
-        case 'Mongo':
-            return MongoAccountTreeItem.contextValue;
-        case 'SQL':
-            return DocDBAccountTreeItem.contextValue;
-        case 'Graph':
-            return GraphAccountTreeItem.contextValue;
-        case 'Table':
-            return TableAccountTreeItem.contextValue;
-        case 'Postgres':
-            return PostgresServerTreeItem.contextValue;
-        default:
-            throw new RangeError(`Unsupported api type "${apiType}".`);
-    }
-}
 
 export async function pickTreeItem(pickTreeOptions: PickTreeItemOptions): Promise<DatabaseTreeItem | DatabaseAccountTreeItem | undefined> {
     return await callWithTelemetryAndErrorHandling('api.pickTreeItem', async (context: IActionContext) => {

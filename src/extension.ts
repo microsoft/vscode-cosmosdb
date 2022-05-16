@@ -36,7 +36,6 @@ import { DatabaseResolver } from './resolver/AppResolver';
 import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
-import { AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
 import { tryGetKeyTar } from './utils/keytar';
 import { localize } from './utils/localize';
@@ -56,8 +55,6 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         activateContext.telemetry.properties.isActivationEvent = 'true';
         activateContext.telemetry.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
 
-        ext.azureAccountTreeItem = new AzureAccountTreeItemWithAttached();
-        context.subscriptions.push(ext.azureAccountTreeItem);
         ext.keytar = tryGetKeyTar();
 
         registerDocDBCommands();

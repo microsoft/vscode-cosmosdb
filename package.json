@@ -1,6 +1,6 @@
 {
     "name": "vscode-cosmosdb",
-    "version": "0.18.2-alpha.8",
+    "version": "0.18.2-alpha.9",
     "aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
     "publisher": "ms-azuretools",
     "displayName": "Azure Databases",
@@ -1033,7 +1033,7 @@
         "@azure/arm-postgresql": "^6.0.0",
         "@azure/arm-postgresql-flexible": "^5.0.0",
         "@azure/cosmos": "^3.6.3",
-        "@microsoft/vscode-azext-azureutils": "^0.2.0",
+        "@microsoft/vscode-azext-azureutils": "^0.3.1",
         "@microsoft/vscode-azext-utils": "^0.3.1",
         "antlr4ts": "^0.4.1-alpha.0",
         "bson": "^1.1.3",

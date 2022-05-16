@@ -5,6 +5,7 @@
 
 import { DialogResponses, IActionContext, ITreeItemPickerContext } from "@microsoft/vscode-azext-utils";
 import { window } from 'vscode';
+import { postgresFlexibleFilter, postgresSingleFilter } from "../../constants";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { PostgresFunctionTreeItem } from "../tree/PostgresFunctionTreeItem";
@@ -13,7 +14,10 @@ export async function deletePostgresFunction(context: IActionContext, treeItem?:
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!treeItem) {
-        treeItem = <PostgresFunctionTreeItem>await ext.tree.showTreeItemPicker(PostgresFunctionTreeItem.contextValue, { ...context, suppressCreatePick: true });
+        treeItem = await ext.rgApi.pickAppResource<PostgresFunctionTreeItem>({ ...context, suppressCreatePick: true }, {
+            filter: [postgresSingleFilter, postgresFlexibleFilter],
+            expectedChildContextValue: PostgresFunctionTreeItem.contextValue
+        });
     }
 
     const message: string = localize('deleteFunction', 'Are you sure you want to delete function "{0}"?', treeItem.label);

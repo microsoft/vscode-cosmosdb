@@ -5,7 +5,7 @@
 
 import { AzExtTreeItem, IActionContext } from "@microsoft/vscode-azext-utils";
 import { Uri, window } from 'vscode';
-import { connectedPostgresKey } from '../../constants';
+import { connectedPostgresKey, postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from "../../extensionVariables";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
 
@@ -14,8 +14,10 @@ export async function connectPostgresDatabase(context: IActionContext, treeItem?
         if (treeItem) {
             void window.showTextDocument(treeItem);
         }
-
-        treeItem = <PostgresDatabaseTreeItem>await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
+        treeItem = await ext.rgApi.pickAppResource<PostgresDatabaseTreeItem>(context, {
+            filter: [postgresSingleFilter, postgresFlexibleFilter],
+            expectedChildContextValue: PostgresDatabaseTreeItem.contextValue
+        });
     }
 
     const oldTreeItemId: string | undefined = ext.connectedPostgresDB && ext.connectedPostgresDB.fullId;
@@ -28,8 +30,8 @@ export async function connectPostgresDatabase(context: IActionContext, treeItem?
     await treeItem.refresh(context);
 
     if (oldTreeItemId) {
-        // We have to use findTreeItem to get the instance of the old tree item that's being displayed in the ext.tree. Our specific instance might have been out-of-date
-        const oldTreeItem: AzExtTreeItem | undefined = await ext.tree.findTreeItem(oldTreeItemId, context);
+        // We have to use findTreeItem to get the instance of the old tree item that's being displayed in the ext.rgApi.appResourceTree. Our specific instance might have been out-of-date
+        const oldTreeItem: AzExtTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(oldTreeItemId, context);
         if (oldTreeItem) {
             await oldTreeItem.refresh(context);
         }

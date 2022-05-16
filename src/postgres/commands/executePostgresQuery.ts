@@ -8,6 +8,7 @@ import { EOL } from 'os';
 import * as path from 'path';
 import { ClientConfig, QueryResult } from 'pg';
 import * as vscode from 'vscode';
+import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import * as vscodeUtil from '../../utils/vscodeUtils';
@@ -23,7 +24,10 @@ export async function executePostgresQuery(context: IActionContext): Promise<voi
     if (ext.connectedPostgresDB) {
         treeItem = ext.connectedPostgresDB;
     } else {
-        treeItem = <PostgresDatabaseTreeItem>await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
+        treeItem = await ext.rgApi.pickAppResource<PostgresDatabaseTreeItem>(context, {
+            filter: [postgresSingleFilter, postgresFlexibleFilter],
+            expectedChildContextValue: PostgresDatabaseTreeItem.contextValue
+        });
     }
 
     const clientConfig: ClientConfig = await checkAuthentication(context, treeItem);

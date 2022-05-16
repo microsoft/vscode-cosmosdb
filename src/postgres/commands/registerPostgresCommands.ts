@@ -61,7 +61,7 @@ export async function loadPersistedPostgresDatabase(): Promise<void> {
         try {
             const persistedTreeItemId: string | undefined = ext.context.globalState.get(connectedPostgresKey);
             if (persistedTreeItemId) {
-                const persistedTreeItem: PostgresDatabaseTreeItem | undefined = <PostgresDatabaseTreeItem>await ext.tree.findTreeItem(persistedTreeItemId, context);
+                const persistedTreeItem: PostgresDatabaseTreeItem | undefined = <PostgresDatabaseTreeItem>await ext.rgApi.appResourceTree.findTreeItem(persistedTreeItemId, context);
                 if (persistedTreeItem) {
                     await connectPostgresDatabase(context, persistedTreeItem);
                 }

@@ -22,4 +22,13 @@ export namespace azureUtils {
 
         return matches[4];
     }
+    export function getProviderFromId(id: string): string {
+        const matches: RegExpMatchArray | null = id.match(/\/subscriptions\/(.*)\/resourceGroups\/(.*)\/providers\/(.*)\/(.*)/);
+
+        if (!matches || matches.length < 3) {
+            throw new Error('Invalid Azure Resource Id');
+        }
+
+        return matches[3];
+    }
 }

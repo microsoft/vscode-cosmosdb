@@ -3,8 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, GenericTreeItem, IActionContext } from "@microsoft/vscode-azext-utils";
-import { deleteCosmosDBAccount } from '../../commands/deleteCosmosDBAccount';
+import { AzExtTreeItem, GenericTreeItem } from "@microsoft/vscode-azext-utils";
+import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
+import { IDeleteWizardContext } from "../../commands/deleteDatabaseAccount/IDeleteWizardContext";
 import { DocDBAccountTreeItemBase } from "../../docdb/tree/DocDBAccountTreeItemBase";
 
 export class TableAccountTreeItem extends DocDBAccountTreeItemBase {
@@ -28,7 +29,7 @@ export class TableAccountTreeItem extends DocDBAccountTreeItemBase {
         return [tableNotFoundTreeItem];
     }
 
-    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
+    public async deleteTreeItemImpl(context: IDeleteWizardContext): Promise<void> {
         await deleteCosmosDBAccount(context, this);
     }
 

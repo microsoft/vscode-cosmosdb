@@ -87,10 +87,15 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
     }
 
     protected async findItem(context: IActionContext, query: AzExtItemQuery): Promise<IEditableTreeItem | undefined> {
-        let node: IEditableTreeItem | undefined = await super.findItem(context, query);
+        let node: IEditableTreeItem | undefined = query.id.includes('cosmosDBAttachedAccounts') ?
+            await ext.rgApi.workspaceResourceTree.findTreeItem(query.id, context) :
+            await ext.rgApi.appResourceTree.findTreeItem(query.id, context);
+
         if (!node) {
             const parentId: string = dirname(query.id);
-            const parentNode: IEditableTreeItem | undefined = await ext.tree.findTreeItem(parentId, context);
+            const parentNode: IEditableTreeItem | undefined = parentId.includes('cosmosDBAttachedAccounts') ?
+                await ext.rgApi.workspaceResourceTree.findTreeItem(parentId, context) :
+                await ext.rgApi.appResourceTree.findTreeItem(parentId, context);
             if (parentNode instanceof MongoDatabaseTreeItem) {
                 const db: Db = await parentNode.connectToDb();
                 const collectionName: string = basename(query.id);

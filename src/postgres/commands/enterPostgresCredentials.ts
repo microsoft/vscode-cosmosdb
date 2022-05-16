@@ -5,6 +5,7 @@
 
 import { IActionContext } from "@microsoft/vscode-azext-utils";
 import * as vscode from 'vscode';
+import { postgresFlexibleFilter, postgresSingleFilter } from "../../constants";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { nonNullProp } from '../../utils/nonNull';
@@ -14,7 +15,9 @@ import { setPostgresCredentials } from "./setPostgresCredentials";
 
 export async function enterPostgresCredentials(context: IActionContext, treeItem?: PostgresServerTreeItem): Promise<void> {
     if (!treeItem) {
-        treeItem = <PostgresServerTreeItem>await ext.tree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
+        treeItem = await ext.rgApi.pickAppResource<PostgresServerTreeItem>(context, {
+            filter: [postgresSingleFilter, postgresFlexibleFilter]
+        });
     }
 
     let username: string = await context.ui.showInputBox({

@@ -8,6 +8,7 @@ export const isWindows: boolean = /^win/.test(process.platform);
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
+import { CoreExperience, GremlinExperience, MongoExperience, TableExperience } from './AzureDBExperiences';
 import { ext } from './extensionVariables';
 
 export namespace Links {
@@ -83,3 +84,53 @@ export const postgresBaseFileName: string = 'query';
 export const postgresDefaultPort = '5432';
 export const postgresDefaultDatabase = 'postgres';
 export const SERVERLESS_CAPABILITY_NAME = 'EnableServerless';
+
+export const databaseAccountType = 'Microsoft.DocumentDB/databaseAccounts';
+
+export const mongoDefaultExperienceTag = "Azure Cosmos DB for MongoDB API";
+
+export const cosmosMongoFilter = {
+    type: databaseAccountType,
+    kind: MongoExperience.kind,
+    tags: {
+        defaultExperience: mongoDefaultExperienceTag
+    }
+};
+
+export const gremlinDefaultExperienceTag = 'Gremlin (graph)';
+
+export const cosmosGremlinFilter = {
+    type: databaseAccountType,
+    kind: GremlinExperience.kind,
+    tags: {
+        defaultExperience: gremlinDefaultExperienceTag
+    }
+};
+
+export const tableDefaultExperienceTag = 'Azure Table';
+
+export const cosmosTableFilter = {
+    type: databaseAccountType,
+    kind: TableExperience.kind,
+    tags: {
+        defaultExperience: tableDefaultExperienceTag
+    }
+};
+
+export const sqlDefaultExperienceTag = 'Core (SQL)';
+
+export const sqlFilter = {
+    type: databaseAccountType,
+    kind: CoreExperience.kind,
+    tags: {
+        defaultExperience: sqlDefaultExperienceTag
+    }
+};
+
+export const postgresFlexibleFilter = {
+    type: 'Microsoft.DBforPostgreSQL/flexibleServers'
+};
+
+export const postgresSingleFilter = {
+    type: 'Microsoft.DBForPostgreSQL/servers'
+};

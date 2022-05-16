@@ -5,6 +5,7 @@
 
 import { IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
+import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
@@ -13,7 +14,9 @@ import { connectPostgresDatabase } from './connectPostgresDatabase';
 
 export async function createPostgresDatabase(context: IActionContext, node?: PostgresServerTreeItem): Promise<void> {
     if (!node) {
-        node = <PostgresServerTreeItem>await ext.tree.showTreeItemPicker(PostgresServerTreeItem.contextValue, context);
+        node = await ext.rgApi.pickAppResource<PostgresServerTreeItem>(context, {
+            filter: [postgresSingleFilter, postgresFlexibleFilter]
+        });
     }
     const newDatabase: PostgresDatabaseTreeItem = await node.createChild(context);
     await connectPostgresDatabase(context, newDatabase);

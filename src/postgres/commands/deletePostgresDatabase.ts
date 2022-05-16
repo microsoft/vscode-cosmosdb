@@ -5,6 +5,7 @@
 
 import { DialogResponses, IActionContext, ITreeItemPickerContext } from "@microsoft/vscode-azext-utils";
 import * as vscode from 'vscode';
+import { postgresFlexibleFilter, postgresSingleFilter } from "../../constants";
 import { ext } from "../../extensionVariables";
 import { localize } from "../../utils/localize";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
@@ -13,7 +14,10 @@ export async function deletePostgresDatabase(context: IActionContext, node?: Pos
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
-        node = <PostgresDatabaseTreeItem>await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
+        node = await ext.rgApi.pickAppResource<PostgresDatabaseTreeItem>(context, {
+            filter: [postgresSingleFilter, postgresFlexibleFilter],
+            expectedChildContextValue: PostgresDatabaseTreeItem.contextValue
+        });
     }
     const message: string = localize('deletesPostgresDatabase', 'Are you sure you want to delete database "{0}"?', node.databaseName);
     const result = await context.ui.showWarningMessage(message, { modal: true, stepName: 'deletePostgresDatabase' }, DialogResponses.deleteResponse);

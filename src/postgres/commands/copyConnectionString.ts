@@ -5,6 +5,7 @@
 
 import { IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
+import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { addDatabaseToConnectionString, copyPostgresConnectionString } from '../postgresConnectionStrings';
@@ -13,7 +14,10 @@ import { checkAuthentication } from './checkAuthentication';
 
 export async function copyConnectionString(context: IActionContext, node: PostgresDatabaseTreeItem): Promise<void> {
     if (!node) {
-        node = <PostgresDatabaseTreeItem>await ext.tree.showTreeItemPicker(PostgresDatabaseTreeItem.contextValue, context);
+        node = await ext.rgApi.pickAppResource<PostgresDatabaseTreeItem>(context, {
+            filter: [postgresSingleFilter, postgresFlexibleFilter],
+            expectedChildContextValue: PostgresDatabaseTreeItem.contextValue
+        });
     }
 
     await checkAuthentication(context, node);

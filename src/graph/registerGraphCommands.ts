@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext, ITreeItemPickerContext, registerCommand } from "@microsoft/vscode-azext-utils";
-import { doubleClickDebounceDelay } from '../constants';
+import { AzExtTreeItem, IActionContext, ITreeItemPickerContext, registerCommand } from "@microsoft/vscode-azext-utils";
+import { cosmosGremlinFilter, doubleClickDebounceDelay } from '../constants';
 import { ext } from '../extensionVariables';
 import { GraphAccountTreeItem } from "./tree/GraphAccountTreeItem";
 import { GraphCollectionTreeItem } from "./tree/GraphCollectionTreeItem";
@@ -18,7 +18,7 @@ export function registerGraphCommands(): void {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
         if (!node) {
-            node = <GraphDatabaseTreeItem>await ext.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
+            node = await pickGraph<GraphDatabaseTreeItem>(context, GraphDatabaseTreeItem.contextValue);
         }
         await node.deleteTreeItem(context);
     });
@@ -26,13 +26,13 @@ export function registerGraphCommands(): void {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
         if (!node) {
-            node = <GraphCollectionTreeItem>await ext.tree.showTreeItemPicker(GraphCollectionTreeItem.contextValue, context);
+            node = await pickGraph<GraphCollectionTreeItem>(context, GraphCollectionTreeItem.contextValue);
         }
         await node.deleteTreeItem(context);
     });
     registerCommand('cosmosDB.openGraphExplorer', async (context: IActionContext, node: GraphTreeItem) => {
         if (!node) {
-            node = <GraphTreeItem>await ext.tree.showTreeItemPicker(GraphTreeItem.contextValue, context);
+            node = await pickGraph<GraphTreeItem>(context, GraphTreeItem.contextValue);
         }
         await node.showExplorer(context);
     }, doubleClickDebounceDelay);
@@ -40,14 +40,23 @@ export function registerGraphCommands(): void {
 
 export async function createGraphDatabase(context: IActionContext, node?: GraphAccountTreeItem): Promise<void> {
     if (!node) {
-        node = <GraphAccountTreeItem>await ext.tree.showTreeItemPicker(GraphAccountTreeItem.contextValue, context);
+        node = await pickGraph<GraphAccountTreeItem>(context);
     }
     await node.createChild(context);
 }
 
 export async function createGraph(context: IActionContext, node?: GraphDatabaseTreeItem): Promise<void> {
     if (!node) {
-        node = <GraphDatabaseTreeItem>await ext.tree.showTreeItemPicker(GraphDatabaseTreeItem.contextValue, context);
+        node = await pickGraph<GraphDatabaseTreeItem>(context, GraphDatabaseTreeItem.contextValue);
     }
     await node.createChild(context);
+}
+
+async function pickGraph<T extends AzExtTreeItem>(context: IActionContext, expectedContextValue?: string | RegExp | (string | RegExp)[]): Promise<T> {
+    return await ext.rgApi.pickAppResource<T>(context, {
+        filter: [
+            cosmosGremlinFilter
+        ],
+        expectedChildContextValue: expectedContextValue
+    });
 }

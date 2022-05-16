@@ -4,6 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, IActionContext } from '@microsoft/vscode-azext-utils';
+import { PickAppResourceOptions } from '@microsoft/vscode-azext-utils/hostapi';
+import { databaseAccountType } from '../../constants';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItem } from '../../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
@@ -19,7 +21,6 @@ import { ParsedConnectionString } from '../../ParsedConnectionString';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from '../../table/tree/TableAccountTreeItem';
-import { AttachedAccountSuffix } from '../../tree/AttachedAccountsTreeItem';
 import { localize } from '../../utils/localize';
 import { AzureDatabasesApiType, DatabaseAccountTreeItem, DatabaseTreeItem, PickTreeItemOptions } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem } from './apiCache';
@@ -60,26 +61,27 @@ function getAccountContextValue(apiType: AzureDatabasesApiType): string {
     }
 }
 
-export async function pickTreeItem(options: PickTreeItemOptions): Promise<DatabaseTreeItem | DatabaseAccountTreeItem | undefined> {
+export async function pickTreeItem(pickTreeOptions: PickTreeItemOptions): Promise<DatabaseTreeItem | DatabaseAccountTreeItem | undefined> {
     return await callWithTelemetryAndErrorHandling('api.pickTreeItem', async (context: IActionContext) => {
         context.errorHandling.suppressDisplay = true;
         context.errorHandling.rethrow = true;
 
-        let contextValuesToFind;
-        switch (options.resourceType) {
+        const options: PickAppResourceOptions = {};
+        switch (pickTreeOptions.resourceType) {
             case 'Database':
-                contextValuesToFind = options.apiType ? options.apiType.map(getDatabaseContextValue) : databaseContextValues;
+                options.filter = { type: databaseAccountType };
+                options.expectedChildContextValue = pickTreeOptions.apiType ?
+                    pickTreeOptions.apiType.map(getDatabaseContextValue) :
+                    databaseContextValues;
                 break;
             case 'DatabaseAccount':
-                contextValuesToFind = options.apiType ? options.apiType.map(getAccountContextValue) : accountContextValues;
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-                contextValuesToFind = contextValuesToFind.concat(contextValuesToFind.map((val: string) => val + AttachedAccountSuffix));
+                options.filter = { type: databaseAccountType };
                 break;
             default:
-                throw new RangeError(`Unsupported resource type "${options.resourceType}".`);
+                throw new RangeError(`Unsupported resource type "${pickTreeOptions.resourceType}".`);
         }
 
-        const pickedItem = await ext.tree.showTreeItemPicker(contextValuesToFind, context);
+        const pickedItem = await ext.rgApi.pickAppResource(context, options);
 
         let parsedCS: ParsedConnectionString;
         let accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem;

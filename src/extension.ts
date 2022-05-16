@@ -5,16 +5,17 @@
 
 'use strict';
 
-import { openInPortal, registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
-import { AzExtTreeDataProvider, AzExtTreeItem, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, ITreeItemPickerContext, registerCommand, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
+import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
+import { AzExtTreeItem, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, ITreeItemPickerContext, registerCommand, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
 import { AzureExtensionApi, AzureExtensionApiProvider } from '@microsoft/vscode-azext-utils/api';
 import { platform } from 'os';
 import * as vscode from 'vscode';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
+import { deleteDatabaseAccount } from './commands/deleteDatabaseAccount/deleteDatabaseAccount';
 import { importDocuments } from './commands/importDocuments';
-import { doubleClickDebounceDelay } from './constants';
+import { cosmosMongoFilter, cosmosTableFilter, doubleClickDebounceDelay, sqlFilter } from './constants';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
@@ -22,6 +23,7 @@ import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase'
 import { DocDBCollectionTreeItem } from './docdb/tree/DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { ext } from './extensionVariables';
+import { getResourceGroupsApi } from './getExtensionApi';
 import { registerGraphCommands } from './graph/registerGraphCommands';
 import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
 import { registerMongoCommands } from './mongo/registerMongoCommands';
@@ -30,7 +32,8 @@ import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { registerPostgresCommands } from './postgres/commands/registerPostgresCommands';
-import { PostgresServerTreeItem } from './postgres/tree/PostgresServerTreeItem';
+import { DatabaseResolver } from './resolver/AppResolver';
+import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
@@ -39,7 +42,6 @@ import { tryGetKeyTar } from './utils/keytar';
 import { localize } from './utils/localize';
 
 const cosmosDBTopLevelContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
-const allAccountsTopLevelContextValues: string[] = [...cosmosDBTopLevelContextValues, PostgresServerTreeItem.contextValue];
 
 export async function activateInternal(context: vscode.ExtensionContext, perfStats: { loadStartTime: number, loadEndTime: number }, ignoreBundle?: boolean): Promise<AzureExtensionApiProvider> {
     ext.context = context;
@@ -56,9 +58,6 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
         ext.azureAccountTreeItem = new AzureAccountTreeItemWithAttached();
         context.subscriptions.push(ext.azureAccountTreeItem);
-        ext.tree = new AzExtTreeDataProvider(ext.azureAccountTreeItem, 'azureDatabases.loadMore');
-        ext.treeView = vscode.window.createTreeView('azureDatabasesExplorer', { treeDataProvider: ext.tree, showCollapseAll: true });
-        context.subscriptions.push(ext.treeView);
         ext.keytar = tryGetKeyTar();
 
         registerDocDBCommands();
@@ -66,7 +65,11 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         registerPostgresCommands();
         registerMongoCommands();
 
-        ext.fileSystem = new DatabasesFileSystem(ext.tree);
+        ext.rgApi = await getResourceGroupsApi();
+        ext.rgApi.registerApplicationResourceResolver('ms-azuretools.vscode-cosmosdb', new DatabaseResolver());
+        ext.rgApi.registerWorkspaceResourceProvider('ms-azuretools.vscode-cosmosdb', new DatabaseWorkspaceProvider());
+        ext.fileSystem = new DatabasesFileSystem(ext.rgApi.appResourceTree);
+
         context.subscriptions.push(vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem));
 
         registerCommand('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
@@ -75,7 +78,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         registerCommand('cosmosDB.deleteAccount', deleteAccount);
         registerCommand('cosmosDB.attachDatabaseAccount', async (actionContext: IActionContext) => {
             await ext.attachedAccountsNode.attachNewAccount(actionContext);
-            await ext.tree.refresh(actionContext, ext.attachedAccountsNode);
+            await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
         });
         registerCommand('cosmosDB.attachEmulator', async (actionContext: IActionContext) => {
             if (platform() !== 'win32') {
@@ -84,9 +87,16 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             }
 
             await ext.attachedAccountsNode.attachEmulator(actionContext);
-            await ext.tree.refresh(actionContext, ext.attachedAccountsNode);
+            await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
         });
-        registerCommand('azureDatabases.refresh', async (actionContext: IActionContext, node?: AzExtTreeItem) => await ext.tree.refresh(actionContext, node));
+        registerCommand('azureDatabases.refresh', async (actionContext: IActionContext, node?: AzExtTreeItem) => {
+            if (node) {
+                await node.refresh(actionContext);
+            } else {
+                await ext.rgApi.appResourceTree.refresh(actionContext, node);
+            }
+        });
+
         registerCommand('azureDatabases.detachDatabaseAccount', async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzExtTreeItem) => {
             const children = await ext.attachedAccountsNode.loadAllChildren(actionContext);
             if (children[0].contextValue === "cosmosDBAttachDatabaseAccount") {
@@ -94,7 +104,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 void vscode.window.showInformationMessage(message);
             } else {
                 if (!node) {
-                    node = await ext.tree.showTreeItemPicker<AzExtTreeItem>(cosmosDBTopLevelContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
+                    node = await ext.rgApi.workspaceResourceTree.showTreeItemPicker<AzExtTreeItem>(cosmosDBTopLevelContextValues.map((val: string) => val += AttachedAccountSuffix), actionContext);
                 }
                 if (node instanceof MongoAccountTreeItem) {
                     if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
@@ -103,7 +113,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                     }
                 }
                 await ext.attachedAccountsNode.detach(node);
-                await ext.tree.refresh(actionContext, ext.attachedAccountsNode);
+                await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
             }
         });
         registerCommand('cosmosDB.importDocument', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => {
@@ -113,17 +123,16 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 await importDocuments(actionContext, undefined, selectedNode);
             }
         });
-        registerCommand('azureDatabases.openInPortal', async (actionContext: IActionContext, node?: AzExtTreeItem) => {
-            if (!node) {
-                node = await ext.tree.showTreeItemPicker<AzExtTreeItem>(allAccountsTopLevelContextValues, actionContext);
-            }
-
-            await openInPortal(node, node.fullId)
-        });
         registerCommand('cosmosDB.copyConnectionString', cosmosDBCopyConnectionString);
         registerCommand('cosmosDB.openDocument', async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
             if (!node) {
-                node = await ext.tree.showTreeItemPicker<MongoDocumentTreeItem | DocDBDocumentTreeItem>([MongoDocumentTreeItem.contextValue, DocDBDocumentTreeItem.contextValue], actionContext);
+                node = await ext.rgApi.pickAppResource<MongoDocumentTreeItem | DocDBDocumentTreeItem>(actionContext, {
+                    filter: [
+                        cosmosMongoFilter,
+                        sqlFilter
+                    ],
+                    expectedChildContextValue: [MongoDocumentTreeItem.contextValue, DocDBDocumentTreeItem.contextValue]
+                });
             }
 
             // Clear un-uploaded local changes to the document before opening https://github.com/microsoft/vscode-cosmosdb/issues/1619
@@ -131,7 +140,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             await ext.fileSystem.showTextDocument(node);
         }, doubleClickDebounceDelay);
         registerCommand('azureDatabases.update', async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri));
-        registerCommand('azureDatabases.loadMore', async (actionContext: IActionContext, node: AzExtTreeItem) => await ext.tree.loadMore(node, actionContext));
+        registerCommand('azureDatabases.loadMore', async (actionContext: IActionContext, node: AzExtTreeItem) => await ext.rgApi.appResourceTree.loadMore(node, actionContext));
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',
             vscode.workspace.onDidChangeConfiguration,
@@ -163,26 +172,36 @@ export function deactivateInternal(): void {
 
 export async function createServer(context: IActionContext, node?: SubscriptionTreeItem): Promise<void> {
     if (!node) {
-        node = await ext.tree.showTreeItemPicker<SubscriptionTreeItem>(SubscriptionTreeItem.contextValue, context);
+        node = await ext.rgApi.appResourceTree.showTreeItemPicker<SubscriptionTreeItem>(SubscriptionTreeItem.contextValue, context);
     }
 
-    await node.createChild(context);
+    await SubscriptionTreeItem.createChild(context, node);
 }
 
 export async function deleteAccount(context: IActionContext, node?: AzExtTreeItem): Promise<void> {
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
-        node = await ext.tree.showTreeItemPicker<AzExtTreeItem>(cosmosDBTopLevelContextValues, context);
+        node = await ext.rgApi.pickAppResource<AzExtTreeItem>(context, {
+            filter: [
+                cosmosMongoFilter,
+                cosmosTableFilter
+            ]
+        });
     }
 
-    await node.deleteTreeItem(context);
+    await deleteDatabaseAccount(context, node, false)
 }
 
 export async function cosmosDBCopyConnectionString(context: IActionContext, node?: MongoAccountTreeItem | DocDBAccountTreeItemBase): Promise<void> {
     const message = 'The connection string has been copied to the clipboard';
     if (!node) {
-        node = await ext.tree.showTreeItemPicker<MongoAccountTreeItem | DocDBAccountTreeItemBase>(cosmosDBTopLevelContextValues, context);
+        node = await ext.rgApi.pickAppResource<MongoAccountTreeItem | DocDBAccountTreeItemBase>(context, {
+            filter: [
+                cosmosMongoFilter,
+                cosmosTableFilter
+            ]
+        });
     }
 
     await vscode.env.clipboard.writeText(node.connectionString);

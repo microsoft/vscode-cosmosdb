@@ -28,7 +28,7 @@ const resourceTypes = [
 export class DatabaseResolver implements AppResourceResolver {
     public async resolveResource(subContext: ISubscriptionContext, resource: AppResource): Promise<ResolvedDatabaseAccountResource | null | undefined> {
         return await callWithTelemetryAndErrorHandling('resolveResource', async (context: IActionContext) => {
-            const subNode = (await ext.azureAccountTreeItem.getCachedChildren(context)).find(sub => sub.subscription.subscriptionId === subContext.subscriptionId) as SubscriptionTreeItem;
+            const subNode = await ext.rgApi.appResourceTree.findTreeItem(`/subscriptions/${subContext.subscriptionId}`, context);
             try {
                 const resourceGroupName = azureUtils.getResourceGroupFromId(nonNullProp(resource, 'id'));
                 const name = nonNullProp(resource, 'name');

@@ -755,12 +755,12 @@
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
+                    "when": "view =~ /azureWorkspace/ && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
                     "group": "3@2"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem =~ /postgresServer(?![a-z])/i",
+                    "when": "view =~ /azureWorkspace/ && viewItem =~ /postgresServer(?![a-z])/i",
                     "group": "2@2"
                 },
                 {

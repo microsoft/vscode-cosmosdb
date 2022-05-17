@@ -6,7 +6,7 @@
 'use strict';
 
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
-import { AzExtTreeItem, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, ITreeItemPickerContext, registerCommand, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
+import { AzExtParentTreeItem, AzExtTreeItem, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, ITreeItemPickerContext, registerCommand, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
 import { AzureExtensionApi, AzureExtensionApiProvider } from '@microsoft/vscode-azext-utils/api';
 import { platform } from 'os';
 import * as vscode from 'vscode';
@@ -59,7 +59,11 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
         ext.rgApi = await getResourceGroupsApi();
         ext.rgApi.registerApplicationResourceResolver('ms-azuretools.vscode-cosmosdb', new DatabaseResolver());
-        ext.rgApi.registerWorkspaceResourceProvider('ms-azuretools.vscode-cosmosdb', new DatabaseWorkspaceProvider());
+
+        const workspaceRootTreeItem = (await ext.rgApi.workspaceResourceTree.getChildren())[0] as AzExtParentTreeItem;
+        const databaseWorkspaceProvider = new DatabaseWorkspaceProvider(workspaceRootTreeItem);
+        ext.rgApi.registerWorkspaceResourceProvider('ms-azuretools.vscode-cosmosdb', databaseWorkspaceProvider);
+
         ext.fileSystem = new DatabasesFileSystem(ext.rgApi.appResourceTree);
 
         registerDocDBCommands();

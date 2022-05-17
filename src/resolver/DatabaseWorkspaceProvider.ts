@@ -14,10 +14,13 @@ export class DatabaseWorkspaceProvider implements WorkspaceResourceProvider {
 
     public disposables: Disposable[] = [];
 
-    public async provideResources(parent: AzExtParentTreeItem): Promise<AzExtTreeItem[] | null | undefined> {
+    constructor(parent: AzExtParentTreeItem) {
+        ext.attachedAccountsNode = new AttachedAccountsTreeItem(parent);
+    }
+
+    public async provideResources(): Promise<AzExtTreeItem[] | null | undefined> {
 
         return await callWithTelemetryAndErrorHandling('AzureAccountTreeItemWithProjects.provideResources', async (_context: IActionContext) => {
-            ext.attachedAccountsNode = new AttachedAccountsTreeItem(parent);
             return [ext.attachedAccountsNode];
         });
     }

@@ -89,6 +89,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         wizardContext.activityTitle = localize('createDBServerMsgActivityTitle', 'Create new Azure Database Server "{0}"', newServerName);
 
         await wizard.execute();
+        await ext.rgApi.appResourceTree.refresh(context);
         if (wizardContext.defaultExperience?.api === API.PostgresSingle || wizardContext.defaultExperience?.api === API.PostgresFlexible) {
             const createMessage: string = localize('createdServerOutput', 'Successfully created PostgreSQL server "{0}".', wizardContext.newServerName);
             void vscode.window.showInformationMessage(createMessage);

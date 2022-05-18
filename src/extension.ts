@@ -15,7 +15,7 @@ import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
 import { deleteDatabaseAccount } from './commands/deleteDatabaseAccount/deleteDatabaseAccount';
 import { importDocuments } from './commands/importDocuments';
-import { cosmosMongoFilter, cosmosTableFilter, doubleClickDebounceDelay, sqlFilter } from './constants';
+import { cosmosGremlinFilter, cosmosMongoFilter, cosmosTableFilter, doubleClickDebounceDelay, sqlFilter } from './constants';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
@@ -186,7 +186,9 @@ export async function deleteAccount(context: IActionContext, node?: AzExtTreeIte
         node = await ext.rgApi.pickAppResource<AzExtTreeItem>(context, {
             filter: [
                 cosmosMongoFilter,
-                cosmosTableFilter
+                cosmosTableFilter,
+                cosmosGremlinFilter,
+                sqlFilter
             ]
         });
     }
@@ -200,7 +202,9 @@ export async function cosmosDBCopyConnectionString(context: IActionContext, node
         node = await ext.rgApi.pickAppResource<MongoAccountTreeItem | DocDBAccountTreeItemBase>(context, {
             filter: [
                 cosmosMongoFilter,
-                cosmosTableFilter
+                cosmosTableFilter,
+                cosmosGremlinFilter,
+                sqlFilter
             ]
         });
     }

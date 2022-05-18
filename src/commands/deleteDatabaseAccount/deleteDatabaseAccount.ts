@@ -23,8 +23,8 @@ export async function deleteDatabaseAccount(context: IActionContext, node: AzExt
         localize('deleteDbAcc', 'Delete Database Account "{0}"', node.label)
 
     const confirmationMessage = wizardContext.deletePostgres ?
-        localize('deleteAccountConfirm', 'Are you sure you want to delete server "${0}" and its contents?', node.label) :
-        localize('deleteAccountConfirm', 'Are you sure you want to delete account "${0}" and its contents?', node.label);
+        localize('deleteAccountConfirm', 'Are you sure you want to delete server "{0}" and its contents?', node.label) :
+        localize('deleteAccountConfirm', 'Are you sure you want to delete account "{0}" and its contents?', node.label);
 
     const wizard = new AzureWizard(wizardContext, {
         title,

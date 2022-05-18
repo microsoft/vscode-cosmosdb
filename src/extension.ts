@@ -187,7 +187,8 @@ export async function deleteAccount(context: IActionContext, node?: AzExtTreeIte
             filter: [
                 cosmosMongoFilter,
                 cosmosTableFilter,
-                cosmosGremlinFilter
+                cosmosGremlinFilter,
+                sqlFilter
             ]
         });
     }
@@ -203,6 +204,7 @@ export async function cosmosDBCopyConnectionString(context: IActionContext, node
                 cosmosMongoFilter,
                 cosmosTableFilter,
                 cosmosGremlinFilter,
+                sqlFilter
             ]
         });
     }

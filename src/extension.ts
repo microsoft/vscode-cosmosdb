@@ -60,7 +60,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         ext.rgApi = await getResourceGroupsApi();
         ext.rgApi.registerApplicationResourceResolver('ms-azuretools.vscode-cosmosdb', new DatabaseResolver());
 
-        const workspaceRootTreeItem = (await ext.rgApi.workspaceResourceTree.getChildren())[0] as AzExtParentTreeItem;
+        const workspaceRootTreeItem = (ext.rgApi.workspaceResourceTree as unknown as { _rootTreeItem: AzExtParentTreeItem })._rootTreeItem;
         const databaseWorkspaceProvider = new DatabaseWorkspaceProvider(workspaceRootTreeItem);
         ext.rgApi.registerWorkspaceResourceProvider('ms-azuretools.vscode-cosmosdb', databaseWorkspaceProvider);
 

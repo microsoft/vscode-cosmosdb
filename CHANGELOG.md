@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 1.19.0 - 2022-05-24
+
+We've made some large design changes to the Azure extensions for VS Code. [View App Centric release notes](https://aka.ms/AzCode/AppCentric)
 ### Changed
 - Minimum version of VS Code is now 1.57.0
 

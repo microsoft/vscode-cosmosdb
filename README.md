@@ -9,7 +9,9 @@
 
 Browse and query your Azure databases both locally and in the cloud using [_scrapbooks_](#mongo-scrapbooks) with rich Intellisense then connect to Azure to manage your PostgreSQL and Cosmos DB databases with support for MongoDB, Graph (Gremlin), and SQL (previously known as DocumentDB).
 
-![Azure Databases Extension](resources/features.png)
+![Azure Databases Extension](resources/readme/overview.png)
+
+> Sign up today for your free Azure account and receive 12 months of free popular services, $200 free credit and 25+ always free services 👉 [Start Free](https://azure.microsoft.com/free/open-source).
 
 # Prerequisites
 
@@ -28,12 +30,12 @@ Browse and query your Azure databases both locally and in the cloud using [_scra
 - Edit a document and persist changes to the cloud
 - Attach a Mongo server by clicking the plug icon in the title
 
-![Browse PostgreSQL, CosmosDB, and MongoDB databases](resources/Browse.png)
+![Browse PostgreSQL, CosmosDB, and MongoDB databases](resources/readme/explorer.png)
 
 ## Mongo Scrapbooks
 ### Run Mongo Commands with Rich Intellisense
 
-- View your MongoDB database account by [signing in to Azure](#managing-azure-subscriptions) or using "Attach Database Account" to connect via a connection string
+- View your MongoDB database account by by clicking "Sign in to Azure..." in the Azure Resources explorer or using "Attach Database Account" to connect via a connection string
 - Optionally configure the settings `mongo.shell.path` and `mongo.shell.args` if your mongo executable is not already on your system's PATH (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
 - Click on "New Mongo Scrapbook" in the tree title bar
 - Click on "Connect to a database" to indicate which database to run the commands against
@@ -42,16 +44,16 @@ Browse and query your Azure databases both locally and in the cloud using [_scra
 - Click on "Execute" above a command to execute it, or press `CMD+"` (Mac) or `CTRL+"` (Windows and Linux) to execute the line with the cursor
 - To run all commands, click on "Execute All", or press `CMD+:` or `Ctrl+:`
 - Save and re-use later
-![Mongo Scrapbook](resources/Scrapbook.gif)
+![Mongo Scrapbook](resources/readme/Scrapbook.gif)
 
 ## Import into Cosmos DB
 
 - You can now import documents from your workspace into CosmosDB. Use the context menu of a collection or a document file (json) to get started!
-![Import documents](resources/import_documents.gif)
+![Import documents](resources/readme/import_documents.gif)
 
 ## Use [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support) to query graphs
 
-![Query Graphs](resources/Graph.gif)
+![Query Graphs](resources/readme/Graph.gif)
 
 - <a name="graphSettings"></a>Configure the user setting `cosmosDB.graph.viewSettings` to customize which properties to display and which colors to use based on vertex label.
 ```javascript
@@ -82,28 +84,22 @@ Browse and query your Azure databases both locally and in the cloud using [_scra
 
 ## Create an Azure Databases Server
 
-![Create Azure Databases Server](resources/create.gif)
+1. Sign in to your Azure Account by clicking "Sign in to Azure..." in the Azure Resources explorer
+    >  If you don't already have an Azure Account, click "Create a Free Azure Account"
+1. Select the 'plus' button to open the "Create Resource" menu
+
+    ![Create resource](resources/readme/createResource.png)
+
+1. Choose "Create Database Server..."
+
+    ![Create Database Server](resources/readme/createDatabaseServer.png)
 
 ## Attach to the Cosmos DB Emulator
 
 * Install and run the [Cosmos DB Emulator](https://docs.microsoft.com/azure/cosmos-db/local-emulator) on your local machine
 * Right click 'Attached Database Accounts' and select 'Attach Emulator'
 
-![Attach Emulator](resources/attachEmulator.png)
-
-## Managing Azure Subscriptions
-
-If you are not signed in to Azure, you will see a "Sign in to Azure..." link. Alternatively, you can select "View->Command Palette" in the VS Code menu, and search for "Azure: Sign In".
-
-![Sign in to Azure](resources/SignIn.gif)
-
-If you don't have an Azure Account, you can sign up for one today for free and receive $200 in credits by selecting "Create a Free Azure Account..." or selecting "View->Command Palette" and searching for "Azure: Create an Account".
-
-You may sign out of Azure by selecting "View->Command Palette" and searching for "Azure: Sign Out".
-
-To select which subscriptions show up in the extension's explorer, click on the "Select Subscriptions..." button on any subscription node (indicated by a "filter" icon when you hover over it), or select "View->Command Palette" and search for "Azure: Select Subscriptions". Note that this selection affects all VS Code extensions that support the [Azure Account and Sign-In](https://github.com/Microsoft/vscode-azure-account) extension.
-
-![Select Azure Subscriptions](resources/SelectSubscriptions.gif)
+![Attach Emulator](resources/readme/attachEmulator.png)
 
 ## Known Issues
 

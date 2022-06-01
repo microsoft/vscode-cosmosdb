@@ -7,7 +7,7 @@
 ### Changed
 - Update @vscode/extension-telemetry to 0.5.2 [#2032](https://github.com/microsoft/vscode-cosmosdb/pull/2032)
 
-## 1.19.0 - 2022-05-24
+## 0.19.0 - 2022-05-24
 
 We've made some large design changes to the Azure extensions for VS Code. [View App Centric release notes](https://aka.ms/AzCode/AppCentric)
 ### Changed

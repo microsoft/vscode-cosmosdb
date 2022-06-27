@@ -1,6 +1,6 @@
 {
     "name": "vscode-cosmosdb",
-    "version": "0.19.2-alpha.1",
+    "version": "0.19.2-alpha.2",
     "aiKey": "AIF-d9b70cd4-b9f9-4d70-929b-a071c400b217",
     "publisher": "ms-azuretools",
     "displayName": "Azure Databases",
@@ -1043,7 +1043,7 @@
         "pg": "^8.3.3",
         "pg-connection-string": "^2.3.0",
         "pg-structure": "^6.2.0",
-        "public-ip": "^4.0.0",
+        "public-ip": "^6.0.0",
         "semver": "^7.2.2",
         "underscore": "^1.12.1",
         "vscode-json-languageservice": "^3.0.8",

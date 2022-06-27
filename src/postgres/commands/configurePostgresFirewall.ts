@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DialogResponses, IActionContext } from "@microsoft/vscode-azext-utils";
-import * as publicIp from 'public-ip';
+import { publicIpv4 } from 'public-ip';
 import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from "../../constants";
 import { ext } from "../../extensionVariables";
@@ -71,6 +71,6 @@ export async function getPublicIp(): Promise<string> {
     };
 
     return await vscode.window.withProgress(options, async () => {
-        return await publicIp.v4();
+        return await publicIpv4();
     });
 }

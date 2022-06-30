@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.19.2 - 2022-06-30
+
+## Changed
+- Update @vscode/extension-telemetry to 0.6.2 [#2042](https://github.com/microsoft/vscode-cosmosdb/pull/2042)
+
 ## 0.19.1 - 2022-06-01
 
 ### Changed

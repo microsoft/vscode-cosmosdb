@@ -28,6 +28,8 @@ export async function getPublicIpv4(context: IActionContext): Promise<string> {
     throw lastError;
 }
 
+const failedToGetIp = localize('failedToGetIp', 'Failed to get public IP');
+
 async function getPublicIpv4Dns(): Promise<string> {
     const resolver = new Resolver();
     // Must use OpenDNS's name servers
@@ -41,7 +43,7 @@ async function getPublicIpv4Dns(): Promise<string> {
             }
 
             if (!isIPv4(addresses[0])) {
-                reject(localize('failedToGetIp', 'Failed to get public IP'));
+                reject(failedToGetIp);
             }
 
             resolve(addresses[0]);
@@ -58,7 +60,7 @@ async function getPublicIpv4Https(context: IActionContext, url: string): Promise
     const ip = req.bodyAsText;
 
     if (!ip || !isIPv4(ip)) {
-        throw new Error(localize('failedToGetIp', 'Failed to get public IP'));
+        throw new Error(failedToGetIp);
     }
 
     return ip;

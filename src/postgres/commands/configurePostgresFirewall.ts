@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DialogResponses, IActionContext } from "@microsoft/vscode-azext-utils";
-import * as publicIp from 'public-ip';
 import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from "../../constants";
 import { ext } from "../../extensionVariables";
+import { getPublicIpv4 } from "../../utils/getIp";
 import { localize } from "../../utils/localize";
 import { nonNullProp } from '../../utils/nonNull';
 import { randomUtils } from '../../utils/randomUtils';
@@ -22,7 +22,7 @@ export async function configurePostgresFirewall(context: IActionContext, treeIte
         });
     }
 
-    const ip: string = await getPublicIp();
+    const ip: string = await getPublicIp(context);
     await context.ui.showWarningMessage(
         localize('firewallRuleWillBeAdded', 'A firewall rule for your IP ({0}) will be added to server "{1}". Would you like to continue?', ip, treeItem.label),
         {
@@ -64,13 +64,13 @@ export async function setFirewallRule(context: IActionContext, treeItem: Postgre
     await treeItem.refresh(context);
 }
 
-export async function getPublicIp(): Promise<string> {
+export async function getPublicIp(context: IActionContext): Promise<string> {
     const options: vscode.ProgressOptions = {
         location: vscode.ProgressLocation.Notification,
         title: localize('gettingPublicIp', 'Getting public IP...')
     };
 
     return await vscode.window.withProgress(options, async () => {
-        return await publicIp.v4();
+        return await getPublicIpv4(context);
     });
 }

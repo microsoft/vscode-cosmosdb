@@ -108,7 +108,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
         const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
         const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [context, treeItem.subscription]);
         const results: FirewallRule[] = (await uiUtils.listAllIterator(client.firewallRules.listByServer(nonNullProp(treeItem, 'resourceGroup'), nonNullProp(treeItem, 'azureName'))));
-        const publicIp: string = await getPublicIp();
+        const publicIp: string = await getPublicIp(context);
         return (results.some((value: FirewallRule) => value.startIpAddress === publicIp));
     }
 }

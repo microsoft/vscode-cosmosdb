@@ -12,7 +12,7 @@
 const process = require('process');
 const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const dev = require("vscode-azureextensiondev");
+const dev = require("@microsoft/vscode-azext-dev");
 
 let DEBUG_WEBPACK = !!process.env.DEBUG_WEBPACK;
 

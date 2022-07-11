@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
+import { runWithTestActionContext } from '@microsoft/vscode-azext-dev';
 import * as assert from 'assert';
 import { Collection, MongoClient } from 'mongodb';
-import { runWithTestActionContext } from 'vscode-azureextensiondev';
 import { appendExtensionUserAgent, connectToMongoClient, createMongoCollection, createMongoDatabase, deleteMongoCollection, deleteMongoDB, DialogResponses, IDatabaseInfo, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled } from '../global.test';
 import { getConnectionString } from './getConnectionString';

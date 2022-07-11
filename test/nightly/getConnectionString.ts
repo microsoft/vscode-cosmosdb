@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { runWithTestActionContext } from '@microsoft/vscode-azext-dev';
 import * as vscode from 'vscode';
-import { runWithTestActionContext } from 'vscode-azureextensiondev';
 import { cosmosDBCopyConnectionString } from '../../extension.bundle';
 
 export async function getConnectionString(accountName: string): Promise<string> {

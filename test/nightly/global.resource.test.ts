@@ -6,9 +6,9 @@
 import { CosmosDBManagementClient, DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { ResourceManagementClient } from '@azure/arm-resources';
 import { uiUtils } from '@microsoft/vscode-azext-azureutils';
+import { createTestActionContext, runWithTestActionContext, TestAzureAccount } from '@microsoft/vscode-azext-dev';
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { createTestActionContext, runWithTestActionContext, TestAzureAccount } from 'vscode-azureextensiondev';
 import { AzExtTreeDataProvider, AzureAccountTreeItemWithAttached, createAzureClient, createCosmosDBClient, createServer, deleteAccount, DialogResponses, ext, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled } from '../global.test';
 

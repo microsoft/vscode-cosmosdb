@@ -999,6 +999,7 @@
     "devDependencies": {
         "@azure/arm-resources": "^4.0.0",
         "@microsoft/eslint-config-azuretools": "^0.1.0",
+        "@microsoft/vscode-azext-dev": "^0.1.4",
         "@types/copy-webpack-plugin": "^6.4.0",
         "@types/documentdb": "^1.10.2",
         "@types/fs-extra": "^8.1.0",
@@ -1022,7 +1023,6 @@
         "ts-node": "^7.0.1",
         "typescript": "^4.4.3",
         "vsce": "^1.87.0",
-        "vscode-azureextensiondev": "^0.10.4",
         "vscode-test": "^1.5.2",
         "webpack": "^5.28.0",
         "webpack-cli": "^4.6.0",

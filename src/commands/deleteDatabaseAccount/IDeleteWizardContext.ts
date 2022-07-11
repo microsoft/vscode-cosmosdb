@@ -3,8 +3,7 @@
 *  Licensed under the MIT License. See License.txt in the project root for license information.
 *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, ExecuteActivityContext, IActionContext } from "@microsoft/vscode-azext-utils";
-import { ISubscriptionContext } from "vscode-azureextensiondev";
+import { AzExtTreeItem, ExecuteActivityContext, IActionContext, ISubscriptionContext } from "@microsoft/vscode-azext-utils";
 
 export interface IDeleteWizardContext extends IActionContext, ExecuteActivityContext {
     node: AzExtTreeItem;

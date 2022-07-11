@@ -5,8 +5,8 @@
 
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { ContainerDefinition, CosmosClient, DatabaseDefinition, Resource } from '@azure/cosmos';
+import { runWithTestActionContext } from '@microsoft/vscode-azext-dev';
 import * as assert from 'assert';
-import { runWithTestActionContext } from 'vscode-azureextensiondev';
 import { createDocDBCollection, createDocDBDatabase, deleteDocDBCollection, deleteDocDBDatabase, DialogResponses, getCosmosClient, ParsedDocDBConnectionString, parseDocDBConnectionString, randomUtils } from '../../extension.bundle';
 import { longRunningTestsEnabled } from '../global.test';
 import { getConnectionString } from './getConnectionString';

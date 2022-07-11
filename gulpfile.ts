@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { gulp_installAzureAccount, gulp_installResourceGroups, gulp_webpack } from '@microsoft/vscode-azext-dev';
 import * as fse from 'fs-extra';
 import * as gulp from 'gulp';
 import * as path from 'path';
-import { gulp_installAzureAccount, gulp_installResourceGroups, gulp_webpack } from 'vscode-azureextensiondev';
 
 declare let exports: { [key: string]: unknown };
 

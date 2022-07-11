@@ -13,7 +13,7 @@ export async function getPublicIpv4(context: IActionContext): Promise<string> {
     const methods: (() => Promise<string>)[] = [
         () => getPublicIpv4Dns(),
         () => getPublicIpv4Https(context, 'https://api.ipify.org/'),
-        () => getPublicIpv4Https(context, 'https://icanhazip.com/'),
+        () => getPublicIpv4Https(context, 'https://ipv4.icanhazip.com/'),
     ];
 
     let lastError: unknown;

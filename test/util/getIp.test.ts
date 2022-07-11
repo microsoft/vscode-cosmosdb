@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { createTestActionContext } from '@microsoft/vscode-azext-dev';
 import * as assert from 'assert';
 import { isIPv4 } from 'net';
-import { createTestActionContext } from 'vscode-azureextensiondev';
 import { getPublicIpv4 } from '../../extension.bundle';
 
 suite("getPublicIpv4", () => {

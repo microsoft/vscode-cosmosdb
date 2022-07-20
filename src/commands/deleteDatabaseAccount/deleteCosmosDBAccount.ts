@@ -9,14 +9,14 @@ import { AzExtTreeItem } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { createCosmosDBClient } from '../../utils/azureClients';
-import { getAccountNameFromId } from '../../utils/azureUtils';
+import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { IDeleteWizardContext } from './IDeleteWizardContext';
 
 export async function deleteCosmosDBAccount(context: IDeleteWizardContext, node: AzExtTreeItem): Promise<void> {
     const client: CosmosDBManagementClient = await createCosmosDBClient([context, node.subscription]);
     const resourceGroup: string = getResourceGroupFromId(node.fullId);
-    const accountName: string = getAccountNameFromId(node.fullId);
+    const accountName: string = getDatabaseAccountNameFromId(node.fullId);
     const deletingMessage: string = `Deleting account "${accountName}"...`;
     await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
         await client.databaseAccounts.beginDeleteAndWait(resourceGroup, accountName);

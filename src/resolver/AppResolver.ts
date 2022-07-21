@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { getResourceGroupFromId } from "@microsoft/vscode-azext-azureutils";
 import { AzExtParentTreeItem, AzExtTreeItem, callWithTelemetryAndErrorHandling, IActionContext, ISubscriptionContext, nonNullProp, nonNullValue } from "@microsoft/vscode-azext-utils";
 import { AppResource, AppResourceResolver } from "@microsoft/vscode-azext-utils/hostapi";
 import { tryGetExperience } from "../AzureDBExperiences";
@@ -13,7 +14,6 @@ import { PostgresAbstractServer } from "../postgres/abstract/models";
 import { PostgresServerTreeItem } from "../postgres/tree/PostgresServerTreeItem";
 import { SubscriptionTreeItem } from "../tree/SubscriptionTreeItem";
 import { createCosmosDBClient, createPostgreSQLClient, createPostgreSQLFlexibleClient } from '../utils/azureClients';
-import { azureUtils } from "../utils/azureUtils";
 import { ResolvedDatabaseAccountResource } from "./ResolvedDatabaseAccountResource";
 import { ResolvedDocDBAccountResource } from "./ResolvedDocDBAccountResource";
 import { ResolvedMongoAccountResource } from "./ResolvedMongoAccountResource";
@@ -30,7 +30,7 @@ export class DatabaseResolver implements AppResourceResolver {
         return await callWithTelemetryAndErrorHandling('resolveResource', async (context: IActionContext) => {
             const subNode: AzExtParentTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(`/subscriptions/${subContext.subscriptionId}`, context);
             try {
-                const resourceGroupName = azureUtils.getResourceGroupFromId(nonNullProp(resource, 'id'));
+                const resourceGroupName = getResourceGroupFromId(nonNullProp(resource, 'id'));
                 const name = nonNullProp(resource, 'name');
                 let postgresServer: PostgresAbstractServer;
                 let dbChild: AzExtTreeItem;

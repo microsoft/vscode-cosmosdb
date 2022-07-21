@@ -5,7 +5,7 @@
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { DatabaseAccountGetResults, DatabaseAccountListKeysResult } from '@azure/arm-cosmosdb/src/models';
-import { ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase, uiUtils } from '@microsoft/vscode-azext-azureutils';
+import { getResourceGroupFromId, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase, uiUtils } from '@microsoft/vscode-azext-azureutils';
 import { AzExtParentTreeItem, AzExtTreeItem, AzureWizard, AzureWizardPromptStep, IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
@@ -21,7 +21,6 @@ import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem'
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { createActivityContext } from '../utils/activityUtils';
 import { createCosmosDBClient, createPostgreSQLClient, createPostgreSQLFlexibleClient } from '../utils/azureClients';
-import { azureUtils } from '../utils/azureUtils';
 import { localize } from '../utils/localize';
 import { nonNullProp } from '../utils/nonNull';
 import { AzureDBAPIStep } from './AzureDBAPIStep';
@@ -116,7 +115,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const name: string = nonNullProp(databaseAccount, 'name');
         const documentEndpoint: string = nonNullProp(databaseAccount, 'documentEndpoint');
 
-        const resourceGroup: string = azureUtils.getResourceGroupFromId(id);
+        const resourceGroup: string = getResourceGroupFromId(id);
         const accountKindLabel = getExperienceLabel(databaseAccount);
         const label: string = name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
         const isEmulator: boolean = false;

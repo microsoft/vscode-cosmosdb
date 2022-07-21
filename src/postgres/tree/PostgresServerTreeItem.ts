@@ -5,14 +5,13 @@
 
 import * as SingleModels from '@azure/arm-postgresql';
 import * as FlexibleModels from '@azure/arm-postgresql-flexible';
-import { uiUtils } from '@microsoft/vscode-azext-azureutils';
+import { getResourceGroupFromId, parseAzureResourceId, uiUtils } from '@microsoft/vscode-azext-azureutils';
 import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
 import { ClientConfig } from 'pg';
 import { coerce, gte, SemVer } from 'semver';
 import * as vscode from 'vscode';
 import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { azureUtils } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { AbstractPostgresClient, createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
@@ -53,9 +52,9 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
         if (server) {
             this.azureId = server?.id;
             this.serverVersion = server?.version;
-            this.resourceGroup = azureUtils.getResourceGroupFromId(this.fullId);
+            this.resourceGroup = getResourceGroupFromId(this.fullId);
             this.azureName = server?.name;
-            this.serverType = azureUtils.getProviderFromId(this.fullId).toLowerCase().includes('flexible') ? PostgresServerType.Flexible : PostgresServerType.Single;
+            this.serverType = parseAzureResourceId(this.fullId).provider.toLowerCase().includes('flexible') ? PostgresServerType.Flexible : PostgresServerType.Single;
         }
         this.valuesToMask.push(connectionString.accountId, connectionString.connectionString, connectionString.fullId, connectionString.hostName, connectionString.port);
         if (connectionString.databaseName) {

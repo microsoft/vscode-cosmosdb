@@ -7,7 +7,7 @@ import { ItemDefinition } from '@azure/cosmos';
 import { IActionContext, parseError } from '@microsoft/vscode-azext-utils';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
-import { cosmosMongoFilter, cosmosTableFilter } from '../constants';
+import { cosmosMongoFilter, sqlFilter } from '../constants';
 import { DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
 import { MongoCollectionTreeItem } from '../mongo/tree/MongoCollectionTreeItem';
@@ -36,7 +36,7 @@ export async function importDocuments(context: IActionContext, uris: vscode.Uri[
         collectionNode = await ext.rgApi.pickAppResource<MongoCollectionTreeItem | DocDBCollectionTreeItem>(context, {
             filter: [
                 cosmosMongoFilter,
-                cosmosTableFilter
+                sqlFilter
             ],
             expectedChildContextValue: [MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue]
         });

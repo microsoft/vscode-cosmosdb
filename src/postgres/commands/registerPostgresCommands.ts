@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, IActionContext, registerCommand } from "@microsoft/vscode-azext-utils";
+import { callWithTelemetryAndErrorHandling, IActionContext, registerCommandWithTreeNodeUnwrapping } from "@microsoft/vscode-azext-utils";
 import { defaults } from "pg";
 import { languages } from "vscode";
 import { connectedPostgresKey, doubleClickDebounceDelay, postgresDefaultDatabase, postgresLanguageId } from "../../constants";
@@ -35,21 +35,21 @@ export function registerPostgresCommands(): void {
     //update defaults.database of 'pg'
     defaults.database = postgresDefaultDatabase;
 
-    registerCommand('postgreSQL.deleteServer', deletePostgresServer);
-    registerCommand('postgreSQL.enterCredentials', enterPostgresCredentials);
-    registerCommand('postgreSQL.configureFirewall', configurePostgresFirewall);
-    registerCommand('postgreSQL.createDatabase', createPostgresDatabase);
-    registerCommand('postgreSQL.deleteDatabase', deletePostgresDatabase);
-    registerCommand('postgreSQL.deleteTable', deletePostgresTable);
-    registerCommand('postgreSQL.openFunction', openPostgresFunction, doubleClickDebounceDelay);
-    registerCommand('postgreSQL.openStoredProcedure', openPostgresStoredProcedure, doubleClickDebounceDelay);
-    registerCommand('postgreSQL.deleteFunction', deletePostgresFunction);
-    registerCommand('postgreSQL.deleteStoredProcedure', deletePostgresStoredProcedure);
-    registerCommand('postgreSQL.connectDatabase', connectPostgresDatabase);
-    registerCommand('postgreSQL.createFunctionQuery', createPostgresFunctionQuery);
-    registerCommand('postgreSQL.createStoredProcedureQuery', createPostgresStoredProcedureQuery);
-    registerCommand('postgreSQL.executeQuery', executePostgresQuery);
-    registerCommand('postgreSQL.copyConnectionString', copyConnectionString);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteServer', deletePostgresServer);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.enterCredentials', enterPostgresCredentials);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.configureFirewall', configurePostgresFirewall);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.createDatabase', createPostgresDatabase);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteDatabase', deletePostgresDatabase);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteTable', deletePostgresTable);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.openFunction', openPostgresFunction, doubleClickDebounceDelay);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.openStoredProcedure', openPostgresStoredProcedure, doubleClickDebounceDelay);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteFunction', deletePostgresFunction);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteStoredProcedure', deletePostgresStoredProcedure);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.connectDatabase', connectPostgresDatabase);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.createFunctionQuery', createPostgresFunctionQuery);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.createStoredProcedureQuery', createPostgresStoredProcedureQuery);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.executeQuery', executePostgresQuery);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.copyConnectionString', copyConnectionString);
 }
 
 export async function loadPersistedPostgresDatabase(): Promise<void> {

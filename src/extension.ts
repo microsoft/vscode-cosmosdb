@@ -62,7 +62,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
         const workspaceRootTreeItem = (ext.rgApi.workspaceResourceTree as unknown as { _rootTreeItem: AzExtParentTreeItem })._rootTreeItem;
         const databaseWorkspaceProvider = new DatabaseWorkspaceProvider(workspaceRootTreeItem);
-        ext.rgApi.registerWorkspaceResourceProvider('ms-azuretools.vscode-cosmosdb', databaseWorkspaceProvider);
+        ext.rgApi.registerWorkspaceResourceProvider('AttachedDatabaseAccount', databaseWorkspaceProvider);
 
         ext.fileSystem = new DatabasesFileSystem(ext.rgApi.appResourceTree);
 

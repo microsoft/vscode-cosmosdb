@@ -103,12 +103,12 @@
             "workspace": {
                 "branches": [
                     {
-                        "type": "ms-azuretools.vscode-cosmosdb"
+                        "type": "AttachedDatabaseAccount"
                     }
                 ],
                 "resources": [
                     {
-                        "type": "ms-azuretools.vscode-cosmosdb"
+                        "type": "AttachedDatabaseAccount"
                     }
                 ]
             }

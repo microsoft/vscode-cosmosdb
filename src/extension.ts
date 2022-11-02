@@ -59,6 +59,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
         ext.rgApi = await getResourceGroupsApi();
         ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.AzureCosmosDb, new DatabaseResolver());
+        ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.PostgresqlServersStandard, new DatabaseResolver());
+        ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.PostgresqlServersFlexible, new DatabaseResolver());
 
         const workspaceRootTreeItem = (ext.rgApi.workspaceResourceTree as unknown as { _rootTreeItem: AzExtParentTreeItem })._rootTreeItem;
         const databaseWorkspaceProvider = new DatabaseWorkspaceProvider(workspaceRootTreeItem);

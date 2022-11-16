@@ -987,7 +987,7 @@
         "package": "vsce package --githubBranch main",
         "lint": "eslint --ext .ts .",
         "lint-fix": "eslint --ext .ts . --fix",
-        "pretest": "npm run webpack-prod && gulp preTest",
+        "pretest": "npm run webpack-prod",
         "test": "node ./out/test/runTest.js",
         "update-grammar": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src/mongo/grammar",
         "webpack": "npm run build && gulp webpack-dev",

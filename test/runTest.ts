@@ -27,6 +27,7 @@ async function main(): Promise<void> {
         const repoRoot: string = path.resolve(__dirname, '..', '..');
         await runTests({
             vscodeExecutablePath,
+            extensionDevelopmentPath: repoRoot,
             launchArgs: [
                 path.resolve(repoRoot, 'test', 'test.code-workspace'),
                 '--disable-workspace-trust'

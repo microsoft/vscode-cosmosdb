@@ -78,6 +78,7 @@ suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
         public show(_column?: any, _preserveFocus?: any): void { }
         public hide(): void { }
         public dispose(): void { }
+        public replace(_value: string): void { }
     }
 
     function log(text: string, linePrefix: string): void {

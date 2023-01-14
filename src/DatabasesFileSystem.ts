@@ -12,6 +12,7 @@ import { getWorkspaceSetting, updateGlobalSetting } from "./utils/settingUtils";
 import { getNodeEditorLabel } from "./utils/vscodeUtils";
 
 export interface IEditableTreeItem extends AzExtTreeItem {
+    id: string;
     filePath: string;
     cTime: number;
     mTime: number;

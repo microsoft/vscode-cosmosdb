@@ -496,7 +496,7 @@
             "view/item/context": [
                 {
                     "command": "azureDatabases.createServer",
-                    "when": "view == azureResourceGroups && viewItem =~ /azurecosmosdb/i && viewItem =~ /azureResourceTypeGroup/i",
+                    "when": "view == azureResourceGroups && viewItem =~ /(AzureCosmosDb|PostgreSqlServers(Standard|Flexible))/i && viewItem =~ /azureResourceTypeGroup/i",
                     "group": "1@1"
                 },
                 {
@@ -536,7 +536,7 @@
                 },
                 {
                     "command": "cosmosDB.createMongoDocument",
-                    "when": "view =~ /azure(ResourceGroups|Workspace)V2/ && viewItem == MongoCollection",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == MongoCollection",
                     "group": "1@1"
                 },
                 {
@@ -581,7 +581,7 @@
                 },
                 {
                     "command": "cosmosDB.createGraph",
-                    "when": "view =~ /azure(ResourceGroups|Workspace)V2/ && viewItem == cosmosDBGraphDatabase",
+                    "when": "view =~ /azure(ResourceGroups|Workspace)/ && viewItem == cosmosDBGraphDatabase",
                     "group": "1@1"
                 },
                 {

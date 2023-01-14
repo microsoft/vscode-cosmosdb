@@ -92,27 +92,6 @@
         "onView:azureWorkspace"
     ],
     "contributes": {
-        "x-azResourcesV2": {
-            "application": {
-                "branches": [
-                    {
-                        "type": "AzureCosmosDb"
-                    }
-                ]
-            },
-            "workspace": {
-                "branches": [
-                    {
-                        "type": "AttachedDatabaseAccount"
-                    }
-                ],
-                "resources": [
-                    {
-                        "type": "AttachedDatabaseAccount"
-                    }
-                ]
-            }
-        },
         "x-azResources": {
             "azure": {
                 "branches": [
@@ -133,11 +112,7 @@
                         "type": "ms-azuretools.vscode-cosmosdb"
                     }
                 ],
-                "resources": [
-                    {
-                        "type": "ms-azuretools.vscode-cosmosdb"
-                    }
-                ]
+                "resources": true
             },
             "commands": [
                 {
@@ -146,7 +121,14 @@
                     "type": "microsoft.documentdb/databaseaccounts",
                     "detail": "SQL or NoSQL databases for your web apps."
                 }
-            ]
+            ],
+            "activation": {
+                "onResolve": [
+                    "microsoft.documentdb/databaseaccounts",
+                    "microsoft.dbforpostgresql/servers",
+                    "microsoft.dbforpostgresql/flexibleservers"
+                ]
+            }
         },
         "languages": [
             {

@@ -3,19 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtItemQuery, AzExtItemUriParts, AzExtTreeFileSystem, AzExtTreeItem, DialogResponses, IActionContext, UserCancelledError } from '@microsoft/vscode-azext-utils';
-import { Collection, Db } from "mongodb";
-import { basename, dirname } from 'path';
+import { AzExtTreeFileSystem, AzExtTreeItem, DialogResponses, IActionContext, UserCancelledError } from '@microsoft/vscode-azext-utils';
 import { FileStat, FileType, MessageItem, Uri, workspace } from "vscode";
 import { FileChangeType } from "vscode-languageclient";
 import { ext } from "./extensionVariables";
-import { MongoCollectionTreeItem } from "./mongo/tree/MongoCollectionTreeItem";
-import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
 import { localize } from "./utils/localize";
 import { getWorkspaceSetting, updateGlobalSetting } from "./utils/settingUtils";
 import { getNodeEditorLabel } from "./utils/vscodeUtils";
 
 export interface IEditableTreeItem extends AzExtTreeItem {
+    id: string;
     filePath: string;
     cTime: number;
     mTime: number;
@@ -77,69 +74,4 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
         node.mTime = Date.now();
         this.fireSoon({ type: FileChangeType.Changed, item: node });
     }
-
-    protected getUriParts(node: IEditableTreeItem): AzExtItemUriParts {
-        const uriParts: AzExtItemUriParts = super.getUriParts(node);
-        if (node instanceof MongoCollectionTreeItem && node.findArgs) {
-            addFindArgsToQuery(uriParts.query, node.findArgs);
-        }
-        return uriParts;
-    }
-
-    protected async findItem(context: IActionContext, query: AzExtItemQuery): Promise<IEditableTreeItem | undefined> {
-        let node: IEditableTreeItem | undefined = query.id.includes('cosmosDBAttachedAccounts') ?
-            await ext.rgApi.workspaceResourceTree.findTreeItem(query.id, context) :
-            await ext.rgApi.appResourceTree.findTreeItem(query.id, context);
-
-        if (!node) {
-            const parentId: string = dirname(query.id);
-            const parentNode: IEditableTreeItem | undefined = parentId.includes('cosmosDBAttachedAccounts') ?
-                await ext.rgApi.workspaceResourceTree.findTreeItem(parentId, context) :
-                await ext.rgApi.appResourceTree.findTreeItem(parentId, context);
-            if (parentNode instanceof MongoDatabaseTreeItem) {
-                const db: Db = await parentNode.connectToDb();
-                const collectionName: string = basename(query.id);
-                const collection: Collection = db.collection(collectionName);
-                node = new MongoCollectionTreeItem(parentNode, collection);
-            }
-        }
-
-        if (node && node instanceof MongoCollectionTreeItem) {
-            const findArgs: {}[] | undefined = getFindArgsFromQuery(query);
-            if (findArgs) {
-                return new MongoCollectionTreeItem(node.parent, node.collection, findArgs);
-            }
-        }
-        return node;
-    }
-}
-
-function addFindArgsToQuery(query: AzExtItemQuery, commandArgs: {}[]): void {
-    let count: number = 0;
-    for (const arg of commandArgs) {
-        const key: string = getFindArgKey(count);
-        query[key] = JSON.stringify(arg);
-        count += 1;
-    }
-}
-
-function getFindArgsFromQuery(query: AzExtItemQuery): {}[] | undefined {
-    const result: {}[] = [];
-    let count: number = 0;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-        const key: string = getFindArgKey(count);
-        const value: string | string[] | undefined = query[key];
-        if (typeof value === 'string') {
-            result.push(JSON.parse(value));
-        } else if (!value) {
-            break;
-        }
-        count += 1;
-    }
-    return result.length > 0 ? result : undefined;
-}
-
-function getFindArgKey(count: number): string {
-    return 'arg' + String(count);
 }

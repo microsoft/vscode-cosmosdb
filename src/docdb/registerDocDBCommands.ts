@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, IActionContext, ITreeItemPickerContext, registerCommand } from "@microsoft/vscode-azext-utils";
+import { AzExtTreeItem, IActionContext, ITreeItemPickerContext, registerCommandWithTreeNodeUnwrapping } from "@microsoft/vscode-azext-utils";
 import { commands } from "vscode";
 import { doubleClickDebounceDelay, sqlFilter } from "../constants";
 import { ext } from "../extensionVariables";
@@ -16,9 +16,9 @@ import { DocDBStoredProceduresTreeItem } from "./tree/DocDBStoredProceduresTreeI
 import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
 
 export function registerDocDBCommands(): void {
-    registerCommand('cosmosDB.createDocDBDatabase', createDocDBDatabase);
-    registerCommand('cosmosDB.createDocDBCollection', createDocDBCollection);
-    registerCommand('cosmosDB.createDocDBDocument', async (context: IActionContext, node?: DocDBDocumentsTreeItem) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDatabase', createDocDBDatabase);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBCollection', createDocDBCollection);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDocument', async (context: IActionContext, node?: DocDBDocumentsTreeItem) => {
         if (!node) {
             node = await pickDocDBAccount<DocDBDocumentsTreeItem>(context, DocDBDocumentsTreeItem.contextValue);
         }
@@ -26,7 +26,7 @@ export function registerDocDBCommands(): void {
         await commands.executeCommand("cosmosDB.openDocument", documentNode);
 
     });
-    registerCommand('cosmosDB.createDocDBStoredProcedure', async (context: IActionContext, node?: DocDBStoredProceduresTreeItem) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBStoredProcedure', async (context: IActionContext, node?: DocDBStoredProceduresTreeItem) => {
         if (!node) {
             node = await pickDocDBAccount<DocDBStoredProceduresTreeItem>(context, DocDBStoredProceduresTreeItem.contextValue);
         }
@@ -34,15 +34,15 @@ export function registerDocDBCommands(): void {
         await commands.executeCommand("cosmosDB.openStoredProcedure", childNode);
 
     });
-    registerCommand('cosmosDB.deleteDocDBDatabase', deleteDocDBDatabase);
-    registerCommand('cosmosDB.deleteDocDBCollection', deleteDocDBCollection);
-    registerCommand('cosmosDB.openStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBDatabase', deleteDocDBDatabase);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBCollection', deleteDocDBCollection);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
         if (!node) {
             node = await pickDocDBAccount<DocDBStoredProcedureTreeItem>(context, DocDBStoredProcedureTreeItem.contextValue);
         }
         await ext.fileSystem.showTextDocument(node);
     }, doubleClickDebounceDelay);
-    registerCommand('cosmosDB.deleteDocDBDocument', async (context: IActionContext, node?: DocDBDocumentTreeItem) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBDocument', async (context: IActionContext, node?: DocDBDocumentTreeItem) => {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
         if (!node) {
@@ -50,7 +50,7 @@ export function registerDocDBCommands(): void {
         }
         await node.deleteTreeItem(context);
     });
-    registerCommand('cosmosDB.deleteDocDBStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
         if (!node) {

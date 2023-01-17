@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, callWithTelemetryAndErrorHandling, IActionContext, IErrorHandlerContext, ITreeItemPickerContext, registerCommand, registerErrorHandler, registerEvent } from "@microsoft/vscode-azext-utils";
+import { AzExtTreeItem, callWithTelemetryAndErrorHandling, IActionContext, IErrorHandlerContext, ITreeItemPickerContext, registerCommandWithTreeNodeUnwrapping, registerErrorHandler, registerEvent } from "@microsoft/vscode-azext-utils";
 import * as vscode from 'vscode';
 import { Experience, MongoExperience } from '../AzureDBExperiences';
 import { cosmosMongoFilter } from "../constants";
@@ -36,16 +36,16 @@ export function registerMongoCommands(): void {
 
     const loadPersistedMongoDBTask: Promise<void> = loadPersistedMongoDB();
 
-    registerCommand('cosmosDB.createMongoDatabase', createMongoDatabase);
-    registerCommand('cosmosDB.createMongoCollection', createMongoCollection);
-    registerCommand('cosmosDB.createMongoDocument', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createMongoDatabase', createMongoDatabase);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createMongoCollection', createMongoCollection);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createMongoDocument', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
         if (!node) {
             node = await pickMongo<MongoCollectionTreeItem>(context, MongoCollectionTreeItem.contextValue);
         }
         const documentNode = await node.createChild(context);
         await vscode.commands.executeCommand("cosmosDB.openDocument", documentNode);
     });
-    registerCommand('cosmosDB.connectMongoDB', async (context: IActionContext, node?: MongoDatabaseTreeItem) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.connectMongoDB', async (context: IActionContext, node?: MongoDatabaseTreeItem) => {
         if (!node) {
             // Include defaultExperience in the context to prevent https://github.com/microsoft/vscode-cosmosdb/issues/1517
             const experienceContext: ITreeItemPickerContext & { defaultExperience?: Experience } = { ...context, defaultExperience: MongoExperience };
@@ -66,9 +66,9 @@ export function registerMongoCommands(): void {
             }
         }
     });
-    registerCommand('cosmosDB.deleteMongoDB', deleteMongoDB);
-    registerCommand('cosmosDB.deleteMongoCollection', deleteMongoCollection);
-    registerCommand('cosmosDB.deleteMongoDocument', async (context: IActionContext, node?: MongoDocumentTreeItem) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteMongoDB', deleteMongoDB);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteMongoCollection', deleteMongoCollection);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteMongoDocument', async (context: IActionContext, node?: MongoDocumentTreeItem) => {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
         if (!node) {
@@ -76,19 +76,19 @@ export function registerMongoCommands(): void {
         }
         await node.deleteTreeItem(context);
     });
-    registerCommand('cosmosDB.openCollection', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openCollection', async (context: IActionContext, node?: MongoCollectionTreeItem) => {
         if (!node) {
             node = await pickMongo<MongoCollectionTreeItem>(context, MongoCollectionTreeItem.contextValue);
         }
         await ext.fileSystem.showTextDocument(node);
     });
-    registerCommand('cosmosDB.launchMongoShell', launchMongoShell);
-    registerCommand('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', 'Scrapbook', '.mongo'));
-    registerCommand('cosmosDB.executeMongoCommand', async (context: IActionContext, position?: vscode.Position) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.launchMongoShell', launchMongoShell);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.newMongoScrapbook', async () => await vscodeUtil.showNewFile('', 'Scrapbook', '.mongo'));
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.executeMongoCommand', async (context: IActionContext, position?: vscode.Position) => {
         await loadPersistedMongoDBTask;
         await executeCommandFromActiveEditor(context, position);
     });
-    registerCommand('cosmosDB.executeAllMongoCommands', async (context: IActionContext) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.executeAllMongoCommands', async (context: IActionContext) => {
         await loadPersistedMongoDBTask;
         await executeAllCommandsFromActiveEditor(context);
     });

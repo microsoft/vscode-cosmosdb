@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, IActionContext, ITreeItemPickerContext, registerCommand } from "@microsoft/vscode-azext-utils";
+import { AzExtTreeItem, IActionContext, ITreeItemPickerContext, registerCommandWithTreeNodeUnwrapping } from "@microsoft/vscode-azext-utils";
 import { cosmosGremlinFilter, doubleClickDebounceDelay } from '../constants';
 import { ext } from '../extensionVariables';
 import { GraphAccountTreeItem } from "./tree/GraphAccountTreeItem";
@@ -12,9 +12,9 @@ import { GraphDatabaseTreeItem } from "./tree/GraphDatabaseTreeItem";
 import { GraphTreeItem } from "./tree/GraphTreeItem";
 
 export function registerGraphCommands(): void {
-    registerCommand('cosmosDB.createGraphDatabase', createGraphDatabase);
-    registerCommand('cosmosDB.createGraph', createGraph);
-    registerCommand('cosmosDB.deleteGraphDatabase', async (context: IActionContext, node?: GraphDatabaseTreeItem) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createGraphDatabase', createGraphDatabase);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createGraph', createGraph);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteGraphDatabase', async (context: IActionContext, node?: GraphDatabaseTreeItem) => {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
         if (!node) {
@@ -22,7 +22,7 @@ export function registerGraphCommands(): void {
         }
         await node.deleteTreeItem(context);
     });
-    registerCommand('cosmosDB.deleteGraph', async (context: IActionContext, node?: GraphCollectionTreeItem) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteGraph', async (context: IActionContext, node?: GraphCollectionTreeItem) => {
         const suppressCreateContext: ITreeItemPickerContext = context;
         suppressCreateContext.suppressCreatePick = true;
         if (!node) {
@@ -30,7 +30,7 @@ export function registerGraphCommands(): void {
         }
         await node.deleteTreeItem(context);
     });
-    registerCommand('cosmosDB.openGraphExplorer', async (context: IActionContext, node: GraphTreeItem) => {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openGraphExplorer', async (context: IActionContext, node: GraphTreeItem) => {
         if (!node) {
             node = await pickGraph<GraphTreeItem>(context, GraphTreeItem.contextValue);
         }

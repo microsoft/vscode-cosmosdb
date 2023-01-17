@@ -93,12 +93,26 @@
     ],
     "contributes": {
         "x-azResources": {
-            "activation": {
-                "onResolve": [
-                    "microsoft.documentdb/databaseaccounts",
-                    "microsoft.dbforpostgresql/servers",
-                    "microsoft.dbforpostgresql/flexibleservers"
+            "azure": {
+                "branches": [
+                    {
+                        "type": "AzureCosmosDb"
+                    },
+                    {
+                        "type": "PostgresqlServersStandard"
+                    },
+                    {
+                        "type": "PostgresqlServersFlexible"
+                    }
                 ]
+            },
+            "workspace": {
+                "branches": [
+                    {
+                        "type": "ms-azuretools.vscode-cosmosdb"
+                    }
+                ],
+                "resources": true
             },
             "commands": [
                 {
@@ -107,7 +121,14 @@
                     "type": "microsoft.documentdb/databaseaccounts",
                     "detail": "SQL or NoSQL databases for your web apps."
                 }
-            ]
+            ],
+            "activation": {
+                "onResolve": [
+                    "microsoft.documentdb/databaseaccounts",
+                    "microsoft.dbforpostgresql/servers",
+                    "microsoft.dbforpostgresql/flexibleservers"
+                ]
+            }
         },
         "languages": [
             {
@@ -475,7 +496,7 @@
             "view/item/context": [
                 {
                     "command": "azureDatabases.createServer",
-                    "when": "view == azureResourceGroups && viewItem =~ /azureResourceTypeGroup.*(microsoft.documentdb/databaseaccounts|microsoft.dbforpostgresql/(servers|flexibleservers))/",
+                    "when": "view == azureResourceGroups && viewItem =~ /(AzureCosmosDb|PostgreSqlServers(Standard|Flexible))/i && viewItem =~ /azureResourceTypeGroup/i",
                     "group": "1@1"
                 },
                 {

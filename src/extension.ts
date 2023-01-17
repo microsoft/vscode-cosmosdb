@@ -6,7 +6,7 @@
 'use strict';
 
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
-import { AzExtParentTreeItem, AzExtTreeItem, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, ITreeItemPickerContext, registerCommand, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
+import { AzExtParentTreeItem, AzExtResourceType, AzExtTreeItem, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, ITreeItemPickerContext, registerCommandWithTreeNodeUnwrapping, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
 import { AzureExtensionApi, AzureExtensionApiProvider } from '@microsoft/vscode-azext-utils/api';
 import { platform } from 'os';
 import * as vscode from 'vscode';
@@ -58,11 +58,13 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         ext.keytar = tryGetKeyTar();
 
         ext.rgApi = await getResourceGroupsApi();
-        ext.rgApi.registerApplicationResourceResolver('ms-azuretools.vscode-cosmosdb', new DatabaseResolver());
+        ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.AzureCosmosDb, new DatabaseResolver());
+        ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.PostgresqlServersStandard, new DatabaseResolver());
+        ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.PostgresqlServersFlexible, new DatabaseResolver());
 
         const workspaceRootTreeItem = (ext.rgApi.workspaceResourceTree as unknown as { _rootTreeItem: AzExtParentTreeItem })._rootTreeItem;
         const databaseWorkspaceProvider = new DatabaseWorkspaceProvider(workspaceRootTreeItem);
-        ext.rgApi.registerWorkspaceResourceProvider('ms-azuretools.vscode-cosmosdb', databaseWorkspaceProvider);
+        ext.rgApi.registerWorkspaceResourceProvider('AttachedDatabaseAccount', databaseWorkspaceProvider);
 
         ext.fileSystem = new DatabasesFileSystem(ext.rgApi.appResourceTree);
 
@@ -73,15 +75,15 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
 
         context.subscriptions.push(vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem));
 
-        registerCommand('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
+        registerCommandWithTreeNodeUnwrapping('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
 
-        registerCommand('azureDatabases.createServer', createServer);
-        registerCommand('cosmosDB.deleteAccount', deleteAccount);
-        registerCommand('cosmosDB.attachDatabaseAccount', async (actionContext: IActionContext) => {
+        registerCommandWithTreeNodeUnwrapping('azureDatabases.createServer', createServer);
+        registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteAccount', deleteAccount);
+        registerCommandWithTreeNodeUnwrapping('cosmosDB.attachDatabaseAccount', async (actionContext: IActionContext) => {
             await ext.attachedAccountsNode.attachNewAccount(actionContext);
             await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
         });
-        registerCommand('cosmosDB.attachEmulator', async (actionContext: IActionContext) => {
+        registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', async (actionContext: IActionContext) => {
             if (platform() !== 'win32') {
                 actionContext.errorHandling.suppressReportIssue = true;
                 throw new Error(localize('emulatorNotSupported', 'The Cosmos DB emulator is only supported on Windows.'));
@@ -90,7 +92,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             await ext.attachedAccountsNode.attachEmulator(actionContext);
             await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
         });
-        registerCommand('azureDatabases.refresh', async (actionContext: IActionContext, node?: AzExtTreeItem) => {
+        registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', async (actionContext: IActionContext, node?: AzExtTreeItem) => {
             if (node) {
                 await node.refresh(actionContext);
             } else {
@@ -98,7 +100,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             }
         });
 
-        registerCommand('azureDatabases.detachDatabaseAccount', async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzExtTreeItem) => {
+        registerCommandWithTreeNodeUnwrapping('azureDatabases.detachDatabaseAccount', async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzExtTreeItem) => {
             const children = await ext.attachedAccountsNode.loadAllChildren(actionContext);
             if (children[0].contextValue === "cosmosDBAttachDatabaseAccount") {
                 const message = localize('noAttachedAccounts', 'There are no Attached Accounts.');
@@ -117,15 +119,15 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
                 await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
             }
         });
-        registerCommand('cosmosDB.importDocument', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => {
+        registerCommandWithTreeNodeUnwrapping('cosmosDB.importDocument', async (actionContext: IActionContext, selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem, uris: vscode.Uri[]) => {
             if (selectedNode instanceof vscode.Uri) {
                 await importDocuments(actionContext, uris || [selectedNode], undefined);
             } else {
                 await importDocuments(actionContext, undefined, selectedNode);
             }
         });
-        registerCommand('cosmosDB.copyConnectionString', cosmosDBCopyConnectionString);
-        registerCommand('cosmosDB.openDocument', async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
+        registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', cosmosDBCopyConnectionString);
+        registerCommandWithTreeNodeUnwrapping('cosmosDB.openDocument', async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
             if (!node) {
                 node = await ext.rgApi.pickAppResource<MongoDocumentTreeItem | DocDBDocumentTreeItem>(actionContext, {
                     filter: [
@@ -140,8 +142,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
             ext.fileSystem.fireChangedEvent(node);
             await ext.fileSystem.showTextDocument(node);
         }, doubleClickDebounceDelay);
-        registerCommand('azureDatabases.update', async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri));
-        registerCommand('azureDatabases.loadMore', async (actionContext: IActionContext, node: AzExtTreeItem) => await ext.rgApi.appResourceTree.loadMore(node, actionContext));
+        registerCommandWithTreeNodeUnwrapping('azureDatabases.update', async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri));
+        registerCommandWithTreeNodeUnwrapping('azureDatabases.loadMore', async (actionContext: IActionContext, node: AzExtTreeItem) => await ext.rgApi.appResourceTree.loadMore(node, actionContext));
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',
             vscode.workspace.onDidChangeConfiguration,

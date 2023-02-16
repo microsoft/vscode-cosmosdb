@@ -2,9 +2,45 @@
 
 ## Unreleased
 
+## 0.19.3 - 2023-02-15
+
+### Added
+* Forward compatibility with Azure Resources API v2 @alexweininger in [#2095](https://github.com/microsoft/vscode-cosmosdb/pull/2095)
+
+### Changed
+* Remove Preview label for Postgres Flexible by @tonybaloney in [#2058](https://github.com/microsoft/vscode-cosmosdb/pull/2058)
+* Fix revealing attached database by @alexweininger in [#2092](https://github.com/microsoft/vscode-cosmosdb/pull/2092)
+
+### Engineering
+* Remove version checker action by @alexweininger in [#2046](https://github.com/microsoft/vscode-cosmosdb/pull/2046)
+* Replace public-ip with our own util to fix CVE-2022-33987 by @alexweininger in [#2048](https://github.com/microsoft/vscode-cosmosdb/pull/2048)
+* Migrate to vscode-azext-dev by @alexweininger in [#2050](https://github.com/microsoft/vscode-cosmosdb/pull/2050)
+* Update AppInsights key by @bwateratmsft in [#2052](https://github.com/microsoft/vscode-cosmosdb/pull/2052)
+* Add post release version bumper by @alexweininger in [#2053](https://github.com/microsoft/vscode-cosmosdb/pull/2053)
+* Use shared Azure Id parsing utils by @alexweininger in [#2054](https://github.com/microsoft/vscode-cosmosdb/pull/2054)
+* Rename info-needed-closer by @bwateratmsft in [#2056](https://github.com/microsoft/vscode-cosmosdb/pull/2056)
+* Move workflow from root to workflows folder by @alexweininger in [#2057](https://github.com/microsoft/vscode-cosmosdb/pull/2057)
+* Change filter for treeItemPicker by @nturinski in [#2063](https://github.com/microsoft/vscode-cosmosdb/pull/2063)
+* Finalize CodeQL settings by @bwateratmsft in [#2068](https://github.com/microsoft/vscode-cosmosdb/pull/2068)
+* Fix readme badges by @bwateratmsft in [#2070](https://github.com/microsoft/vscode-cosmosdb/pull/2070)
+* Skip test suite to enable CodeQL build by @nturinski in [#2081](https://github.com/microsoft/vscode-cosmosdb/pull/2081)
+* Add .nvmrc file by @alexweininger in [#2085](https://github.com/microsoft/vscode-cosmosdb/pull/2085)
+* Use updated AzExtTreeFileSystem by @alexweininger in [#2094](https://github.com/microsoft/vscode-cosmosdb/pull/2094)
+
+### Dependencies
+* Bump extension version post release by @alexweininger in [#2045](https://github.com/microsoft/vscode-cosmosdb/pull/2045)
+* Bump moment from 2.29.2 to 2.29.4 by @dependabot in [#2049](https://github.com/microsoft/vscode-cosmosdb/pull/2049)
+* Bump loader-utils from 1.4.0 to 1.4.2 by @dependabot in [#2077](https://github.com/microsoft/vscode-cosmosdb/pull/2077)
+* Bump yargs-parser and yargs by @dependabot in [#2078](https://github.com/microsoft/vscode-cosmosdb/pull/2078)
+* Bump decode-uri-component from 0.2.0 to 0.2.2 by @dependabot in [#2083](https://github.com/microsoft/vscode-cosmosdb/pull/2083)
+* Bump qs from 6.10.1 to 6.11.0 by @dependabot in [#2084](https://github.com/microsoft/vscode-cosmosdb/pull/2084)
+* Bump @xmldom/xmldom from 0.7.5 to 0.7.8 by @dependabot in [#2074](https://github.com/microsoft/vscode-cosmosdb/pull/2074)
+* Bump flat and mocha by @dependabot in [#2088](https://github.com/microsoft/vscode-cosmosdb/pull/2088)
+* Bump json5 from 1.0.1 to 1.0.2 by @dependabot in [#2089](https://github.com/microsoft/vscode-cosmosdb/pull/2089)
+
 ## 0.19.2 - 2022-06-30
 
-## Changed
+### Changed
 - Update @vscode/extension-telemetry to 0.6.2 [#2042](https://github.com/microsoft/vscode-cosmosdb/pull/2042)
 
 ## 0.19.1 - 2022-06-01

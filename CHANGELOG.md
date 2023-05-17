@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.19.4 - 2023-05-17
+
+### Added
+* Add support for the upcoming Azure Resources Focus feature
+
 ## 0.19.3 - 2023-02-15
 
 ### Added

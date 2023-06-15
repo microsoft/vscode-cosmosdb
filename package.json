@@ -436,7 +436,31 @@
                 "title": "Open Stored Procedure"
             }
         ],
+        "submenus": [
+            {
+                "id": "azureDatabases.submenus.workspaceActions",
+                "label": "Azure Databases",
+                "icon": "resources/databases.png"
+            }
+        ],
         "menus": {
+            "azureDatabases.submenus.workspaceActions": [
+                {
+                    "command": "azureDatabases.createServer",
+                    "group": "2_create@1"
+                },
+                {
+                    "command": "cosmosDB.attachDatabaseAccount",
+                    "group": "1_attach@1"
+                }
+            ],
+            "view/title": [
+                {
+                    "submenu": "azureDatabases.submenus.workspaceActions",
+                    "when": "view == azureWorkspace",
+                    "group": "navigation@6"
+                }
+            ],
             "editor/context": [
                 {
                     "command": "azureDatabases.update",

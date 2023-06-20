@@ -5,7 +5,7 @@
 
 import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel } from "@microsoft/vscode-azext-utils";
 import { AzureHostExtensionApi } from "@microsoft/vscode-azext-utils/hostapi";
-import { ExtensionContext, TreeView } from "vscode";
+import { ExtensionContext, SecretStorage, TreeView } from "vscode";
 import { DatabasesFileSystem } from "./DatabasesFileSystem";
 import { MongoDBLanguageClient } from "./mongo/languageClient";
 import { MongoCodeLensProvider } from "./mongo/services/MongoCodeLensProvider";
@@ -14,7 +14,6 @@ import { PostgresCodeLensProvider } from "./postgres/services/PostgresCodeLensPr
 import { PostgresDatabaseTreeItem } from "./postgres/tree/PostgresDatabaseTreeItem";
 import { AttachedAccountsTreeItem } from "./tree/AttachedAccountsTreeItem";
 import { AzureAccountTreeItemWithAttached } from "./tree/AzureAccountTreeItemWithAttached";
-import { KeyTar } from "./utils/keytar";
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -29,7 +28,7 @@ export namespace ext {
     export let attachedAccountsNode: AttachedAccountsTreeItem;
     export let ignoreBundle: boolean | undefined;
     export let azureAccountTreeItem: AzureAccountTreeItemWithAttached;
-    export let keytar: KeyTar | undefined;
+    export let secretStorage: SecretStorage;
     export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;
     export const prefix: string = 'azureDatabases';
     export let fileSystem: DatabasesFileSystem;

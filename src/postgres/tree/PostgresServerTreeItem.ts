@@ -8,10 +8,11 @@ import * as FlexibleModels from '@azure/arm-postgresql-flexible';
 import { getResourceGroupFromId, parseAzureResourceId, uiUtils } from '@microsoft/vscode-azext-azureutils';
 import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
 import { ClientConfig } from 'pg';
-import { coerce, gte, SemVer } from 'semver';
+import { SemVer, coerce, gte } from 'semver';
 import * as vscode from 'vscode';
 import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
+import { getSecretStorageKey } from '../../utils/getSecretStorageKey';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { AbstractPostgresClient, createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
@@ -20,12 +21,12 @@ import { getClientConfig } from '../getClientConfig';
 import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
-import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresFunctionTreeItem } from './PostgresFunctionTreeItem';
-import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
+import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresStoredProcedureTreeItem } from './PostgresStoredProcedureTreeItem';
-import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
+import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
 import { PostgresTableTreeItem } from './PostgresTableTreeItem';
+import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
 interface IPersistedServer {
     id: string;
@@ -181,31 +182,29 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
     }
 
     public async deletePostgresCredentials(): Promise<void> {
-        if (ext.keytar) {
-            const serviceName: string = PostgresServerTreeItem.serviceName;
-            const storedValue: string | undefined = ext.context.globalState.get(serviceName);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            let servers: IPersistedServer[] = storedValue ? JSON.parse(storedValue) : [];
+        const serviceName: string = PostgresServerTreeItem.serviceName;
+        const storedValue: string | undefined = ext.context.globalState.get(serviceName);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        let servers: IPersistedServer[] = storedValue ? JSON.parse(storedValue) : [];
 
-            // Remove this server from the cache
-            servers = servers.filter((server: IPersistedServer) => { return server.id !== this.id; });
+        // Remove this server from the cache
+        servers = servers.filter((server: IPersistedServer) => { return server.id !== this.id; });
 
-            await ext.context.globalState.update(serviceName, JSON.stringify(servers));
-            await ext.keytar.deletePassword(serviceName, this.id);
-        }
+        await ext.context.globalState.update(serviceName, JSON.stringify(servers));
+        await ext.secretStorage.delete(getSecretStorageKey(serviceName, this.id));
     }
 
     public async getFullConnectionString(): Promise<ParsedPostgresConnectionString> {
 
         if (this.azureId && !(this.partialConnectionString.username && this.partialConnectionString.password)) {
             const storedValue: string | undefined = ext.context.globalState.get(PostgresServerTreeItem.serviceName);
-            if (storedValue && ext.keytar) {
+            if (storedValue) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 const servers: IPersistedServer[] = JSON.parse(storedValue);
                 for (const server of servers) {
                     if (server.id === this.id) {
                         this.partialConnectionString.username = server.username;
-                        this.partialConnectionString.password = await ext.keytar.getPassword(PostgresServerTreeItem.serviceName, this.id) || undefined;
+                        this.partialConnectionString.password = await ext.secretStorage.get(getSecretStorageKey(PostgresServerTreeItem.serviceName, this.id)) || undefined;
                         break;
                     }
                 }

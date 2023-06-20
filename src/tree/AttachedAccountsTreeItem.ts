@@ -306,6 +306,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
                     isEmulator = (<IPersistedAccount>account).isEmulator;
                     label = isEmulator ? `${getExperienceFromApi(api).shortName} Emulator` : `${id} (${getExperienceFromApi(api).shortName})`;
                 }
+                // TODO: keytar: migration plan?
                 const connectionString: string = nonNullValue(await ext.secretStorage.get(getSecretStorageKey(this._serviceName, id)), 'connectionString');
                 persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
             }));

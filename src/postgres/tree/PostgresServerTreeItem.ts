@@ -204,7 +204,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
                 for (const server of servers) {
                     if (server.id === this.id) {
                         this.partialConnectionString.username = server.username;
-                        // TODO: keytar: migration plan?
+                        // Migration from keytar isn't necessary, the user will automatically be prompted to reenter credentials
                         this.partialConnectionString.password = await ext.secretStorage.get(getSecretStorageKey(PostgresServerTreeItem.serviceName, this.id)) || undefined;
                         break;
                     }

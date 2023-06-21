@@ -446,10 +446,6 @@
         "menus": {
             "azureDatabases.submenus.workspaceActions": [
                 {
-                    "command": "azureDatabases.createServer",
-                    "group": "2_create@1"
-                },
-                {
                     "command": "cosmosDB.attachDatabaseAccount",
                     "group": "1_attach@1"
                 }

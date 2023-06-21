@@ -20,6 +20,7 @@ import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
+import { getSecretStorageKey } from '../utils/getSecretStorageKey';
 import { localize } from '../utils/localize';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { SubscriptionTreeItem } from './SubscriptionTreeItem';
@@ -223,10 +224,8 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         const index = attachedAccounts.findIndex((account) => account.fullId === node.fullId);
         if (index !== -1) {
             attachedAccounts.splice(index, 1);
-            if (ext.keytar) {
-                await ext.keytar.deletePassword(this._serviceName, nonNullProp(node, 'id')); // intentionally using 'id' instead of 'fullId' for the sake of backwards compatibility
-                await this.persistIds(attachedAccounts);
-            }
+            await ext.secretStorage.delete(getSecretStorageKey(this._serviceName, nonNullProp(node, 'id'))); // intentionally using 'id' instead of 'fullId' for the sake of backwards compatibility
+            await this.persistIds(attachedAccounts);
 
             if (node instanceof MongoAccountTreeItem) {
                 const parsedCS = await parseMongoConnectionString(node.connectionString);
@@ -278,18 +277,15 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             void context.ui.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`, { stepName: 'attachAccount' });
         } else {
             attachedAccounts.push(treeItem);
-            if (ext.keytar) {
-                await ext.keytar.setPassword(this._serviceName, nonNullProp(treeItem, 'id'), connectionString);
-                await this.persistIds(attachedAccounts);
-            }
+            await ext.secretStorage.store(getSecretStorageKey(this._serviceName, nonNullProp(treeItem, 'id')), connectionString);
+            await this.persistIds(attachedAccounts);
         }
     }
 
     private async loadPersistedAccounts(): Promise<AzExtTreeItem[]> {
         const persistedAccounts: AzExtTreeItem[] = [];
         const value: string | undefined = ext.context.globalState.get(this._serviceName);
-        const keytar = ext.keytar;
-        if (value && keytar) {
+        if (value) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const accounts: (string | IPersistedAccount)[] = JSON.parse(value);
             await Promise.all(accounts.map(async account => {
@@ -310,7 +306,8 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
                     isEmulator = (<IPersistedAccount>account).isEmulator;
                     label = isEmulator ? `${getExperienceFromApi(api).shortName} Emulator` : `${id} (${getExperienceFromApi(api).shortName})`;
                 }
-                const connectionString: string = nonNullValue(await keytar.getPassword(this._serviceName, id), 'connectionString');
+                // TODO: keytar: migration plan?
+                const connectionString: string = nonNullValue(await ext.secretStorage.get(getSecretStorageKey(this._serviceName, id)), 'connectionString');
                 persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
             }));
         }

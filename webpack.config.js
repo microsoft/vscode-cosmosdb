@@ -37,10 +37,7 @@ let config = dev.getDefaultWebpackConfig({
         './mongo-languageServer.bundle': './src/mongo/languageServer.ts'
     },
 
-    externals:
-    {
-        // ./getCoreNodeModule.js (path from keytar.ts) uses a dynamic require which can't be webpacked
-        './getCoreNodeModule': 'commonjs getCoreNodeModule',
+    externals: {
     }, // end of externals
 
     loaderRules: [

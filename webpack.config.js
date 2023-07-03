@@ -50,15 +50,7 @@ let config = dev.getDefaultWebpackConfig({
 
             /[/\\]vscode-languageserver[/\\]lib[/\\]files\.js/,
             require.resolve('./build/vscode-languageserver-files-stub.js')
-        ),
-
-        // Copy files to dist folder where the runtime can find them
-        new CopyWebpackPlugin({
-            patterns: [
-                // getCoreNodeModule.js -> dist/node_modules/getCoreNodeModule.js
-                { from: './out/src/utils/getCoreNodeModule.js', to: 'node_modules' },
-            ]
-        })
+        )
     ]
 });
 

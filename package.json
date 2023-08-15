@@ -1030,6 +1030,7 @@
         "lint-fix": "eslint --ext .ts . --fix",
         "pretest": "npm run webpack-prod",
         "test": "node ./out/test/runTest.js",
+        "unittest": "mocha ./out/test/unit/**/*.js",
         "update-grammar": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src/mongo/grammar",
         "webpack": "npm run build && gulp webpack-dev",
         "webpack-prod": "npm run build && gulp webpack-prod",

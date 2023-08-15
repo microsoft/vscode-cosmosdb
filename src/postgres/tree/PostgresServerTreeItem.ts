@@ -17,7 +17,7 @@ import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { AbstractPostgresClient, createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { PostgresAbstractServer, PostgresServerType } from '../abstract/models';
-import { getClientConfig } from '../getClientConfig';
+import { getClientConfigWithValidation } from '../getClientConfig';
 import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
@@ -103,9 +103,10 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
         } else if (this.partialConnectionString.databaseName) {
             dbNames = [this.partialConnectionString.databaseName];
         } else {
-            const config = await getClientConfig(this, postgresDefaultDatabase);
+            const parsedConnectionString = await this.getFullConnectionString();
+            const clientConfig = await getClientConfigWithValidation(parsedConnectionString, this.serverType, !!this.azureName, postgresDefaultDatabase);
             const query = `SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false;`;
-            const queryResult = await runPostgresQuery(config, query);
+            const queryResult = await runPostgresQuery(clientConfig, query);
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
             dbNames = queryResult.rows.map(db => db?.datname);
         }
@@ -144,9 +145,10 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
             stepName: 'createPostgresDatabase',
             validateInput: (name: string) => validateDatabaseName(name, getChildrenTask)
         });
-        const config = await getClientConfig(this, postgresDefaultDatabase);
+        const parsedConnectionString = await this.getFullConnectionString();
+        const clientConfig = await getClientConfigWithValidation(parsedConnectionString, this.serverType, !!this.azureName, postgresDefaultDatabase);
         context.showCreatingTreeItem(databaseName);
-        await runPostgresQuery(config, `Create Database ${wrapArgInQuotes(databaseName)};`);
+        await runPostgresQuery(clientConfig, `Create Database ${wrapArgInQuotes(databaseName)};`);
         return new PostgresDatabaseTreeItem(this, databaseName);
     }
 

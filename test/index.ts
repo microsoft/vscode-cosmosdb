@@ -24,13 +24,14 @@ export async function run(): Promise<void> {
     console.log(`Mocha options: ${JSON.stringify(options, undefined, 2)}`);
 
     const mocha = new Mocha(options);
-
+    console.log("get files");
     const files: string[] = await new Promise((resolve, reject) => {
-        glob('**/**.test.js', { cwd: __dirname }, (err, result) => {
+        // tests in unit/ folder must run without vscode context.
+        // Skip them when running integration tests in a vscode instance.
+        glob('{!(unit)/,}*.test.js', { cwd: __dirname }, (err, result) => {
             err ? reject(err) : resolve(result);
         });
     });
-
     files.forEach(f => mocha.addFile(path.resolve(__dirname, f)));
 
     const failures = await new Promise<number>(resolve => mocha.run(resolve));

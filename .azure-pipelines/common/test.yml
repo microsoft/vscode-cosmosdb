@@ -16,7 +16,13 @@ steps:
     SERVICE_PRINCIPAL_CLIENT_ID: $(SERVICE_PRINCIPAL_CLIENT_ID)
     SERVICE_PRINCIPAL_SECRET: $(SERVICE_PRINCIPAL_SECRET)
     SERVICE_PRINCIPAL_DOMAIN: $(SERVICE_PRINCIPAL_DOMAIN)
-    DISPLAY: :10 # Only necessary for linux tests
+    DISPLAY: :10 # Only necessary for linux test
+
+- task: Npm@1
+  displayName: 'Unit Test'
+  inputs:
+    command: custom
+    customCommand: run unittest
 
 - task: PublishTestResults@2
   displayName: 'Publish Test Results'

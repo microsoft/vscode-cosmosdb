@@ -16,15 +16,13 @@ import { nonNullProp } from '../../utils/nonNull';
 import { AbstractPostgresClient, createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { PostgresServerType } from '../abstract/models';
 import { getPublicIp } from '../commands/configurePostgresFirewall';
-import { getClientConfig } from '../getClientConfig';
+import { getClientConfigWithValidation } from '../getClientConfig';
+import { firewallNotConfiguredErrorType, invalidCredentialsErrorType } from '../postgresConstants';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
 import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
-
-export const invalidCredentialsErrorType: string = '28P01';
-export const firewallNotConfiguredErrorType: string = '28000';
 
 export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = "postgresDatabase";
@@ -61,7 +59,9 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
 
     public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
         try {
-            const clientConfig: ClientConfig = await getClientConfig(this.parent, this.databaseName);
+            const serverTreeItem = this.parent;
+            const parsedConnectionString = await serverTreeItem.getFullConnectionString();
+            const clientConfig: ClientConfig | undefined = await getClientConfigWithValidation(parsedConnectionString, serverTreeItem.serverType, !!serverTreeItem.azureName, this.databaseName);
             const children: AzExtTreeItem[] = [
                 new PostgresFunctionsTreeItem(this, clientConfig),
                 new PostgresTablesTreeItem(this, clientConfig)
@@ -99,8 +99,10 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        const config = await getClientConfig(this.parent, postgresDefaultDatabase);
-        await runPostgresQuery(config, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
+        const serverTreeItem = this.parent;
+        const parsedConnectionString = await serverTreeItem.getFullConnectionString();
+        const clientConfig = await getClientConfigWithValidation(parsedConnectionString, serverTreeItem.serverType, !!serverTreeItem.azureName, postgresDefaultDatabase);
+        await runPostgresQuery(clientConfig, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
     }
 
     // Flexible servers throw a generic 'ETIMEDOUT' error instead of the firewall-specific error, so we have to check the firewall rules

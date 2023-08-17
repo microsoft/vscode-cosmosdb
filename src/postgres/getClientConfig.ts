@@ -77,7 +77,7 @@ export async function getClientConfig(
             ca: serverType === PostgresServerType.Single ? [BaltimoreCyberTrustRoot, DigiCertGlobalRootG2] : [DigiCertGlobalRootCA]
         };
         const passwordClientConfig = await getUsernamePasswordClientConfig(parsedConnectionString, sslAzure, databaseName);
-        if (!!passwordClientConfig) {
+        if (passwordClientConfig) {
             clientConfig = passwordClientConfig;
         } else if (!!azureUserId && !!getToken) {
             const azureAdClientConfig = await getAzureAdClientConfig(parsedConnectionString, sslAzure, databaseName, azureUserId, getToken);

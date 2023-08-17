@@ -8,11 +8,15 @@ import { getApiExport } from "./getExtensionApi";
 
 const azureAccountExtensionId = "ms-vscode.azure-account";
 
+type AzureSession = {
+    userId: string;
+};
+
 /**
  * @returns The userId of the signed-in azure account.
  */
 export async function getAzureAdUserId(): Promise<string | undefined> {
-    const azureAccountExport: any = await getApiExport(azureAccountExtensionId);
+    const azureAccountExport = await getApiExport(azureAccountExtensionId) as { sessions?: AzureSession[] };
     const session = azureAccountExport.sessions?.[0];
     return session?.userId;
 }
@@ -22,7 +26,7 @@ export async function getAzureAdUserId(): Promise<string | undefined> {
  */
 export function getTokenCredential(credentials: AzExtServiceClientCredentials, scope: string): () => Promise<string> {
     return async () => {
-        const getTokenResult = await credentials.getToken(scope);
+        const getTokenResult = await credentials.getToken(scope) as { token: string } | undefined;
         return getTokenResult?.token ?? "";
     };
 }

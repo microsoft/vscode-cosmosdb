@@ -9,7 +9,7 @@ import { uiUtils } from '@microsoft/vscode-azext-azureutils';
 import { AzExtParentTreeItem, AzExtTreeItem, GenericTreeItem, IActionContext, IParsedError, parseError, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import { ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';
-import { getAzureAdUserSession, getTokenCredential } from '../../azureAccountUtils';
+import { getAzureAdUserSession, getTokenFunction } from '../../azureAccountUtils';
 import { postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
@@ -69,7 +69,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
                 !!serverTreeItem.azureName,
                 this.databaseName,
                 azureUserSession?.userId,
-                getTokenCredential(serverTreeItem.subscription.credentials, postgresResourceType)
+                getTokenFunction(serverTreeItem.subscription.credentials, postgresResourceType)
             );
             const children: AzExtTreeItem[] = [
                 new PostgresFunctionsTreeItem(this, clientConfig),
@@ -117,7 +117,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
             !!serverTreeItem.azureName,
             postgresDefaultDatabase,
             azureUserSession?.userId,
-            getTokenCredential(serverTreeItem.subscription.credentials, postgresResourceType)
+            getTokenFunction(serverTreeItem.subscription.credentials, postgresResourceType)
         );
         await runPostgresQuery(clientConfig, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
     }

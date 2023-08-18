@@ -21,9 +21,9 @@ export async function getAzureAdUserSession(): Promise<AzureSession | undefined>
 }
 
 /**
- * Gets a token credential for a specified scope for the signed-in azure account.
+ * Gets a function that can request an access token for a specified scope for the signed-in azure account.
  */
-export function getTokenCredential(credentials: AzExtServiceClientCredentials, scope: string): () => Promise<string> {
+export function getTokenFunction(credentials: AzExtServiceClientCredentials, scope: string): () => Promise<string> {
     return async () => {
         const getTokenResult = await credentials.getToken(scope) as { token: string } | undefined;
         return getTokenResult?.token ?? "";

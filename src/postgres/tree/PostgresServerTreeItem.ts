@@ -10,7 +10,7 @@ import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplCon
 import { ClientConfig } from 'pg';
 import { SemVer, coerce, gte } from 'semver';
 import * as vscode from 'vscode';
-import { getAzureAdUserSession, getTokenCredential } from '../../azureAccountUtils';
+import { getAzureAdUserSession, getTokenFunction } from '../../azureAccountUtils';
 import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { getSecretStorageKey } from '../../utils/getSecretStorageKey';
@@ -112,7 +112,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
                 !!this.azureName,
                 postgresDefaultDatabase,
                 azureUserSession?.userId,
-                getTokenCredential(this.subscription.credentials, postgresResourceType)
+                getTokenFunction(this.subscription.credentials, postgresResourceType)
             );
             const query = `SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false;`;
             const queryResult = await runPostgresQuery(clientConfig, query);
@@ -162,7 +162,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
             !!this.azureName,
             postgresDefaultDatabase,
             azureUserSession?.userId,
-            getTokenCredential(this.subscription.credentials, postgresResourceType)
+            getTokenFunction(this.subscription.credentials, postgresResourceType)
         );
         context.showCreatingTreeItem(databaseName);
         await runPostgresQuery(clientConfig, `Create Database ${wrapArgInQuotes(databaseName)};`);

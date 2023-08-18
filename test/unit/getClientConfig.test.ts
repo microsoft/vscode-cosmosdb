@@ -85,7 +85,7 @@ describe("getClientConfig Tests", () => {
             assert(clientConfig === undefined);
         });
 
-        it("Get client config - aad", async () => {
+        it("Get client config - flexible aad", async () => {
             const parsedConnectionString = new ParsedPostgresConnectionString(
                 "",
                 {
@@ -109,6 +109,29 @@ describe("getClientConfig Tests", () => {
             assert(clientConfig?.host === "fake_host.com");
             assert(clientConfig?.port === 1234);
         });
+
+        it("Get client config - single aad", async () => {
+            const parsedConnectionString = new ParsedPostgresConnectionString(
+                "",
+                {
+                    host: "fake_host.com",
+                    port: "1234",
+                    database: "fake_database"
+                }
+            );
+            const databaseName = "fake_database_2";
+
+            const clientConfig = await getClientConfig(
+                parsedConnectionString,
+                PostgresServerType.Single,
+                true,
+                databaseName,
+                "fake_azureAd_userId",
+                async () => "fake_token"
+            );
+            assert(clientConfig === undefined);
+        });
+
 
         describe("in attachment", () => {
             it("Get client config - connection string", async () => {

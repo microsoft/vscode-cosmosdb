@@ -79,7 +79,7 @@ export async function getClientConfig(
         const passwordClientConfig = await getUsernamePasswordClientConfig(parsedConnectionString, sslAzure, databaseName);
         if (passwordClientConfig) {
             clientConfig = passwordClientConfig;
-        } else if (!!azureUserId && !!getToken) {
+        } else if (serverType === PostgresServerType.Flexible && !!azureUserId && !!getToken) {
             const azureAdClientConfig = await getAzureAdClientConfig(parsedConnectionString, sslAzure, databaseName, azureUserId, getToken);
             clientConfig = azureAdClientConfig;
         }

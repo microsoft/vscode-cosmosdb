@@ -13,12 +13,11 @@ type AzureSession = {
 };
 
 /**
- * @returns The userId of the signed-in azure account.
+ * @returns The user session of the signed-in azure account.
  */
-export async function getAzureAdUserId(): Promise<string | undefined> {
+export async function getAzureAdUserSession(): Promise<AzureSession | undefined> {
     const azureAccountExport = await getApiExport(azureAccountExtensionId) as { sessions?: AzureSession[] };
-    const session = azureAccountExport.sessions?.[0];
-    return session?.userId;
+    return azureAccountExport.sessions?.[0];
 }
 
 /**

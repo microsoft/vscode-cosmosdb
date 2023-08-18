@@ -10,7 +10,7 @@ import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplCon
 import { ClientConfig } from 'pg';
 import { SemVer, coerce, gte } from 'semver';
 import * as vscode from 'vscode';
-import { getAzureAdUserId, getTokenCredential } from '../../azureAccountUtils';
+import { getAzureAdUserSession, getTokenCredential } from '../../azureAccountUtils';
 import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { getSecretStorageKey } from '../../utils/getSecretStorageKey';
@@ -105,13 +105,13 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
             dbNames = [this.partialConnectionString.databaseName];
         } else {
             const parsedConnectionString = await this.getFullConnectionString();
-            const azureAdUserId = await getAzureAdUserId();
+            const azureUserSession = await getAzureAdUserSession();
             const clientConfig = await getClientConfigWithValidation(
                 parsedConnectionString,
                 this.serverType,
                 !!this.azureName,
                 postgresDefaultDatabase,
-                azureAdUserId,
+                azureUserSession?.userId,
                 getTokenCredential(this.subscription.credentials, postgresResourceType)
             );
             const query = `SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false;`;
@@ -155,13 +155,13 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
             validateInput: (name: string) => validateDatabaseName(name, getChildrenTask)
         });
         const parsedConnectionString = await this.getFullConnectionString();
-        const azureAdUserId = await getAzureAdUserId();
+        const azureUserSession = await getAzureAdUserSession();
         const clientConfig = await getClientConfigWithValidation(
             parsedConnectionString,
             this.serverType,
             !!this.azureName,
             postgresDefaultDatabase,
-            azureAdUserId,
+            azureUserSession?.userId,
             getTokenCredential(this.subscription.credentials, postgresResourceType)
         );
         context.showCreatingTreeItem(databaseName);

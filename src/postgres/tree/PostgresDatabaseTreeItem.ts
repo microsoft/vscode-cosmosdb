@@ -9,7 +9,7 @@ import { uiUtils } from '@microsoft/vscode-azext-azureutils';
 import { AzExtParentTreeItem, AzExtTreeItem, GenericTreeItem, IActionContext, IParsedError, parseError, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import { ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';
-import { getAzureAdUserId, getTokenCredential } from '../../azureAccountUtils';
+import { getAzureAdUserSession, getTokenCredential } from '../../azureAccountUtils';
 import { postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
@@ -62,13 +62,13 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
         try {
             const serverTreeItem = this.parent;
             const parsedConnectionString = await serverTreeItem.getFullConnectionString();
-            const azureAdUserId = await getAzureAdUserId();
+            const azureUserSession = await getAzureAdUserSession();
             const clientConfig: ClientConfig = await getClientConfigWithValidation(
                 parsedConnectionString,
                 serverTreeItem.serverType,
                 !!serverTreeItem.azureName,
                 this.databaseName,
-                azureAdUserId,
+                azureUserSession?.userId,
                 getTokenCredential(serverTreeItem.subscription.credentials, postgresResourceType)
             );
             const children: AzExtTreeItem[] = [
@@ -110,13 +110,13 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     public async deleteTreeItemImpl(): Promise<void> {
         const serverTreeItem = this.parent;
         const parsedConnectionString = await serverTreeItem.getFullConnectionString();
-        const azureAdUserId = await getAzureAdUserId();
+        const azureUserSession = await getAzureAdUserSession();
         const clientConfig = await getClientConfigWithValidation(
             parsedConnectionString,
             serverTreeItem.serverType,
             !!serverTreeItem.azureName,
             postgresDefaultDatabase,
-            azureAdUserId,
+            azureUserSession?.userId,
             getTokenCredential(serverTreeItem.subscription.credentials, postgresResourceType)
         );
         await runPostgresQuery(clientConfig, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);

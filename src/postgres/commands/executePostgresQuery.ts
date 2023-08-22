@@ -17,7 +17,7 @@ import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
 import { checkAuthentication } from './checkAuthentication';
 import { loadPersistedPostgresDatabase } from './registerPostgresCommands';
 
-export async function executePostgresQuery(context: IActionContext): Promise<void> {
+export async function executePostgresQueryInDocument(context: IActionContext): Promise<void> {
     await loadPersistedPostgresDatabase();
 
     let treeItem: PostgresDatabaseTreeItem;

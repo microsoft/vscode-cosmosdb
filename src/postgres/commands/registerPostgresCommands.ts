@@ -22,7 +22,7 @@ import { deletePostgresServer } from "./deletePostgresServer";
 import { deletePostgresStoredProcedure } from "./deletePostgresStoredProcedure";
 import { deletePostgresTable } from "./deletePostgresTable";
 import { enterPostgresCredentials } from "./enterPostgresCredentials";
-import { executePostgresQuery } from "./executePostgresQuery";
+import { executePostgresQueryInDocument } from "./executePostgresQuery";
 import { openPostgresFunction } from "./openPostgresFunction";
 import { openPostgresStoredProcedure } from "./openPostgresStoredProcedure";
 
@@ -48,7 +48,7 @@ export function registerPostgresCommands(): void {
     registerCommandWithTreeNodeUnwrapping('postgreSQL.connectDatabase', connectPostgresDatabase);
     registerCommandWithTreeNodeUnwrapping('postgreSQL.createFunctionQuery', createPostgresFunctionQuery);
     registerCommandWithTreeNodeUnwrapping('postgreSQL.createStoredProcedureQuery', createPostgresStoredProcedureQuery);
-    registerCommandWithTreeNodeUnwrapping('postgreSQL.executeQuery', executePostgresQuery);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.executeQuery', executePostgresQueryInDocument);
     registerCommandWithTreeNodeUnwrapping('postgreSQL.copyConnectionString', copyConnectionString);
 }
 

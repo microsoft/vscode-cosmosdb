@@ -4,8 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
-import { FirewallRule } from '@azure/arm-postgresql';
-import { uiUtils } from '@microsoft/vscode-azext-azureutils';
 import { AzExtParentTreeItem, AzExtTreeItem, GenericTreeItem, IActionContext, IParsedError, parseError, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import { ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';
@@ -13,10 +11,6 @@ import { getAzureAdUserSession, getTokenFunction } from '../../azureAccountUtils
 import { postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
-import { nonNullProp } from '../../utils/nonNull';
-import { AbstractPostgresClient, createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
-import { PostgresServerType } from '../abstract/models';
-import { getPublicIp } from '../commands/configurePostgresFirewall';
 import { getClientConfigWithValidation, postgresResourceType } from '../getClientConfig';
 import { firewallNotConfiguredErrorType, invalidCredentialsErrorType } from '../postgresConstants';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
@@ -93,7 +87,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
                 });
                 credentialsTreeItem.commandArgs = [this.parent];
                 return [credentialsTreeItem];
-            } else if (this.parent.azureName && (parsedError.errorType === firewallNotConfiguredErrorType || (parsedError.errorType === 'ETIMEDOUT' && !(await this.isFirewallRuleSet(context, this.parent))))) {
+            } else if (this.parent.azureName && (parsedError.errorType === firewallNotConfiguredErrorType || (parsedError.errorType === 'ETIMEDOUT' && !(await this.parent.isFirewallRuleSet(context))))) {
                 const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
                     contextValue: 'postgresFirewall',
                     label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
@@ -122,12 +116,12 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
         await runPostgresQuery(clientConfig, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
     }
 
-    // Flexible servers throw a generic 'ETIMEDOUT' error instead of the firewall-specific error, so we have to check the firewall rules
-    public async isFirewallRuleSet(context: IActionContext, treeItem: PostgresServerTreeItem): Promise<boolean> {
-        const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
-        const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [context, treeItem.subscription]);
-        const results: FirewallRule[] = (await uiUtils.listAllIterator(client.firewallRules.listByServer(nonNullProp(treeItem, 'resourceGroup'), nonNullProp(treeItem, 'azureName'))));
-        const publicIp: string = await getPublicIp(context);
-        return (results.some((value: FirewallRule) => value.startIpAddress === publicIp));
-    }
+    // // Flexible servers throw a generic 'ETIMEDOUT' error instead of the firewall-specific error, so we have to check the firewall rules
+    // public async isFirewallRuleSet(context: IActionContext, treeItem: PostgresServerTreeItem): Promise<boolean> {
+    //     const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
+    //     const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [context, treeItem.subscription]);
+    //     const results: FirewallRule[] = (await uiUtils.listAllIterator(client.firewallRules.listByServer(nonNullProp(treeItem, 'resourceGroup'), nonNullProp(treeItem, 'azureName'))));
+    //     const publicIp: string = await getPublicIp(context);
+    //     return (results.some((value: FirewallRule) => value.startIpAddress === publicIp));
+    // }
 }

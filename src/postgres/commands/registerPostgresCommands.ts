@@ -22,7 +22,7 @@ import { deletePostgresServer } from "./deletePostgresServer";
 import { deletePostgresStoredProcedure } from "./deletePostgresStoredProcedure";
 import { deletePostgresTable } from "./deletePostgresTable";
 import { enterPostgresCredentials } from "./enterPostgresCredentials";
-import { executePostgresQueryInDocument } from "./executePostgresQuery";
+import { executePostgresQueryInDocument } from "./executePostgresQueryInDocument";
 import { openPostgresFunction } from "./openPostgresFunction";
 import { openPostgresStoredProcedure } from "./openPostgresStoredProcedure";
 

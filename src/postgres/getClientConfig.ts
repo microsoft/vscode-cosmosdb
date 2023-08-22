@@ -12,6 +12,8 @@ import { PostgresServerType } from "./abstract/models";
 import { ParsedPostgresConnectionString, addDatabaseToConnectionString } from "./postgresConnectionStrings";
 import { invalidCredentialsErrorType } from "./postgresConstants";
 
+export const postgresResourceType = "https://ossrdbms-aad.database.windows.net/";
+
 /**
  * Test if the database can be connected to using the given client config.
  * @throws if the client failed to connect to the database.
@@ -46,11 +48,25 @@ async function getUsernamePasswordClientConfig(parsedConnectionString: ParsedPos
     }
 }
 
+async function getAzureAdClientConfig(
+    parsedConnectionString: ParsedPostgresConnectionString,
+    sslAzure: ConnectionOptions,
+    databaseName: string,
+    azureAdUserId: string,
+    getToken: () => Promise<string>
+): Promise<ClientConfig> {
+    const host = nonNullProp(parsedConnectionString, 'hostName');
+    const port: number = parsedConnectionString.port ? parseInt(parsedConnectionString.port) : parseInt(postgresDefaultPort);
+    return { user: azureAdUserId, password: getToken, ssl: sslAzure, host, port, database: databaseName };
+}
+
 export async function getClientConfig(
     parsedConnectionString: ParsedPostgresConnectionString,
     serverType: PostgresServerType,
     hasSubscription: boolean,
-    databaseName: string
+    databaseName: string,
+    azureUserId?: string,
+    getToken?: () => Promise<string>
 ): Promise<ClientConfig | undefined> {
     let clientConfig: ClientConfig | undefined;
     if (hasSubscription) {
@@ -61,7 +77,12 @@ export async function getClientConfig(
             ca: serverType === PostgresServerType.Single ? [BaltimoreCyberTrustRoot, DigiCertGlobalRootG2] : [DigiCertGlobalRootCA]
         };
         const passwordClientConfig = await getUsernamePasswordClientConfig(parsedConnectionString, sslAzure, databaseName);
-        clientConfig = passwordClientConfig;
+        if (passwordClientConfig) {
+            clientConfig = passwordClientConfig;
+        } else if (serverType === PostgresServerType.Flexible && !!azureUserId && !!getToken) {
+            const azureAdClientConfig = await getAzureAdClientConfig(parsedConnectionString, sslAzure, databaseName, azureUserId, getToken);
+            clientConfig = azureAdClientConfig;
+        }
     } else {
         const connectionStringClientConfig = await getConnectionStringClientConfig(parsedConnectionString, databaseName);
         clientConfig = connectionStringClientConfig;
@@ -74,12 +95,16 @@ export async function getClientConfigWithValidation(
     parsedConnectionString: ParsedPostgresConnectionString,
     serverType: PostgresServerType,
     hasSubscription: boolean,
-    databaseName: string
+    databaseName: string,
+    azureUserId?: string,
+    getToken?: () => Promise<string>
 ): Promise<ClientConfig> {
     const clientConfig = await getClientConfig(parsedConnectionString,
         serverType,
         hasSubscription,
-        databaseName
+        databaseName,
+        azureUserId,
+        getToken
     );
 
     if (!clientConfig) {

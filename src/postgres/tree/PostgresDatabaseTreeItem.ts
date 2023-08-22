@@ -115,13 +115,4 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
         );
         await runPostgresQuery(clientConfig, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
     }
-
-    // // Flexible servers throw a generic 'ETIMEDOUT' error instead of the firewall-specific error, so we have to check the firewall rules
-    // public async isFirewallRuleSet(context: IActionContext, treeItem: PostgresServerTreeItem): Promise<boolean> {
-    //     const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
-    //     const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [context, treeItem.subscription]);
-    //     const results: FirewallRule[] = (await uiUtils.listAllIterator(client.firewallRules.listByServer(nonNullProp(treeItem, 'resourceGroup'), nonNullProp(treeItem, 'azureName'))));
-    //     const publicIp: string = await getPublicIp(context);
-    //     return (results.some((value: FirewallRule) => value.startIpAddress === publicIp));
-    // }
 }

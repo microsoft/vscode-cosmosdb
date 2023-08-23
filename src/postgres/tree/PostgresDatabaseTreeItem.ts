@@ -7,13 +7,11 @@
 import { AzExtParentTreeItem, AzExtTreeItem, GenericTreeItem, IActionContext, IParsedError, parseError, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import { ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';
-import { getAzureAdUserSession, getTokenFunction } from '../../azureAccountUtils';
-import { postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
-import { getClientConfigWithValidation, postgresResourceType } from '../getClientConfig';
 import { firewallNotConfiguredErrorType, invalidCredentialsErrorType } from '../postgresConstants';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
+import { PostgresClientConfigFactory } from './ClientConfigFactory';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
 import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
@@ -54,17 +52,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
 
     public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
         try {
-            const serverTreeItem = this.parent;
-            const parsedConnectionString = await serverTreeItem.getFullConnectionString();
-            const azureUserSession = await getAzureAdUserSession();
-            const clientConfig: ClientConfig = await getClientConfigWithValidation(
-                parsedConnectionString,
-                serverTreeItem.serverType,
-                !!serverTreeItem.azureName,
-                this.databaseName,
-                azureUserSession?.userId,
-                getTokenFunction(serverTreeItem.subscription.credentials, postgresResourceType)
-            );
+            const clientConfig: ClientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(this.parent, this.databaseName);
             const children: AzExtTreeItem[] = [
                 new PostgresFunctionsTreeItem(this, clientConfig),
                 new PostgresTablesTreeItem(this, clientConfig)
@@ -102,17 +90,12 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        const serverTreeItem = this.parent;
-        const parsedConnectionString = await serverTreeItem.getFullConnectionString();
-        const azureUserSession = await getAzureAdUserSession();
-        const clientConfig = await getClientConfigWithValidation(
-            parsedConnectionString,
-            serverTreeItem.serverType,
-            !!serverTreeItem.azureName,
-            postgresDefaultDatabase,
-            azureUserSession?.userId,
-            getTokenFunction(serverTreeItem.subscription.credentials, postgresResourceType)
-        );
-        await runPostgresQuery(clientConfig, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
+        try {
+            const clientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(this.parent, this.databaseName);
+            await runPostgresQuery(clientConfig, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
+        } catch (error) {
+            // @todo: Figure out if we need to do error handling here.
+            throw error;
+        }
     }
 }

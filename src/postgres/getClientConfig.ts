@@ -6,19 +6,22 @@
 import { Client, ClientConfig } from "pg";
 import { ConnectionOptions } from "tls";
 import { postgresDefaultPort } from "../constants";
-import { localize } from "../utils/localize";
 import { nonNullProp } from "../utils/nonNull";
 import { PostgresServerType } from "./abstract/models";
 import { ParsedPostgresConnectionString, addDatabaseToConnectionString } from "./postgresConnectionStrings";
-import { invalidCredentialsErrorType } from "./postgresConstants";
 
-export const postgresResourceType = "https://ossrdbms-aad.database.windows.net/";
+export type PostgresClientConfigs = {
+    password: ClientConfig | undefined;
+    azureAd: ClientConfig | undefined;
+    connectionString: ClientConfig | undefined;
+};
+export type PostgresClientConfigType = keyof PostgresClientConfigs;
 
 /**
  * Test if the database can be connected to using the given client config.
  * @throws if the client failed to connect to the database.
  */
-async function testClientConfig(clientConfig: ClientConfig) {
+export async function testClientConfig(clientConfig: ClientConfig) {
     const client = new Client(clientConfig);
     try {
         await client.connect();
@@ -60,15 +63,19 @@ async function getAzureAdClientConfig(
     return { user: azureAdUserId, password: getToken, ssl: sslAzure, host, port, database: databaseName };
 }
 
-export async function getClientConfig(
+export async function getClientConfigs(
     parsedConnectionString: ParsedPostgresConnectionString,
     serverType: PostgresServerType,
     hasSubscription: boolean,
     databaseName: string,
     azureUserId?: string,
     getToken?: () => Promise<string>
-): Promise<ClientConfig | undefined> {
-    let clientConfig: ClientConfig | undefined;
+): Promise<PostgresClientConfigs> {
+    let clientConfigs: PostgresClientConfigs = {
+        password: undefined,
+        azureAd: undefined,
+        connectionString: undefined
+    };
     if (hasSubscription) {
         const sslAzure: ConnectionOptions = {
             // Always provide the certificate since it is accepted even when SSL is disabled
@@ -78,44 +85,18 @@ export async function getClientConfig(
         };
         const passwordClientConfig = await getUsernamePasswordClientConfig(parsedConnectionString, sslAzure, databaseName);
         if (passwordClientConfig) {
-            clientConfig = passwordClientConfig;
-        } else if (serverType === PostgresServerType.Flexible && !!azureUserId && !!getToken) {
+            clientConfigs.password = passwordClientConfig;
+        }
+        if (serverType === PostgresServerType.Flexible && !!azureUserId && !!getToken) {
             const azureAdClientConfig = await getAzureAdClientConfig(parsedConnectionString, sslAzure, databaseName, azureUserId, getToken);
-            clientConfig = azureAdClientConfig;
+            clientConfigs.azureAd = azureAdClientConfig;
         }
     } else {
         const connectionStringClientConfig = await getConnectionStringClientConfig(parsedConnectionString, databaseName);
-        clientConfig = connectionStringClientConfig;
+        clientConfigs.connectionString = connectionStringClientConfig;
     }
 
-    return clientConfig;
-}
-
-export async function getClientConfigWithValidation(
-    parsedConnectionString: ParsedPostgresConnectionString,
-    serverType: PostgresServerType,
-    hasSubscription: boolean,
-    databaseName: string,
-    azureUserId?: string,
-    getToken?: () => Promise<string>
-): Promise<ClientConfig> {
-    const clientConfig = await getClientConfig(parsedConnectionString,
-        serverType,
-        hasSubscription,
-        databaseName,
-        azureUserId,
-        getToken
-    );
-
-    if (!clientConfig) {
-        throw {
-            message: localize('mustEnterCredentials', 'Must enter credentials to connect to server.'),
-            code: invalidCredentialsErrorType
-        };
-    }
-
-    await testClientConfig(clientConfig);
-    return clientConfig;
+    return clientConfigs;
 }
 
 // Postgres Single Server Root Cert, https://aka.ms/AA7wnvl

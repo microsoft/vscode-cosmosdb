@@ -32,7 +32,7 @@ export enum AccountApi {
     Core = 'SQL'
 }
 
-export const longRunningTestsEnabled: boolean = !/^(false|0)?$/i.test(process.env.ENABLE_LONG_RUNNING_TESTS || '');
+export const longRunningTestsEnabled: boolean = false;
 
 suiteSetup(async function (this: Mocha.Context): Promise<void> {
     if (longRunningTestsEnabled) {

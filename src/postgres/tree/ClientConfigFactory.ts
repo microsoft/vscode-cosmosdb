@@ -32,7 +32,6 @@ export class PostgresClientConfigFactory {
 
         const clientConfigTypeOrder: PostgresClientConfigType[] = ["azureAd", "password", "connectionString"];
 
-        // @todo: Add telemetry to figure out the distribution of client config types.
         for (const clientConfigType of clientConfigTypeOrder) {
             const clientConfig: ClientConfig | undefined = clientConfigs[clientConfigType];
             if (!clientConfig) {

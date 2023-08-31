@@ -90,12 +90,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        try {
-            const clientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(this.parent, this.databaseName);
-            await runPostgresQuery(clientConfig, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
-        } catch (error) {
-            // @todo: Figure out if we need to do error handling here.
-            throw error;
-        }
+        const clientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(this.parent, this.databaseName);
+        await runPostgresQuery(clientConfig, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
     }
 }

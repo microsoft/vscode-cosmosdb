@@ -21,7 +21,7 @@ export type PostgresClientConfigType = keyof PostgresClientConfigs;
  * Test if the database can be connected to using the given client config.
  * @throws if the client failed to connect to the database.
  */
-export async function testClientConfig(clientConfig: ClientConfig) {
+export async function testClientConfig(clientConfig: ClientConfig): Promise<void> {
     const client = new Client(clientConfig);
     try {
         await client.connect();
@@ -71,7 +71,7 @@ export async function getClientConfigs(
     azureUserId?: string,
     getToken?: () => Promise<string>
 ): Promise<PostgresClientConfigs> {
-    let clientConfigs: PostgresClientConfigs = {
+    const clientConfigs: PostgresClientConfigs = {
         password: undefined,
         azureAd: undefined,
         connectionString: undefined

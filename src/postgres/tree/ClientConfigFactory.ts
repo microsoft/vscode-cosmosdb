@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { callWithTelemetryAndErrorHandling } from "@microsoft/vscode-azext-utils";
 import { ClientConfig } from "pg";
 import { getAzureAdUserSession, getTokenFunction } from "../../azureAccountUtils";
 import { localize } from "../../utils/localize";
@@ -39,7 +40,12 @@ export class PostgresClientConfigFactory {
             }
 
             try {
-                await testClientConfig(clientConfig);
+                await callWithTelemetryAndErrorHandling<void>("postgreSQL.testClientConfig", async (context) => {
+                    context.errorHandling.rethrow = true;
+                    context.errorHandling.suppressDisplay = true;
+                    context.telemetry.properties.clientConfigType = clientConfigType;
+                    await testClientConfig(clientConfig);
+                });
                 return clientConfig;
             } catch (error) {
                 // If the client config failed during test, skip and try the next available one.

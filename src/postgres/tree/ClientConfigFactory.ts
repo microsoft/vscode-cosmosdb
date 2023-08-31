@@ -29,11 +29,7 @@ export class PostgresClientConfigFactory {
             getTokenFunction(treeItem.subscription.credentials, postgresResourceType)
         );
 
-        // @todo: Get this value from setting
-        const preferAzureAd = false;
-        const clientConfigTypeOrder: PostgresClientConfigType[] = preferAzureAd ?
-            ["azureAd", "password", "connectionString"] :
-            ["password", "azureAd", "connectionString"];
+        const clientConfigTypeOrder: PostgresClientConfigType[] = ["azureAd", "password", "connectionString"];
 
         // @todo: Add telemetry to figure out the distribution of client config types.
         for (const clientConfigType of clientConfigTypeOrder) {

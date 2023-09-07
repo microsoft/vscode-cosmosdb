@@ -7,12 +7,12 @@ import * as assert from 'assert';
 import { describe, it } from 'mocha';
 import { postgresDefaultPort } from '../../src/constants';
 import { PostgresServerType } from '../../src/postgres/abstract/models';
-import { getClientConfig } from '../../src/postgres/getClientConfig';
+import { getClientConfigs } from '../../src/postgres/getClientConfig';
 import { ParsedPostgresConnectionString } from '../../src/postgres/postgresConnectionStrings';
 
 describe("getClientConfig Tests", () => {
     describe("in subscription", () => {
-        it("Get client config - username password", async () => {
+        it("Password only", async () => {
             const parsedConnectionString = new ParsedPostgresConnectionString(
                 "",
                 {
@@ -25,16 +25,15 @@ describe("getClientConfig Tests", () => {
             );
             const databaseName = "fake_database_2";
 
-            const clientConfig = await getClientConfig(parsedConnectionString, PostgresServerType.Flexible, true, databaseName);
-            assert(clientConfig?.user === "fake_user");
-            assert(clientConfig?.password === "fake_password");
-            assert(clientConfig?.host === "fake_host.com");
-            assert(clientConfig?.port === 1234);
+            const clientConfigs = await getClientConfigs(parsedConnectionString, PostgresServerType.Flexible, true, databaseName);
+            assert(clientConfigs.password !== undefined);
+            assert(clientConfigs.azureAd === undefined);
+            assert(clientConfigs.connectionString === undefined);
         });
 
         // Cannot test null/undefined host because if it is the case, the code has thrown much earlier when constructing the ParsedPostgresConnectionString object.
 
-        it("Get client config - missing port", async () => {
+        it("Password only - Missing port", async () => {
             const parsedConnectionString = new ParsedPostgresConnectionString(
                 "",
                 {
@@ -46,14 +45,14 @@ describe("getClientConfig Tests", () => {
             );
             const databaseName = "fake_database_2";
 
-            const clientConfig = await getClientConfig(parsedConnectionString, PostgresServerType.Flexible, true, databaseName);
-            assert(clientConfig?.user === "fake_user");
-            assert(clientConfig?.password === "fake_password");
-            assert(clientConfig?.host === "fake_host.com");
-            assert(clientConfig?.port === parseInt(postgresDefaultPort), "Should fallback to default port");
+            const clientConfigs = await getClientConfigs(parsedConnectionString, PostgresServerType.Flexible, true, databaseName);
+            assert(clientConfigs.password !== undefined);
+            assert(clientConfigs.azureAd === undefined);
+            assert(clientConfigs.connectionString === undefined);
+            assert(clientConfigs.password?.port === parseInt(postgresDefaultPort), "Should fallback to default port");
         });
 
-        it("Get client config - missing username nor aad credential", async () => {
+        it("Password only - missing username", async () => {
             const parsedConnectionString = new ParsedPostgresConnectionString(
                 "",
                 {
@@ -65,11 +64,13 @@ describe("getClientConfig Tests", () => {
             );
             const databaseName = "fake_database_2";
 
-            const clientConfig = await getClientConfig(parsedConnectionString, PostgresServerType.Flexible, true, databaseName);
-            assert(clientConfig === undefined);
+            const clientConfigs = await getClientConfigs(parsedConnectionString, PostgresServerType.Flexible, true, databaseName);
+            assert(clientConfigs.password === undefined);
+            assert(clientConfigs.azureAd === undefined);
+            assert(clientConfigs.connectionString === undefined);
         });
 
-        it("Get client config - missing password nor aad credential", async () => {
+        it("No credential", async () => {
             const parsedConnectionString = new ParsedPostgresConnectionString(
                 "",
                 {
@@ -81,11 +82,13 @@ describe("getClientConfig Tests", () => {
             );
             const databaseName = "fake_database_2";
 
-            const clientConfig = await getClientConfig(parsedConnectionString, PostgresServerType.Flexible, true, databaseName);
-            assert(clientConfig === undefined);
+            const clientConfigs = await getClientConfigs(parsedConnectionString, PostgresServerType.Flexible, true, databaseName);
+            assert(clientConfigs.password === undefined);
+            assert(clientConfigs.azureAd === undefined);
+            assert(clientConfigs.connectionString === undefined);
         });
 
-        it("Get client config - flexible aad", async () => {
+        it("Aad only - Flexible server", async () => {
             const parsedConnectionString = new ParsedPostgresConnectionString(
                 "",
                 {
@@ -96,7 +99,7 @@ describe("getClientConfig Tests", () => {
             );
             const databaseName = "fake_database_2";
 
-            const clientConfig = await getClientConfig(
+            const clientConfigs = await getClientConfigs(
                 parsedConnectionString,
                 PostgresServerType.Flexible,
                 true,
@@ -104,13 +107,38 @@ describe("getClientConfig Tests", () => {
                 "fake_azureAd_userId",
                 async () => "fake_token"
             );
-            assert(clientConfig?.user === "fake_azureAd_userId");
-            assert(typeof clientConfig?.password === "function");
-            assert(clientConfig?.host === "fake_host.com");
-            assert(clientConfig?.port === 1234);
+            assert(clientConfigs.password === undefined);
+            assert(clientConfigs.azureAd !== undefined);
+            assert(clientConfigs.connectionString === undefined);
         });
 
-        it("Get client config - single aad", async () => {
+        it("Aad and password - Flexible server", async () => {
+            const parsedConnectionString = new ParsedPostgresConnectionString(
+                "",
+                {
+                    host: "fake_host.com",
+                    port: "1234",
+                    database: "fake_database",
+                    user: "fake_user",
+                    password: "fake_password",
+                }
+            );
+            const databaseName = "fake_database_2";
+
+            const clientConfigs = await getClientConfigs(
+                parsedConnectionString,
+                PostgresServerType.Flexible,
+                true,
+                databaseName,
+                "fake_azureAd_userId",
+                async () => "fake_token"
+            );
+            assert(clientConfigs.password !== undefined);
+            assert(clientConfigs.azureAd !== undefined);
+            assert(clientConfigs.connectionString === undefined);
+        });
+
+        it("Aad only - Single server", async () => {
             const parsedConnectionString = new ParsedPostgresConnectionString(
                 "",
                 {
@@ -121,7 +149,7 @@ describe("getClientConfig Tests", () => {
             );
             const databaseName = "fake_database_2";
 
-            const clientConfig = await getClientConfig(
+            const clientConfigs = await getClientConfigs(
                 parsedConnectionString,
                 PostgresServerType.Single,
                 true,
@@ -129,26 +157,26 @@ describe("getClientConfig Tests", () => {
                 "fake_azureAd_userId",
                 async () => "fake_token"
             );
-            assert(clientConfig === undefined);
+            assert(clientConfigs.password === undefined);
+            assert(clientConfigs.azureAd === undefined);
+            assert(clientConfigs.connectionString === undefined);
         });
+    });
 
+    describe("in attachment", () => {
+        it("Connection string only", async () => {
+            const rawConnectionString = "postgres://fake_connection_string";
+            const parsedConnectionString = new ParsedPostgresConnectionString(
+                rawConnectionString,
+                {
+                    host: "fake_host",
+                    database: null
+                }
+            );
+            const databaseName = "fake_database_2";
 
-        describe("in attachment", () => {
-            it("Get client config - connection string", async () => {
-                const rawConnectionString = "postgres://fake_connection_string";
-                const parsedConnectionString = new ParsedPostgresConnectionString(
-                    rawConnectionString,
-                    {
-                        host: "fake_host",
-                        database: null
-                    }
-                );
-                const databaseName = "fake_database_2";
-
-                const clientConfig = await getClientConfig(parsedConnectionString, PostgresServerType.Flexible, false, databaseName);
-                const augmentedConnectionString = `${rawConnectionString}/${databaseName}`;
-                assert(clientConfig?.connectionString === augmentedConnectionString);
-            });
+            const clientConfigs = await getClientConfigs(parsedConnectionString, PostgresServerType.Flexible, false, databaseName);
+            assert(clientConfigs.connectionString !== undefined);
         });
     });
 });

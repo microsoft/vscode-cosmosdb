@@ -5,9 +5,8 @@
 
 import { IActionContext, IParsedError, parseError } from "@microsoft/vscode-azext-utils";
 import { ClientConfig } from "pg";
-import { getAzureAdUserSession, getTokenFunction } from "../../azureAccountUtils";
-import { getClientConfigWithValidation, postgresResourceType } from "../getClientConfig";
 import { firewallNotConfiguredErrorType, invalidCredentialsErrorType } from "../postgresConstants";
+import { PostgresClientConfigFactory } from "../tree/ClientConfigFactory";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";
 import { enterPostgresCredentials } from "./enterPostgresCredentials";
@@ -16,17 +15,7 @@ export async function checkAuthentication(context: IActionContext, treeItem: Pos
     let clientConfig: ClientConfig | undefined;
     while (!clientConfig) {
         try {
-            const serverTreeItem = treeItem.parent;
-            const parsedConnectionString = await serverTreeItem.getFullConnectionString();
-            const azureUserSession = await getAzureAdUserSession();
-            clientConfig = await getClientConfigWithValidation(
-                parsedConnectionString,
-                serverTreeItem.serverType,
-                !!serverTreeItem.azureName,
-                treeItem.databaseName,
-                azureUserSession?.userId,
-                getTokenFunction(treeItem.subscription.credentials, postgresResourceType)
-            );
+            clientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(treeItem.parent, treeItem.databaseName);
         } catch (error) {
             const parsedError: IParsedError = parseError(error);
 

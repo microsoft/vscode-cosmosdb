@@ -10,7 +10,6 @@ import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplCon
 import { ClientConfig } from 'pg';
 import { SemVer, coerce, gte } from 'semver';
 import * as vscode from 'vscode';
-import { getAzureAdUserSession, getTokenFunction } from '../../azureAccountUtils';
 import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { getSecretStorageKey } from '../../utils/getSecretStorageKey';
@@ -19,9 +18,9 @@ import { nonNullProp } from '../../utils/nonNull';
 import { AbstractPostgresClient, createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { PostgresAbstractServer, PostgresServerType } from '../abstract/models';
 import { getPublicIp } from '../commands/configurePostgresFirewall';
-import { getClientConfigWithValidation, postgresResourceType } from '../getClientConfig';
 import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
+import { PostgresClientConfigFactory } from './ClientConfigFactory';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresFunctionTreeItem } from './PostgresFunctionTreeItem';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
@@ -105,16 +104,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
         } else if (this.partialConnectionString.databaseName) {
             dbNames = [this.partialConnectionString.databaseName];
         } else {
-            const parsedConnectionString = await this.getFullConnectionString();
-            const azureUserSession = await getAzureAdUserSession();
-            const clientConfig = await getClientConfigWithValidation(
-                parsedConnectionString,
-                this.serverType,
-                !!this.azureName,
-                postgresDefaultDatabase,
-                azureUserSession?.userId,
-                getTokenFunction(this.subscription.credentials, postgresResourceType)
-            );
+            const clientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(this, postgresDefaultDatabase);
             const query = `SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false;`;
             const queryResult = await runPostgresQuery(clientConfig, query);
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
@@ -155,16 +145,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
             stepName: 'createPostgresDatabase',
             validateInput: (name: string) => validateDatabaseName(name, getChildrenTask)
         });
-        const parsedConnectionString = await this.getFullConnectionString();
-        const azureUserSession = await getAzureAdUserSession();
-        const clientConfig = await getClientConfigWithValidation(
-            parsedConnectionString,
-            this.serverType,
-            !!this.azureName,
-            postgresDefaultDatabase,
-            azureUserSession?.userId,
-            getTokenFunction(this.subscription.credentials, postgresResourceType)
-        );
+        const clientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(this, databaseName);
         context.showCreatingTreeItem(databaseName);
         await runPostgresQuery(clientConfig, `Create Database ${wrapArgInQuotes(databaseName)};`);
         return new PostgresDatabaseTreeItem(this, databaseName);

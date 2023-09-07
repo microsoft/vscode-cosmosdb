@@ -18,6 +18,7 @@ import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { AbstractPostgresClient, createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { PostgresAbstractServer, PostgresServerType } from '../abstract/models';
+import { getPublicIp } from '../commands/configurePostgresFirewall';
 import { getClientConfigWithValidation, postgresResourceType } from '../getClientConfig';
 import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
@@ -233,6 +234,14 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
         return this.partialConnectionString;
     }
 
+    // Flexible servers throw a generic 'ETIMEDOUT' error instead of the firewall-specific error, so we have to check the firewall rules
+    public async isFirewallRuleSet(context: IActionContext): Promise<boolean> {
+        const serverType: PostgresServerType = nonNullProp(this, 'serverType');
+        const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [context, this.subscription]);
+        const results: SingleModels.FirewallRule[] = (await uiUtils.listAllIterator(client.firewallRules.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'))));
+        const publicIp: string = await getPublicIp(context);
+        return (results.some((value: SingleModels.FirewallRule) => value.startIpAddress === publicIp));
+    }
 }
 
 async function validateDatabaseName(name: string, getChildrenTask: Promise<AzExtTreeItem[]>): Promise<string | undefined | null> {

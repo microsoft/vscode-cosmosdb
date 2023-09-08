@@ -25,6 +25,7 @@ export class PostgresClientConfigFactory {
         let tokenFunction: (() => Promise<string>) | undefined = undefined;
         try {
             const subscription = treeItem.subscription;
+            hasSubscription = true;
             tokenFunction = getTokenFunction(subscription.credentials, postgresResourceType);
         } catch (error) {
             hasSubscription = false;

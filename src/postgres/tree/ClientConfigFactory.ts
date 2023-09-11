@@ -21,13 +21,22 @@ export class PostgresClientConfigFactory {
         const parsedConnectionString = await treeItem.getFullConnectionString();
         const azureUserSession = await getAzureAdUserSession();
 
+        let hasSubscription: boolean = false;
+        let tokenFunction: (() => Promise<string>) | undefined = undefined;
+        try {
+            const subscription = treeItem.subscription;
+            hasSubscription = true;
+            tokenFunction = getTokenFunction(subscription.credentials, postgresResourceType);
+        } catch (error) {
+            hasSubscription = false;
+        }
         const clientConfigs = await getClientConfigs(
             parsedConnectionString,
             treeItem.serverType,
-            !!treeItem.azureName,
+            hasSubscription,
             databaseName,
             azureUserSession?.userId,
-            getTokenFunction(treeItem.subscription.credentials, postgresResourceType)
+            tokenFunction
         );
 
         const clientConfigTypeOrder: PostgresClientConfigType[] = ["azureAd", "password", "connectionString"];

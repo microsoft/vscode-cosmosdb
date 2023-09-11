@@ -9,7 +9,7 @@ import { ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
-import { firewallNotConfiguredErrorType, invalidCredentialsErrorType } from '../postgresConstants';
+import { invalidCredentialsErrorType } from '../postgresConstants';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresClientConfigFactory } from './ClientConfigFactory';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
@@ -51,6 +51,17 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
+        const isFirewallRuleSet = await this.parent.isFirewallRuleSet(context);
+        if (!isFirewallRuleSet) {
+            const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
+                contextValue: 'postgresFirewall',
+                label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
+                commandId: 'postgreSQL.configureFirewall'
+            });
+            firewallTreeItem.commandArgs = [this.parent];
+            return [firewallTreeItem];
+        }
+
         try {
             const clientConfig: ClientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(this.parent, this.databaseName);
             const children: AzExtTreeItem[] = [
@@ -75,14 +86,6 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
                 });
                 credentialsTreeItem.commandArgs = [this.parent];
                 return [credentialsTreeItem];
-            } else if (this.parent.azureName && (parsedError.errorType === firewallNotConfiguredErrorType || (parsedError.errorType === 'ETIMEDOUT' && !(await this.parent.isFirewallRuleSet(context))))) {
-                const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
-                    contextValue: 'postgresFirewall',
-                    label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
-                    commandId: 'postgreSQL.configureFirewall'
-                });
-                firewallTreeItem.commandArgs = [this.parent];
-                return [firewallTreeItem];
             } else {
                 throw error;
             }

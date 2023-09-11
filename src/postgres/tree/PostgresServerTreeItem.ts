@@ -12,6 +12,7 @@ import { SemVer, coerce, gte } from 'semver';
 import * as vscode from 'vscode';
 import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
+import { isIpInRanges } from '../../utils/getIp';
 import { getSecretStorageKey } from '../../utils/getSecretStorageKey';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
@@ -215,13 +216,21 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
         return this.partialConnectionString;
     }
 
-    // Flexible servers throw a generic 'ETIMEDOUT' error instead of the firewall-specific error, so we have to check the firewall rules
+    /**
+     * @returns true if we believe the firewall allows the current IP to connect to database server.
+     */
     public async isFirewallRuleSet(context: IActionContext): Promise<boolean> {
-        const serverType: PostgresServerType = nonNullProp(this, 'serverType');
-        const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [context, this.subscription]);
-        const results: SingleModels.FirewallRule[] = (await uiUtils.listAllIterator(client.firewallRules.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'))));
-        const publicIp: string = await getPublicIp(context);
-        return (results.some((value: SingleModels.FirewallRule) => value.startIpAddress === publicIp));
+        try {
+            const serverType: PostgresServerType = nonNullProp(this, 'serverType');
+            const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [context, this.subscription]);
+            const results: SingleModels.FirewallRule[] = (await uiUtils.listAllIterator(client.firewallRules.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'))));
+            const publicIp: string = await getPublicIp(context);
+            return isIpInRanges(publicIp, results);
+        } catch (error) {
+            // We cannot get the firewall rules from attached databases because we cannot get the subscription object.
+            // We assume the database server has configured the necessary firewall rules to allow connections from the current IP.
+            return true;
+        }
     }
 }
 

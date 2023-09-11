@@ -5,7 +5,7 @@
 
 import { IActionContext, IParsedError, parseError } from "@microsoft/vscode-azext-utils";
 import { ClientConfig } from "pg";
-import { firewallNotConfiguredErrorType, invalidCredentialsErrorType } from "../postgresConstants";
+import { invalidCredentialsErrorType } from "../postgresConstants";
 import { PostgresClientConfigFactory } from "../tree/ClientConfigFactory";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";
@@ -14,6 +14,11 @@ import { enterPostgresCredentials } from "./enterPostgresCredentials";
 export async function checkAuthentication(context: IActionContext, treeItem: PostgresDatabaseTreeItem): Promise<ClientConfig> {
     let clientConfig: ClientConfig | undefined;
     while (!clientConfig) {
+        const isFirewallRuleSet = await treeItem.parent.isFirewallRuleSet(context);
+        if (!isFirewallRuleSet) {
+            await configurePostgresFirewall(context, treeItem.parent);
+            continue;
+        }
         try {
             clientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(treeItem.parent, treeItem.databaseName);
         } catch (error) {
@@ -21,10 +26,6 @@ export async function checkAuthentication(context: IActionContext, treeItem: Pos
 
             if (parsedError.errorType === invalidCredentialsErrorType) {
                 await enterPostgresCredentials(context, treeItem.parent);
-
-                // Need to configure firewall only for Azure Subscritption accounts
-            } else if (treeItem.parent.resourceGroup && (parsedError.errorType === firewallNotConfiguredErrorType || (parsedError.errorType === 'ETIMEDOUT' && !(await treeItem.parent.isFirewallRuleSet(context))))) {
-                await configurePostgresFirewall(context, treeItem.parent);
             } else {
                 throw error;
             }

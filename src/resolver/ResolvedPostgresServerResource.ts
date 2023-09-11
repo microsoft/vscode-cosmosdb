@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem } from "@microsoft/vscode-azext-utils";
+import { AzExtTreeItem, IActionContext } from "@microsoft/vscode-azext-utils";
 import { AppResource, ResolvedAppResourceBase } from "@microsoft/vscode-azext-utils/hostapi";
 import { ClientConfig } from "pg";
 import { PostgresServerType } from "../postgres/abstract/models";
@@ -26,6 +26,7 @@ export class ResolvedPostgresServerResource extends ResolvedDatabaseAccountResou
     deletePostgresCredentials: () => Promise<void>
     getFullConnectionString: () => Promise<ParsedPostgresConnectionString>
     validateDatabaseName: (name: string, getChildrenTask: Promise<AzExtTreeItem[]>) => Promise<string | undefined | null>
+    isFirewallRuleSet: (context: IActionContext) => Promise<boolean>
 
     public constructor(ti: PostgresServerTreeItem, resource: AppResource) {
         super(ti, resource);
@@ -42,5 +43,6 @@ export class ResolvedPostgresServerResource extends ResolvedDatabaseAccountResou
         this.supportsStoredProcedures = ti.supportsStoredProcedures;
         this.deletePostgresCredentials = ti.deletePostgresCredentials;
         this.getFullConnectionString = ti.getFullConnectionString;
+        this.isFirewallRuleSet = ti.isFirewallRuleSet;
     }
 }

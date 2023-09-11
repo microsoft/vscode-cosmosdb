@@ -6,12 +6,36 @@
 import { createTestActionContext } from '@microsoft/vscode-azext-dev';
 import * as assert from 'assert';
 import { isIPv4 } from 'net';
-import { getPublicIpv4 } from '../../extension.bundle';
+import { getPublicIpv4, isIpInRanges } from '../../extension.bundle';
 
 suite("getPublicIpv4", () => {
     test("get IP", async () => {
         const context = await createTestActionContext();
         const ip = await getPublicIpv4(context);
         assert(isIPv4(ip));
+    });
+});
+
+suite("isIpInRanges", function () {
+    const ip = "12.34.56.78";
+    test("Includes ip at start", function () {
+        const ranges = [{ startIpAddress: "12.34.56.78", endIpAddress: "12.34.56.80" }];
+        assert(isIpInRanges(ip, ranges));
+    });
+    test("Includes ip at end", function () {
+        const ranges = [{ startIpAddress: "12.34.56.76", endIpAddress: "12.34.56.78" }];
+        assert(isIpInRanges(ip, ranges));
+    });
+    test("Includes ip in range", function () {
+        const ranges = [{ startIpAddress: "12.34.56.76", endIpAddress: "12.34.56.80" }];
+        assert(isIpInRanges(ip, ranges));
+    });
+    test("Excludes ip before start", function () {
+        const ranges = [{ startIpAddress: "12.34.56.80", endIpAddress: "12.34.56.80" }];
+        assert(!isIpInRanges(ip, ranges));
+    });
+    test("Excludes ip after end", function () {
+        const ranges = [{ startIpAddress: "12.34.56.76", endIpAddress: "12.34.56.76" }];
+        assert(!isIpInRanges(ip, ranges));
     });
 });

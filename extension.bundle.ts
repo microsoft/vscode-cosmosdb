@@ -44,6 +44,6 @@ export { getGlobalSetting, updateGlobalSetting } from './src/utils/settingUtils'
 export { rejectOnTimeout, valueOnTimeout } from './src/utils/timeout';
 export { getDocumentTreeItemLabel, IDisposable } from './src/utils/vscodeUtils';
 export { wrapError } from './src/utils/wrapError';
-export { getPublicIpv4 } from './src/utils/getIp'
+export { isIpInRanges, getPublicIpv4 } from './src/utils/getIp'
 
 // NOTE: The auto-fix action "source.organizeImports" does weird things with this file, but there doesn't seem to be a way to disable it on a per-file basis so we'll just let it happen

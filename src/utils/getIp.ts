@@ -9,6 +9,15 @@ import { Resolver } from 'dns';
 import { isIPv4 } from 'net';
 import { localize } from './localize';
 
+export function isIpInRanges(ip: string, ranges: { startIpAddress: string, endIpAddress: string }[]): boolean {
+    const ipNum = ipToNum(ip);
+    return ranges.some((range) => {
+        const startIpNum = ipToNum(range.startIpAddress);
+        const endIpNum = ipToNum(range.endIpAddress);
+        return startIpNum <= ipNum && ipNum <= endIpNum;
+    });
+}
+
 export async function getPublicIpv4(context: IActionContext): Promise<string> {
     const methods: (() => Promise<string>)[] = [
         () => getPublicIpv4Dns(),
@@ -29,6 +38,14 @@ export async function getPublicIpv4(context: IActionContext): Promise<string> {
 }
 
 const failedToGetIp = localize('failedToGetIp', 'Failed to get public IP');
+
+function ipToNum(ip: string) {
+    return Number(
+        ip.split(".")
+            .map(d => ("000" + d).substring(-3))
+            .join("")
+    );
+}
 
 async function getPublicIpv4Dns(): Promise<string> {
     const resolver = new Resolver();

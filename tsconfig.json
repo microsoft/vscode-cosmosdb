@@ -12,6 +12,7 @@
         "noImplicitReturns": true,
         "noUnusedLocals": true,
         "strictNullChecks": true,
+        "skipLibCheck": true,
         "noUnusedParameters": true,
         "rootDir": ".",
         "experimentalDecorators": true,

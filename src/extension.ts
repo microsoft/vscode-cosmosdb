@@ -6,17 +6,17 @@
 'use strict';
 
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
-import { AzExtParentTreeItem, AzExtResourceType, AzExtTreeItem, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, IActionContext, ITreeItemPickerContext, registerCommandWithTreeNodeUnwrapping, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
-import { AzureExtensionApi, AzureExtensionApiProvider } from '@microsoft/vscode-azext-utils/api';
+import { AzExtParentTreeItem, AzExtTreeItem, AzureExtensionApi, IActionContext, ITreeItemPickerContext, apiUtils, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, registerCommandWithTreeNodeUnwrapping, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
+import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { platform } from 'os';
 import * as vscode from 'vscode';
+import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
 import { deleteDatabaseAccount } from './commands/deleteDatabaseAccount/deleteDatabaseAccount';
 import { importDocuments } from './commands/importDocuments';
 import { cosmosGremlinFilter, cosmosMongoFilter, cosmosTableFilter, doubleClickDebounceDelay, sqlFilter } from './constants';
-import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
@@ -41,7 +41,7 @@ import { localize } from './utils/localize';
 
 const cosmosDBTopLevelContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
 
-export async function activateInternal(context: vscode.ExtensionContext, perfStats: { loadStartTime: number, loadEndTime: number }, ignoreBundle?: boolean): Promise<AzureExtensionApiProvider> {
+export async function activateInternal(context: vscode.ExtensionContext, perfStats: { loadStartTime: number, loadEndTime: number }, ignoreBundle?: boolean): Promise<apiUtils.AzureExtensionApiProvider> {
     ext.context = context;
     ext.ignoreBundle = ignoreBundle;
 

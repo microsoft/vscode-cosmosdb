@@ -50,7 +50,7 @@ export class GraphTreeItem extends AzExtTreeItem {
             alternativeToolsOption
         );
         if (result === alternativeToolsOption) {
-            openUrl(alternativeGraphVisualizationToolsDocLink);
+            await openUrl(alternativeGraphVisualizationToolsDocLink);
         }
     }
 }

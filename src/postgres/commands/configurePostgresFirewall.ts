@@ -65,12 +65,5 @@ export async function setFirewallRule(context: IActionContext, treeItem: Postgre
 }
 
 export async function getPublicIp(context: IActionContext): Promise<string> {
-    const options: vscode.ProgressOptions = {
-        location: vscode.ProgressLocation.Notification,
-        title: localize('gettingPublicIp', 'Getting public IP...')
-    };
-
-    return await vscode.window.withProgress(options, async () => {
-        return await getPublicIpv4(context);
-    });
+    return await getPublicIpv4(context);
 }

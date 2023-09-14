@@ -1024,6 +1024,7 @@
         "vscode:prepublish": "npm run webpack-prod",
         "build": "tsc",
         "cleanReadme": "gulp cleanReadme",
+        "clean": "git clean -dfx",
         "compile": "tsc -watch",
         "package": "vsce package --githubBranch main",
         "lint": "eslint --ext .ts .",

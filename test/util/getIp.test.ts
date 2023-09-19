@@ -10,9 +10,13 @@ import { getPublicIpv4, isIpInRanges } from '../../extension.bundle';
 
 suite("getPublicIpv4", () => {
     test("get IP", async () => {
-        const context = await createTestActionContext();
-        const ip = await getPublicIpv4(context);
-        assert(isIPv4(ip));
+        try {
+            const context = await createTestActionContext();
+            const ip = await getPublicIpv4(context);
+            assert(isIPv4(ip), "IP address isn't v4");
+        } catch (error) {
+            assert(false, error.message ?? "Fail to get IP address");
+        }
     });
 });
 

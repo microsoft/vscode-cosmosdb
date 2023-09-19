@@ -66,7 +66,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
         try {
             const { type, clientConfig } = await PostgresClientConfigFactory.getClientConfigFromNode(this.parent, this.databaseName);
             if (type === "password") {
-                this.showPasswordWarning(context);
+                void this.showPasswordWarning(context);
             }
             const children: AzExtTreeItem[] = [
                 new PostgresFunctionsTreeItem(this, clientConfig),
@@ -101,12 +101,12 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
         await runPostgresQuery(clientConfig, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
     }
 
-    private showPasswordWarning(context: IActionContext) {
+    private async showPasswordWarning(context: IActionContext): Promise<void> {
         if (this.isShowingPasswordWarning) {
             return;
         }
         this.isShowingPasswordWarning = true;
         this.contextValue = createContextValue([PostgresDatabaseTreeItem.contextValue, "usesPassword"]);
-        this.refresh(context);
+        await this.refresh(context);
     }
 }

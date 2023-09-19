@@ -40,10 +40,7 @@ export class DocDBDocumentTreeItem extends AzExtTreeItem implements IEditableTre
     }
 
     public get id(): string {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        return this.document._rid || `${this.document.id}:${this.getPartitionKeyValue()}`;
-        // Every document has an _rid field, even though the type definitions call it optional. The second clause is fallback.
-        // The toString implicit conversion handles undefined and {} as expected. toString satisfies the uniqueness criterion.
+        return `${this.document.id}:${this.getPartitionKeyValue()}`;
     }
 
     public get filePath(): string {

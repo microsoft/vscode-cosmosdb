@@ -17,7 +17,10 @@ export const postgresResourceType = "https://ossrdbms-aad.database.windows.net/"
  * Creates an object that can be used to execute a postgres query with connection test and telemetry.
  */
 export class PostgresClientConfigFactory {
-    public static async getClientConfigFromNode(treeItem: PostgresServerTreeItem, databaseName: string): Promise<ClientConfig> {
+    public static async getClientConfigFromNode(treeItem: PostgresServerTreeItem, databaseName: string): Promise<{
+        type: "azureAd" | "password" | "connectionString",
+        clientConfig: ClientConfig
+    }> {
         const parsedConnectionString = await treeItem.getFullConnectionString();
         const azureUserSession = await getAzureAdUserSession();
 
@@ -54,7 +57,10 @@ export class PostgresClientConfigFactory {
                     context.telemetry.properties.clientConfigType = clientConfigType;
                     await testClientConfig(clientConfig);
                 });
-                return clientConfig;
+                return {
+                    type: clientConfigType,
+                    clientConfig
+                };
             } catch (error) {
                 // If the client config failed during test, skip and try the next available one.
             }

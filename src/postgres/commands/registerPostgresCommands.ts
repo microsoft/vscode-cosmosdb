@@ -8,6 +8,7 @@ import { defaults } from "pg";
 import { languages } from "vscode";
 import { connectedPostgresKey, doubleClickDebounceDelay, postgresDefaultDatabase, postgresLanguageId } from "../../constants";
 import { ext } from "../../extensionVariables";
+import { openUrl } from "../../utils/openUrl";
 import { PostgresCodeLensProvider } from "../services/PostgresCodeLensProvider";
 import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";
@@ -50,6 +51,7 @@ export function registerPostgresCommands(): void {
     registerCommandWithTreeNodeUnwrapping('postgreSQL.createStoredProcedureQuery', createPostgresStoredProcedureQuery);
     registerCommandWithTreeNodeUnwrapping('postgreSQL.executeQuery', executePostgresQueryInDocument);
     registerCommandWithTreeNodeUnwrapping('postgreSQL.copyConnectionString', copyConnectionString);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.showPasswordlessWiki', showPasswordlessWiki);
 }
 
 export async function loadPersistedPostgresDatabase(): Promise<void> {
@@ -73,4 +75,9 @@ export async function loadPersistedPostgresDatabase(): Promise<void> {
             }
         }
     });
+}
+
+export function showPasswordlessWiki(): void {
+    // @todo: Create forward link
+    openUrl("https://aka.ms/postgresql-passwordless-wiki");
 }

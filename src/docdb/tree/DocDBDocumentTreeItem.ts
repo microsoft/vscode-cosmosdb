@@ -11,6 +11,7 @@ import { ext } from '../../extensionVariables';
 import { nonNullProp } from '../../utils/nonNull';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
+import { sanitizeId } from './DocDBUtils';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 const hiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts'];
@@ -40,7 +41,7 @@ export class DocDBDocumentTreeItem extends AzExtTreeItem implements IEditableTre
     }
 
     public get id(): string {
-        return `${this.document.id}:${this.getPartitionKeyValue()}`;
+        return sanitizeId(`${this.document.id}:${this.getPartitionKeyValue()}`);
     }
 
     public get filePath(): string {

@@ -7,9 +7,9 @@ import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { CosmosClient, DatabaseDefinition, DatabaseResponse, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
 import { AzExtParentTreeItem, AzExtTreeItem, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
 import { IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
-import { getThemeAgnosticIconPath, SERVERLESS_CAPABILITY_NAME } from '../../constants';
+import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
+import { SERVERLESS_CAPABILITY_NAME, getThemeAgnosticIconPath } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { getCosmosClient } from '../getCosmosClient';
@@ -88,8 +88,8 @@ function validateDatabaseName(name: string): string | undefined | null {
     if (name.endsWith(" ")) {
         return "Database name cannot end with space";
     }
-    if (/[/\\?#]/.test(name)) {
-        return `Database name cannot contain the characters '\\', '/', '#', '?'`;
+    if (/[/\\?#=]/.test(name)) {
+        return `Database name cannot contain the characters '\\', '/', '#', '?', '='`;
     }
     return undefined;
 }

@@ -128,8 +128,8 @@ export function validateDatabaseName(database: string): string | undefined | nul
     if (!database || database.length < min || database.length > max) {
         return `Database name must be between ${min} and ${max} characters.`;
     }
-    if (/[/\\. "$#?]/.test(database)) {
-        return "Database name cannot contain these characters - `/\\. \"$#?`";
+    if (/[/\\. "$#?=]/.test(database)) {
+        return "Database name cannot contain these characters - `/\\. \"$#?=`";
     }
     return undefined;
 }

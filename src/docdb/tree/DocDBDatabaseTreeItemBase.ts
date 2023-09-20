@@ -13,6 +13,7 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 const minThroughputFixed: number = 400;
 const minThroughputPartitioned: number = 400;
 const maxThroughput: number = 100000;
+const throughputStepSize = 100;
 
 /**
  * This class provides common logic for DocumentDB, Graph, and Table databases
@@ -98,7 +99,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
             const minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
             const throughput: number = Number(await context.ui.showInputBox({
                 value: minThroughput.toString(),
-                prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput}`,
+                prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput} inclusive in increments of ${throughputStepSize}`,
                 stepName: 'throughputCapacity',
                 validateInput: (input: string) => validateThroughput(isFixed, input)
             }));
@@ -125,8 +126,8 @@ function validateThroughput(isFixed: boolean, input: string): string | undefined
     try {
         const minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
         const value = Number(input);
-        if (value < minThroughput || value > maxThroughput) {
-            return `Value must be between ${minThroughput} and ${maxThroughput}`;
+        if (value < minThroughput || value > maxThroughput || (value - minThroughput) % throughputStepSize !== 0) {
+            return `Value must be between ${minThroughput} and ${maxThroughput} in increments of ${throughputStepSize}`;
         }
     } catch (err) {
         return "Input must be a number";

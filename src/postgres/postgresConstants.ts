@@ -5,3 +5,4 @@
 
 export const invalidCredentialsErrorType: string = '28P01';
 export const firewallNotConfiguredErrorType: string = '28000';
+export const timeoutErrorType = 'ETIMEDOUT';

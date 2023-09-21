@@ -77,16 +77,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
             id: containerName
         };
 
-        let partitionKey: string | undefined = await context.ui.showInputBox({
-            prompt: 'Enter the partition key for the collection, or leave blank for fixed size.',
-            stepName: 'partitionKeyForCollection',
-            validateInput: validatePartitionKey,
-            placeHolder: 'e.g. address/zipCode'
-        });
-
-        if (partitionKey && partitionKey.length && partitionKey[0] !== '/') {
-            partitionKey = '/' + partitionKey;
-        }
+        const partitionKey = await this.getNewPartitionKey(context);
         if (partitionKey) {
             containerDefinition.partitionKey = {
                 paths: [partitionKey]
@@ -113,13 +104,28 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
 
         return this.initChild(nonNullProp(container, 'resource'));
     }
-}
 
-function validatePartitionKey(key: string): string | undefined | null {
-    if (/[#?\\]/.test(key)) {
-        return "Cannot contain these characters: ?,#,\\, etc.";
+    protected async getNewPartitionKey(context: IActionContext): Promise<string | undefined> {
+        let partitionKey: string | undefined = await context.ui.showInputBox({
+            prompt: 'Enter the partition key for the collection, or leave blank for fixed size.',
+            stepName: 'partitionKeyForCollection',
+            validateInput: this.validatePartitionKey,
+            placeHolder: 'e.g. /address/zipCode'
+        });
+
+        if (partitionKey && partitionKey.length && partitionKey[0] !== '/') {
+            partitionKey = '/' + partitionKey;
+        }
+
+        return partitionKey;
     }
-    return undefined;
+
+    protected validatePartitionKey(key: string): string | undefined {
+        if (/[#?\\]/.test(key)) {
+            return "Cannot contain these characters: ?,#,\\, etc.";
+        }
+        return undefined;
+    }
 }
 
 function validateThroughput(isFixed: boolean, input: string): string | undefined | null {

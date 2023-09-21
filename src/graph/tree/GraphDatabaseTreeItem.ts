@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ContainerDefinition, CosmosClient, Database, DatabaseDefinition, Resource } from '@azure/cosmos';
+import { IActionContext } from '@microsoft/vscode-azext-utils';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { IGremlinEndpoint } from '../../vscode-cosmosdbgraph.api';
 import { getPossibleGremlinEndpoints } from '../gremlinEndpoints';
@@ -35,5 +36,30 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
     public getDatabaseClient(client: CosmosClient): Database {
         return client.database(this.id);
 
+    }
+
+    protected override async getNewPartitionKey(context: IActionContext): Promise<string | undefined> {
+        let partitionKey: string | undefined = await context.ui.showInputBox({
+            prompt: 'Enter the partition key for the collection, or leave blank for fixed size.',
+            stepName: 'partitionKeyForCollection',
+            validateInput: this.validatePartitionKey,
+            placeHolder: 'e.g. /address'
+        });
+
+        if (partitionKey && partitionKey.length && partitionKey[0] !== '/') {
+            partitionKey = '/' + partitionKey;
+        }
+
+        return partitionKey;
+    }
+
+    protected validatePartitionKey(key: string): string | undefined {
+        if (/[#?\\]/.test(key)) {
+            return "Cannot contain these characters: ?,#,\\, etc.";
+        }
+        if (/.+\//.test(key)) {
+            return "Cannot be a nested path";
+        }
+        return undefined;
     }
 }

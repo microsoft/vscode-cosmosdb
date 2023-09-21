@@ -78,6 +78,5 @@ export async function loadPersistedPostgresDatabase(): Promise<void> {
 }
 
 export async function showPasswordlessWiki(): Promise<void> {
-    // @todo: Create forward link
     await openUrl("https://aka.ms/postgresql-passwordless-wiki");
 }

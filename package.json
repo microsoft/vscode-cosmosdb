@@ -434,6 +434,12 @@
                 "category": "PostgreSQL",
                 "command": "postgreSQL.openStoredProcedure",
                 "title": "Open Stored Procedure"
+            },
+            {
+                "category": "PostgreSQL",
+                "command": "postgreSQL.showPasswordlessWiki",
+                "title": "Learn more about authenticating with Azure Active Directory",
+                "icon": "$(warning)"
             }
         ],
         "submenus": [
@@ -603,6 +609,11 @@
                     "command": "cosmosDB.createGraph",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBGraphDatabase",
                     "group": "1@1"
+                },
+                {
+                    "command": "postgreSQL.showPasswordlessWiki",
+                    "when": "view =~ /azure(ResourceGroups|azureFocusView)/ && viewItem =~ /postgresDatabase(?![a-z])/i && viewItem =~ /usesPassword/i",
+                    "group": "inline"
                 },
                 {
                     "command": "postgreSQL.createDatabase",
@@ -1027,6 +1038,7 @@
         "clean": "git clean -dfx",
         "compile": "tsc -watch",
         "package": "vsce package --githubBranch main",
+        "package-local": "vsce package",
         "lint": "eslint --ext .ts .",
         "lint-fix": "eslint --ext .ts . --fix",
         "pretest": "npm run webpack-prod",

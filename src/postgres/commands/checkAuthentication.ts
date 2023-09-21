@@ -20,7 +20,8 @@ export async function checkAuthentication(context: IActionContext, treeItem: Pos
             continue;
         }
         try {
-            clientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(treeItem.parent, treeItem.databaseName);
+            const getClientConfigResult = await PostgresClientConfigFactory.getClientConfigFromNode(treeItem.parent, treeItem.databaseName);
+            clientConfig = getClientConfigResult.clientConfig;
         } catch (error) {
             const parsedError: IParsedError = parseError(error);
 

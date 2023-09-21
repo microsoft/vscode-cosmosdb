@@ -105,7 +105,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
         } else if (this.partialConnectionString.databaseName) {
             dbNames = [this.partialConnectionString.databaseName];
         } else {
-            const clientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(this, postgresDefaultDatabase);
+            const { clientConfig } = await PostgresClientConfigFactory.getClientConfigFromNode(this, postgresDefaultDatabase);
             const query = `SELECT datname FROM pg_catalog.pg_database WHERE datistemplate = false;`;
             const queryResult = await runPostgresQuery(clientConfig, query);
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
@@ -146,7 +146,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
             stepName: 'createPostgresDatabase',
             validateInput: (name: string) => validateDatabaseName(name, getChildrenTask)
         });
-        const clientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(this, databaseName);
+        const { clientConfig } = await PostgresClientConfigFactory.getClientConfigFromNode(this, databaseName);
         context.showCreatingTreeItem(databaseName);
         await runPostgresQuery(clientConfig, `Create Database ${wrapArgInQuotes(databaseName)};`);
         return new PostgresDatabaseTreeItem(this, databaseName);

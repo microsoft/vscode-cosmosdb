@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
-import { AzExtParentTreeItem, AzExtTreeItem, GenericTreeItem, IActionContext, IParsedError, parseError, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
-import { ClientConfig } from 'pg';
+import { AzExtParentTreeItem, AzExtTreeItem, createContextValue, GenericTreeItem, IActionContext, IParsedError, parseError, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon } from 'vscode';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
@@ -19,15 +18,17 @@ import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
 export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = "postgresDatabase";
-    public readonly contextValue: string = PostgresDatabaseTreeItem.contextValue;
+    public contextValue: string = PostgresDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = "Resource Type";
     public readonly databaseName: string;
     public readonly parent: PostgresServerTreeItem;
     public autoSelectInTreeItemPicker: boolean = true;
+    public isShowingPasswordWarning: boolean;
 
     constructor(parent: PostgresServerTreeItem, databaseName: string) {
         super(parent);
         this.databaseName = databaseName;
+        this.isShowingPasswordWarning = false;
     }
 
     public get label(): string {
@@ -63,7 +64,10 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
         }
 
         try {
-            const clientConfig: ClientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(this.parent, this.databaseName);
+            const { type, clientConfig } = await PostgresClientConfigFactory.getClientConfigFromNode(this.parent, this.databaseName);
+            if (type === "password") {
+                void this.showPasswordWarning(context);
+            }
             const children: AzExtTreeItem[] = [
                 new PostgresFunctionsTreeItem(this, clientConfig),
                 new PostgresTablesTreeItem(this, clientConfig)
@@ -93,7 +97,16 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        const clientConfig = await PostgresClientConfigFactory.getClientConfigFromNode(this.parent, this.databaseName);
+        const { clientConfig } = await PostgresClientConfigFactory.getClientConfigFromNode(this.parent, this.databaseName);
         await runPostgresQuery(clientConfig, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
+    }
+
+    private async showPasswordWarning(context: IActionContext): Promise<void> {
+        if (this.isShowingPasswordWarning) {
+            return;
+        }
+        this.isShowingPasswordWarning = true;
+        this.contextValue = createContextValue([PostgresDatabaseTreeItem.contextValue, "usesPassword"]);
+        await this.refresh(context);
     }
 }

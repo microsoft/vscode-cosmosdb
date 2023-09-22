@@ -8,7 +8,7 @@ import { AzExtParentTreeItem, AzExtTreeItem, createContextValue, GenericTreeItem
 import { ThemeIcon } from 'vscode';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
-import { invalidCredentialsErrorType } from '../postgresConstants';
+import { firewallNotConfiguredErrorType, invalidCredentialsErrorType } from '../postgresConstants';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresClientConfigFactory } from './ClientConfigFactory';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
@@ -90,6 +90,9 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
                 });
                 credentialsTreeItem.commandArgs = [this.parent];
                 return [credentialsTreeItem];
+            } else if (this.parent.azureName && parsedError.errorType === firewallNotConfiguredErrorType) {
+                void context.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message), { stepName: 'loadPostgresDatabases' });
+                return [];
             } else {
                 throw error;
             }

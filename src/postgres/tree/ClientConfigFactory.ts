@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling } from "@microsoft/vscode-azext-utils";
+import { callWithTelemetryAndErrorHandling, parseError } from "@microsoft/vscode-azext-utils";
 import { ClientConfig } from "pg";
 import { getAzureAdUserSession, getTokenFunction } from "../../azureAccountUtils";
 import { localize } from "../../utils/localize";
 import { PostgresClientConfigType, getClientConfigs, testClientConfig } from "../getClientConfig";
-import { invalidCredentialsErrorType } from "../postgresConstants";
+import { firewallNotConfiguredErrorType, invalidCredentialsErrorType, timeoutErrorType } from "../postgresConstants";
 import { PostgresServerTreeItem } from "./PostgresServerTreeItem";
 
 export const postgresResourceType = "https://ossrdbms-aad.database.windows.net/";
@@ -62,7 +62,19 @@ export class PostgresClientConfigFactory {
                     clientConfig
                 };
             } catch (error) {
-                // If the client config failed during test, skip and try the next available one.
+                const parsedError = parseError(error);
+                if (parsedError.errorType === invalidCredentialsErrorType) {
+                    // If the client config failed with invalid credential error, skip and try the next available one.
+                } else if (parsedError.errorType === firewallNotConfiguredErrorType || parsedError.errorType === timeoutErrorType) {
+                    // The time out error are common when the firewall rules doesn't grant access from the current IP address.
+                    // If the client is blocked by the firewall, let the user go to Azure Portal to grant access.
+                    throw {
+                        message: localize("mustConfigureFirewall", 'Must configure firewall from Azure Portal to grant access.'),
+                        code: firewallNotConfiguredErrorType
+                    };
+                } else {
+                    throw error;
+                }
             }
         }
 

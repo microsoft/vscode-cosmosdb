@@ -23,8 +23,9 @@ Browse and query your Azure databases both locally and in the cloud using [_scra
 
 - Create a database server by clicking the `+` button in the title
 - View database servers and open directly in the portal
-- View/Create/Delete databases, collections, stored procedures, documents, and queries
+- View/Create/Delete databases, collections, graphs, stored procedures, documents, and queries
 - Click on a document, stored procedure, or query to open in the editor
+- Query graph using [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support)
 - Edit a document and persist changes to the cloud
 - Attach a Mongo server by clicking the plug icon in the title
 

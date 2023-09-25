@@ -7,7 +7,7 @@
 
 <!-- endregion exclude-from-marketplace -->
 
-Browse and query your Azure databases both locally and in the cloud using [_scrapbooks_](#mongo-scrapbooks) with rich Intellisense then connect to Azure to manage your PostgreSQL and Cosmos DB databases with support for MongoDB and SQL (previously known as DocumentDB).
+Browse and query your Azure databases both locally and in the cloud using [_scrapbooks_](#mongo-scrapbooks) with rich Intellisense then connect to Azure to manage your PostgreSQL and Cosmos DB databases with support for MongoDB, Graph (Gremlin), and SQL (previously known as DocumentDB).
 
 ![Azure Databases Extension](resources/readme/overview.png)
 

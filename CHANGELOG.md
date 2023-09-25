@@ -1,6 +1,17 @@
 # Change Log
 
-## Unreleased
+## 0.20.0
+
+This release adds the initial Azure AD authentication support for PostgreSQL flexible database servers and fixed various bugs. See [0.20.0](https://github.com/microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A0.20.0+is%3Aclosed+) for all closed issues.
+
+### Breaking change
+
+- The extension is migrated to use vscode secretStorage module for storing user credentials [#2137](https://github.com/microsoft/vscode-cosmosdb/issues/2137). If you have local attachments that are broken due to this change, please re-attach them.
+- The CosmosDB Graph extension has been removed from the marketplace. Attempting to open the graph explorer will open a documentation suggesting alternative tools for viewing graphs [#2086](https://github.com/microsoft/vscode-cosmosdb/issues/2086).
+
+### Added
+
+- The extension now supports connecting to PostgreSQL flexible database server as Azure AD users. Read this [wiki](https://aka.ms/postgresql-passwordless-wiki) to learn more.
 
 ## 0.19.4 - 2023-05-17
 

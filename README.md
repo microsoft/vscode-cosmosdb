@@ -25,8 +25,6 @@ Browse and query your Azure databases both locally and in the cloud using [_scra
 - View database servers and open directly in the portal
 - View/Create/Delete databases, collections, graphs, stored procedures, documents, and queries
 - Click on a document, stored procedure, or query to open in the editor
-- Click on a graph to visualize data
-- Query graph using [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support)
 - Edit a document and persist changes to the cloud
 - Attach a Mongo server by clicking the plug icon in the title
 
@@ -50,37 +48,6 @@ Browse and query your Azure databases both locally and in the cloud using [_scra
 
 - You can now import documents from your workspace into CosmosDB. Use the context menu of a collection or a document file (json) to get started!
 ![Import documents](resources/readme/import_documents.gif)
-
-## Use [Gremlin](https://docs.microsoft.com/azure/cosmos-db/gremlin-support) to query graphs
-
-![Query Graphs](resources/readme/Graph.gif)
-
-- <a name="graphSettings"></a>Configure the user setting `cosmosDB.graph.viewSettings` to customize which properties to display and which colors to use based on vertex label.
-```javascript
-    "cosmosDB.graph.viewSettings": [
-        {
-            "vertexSettings": [
-                {
-                    // Default settings for all vertices
-                    "displayProperty": [
-                        // Display name property if exists, otherwise firstName if it exists, otherwise ID
-                        "name",
-                        "firstName"
-                    ],
-                    // Auto-choose color by label
-                    "color": "auto",
-                    // Show label after display property
-                    "showLabel": true
-                },
-                {
-                    // These setting apply to vertices with the label 'person'
-                    "appliesToLabel": "person",
-                    "color": "blue"
-                }
-            ]
-        }
-    ]
-```
 
 ## Create an Azure Databases Server
 

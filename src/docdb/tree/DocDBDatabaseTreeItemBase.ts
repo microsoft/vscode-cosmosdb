@@ -90,12 +90,14 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
             const minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
             const throughput: number = Number(await context.ui.showInputBox({
                 value: minThroughput.toString(),
-                prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput} inclusive in increments of ${throughputStepSize}`,
+                prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput} inclusive in increments of ${throughputStepSize}. Enter 0 if the account doesn't support throughput.`,
                 stepName: 'throughputCapacity',
                 validateInput: (input: string) => validateThroughput(isFixed, input)
             }));
 
-            options.offerThroughput = throughput;
+            if (throughput !== 0) {
+                options.offerThroughput = throughput;
+            }
         }
 
         context.showCreatingTreeItem(containerName);
@@ -129,6 +131,10 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
 }
 
 function validateThroughput(isFixed: boolean, input: string): string | undefined | null {
+    if (input === "0") {
+        return undefined;
+    }
+
     try {
         const minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
         const value = Number(input);

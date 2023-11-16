@@ -1109,7 +1109,6 @@
         "vscode-uri": "^1.0.1"
     },
     "extensionDependencies": [
-        "ms-vscode.azure-account",
         "ms-azuretools.vscode-azureresourcegroups"
     ]
 }

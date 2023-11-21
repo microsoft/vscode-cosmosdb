@@ -69,7 +69,7 @@ export class PostgresClientConfigFactory {
                     // The time out error are common when the firewall rules doesn't grant access from the current IP address.
                     // If the client is blocked by the firewall, let the user go to Azure Portal to grant access.
                     throw {
-                        message: localize("mustConfigureFirewall", 'Must configure firewall from Azure Portal to grant access.'),
+                        message: localize("mustConfigureFirewall", 'Your IP address we tested is already in the firewall rules. Some network environments may not report the actual public-facing IP address needed to access your server. Contact your network administrator to add the actual IP address to the firewall rules.'),
                         code: firewallNotConfiguredErrorType
                     };
                 } else {

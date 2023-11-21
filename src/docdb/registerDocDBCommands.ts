@@ -4,19 +4,27 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtTreeItem, IActionContext, ITreeItemPickerContext, registerCommandWithTreeNodeUnwrapping } from "@microsoft/vscode-azext-utils";
-import { commands } from "vscode";
+import { commands, languages } from "vscode";
 import { doubleClickDebounceDelay, sqlFilter } from "../constants";
 import { ext } from "../extensionVariables";
+import { NoSqlCodeLensProvider } from "./NoSqlCodeLensProvider";
+import { writeNoSqlQuery } from "./WriteNoSqlQueryCommand";
 import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
 import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
-import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
 import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
-import { DocDBStoredProceduresTreeItem } from "./tree/DocDBStoredProceduresTreeItem";
+import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
 import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
+import { DocDBStoredProceduresTreeItem } from "./tree/DocDBStoredProceduresTreeItem";
+
+const nosqlLanguageId = "nosql";
 
 export function registerDocDBCommands(): void {
+    const nosqlCodeLensProvider = new NoSqlCodeLensProvider();
+    ext.context.subscriptions.push(languages.registerCodeLensProvider(nosqlLanguageId, nosqlCodeLensProvider));
+
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDatabase', createDocDBDatabase);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.writeNoSqlQuery', writeNoSqlQuery);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBCollection', createDocDBCollection);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDocument', async (context: IActionContext, node?: DocDBDocumentsTreeItem) => {
         if (!node) {

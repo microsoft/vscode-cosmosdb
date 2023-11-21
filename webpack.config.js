@@ -19,7 +19,7 @@ let DEBUG_WEBPACK = !!process.env.DEBUG_WEBPACK;
 let config = dev.getDefaultWebpackConfig({
     projectRoot: __dirname,
     verbosity: DEBUG_WEBPACK ? 'debug' : 'normal',
-
+    target: "node",
     externalNodeModules: [
         // Modules that we can't easily webpack for some reason.
         // These and their dependencies will be copied into node_modules rather than placed in the bundle

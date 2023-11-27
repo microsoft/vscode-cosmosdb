@@ -68,8 +68,17 @@ export class PostgresClientConfigFactory {
                 } else if (parsedError.errorType === firewallNotConfiguredErrorType || parsedError.errorType === timeoutErrorType) {
                     // The time out error are common when the firewall rules doesn't grant access from the current IP address.
                     // If the client is blocked by the firewall, let the user go to Azure Portal to grant access.
+                    const publicIp = PostgresServerTreeItem.ipAddr;
+                    let ipMessage: string;
+                    if (publicIp !== undefined) {
+                        ipMessage = localize("ipAlreadyInFirewall", "The IP address '{0}' already exists in the firewall rules.", publicIp);
+                    } else {
+                        // The code should never reach here but handle it just in case.
+                        ipMessage = "Your IP address is already in the firewall rules.";
+                    }
+                    const configureFirewallMessage = localize("mustConfigureFirewall", "Some network environments may not report the actual public-facing IP address needed to access your server. Contact your network administrator to add the actual IP address to the firewall rules.");
                     throw {
-                        message: localize("mustConfigureFirewall", 'Your IP address we tested is already in the firewall rules. Some network environments may not report the actual public-facing IP address needed to access your server. Contact your network administrator to add the actual IP address to the firewall rules.'),
+                        message: `${ipMessage} ${configureFirewallMessage}`,
                         code: firewallNotConfiguredErrorType
                     };
                 } else {

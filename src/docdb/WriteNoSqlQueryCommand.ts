@@ -4,9 +4,22 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IActionContext } from "@microsoft/vscode-azext-utils";
-import { MongoCollectionTreeItem } from "../mongo/tree/MongoCollectionTreeItem";
+import { KeyValueStore } from "../KeyValueStore";
 import * as vscodeUtil from "../utils/vscodeUtils";
+import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 
-export async function writeNoSqlQuery(_context: IActionContext, node: MongoCollectionTreeItem): Promise<void> {
-    await vscodeUtil.showNewFile("", `query for ${node.label}`, ".nosql");
+export async function writeNoSqlQuery(_context: IActionContext, node: DocDBCollectionTreeItem): Promise<void> {
+    const queryId = node.fullId;
+    KeyValueStore.instance.set(queryId, {
+        databaseId: node.parent.id,
+        collectionId: node.id,
+        endpoint: node.root.endpoint,
+        masterKey: node.root.masterKey,
+        isEmulator: node.root.isEmulator
+    });
+    const queryObject = {
+        queryId: queryId,
+        query: `SELECT * FROM ${node.id}`
+    };
+    await vscodeUtil.showNewFile(JSON.stringify(queryObject, null, 2), `query for ${node.label}`, ".nosql");
 }

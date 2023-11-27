@@ -3,12 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, IActionContext, ITreeItemPickerContext, registerCommandWithTreeNodeUnwrapping } from "@microsoft/vscode-azext-utils";
+import { AzExtTreeItem, IActionContext, ITreeItemPickerContext, registerCommand, registerCommandWithTreeNodeUnwrapping } from "@microsoft/vscode-azext-utils";
 import { commands, languages } from "vscode";
+import { KeyValueStore } from "../KeyValueStore";
 import { doubleClickDebounceDelay, sqlFilter } from "../constants";
 import { ext } from "../extensionVariables";
 import { NoSqlCodeLensProvider } from "./NoSqlCodeLensProvider";
 import { writeNoSqlQuery } from "./WriteNoSqlQueryCommand";
+import { getCosmosClient } from "./getCosmosClient";
 import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
 import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
@@ -23,6 +25,7 @@ export function registerDocDBCommands(): void {
     const nosqlCodeLensProvider = new NoSqlCodeLensProvider();
     ext.context.subscriptions.push(languages.registerCodeLensProvider(nosqlLanguageId, nosqlCodeLensProvider));
 
+    registerCommand("cosmosDB.executeNoSqlQuery", executeNoSqlQuery);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDatabase', createDocDBDatabase);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.writeNoSqlQuery', writeNoSqlQuery);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBCollection', createDocDBCollection);
@@ -67,6 +70,17 @@ export function registerDocDBCommands(): void {
         }
         await node.deleteTreeItem(context);
     });
+}
+
+async function executeNoSqlQuery(_context: IActionContext, args: { queryId: string, query: string }): Promise<void> {
+    const { queryId, query } = args;
+    const nodeData = KeyValueStore.instance.get(queryId);
+    if (nodeData) {
+        const { databaseId, collectionId, endpoint, masterKey, isEmulator } = nodeData as any;
+        const client = getCosmosClient(endpoint, masterKey, isEmulator);
+        const result = await client.database(databaseId).container(collectionId).items.query(query).fetchAll();
+        console.log(result);
+    }
 }
 
 export async function createDocDBDatabase(context: IActionContext, node?: DocDBAccountTreeItem): Promise<void> {

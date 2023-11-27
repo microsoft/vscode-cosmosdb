@@ -336,6 +336,11 @@
             },
             {
                 "category": "Cosmos DB",
+                "command": "cosmosDB.executeNoSqlQuery",
+                "title": "Execute NoSQL Query"
+            },
+            {
+                "category": "Cosmos DB",
                 "command": "cosmosDB.importDocument",
                 "title": "Import Document into a Collection..."
             },

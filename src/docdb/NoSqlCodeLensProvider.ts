@@ -15,17 +15,18 @@ import {
 } from "vscode";
 
 export class NoSqlCodeLensProvider implements CodeLensProvider {
-    public provideCodeLenses(_document: TextDocument, _token: CancellationToken): ProviderResult<CodeLens[]> {
+    public provideCodeLenses(document: TextDocument, _token: CancellationToken): ProviderResult<CodeLens[]> {
         return callWithTelemetryAndErrorHandling("nosql.provideCodeLenses", (context: IActionContext) => {
             context.telemetry.suppressIfSuccessful = true;
-            const database = {};
+            const text = document.getText();
+            const queryObject = JSON.parse(text);
             const lenses: CodeLens[] = [
                 new CodeLens(
                     new Range(new Position(0, 0), new Position(0, 0)),
                     {
                         title: "Execute",
                         command: "cosmosDB.executeNoSqlQuery",
-                        arguments: [database]
+                        arguments: [queryObject]
                     }
                 )
             ];

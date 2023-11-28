@@ -337,12 +337,14 @@
             {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.executeNoSqlQuery",
-                "title": "Execute NoSQL Query"
+                "title": "Execute NoSQL Query",
+                "when": "false"
             },
             {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.getNoSqlQueryPlan",
-                "title": "Get NoSQL Query Plan"
+                "title": "Get NoSQL Query Plan",
+                "when": "false"
             },
             {
                 "category": "Cosmos DB",

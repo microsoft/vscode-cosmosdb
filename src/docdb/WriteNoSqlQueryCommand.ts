@@ -5,21 +5,21 @@
 
 import { IActionContext } from "@microsoft/vscode-azext-utils";
 import { KeyValueStore } from "../KeyValueStore";
+import { ext } from "../extensionVariables";
 import * as vscodeUtil from "../utils/vscodeUtils";
+import { NoSqlQueryConnection, noSqlQueryConnectionKey } from "./NoSqlCodeLensProvider";
 import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 
 export async function writeNoSqlQuery(_context: IActionContext, node: DocDBCollectionTreeItem): Promise<void> {
-    const queryId = node.fullId;
-    KeyValueStore.instance.set(queryId, {
+    const noSqlQueryConnection: NoSqlQueryConnection = {
         databaseId: node.parent.id,
-        collectionId: node.id,
+        containerId: node.id,
         endpoint: node.root.endpoint,
         masterKey: node.root.masterKey,
-        isEmulator: node.root.isEmulator
-    });
-    const queryObject = {
-        queryId: queryId,
-        query: `SELECT * FROM ${node.id}`
+        isEmulator: !!node.root.isEmulator
     };
-    await vscodeUtil.showNewFile(JSON.stringify(queryObject, null, 2), `query for ${node.label}`, ".nosql");
+    KeyValueStore.instance.set(noSqlQueryConnectionKey, noSqlQueryConnection);
+    ext.noSqlCodeLensProvider.updateCodeLens();
+    const sampleQuery = `SELECT * FROM ${noSqlQueryConnection.containerId}`;
+    await vscodeUtil.showNewFile(sampleQuery, `query for ${node.label}`, ".nosql");
 }

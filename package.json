@@ -341,6 +341,11 @@
             },
             {
                 "category": "Cosmos DB",
+                "command": "cosmosDB.getNoSqlQueryPlan",
+                "title": "Get NoSQL Query Plan"
+            },
+            {
+                "category": "Cosmos DB",
                 "command": "cosmosDB.importDocument",
                 "title": "Import Document into a Collection..."
             },

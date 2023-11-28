@@ -11,7 +11,7 @@ export class KeyValueStore {
 
     private static _instance: KeyValueStore | undefined;
 
-    public static get instance() {
+    public static get instance(): KeyValueStore {
         if (!this._instance) {
             this._instance = new KeyValueStore();
         }

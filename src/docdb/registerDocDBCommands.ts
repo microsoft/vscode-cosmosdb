@@ -26,6 +26,7 @@ export function registerDocDBCommands(): void {
     ext.context.subscriptions.push(languages.registerCodeLensProvider(nosqlLanguageId, nosqlCodeLensProvider));
 
     registerCommand("cosmosDB.executeNoSqlQuery", executeNoSqlQuery);
+    registerCommand("cosmosDB.getNoSqlQueryPlan", getNoSqlQueryPlan);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDatabase', createDocDBDatabase);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.writeNoSqlQuery', writeNoSqlQuery);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBCollection', createDocDBCollection);
@@ -72,14 +73,39 @@ export function registerDocDBCommands(): void {
     });
 }
 
-async function executeNoSqlQuery(_context: IActionContext, args: { queryId: string, query: string }): Promise<void> {
+async function executeNoSqlQuery(_context: IActionContext, args: { queryId: string, query: string } | undefined): Promise<void> {
+    if (!args) {
+        throw new Error("Unable to execute query due to missing args. Please navigate to the Cosmos DB collection node and start writing a query from its context menu.");
+    }
     const { queryId, query } = args;
     const nodeData = KeyValueStore.instance.get(queryId);
     if (nodeData) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         const { databaseId, collectionId, endpoint, masterKey, isEmulator } = nodeData as any;
         const client = getCosmosClient(endpoint, masterKey, isEmulator);
-        const result = await client.database(databaseId).container(collectionId).items.query(query).fetchAll();
-        console.log(result);
+        const response = await client.database(databaseId).container(collectionId).items.query(query).fetchAll();
+        console.log("response", response);
+        console.log("response.resources", response.resources);
+    } else {
+        throw new Error("Unable to execute query due to missing node data. Please navigate to the Cosmos DB collection node and start writing a query from its context menu.");
+    }
+}
+
+async function getNoSqlQueryPlan(_context: IActionContext, args: { queryId: string, query: string } | undefined): Promise<void> {
+    if (!args) {
+        throw new Error("Unable to get query plan due to missing args. Please navigate to the Cosmos DB collection node and start writing a query from its context menu.");
+    }
+    const { queryId, query } = args;
+    const nodeData = KeyValueStore.instance.get(queryId);
+    if (nodeData) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+        const { databaseId, collectionId, endpoint, masterKey, isEmulator } = nodeData as any;
+        const client = getCosmosClient(endpoint, masterKey, isEmulator);
+        const response = await client.database(databaseId).container(collectionId).getQueryPlan(query);
+        console.log("response", response);
+        console.log("result.result", response.result);
+    } else {
+        throw new Error("Unable to get query plan due to missing node data. Please navigate to the Cosmos DB collection node and start writing a query from its context menu.");
     }
 }
 

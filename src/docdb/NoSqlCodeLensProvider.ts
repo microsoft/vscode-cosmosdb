@@ -19,6 +19,7 @@ export class NoSqlCodeLensProvider implements CodeLensProvider {
         return callWithTelemetryAndErrorHandling("nosql.provideCodeLenses", (context: IActionContext) => {
             context.telemetry.suppressIfSuccessful = true;
             const text = document.getText();
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const queryObject = JSON.parse(text);
             const lenses: CodeLens[] = [
                 new CodeLens(
@@ -26,6 +27,14 @@ export class NoSqlCodeLensProvider implements CodeLensProvider {
                     {
                         title: "Execute",
                         command: "cosmosDB.executeNoSqlQuery",
+                        arguments: [queryObject]
+                    }
+                ),
+                new CodeLens(
+                    new Range(new Position(0, 0), new Position(0, 0)),
+                    {
+                        title: "Execute",
+                        command: "cosmosDB.getNoSqlQueryPlan",
                         arguments: [queryObject]
                     }
                 )

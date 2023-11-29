@@ -38,6 +38,8 @@ interface IPersistedServer {
 export class PostgresServerTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = "postgresServer";
     public static serviceName: string = "ms-azuretools.vscode-azuredatabases.postgresPasswords";
+    public static ipAddr: string | undefined;
+
     public readonly contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = "Database";
     public readonly serverType: PostgresServerType;
@@ -225,6 +227,10 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
             const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [context, this.subscription]);
             const results: SingleModels.FirewallRule[] = (await uiUtils.listAllIterator(client.firewallRules.listByServer(nonNullProp(this, 'resourceGroup'), nonNullProp(this, 'azureName'))));
             const publicIp: string = await getPublicIp(context);
+
+            // Cache/update the ip address for potential error reporting.
+            PostgresServerTreeItem.ipAddr = publicIp;
+
             return isIpInRanges(publicIp, results);
         } catch (error) {
             // We cannot get the firewall rules from attached databases because we cannot get the subscription object.

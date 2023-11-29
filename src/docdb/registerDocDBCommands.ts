@@ -4,10 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtTreeItem, IActionContext, ITreeItemPickerContext, registerCommand, registerCommandWithTreeNodeUnwrapping } from "@microsoft/vscode-azext-utils";
-import { commands, languages } from "vscode";
+import { ViewColumn, commands, languages } from "vscode";
 import { KeyValueStore } from "../KeyValueStore";
 import { doubleClickDebounceDelay, sqlFilter } from "../constants";
 import { ext } from "../extensionVariables";
+import * as vscodeUtil from "../utils/vscodeUtils";
 import { NoSqlCodeLensProvider, NoSqlQueryConnection, noSqlQueryConnectionKey } from "./NoSqlCodeLensProvider";
 import { writeNoSqlQuery } from "./WriteNoSqlQueryCommand";
 import { getCosmosClient } from "./getCosmosClient";
@@ -87,8 +88,7 @@ async function executeNoSqlQuery(_context: IActionContext, args: { queryText: st
         const { databaseId, containerId, endpoint, masterKey, isEmulator } = connectedCollection as NoSqlQueryConnection;
         const client = getCosmosClient(endpoint, masterKey, isEmulator);
         const response = await client.database(databaseId).container(containerId).items.query(queryText).fetchAll();
-        console.log("response", response);
-        console.log("response.resources", response.resources);
+        await vscodeUtil.showNewFile(JSON.stringify(response.resources, undefined, 2), `query results for ${containerId}`, ".json", ViewColumn.Beside);
     }
 }
 
@@ -105,8 +105,7 @@ async function getNoSqlQueryPlan(_context: IActionContext, args: { queryText: st
         const { databaseId, containerId, endpoint, masterKey, isEmulator } = connectedCollection as NoSqlQueryConnection;
         const client = getCosmosClient(endpoint, masterKey, isEmulator);
         const response = await client.database(databaseId).container(containerId).getQueryPlan(queryText);
-        console.log("response", response);
-        console.log("result.result", response.result);
+        await vscodeUtil.showNewFile(JSON.stringify(response.result, undefined, 2), `query results for ${containerId}`, ".json", ViewColumn.Beside);
     }
 }
 

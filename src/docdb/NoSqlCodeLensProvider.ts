@@ -79,6 +79,14 @@ export class NoSqlCodeLensProvider implements CodeLensProvider {
                 new CodeLens(
                     new Range(new Position(0, 0), new Position(0, 0)),
                     {
+                        title: "Execute with Query Metrics",
+                        command: "cosmosDB.executeNoSqlQuery",
+                        arguments: [{ queryText, populateQueryMetrics: true }]
+                    }
+                ),
+                new CodeLens(
+                    new Range(new Position(0, 0), new Position(0, 0)),
+                    {
                         title: "Get Query Plan",
                         command: "cosmosDB.getNoSqlQueryPlan",
                         arguments: [{ queryText }]

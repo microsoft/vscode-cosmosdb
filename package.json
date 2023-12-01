@@ -391,7 +391,7 @@
             {
                 "category": "Core (SQL)",
                 "command": "cosmosDB.writeNoSqlQuery",
-                "title": "Write Query"
+                "title": "Create New NoSQL Query"
             },
             {
                 "category": "PostgreSQL",

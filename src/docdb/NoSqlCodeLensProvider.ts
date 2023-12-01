@@ -52,7 +52,7 @@ export class NoSqlCodeLensProvider implements CodeLensProvider {
                     new Range(new Position(0, 0), new Position(0, 0)),
                     {
                         title: "Not connected",
-                        command: "",
+                        command: "cosmosDB.connectNoSqlContainer",
                         arguments: []
                     }
                 );
@@ -61,7 +61,7 @@ export class NoSqlCodeLensProvider implements CodeLensProvider {
                     new Range(new Position(0, 0), new Position(0, 0)),
                     {
                         title: `Connected to ${connectedCollection.databaseId}.${connectedCollection.containerId}`,
-                        command: "",
+                        command: "cosmosDB.connectNoSqlContainer",
                         arguments: []
                     }
                 );

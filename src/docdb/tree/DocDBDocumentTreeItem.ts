@@ -106,7 +106,7 @@ export class DocDBDocumentTreeItem extends AzExtTreeItem implements IEditableTre
         }
     }
 
-    private getPartitionKeyValue(): string | undefined | Object {
+    private getPartitionKeyValue(): string | undefined {
         const partitionKey = this.parent.parent.partitionKey;
         if (!partitionKey) { //Fixed collections -> no partitionKeyValue
             return undefined;

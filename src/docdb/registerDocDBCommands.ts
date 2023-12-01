@@ -10,7 +10,6 @@ import { doubleClickDebounceDelay, sqlFilter } from "../constants";
 import { ext } from "../extensionVariables";
 import * as vscodeUtil from "../utils/vscodeUtils";
 import { NoSqlCodeLensProvider, NoSqlQueryConnection, noSqlQueryConnectionKey } from "./NoSqlCodeLensProvider";
-import { writeNoSqlQuery } from "./WriteNoSqlQueryCommand";
 import { getCosmosClient } from "./getCosmosClient";
 import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
 import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
@@ -26,6 +25,7 @@ export function registerDocDBCommands(): void {
     ext.noSqlCodeLensProvider = new NoSqlCodeLensProvider();
     ext.context.subscriptions.push(languages.registerCodeLensProvider(nosqlLanguageId, ext.noSqlCodeLensProvider));
 
+    registerCommand("cosmosDB.connectNoSqlContainer", connectNoSqlContainer);
     registerCommand("cosmosDB.executeNoSqlQuery", executeNoSqlQuery);
     registerCommand("cosmosDB.getNoSqlQueryPlan", getNoSqlQueryPlan);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDatabase', createDocDBDatabase);
@@ -72,6 +72,29 @@ export function registerDocDBCommands(): void {
         }
         await node.deleteTreeItem(context);
     });
+}
+
+function setConnectedNoSqlContainer(node: DocDBCollectionTreeItem): void {
+    const noSqlQueryConnection: NoSqlQueryConnection = {
+        databaseId: node.parent.id,
+        containerId: node.id,
+        endpoint: node.root.endpoint,
+        masterKey: node.root.masterKey,
+        isEmulator: !!node.root.isEmulator
+    };
+    KeyValueStore.instance.set(noSqlQueryConnectionKey, noSqlQueryConnection);
+    ext.noSqlCodeLensProvider.updateCodeLens();
+}
+
+async function writeNoSqlQuery(_context: IActionContext, node: DocDBCollectionTreeItem): Promise<void> {
+    setConnectedNoSqlContainer(node);
+    const sampleQuery = `SELECT * FROM ${node.id}`;
+    await vscodeUtil.showNewFile(sampleQuery, `query for ${node.label}`, ".nosql");
+}
+
+async function connectNoSqlContainer(context: IActionContext): Promise<void> {
+    const node = await pickDocDBAccount<DocDBCollectionTreeItem>(context, DocDBCollectionTreeItem.contextValue);
+    setConnectedNoSqlContainer(node);
 }
 
 async function executeNoSqlQuery(_context: IActionContext, args: { queryText: string, populateQueryMetrics?: boolean }): Promise<void> {

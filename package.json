@@ -342,6 +342,12 @@
             },
             {
                 "category": "Cosmos DB",
+                "command": "cosmosDB.connectNoSqlContainer",
+                "title": "Connect to NoSQL container",
+                "when": "false"
+            },
+            {
+                "category": "Cosmos DB",
                 "command": "cosmosDB.getNoSqlQueryPlan",
                 "title": "Get NoSQL Query Plan",
                 "when": "false"

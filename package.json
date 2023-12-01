@@ -226,6 +226,12 @@
             },
             {
                 "category": "Cosmos DB",
+                "command": "cosmosDB.connectNoSqlContainer",
+                "title": "Connect to NoSQL container",
+                "when": "false"
+            },
+            {
+                "category": "Cosmos DB",
                 "command": "cosmosDB.copyConnectionString",
                 "title": "Copy Connection String"
             },
@@ -338,12 +344,6 @@
                 "category": "Cosmos DB",
                 "command": "cosmosDB.executeNoSqlQuery",
                 "title": "Execute NoSQL Query",
-                "when": "false"
-            },
-            {
-                "category": "Cosmos DB",
-                "command": "cosmosDB.connectNoSqlContainer",
-                "title": "Connect to NoSQL container",
                 "when": "false"
             },
             {

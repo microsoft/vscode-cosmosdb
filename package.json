@@ -151,6 +151,16 @@
                 "extensions": [
                     ".psql"
                 ]
+            },
+            {
+                "id": "nosql",
+                "aliases": [
+                    "Cosmos NoSQL",
+                    "nosql"
+                ],
+                "extensions": [
+                    ".nosql"
+                ]
             }
         ],
         "grammars": [
@@ -213,6 +223,12 @@
                 "category": "MongoDB",
                 "command": "cosmosDB.connectMongoDB",
                 "title": "Connect to Database..."
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.connectNoSqlContainer",
+                "title": "Connect to NoSQL container",
+                "when": "false"
             },
             {
                 "category": "Cosmos DB",
@@ -326,6 +342,18 @@
             },
             {
                 "category": "Cosmos DB",
+                "command": "cosmosDB.executeNoSqlQuery",
+                "title": "Execute NoSQL Query",
+                "when": "false"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.getNoSqlQueryPlan",
+                "title": "Get NoSQL Query Plan",
+                "when": "false"
+            },
+            {
+                "category": "Cosmos DB",
                 "command": "cosmosDB.importDocument",
                 "title": "Import Document into a Collection..."
             },
@@ -359,6 +387,11 @@
                 "category": "Cosmos DB",
                 "command": "cosmosDB.openStoredProcedure",
                 "title": "Open Stored Procedure"
+            },
+            {
+                "category": "Core (SQL)",
+                "command": "cosmosDB.writeNoSqlQuery",
+                "title": "Create New NoSQL Query"
             },
             {
                 "category": "PostgreSQL",
@@ -574,6 +607,11 @@
                     "command": "cosmosDB.createDocDBDocument",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentsGroup",
                     "group": "1@1"
+                },
+                {
+                    "command": "cosmosDB.writeNoSqlQuery",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
+                    "group": "1@2"
                 },
                 {
                     "command": "cosmosDB.createDocDBStoredProcedure",

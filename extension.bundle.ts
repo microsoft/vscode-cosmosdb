@@ -27,23 +27,23 @@ export * from './src/docdb/registerDocDBCommands';
 export { activateInternal, cosmosDBCopyConnectionString, createServer, deactivateInternal, deleteAccount } from './src/extension';
 export { ext } from './src/extensionVariables';
 export * from './src/graph/registerGraphCommands';
-export { connectToMongoClient, isCosmosEmulatorConnectionString } from './src/mongo/connectToMongoClient';
 export { MongoCommand } from './src/mongo/MongoCommand';
-export { addDatabaseToAccountConnectionString, encodeMongoConnectionString, getDatabaseNameFromConnectionString } from './src/mongo/mongoConnectionStrings';
 export { findCommandAtPosition, getAllCommandsFromText } from './src/mongo/MongoScrapbook';
 export { MongoShell } from './src/mongo/MongoShell';
+export { connectToMongoClient, isCosmosEmulatorConnectionString } from './src/mongo/connectToMongoClient';
+export { addDatabaseToAccountConnectionString, encodeMongoConnectionString, getDatabaseNameFromConnectionString } from './src/mongo/mongoConnectionStrings';
 export * from './src/mongo/registerMongoCommands';
 export { IDatabaseInfo } from './src/mongo/tree/MongoAccountTreeItem';
 export { addDatabaseToConnectionString } from './src/postgres/postgresConnectionStrings';
 export { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from './src/tree/AttachedAccountsTreeItem';
 export { AzureAccountTreeItemWithAttached } from './src/tree/AzureAccountTreeItemWithAttached';
 export * from './src/utils/azureClients';
+export { getPublicIpv4, isIpInRanges } from './src/utils/getIp';
 export { improveError } from './src/utils/improveError';
 export { randomUtils } from './src/utils/randomUtils';
 export { getGlobalSetting, updateGlobalSetting } from './src/utils/settingUtils';
 export { rejectOnTimeout, valueOnTimeout } from './src/utils/timeout';
-export { getDocumentTreeItemLabel, IDisposable } from './src/utils/vscodeUtils';
+export { IDisposable, getDocumentTreeItemLabel } from './src/utils/vscodeUtils';
 export { wrapError } from './src/utils/wrapError';
-export { isIpInRanges, getPublicIpv4 } from './src/utils/getIp'
 
 // NOTE: The auto-fix action "source.organizeImports" does weird things with this file, but there doesn't seem to be a way to disable it on a per-file basis so we'll just let it happen

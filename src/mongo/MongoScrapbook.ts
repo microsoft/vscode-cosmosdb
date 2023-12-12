@@ -9,7 +9,7 @@ import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
-import { ObjectID } from 'bson';
+import { EJSON, ObjectId } from 'bson';
 import { Collection } from 'mongodb';
 import { EOL } from 'os';
 import * as vscode from 'vscode';
@@ -25,8 +25,6 @@ import { ErrorDescription, MongoCommand } from './MongoCommand';
 import { MongoCollectionTreeItem } from './tree/MongoCollectionTreeItem';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
 import { IMongoDocument, MongoDocumentTreeItem } from './tree/MongoDocumentTreeItem';
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const EJSON = require("mongodb-extended-json");
 
 const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
 
@@ -427,13 +425,13 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 
     private objectIdToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {
         let hexID: string;
-        let constructedObject: ObjectID;
+        let constructedObject: ObjectId;
         if (!tokenText) { // usage : ObjectID()
-            constructedObject = new ObjectID();
+            constructedObject = new ObjectId();
         } else {
             hexID = stripQuotes(<string>tokenText);
             try {
-                constructedObject = new ObjectID(hexID);
+                constructedObject = new ObjectId(hexID);
             } catch (error) {
                 const parsedError: IParsedError = parseError(error);
                 this.addErrorToCommand(parsedError.message, ctx);

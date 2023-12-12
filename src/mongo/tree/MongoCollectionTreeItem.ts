@@ -7,7 +7,8 @@
 
 import { AzExtParentTreeItem, AzExtTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as assert from 'assert';
-import { BulkWriteOpResultObject, Collection, CollectionInsertManyOptions, Cursor, DeleteWriteOpResultObject, InsertOneWriteOpResult, InsertWriteOpResult, MongoCountPreferences } from 'mongodb';
+import { EJSON } from "bson";
+import { AnyBulkWriteOperation, BulkWriteOptions, BulkWriteResult, Collection, CountOptions, DeleteResult, Filter, FindCursor, InsertManyResult, InsertOneResult, Document as MongoDocument } from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
@@ -17,11 +18,8 @@ import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { MongoCommand } from '../MongoCommand';
 import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const EJSON = require("mongodb-extended-json");
 
 type MongoFunction = (...args: ({} | {}[] | undefined)[]) => Thenable<string>;
-type MongoDocument = { _id: string };
 class FunctionDescriptor {
     public constructor(public mongoFunction: MongoFunction, public text: string, public minShellArgs: number, public maxShellArgs: number, public maxHandledArgs: number) {
     }
@@ -37,9 +35,9 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
 
-    private readonly _query: object | undefined;
+    private readonly _query: Filter<MongoDocument> | undefined;
     private readonly _projection: object | undefined;
-    private _cursor: Cursor | undefined;
+    private _cursor: FindCursor | undefined;
     private _hasMoreChildren: boolean = true;
     private _batchSize: number = getBatchSizeSetting();
 
@@ -57,7 +55,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     public async writeFileContent(context: IActionContext, content: string): Promise<void> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const documents: IMongoDocument[] = EJSON.parse(content);
-        const operations = documents.map((document) => {
+        const operations: AnyBulkWriteOperation<MongoDocument>[] = documents.map((document) => {
             return {
                 replaceOne: {
                     filter: { _id: document._id },
@@ -68,7 +66,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
             };
         });
 
-        const result: BulkWriteOpResultObject = await this.collection.bulkWrite(operations);
+        const result: BulkWriteResult = await this.collection.bulkWrite(operations);
         ext.outputChannel.appendLog(`Successfully updated ${result.modifiedCount} document(s), inserted ${result.insertedCount} document(s)`);
 
         // The current tree item may have been a temporary one used to execute a scrapbook command.
@@ -90,7 +88,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     public async getFileContent(context: IActionContext): Promise<string> {
         const children = <MongoDocumentTreeItem[]>await this.getCachedChildren(context);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        return EJSON.stringify(children.map(c => c.document), null, 2);
+        return EJSON.stringify(children.map(c => c.document), undefined, 2);
     }
 
     public get id(): string {
@@ -131,7 +129,11 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
 
     public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (clearCache || this._cursor === undefined) {
-            this._cursor = this.collection.find(this._query).batchSize(this._batchSize);
+            if (this._query) {
+                this._cursor = this.collection.find(this._query).batchSize(this._batchSize);
+            } else {
+                this._cursor = this.collection.find().batchSize(this._batchSize);
+            }
             if (this._projection) {
                 this._cursor = this._cursor.project(this._projection);
             }
@@ -161,13 +163,13 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDocumentTreeItem> {
         context.showCreatingTreeItem("");
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const result: InsertOneWriteOpResult<MongoDocument> = await this.collection.insertOne({});
+        const result: InsertOneResult<MongoDocument> = await this.collection.insertOne({});
         const newDocument: IMongoDocument = nonNullValue(await this.collection.findOne({ _id: result.insertedId }), 'newDocument');
         return new MongoDocumentTreeItem(this, newDocument);
     }
 
     public async tryExecuteCommandDirectly(command: Partial<MongoCommand>): Promise<{ deferToShell: true; result: undefined } | { deferToShell: false; result: string }> {
-        // range and text are not neccessary properties for this function so partial should suffice
+        // range and text are not necessary properties for this function so partial should suffice
         const parameters = command.arguments ? command.arguments.map(parseJSContent) : [];
 
         const functions = {
@@ -228,33 +230,33 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
         }
     }
 
-    private async findOne(query?: Object, fieldsOption?: Object): Promise<string> {
+    private async findOne(query?: Filter<MongoDocument>, fieldsOption?: MongoDocument): Promise<string> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const result = await this.collection.findOne(query || {}, { fields: fieldsOption });
+        const result = await this.collection.findOne(query || {}, { projection: fieldsOption });
         // findOne is the only command in this file whose output requires EJSON support.
         // Hence that's the only function which uses EJSON.stringify rather than this.stringify.
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        return EJSON.stringify(result, null, '\t');
+        return EJSON.stringify(result, undefined, '\t');
     }
 
-    private async insert(document: Object): Promise<string> {
+    private async insert(document: MongoDocument): Promise<string> {
         if (!document) {
             throw new Error("The insert command requires at least one argument");
         }
 
-        const insertResult = await this.collection.insert(document);
+        const insertResult = await this.collection.insertOne(document);
         return this.stringify(insertResult);
     }
 
-    private async insertOne(document: Object, options?: any): Promise<string> {
+    private async insertOne(document: MongoDocument, options?: any): Promise<string> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        const insertOneResult: InsertOneWriteOpResult<MongoDocument> = await this.collection.insertOne(document, { w: options && options.writeConcern });
+        const insertOneResult: InsertOneResult<MongoDocument> = await this.collection.insertOne(document, { writeConcern: options && options.writeConcern });
         return this.stringify(insertOneResult);
     }
 
-    private async insertMany(documents: any[], options?: any): Promise<string> {
+    private async insertMany(documents: MongoDocument[], options?: any): Promise<string> {
         assert.notEqual(documents.length, 0, "Array of documents cannot be empty");
-        const insertManyOptions: CollectionInsertManyOptions = {};
+        const insertManyOptions: BulkWriteOptions = {};
         if (options) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             if (options.ordered) {
@@ -264,33 +266,43 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             if (options.writeConcern) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-                insertManyOptions.w = options.writeConcern;
+                insertManyOptions.writeConcern = options.writeConcern;
             }
         }
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const insertManyResult: InsertWriteOpResult<MongoDocument> = await this.collection.insertMany(documents, insertManyOptions);
+        const insertManyResult: InsertManyResult<MongoDocument> = await this.collection.insertMany(documents, insertManyOptions);
         return this.stringify(insertManyResult);
     }
 
-    private async remove(filter: Object): Promise<string> {
-        const removeResult = await this.collection.remove(filter);
+    private async remove(filter: Filter<MongoDocument>): Promise<string> {
+        const removeResult = await this.collection.deleteOne(filter);
         return this.stringify(removeResult);
     }
 
-    private async deleteOne(filter: Object): Promise<string> {
-        const deleteOneResult: DeleteWriteOpResultObject = await this.collection.deleteOne(filter);
+    private async deleteOne(filter: Filter<MongoDocument>): Promise<string> {
+        const deleteOneResult: DeleteResult = await this.collection.deleteOne(filter);
         return this.stringify(deleteOneResult);
     }
 
-    private async deleteMany(filter: Object): Promise<string> {
-        const deleteOpResult: DeleteWriteOpResultObject = await this.collection.deleteMany(filter);
+    private async deleteMany(filter: Filter<MongoDocument>): Promise<string> {
+        const deleteOpResult: DeleteResult = await this.collection.deleteMany(filter);
         return this.stringify(deleteOpResult);
     }
 
-    private async count(query?: Object[], options?: MongoCountPreferences): Promise<string> {
-        const count = await this.collection.count(query, options);
-        return this.stringify(count);
+    private async count(query?: Filter<MongoDocument>, options?: CountOptions): Promise<string> {
+        if (!query) {
+            const count = await this.collection.countDocuments();
+            return this.stringify(count);
+        } else {
+            if (!options) {
+                const count = await this.collection.count(query);
+                return this.stringify(count);
+            } else {
+                const count = await this.collection.count(query, options);
+                return this.stringify(count);
+            }
+        }
     }
 
     private stringify(result: any): string {

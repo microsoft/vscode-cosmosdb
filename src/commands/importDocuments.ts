@@ -153,7 +153,7 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
 async function insertDocumentsIntoMongo(node: MongoCollectionTreeItem, documents: any[]): Promise<string> {
     let output = "";
     const parsed = await node.collection.insertMany(documents);
-    if (parsed.result && parsed.result.ok) {
+    if (parsed.acknowledged) {
         output = `Import into mongo successful. Inserted ${parsed.insertedCount} document(s). See output for more details.`;
         for (const inserted of Object.values(parsed.insertedIds)) {
             ext.outputChannel.appendLine(`Inserted document: ${inserted}`);

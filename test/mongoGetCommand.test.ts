@@ -6,7 +6,7 @@
 import { parseError } from '@microsoft/vscode-azext-utils';
 import * as assert from 'assert';
 import { Position } from 'vscode';
-import { findCommandAtPosition, getAllCommandsFromText, MongoCommand, nonNullProp, ObjectID, ObjectId } from '../extension.bundle';
+import { findCommandAtPosition, getAllCommandsFromText, MongoCommand, nonNullProp, ObjectId } from '../extension.bundle';
 
 function expectSingleCommand(text: string): MongoCommand {
     const commands = getAllCommandsFromText(text);
@@ -736,7 +736,7 @@ suite("scrapbook parsing Tests", () => {
         const commands: MongoCommand[] = getAllCommandsFromText(text);
         const command: MongoCommand = findCommandAtPosition(commands, new Position(0, 0));
         assert.deepEqual(command.collection, "c1");
-        assert.ok((<any>nonNullProp(command, 'argumentObjects')[0]).name instanceof ObjectID);
+        assert.ok((<any>nonNullProp(command, 'argumentObjects')[0]).name instanceof ObjectId);
     });
 
     test("test ObjectID - hex", () => {
@@ -745,7 +745,7 @@ suite("scrapbook parsing Tests", () => {
         const commands: MongoCommand[] = getAllCommandsFromText(text);
         const command: MongoCommand = findCommandAtPosition(commands, new Position(0, 0));
         assert.deepEqual(command.collection, "c1");
-        const id = new ObjectID(idParam);
+        const id = new ObjectId(idParam);
         assert.deepEqual(command.argumentObjects, [{ name: id }]);
     });
 

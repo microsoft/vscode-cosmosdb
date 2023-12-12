@@ -20,6 +20,7 @@ import { CosmosDBAccountCapacityStep } from './CosmosDBAccountWizard/CosmosDBAcc
 import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccountCreateStep';
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
 import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
+import { MongoVersionStep } from './CosmosDBAccountWizard/MongoDBVersionStep';
 import { IAzureDBWizardContext } from './IAzureDBWizardContext';
 
 export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardContext | ICosmosDBWizardContext> {
@@ -61,7 +62,8 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
             promptSteps = [
                 new CosmosDBAccountNameStep(),
                 new CosmosDBAccountCapacityStep(),
-            ];
+                context.defaultExperience?.api === API.MongoDB ? new MongoVersionStep() : undefined
+            ].filter((step): step is AzureWizardPromptStep<ICosmosDBWizardContext> => step !== undefined);
             executeSteps = [
                 new CosmosDBAccountCreateStep(),
                 new VerifyProvidersStep(['Microsoft.DocumentDB'])

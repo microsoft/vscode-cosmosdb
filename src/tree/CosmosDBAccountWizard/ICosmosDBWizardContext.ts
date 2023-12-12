@@ -16,4 +16,5 @@ export interface ICosmosDBWizardContext extends IAzureDBWizardContext, ExecuteAc
     databaseAccount?: DatabaseAccountGetResults;
     isServerless?: boolean;
 
+    mongoVersion?: string;
 }

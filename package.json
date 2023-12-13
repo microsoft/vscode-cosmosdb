@@ -1102,7 +1102,7 @@
         "@types/pg": "^8.10.2",
         "@types/vscode": "1.66.0",
         "@typescript-eslint/eslint-plugin": "^4.31.1",
-        "@vscode/test-electron": "^2.3.8",
+        "@vscode/test-electron": "^2.1.5",
         "antlr4ts-cli": "^0.4.0-alpha.4",
         "copy-webpack-plugin": "^6.4.0",
         "eslint": "^7.19.0",

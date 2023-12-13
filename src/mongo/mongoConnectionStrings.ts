@@ -60,7 +60,6 @@ export async function parseMongoConnectionString(connectionString: string): Prom
         }
     }
 
-    // @todo: test this to see if this works?
     const { host, port } = mongoClient.options.hosts[0];
 
     return new ParsedMongoConnectionString(connectionString, host as string, (port as number).toString(), getDatabaseNameFromConnectionString(connectionString));

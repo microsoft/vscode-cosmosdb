@@ -4,18 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
-import { Collection, DeleteWriteOpResultObject, ObjectID, UpdateWriteOpResult } from 'mongodb';
+import { EJSON } from "bson";
+import { Collection, DeleteResult, Document as MongoDocument, ObjectId, UpdateResult } from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
-const EJSON = require("mongodb-extended-json");
 
 export interface IMongoDocument {
-    _id: string | ObjectID;
+    _id: ObjectId;
 
     // custom properties
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,7 +62,7 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
         }
         const filter: object = { _id: newDocument._id };
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const result: UpdateWriteOpResult = await collection.replaceOne(filter, _.omit(newDocument, '_id'));
+        const result: MongoDocument | UpdateResult = await collection.replaceOne(filter, _.omit(newDocument, '_id'));
         if (result.modifiedCount !== 1) {
             throw new Error(`Failed to update document with _id '${newDocument._id}'.`);
         }
@@ -72,7 +71,7 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
 
     public async getFileContent(): Promise<string> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        return EJSON.stringify(this.document, null, 2);
+        return EJSON.stringify(this.document, undefined, 2);
     }
 
     public async refreshImpl(): Promise<void> {
@@ -83,7 +82,7 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete document '${this._label}'?`;
         await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteMongoDocument' }, DialogResponses.deleteResponse);
-        const deleteResult: DeleteWriteOpResultObject = await this.parent.collection.deleteOne({ _id: this.document._id });
+        const deleteResult: DeleteResult = await this.parent.collection.deleteOne({ _id: this.document._id });
         if (deleteResult.deletedCount !== 1) {
             throw new Error(`Failed to delete document with _id '${this.document._id}'.`);
         }

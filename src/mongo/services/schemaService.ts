@@ -5,7 +5,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unsafe-member-access */
 
-import { Cursor, Db } from 'mongodb';
+import { Db, FindCursor } from 'mongodb';
 import { SchemaConfiguration } from 'vscode-json-languageservice';
 // eslint-disable-next-line import/no-internal-modules
 import { JSONSchema } from 'vscode-json-languageservice/lib/umd/jsonSchema';
@@ -606,7 +606,7 @@ Use the $where operator to pass either a string containing a JavaScript expressi
         };
     }
 
-    private readNext(result: any[], cursor: Cursor<any>, batchSize: number, callback: (result: any[]) => void): void {
+    private readNext(result: any[], cursor: FindCursor<any>, batchSize: number, callback: (result: any[]) => void): void {
         if (result.length === batchSize) {
             callback(result);
             return;

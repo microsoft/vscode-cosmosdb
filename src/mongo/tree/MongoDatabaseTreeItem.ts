@@ -5,7 +5,7 @@
 
 import { appendExtensionUserAgent, AzExtParentTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath, UserCancelledError } from '@microsoft/vscode-azext-utils';
 import * as fse from 'fs-extra';
-import { Collection, Db, DbCollectionOptions } from 'mongodb';
+import { Collection, CreateCollectionOptions, Db } from 'mongodb';
 import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
@@ -117,7 +117,7 @@ export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
         }
     }
 
-    public async createCollection(collectionName: string, options?: DbCollectionOptions): Promise<MongoCollectionTreeItem> {
+    public async createCollection(collectionName: string, options?: CreateCollectionOptions): Promise<MongoCollectionTreeItem> {
         const db: Db = await this.connectToDb();
         const newCollection: Collection = await db.createCollection(collectionName, options);
         // db.createCollection() doesn't create empty collections for some reason

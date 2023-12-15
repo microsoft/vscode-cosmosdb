@@ -12,7 +12,7 @@
 // Export activate/deactivate for main.js
 // The tests use instanceof against these and therefore we need to make sure we're using the same version of the bson module in the tests as in the bundle,
 //   so export it from the bundle itself.
-export { ObjectID, ObjectId } from 'bson';
+export { ObjectId } from 'bson';
 // Exports for tests
 // The tests are not packaged with the webpack bundle and therefore only have access to code exported from this file.
 //

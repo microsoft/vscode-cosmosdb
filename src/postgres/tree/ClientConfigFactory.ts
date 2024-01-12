@@ -30,7 +30,7 @@ export class PostgresClientConfigFactory {
         try {
             const subscription = treeItem.subscription as (ISubscriptionContext & AzureSubscription);
             const session = await subscription.authentication.getSession();
-            if (!!session) {
+            if (session) {
                 hasSubscription = true;
                 azureUserId = session?.account.label;
                 tokenFunction = getTokenFunction(subscription.credentials, postgresResourceType);

@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.20.1
+
+### Changed
+
+- Fixed a bug where the azure user session cannot be auto detected for Postgres Flexible server. #2209
+
 ## 0.20.0
 
 This release adds the initial Azure AD authentication support for PostgreSQL flexible database servers and fixed various bugs. See [0.20.0](https://github.com/microsoft/vscode-cosmosdb/issues?q=is%3Aissue+milestone%3A0.20.0+is%3Aclosed+) for all closed issues.

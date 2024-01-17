@@ -16,7 +16,7 @@ import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
 import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
 import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
-import { DocDBStoredProcedureTreeItem, storedProcedurePartitionKeyLearnMoreLink as executeStoredProcedureLearnMoreLink } from "./tree/DocDBStoredProcedureTreeItem";
+import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
 import { DocDBStoredProceduresTreeItem } from "./tree/DocDBStoredProceduresTreeItem";
 
 const nosqlLanguageId = "nosql";
@@ -81,12 +81,12 @@ export function registerDocDBCommands(): void {
 
         const partitionKey = await context.ui.showInputBox({
             placeHolder: 'Partition Key',
-            learnMoreLink: executeStoredProcedureLearnMoreLink
+            // @todo: add a learnMoreLink
         });
 
         const paramString = await context.ui.showInputBox({
             placeHolder: 'Parameters (optional) e.g. [1, {key: value}]',
-            learnMoreLink: executeStoredProcedureLearnMoreLink
+            // @todo: add a learnMoreLink
         });
 
         let parameters: (string | number | object)[] | undefined = undefined;

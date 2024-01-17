@@ -13,8 +13,6 @@ import * as vscodeUtil from "../../utils/vscodeUtils";
 import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
-export const storedProcedurePartitionKeyLearnMoreLink = "todo wiki page";
-
 /**
  * Represents a Cosmos DB DocumentDB (SQL) stored procedure
  */

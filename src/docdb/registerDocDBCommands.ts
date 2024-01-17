@@ -16,7 +16,7 @@ import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
 import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
 import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
-import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
+import { DocDBStoredProcedureTreeItem, storedProcedurePartitionKeyLearnMoreLink } from "./tree/DocDBStoredProcedureTreeItem";
 import { DocDBStoredProceduresTreeItem } from "./tree/DocDBStoredProceduresTreeItem";
 
 const nosqlLanguageId = "nosql";
@@ -71,6 +71,20 @@ export function registerDocDBCommands(): void {
 
         }
         await node.deleteTreeItem(context);
+    });
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.executeDocDBStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
+        const suppressCreateContext: ITreeItemPickerContext = context;
+        suppressCreateContext.suppressCreatePick = true;
+        if (!node) {
+            node = await pickDocDBAccount<DocDBStoredProcedureTreeItem>(context, DocDBStoredProcedureTreeItem.contextValue);
+        }
+
+        const partitionKey = await context.ui.showInputBox({
+            placeHolder: 'Partition Key',
+            learnMoreLink: storedProcedurePartitionKeyLearnMoreLink
+        });
+
+        await node.execute(context, partitionKey);
     });
 }
 

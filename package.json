@@ -336,6 +336,11 @@
                 "title": "Execute All MongoDB Commands"
             },
             {
+                "category": "Core (SQL)",
+                "command": "cosmosDB.executeDocDBStoredProcedure",
+                "title": "Execute Stored Procedure..."
+            },
+            {
                 "category": "MongoDB",
                 "command": "cosmosDB.executeMongoCommand",
                 "title": "Execute MongoDB Command"
@@ -722,6 +727,11 @@
                     "command": "cosmosDB.deleteDocDBStoredProcedure",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBStoredProcedure",
                     "group": "1@2"
+                },
+                {
+                    "command": "cosmosDB.executeDocDBStoredProcedure",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBStoredProcedure",
+                    "group": "1@3"
                 },
                 {
                     "command": "cosmosDB.deleteDocDBDatabase",

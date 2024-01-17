@@ -9,8 +9,11 @@ import * as vscode from "vscode";
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { nonNullProp } from '../../utils/nonNull';
+import * as vscodeUtil from "../../utils/vscodeUtils";
 import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
+
+export const storedProcedurePartitionKeyLearnMoreLink = "todo wiki page";
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) stored procedure
@@ -72,5 +75,18 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
         await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteStoredProcedure' }, DialogResponses.deleteResponse);
         const client = this.root.getCosmosClient();
         await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).delete();
+    }
+
+    public async execute(context: IActionContext, partitionKey: string, parameters?: any[]): Promise<void> {
+        const client = this.root.getCosmosClient();
+        const result = await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).execute(partitionKey, parameters);
+
+        try {
+            const resultFileName = `${this.label}-result`;
+            const text = JSON.stringify(result, undefined, 2);
+            await vscodeUtil.showNewFile(text, resultFileName, ".json");
+        } catch (error) {
+            await context.ui.showWarningMessage(`Unable to parse execution result`);
+        }
     }
 }

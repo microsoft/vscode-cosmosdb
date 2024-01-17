@@ -16,7 +16,7 @@ import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
 import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
 import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
-import { DocDBStoredProcedureTreeItem, storedProcedurePartitionKeyLearnMoreLink } from "./tree/DocDBStoredProcedureTreeItem";
+import { DocDBStoredProcedureTreeItem, storedProcedurePartitionKeyLearnMoreLink as executeStoredProcedureLearnMoreLink } from "./tree/DocDBStoredProcedureTreeItem";
 import { DocDBStoredProceduresTreeItem } from "./tree/DocDBStoredProceduresTreeItem";
 
 const nosqlLanguageId = "nosql";
@@ -81,10 +81,24 @@ export function registerDocDBCommands(): void {
 
         const partitionKey = await context.ui.showInputBox({
             placeHolder: 'Partition Key',
-            learnMoreLink: storedProcedurePartitionKeyLearnMoreLink
+            learnMoreLink: executeStoredProcedureLearnMoreLink
         });
 
-        await node.execute(context, partitionKey);
+        const paramString = await context.ui.showInputBox({
+            placeHolder: 'Parameters (optional) e.g. [1, {key: value}]',
+            learnMoreLink: executeStoredProcedureLearnMoreLink
+        });
+
+        let parameters: (string | number | object)[] | undefined = undefined;
+        if (paramString !== "") {
+            try {
+                parameters = JSON.parse(paramString) as (string | number | object)[];
+            } catch (error) {
+                // Ignore parameters if they are invalid
+            }
+        }
+
+        await node.execute(context, partitionKey, parameters);
     });
 }
 

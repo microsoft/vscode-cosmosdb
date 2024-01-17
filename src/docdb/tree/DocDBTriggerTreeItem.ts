@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Resource, StoredProcedureDefinition } from '@azure/cosmos';
+import { Resource, TriggerDefinition } from '@azure/cosmos';
 import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as vscode from "vscode";
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { nonNullProp } from '../../utils/nonNull';
-import { DocDBTriggersTreeItem } from './DocDBTriggersTreeItem';
+import { DocDBTriggersTreeItem, getTriggerOperation, getTriggerType } from './DocDBTriggersTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
@@ -22,7 +22,7 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
     public readonly parent: DocDBTriggersTreeItem;
     public mTime: number = Date.now();
 
-    constructor(parent: DocDBTriggersTreeItem, public procedure: (StoredProcedureDefinition & Resource)) {
+    constructor(parent: DocDBTriggersTreeItem, public procedure: (TriggerDefinition & Resource)) {
         super(parent);
         ext.fileSystem.fireChangedEvent(this);
         this.commandId = 'cosmosDB.openTrigger';
@@ -57,14 +57,31 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
         ext.fileSystem.fireChangedEvent(this);
     }
 
-    public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
+    public async writeFileContent(context: IActionContext, content: string): Promise<void> {
         const client = this.root.getCosmosClient();
-        const replace = await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).replace({ id: this.id, body: content });
+
+        const readResponse = await this.parent.getContainerClient(client).scripts.trigger(this.id).read();
+        let triggerType = readResponse.resource?.triggerType;
+        let triggerOperation = readResponse.resource?.triggerOperation;
+
+        if (!triggerType) {
+            triggerType = await getTriggerType(context);
+        }
+        if (!triggerOperation) {
+            triggerOperation = await getTriggerOperation(context);
+        }
+
+        const replace = await this.parent.getContainerClient(client).scripts.trigger(this.id).replace({
+            id: this.id,
+            triggerType: triggerType,
+            triggerOperation: triggerOperation,
+            body: content
+        });
         this.procedure = nonNullProp(replace, 'resource');
     }
 
     public get iconPath(): TreeItemIconPath {
-        return new vscode.ThemeIcon('server-process');
+        return new vscode.ThemeIcon('zap');
     }
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {

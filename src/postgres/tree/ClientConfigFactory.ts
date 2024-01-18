@@ -3,9 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, parseError } from "@microsoft/vscode-azext-utils";
+import { ISubscriptionContext, callWithTelemetryAndErrorHandling, parseError } from "@microsoft/vscode-azext-utils";
+import { AzureSubscription } from "@microsoft/vscode-azureresources-api";
 import { ClientConfig } from "pg";
-import { getAzureAdUserSession, getTokenFunction } from "../../azureAccountUtils";
+import { getTokenFunction } from "../../azureAccountUtils";
 import { localize } from "../../utils/localize";
 import { PostgresClientConfigType, getClientConfigs, testClientConfig } from "../getClientConfig";
 import { firewallNotConfiguredErrorType, invalidCredentialsErrorType, timeoutErrorType } from "../postgresConstants";
@@ -22,14 +23,20 @@ export class PostgresClientConfigFactory {
         clientConfig: ClientConfig
     }> {
         const parsedConnectionString = await treeItem.getFullConnectionString();
-        const azureUserSession = await getAzureAdUserSession();
 
         let hasSubscription: boolean = false;
+        let azureUserId: string | undefined = undefined;
         let tokenFunction: (() => Promise<string>) | undefined = undefined;
         try {
-            const subscription = treeItem.subscription;
-            hasSubscription = true;
-            tokenFunction = getTokenFunction(subscription.credentials, postgresResourceType);
+            const subscription = treeItem.subscription as (ISubscriptionContext & AzureSubscription);
+            const session = await subscription.authentication.getSession();
+            if (session) {
+                hasSubscription = true;
+                azureUserId = session?.account.label;
+                tokenFunction = getTokenFunction(subscription.credentials, postgresResourceType);
+            } else {
+                hasSubscription = false;
+            }
         } catch (error) {
             hasSubscription = false;
         }
@@ -38,7 +45,7 @@ export class PostgresClientConfigFactory {
             treeItem.serverType,
             hasSubscription,
             databaseName,
-            azureUserSession?.userId,
+            azureUserId,
             tokenFunction
         );
 

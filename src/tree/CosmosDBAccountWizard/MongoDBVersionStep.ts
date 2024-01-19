@@ -10,12 +10,11 @@ export class MongoVersionStep extends AzureWizardPromptStep<ICosmosDBWizardConte
 
     public async prompt(context: ICosmosDBWizardContext): Promise<void> {
         const mongoVersionOption = await context.ui.showQuickPick([
-            { label: "v4.0", detail: "4.0", picked: true },
-            { label: "v3.6", detail: "3.6", picked: false },
-            { label: "v3.2", detail: "3.2", picked: false },
+            { label: "v4.0", detail: "4.0" },
+            { label: "v3.6", detail: "3.6" },
+            { label: "v3.2", detail: "3.2" },
         ], {
-            placeHolder: "Select MongoDB version",
-            canPickMany: false
+            placeHolder: "Select MongoDB version"
         });
         context.mongoVersion = mongoVersionOption.detail;
     }

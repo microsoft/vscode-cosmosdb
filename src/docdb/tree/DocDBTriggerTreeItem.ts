@@ -13,7 +13,7 @@ import { DocDBTriggersTreeItem, getTriggerOperation, getTriggerType } from './Do
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
- * Represents a Cosmos DB DocumentDB (SQL) stored procedure
+ * Represents a Cosmos DB DocumentDB (SQL) trigger
  */
 export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTreeItem {
     public static contextValue: string = "cosmosDBTrigger";

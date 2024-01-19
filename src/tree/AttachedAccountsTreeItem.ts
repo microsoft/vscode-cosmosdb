@@ -10,6 +10,7 @@ import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPi
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, isWindows } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
+import { CosmosDBCredential } from '../docdb/getCosmosClient';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../extensionVariables';
@@ -332,15 +333,17 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             const parsedCS = parseDocDBConnectionString(connectionString);
 
             label = label || `${parsedCS.accountId} (${getExperienceFromApi(api).shortName})`;
+
+            const credentials: CosmosDBCredential[] = [{ type: "key", key: parsedCS.masterKey }];
             switch (api) {
                 case API.Table:
-                    treeItem = new TableAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, parsedCS.masterKey, isEmulator);
+                    treeItem = new TableAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, credentials, isEmulator);
                     break;
                 case API.Graph:
-                    treeItem = new GraphAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, undefined, parsedCS.masterKey, isEmulator);
+                    treeItem = new GraphAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, undefined, credentials, isEmulator);
                     break;
                 case API.Core:
-                    treeItem = new DocDBAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, parsedCS.masterKey, isEmulator);
+                    treeItem = new DocDBAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, credentials, isEmulator);
                     break;
                 default:
                     throw new Error(`Unexpected defaultExperience "${api}".`);

@@ -11,7 +11,7 @@ import { ext } from "../extensionVariables";
 import { localize } from "../utils/localize";
 import * as vscodeUtil from "../utils/vscodeUtils";
 import { NoSqlCodeLensProvider, NoSqlQueryConnection, noSqlQueryConnectionKey } from "./NoSqlCodeLensProvider";
-import { getCosmosClient } from "./getCosmosClient";
+import { CosmosDBCredential, CosmosDBKeyCredential, getCosmosClient } from "./getCosmosClient";
 import { DocDBAccountTreeItem } from "./tree/DocDBAccountTreeItem";
 import { DocDBCollectionTreeItem } from "./tree/DocDBCollectionTreeItem";
 import { DocDBDatabaseTreeItem } from "./tree/DocDBDatabaseTreeItem";
@@ -105,12 +105,14 @@ export function registerDocDBCommands(): void {
 }
 
 function setConnectedNoSqlContainer(node: DocDBCollectionTreeItem): void {
+    const root = node.root;
+    const keyCred: CosmosDBKeyCredential | undefined = root.credentials.filter((cred): cred is CosmosDBKeyCredential => cred.type === "key")[0];
     const noSqlQueryConnection: NoSqlQueryConnection = {
         databaseId: node.parent.id,
         containerId: node.id,
-        endpoint: node.root.endpoint,
-        masterKey: node.root.masterKey,
-        isEmulator: !!node.root.isEmulator
+        endpoint: root.endpoint,
+        masterKey: keyCred?.key,
+        isEmulator: !!root.isEmulator
     };
     KeyValueStore.instance.set(noSqlQueryConnectionKey, noSqlQueryConnection);
     ext.noSqlCodeLensProvider.updateCodeLens();
@@ -138,7 +140,12 @@ async function executeNoSqlQuery(_context: IActionContext, args: { queryText: st
     } else {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const { databaseId, containerId, endpoint, masterKey, isEmulator } = connectedCollection as NoSqlQueryConnection;
-        const client = getCosmosClient(endpoint, masterKey, isEmulator);
+        const credentials: CosmosDBCredential[] = [];
+        if (masterKey !== undefined) {
+            credentials.push({ type: "key", key: masterKey });
+        }
+        credentials.push({ type: "auth" });
+        const client = getCosmosClient(endpoint, credentials, isEmulator);
         const options = { populateQueryMetrics };
         const response = await client.database(databaseId).container(containerId).items.query(queryText, options).fetchAll();
         const resultDocumentTitle = `query results for ${containerId}`;
@@ -164,7 +171,12 @@ async function getNoSqlQueryPlan(_context: IActionContext, args: { queryText: st
     } else {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const { databaseId, containerId, endpoint, masterKey, isEmulator } = connectedCollection as NoSqlQueryConnection;
-        const client = getCosmosClient(endpoint, masterKey, isEmulator);
+        const credentials: CosmosDBCredential[] = [];
+        if (masterKey !== undefined) {
+            credentials.push({ type: "key", key: masterKey });
+        }
+        credentials.push({ type: "auth" });
+        const client = getCosmosClient(endpoint, credentials, isEmulator);
         const response = await client.database(databaseId).container(containerId).getQueryPlan(queryText);
         await vscodeUtil.showNewFile(JSON.stringify(response.result, undefined, 2), `query results for ${containerId}`, ".json", ViewColumn.Beside);
     }

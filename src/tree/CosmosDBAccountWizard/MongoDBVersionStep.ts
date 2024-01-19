@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import { localize } from "../../utils/localize";
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class MongoVersionStep extends AzureWizardPromptStep<ICosmosDBWizardContext> {
@@ -14,7 +15,7 @@ export class MongoVersionStep extends AzureWizardPromptStep<ICosmosDBWizardConte
             { label: "v3.6", detail: "3.6" },
             { label: "v3.2", detail: "3.2" },
         ], {
-            placeHolder: "Select MongoDB version"
+            placeHolder: localize("selectMongoVersion", "Select MongoDB version")
         });
         context.mongoVersion = mongoVersionOption.detail;
     }

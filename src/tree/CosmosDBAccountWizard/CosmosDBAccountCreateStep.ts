@@ -40,7 +40,9 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
         };
 
         if (defaultExperience?.api === 'MongoDB') {
-            options.apiProperties = { serverVersion: '3.6' };
+            if (context.mongoVersion !== undefined) {
+                options.apiProperties = { serverVersion: context.mongoVersion };
+            }
         }
 
         if (defaultExperience.capability) {

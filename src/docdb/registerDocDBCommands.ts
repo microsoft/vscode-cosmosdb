@@ -8,6 +8,7 @@ import { ViewColumn, commands, languages } from "vscode";
 import { KeyValueStore } from "../KeyValueStore";
 import { doubleClickDebounceDelay, sqlFilter } from "../constants";
 import { ext } from "../extensionVariables";
+import { localize } from "../utils/localize";
 import * as vscodeUtil from "../utils/vscodeUtils";
 import { NoSqlCodeLensProvider, NoSqlQueryConnection, noSqlQueryConnectionKey } from "./NoSqlCodeLensProvider";
 import { getCosmosClient } from "./getCosmosClient";
@@ -80,12 +81,13 @@ export function registerDocDBCommands(): void {
         }
 
         const partitionKey = await context.ui.showInputBox({
-            placeHolder: 'Partition Key',
+            title: 'Partition Key',
             // @todo: add a learnMoreLink
         });
 
         const paramString = await context.ui.showInputBox({
-            placeHolder: 'Parameters (optional) e.g. [1, {key: value}]',
+            title: 'Parameters',
+            placeHolder: localize("executeCosmosStoredProcedureParameters", "empty or array of values e.g. [1, {key: value}]"),
             // @todo: add a learnMoreLink
         });
 

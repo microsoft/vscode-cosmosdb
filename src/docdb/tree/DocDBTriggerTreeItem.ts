@@ -25,8 +25,8 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
 
     constructor(parent: DocDBTriggersTreeItem, trigger: (TriggerDefinition & Resource)) {
         super(parent);
-        ext.fileSystem.fireChangedEvent(this);
         this.trigger = trigger;
+        ext.fileSystem.fireChangedEvent(this);
         this.commandId = 'cosmosDB.openTrigger';
     }
 

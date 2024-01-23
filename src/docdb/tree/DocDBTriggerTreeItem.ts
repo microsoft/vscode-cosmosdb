@@ -20,11 +20,13 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
     public readonly contextValue: string = DocDBTriggerTreeItem.contextValue;
     public readonly cTime: number = Date.now();
     public readonly parent: DocDBTriggersTreeItem;
+    public trigger: (TriggerDefinition & Resource);
     public mTime: number = Date.now();
 
-    constructor(parent: DocDBTriggersTreeItem, public procedure: (TriggerDefinition & Resource)) {
+    constructor(parent: DocDBTriggersTreeItem, trigger: (TriggerDefinition & Resource)) {
         super(parent);
         ext.fileSystem.fireChangedEvent(this);
+        this.trigger = trigger;
         this.commandId = 'cosmosDB.openTrigger';
     }
 
@@ -37,20 +39,19 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
     }
 
     public get id(): string {
-        return this.procedure.id;
+        return this.trigger.id;
     }
 
     public get label(): string {
-        return this.procedure.id;
+        return this.trigger.id;
     }
 
     public get link(): string {
-        return this.procedure._self;
+        return this.trigger._self;
     }
 
     public async getFileContent(): Promise<string> {
-        return typeof this.procedure.body === 'string' ? this.procedure.body : '';
-
+        return typeof this.trigger.body === 'string' ? this.trigger.body : '';
     }
 
     public async refreshImpl(): Promise<void> {
@@ -77,7 +78,7 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
             triggerOperation: triggerOperation,
             body: content
         });
-        this.procedure = nonNullProp(replace, 'resource');
+        this.trigger = nonNullProp(replace, 'resource');
     }
 
     public get iconPath(): TreeItemIconPath {

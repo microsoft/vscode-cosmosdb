@@ -8,6 +8,7 @@ import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from
 import * as vscode from "vscode";
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
+import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { DocDBTriggersTreeItem, getTriggerOperation, getTriggerType } from './DocDBTriggersTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
@@ -86,7 +87,7 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
     }
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
-        const message: string = `Are you sure you want to delete trigger '${this.label}'?`;
+        const message: string = localize("deleteCosmosTrigger", `Are you sure you want to delete trigger '{0}'?`, this.label);
         await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteTrigger' }, DialogResponses.deleteResponse);
         const client = this.root.getCosmosClient();
         await this.parent.getContainerClient(client).scripts.trigger(this.id).delete();

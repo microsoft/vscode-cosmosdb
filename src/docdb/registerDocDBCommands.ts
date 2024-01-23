@@ -8,6 +8,7 @@ import { ViewColumn, commands, languages } from "vscode";
 import { KeyValueStore } from "../KeyValueStore";
 import { doubleClickDebounceDelay, sqlFilter } from "../constants";
 import { ext } from "../extensionVariables";
+import { localize } from "../utils/localize";
 import * as vscodeUtil from "../utils/vscodeUtils";
 import { NoSqlCodeLensProvider, NoSqlQueryConnection, noSqlQueryConnectionKey } from "./NoSqlCodeLensProvider";
 import { getCosmosClient } from "./getCosmosClient";
@@ -71,6 +72,35 @@ export function registerDocDBCommands(): void {
 
         }
         await node.deleteTreeItem(context);
+    });
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.executeDocDBStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
+        const suppressCreateContext: ITreeItemPickerContext = context;
+        suppressCreateContext.suppressCreatePick = true;
+        if (!node) {
+            node = await pickDocDBAccount<DocDBStoredProcedureTreeItem>(context, DocDBStoredProcedureTreeItem.contextValue);
+        }
+
+        const partitionKey = await context.ui.showInputBox({
+            title: 'Partition Key',
+            // @todo: add a learnMoreLink
+        });
+
+        const paramString = await context.ui.showInputBox({
+            title: 'Parameters',
+            placeHolder: localize("executeCosmosStoredProcedureParameters", "empty or array of values e.g. [1, {key: value}]"),
+            // @todo: add a learnMoreLink
+        });
+
+        let parameters: (string | number | object)[] | undefined = undefined;
+        if (paramString !== "") {
+            try {
+                parameters = JSON.parse(paramString) as (string | number | object)[];
+            } catch (error) {
+                // Ignore parameters if they are invalid
+            }
+        }
+
+        await node.execute(context, partitionKey, parameters);
     });
 }
 

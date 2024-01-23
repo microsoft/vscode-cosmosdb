@@ -4,10 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Resource, StoredProcedureDefinition } from '@azure/cosmos';
-import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath, openReadOnlyJson, randomUtils } from '@microsoft/vscode-azext-utils';
 import * as vscode from "vscode";
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
+import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
@@ -68,9 +69,21 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
     }
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
-        const message: string = `Are you sure you want to delete stored procedure '${this.label}'?`;
+        const message: string = localize("deleteCosmosStoredProcedure", `Are you sure you want to delete stored procedure '{0}'?`, this.label);
         await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteStoredProcedure' }, DialogResponses.deleteResponse);
         const client = this.root.getCosmosClient();
         await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).delete();
+    }
+
+    public async execute(context: IActionContext, partitionKey: string, parameters?: any[]): Promise<void> {
+        const client = this.root.getCosmosClient();
+        const result = await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).execute(partitionKey, parameters);
+
+        try {
+            const resultFileName = `${this.label}-result`;
+            await openReadOnlyJson({ label: resultFileName, fullId: randomUtils.getRandomHexString() }, result);
+        } catch (error) {
+            await context.ui.showWarningMessage(`Unable to parse execution result`);
+        }
     }
 }

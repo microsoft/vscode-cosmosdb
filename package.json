@@ -882,6 +882,11 @@
                 },
                 {
                     "command": "azureDatabases.refresh",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBTriggersGroup",
+                    "group": "2@1"
+                },
+                {
+                    "command": "azureDatabases.refresh",
                     "when": "view =~ /azureWorkspace/ && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
                     "group": "3@2"
                 },

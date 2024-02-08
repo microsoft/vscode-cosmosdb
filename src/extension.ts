@@ -11,6 +11,7 @@ import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { platform } from 'os';
 import * as vscode from 'vscode';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
+import { getAgentBenchmarkConfigs, getWizardCommands, runWizardCommandWithInputs, runWizardCommandWithoutExecution } from './agent/AgentImpl';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
@@ -73,6 +74,11 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         registerMongoCommands();
 
         context.subscriptions.push(vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem));
+
+        vscode.commands.registerCommand("azureDatabases.getWizardCommands", getWizardCommands);
+        vscode.commands.registerCommand("azureDatabases.runWizardCommandWithoutExecution", runWizardCommandWithoutExecution);
+        vscode.commands.registerCommand("azureDatabases.runWizardCommandWithInputs", runWizardCommandWithInputs);
+        vscode.commands.registerCommand("azureDatabases.getAgentBenchmarkConfigs", getAgentBenchmarkConfigs);
 
         registerCommandWithTreeNodeUnwrapping('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
 

@@ -122,6 +122,10 @@ async function writeNoSqlQuery(_context: IActionContext, node: DocDBCollectionTr
     await vscodeUtil.showNewFile(sampleQuery, `query for ${node.label}`, ".nosql");
 }
 
+export async function writeNoSqlQueryFromSnippet(_context: IActionContext, queryText: string): Promise<void> {
+    await vscodeUtil.showNewFile(queryText, `CosmosDB NoSQL query`, ".nosql");
+}
+
 async function connectNoSqlContainer(context: IActionContext): Promise<void> {
     const node = await pickDocDBAccount<DocDBCollectionTreeItem>(context, DocDBCollectionTreeItem.contextValue);
     setConnectedNoSqlContainer(node);

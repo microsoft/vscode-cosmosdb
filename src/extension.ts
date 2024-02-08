@@ -6,11 +6,12 @@
 'use strict';
 
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
-import { AzExtParentTreeItem, AzExtTreeItem, AzureExtensionApi, IActionContext, ITreeItemPickerContext, apiUtils, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, registerCommandWithTreeNodeUnwrapping, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
+import { AzExtParentTreeItem, AzExtTreeItem, AzureExtensionApi, IActionContext, ITreeItemPickerContext, apiUtils, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, registerCommand, registerCommandWithTreeNodeUnwrapping, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { platform } from 'os';
 import * as vscode from 'vscode';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
+import { queryCosmosDBNoSQL } from './agent/AgentCommands';
 import { getAgentBenchmarkConfigs, getWizardCommands, runWizardCommandWithInputs, runWizardCommandWithoutExecution } from './agent/AgentImpl';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
@@ -79,6 +80,8 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         vscode.commands.registerCommand("azureDatabases.runWizardCommandWithoutExecution", runWizardCommandWithoutExecution);
         vscode.commands.registerCommand("azureDatabases.runWizardCommandWithInputs", runWizardCommandWithInputs);
         vscode.commands.registerCommand("azureDatabases.getAgentBenchmarkConfigs", getAgentBenchmarkConfigs);
+
+        registerCommand("azureDatabasesAgent.queryCosmosDBNoSQL", queryCosmosDBNoSQL);
 
         registerCommandWithTreeNodeUnwrapping('cosmosDB.selectSubscriptions', () => vscode.commands.executeCommand("azure-account.selectSubscriptions"));
 

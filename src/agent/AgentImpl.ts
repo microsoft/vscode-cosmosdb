@@ -15,7 +15,18 @@ export function getWizardCommands(): WizardCommandConfig[] {
             displayName: "Create PostgreSQL Flexible Server",
             intentDescription: "This is best when users ask to create a PostgreSQL Flexible Server in Azure. They may refer to a PostgreSQL Flexible Server as 'PostgreSQL Flexible Server', 'Postgres Flexible Server', 'postgres flexible server', etc. This command is not useful if the user is asking how to do something, or if something is possible.",
             requiresAzureLogin: true,
-        }
+        },
+        {
+            type: "snippet",
+            name: "queryCosmosDBNoSQL",
+            commandId: "azureDatabasesAgent.queryCosmosDBNoSQL",
+            displayName: "Create CosmosDB NoSQL Query",
+            intentDescription: "This is best when the users asks to write a query targeting a ComosDB NoSQL database. The user may describe the database's scehma and the expectation of the query.",
+            requiresWorkspaceOpen: false,
+            requiresAzureLogin: false,
+            snippetType: "query",
+            snippetLanguage: "SQL"
+        } as any
     ];
 }
 

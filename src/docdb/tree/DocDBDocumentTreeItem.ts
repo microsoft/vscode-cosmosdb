@@ -106,7 +106,7 @@ export class DocDBDocumentTreeItem extends AzExtTreeItem implements IEditableTre
         }
     }
 
-    private getPartitionKeyValue(): string | undefined {
+    private getPartitionKeyValue(): string | number | undefined {
         const partitionKey = this.parent.parent.partitionKey;
         if (!partitionKey) { //Fixed collections -> no partitionKeyValue
             return undefined;
@@ -115,7 +115,7 @@ export class DocDBDocumentTreeItem extends AzExtTreeItem implements IEditableTre
         if (fields[0] === '') {
             fields.shift();
         }
-        let value;
+        let value: any;
         for (const field of fields) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
             value = value ? value[field] : this.document[field];
@@ -123,7 +123,10 @@ export class DocDBDocumentTreeItem extends AzExtTreeItem implements IEditableTre
                 return '';
             }
         }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
+        if (typeof value !== "string" && typeof value !== "number" && typeof value !== "undefined") {
+            throw new Error("Invalid data type for partition key");
+        }
         return value;
     }
 

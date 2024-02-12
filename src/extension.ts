@@ -6,7 +6,7 @@
 'use strict';
 
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
-import { AzExtParentTreeItem, AzExtTreeItem, AzureExtensionApi, IActionContext, ITreeItemPickerContext, apiUtils, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, registerCommandWithTreeNodeUnwrapping, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
+import { AzExtParentTreeItem, AzExtTreeItem, AzureExtensionApi, IActionContext, ITreeItemPickerContext, TreeElementStateManager, apiUtils, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, registerCommandWithTreeNodeUnwrapping, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { platform } from 'os';
 import * as vscode from 'vscode';
@@ -23,7 +23,7 @@ import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase'
 import { DocDBCollectionTreeItem } from './docdb/tree/DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { ext } from './extensionVariables';
-import { getResourceGroupsApi } from './getExtensionApi';
+import { getResourceGroupsApi, getResourceGroupsApiV2 } from './getExtensionApi';
 import { registerGraphCommands } from './graph/registerGraphCommands';
 import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
 import { registerMongoCommands } from './mongo/registerMongoCommands';
@@ -37,6 +37,7 @@ import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider'
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
+import { CosmosDBBranchDataProvider } from './treeV2/CosmosDBBranchDataProvider';
 import { localize } from './utils/localize';
 
 const cosmosDBTopLevelContextValues: string[] = [GraphAccountTreeItem.contextValue, DocDBAccountTreeItem.contextValue, TableAccountTreeItem.contextValue, MongoAccountTreeItem.contextValue];
@@ -57,9 +58,15 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
         ext.secretStorage = context.secrets;
 
         ext.rgApi = await getResourceGroupsApi();
-        ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.AzureCosmosDb, new DatabaseResolver());
+        // ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.AzureCosmosDb, new DatabaseResolver());
         ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.PostgresqlServersStandard, new DatabaseResolver());
         ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.PostgresqlServersFlexible, new DatabaseResolver());
+
+        ext.state = new TreeElementStateManager();
+        ext.rgApiV2 = await getResourceGroupsApiV2();
+        ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(AzExtResourceType.AzureCosmosDb, new CosmosDBBranchDataProvider())
+        // ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider
+        // ext.rgApiV2.resources.registerWorkspaceResourceProvider
 
         const workspaceRootTreeItem = (ext.rgApi.workspaceResourceTree as unknown as { _rootTreeItem: AzExtParentTreeItem })._rootTreeItem;
         const databaseWorkspaceProvider = new DatabaseWorkspaceProvider(workspaceRootTreeItem);

@@ -3,8 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel } from "@microsoft/vscode-azext-utils";
+import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel, TreeElementStateManager } from "@microsoft/vscode-azext-utils";
 import { AzureHostExtensionApi } from "@microsoft/vscode-azext-utils/hostapi";
+import { AzureResourcesExtensionApi } from "@microsoft/vscode-azureresources-api";
 import { ExtensionContext, SecretStorage, TreeView } from "vscode";
 import { DatabasesFileSystem } from "./DatabasesFileSystem";
 import { NoSqlCodeLensProvider } from "./docdb/NoSqlCodeLensProvider";
@@ -37,6 +38,8 @@ export namespace ext {
     export let noSqlCodeLensProvider: NoSqlCodeLensProvider;
     export let mongoLanguageClient: MongoDBLanguageClient;
     export let rgApi: AzureHostExtensionApi;
+    export let rgApiV2: AzureResourcesExtensionApi;
+    export let state: TreeElementStateManager;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

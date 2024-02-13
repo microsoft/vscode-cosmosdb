@@ -110,12 +110,7 @@ export async function getTriggerType(context: IActionContext): Promise<TriggerTy
 }
 
 export async function getTriggerOperation(context: IActionContext): Promise<TriggerOperation> {
-    const triggerOperationOption = (await context.ui.showQuickPick<vscode.QuickPickItem>([
-        { label: "All" },
-        { label: "Create" },
-        { label: "Delete" },
-        { label: "Replace" },
-        { label: "Update" },
-    ], {})).label as "All" | "Create" | "Delete" | "Replace" | "Update";
-    return TriggerOperation[triggerOperationOption];
+    const options = Object.keys(TriggerOperation).map((key) => ({ label: key }));
+    const triggerOperationOption = await context.ui.showQuickPick<vscode.QuickPickItem>(options, {});
+    return TriggerOperation[triggerOperationOption.label];
 }

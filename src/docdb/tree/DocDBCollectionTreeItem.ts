@@ -7,10 +7,12 @@ import { Container, ContainerDefinition, CosmosClient, PartitionKeyDefinition, R
 import { AzExtParentTreeItem, AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
-import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
-import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
+import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
+import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
+import { DocDBTriggerTreeItem } from './DocDBTriggerTreeItem';
+import { DocDBTriggersTreeItem } from './DocDBTriggersTreeItem';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
@@ -19,16 +21,18 @@ import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 export class DocDBCollectionTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = "cosmosDBDocumentCollection";
     public readonly contextValue: string = DocDBCollectionTreeItem.contextValue;
-    public readonly documentsTreeItem: DocDBDocumentsTreeItem;
     public readonly parent: DocDBDatabaseTreeItem;
 
+    public readonly documentsTreeItem: DocDBDocumentsTreeItem;
     private readonly _storedProceduresTreeItem: DocDBStoredProceduresTreeItem;
+    private readonly _triggersTreeItem: DocDBTriggersTreeItem;
 
     constructor(parent: DocDBDatabaseTreeItem, private _container: ContainerDefinition & Resource) {
         super(parent);
         this.parent = parent;
         this.documentsTreeItem = new DocDBDocumentsTreeItem(this);
         this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this);
+        this._triggersTreeItem = new DocDBTriggersTreeItem(this);
     }
 
     public get root(): IDocDBTreeRoot {
@@ -63,7 +67,7 @@ export class DocDBCollectionTreeItem extends AzExtParentTreeItem {
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
-        return [this.documentsTreeItem, this._storedProceduresTreeItem];
+        return [this.documentsTreeItem, this._storedProceduresTreeItem, this._triggersTreeItem];
     }
 
     public hasMoreChildrenImpl(): boolean {
@@ -79,6 +83,9 @@ export class DocDBCollectionTreeItem extends AzExtParentTreeItem {
                 case DocDBStoredProceduresTreeItem.contextValue:
                 case DocDBStoredProcedureTreeItem.contextValue:
                     return this._storedProceduresTreeItem;
+                case DocDBTriggersTreeItem.contextValue:
+                case DocDBTriggerTreeItem.contextValue:
+                    return this._triggersTreeItem;
                 default:
             }
         }

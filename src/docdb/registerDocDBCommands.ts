@@ -19,6 +19,8 @@ import { DocDBDocumentTreeItem } from "./tree/DocDBDocumentTreeItem";
 import { DocDBDocumentsTreeItem } from "./tree/DocDBDocumentsTreeItem";
 import { DocDBStoredProcedureTreeItem } from "./tree/DocDBStoredProcedureTreeItem";
 import { DocDBStoredProceduresTreeItem } from "./tree/DocDBStoredProceduresTreeItem";
+import { DocDBTriggerTreeItem } from "./tree/DocDBTriggerTreeItem";
+import { DocDBTriggersTreeItem } from "./tree/DocDBTriggersTreeItem";
 
 const nosqlLanguageId = "nosql";
 
@@ -46,13 +48,25 @@ export function registerDocDBCommands(): void {
         }
         const childNode = await node.createChild(context);
         await commands.executeCommand("cosmosDB.openStoredProcedure", childNode);
-
+    });
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBTrigger', async (context: IActionContext, node?: DocDBTriggersTreeItem) => {
+        if (!node) {
+            node = await pickDocDBAccount<DocDBTriggersTreeItem>(context, DocDBTriggersTreeItem.contextValue);
+        }
+        const childNode = await node.createChild(context);
+        await commands.executeCommand("cosmosDB.openTrigger", childNode);
     });
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBDatabase', deleteDocDBDatabase);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBCollection', deleteDocDBCollection);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openStoredProcedure', async (context: IActionContext, node?: DocDBStoredProcedureTreeItem) => {
         if (!node) {
             node = await pickDocDBAccount<DocDBStoredProcedureTreeItem>(context, DocDBStoredProcedureTreeItem.contextValue);
+        }
+        await ext.fileSystem.showTextDocument(node);
+    }, doubleClickDebounceDelay);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openTrigger', async (context: IActionContext, node?: DocDBTriggerTreeItem) => {
+        if (!node) {
+            node = await pickDocDBAccount<DocDBTriggerTreeItem>(context, DocDBTriggerTreeItem.contextValue);
         }
         await ext.fileSystem.showTextDocument(node);
     }, doubleClickDebounceDelay);
@@ -101,6 +115,15 @@ export function registerDocDBCommands(): void {
         }
 
         await node.execute(context, partitionKey, parameters);
+    });
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBTrigger', async (context: IActionContext, node?: DocDBTriggerTreeItem) => {
+        const suppressCreateContext: ITreeItemPickerContext = context;
+        suppressCreateContext.suppressCreatePick = true;
+        if (!node) {
+            node = await pickDocDBAccount<DocDBTriggerTreeItem>(context, DocDBTriggerTreeItem.contextValue);
+
+        }
+        await node.deleteTreeItem(context);
     });
 }
 

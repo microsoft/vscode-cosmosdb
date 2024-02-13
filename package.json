@@ -50,6 +50,7 @@
         "onCommand:cosmosDB.createDocDBDatabase",
         "onCommand:cosmosDB.createDocDBDocument",
         "onCommand:cosmosDB.createDocDBStoredProcedure",
+        "onCommand:cosmosDB.createDocDBTrigger",
         "onCommand:cosmosDB.createGraph",
         "onCommand:cosmosDB.createGraphDatabase",
         "onCommand:cosmosDB.createMongoCollection",
@@ -73,6 +74,7 @@
         "onCommand:cosmosDB.openDocument",
         "onCommand:cosmosDB.openGraphExplorer",
         "onCommand:cosmosDB.openStoredProcedure",
+        "onCommand:cosmosDB.openTrigger",
         "onCommand:postgreSQL.configureFirewall",
         "onCommand:postgreSQL.connectDatabase",
         "onCommand:postgreSQL.createDatabase",
@@ -256,6 +258,11 @@
                 "title": "Create Stored Procedure..."
             },
             {
+                "category": "Core (SQL)",
+                "command": "cosmosDB.createDocDBTrigger",
+                "title": "Create Trigger..."
+            },
+            {
                 "category": "Graph (Gremlin)",
                 "command": "cosmosDB.createGraph",
                 "title": "Create Graph..."
@@ -304,6 +311,11 @@
                 "category": "Core (SQL)",
                 "command": "cosmosDB.deleteDocDBStoredProcedure",
                 "title": "Delete Stored Procedure..."
+            },
+            {
+                "category": "Core (SQL)",
+                "command": "cosmosDB.deleteDocDBTrigger",
+                "title": "Delete Trigger..."
             },
             {
                 "category": "Graph (Gremlin)",
@@ -392,6 +404,11 @@
                 "category": "Cosmos DB",
                 "command": "cosmosDB.openStoredProcedure",
                 "title": "Open Stored Procedure"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.openTrigger",
+                "title": "Open Trigger"
             },
             {
                 "category": "Core (SQL)",
@@ -624,6 +641,11 @@
                     "group": "1@1"
                 },
                 {
+                    "command": "cosmosDB.createDocDBTrigger",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBTriggersGroup",
+                    "group": "1@1"
+                },
+                {
                     "command": "cosmosDB.createDocDBCollection",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentDatabase",
                     "group": "1@1"
@@ -732,6 +754,11 @@
                     "command": "cosmosDB.executeDocDBStoredProcedure",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBStoredProcedure",
                     "group": "1@1"
+                },
+                {
+                    "command": "cosmosDB.deleteDocDBTrigger",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBTrigger",
+                    "group": "1@2"
                 },
                 {
                     "command": "cosmosDB.deleteDocDBDatabase",
@@ -851,6 +878,11 @@
                 {
                     "command": "azureDatabases.refresh",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBStoredProceduresGroup",
+                    "group": "2@1"
+                },
+                {
+                    "command": "azureDatabases.refresh",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBTriggersGroup",
                     "group": "2@1"
                 },
                 {

@@ -3,19 +3,43 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext } from '@microsoft/vscode-azext-utils';
+import { IActionContext, callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { EOL } from 'os';
 import * as path from 'path';
 import { ClientConfig, QueryResult } from 'pg';
 import * as vscode from 'vscode';
-import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
+import { connectedPostgresKey, postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import * as vscodeUtil from '../../utils/vscodeUtils';
 import { runPostgresQuery } from '../runPostgresQuery';
 import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
 import { checkAuthentication } from './checkAuthentication';
-import { loadPersistedPostgresDatabase } from './registerPostgresCommands';
+import { connectPostgresDatabase } from './connectPostgresDatabase';
+
+export async function loadPersistedPostgresDatabase(): Promise<void> {
+    // NOTE: We want to make sure this function never throws or returns a rejected promise because it gets awaited multiple times
+    await callWithTelemetryAndErrorHandling('postgreSQL.loadPersistedDatabase', async (context: IActionContext) => {
+        context.errorHandling.suppressDisplay = true;
+        context.telemetry.properties.isActivationEvent = 'true';
+
+        try {
+            const persistedTreeItemId: string | undefined = ext.context.globalState.get(connectedPostgresKey);
+            if (persistedTreeItemId) {
+                const persistedTreeItem: PostgresDatabaseTreeItem | undefined = <PostgresDatabaseTreeItem>await ext.rgApi.appResourceTree.findTreeItem(persistedTreeItemId, context);
+                if (persistedTreeItem) {
+                    await connectPostgresDatabase(context, persistedTreeItem);
+                }
+            }
+        } finally {
+            // Get code lens provider out of initializing state if there's no connected DB
+            if (!ext.connectedPostgresDB && ext.postgresCodeLensProvider) {
+                ext.postgresCodeLensProvider.setConnectedDatabase(undefined);
+            }
+        }
+    });
+}
+
 
 export async function executePostgresQueryInDocument(context: IActionContext): Promise<void> {
     await loadPersistedPostgresDatabase();

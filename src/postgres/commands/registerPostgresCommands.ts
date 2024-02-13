@@ -3,14 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, IActionContext, registerCommandWithTreeNodeUnwrapping } from "@microsoft/vscode-azext-utils";
+import { registerCommandWithTreeNodeUnwrapping } from "@microsoft/vscode-azext-utils";
 import { defaults } from "pg";
 import { languages } from "vscode";
-import { connectedPostgresKey, doubleClickDebounceDelay, postgresDefaultDatabase, postgresLanguageId } from "../../constants";
+import { doubleClickDebounceDelay, postgresDefaultDatabase, postgresLanguageId } from "../../constants";
 import { ext } from "../../extensionVariables";
-import { openUrl } from "../../utils/openUrl";
 import { PostgresCodeLensProvider } from "../services/PostgresCodeLensProvider";
-import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
 import { configurePostgresFirewall } from "./configurePostgresFirewall";
 import { connectPostgresDatabase } from "./connectPostgresDatabase";
 import { copyConnectionString } from "./copyConnectionString";
@@ -23,9 +21,10 @@ import { deletePostgresServer } from "./deletePostgresServer";
 import { deletePostgresStoredProcedure } from "./deletePostgresStoredProcedure";
 import { deletePostgresTable } from "./deletePostgresTable";
 import { enterPostgresCredentials } from "./enterPostgresCredentials";
-import { executePostgresQueryInDocument } from "./executePostgresQueryInDocument";
+import { executePostgresQueryInDocument, loadPersistedPostgresDatabase } from "./executePostgresQueryInDocument";
 import { openPostgresFunction } from "./openPostgresFunction";
 import { openPostgresStoredProcedure } from "./openPostgresStoredProcedure";
+import { showPasswordlessWiki } from "./showPasswordlessWiki";
 
 export function registerPostgresCommands(): void {
     ext.postgresCodeLensProvider = new PostgresCodeLensProvider();
@@ -36,47 +35,59 @@ export function registerPostgresCommands(): void {
     //update defaults.database of 'pg'
     defaults.database = postgresDefaultDatabase;
 
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.executeQuery', executePostgresQueryInDocument);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.showPasswordlessWiki', showPasswordlessWiki);
+
+    // #region Server command
+
     registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteServer', deletePostgresServer);
     registerCommandWithTreeNodeUnwrapping('postgreSQL.enterCredentials', enterPostgresCredentials);
     registerCommandWithTreeNodeUnwrapping('postgreSQL.configureFirewall', configurePostgresFirewall);
     registerCommandWithTreeNodeUnwrapping('postgreSQL.createDatabase', createPostgresDatabase);
+
+    // #endregion
+
+    // #region Database command
+
     registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteDatabase', deletePostgresDatabase);
-    registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteTable', deletePostgresTable);
-    registerCommandWithTreeNodeUnwrapping('postgreSQL.openFunction', openPostgresFunction, doubleClickDebounceDelay);
-    registerCommandWithTreeNodeUnwrapping('postgreSQL.openStoredProcedure', openPostgresStoredProcedure, doubleClickDebounceDelay);
-    registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteFunction', deletePostgresFunction);
-    registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteStoredProcedure', deletePostgresStoredProcedure);
     registerCommandWithTreeNodeUnwrapping('postgreSQL.connectDatabase', connectPostgresDatabase);
-    registerCommandWithTreeNodeUnwrapping('postgreSQL.createFunctionQuery', createPostgresFunctionQuery);
-    registerCommandWithTreeNodeUnwrapping('postgreSQL.createStoredProcedureQuery', createPostgresStoredProcedureQuery);
-    registerCommandWithTreeNodeUnwrapping('postgreSQL.executeQuery', executePostgresQueryInDocument);
     registerCommandWithTreeNodeUnwrapping('postgreSQL.copyConnectionString', copyConnectionString);
-    registerCommandWithTreeNodeUnwrapping('postgreSQL.showPasswordlessWiki', showPasswordlessWiki);
-}
 
-export async function loadPersistedPostgresDatabase(): Promise<void> {
-    // NOTE: We want to make sure this function never throws or returns a rejected promise because it gets awaited multiple times
-    await callWithTelemetryAndErrorHandling('postgreSQL.loadPersistedDatabase', async (context: IActionContext) => {
-        context.errorHandling.suppressDisplay = true;
-        context.telemetry.properties.isActivationEvent = 'true';
+    // #endregion
 
-        try {
-            const persistedTreeItemId: string | undefined = ext.context.globalState.get(connectedPostgresKey);
-            if (persistedTreeItemId) {
-                const persistedTreeItem: PostgresDatabaseTreeItem | undefined = <PostgresDatabaseTreeItem>await ext.rgApi.appResourceTree.findTreeItem(persistedTreeItemId, context);
-                if (persistedTreeItem) {
-                    await connectPostgresDatabase(context, persistedTreeItem);
-                }
-            }
-        } finally {
-            // Get code lens provider out of initializing state if there's no connected DB
-            if (!ext.connectedPostgresDB && ext.postgresCodeLensProvider) {
-                ext.postgresCodeLensProvider.setConnectedDatabase(undefined);
-            }
-        }
-    });
-}
+    // #region TableGroup command
 
-export async function showPasswordlessWiki(): Promise<void> {
-    await openUrl("https://aka.ms/postgresql-passwordless-wiki");
+    // #endregion
+
+    // #region StoredProcedureGroup command
+
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.createStoredProcedureQuery', createPostgresStoredProcedureQuery);
+
+    // #endregion
+
+    // #region FunctionGroup command
+
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.createFunctionQuery', createPostgresFunctionQuery);
+
+    // #endregion
+
+    // #region Table command
+
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteTable', deletePostgresTable);
+
+    // #endregion
+
+    // #region StoredProcedure command
+
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.openStoredProcedure', openPostgresStoredProcedure, doubleClickDebounceDelay);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteStoredProcedure', deletePostgresStoredProcedure);
+
+    // #endregion
+
+    // #region Function command
+
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.openFunction', openPostgresFunction, doubleClickDebounceDelay);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteFunction', deletePostgresFunction);
+
+    // #endregion
 }

@@ -64,7 +64,7 @@ export async function executePostgresQueryInDocument(context: IActionContext): P
 
     const query: string | undefined = activeEditor.document.getText();
     const queryResult: QueryResult = await runPostgresQuery(clientConfig, query);
-    ext.outputChannel.appendLine(localize('executedQuery', 'Successfully executed "{0}" query.', queryResult.command));
+    ext.outputChannel.appendLog(localize('executedQuery', 'Successfully executed "{0}" query.', queryResult.command));
 
     if (queryResult.rowCount) {
         const fileExtension: string = path.extname(activeEditor.document.fileName);

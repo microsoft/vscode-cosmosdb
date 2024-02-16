@@ -29,7 +29,7 @@ export async function importDocuments(context: IActionContext, uris: vscode.Uri[
     });
     if (ignoredUris.length) {
         ext.outputChannel.appendLog(`Ignoring the following files which are not json:`);
-        ignoredUris.forEach(uri => ext.outputChannel.appendLine(`${uri.fsPath}`));
+        ignoredUris.forEach(uri => ext.outputChannel.appendLog(`${uri.fsPath}`));
         ext.outputChannel.show();
     }
     if (!collectionNode) {
@@ -100,7 +100,7 @@ async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
                 ext.outputChannel.show();
             }
             const err = parseError(e);
-            ext.outputChannel.appendLine(`${uri.path}:\n${err.message}`);
+            ext.outputChannel.appendLog(`${uri.path}:\n${err.message}`);
         }
         if (parsed) {
             if (Array.isArray(parsed)) {
@@ -132,7 +132,7 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
     }
     if (erroneousFiles.length) {
         ext.outputChannel.appendLog(`The following documents do not contain the required partition key:`);
-        erroneousFiles.forEach(file => ext.outputChannel.appendLine(file.path));
+        erroneousFiles.forEach(file => ext.outputChannel.appendLog(file.path));
         ext.outputChannel.show();
         throw new Error(`See output for list of documents that do not contain the partition key '${nonNullProp(collectionNode, 'partitionKey').paths[0]}' required by collection '${collectionNode.label}'`);
     }
@@ -144,7 +144,7 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
     }
     const result: string = `Import into SQL successful. Inserted ${ids.length} document(s). See output for more details.`;
     for (const id of ids) {
-        ext.outputChannel.appendLine(`Inserted document: ${id}`);
+        ext.outputChannel.appendLog(`Inserted document: ${id}`);
     }
     return result;
 }
@@ -156,7 +156,7 @@ async function insertDocumentsIntoMongo(node: MongoCollectionTreeItem, documents
     if (parsed.acknowledged) {
         output = `Import into mongo successful. Inserted ${parsed.insertedCount} document(s). See output for more details.`;
         for (const inserted of Object.values(parsed.insertedIds)) {
-            ext.outputChannel.appendLine(`Inserted document: ${inserted}`);
+            ext.outputChannel.appendLog(`Inserted document: ${inserted}`);
         }
     }
     return output;

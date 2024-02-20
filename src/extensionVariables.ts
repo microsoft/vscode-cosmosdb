@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtOutputChannel } from "@microsoft/vscode-azext-utils";
+import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtLogOutputChannel } from "@microsoft/vscode-azext-utils";
 import { AzureHostExtensionApi } from "@microsoft/vscode-azext-utils/hostapi";
 import { ExtensionContext, SecretStorage, TreeView } from "vscode";
 import { DatabasesFileSystem } from "./DatabasesFileSystem";
@@ -23,7 +23,7 @@ export namespace ext {
     export let connectedMongoDB: MongoDatabaseTreeItem | undefined;
     export let connectedPostgresDB: PostgresDatabaseTreeItem | undefined;
     export let context: ExtensionContext;
-    export let outputChannel: IAzExtOutputChannel;
+    export let outputChannel: IAzExtLogOutputChannel;
     export let tree: AzExtTreeDataProvider;
     export let treeView: TreeView<AzExtTreeItem>;
     export let attachedAccountsNode: AttachedAccountsTreeItem;

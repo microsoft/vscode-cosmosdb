@@ -1039,11 +1039,6 @@
                     "description": "The batch size to be used when querying Azure Database resources.",
                     "default": 50
                 },
-                "azureDatabases.enableOutputTimestamps": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Prepends each line displayed in the output channel with a timestamp."
-                },
                 "cosmosDB.emulator.mongoPort": {
                     "type": "integer",
                     "default": 10255,

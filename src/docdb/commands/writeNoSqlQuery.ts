@@ -7,8 +7,12 @@ import { IActionContext } from "@microsoft/vscode-azext-utils";
 import * as vscodeUtil from "../../utils/vscodeUtils";
 import { DocDBCollectionTreeItem } from "../tree/DocDBCollectionTreeItem";
 import { setConnectedNoSqlContainer } from "./connectNoSqlContainer";
+import { pickDocDBAccount } from "./pickDocDBAccount";
 
-export async function writeNoSqlQuery(_context: IActionContext, node: DocDBCollectionTreeItem): Promise<void> {
+export async function writeNoSqlQuery(context: IActionContext, node?: DocDBCollectionTreeItem): Promise<void> {
+    if (!node) {
+        node = await pickDocDBAccount<DocDBCollectionTreeItem>(context, DocDBCollectionTreeItem.contextValue);
+    }
     setConnectedNoSqlContainer(node);
     const sampleQuery = `SELECT * FROM ${node.id}`;
     await vscodeUtil.showNewFile(sampleQuery, `query for ${node.label}`, ".nosql");

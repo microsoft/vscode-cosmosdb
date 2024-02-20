@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, IActionContext, ITreeItemPickerContext } from "@microsoft/vscode-azext-utils";
+import { AzExtTreeItem, IActionContext, ITreeItemPickerContext, callWithTelemetryAndErrorHandling } from "@microsoft/vscode-azext-utils";
 import { Experience, MongoExperience } from "../../AzureDBExperiences";
 import { ext } from "../../extensionVariables";
 import { setConnectedNode } from "../setConnectedNode";
@@ -11,6 +11,29 @@ import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
 import { pickMongo } from "./pickMongo";
 
 export const connectedMongoKey: string = "ms-azuretools.vscode-cosmosdb.connectedDB";
+
+export async function loadPersistedMongoDB(): Promise<void> {
+    return callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', async (context: IActionContext) => {
+        context.errorHandling.suppressDisplay = true;
+        context.telemetry.properties.isActivationEvent = 'true';
+
+        try {
+            const persistedNodeId: string | undefined = ext.context.globalState.get(connectedMongoKey);
+            if (persistedNodeId) {
+                const persistedNode = await ext.rgApi.appResourceTree.findTreeItem(persistedNodeId, context);
+                if (persistedNode) {
+                    await ext.mongoLanguageClient.client.onReady();
+                    await connectMongoDatabase(context, persistedNode as MongoDatabaseTreeItem);
+                }
+            }
+        } finally {
+            // Get code lens provider out of initializing state if there's no connected DB
+            if (!ext.connectedMongoDB) {
+                ext.mongoCodeLensProvider.setConnectedDatabase(undefined);
+            }
+        }
+    });
+}
 
 export async function connectMongoDatabase(context: IActionContext, node?: MongoDatabaseTreeItem) {
     if (!node) {

@@ -6,7 +6,7 @@
 import { callWithTelemetryAndErrorHandling, IActionContext, IErrorHandlerContext, registerCommandWithTreeNodeUnwrapping, registerErrorHandler, registerEvent } from "@microsoft/vscode-azext-utils";
 import * as vscode from 'vscode';
 import { ext } from "../extensionVariables";
-import { connectedMongoKey, connectMongoDatabase } from "./commands/connectMongoDatabase";
+import { connectMongoDatabase, loadPersistedMongoDB } from "./commands/connectMongoDatabase";
 import { createMongoCollection } from "./commands/createMongoCollection";
 import { createMongoDatabase } from "./commands/createMongoDatabase";
 import { createMongoDocument } from "./commands/createMongoDocument";
@@ -25,7 +25,6 @@ import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
 
 let diagnosticsCollection: vscode.DiagnosticCollection;
 const mongoLanguageId: string = 'mongo';
-let loadPersistedMongoDBPromise: Promise<void> | undefined;
 
 export function registerMongoCommands(): void {
     ext.mongoLanguageClient = new MongoDBLanguageClient();
@@ -71,34 +70,6 @@ export function registerMongoCommands(): void {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteMongoDocument', deleteMongoDocument);
 
     // #endregion
-}
-
-export async function loadPersistedMongoDB(): Promise<void> {
-    if (loadPersistedMongoDBPromise) {
-        return loadPersistedMongoDBPromise;
-    } else {
-        // NOTE: We want to make sure this function never throws or returns a rejected promise because it gets awaited multiple times
-        loadPersistedMongoDBPromise = callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', async (context: IActionContext) => {
-            context.errorHandling.suppressDisplay = true;
-            context.telemetry.properties.isActivationEvent = 'true';
-
-            try {
-                const persistedNodeId: string | undefined = ext.context.globalState.get(connectedMongoKey);
-                if (persistedNodeId) {
-                    const persistedNode = await ext.rgApi.appResourceTree.findTreeItem(persistedNodeId, context);
-                    if (persistedNode) {
-                        await ext.mongoLanguageClient.client.onReady();
-                        await vscode.commands.executeCommand('cosmosDB.connectMongoDB', persistedNode);
-                    }
-                }
-            } finally {
-                // Get code lens provider out of initializing state if there's no connected DB
-                if (!ext.connectedMongoDB) {
-                    ext.mongoCodeLensProvider.setConnectedDatabase(undefined);
-                }
-            }
-        });
-    }
 }
 
 function setUpErrorReporting(): void {

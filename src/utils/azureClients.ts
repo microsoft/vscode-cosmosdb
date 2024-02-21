@@ -5,7 +5,7 @@
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
-import { PostgreSQLManagementClient as PostgreSQLFlexibleManagementClient } from '@azure/arm-postgresql-flexible';
+import { PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
 import { AzExtClientContext, createAzureClient } from '@microsoft/vscode-azext-azureutils';
 
 // Lazy-load @azure packages to improve startup performance.
@@ -19,6 +19,6 @@ export async function createPostgreSQLClient(context: AzExtClientContext): Promi
     return createAzureClient(context, (await import('@azure/arm-postgresql')).PostgreSQLManagementClient);
 }
 
-export async function createPostgreSQLFlexibleClient(context: AzExtClientContext): Promise<PostgreSQLFlexibleManagementClient> {
-    return createAzureClient(context, (await import('@azure/arm-postgresql-flexible')).PostgreSQLManagementClient);
+export async function createPostgreSQLFlexibleClient(context: AzExtClientContext): Promise<PostgreSQLManagementFlexibleServerClient> {
+    return createAzureClient(context, (await import('@azure/arm-postgresql-flexible')).PostgreSQLManagementFlexibleServerClient);
 }

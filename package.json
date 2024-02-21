@@ -447,7 +447,10 @@
             {
                 "id": "azureDatabases.submenus.workspaceActions",
                 "label": "Azure Databases",
-                "icon": "resources/databases.png"
+                "icon": {
+                    "dark": "resources/databases.png",
+                    "light": "resources/databases.png"
+                }
             }
         ],
         "menus": {

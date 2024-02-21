@@ -148,7 +148,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
             stepName: 'createPostgresDatabase',
             validateInput: (name: string) => validateDatabaseName(name, getChildrenTask)
         });
-        const { clientConfig } = await PostgresClientConfigFactory.getClientConfigFromNode(this, databaseName);
+        const { clientConfig } = await PostgresClientConfigFactory.getClientConfigFromNode(this, postgresDefaultDatabase);
         context.showCreatingTreeItem(databaseName);
         await runPostgresQuery(clientConfig, `Create Database ${wrapArgInQuotes(databaseName)};`);
         return new PostgresDatabaseTreeItem(this, databaseName);

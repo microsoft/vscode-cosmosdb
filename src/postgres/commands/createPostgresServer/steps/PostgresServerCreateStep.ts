@@ -47,7 +47,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                         context.server = await singleClient.servers.beginCreateAndWait(rgName, newServerName, this.asSingleParameters(options));
                         break;
                     case PostgresServerType.Flexible:
-                        const flexiClient: FlexibleModels.PostgreSQLManagementClient = await createPostgreSQLFlexibleClient(context);
+                        const flexiClient: FlexibleModels.PostgreSQLManagementFlexibleServerClient = await createPostgreSQLFlexibleClient(context);
                         context.server = await flexiClient.servers.beginCreateAndWait(rgName, newServerName, this.asFlexibleParameters(options));
                         break;
                 }
@@ -65,7 +65,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
     private asFlexibleParameters(parameters: AbstractServerCreate): FlexibleModels.Server {
         return {
             location: parameters.location,
-            version: "12",
+            version: FlexibleModels.KnownServerVersion.Fourteen,
             administratorLogin: parameters.administratorLogin,
             administratorLoginPassword: parameters.administratorLoginPassword,
             storage: {
@@ -93,7 +93,7 @@ export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresSe
                 administratorLoginPassword: parameters.administratorLoginPassword,
                 sslEnforcement: "Enabled",
                 createMode: "Default",
-                version: "11",
+                version: SingleModels.KnownServerVersion.Eleven,
                 storageProfile: {
                     storageMB: parameters.size
                 }

@@ -4,12 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { PostgreSQLManagementClient as PostgreSQLSingleManagementClient } from "@azure/arm-postgresql";
-import { PostgreSQLManagementClient as PostgreSQLFlexibleManagementClient } from "@azure/arm-postgresql-flexible";
+import { PostgreSQLManagementFlexibleServerClient } from "@azure/arm-postgresql-flexible";
 import { AzExtClientContext } from "@microsoft/vscode-azext-azureutils";
 import { createPostgreSQLClient, createPostgreSQLFlexibleClient } from "../../utils/azureClients";
 import { PostgresServerType } from "./models";
 
-export type AbstractPostgresClient = PostgreSQLFlexibleManagementClient | PostgreSQLSingleManagementClient;
+export type AbstractPostgresClient = PostgreSQLManagementFlexibleServerClient | PostgreSQLSingleManagementClient;
 
 export async function createAbstractPostgresClient(serverType: PostgresServerType, context: AzExtClientContext): Promise<AbstractPostgresClient> {
     switch (serverType) {

@@ -6,7 +6,7 @@
 'use strict';
 
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
-import { AzExtParentTreeItem, AzExtTreeItem, AzureExtensionApi, IActionContext, ITreeItemPickerContext, apiUtils, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtOutputChannel, registerCommandWithTreeNodeUnwrapping, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
+import { AzExtParentTreeItem, AzExtTreeItem, AzureExtensionApi, IActionContext, ITreeItemPickerContext, apiUtils, callWithTelemetryAndErrorHandling, createApiProvider, createAzExtLogOutputChannel, registerCommandWithTreeNodeUnwrapping, registerErrorHandler, registerEvent, registerReportIssueCommand, registerUIExtensionVariables } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { platform } from 'os';
 import * as vscode from 'vscode';
@@ -45,7 +45,7 @@ export async function activateInternal(context: vscode.ExtensionContext, perfSta
     ext.context = context;
     ext.ignoreBundle = ignoreBundle;
 
-    ext.outputChannel = createAzExtOutputChannel("Azure Databases", ext.prefix);
+    ext.outputChannel = createAzExtLogOutputChannel("Azure Databases");
     context.subscriptions.push(ext.outputChannel);
     registerUIExtensionVariables(ext);
     registerAzureUtilsExtensionVariables(ext);

@@ -358,6 +358,11 @@
             },
             {
                 "category": "Core (SQL)",
+                "command": "cosmosDB.viewDocDBCollectionOffer",
+                "title": "View Collection Offer"
+            },
+            {
+                "category": "Core (SQL)",
                 "command": "cosmosDB.writeNoSqlQuery",
                 "title": "Create New NoSQL Query"
             },
@@ -688,6 +693,11 @@
                     "command": "cosmosDB.deleteDocDBCollection",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
                     "group": "1@2"
+                },
+                {
+                    "command": "cosmosDB.viewDocDBCollectionOffer",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
+                    "group": "1@3"
                 },
                 {
                     "command": "cosmosDB.deleteDocDBDocument",

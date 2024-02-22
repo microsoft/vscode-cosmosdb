@@ -19,7 +19,7 @@ export async function loadPersistedMongoDB(): Promise<void> {
 
         try {
             const persistedNodeId: string | undefined = ext.context.globalState.get(connectedMongoKey);
-            if (persistedNodeId) {
+            if (persistedNodeId && (!ext.connectedMongoDB || ext.connectedMongoDB.fullId !== persistedNodeId)) {
                 const persistedNode = await ext.rgApi.appResourceTree.findTreeItem(persistedNodeId, context);
                 if (persistedNode) {
                     await ext.mongoLanguageClient.client.onReady();

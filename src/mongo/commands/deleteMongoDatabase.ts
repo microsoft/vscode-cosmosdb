@@ -4,12 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IActionContext, ITreeItemPickerContext } from "@microsoft/vscode-azext-utils";
+import * as vscode from "vscode";
 import { ext } from "../../extensionVariables";
+import { localize } from "../../utils/localize";
 import { setConnectedNode } from "../setConnectedNode";
 import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
 import { connectedMongoKey } from "./connectMongoDatabase";
 import { pickMongo } from "./pickMongo";
-
 
 export async function deleteMongoDB(context: IActionContext, node?: MongoDatabaseTreeItem): Promise<void> {
     const suppressCreateContext: ITreeItemPickerContext = context;
@@ -24,4 +25,7 @@ export async function deleteMongoDB(context: IActionContext, node?: MongoDatabas
         // Temporary workaround for https://github.com/microsoft/vscode-cosmosdb/issues/1754
         void ext.mongoLanguageClient.disconnect();
     }
+    const successMessage = localize("deleteMongoDatabaseMsg", 'Successfully deleted database "{0}"', node.databaseName);
+    void vscode.window.showInformationMessage(successMessage);
+    ext.outputChannel.info(successMessage);
 }

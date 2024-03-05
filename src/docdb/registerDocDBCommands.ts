@@ -23,6 +23,7 @@ import { executeNoSqlQuery } from "./commands/executeNoSqlQuery";
 import { getNoSqlQueryPlan } from "./commands/getNoSqlQueryPlan";
 import { openStoredProcedure } from "./commands/openStoredProcedure";
 import { openTrigger } from "./commands/openTrigger";
+import { viewDocDBCollectionOffer } from "./commands/viewDocDBCollectionOffer";
 import { writeNoSqlQuery } from "./commands/writeNoSqlQuery";
 
 const nosqlLanguageId = "nosql";
@@ -52,6 +53,7 @@ export function registerDocDBCommands(): void {
 
     registerCommandWithTreeNodeUnwrapping('cosmosDB.writeNoSqlQuery', writeNoSqlQuery);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBCollection', deleteDocDBCollection);
+    registerCommandWithTreeNodeUnwrapping("cosmosDB.viewDocDBCollectionOffer", viewDocDBCollectionOffer);
 
     // #endregion
 

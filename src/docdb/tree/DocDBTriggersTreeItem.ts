@@ -104,7 +104,7 @@ export class DocDBTriggersTreeItem extends DocDBTreeItemBase<TriggerDefinition> 
 export async function getTriggerType(context: IActionContext): Promise<TriggerType> {
     const options = Object.keys(TriggerType).map((type) => ({ label: type }));
     const triggerTypeOption = await context.ui.showQuickPick<vscode.QuickPickItem>(options, {
-        placeHolder: "Select the trigger type"
+        placeHolder: localize("createDocDBTriggerSelectType", "Select the trigger type")
     });
     return triggerTypeOption.label === "Pre" ? TriggerType.Pre : TriggerType.Post;
 }
@@ -112,7 +112,7 @@ export async function getTriggerType(context: IActionContext): Promise<TriggerTy
 export async function getTriggerOperation(context: IActionContext): Promise<TriggerOperation> {
     const options = Object.keys(TriggerOperation).map((key) => ({ label: key }));
     const triggerOperationOption = await context.ui.showQuickPick<vscode.QuickPickItem>(options, {
-        placeHolder: "Select the trigger operation"
+        placeHolder: localize("createDocDBTriggerSelectOperation", "Select the trigger operation")
     });
     return TriggerOperation[triggerOperationOption.label as keyof typeof TriggerOperation];
 }

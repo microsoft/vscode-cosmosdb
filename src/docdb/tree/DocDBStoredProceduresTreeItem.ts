@@ -18,7 +18,6 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
  * This class represents the DocumentDB "Stored Procedures" node in the tree
  */
 export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProcedureDefinition> {
-
     public static contextValue: string = "cosmosDBStoredProceduresGroup";
     public readonly contextValue: string = DocDBStoredProceduresTreeItem.contextValue;
     public readonly childTypeLabel: string = "Stored Procedure";

@@ -12,7 +12,6 @@ export async function deleteDocDBStoredProcedure(context: IActionContext, node?:
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
         node = await pickDocDBAccount<DocDBStoredProcedureTreeItem>(context, DocDBStoredProcedureTreeItem.contextValue);
-
     }
     await node.deleteTreeItem(context);
 }

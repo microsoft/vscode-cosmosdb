@@ -972,12 +972,12 @@
                     "when": "editorLangId == 'mongo'"
                 },
                 {
-                    "command": "postgreSQL.executeQuery",
-                    "when": "editorLangId == 'postgres'"
-                },
-                {
                     "command": "cosmosDB.executeNoSqlQuery",
                     "when": "editorLangId == 'nosql'"
+                },
+                {
+                    "command": "postgreSQL.executeQuery",
+                    "when": "editorLangId == 'postgres'"
                 }
             ]
         },

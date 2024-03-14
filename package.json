@@ -976,6 +976,10 @@
                     "when": "editorLangId == 'nosql'"
                 },
                 {
+                    "command": "cosmosDB.getNoSqlQueryPlan",
+                    "when": "editorLangId == 'nosql'"
+                },
+                {
                     "command": "postgreSQL.executeQuery",
                     "when": "editorLangId == 'postgres'"
                 }

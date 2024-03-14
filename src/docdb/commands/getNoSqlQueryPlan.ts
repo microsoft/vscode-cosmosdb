@@ -4,17 +4,26 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IActionContext } from "@microsoft/vscode-azext-utils";
+import * as vscode from "vscode";
 import { ViewColumn } from "vscode";
 import { KeyValueStore } from "../../KeyValueStore";
+import { localize } from "../../utils/localize";
 import * as vscodeUtil from "../../utils/vscodeUtils";
 import { NoSqlQueryConnection, noSqlQueryConnectionKey } from "../NoSqlCodeLensProvider";
 import { getCosmosClient } from "../getCosmosClient";
 
 export async function getNoSqlQueryPlan(_context: IActionContext, args: { queryText: string } | undefined): Promise<void> {
+    let queryText: string;
     if (!args) {
-        throw new Error("Unable to get query plan due to missing args. Please connect to a Cosmos DB collection node.");
+        const activeEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
+
+        if (!activeEditor?.document) {
+            throw new Error(localize('openQueryBeforeExecuting', 'Open a NoSQL query before executing.'));
+        }
+        queryText = activeEditor.document.getText();
+    } else {
+        queryText = args.queryText;
     }
-    const queryText = args.queryText;
     const connectedCollection = KeyValueStore.instance.get(noSqlQueryConnectionKey);
     if (!connectedCollection) {
         throw new Error("Unable to get query plan due to missing node data. Please connect to a Cosmos DB collection.");

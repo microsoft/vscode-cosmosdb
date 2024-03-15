@@ -1,5 +1,19 @@
 # Change Log
 
+## 0.21.0
+
+### Changed
+
+- Updated the supported Mongo version when creating a MongoDB database server. #2223
+- Fixed a bug which blocks creating a Postgres database. #2250
+
+### Added
+
+- Added support to execute a SQL style NoSQL query in a NoSQL query editor. #2217
+- Added support to execute a NoSQL stored procedure. #2235
+- Added support to view, create or delete NoSQL triggers. #2236
+- Added support to view the offer information of a NoSQL collection. #2252
+
 ## 0.20.1
 
 ### Changed

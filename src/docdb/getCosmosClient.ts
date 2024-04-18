@@ -9,10 +9,66 @@ import * as https from "https";
 import * as vscode from 'vscode';
 import { ext } from "../extensionVariables";
 
-export function getCosmosClient(endpoint: string, key: string, isEmulator: boolean | undefined): CosmosClient {
+// eslint-disable-next-line import/no-internal-modules
+import { getSessionFromVSCode } from "@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode";
+
+export type CosmosDBKeyCredential = {
+    type: "key";
+    key: string;
+};
+
+export type CosmosDBAuthCredential = {
+    type: "auth";
+};
+
+export type CosmosDBCredential = CosmosDBKeyCredential | CosmosDBAuthCredential;
+
+export function getCosmosKeyCredential(credentials: CosmosDBCredential[]): CosmosDBKeyCredential | undefined {
+    return credentials.filter((cred): cred is CosmosDBKeyCredential => cred.type === "key")[0];
+}
+
+export function getCosmosAuthCredential(credentials: CosmosDBCredential[]): CosmosDBAuthCredential | undefined {
+    return credentials.filter((cred): cred is CosmosDBAuthCredential => cred.type === "auth")[0];
+}
+
+export function getCosmosClient(
+    endpoint: string,
+    credentials: CosmosDBCredential[],
+    isEmulator: boolean | undefined
+): CosmosClient {
     const vscodeStrictSSL: boolean | undefined = vscode.workspace.getConfiguration().get<boolean>(ext.settingsKeys.vsCode.proxyStrictSSL);
     const enableEndpointDiscovery: boolean | undefined = vscode.workspace.getConfiguration().get<boolean>(ext.settingsKeys.enableEndpointDiscovery);
     const connectionPolicy = { enableEndpointDiscovery: (enableEndpointDiscovery === undefined) ? true : enableEndpointDiscovery };
-    return new CosmosClient({ endpoint, key, userAgentSuffix: appendExtensionUserAgent(), agent: new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL }), connectionPolicy: connectionPolicy });
 
+    const keyCred = getCosmosKeyCredential(credentials);
+    const authCred = getCosmosAuthCredential(credentials);
+
+    const commonProperties = {
+        endpoint,
+        userAgentSuffix: appendExtensionUserAgent(),
+        agent: new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL }),
+        connectionPolicy
+    };
+    // @todo: Add telemetry to monitor usage of each credential type
+    if (keyCred) {
+        return new CosmosClient({
+            ...commonProperties,
+            key: keyCred.key
+        });
+    } else if (authCred) {
+        return new CosmosClient({
+            ...commonProperties,
+            aadCredentials: {
+                getToken: async (scopes, _options) => {
+                    const session = await getSessionFromVSCode(scopes, undefined, { createIfNone: true });
+                    return {
+                        token: session?.accessToken ?? "",
+                        expiresOnTimestamp: 0
+                    };
+                }
+            }
+        });
+    } else {
+        throw Error("No credential available to create CosmosClient.");
+    }
 }

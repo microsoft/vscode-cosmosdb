@@ -12,7 +12,7 @@ import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/dele
 import { SERVERLESS_CAPABILITY_NAME, getThemeAgnosticIconPath } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
 import { rejectOnTimeout } from '../../utils/timeout';
-import { getCosmosClient } from '../getCosmosClient';
+import { CosmosDBCredential, getCosmosClient, getCosmosKeyCredential } from '../getCosmosClient';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
 /**
@@ -24,22 +24,38 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     public readonly childTypeLabel: string = "Database";
 
 
-    constructor(parent: AzExtParentTreeItem, id: string, label: string, endpoint: string, masterKey: string, isEmulator: boolean | undefined, readonly databaseAccount?: DatabaseAccountGetResults) {
+    constructor(
+        parent: AzExtParentTreeItem,
+        id: string,
+        label: string,
+        endpoint: string,
+        credentials: CosmosDBCredential[],
+        isEmulator: boolean | undefined,
+        readonly databaseAccount?: DatabaseAccountGetResults
+    ) {
         super(parent);
         this.id = id;
         this.label = label;
         this.root = {
             endpoint,
-            masterKey,
+            credentials,
             isEmulator,
-            getCosmosClient: () => getCosmosClient(endpoint, masterKey, isEmulator)
+            getCosmosClient: () => getCosmosClient(endpoint, credentials, isEmulator)
         };
 
-        this.valuesToMask.push(id, endpoint, masterKey);
+        const keys = credentials
+            .map((cred) => cred.type === "key" ? cred.key : undefined)
+            .filter((value): value is string => value !== undefined);
+        this.valuesToMask.push(id, endpoint, ...keys);
     }
 
     public get connectionString(): string {
-        return `AccountEndpoint=${this.root.endpoint};AccountKey=${this.root.masterKey}`;
+        const firstKey = getCosmosKeyCredential(this.root.credentials);
+        if (firstKey) {
+            return `AccountEndpoint=${this.root.endpoint};AccountKey=${firstKey.key}`;
+        } else {
+            return `AccountEndpoint=${this.root.endpoint}`;
+        }
     }
 
     public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {

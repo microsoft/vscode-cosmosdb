@@ -5,10 +5,11 @@
 
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { DatabaseAccountGetResults, DatabaseAccountListKeysResult } from '@azure/arm-cosmosdb/src/models';
-import { getResourceGroupFromId, ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase, uiUtils } from '@microsoft/vscode-azext-azureutils';
+import { ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase, getResourceGroupFromId, uiUtils } from '@microsoft/vscode-azext-azureutils';
 import { AzExtParentTreeItem, AzExtTreeItem, AzureWizard, AzureWizardPromptStep, IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
+import { CosmosDBCredential } from '../docdb/getCosmosClient';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { ext } from '../extensionVariables';
 import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
@@ -16,7 +17,7 @@ import { GraphAccountTreeItem } from "../graph/tree/GraphAccountTreeItem";
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { PostgresAbstractServer, PostgresServerType } from '../postgres/abstract/models';
 import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
-import { createPostgresConnectionString, ParsedPostgresConnectionString, parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
+import { ParsedPostgresConnectionString, createPostgresConnectionString, parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from "../table/tree/TableAccountTreeItem";
 import { createActivityContext } from '../utils/activityUtils';
@@ -133,19 +134,34 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             // Use the default connection string
             return new MongoAccountTreeItem(parent, id, label, connectionString.toString(), isEmulator, databaseAccount);
         } else {
-            const keyResult: DatabaseAccountListKeysResult = await client.databaseAccounts.listKeys(resourceGroup, name);
-            const primaryMasterKey: string = nonNullProp(keyResult, 'primaryMasterKey');
+            let keyResult: DatabaseAccountListKeysResult | undefined;
+            try {
+                keyResult = await client.databaseAccounts.listKeys(resourceGroup, name);
+            } catch (error) {
+                // If the client failed to list keys, proceed without using keys
+            }
+
+            let keyCred = keyResult?.primaryMasterKey ? {
+                type: "key",
+                key: keyResult.primaryMasterKey
+            } : undefined;
+            const testCosmosAuth = vscode.workspace.getConfiguration().get<boolean>("azureDatabases.testCosmosAuth");
+            if (testCosmosAuth) {
+                keyCred = undefined;
+            }
+            const authCred = { type: "auth" };
+            const credentials = [keyCred, authCred].filter((cred): cred is CosmosDBCredential => cred !== undefined);
             switch (experience && experience.api) {
                 case "Table":
-                    return new TableAccountTreeItem(parent, id, label, documentEndpoint, primaryMasterKey, isEmulator, databaseAccount);
+                    return new TableAccountTreeItem(parent, id, label, documentEndpoint, credentials, isEmulator, databaseAccount);
                 case "Graph": {
                     const gremlinEndpoint = await tryGetGremlinEndpointFromAzure(client, resourceGroup, name);
-                    return new GraphAccountTreeItem(parent, id, label, documentEndpoint, gremlinEndpoint, primaryMasterKey, isEmulator, databaseAccount);
+                    return new GraphAccountTreeItem(parent, id, label, documentEndpoint, gremlinEndpoint, credentials, isEmulator, databaseAccount);
                 }
                 case "Core":
                 default:
                     // Default to DocumentDB, the base type for all Cosmos DB Accounts
-                    return new DocDBAccountTreeItem(parent, id, label, documentEndpoint, primaryMasterKey, isEmulator, databaseAccount);
+                    return new DocDBAccountTreeItem(parent, id, label, documentEndpoint, credentials, isEmulator, databaseAccount);
 
             }
         }

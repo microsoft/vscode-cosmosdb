@@ -12,7 +12,7 @@ import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/dele
 import { SERVERLESS_CAPABILITY_NAME, getThemeAgnosticIconPath } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
 import { rejectOnTimeout } from '../../utils/timeout';
-import { CosmosDBCredential, CosmosDBKeyCredential, getCosmosClient } from '../getCosmosClient';
+import { CosmosDBCredential, getCosmosClient, getCosmosKeyCredential } from '../getCosmosClient';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
 /**
@@ -50,9 +50,9 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     public get connectionString(): string {
-        const firstKey = this.root.credentials.filter((cred): cred is CosmosDBKeyCredential => cred.type === "key")[0];
+        const firstKey = getCosmosKeyCredential(this.root.credentials);
         if (firstKey) {
-            return `AccountEndpoint=${this.root.endpoint};AccountKey=${firstKey}`;
+            return `AccountEndpoint=${this.root.endpoint};AccountKey=${firstKey.key}`;
         } else {
             return `AccountEndpoint=${this.root.endpoint}`;
         }

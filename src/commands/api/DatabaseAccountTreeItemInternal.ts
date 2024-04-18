@@ -5,7 +5,7 @@
 
 import { callWithTelemetryAndErrorHandling, IActionContext } from '@microsoft/vscode-azext-utils';
 import { API } from '../../AzureDBExperiences';
-import { CosmosDBKeyCredential } from '../../docdb/getCosmosClient';
+import { getCosmosKeyCredential } from '../../docdb/getCosmosClient';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { ParsedMongoConnectionString } from '../../mongo/mongoConnectionStrings';
@@ -58,7 +58,7 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
 
     public get docDBData(): { masterKey: string; documentEndpoint: string; } | undefined {
         if (this._accountNode instanceof DocDBAccountTreeItemBase) {
-            const keyCred = this._accountNode.root.credentials.filter((cred): cred is CosmosDBKeyCredential => cred.type === 'key')[0];
+            const keyCred = getCosmosKeyCredential(this._accountNode.root.credentials);
             if (keyCred) {
                 return {
                     documentEndpoint: this._accountNode.root.endpoint,

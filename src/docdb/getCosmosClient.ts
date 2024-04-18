@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosClient } from "@azure/cosmos";
-import { getConfiguredAuthProviderId } from "@microsoft/vscode-azext-azureauth";
+import { getSessionFromVSCode } from "@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode";
 import { appendExtensionUserAgent } from "@microsoft/vscode-azext-utils";
 import * as https from "https";
 import * as vscode from 'vscode';
@@ -21,13 +21,12 @@ export type CosmosDBAuthCredential = {
 
 export type CosmosDBCredential = CosmosDBKeyCredential | CosmosDBAuthCredential;
 
-/**
- * Duplicated from @microsoft/vscode-azext-azureauth
- * @todo: Use the subscription client once it supports customizing scopes.
- */
-export async function getSessionFromVSCode(scopes: string | string[], options?: vscode.AuthenticationGetSessionOptions): Promise<vscode.AuthenticationSession | undefined> {
-    const scopesArray = typeof scopes === "string" ? [scopes] : scopes;
-    return await vscode.authentication.getSession(getConfiguredAuthProviderId(), scopesArray, options);
+export function getCosmosKeyCredential(credentials: CosmosDBCredential[]): CosmosDBKeyCredential | undefined {
+    return credentials.filter((cred): cred is CosmosDBKeyCredential => cred.type === "key")[0];
+}
+
+export function getCosmosAuthCredential(credentials: CosmosDBCredential[]): CosmosDBAuthCredential | undefined {
+    return credentials.filter((cred): cred is CosmosDBAuthCredential => cred.type === "auth")[0];
 }
 
 export function getCosmosClient(
@@ -39,8 +38,8 @@ export function getCosmosClient(
     const enableEndpointDiscovery: boolean | undefined = vscode.workspace.getConfiguration().get<boolean>(ext.settingsKeys.enableEndpointDiscovery);
     const connectionPolicy = { enableEndpointDiscovery: (enableEndpointDiscovery === undefined) ? true : enableEndpointDiscovery };
 
-    const keyCred = credentials.filter((cred): cred is CosmosDBKeyCredential => cred.type === "key")[0];
-    const authCred = credentials.filter((cred): cred is CosmosDBAuthCredential => cred.type === "auth")[0];
+    const keyCred = getCosmosKeyCredential(credentials);
+    const authCred = getCosmosAuthCredential(credentials);
 
     const commonProperties = {
         endpoint,
@@ -59,7 +58,7 @@ export function getCosmosClient(
             ...commonProperties,
             aadCredentials: {
                 getToken: async (scopes, _options) => {
-                    const session = await getSessionFromVSCode(scopes, { createIfNone: true });
+                    const session = await getSessionFromVSCode(scopes, undefined, { createIfNone: true });
                     return {
                         token: session?.accessToken ?? "",
                         expiresOnTimestamp: 0

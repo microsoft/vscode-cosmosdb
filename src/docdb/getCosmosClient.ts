@@ -4,11 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosClient } from "@azure/cosmos";
-import { getSessionFromVSCode } from "@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode";
 import { appendExtensionUserAgent } from "@microsoft/vscode-azext-utils";
 import * as https from "https";
 import * as vscode from 'vscode';
 import { ext } from "../extensionVariables";
+
+// eslint-disable-next-line import/no-internal-modules
+import { getSessionFromVSCode } from "@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode";
 
 export type CosmosDBKeyCredential = {
     type: "key";

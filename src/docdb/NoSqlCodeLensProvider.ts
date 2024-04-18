@@ -21,7 +21,7 @@ export type NoSqlQueryConnection = {
     databaseId: string;
     containerId: string;
     endpoint: string;
-    masterKey: string;
+    masterKey?: string;
     isEmulator: boolean;
 };
 

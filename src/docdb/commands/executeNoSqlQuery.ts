@@ -10,7 +10,7 @@ import { KeyValueStore } from "../../KeyValueStore";
 import { localize } from "../../utils/localize";
 import * as vscodeUtil from "../../utils/vscodeUtils";
 import { NoSqlQueryConnection, noSqlQueryConnectionKey } from "../NoSqlCodeLensProvider";
-import { getCosmosClient } from "../getCosmosClient";
+import { CosmosDBCredential, getCosmosClient } from "../getCosmosClient";
 
 export async function executeNoSqlQuery(_context: IActionContext, args: { queryText: string, populateQueryMetrics?: boolean }): Promise<void> {
     let queryText: string;
@@ -33,7 +33,12 @@ export async function executeNoSqlQuery(_context: IActionContext, args: { queryT
     } else {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const { databaseId, containerId, endpoint, masterKey, isEmulator } = connectedCollection as NoSqlQueryConnection;
-        const client = getCosmosClient(endpoint, masterKey, isEmulator);
+        const credentials: CosmosDBCredential[] = [];
+        if (masterKey !== undefined) {
+            credentials.push({ type: "key", key: masterKey });
+        }
+        credentials.push({ type: "auth" });
+        const client = getCosmosClient(endpoint, credentials, isEmulator);
         const options = { populateQueryMetrics };
         const response = await client.database(databaseId).container(containerId).items.query(queryText, options).fetchAll();
         const resultDocumentTitle = `query results for ${containerId}`;

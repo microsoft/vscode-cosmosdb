@@ -1069,6 +1069,11 @@
                     "type": "integer",
                     "default": 8081,
                     "description": "Port to use when connecting to a CosmosDB Emulator instance"
+                },
+                "azureDatabases.testCosmosAuth": {
+                    "type": "boolean",
+                    "description": "Whether to only use Auth credential for Cosmos DB resources",
+                    "default": true
                 }
             }
         }
@@ -1129,8 +1134,9 @@
         "@azure/arm-postgresql": "^6.0.0",
         "@azure/arm-postgresql-flexible": "^7.1.0",
         "@azure/cosmos": "^3.6.3",
-        "@microsoft/vscode-azext-azureutils": "^2.0.2",
-        "@microsoft/vscode-azext-utils": "^2.1.0",
+        "@microsoft/vscode-azext-azureauth": "^2.3.0",
+        "@microsoft/vscode-azext-azureutils": "^3.0.1",
+        "@microsoft/vscode-azext-utils": "^2.4.0",
         "antlr4ts": "^0.4.1-alpha.0",
         "bson": "^6.0.0",
         "fs-extra": "^8.0.0",

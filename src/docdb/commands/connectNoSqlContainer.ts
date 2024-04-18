@@ -7,16 +7,19 @@ import { IActionContext } from "@microsoft/vscode-azext-utils";
 import { KeyValueStore } from "../../KeyValueStore";
 import { ext } from "../../extensionVariables";
 import { NoSqlQueryConnection, noSqlQueryConnectionKey } from "../NoSqlCodeLensProvider";
+import { CosmosDBKeyCredential } from "../getCosmosClient";
 import { DocDBCollectionTreeItem } from "../tree/DocDBCollectionTreeItem";
 import { pickDocDBAccount } from "./pickDocDBAccount";
 
 export function setConnectedNoSqlContainer(node: DocDBCollectionTreeItem): void {
+    const root = node.root;
+    const keyCred: CosmosDBKeyCredential | undefined = root.credentials.filter((cred): cred is CosmosDBKeyCredential => cred.type === "key")[0];
     const noSqlQueryConnection: NoSqlQueryConnection = {
         databaseId: node.parent.id,
         containerId: node.id,
-        endpoint: node.root.endpoint,
-        masterKey: node.root.masterKey,
-        isEmulator: !!node.root.isEmulator
+        endpoint: root.endpoint,
+        masterKey: keyCred?.key,
+        isEmulator: !!root.isEmulator
     };
     KeyValueStore.instance.set(noSqlQueryConnectionKey, noSqlQueryConnection);
     ext.noSqlCodeLensProvider.updateCodeLens();

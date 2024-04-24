@@ -145,7 +145,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
                 type: "key",
                 key: keyResult.primaryMasterKey
             } : undefined;
-            const testCosmosAuth = vscode.workspace.getConfiguration().get<boolean>("azureDatabases.testCosmosAuth");
+            const testCosmosAuth = vscode.workspace.getConfiguration().get<boolean>("azureDatabases.useCosmosOAuth");
             if (testCosmosAuth) {
                 keyCred = undefined;
             }

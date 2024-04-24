@@ -1,6 +1,6 @@
 {
     "name": "vscode-cosmosdb",
-    "version": "0.21.1-alpha",
+    "version": "0.22.0",
     "aiKey": "0c6ae279ed8443289764825290e4f9e2-1a736e7c-1324-4338-be46-fc2a58ae4d14-7255",
     "publisher": "ms-azuretools",
     "displayName": "Azure Databases",
@@ -1070,10 +1070,10 @@
                     "default": 8081,
                     "description": "Port to use when connecting to a CosmosDB Emulator instance"
                 },
-                "azureDatabases.testCosmosAuth": {
+                "azureDatabases.useCosmosOAuth": {
                     "type": "boolean",
-                    "description": "Whether to only use Auth credential for Cosmos DB resources",
-                    "default": true
+                    "description": "Whether to use OAuth credential for Cosmos DB NoSQL resources",
+                    "default": false
                 }
             }
         }

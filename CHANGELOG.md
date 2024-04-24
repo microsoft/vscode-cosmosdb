@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.22.0
+
+- Added support to authenticate with CosmosDB NoSQL database accounts using MS Entra ID.
+
 ## 0.21.0
 
 ### Changed

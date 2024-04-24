@@ -4,13 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosClient } from "@azure/cosmos";
+import { VSCodeCredential } from "@microsoft/vscode-azext-azureauth";
 import { appendExtensionUserAgent } from "@microsoft/vscode-azext-utils";
 import * as https from "https";
 import * as vscode from 'vscode';
 import { ext } from "../extensionVariables";
-
-// eslint-disable-next-line import/no-internal-modules
-import { getSessionFromVSCode } from "@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode";
 
 export type CosmosDBKeyCredential = {
     type: "key";
@@ -58,15 +56,7 @@ export function getCosmosClient(
     } else if (authCred) {
         return new CosmosClient({
             ...commonProperties,
-            aadCredentials: {
-                getToken: async (scopes, _options) => {
-                    const session = await getSessionFromVSCode(scopes, undefined, { createIfNone: true });
-                    return {
-                        token: session?.accessToken ?? "",
-                        expiresOnTimestamp: 0
-                    };
-                }
-            }
+            aadCredentials: new VSCodeCredential()
         });
     } else {
         throw Error("No credential available to create CosmosClient.");

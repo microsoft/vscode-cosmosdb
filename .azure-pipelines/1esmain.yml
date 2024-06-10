@@ -24,6 +24,14 @@ resources:
       ref: main
       endpoint: GitHub-AzureTools # The service connection to use when accessing this repository
 
+parameters:
+  - name: enableLongRunningTests
+    displayName: Enable Long Running Tests
+    type: boolean
+    default: false
+
 # Use those templates
 extends:
   template: azure-pipelines/1esmain.yml@azExtTemplates
+  parameters:
+    useAzureFederatedCredentials: ${{ parameters.enableLongRunningTests }}

@@ -5,7 +5,7 @@
 
 import { SqlRoleAssignmentCreateUpdateParameters } from '@azure/arm-cosmosdb';
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
-import { IActionContext, ISubscriptionContext } from '@microsoft/vscode-azext-utils';
+import { IActionContext, IAzureMessageOptions, ISubscriptionContext, isUserCancelledError } from '@microsoft/vscode-azext-utils';
 import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 import { createCosmosDBClient } from '../../utils/azureClients';
@@ -14,7 +14,7 @@ import { DocDBAccountTreeItemBase } from '../tree/DocDBAccountTreeItemBase';
 
 export async function ensureRbacPermission(docDbItem: DocDBAccountTreeItemBase, principalId: string, context: IActionContext): Promise<boolean> {
     const accountName: string = getDatabaseAccountNameFromId(docDbItem.fullId);
-    if (await askForRbacPermissions(accountName, docDbItem.subscription.subscriptionDisplayName)) {
+    if (await askForRbacPermissions(accountName, docDbItem.subscription.subscriptionDisplayName, context)) {
         const resourceGroup: string = getResourceGroupFromId(docDbItem.fullId);
         try {
             await addRBACContributorPermission(accountName, principalId, resourceGroup, context, docDbItem.subscription);
@@ -40,23 +40,25 @@ export async function showRbacPermissionError(accountName: string, principalId: 
     });
 }
 
-async function askForRbacPermissions(databaseAccount: string, subscription: string): Promise<boolean> {
+async function askForRbacPermissions(databaseAccount: string, subscription: string, context: IActionContext): Promise<boolean> {
     const message =
         ["You need the 'Data Contributor' RBAC role to enable all Azure Databases Extension features for the selected account.\n\n",
             "Account Name: ", databaseAccount, "\n",
             "Subscription: ", subscription, "\n"
         ].join("");
-    const options: vscode.MessageOptions = { modal: true, detail: message };
-    const readMoreItem = "Read More";
-    const setPermissionItem = "Extend RBAC permissions";
+    const options: IAzureMessageOptions = { modal: true, detail: message, learnMoreLink: "https://aka.ms/cosmos-native-rbac", stepName: "setRbac" };
+    const setPermissionItem: vscode.MessageItem = { title: "Extend RBAC permissions" };
+    let result: vscode.MessageItem;
 
-    const result = await vscode.window.showWarningMessage('No required RBAC permissions', options, ...[setPermissionItem, readMoreItem]);
-    if (result === setPermissionItem) {
-        return true;
-    } else if (result === readMoreItem) {
-        void vscode.env.openExternal(Uri.parse("https://aka.ms/cosmos-native-rbac"));
+    try {
+        result = await context.ui.showWarningMessage('No required RBAC permissions', options, ...[setPermissionItem]);
+    } catch (error) {
+        if (isUserCancelledError(error)) {
+            return false;
+        }
+        throw error; // handle only cancellation, rethrow everything else
     }
-    return false;
+    return result === setPermissionItem;
 }
 
 async function addRBACContributorPermission(databaseAccount: string, principalId: string, resourceGroup: string, context: IActionContext, subscription: ISubscriptionContext): Promise<string | undefined> {

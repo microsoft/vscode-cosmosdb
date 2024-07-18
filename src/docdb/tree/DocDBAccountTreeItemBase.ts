@@ -14,7 +14,7 @@ import { nonNullProp } from '../../utils/nonNull';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { CosmosDBCredential, getCosmosClient, getCosmosKeyCredential } from '../getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../utils/azureSessionHelper';
-import { ensureRbacPermission, isRbacException, showRBACPermissionError } from '../utils/rbacUtils';
+import { ensureRbacPermission, isRbacException, showRbacPermissionError } from '../utils/rbacUtils';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
 /**
@@ -100,7 +100,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
                     if (e.message.includes(`[${principalId}]`) && await ensureRbacPermission(this, principalId, context)) {
                         return await super.loadMoreChildrenImpl(clearCache, context);
                     } else {
-                        void showRBACPermissionError(this.fullId, principalId);
+                        void showRbacPermissionError(this.fullId, principalId);
                     }
                 }
                 throw e; // rethrowing tells the resources extension to show the exception message in the tree

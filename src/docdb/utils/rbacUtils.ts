@@ -8,7 +8,6 @@ import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import { IActionContext, ISubscriptionContext } from '@microsoft/vscode-azext-utils';
 import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
-import { Uri } from 'vscode';
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
 import { DocDBAccountTreeItemBase } from '../tree/DocDBAccountTreeItemBase';
@@ -31,12 +30,12 @@ export function isRbacException(error: Error): boolean {
     return (error instanceof Error && error.message.includes("does not have required RBAC permissions to perform action"));
 }
 
-export async function showRBACPermissionError(accountName: string, principalId: string): Promise<void> {
+export async function showRbacPermissionError(accountName: string, principalId: string): Promise<void> {
     const message = `You do not have the required permissions to access '${accountName}' with your principal Id '${principalId}'.\nPlease contact the account owner to get the required permissions.`;
     const readMoreItem = "Read More";
     await vscode.window.showErrorMessage(message, { modal: false }, ...[readMoreItem]).then((item) => {
         if (item === readMoreItem) {
-            void vscode.env.openExternal(Uri.parse("https://aka.ms/cosmos-native-rbac"));
+            void vscode.env.openExternal(vscode.Uri.parse("https://aka.ms/cosmos-native-rbac"));
         }
     });
 }

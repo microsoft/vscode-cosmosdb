@@ -10,6 +10,7 @@ import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
+import { localize } from '../../utils/localize';
 import { DocDBAccountTreeItemBase } from '../tree/DocDBAccountTreeItemBase';
 
 export async function ensureRbacPermission(docDbItem: DocDBAccountTreeItemBase, principalId: string, context: IActionContext): Promise<boolean> {
@@ -31,8 +32,8 @@ export function isRbacException(error: Error): boolean {
 }
 
 export async function showRbacPermissionError(accountName: string, principalId: string): Promise<void> {
-    const message = `You do not have the required permissions to access '${accountName}' with your principal Id '${principalId}'.\nPlease contact the account owner to get the required permissions.`;
-    const readMoreItem = "Read More";
+    const message = localize("rbacPermissionErrorMsg", "You do not have the required permissions to access [{0}] with your principal Id [{1}].\nPlease contact the account owner to get the required permissions.", accountName, principalId);
+    const readMoreItem = localize("learnMore", "Learn More");
     await vscode.window.showErrorMessage(message, { modal: false }, ...[readMoreItem]).then((item) => {
         if (item === readMoreItem) {
             void vscode.env.openExternal(vscode.Uri.parse("https://aka.ms/cosmos-native-rbac"));
@@ -42,16 +43,16 @@ export async function showRbacPermissionError(accountName: string, principalId: 
 
 async function askForRbacPermissions(databaseAccount: string, subscription: string, context: IActionContext): Promise<boolean> {
     const message =
-        ["You need the 'Data Contributor' RBAC role to enable all Azure Databases Extension features for the selected account.\n\n",
-            "Account Name: ", databaseAccount, "\n",
-            "Subscription: ", subscription, "\n"
+        [localize("rbacMissingErrorMsg", "You need the 'Data Contributor' RBAC role permission to enable all Azure Databases Extension features for the selected account.\n\n"),
+        localize("rbacMissingErrorAccountName", "Account Name: {0}\n", databaseAccount),
+        localize("rbacMissingErrorSubscriptionName", "Subscription: {0}\n", subscription)
         ].join("");
     const options: IAzureMessageOptions = { modal: true, detail: message, learnMoreLink: "https://aka.ms/cosmos-native-rbac", stepName: "setRbac" };
-    const setPermissionItem: vscode.MessageItem = { title: "Extend RBAC permissions" };
+    const setPermissionItem: vscode.MessageItem = { title: localize("rbacExtendPermissionBtn", "Extend RBAC permissions") };
     let result: vscode.MessageItem;
 
     try {
-        result = await context.ui.showWarningMessage('No required RBAC permissions', options, ...[setPermissionItem]);
+        result = await context.ui.showWarningMessage(localize("rbacMissingErrorTitle", "No required RBAC permissions"), options, ...[setPermissionItem]);
     } catch (error) {
         if (isUserCancelledError(error)) {
             return false;

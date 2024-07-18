@@ -9,7 +9,7 @@ import { ILocationWizardContext, LocationListStep, ResourceGroupListStep, Subscr
 import { AzExtParentTreeItem, AzExtTreeItem, AzureWizard, AzureWizardPromptStep, IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
-import { CosmosDBCredential } from '../docdb/getCosmosClient';
+import { CosmosDBCredential, CosmosDBKeyCredential } from '../docdb/getCosmosClient';
 import { DocDBAccountTreeItem } from "../docdb/tree/DocDBAccountTreeItem";
 import { ext } from '../extensionVariables';
 import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
@@ -134,21 +134,28 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             // Use the default connection string
             return new MongoAccountTreeItem(parent, id, label, connectionString.toString(), isEmulator, databaseAccount);
         } else {
-            let keyResult: DatabaseAccountListKeysResult | undefined;
-            try {
-                keyResult = await client.databaseAccounts.listKeys(resourceGroup, name);
-            } catch (error) {
-                // If the client failed to list keys, proceed without using keys
+            let keyCred: CosmosDBKeyCredential | undefined = undefined;
+
+            const forceOAuth = vscode.workspace.getConfiguration().get<boolean>("azureDatabases.useCosmosOAuth");
+            // disable key auth if the user has opted in to OAuth (AAD/Entra ID)
+            if (!forceOAuth) {
+                let keyResult: DatabaseAccountListKeysResult | undefined;
+                try {
+                    const acc = await client.databaseAccounts.get(resourceGroup, name);
+                    // If the account has local auth disabled, don't even try to use key auth
+                    if (!acc.disableLocalAuth) {
+                        keyResult = await client.databaseAccounts.listKeys(resourceGroup, name);
+                        keyCred = keyResult?.primaryMasterKey ? {
+                            type: "key",
+                            key: keyResult.primaryMasterKey
+                        } : undefined;
+                    }
+                } catch (error) {
+                    // If the client failed to list keys, proceed without using keys
+                }
             }
 
-            let keyCred = keyResult?.primaryMasterKey ? {
-                type: "key",
-                key: keyResult.primaryMasterKey
-            } : undefined;
-            const testCosmosAuth = vscode.workspace.getConfiguration().get<boolean>("azureDatabases.useCosmosOAuth");
-            if (testCosmosAuth) {
-                keyCred = undefined;
-            }
+            // OAuth is always enabled for Cosmos DB and will be used as a fall back if key auth is unavailable
             const authCred = { type: "auth" };
             const credentials = [keyCred, authCred].filter((cred): cred is CosmosDBCredential => cred !== undefined);
             switch (experience && experience.api) {

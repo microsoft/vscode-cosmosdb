@@ -24,7 +24,7 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<DatabaseDefinition & Resource> {
     public readonly label: string;
     public readonly childTypeLabel: string = "Database";
-
+    private hasShownRbacNotification: boolean = false;
 
     constructor(
         parent: AzExtParentTreeItem,
@@ -93,7 +93,8 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
             try {
                 return await super.loadMoreChildrenImpl(clearCache, context);
             } catch (e) {
-                if (e instanceof Error && isRbacException(e)) {
+                if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
+                    this.hasShownRbacNotification = true;
                     const principalId = await getSignedInPrincipalIdForAccountEndpoint(this.root.endpoint) ?? '';
                     // chedck if the principal ID matches the one that is signed in, otherwise this might be a security problem, hence show the error message
                     if (e.message.includes(`[${principalId}]`) && await ensureRbacPermission(this, principalId, context)) {

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosClient, FeedOptions, QueryIterator } from '@azure/cosmos';
-import { AzExtParentTreeItem, AzExtTreeItem, IActionContext } from '@microsoft/vscode-azext-utils';
+import { AzExtParentTreeItem, AzExtTreeItem } from '@microsoft/vscode-azext-utils';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { IDocDBTreeRoot } from './IDocDBTreeRoot';
 
@@ -34,7 +34,7 @@ export abstract class DocDBTreeItemBase<T> extends AzExtParentTreeItem {
         this._batchSize = getBatchSizeSetting();
     }
 
-    public async loadMoreChildrenImpl(clearCache: boolean, _context: IActionContext): Promise<AzExtTreeItem[]> {
+    public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (clearCache || this._iterator === undefined) {
             this._hasMoreChildren = true;
             const client = this.root.getCosmosClient();

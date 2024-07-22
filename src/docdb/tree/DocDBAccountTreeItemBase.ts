@@ -5,7 +5,7 @@
 
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { CosmosClient, DatabaseDefinition, DatabaseResponse, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
-import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
+import { AzExtParentTreeItem, AzExtTreeItem, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
 import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
@@ -85,20 +85,20 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         return this.initChild(nonNullProp(database, 'resource'));
     }
 
-    public async loadMoreChildrenImpl(clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
+    public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (this.root.isEmulator) {
             const unableToReachEmulatorMessage: string = "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.";
-            return await rejectOnTimeout(2000, () => super.loadMoreChildrenImpl(clearCache, context), unableToReachEmulatorMessage);
+            return await rejectOnTimeout(2000, () => super.loadMoreChildrenImpl(clearCache), unableToReachEmulatorMessage);
         } else {
             try {
-                return await super.loadMoreChildrenImpl(clearCache, context);
+                return await super.loadMoreChildrenImpl(clearCache);
             } catch (e) {
                 if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
                     this.hasShownRbacNotification = true;
                     const principalId = await getSignedInPrincipalIdForAccountEndpoint(this.root.endpoint) ?? '';
                     // chedck if the principal ID matches the one that is signed in, otherwise this might be a security problem, hence show the error message
-                    if (e.message.includes(`[${principalId}]`) && await ensureRbacPermission(this, principalId, context)) {
-                        return await super.loadMoreChildrenImpl(clearCache, context);
+                    if (e.message.includes(`[${principalId}]`) && await ensureRbacPermission(this, principalId)) {
+                        return await super.loadMoreChildrenImpl(clearCache);
                     } else {
                         void showRbacPermissionError(this.fullId, principalId);
                     }

@@ -5,7 +5,7 @@
 
 import { SqlRoleAssignmentCreateUpdateParameters } from '@azure/arm-cosmosdb';
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
-import { IActionContext, IAzureMessageOptions, ISubscriptionContext, isUserCancelledError } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, IActionContext, IAzureMessageOptions, ISubscriptionContext } from '@microsoft/vscode-azext-utils';
 import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 import { createCosmosDBClient } from '../../utils/azureClients';
@@ -13,18 +13,25 @@ import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { DocDBAccountTreeItemBase } from '../tree/DocDBAccountTreeItemBase';
 
-export async function ensureRbacPermission(docDbItem: DocDBAccountTreeItemBase, principalId: string, context: IActionContext): Promise<boolean> {
-    const accountName: string = getDatabaseAccountNameFromId(docDbItem.fullId);
-    if (await askForRbacPermissions(accountName, docDbItem.subscription.subscriptionDisplayName, context)) {
-        const resourceGroup: string = getResourceGroupFromId(docDbItem.fullId);
-        try {
-            await addRBACContributorPermission(accountName, principalId, resourceGroup, context, docDbItem.subscription);
+export async function ensureRbacPermission(docDbItem: DocDBAccountTreeItemBase, principalId: string): Promise<boolean> {
+    return await callWithTelemetryAndErrorHandling('cosmosDB.addMissingRbacRole', async (context: IActionContext) => {
+
+        context.errorHandling.suppressDisplay = false;
+        context.errorHandling.rethrow = false;
+
+        const accountName: string = getDatabaseAccountNameFromId(docDbItem.fullId);
+        if (await askForRbacPermissions(accountName, docDbItem.subscription.subscriptionDisplayName, context)) {
+            context.telemetry.properties.lastStep = "addRbacContributorPermission";
+            const resourceGroup: string = getResourceGroupFromId(docDbItem.fullId);
+            const start: number = Date.now();
+            await addRbacContributorPermission(accountName, principalId, resourceGroup, context, docDbItem.subscription);
+            //send duration of the previous call (in seconds) in addition to the duration of the whole event including user prompt
+            context.telemetry.measurements["createRoleAssignment"] = (Date.now() - start) / 1000;
+
             return true;
-        } catch (error) {
-            // swallow the error, we want the user to reach out to the account owner if this failed
         }
-    }
-    return false;
+        return false;
+    }) ?? false;
 }
 
 export function isRbacException(error: Error): boolean {
@@ -47,22 +54,14 @@ async function askForRbacPermissions(databaseAccount: string, subscription: stri
         localize("rbacMissingErrorAccountName", "Account Name: {0}\n", databaseAccount),
         localize("rbacMissingErrorSubscriptionName", "Subscription: {0}\n", subscription)
         ].join("");
-    const options: IAzureMessageOptions = { modal: true, detail: message, learnMoreLink: "https://aka.ms/cosmos-native-rbac", stepName: "setRbac" };
+    const options: IAzureMessageOptions = { modal: true, detail: message, learnMoreLink: "https://aka.ms/cosmos-native-rbac", stepName: "askSetRbac" };
     const setPermissionItem: vscode.MessageItem = { title: localize("rbacExtendPermissionBtn", "Extend RBAC permissions") };
-    let result: vscode.MessageItem;
 
-    try {
-        result = await context.ui.showWarningMessage(localize("rbacMissingErrorTitle", "No required RBAC permissions"), options, ...[setPermissionItem]);
-    } catch (error) {
-        if (isUserCancelledError(error)) {
-            return false;
-        }
-        throw error; // handle only cancellation, rethrow everything else
-    }
+    const result = await context.ui.showWarningMessage(localize("rbacMissingErrorTitle", "No required RBAC permissions"), options, ...[setPermissionItem]);
     return result === setPermissionItem;
 }
 
-async function addRBACContributorPermission(databaseAccount: string, principalId: string, resourceGroup: string, context: IActionContext, subscription: ISubscriptionContext): Promise<string | undefined> {
+async function addRbacContributorPermission(databaseAccount: string, principalId: string, resourceGroup: string, context: IActionContext, subscription: ISubscriptionContext): Promise<string | undefined> {
     const defaultRoleId = "00000000-0000-0000-0000-000000000002"; // this is a predefined role with read and write access to data plane resources
     const fullAccountId = `/subscriptions/${subscription.subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.DocumentDB/databaseAccounts/${databaseAccount}`;
 

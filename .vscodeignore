@@ -28,3 +28,5 @@ testWorkspace/**
 .eslintignore
 .eslintrc.js
 **/*.gif
+.idea/**
+src/webviews/**

@@ -348,6 +348,11 @@
             },
             {
                 "category": "Cosmos DB",
+                "command": "cosmosDB.openNoSqlQueryEditor",
+                "title": "Open NoSQL Query Editor"
+            },
+            {
+                "category": "Cosmos DB",
                 "command": "cosmosDB.openStoredProcedure",
                 "title": "Open Stored Procedure"
             },
@@ -938,6 +943,11 @@
                     "command": "postgreSQL.createStoredProcedureQuery",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresStoredProcedures",
                     "group": "1@1"
+                },
+                {
+                    "command": "cosmosDB.openNoSqlQueryEditor",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
+                    "group": "1@2"
                 }
             ],
             "explorer/context": [
@@ -1092,8 +1102,9 @@
         "test": "node ./out/test/runTest.js",
         "unittest": "mocha ./out/test/unit/**/*.js",
         "update-grammar": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src/mongo/grammar",
-        "webpack": "npm run build && gulp webpack-dev",
-        "webpack-prod": "npm run build && gulp webpack-prod",
+        "webpack": "npm run build && gulp webpack-dev && webpack --mode development --config ./webpack.config.views.js",
+        "webpack-serve": "webpack serve --mode development --config ./webpack.config.views.js",
+        "webpack-prod": "npm run build && gulp webpack-prod && webpack --mode production --config ./webpack.config.views.js",
         "webpack-profile": "webpack --profile --json --mode production > webpack-stats.json && echo Use http://webpack.github.io/analyse to analyze the stats",
         "all": "npm i && npm run lint && npm test",
         "prepare": "husky install"
@@ -1107,13 +1118,15 @@
         "@types/fs-extra": "^8.1.0",
         "@types/gulp": "^4.0.6",
         "@types/mocha": "^7.0.2",
-        "@types/node": "^14.0.0",
+        "@types/node": "^18.19.42",
         "@types/pg": "^8.10.2",
         "@types/vscode": "1.82.0",
+        "@types/vscode-webview": "^1.57.5",
         "@typescript-eslint/eslint-plugin": "^4.31.1",
         "@vscode/test-electron": "^2.3.8",
         "antlr4ts-cli": "^0.4.0-alpha.4",
         "copy-webpack-plugin": "^6.4.0",
+        "esbuild": "^0.23.0",
         "eslint": "^7.19.0",
         "eslint-plugin-import": "^2.22.1",
         "glob": "^7.1.6",
@@ -1122,12 +1135,26 @@
         "mocha": "^10.2.0",
         "mocha-junit-reporter": "^1.18.0",
         "mocha-multi-reporters": "^1.1.7",
+        "prettier": "^3.3.3",
+        "prettier-plugin-organize-imports": "^4.0.0",
         "ts-node": "^7.0.1",
         "typescript": "^4.4.3",
         "vsce": "^1.87.0",
-        "webpack": "^5.76.0",
-        "webpack-cli": "^4.6.0",
-        "webpack-log": "^3.0.2"
+        "webpack": "^5.93.0",
+        "webpack-cli": "^5.1.4",
+        "webpack-log": "^3.0.2",
+        "webpack-dev-server": "^4.15.2",
+
+        "@pmmmwh/react-refresh-webpack-plugin": "^0.5.15",
+        "@swc/cli": "^0.4.0",
+        "@swc/core": "^1.7.2",
+        "@swc/jest": "^0.2.36",
+        "@types/react": "^18.3.3",
+        "@types/react-dom": "^18.3.0",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "react-refresh": "^0.14.2",
+        "swc-loader": "^0.2.6"
     },
     "dependencies": {
         "@azure/arm-cosmosdb": "^15.0.0",
@@ -1137,6 +1164,7 @@
         "@microsoft/vscode-azext-azureauth": "^2.3.0",
         "@microsoft/vscode-azext-azureutils": "^3.0.1",
         "@microsoft/vscode-azext-utils": "^2.4.0",
+        "@vscode/webview-ui-toolkit": "^1.4.0",
         "antlr4ts": "^0.4.1-alpha.0",
         "bson": "^6.0.0",
         "fs-extra": "^8.0.0",

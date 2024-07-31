@@ -1,5 +1,5 @@
 
-# Azure Databases for VS Code (Preview)
+# Azure Databases for VS Code (Preview) 
 
 <!-- region exclude-from-marketplace -->
 

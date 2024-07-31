@@ -1,20 +1,28 @@
 import * as React from 'react';
 import { createContext } from 'react';
+import { WebviewApi } from 'vscode-webview';
+import { Channel } from '../panels/Communication/Channel/Channel';
+import { WebviewChannel } from '../panels/Communication/Channel/WebviewChannel';
 
-export type WebviewContextValue = {};
+export type WebviewContextValue = {
+    channel: Channel;
+};
 
-export type WebviewApi = ReturnType<typeof acquireVsCodeApi>;
-
-export const webviewContextValue = (_postMessage: (message: unknown) => void): WebviewContextValue => {
+export const webviewContextValue = (channel: Channel): WebviewContextValue => {
     return {
-        // TODO: Implement the context value
+        channel,
     };
 };
 
 export const WebviewContext = createContext<WebviewContextValue>({} as WebviewContextValue);
 
-export const WithWebviewContext = ({ vscodeApi, children }: { vscodeApi: WebviewApi; children: React.ReactNode }) => {
-    return (
-        <WebviewContext.Provider value={webviewContextValue(vscodeApi.postMessage)}>{children}</WebviewContext.Provider>
-    );
+export const WithWebviewContext = ({
+    vscodeApi,
+    children,
+}: {
+    vscodeApi: WebviewApi<unknown>;
+    children: React.ReactNode;
+}) => {
+    const channel = new WebviewChannel(vscodeApi);
+    return <WebviewContext.Provider value={webviewContextValue(channel)}>{children}</WebviewContext.Provider>;
 };

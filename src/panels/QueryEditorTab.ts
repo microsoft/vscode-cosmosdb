@@ -2,6 +2,8 @@ import { randomBytes } from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import { Channel } from './Communication/Channel/Channel';
+import { VSCodeChannel } from './Communication/Channel/VSCodeChannel';
 
 const DEV_SERVER_HOST = 'http://localhost:18080';
 
@@ -10,15 +12,19 @@ export class QueryEditorTab {
     public static readonly title = 'Query Editor';
     public static readonly viewType = 'cosmosDbQuery';
 
+    private readonly channel: Channel;
     private readonly panel: vscode.WebviewPanel;
     private disposables: vscode.Disposable[] = [];
 
     private constructor(panel: vscode.WebviewPanel) {
+        this.channel = new VSCodeChannel(panel.webview);
         this.panel = panel;
 
         this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
 
         this.panel.webview.html = this.getWebviewContent();
+
+        this.initController();
     }
 
     public static render(): void {
@@ -42,6 +48,7 @@ export class QueryEditorTab {
     public dispose(): void {
         QueryEditorTab.currentPanel = undefined;
 
+        this.channel.dispose();
         this.panel.dispose();
 
         while (this.disposables.length) {
@@ -55,11 +62,14 @@ export class QueryEditorTab {
     private getWebviewContent(): string {
         const ctx = ext.context;
         const cspSource = this.panel.webview.cspSource;
-        const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
+        // TODO: how run webpack server in production mode?
+        const isProduction = true; //ext.context.extensionMode === vscode.ExtensionMode.Production;
         const nonce = randomBytes(16).toString('base64');
 
         const uri = (...parts: string[]) =>
-            this.panel.webview.asWebviewUri(vscode.Uri.file(path.join(ctx.extensionPath, ...parts))).toString(true);
+            this.panel.webview
+                .asWebviewUri(vscode.Uri.file(path.join(ctx.extensionPath, 'dist', ...parts)))
+                .toString(true);
 
         const publicPath = isProduction ? uri() : `${DEV_SERVER_HOST}/`;
         const srcUri = isProduction ? uri('views.js') : `${DEV_SERVER_HOST}/views.js`;
@@ -118,5 +128,21 @@ export class QueryEditorTab {
   </body>
 </html>
 `;
+    }
+
+    private initController() {
+        this.channel.on('ping', (payload) => {
+            console.log('ping', payload);
+
+            if (payload === 'PING') {
+                return 'PONG';
+            } else {
+                throw new Error(`Something went wrong, the request is ${payload}`);
+            }
+        });
+
+        this.channel.on('sayHello', (payload) => {
+            console.log('sayHello', payload);
+        });
     }
 }

@@ -5,7 +5,7 @@ import { Deferred, DeferredPromise } from './DeferredPromise';
 
 type ListenerCallback = {
     type: 'on' | 'once';
-    callback: ChannelCallback<unknown>;
+    callback: ChannelCallback;
     calledTimes?: number;
 };
 type Request = {
@@ -54,7 +54,7 @@ export class CommonChannel implements Channel {
         public readonly transport: Transport,
     ) {
         this.handleMessageInternal = (msg: TransportMessage) => this.handleMessage(msg);
-        this.transport.on(this.handleMessage);
+        this.transport.on(this.handleMessageInternal);
 
         // Clean up pending requests every 500ms (we don't expect a lot of requests and accuracy is not critical)
         this.timeoutId = setInterval(() => {
@@ -68,24 +68,26 @@ export class CommonChannel implements Channel {
         }, 500);
     }
 
-    postMessage(message: ChannelPayload): PromiseLike<boolean>;
-    postMessage(message: ChannelMessage): PromiseLike<boolean>;
-    postMessage(message: ChannelMessage | ChannelPayload): PromiseLike<boolean> {
+    postMessage(message: ChannelPayload): PromiseLike<unknown>;
+    postMessage(message: ChannelMessage): PromiseLike<unknown>;
+    postMessage(message: ChannelMessage | ChannelPayload): PromiseLike<unknown> {
         const now = Date.now();
         const id = 'id' in message ? message.id : uuid();
         const payload = 'id' in message ? message.payload : message;
 
         if (payload.type === 'request') {
-            const deferred = new Deferred<unknown>();
-            this.pendingRequests[id] = { expiresAt: now + 5000, deferred };
+            const deferred = new Deferred();
+            this.pendingRequests[id] = { expiresAt: now + 15000, deferred };
             // Automatically remove pending request from the list to clean up memory
             void deferred.promise.then(() => delete this.pendingRequests[id]);
         }
 
-        return this.transport.post({ id, payload });
+        void this.transport.post({ id, payload });
+
+        return this.pendingRequests[id]?.deferred.promise ?? Promise.resolve(true);
     }
 
-    on(event: string, callback: ChannelCallback<unknown>): Channel {
+    on(event: string, callback: ChannelCallback): Channel {
         if (!this.listeners[event]) {
             this.listeners[event] = [];
         }
@@ -94,7 +96,7 @@ export class CommonChannel implements Channel {
         return this;
     }
 
-    once(event: string, callback: ChannelCallback<unknown>): Channel {
+    once(event: string, callback: ChannelCallback): Channel {
         if (!this.listeners[event]) {
             this.listeners[event] = [];
         }
@@ -103,7 +105,7 @@ export class CommonChannel implements Channel {
         return this;
     }
 
-    off(event: string, callback: ChannelCallback<unknown>): Channel {
+    off(event: string, callback: ChannelCallback): Channel {
         if (this.listeners[event]) {
             this.listeners[event] = this.listeners[event].filter((cb) => cb.callback !== callback);
         }

@@ -3,28 +3,52 @@ import { useContext, useState } from 'react';
 import { WebviewContext } from './WebviewContext';
 
 export const CosmosDbQuery = () => {
-    const { callApi } = useContext(WebviewContext);
+    const { channel } = useContext(WebviewContext);
     const [bMessage, setBMessage] = useState<string>('');
+
+    channel.on('ping', (payload) => {
+        if (payload === 'PONG') {
+            setBMessage('PONG');
+        } else {
+            setBMessage(`Something went wrong, the answer is ${payload}`);
+        }
+    });
 
     return (
         <div>
             <div style={{ display: 'flex' }}>
                 <button
                     onClick={() => {
-                        callApi('showExampleViewB');
+                        void channel.postMessage({
+                            type: 'event',
+                            name: 'sayHello',
+                            params: ['Hello from CosmosDbQuery!'],
+                        });
                     }}>
-                    Show Example View B
+                    Say Hello!
                 </button>
             </div>
             <div style={{ display: 'flex', marginTop: 10 }}>
-                <input type="text" value={bMessage} onChange={(e) => setBMessage(e.target.value)} />
                 <button
                     onClick={() => {
-                        callApi('sendMessageToExampleB', bMessage);
-                        setBMessage('');
+                        void channel
+                            .postMessage({
+                                type: 'request',
+                                name: 'ping',
+                                params: ['PING'],
+                            })
+                            .then((response) => {
+                                if (response === 'PONG') {
+                                    setBMessage('PONG');
+                                } else {
+                                    setBMessage(`Something went wrong, the answer is ${response}`);
+                                }
+                            });
+                        setBMessage('Pinging...');
                     }}>
-                    Send to Example View B
+                    Ping
                 </button>
+                <div>{bMessage}</div>
             </div>
         </div>
     );

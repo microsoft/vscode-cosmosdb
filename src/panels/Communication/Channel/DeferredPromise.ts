@@ -19,7 +19,7 @@ export interface DeferredPromise<ValueType> {
     reject(this: void, reason?: unknown): void;
 }
 
-export class Deferred<ValueType> implements DeferredPromise<ValueType> {
+export class Deferred<ValueType = unknown> implements DeferredPromise<ValueType> {
     private _resolve!: (value?: ValueType | PromiseLike<ValueType>) => void;
     private _reject!: (reason?: unknown) => void;
 

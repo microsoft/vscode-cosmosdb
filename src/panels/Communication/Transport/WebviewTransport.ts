@@ -1,16 +1,17 @@
+import { WebviewApi } from 'vscode-webview';
 import { isTransportMessage, Transport, TransportMessage } from './Transport';
 
-export class WebviewTransport implements Transport {
+export class WebviewTransport<StateType = unknown> implements Transport {
     public readonly name = 'WebviewTransport';
 
     private listeners: ((message: TransportMessage) => void)[] = [];
 
-    constructor(window: Window) {
+    constructor(private readonly vscodeApi: WebviewApi<StateType>) {
         window.addEventListener('message', (event) => this.handleMessage(event.data));
     }
 
     post(message: TransportMessage): PromiseLike<boolean> {
-        window.postMessage(message);
+        this.vscodeApi.postMessage(message);
         return Promise.resolve(true); // Can't actually know if the message was sent
     }
 

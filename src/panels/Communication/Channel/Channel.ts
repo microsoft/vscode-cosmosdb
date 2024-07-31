@@ -1,10 +1,10 @@
 import { Transport } from '../Transport/Transport';
 
-export const isChannelPayload = (msg: unknown): msg is ChannelPayload => {
-    return typeof msg === 'object' && msg !== null && 'type' in msg;
+export const isChannelPayload = (payload: unknown): payload is ChannelPayload => {
+    return typeof payload === 'object' && payload !== null && 'type' in payload;
 };
 
-export type ChannelCallback<ReturnType extends any> = (payload: any[]) => ReturnType | Promise<ReturnType>;
+export type ChannelCallback<ReturnType = unknown> = (...payload: unknown[]) => ReturnType | Promise<ReturnType>;
 
 export type ChannelPayload =
     | {
@@ -37,9 +37,9 @@ export interface Channel {
     readonly name: string;
     readonly transport: Transport;
 
-    postMessage(message: ChannelMessage): PromiseLike<boolean>;
-    on<ReturnType>(event: string, callback: ChannelCallback<ReturnType>): Channel;
-    once<ReturnType>(event: string, callback: ChannelCallback<ReturnType>): Channel;
+    postMessage<ReturnType = unknown>(message: ChannelMessage | ChannelPayload): PromiseLike<ReturnType>;
+    on<ReturnType = unknown>(event: string, callback: ChannelCallback<ReturnType>): Channel;
+    once<ReturnType = unknown>(event: string, callback: ChannelCallback<ReturnType>): Channel;
     off<ReturnType extends never>(event: string, callback: ChannelCallback<ReturnType>): Channel;
     dispose(): void;
 }

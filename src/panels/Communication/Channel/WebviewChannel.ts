@@ -1,9 +1,10 @@
+import { WebviewApi } from 'vscode-webview';
 import { WebviewTransport } from '../Transport/WebviewTransport';
 import { CommonChannel } from './CommonChannel';
 
-export class WebviewChannel extends CommonChannel {
-    constructor() {
-        const transport = new WebviewTransport(window);
+export class WebviewChannel<StateType = unknown> extends CommonChannel {
+    constructor(webviewApi: WebviewApi<StateType>) {
+        const transport = new WebviewTransport(webviewApi);
         super('webview', transport);
     }
 

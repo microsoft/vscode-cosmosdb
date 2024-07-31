@@ -2,8 +2,9 @@ import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-tool
 import * as React from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import { createRoot } from 'react-dom/client';
+import { WebviewApi } from 'vscode-webview';
 import { CosmosDbQuery } from './CosmosDbQuery';
-import { WebviewApi, WithWebviewContext } from './WebviewContext';
+import { WithWebviewContext } from './WebviewContext';
 
 provideVSCodeDesignSystem().register(vsCodeButton());
 
@@ -13,7 +14,12 @@ export const Views = {
 
 export type ViewKey = keyof typeof Views;
 
-export function render<V extends ViewKey>(key: V, vscodeApi: WebviewApi, publicPath: string, rootId = 'root'): void {
+export function render<V extends ViewKey>(
+    key: V,
+    vscodeApi: WebviewApi<unknown>,
+    publicPath: string,
+    rootId = 'root',
+): void {
     const container = document.getElementById(rootId);
     if (!container) {
         throw new Error(`Element with id of ${rootId} not found.`);

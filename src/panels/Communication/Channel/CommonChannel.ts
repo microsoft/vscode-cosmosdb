@@ -1,73 +1,206 @@
-import { Transport } from '../Transport/Transport';
-import { Channel, ChannelMessage } from './Channel';
+import { v4 as uuid } from 'uuid';
+import { Transport, TransportMessage } from '../Transport/Transport';
+import { Channel, ChannelCallback, ChannelMessage, ChannelPayload, isChannelPayload } from './Channel';
+import { Deferred, DeferredPromise } from './DeferredPromise';
+
+type ListenerCallback = {
+    type: 'on' | 'once';
+    callback: ChannelCallback<unknown>;
+    calledTimes?: number;
+};
+type Request = {
+    expiresAt: number;
+    deferred: DeferredPromise<unknown>;
+};
+
+type ErrorWithMessage = {
+    message: string;
+};
+
+function isErrorWithMessage(error: unknown): error is ErrorWithMessage {
+    return (
+        typeof error === 'object' &&
+        error !== null &&
+        'message' in error &&
+        typeof (error as Record<string, unknown>).message === 'string'
+    );
+}
+
+function toErrorWithMessage(maybeError: unknown): ErrorWithMessage {
+    if (isErrorWithMessage(maybeError)) return maybeError;
+
+    try {
+        return new Error(JSON.stringify(maybeError));
+    } catch {
+        // fallback in case there's an error stringifying the maybeError
+        // like with circular references for example.
+        return new Error(String(maybeError));
+    }
+}
+
+function getErrorMessage(error: unknown) {
+    return toErrorWithMessage(error).message;
+}
 
 export class CommonChannel implements Channel {
-    private listeners: Record<string, ((message: ChannelMessage) => void)[]> = {};
-    private pendingRequests: Record<string, Promise> = {};
-    private readonly handleMessageInternal: (msg: unknown) => void;
+    private listeners: Record<string, ListenerCallback[]> = {};
+    private pendingRequests: Record<string, Request> = {};
+
+    private readonly handleMessageInternal: (msg: TransportMessage) => void;
+    private readonly timeoutId: NodeJS.Timeout;
 
     constructor(
         public readonly name: string,
         public readonly transport: Transport,
     ) {
-        this.handleMessageInternal = (msg: unknown) => this.handleMessage(msg);
+        this.handleMessageInternal = (msg: TransportMessage) => this.handleMessage(msg);
         this.transport.on(this.handleMessage);
+
+        // Clean up pending requests every 500ms (we don't expect a lot of requests and accuracy is not critical)
+        this.timeoutId = setInterval(() => {
+            const now = Date.now();
+            Object.entries(this.pendingRequests).forEach(([id, request]) => {
+                if (request.expiresAt < now) {
+                    request.deferred.reject(new Error(`Request timed out`));
+                    delete this.pendingRequests[id];
+                }
+            });
+        }, 500);
     }
 
-    postMessage(message: ChannelMessage): Thenable<boolean> {
-        return this.transport.post(message);
+    postMessage(message: ChannelPayload): PromiseLike<boolean>;
+    postMessage(message: ChannelMessage): PromiseLike<boolean>;
+    postMessage(message: ChannelMessage | ChannelPayload): PromiseLike<boolean> {
+        const now = Date.now();
+        const id = 'id' in message ? message.id : uuid();
+        const payload = 'id' in message ? message.payload : message;
+
+        if (payload.type === 'request') {
+            const deferred = new Deferred<unknown>();
+            this.pendingRequests[id] = { expiresAt: now + 5000, deferred };
+            // Automatically remove pending request from the list to clean up memory
+            void deferred.promise.then(() => delete this.pendingRequests[id]);
+        }
+
+        return this.transport.post({ id, payload });
     }
 
-    on(event: string, callback: (message: ChannelMessage) => void): Channel {
+    on(event: string, callback: ChannelCallback<unknown>): Channel {
         if (!this.listeners[event]) {
             this.listeners[event] = [];
         }
-        this.listeners[event].push(callback);
+        this.listeners[event].push({ type: 'on', callback, calledTimes: 0 });
 
         return this;
     }
 
-    once(event: string, callback: (message: ChannelMessage) => void): Channel {
-        const wrappedCallback = (message: ChannelMessage) => {
-            callback(message);
-            this.off(event, wrappedCallback);
-        };
-
-        this.on(event, wrappedCallback);
+    once(event: string, callback: ChannelCallback<unknown>): Channel {
+        if (!this.listeners[event]) {
+            this.listeners[event] = [];
+        }
+        this.listeners[event].push({ type: 'once', callback, calledTimes: 0 });
 
         return this;
     }
 
-    off(event: string, callback: (message: ChannelMessage) => void): Channel {
+    off(event: string, callback: ChannelCallback<unknown>): Channel {
         if (this.listeners[event]) {
-            this.listeners[event] = this.listeners[event].filter((cb) => cb !== callback);
+            this.listeners[event] = this.listeners[event].filter((cb) => cb.callback !== callback);
         }
 
         return this;
     }
 
     dispose(): void {
+        // Clean up listeners first to avoid any messages being processed
         this.listeners = {};
+
         // since the transport is shared, we don't dispose it here
         this.transport.off(this.handleMessageInternal);
+
+        // Clean up pending requests
+        clearTimeout(this.timeoutId);
+        Object.values(this.pendingRequests).forEach((request) => {
+            request.deferred.reject(new Error('Channel disposed'));
+        });
+
+        this.pendingRequests = {};
     }
 
-    private handleMessage(msg: unknown): void {
+    private handleMessage(msg: TransportMessage): void {
         try {
-            if (!isChannelMessage(msg)) {
+            if (typeof msg.payload !== 'object' || !msg.payload || !isChannelPayload(msg.payload)) {
+                console.warn('Received message with unknown payload', msg);
                 return;
             }
 
-            const message = msg as Message;
-            const listeners = this.listeners[message.type];
-            if (!listeners) {
-                return;
+            const payload = msg.payload as ChannelPayload;
+
+            if (payload.type === 'response' || payload.type === 'error') {
+                const request = this.pendingRequests[msg.id];
+                if (!request) {
+                    console.warn('Received response for unknown request', msg);
+                    return;
+                }
+
+                if (payload.type === 'response') {
+                    request.deferred.resolve(payload.value);
+                } else {
+                    request.deferred.reject(new Error(payload.message));
+                }
+
+                delete this.pendingRequests[msg.id];
             }
 
-            listeners.forEach((cb) => cb(message));
-        } catch (error) {
-            // TODO: Telemetry
-            console.error(error);
+            if (payload.type === 'event' || payload.type === 'request') {
+                const callbacks = this.listeners[payload.name];
+
+                callbacks.forEach((cb) => {
+                    // One callback throwing an error should not prevent other callbacks from being called
+                    try {
+                        cb.calledTimes ??= 0;
+                        cb.calledTimes++;
+
+                        if (cb.type === 'once' && cb.calledTimes > 1) {
+                            return;
+                        }
+
+                        void Promise.resolve(cb.callback.call(undefined, ...payload.params))
+                            .then((returnValue) => {
+                                if (payload.type === 'request') {
+                                    void this.postMessage({
+                                        id: msg.id,
+                                        payload: { type: 'response', value: returnValue },
+                                    });
+                                }
+                            })
+                            .catch((error) => {
+                                if (payload.type === 'request') {
+                                    void this.postMessage({
+                                        id: msg.id,
+                                        payload: { type: 'error', message: getErrorMessage(error) },
+                                    });
+                                }
+                            })
+                            .finally(() => {
+                                if (cb.type === 'once') {
+                                    this.off(payload.name, cb.callback);
+                                }
+                            });
+                    } catch (error) {
+                        const errorMessage = getErrorMessage(error);
+                        console.error(`[VSCodeTransport] Error occurred calling callback`, errorMessage);
+                    }
+                });
+            }
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
+            if (this.pendingRequests[msg.id]) {
+                this.pendingRequests[msg.id].deferred.reject(
+                    new Error(`Error occurred handling received message : ${errorMessage}`),
+                );
+            }
+            console.error(errorMessage);
         }
     }
 }

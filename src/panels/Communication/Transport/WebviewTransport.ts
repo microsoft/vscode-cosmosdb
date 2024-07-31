@@ -9,7 +9,7 @@ export class WebviewTransport implements Transport {
         window.addEventListener('message', (event) => this.handleMessage(event.data));
     }
 
-    post(message: TransportMessage): Thenable<boolean> {
+    post(message: TransportMessage): PromiseLike<boolean> {
         window.postMessage(message);
         return Promise.resolve(true); // Can't actually know if the message was sent
     }

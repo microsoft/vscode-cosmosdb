@@ -11,7 +11,7 @@ export class VSCodeTransport implements Transport {
         this.webview.onDidReceiveMessage((msg: unknown) => this.handleMessage(msg), this, this.disposables);
     }
 
-    post(message: TransportMessage): Thenable<boolean> {
+    post(message: TransportMessage): PromiseLike<boolean> {
         return this.webview.postMessage(message);
     }
 

@@ -124,11 +124,6 @@
         ],
         "commands": [
             {
-                "category": "Development",
-                "command": "development.showUiDemo",
-                "title": "Show Fluent UI Demo"
-            },
-            {
                 "category": "Azure Databases",
                 "command": "azureDatabases.createServer",
                 "title": "Create Server...",
@@ -375,6 +370,11 @@
                 "category": "Core (SQL)",
                 "command": "cosmosDB.writeNoSqlQuery",
                 "title": "Create New NoSQL Query"
+            },
+            {
+                "category": "Development",
+                "command": "development.showUiDemo",
+                "title": "Show Fluent UI Demo"
             },
             {
                 "category": "PostgreSQL",

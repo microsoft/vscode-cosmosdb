@@ -1,11 +1,13 @@
 {
     "compilerOptions": {
         "module": "commonjs",
-        "target": "es6",
+        "target": "ES2021",
         "outDir": "out",
         "lib": [
-            "es6",
-            "dom"
+            "ES2021",
+            "dom",
+            "dom.iterable",
+            "webworker"
         ],
         "sourceMap": true,
         "noImplicitThis": true,
@@ -23,7 +25,8 @@
                 "node_modules/@types/*",
                 "*"
             ]
-        }
+        },
+      "jsx": "react-jsx"
     },
     "exclude": [
         "node_modules",

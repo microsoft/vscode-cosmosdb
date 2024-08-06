@@ -56,6 +56,32 @@
             }
         },
         {
+            "name": "Watch + Run Extension and Webview",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "args": [ "--extensionDevelopmentPath=${workspaceFolder}/dist" ],
+            "outFiles": [ "${workspaceFolder}/dist/**/*.js" ],
+            "preLaunchTask": "Watch",
+            "autoAttachChildProcesses": true,
+            "debugWebWorkerHost": true,
+            "debugWebviews": true,
+            "trace": true,
+            "sourceMaps": true,
+            "pauseForSourceMap": true,
+            "rendererDebugOptions": {
+                "webRoot": "${workspaceFolder}/dist"
+            },
+            "sourceMapPathOverrides": {
+                "./*": "${workspaceFolder}/*"
+            },
+            "env": {
+                "DEBUGTELEMETRY": "",
+                "NODE_DEBUG": "",
+                "DEBUG_WEBPACK": ""
+            }
+        },
+        {
             "name": "Launch Tests",
             "type": "extensionHost",
             "request": "launch",

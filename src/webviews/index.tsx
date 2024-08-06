@@ -1,15 +1,19 @@
 import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit';
 import * as React from 'react';
 // eslint-disable-next-line import/no-internal-modules
+import { FluentProvider } from '@fluentui/react-components';
 import { createRoot } from 'react-dom/client';
 import { WebviewApi } from 'vscode-webview';
 import { CosmosDbQuery } from './CosmosDbQuery';
+import { FluentUiDemo } from './FluentUIDemo/FluentUiDemo';
+import { adaptiveTheme } from './themeGenerator';
 import { WithWebviewContext } from './WebviewContext';
 
 provideVSCodeDesignSystem().register(vsCodeButton());
 
 export const Views = {
     cosmosDbQuery: CosmosDbQuery,
+    fluentUiDemo: FluentUiDemo
 } as const;
 
 export type ViewKey = keyof typeof Views;
@@ -35,8 +39,10 @@ export function render<V extends ViewKey>(
     const root = createRoot(container);
 
     root.render(
-        <WithWebviewContext vscodeApi={vscodeApi}>
-            <Component />
-        </WithWebviewContext>,
+        <FluentProvider theme={adaptiveTheme}>
+            <WithWebviewContext vscodeApi={vscodeApi}>
+                <Component />
+            </WithWebviewContext>
+        </FluentProvider>
     );
 }

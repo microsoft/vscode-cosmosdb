@@ -39,6 +39,14 @@ module.exports = (env, { mode }) => {
                     },
                     exclude: /node_modules/u,
                 },
+                {
+                    test: /\.s?css$/,
+                    use: [
+                        'style-loader', // Injects styles into the DOM
+                        'css-loader',   // Resolves @import and url() paths
+                        'sass-loader'   // Compiles Sass to CS
+                    ],
+                }
             ],
         },
         devServer: {
@@ -68,7 +76,7 @@ module.exports = (env, { mode }) => {
                 patterns: [{ from: 'src/webviews/static', to: 'static', noErrorOnMissing: true }].filter(Boolean),
             }),
         ].filter(Boolean),
-        devtool: isDev ? 'inline-cheap-module-source-map' : false,
+        devtool: isDev ? 'source-map' : false,
         infrastructureLogging: {
             level: 'log', // enables logging required for problem matchers
         },

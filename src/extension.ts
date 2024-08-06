@@ -16,6 +16,7 @@ import {
     createAzExtLogOutputChannel,
     IActionContext,
     ITreeItemPickerContext,
+    registerCommand,
     registerCommandWithTreeNodeUnwrapping,
     registerErrorHandler,
     registerEvent,
@@ -56,6 +57,7 @@ import { registerPostgresCommands } from './postgres/commands/registerPostgresCo
 import { DatabaseResolver } from './resolver/AppResolver';
 import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
+import { showFluentUiDemo } from './temp/fluentUiDemoHelpers';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
 import { localize } from './utils/localize';
@@ -109,6 +111,8 @@ export async function activateInternal(
         registerGraphCommands();
         registerPostgresCommands();
         registerMongoCommands();
+
+        registerCommand('development.showUiDemo', showFluentUiDemo);
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),

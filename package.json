@@ -372,6 +372,11 @@
                 "title": "Create New NoSQL Query"
             },
             {
+                "category": "Development",
+                "command": "development.showUiDemo",
+                "title": "Show Fluent UI Demo"
+            },
+            {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.configureFirewall",
                 "title": "Configure Firewall"
@@ -1116,7 +1121,8 @@
         "watch:ext": "webpack --mode development --config ./webpack.config.ext.js --watch",
         "watch:views": "webpack serve --mode development --config ./webpack.config.views.js",
         "all": "npm i && npm run lint && npm test",
-        "prepare": "husky install"
+        "prepare": "husky install",
+        "reset": "rimraf out node_modules dist && npm install"
     },
     "devDependencies": {
         "@azure/arm-resources": "^4.2.2",
@@ -1164,8 +1170,12 @@
         "typescript": "^5.5.4",
         "webpack": "^5.93.0",
         "webpack-cli": "^5.1.4",
-        "webpack-dev-server": "^5.0.4",
-        "webpack-log": "^3.0.2"
+        "webpack-dev-server": "5.0.4",
+        "webpack-log": "^3.0.2",
+        "sass": "^1.77.8",
+        "style-loader": "^4.0.0",
+        "css-loader": "^7.1.2",
+        "sass-loader": "^16.0.0"
     },
     "dependencies": {
         "@azure/arm-cosmosdb": "^15.0.0",
@@ -1176,6 +1186,8 @@
         "@microsoft/vscode-azext-azureutils": "^3.0.1",
         "@microsoft/vscode-azext-utils": "^2.4.0",
         "@vscode/webview-ui-toolkit": "^1.4.0",
+        "@fluentui/react-components": "^9.54.7",
+        "@fluentui/react-icons": "^2.0.252",
         "antlr4ts": "^0.4.1-alpha.0",
         "bson": "^6.0.0",
         "fs-extra": "^8.0.0",

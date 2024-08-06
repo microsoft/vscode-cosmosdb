@@ -1,8 +1,10 @@
+#!/usr/bin/env node
 /* eslint-env node */
 
 const path = require('path');
 const webpack = require('webpack');
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = (env, { mode }) => {
     const isDev = mode === 'development';
@@ -41,7 +43,7 @@ module.exports = (env, { mode }) => {
         },
         devServer: {
             static: {
-                directory: path.join(__dirname, 'webviews/static'),
+                directory: path.join(__dirname, 'src/webviews/static'),
                 publicPath: '/static',
             },
             allowedHosts: 'all',
@@ -62,6 +64,9 @@ module.exports = (env, { mode }) => {
                 React: 'react',
             }),
             isDev && new ReactRefreshWebpackPlugin(),
+            new CopyWebpackPlugin({
+                patterns: [{ from: 'src/webviews/static', to: 'static', noErrorOnMissing: true }].filter(Boolean),
+            }),
         ].filter(Boolean),
         devtool: isDev ? 'inline-cheap-module-source-map' : false,
         infrastructureLogging: {

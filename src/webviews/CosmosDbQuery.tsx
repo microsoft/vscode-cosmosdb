@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { useContext, useState } from 'react';
 import { WebviewContext } from './WebviewContext';
 

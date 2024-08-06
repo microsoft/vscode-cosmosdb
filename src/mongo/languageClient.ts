@@ -12,14 +12,14 @@ import { IConnectionParams } from './services/IConnectionParams';
 const localize = nls.loadMessageBundle();
 
 export class MongoDBLanguageClient {
-
     public client: LanguageClient;
 
     constructor() {
         // The server is implemented in node
-        const serverModule = ext.ignoreBundle ?
-            ext.context.asAbsolutePath(path.join('out', 'src', 'mongo', 'languageServer.js')) :
-            ext.context.asAbsolutePath(path.join('dist', 'mongo-languageServer.bundle.js'));
+        const serverPath = ext.ignoreBundle
+            ? path.join('out', 'src', 'mongo', 'languageServer.js') // Run without webpack
+            : process.env.MONGO_LANGUAGE_SERVER_PATH || path.join('dist', 'mongo', 'languageServer.js'); // Run with webpack
+        const serverModule = ext.context.asAbsolutePath(serverPath);
         // The debug options for the server
         const debugOptions = { execArgv: ['--nolazy', '--inspect=6005'] };
 
@@ -27,7 +27,7 @@ export class MongoDBLanguageClient {
         // Otherwise the run options are used
         const serverOptions: ServerOptions = {
             run: { module: serverModule, transport: TransportKind.ipc },
-            debug: { module: serverModule, transport: TransportKind.ipc, options: debugOptions }
+            debug: { module: serverModule, transport: TransportKind.ipc, options: debugOptions },
         };
 
         // Options to control the language client
@@ -35,12 +35,17 @@ export class MongoDBLanguageClient {
             // Register the server for mongo javascript documents
             documentSelector: [
                 { language: 'mongo', scheme: 'file' },
-                { language: 'mongo', scheme: 'untitled' }
-            ]
+                { language: 'mongo', scheme: 'untitled' },
+            ],
         };
 
         // Create the language client and start the client.
-        this.client = new LanguageClient('mongo', localize('mongo.server.name', 'Mongo Language Server'), serverOptions, clientOptions);
+        this.client = new LanguageClient(
+            'mongo',
+            localize('mongo.server.name', 'Mongo Language Server'),
+            serverOptions,
+            clientOptions,
+        );
         const disposable = this.client.start();
 
         // Push the disposable to the context's subscriptions so that the
@@ -49,7 +54,11 @@ export class MongoDBLanguageClient {
     }
 
     public async connect(connectionString: string, databaseName: string): Promise<void> {
-        await this.client.sendRequest('connect', <IConnectionParams>{ connectionString: connectionString, databaseName: databaseName, extensionUserAgent: appendExtensionUserAgent() });
+        await this.client.sendRequest('connect', <IConnectionParams>{
+            connectionString: connectionString,
+            databaseName: databaseName,
+            extensionUserAgent: appendExtensionUserAgent(),
+        });
     }
 
     public async disconnect(): Promise<void> {

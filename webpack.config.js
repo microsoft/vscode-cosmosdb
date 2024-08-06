@@ -9,6 +9,7 @@
 
 'use strict';
 
+const path = require('path');
 const process = require('process');
 const webpack = require('webpack');
 const dev = require('@microsoft/vscode-azext-dev');
@@ -41,6 +42,9 @@ let config = dev.getDefaultWebpackConfig({
     loaderRules: [], // end of loaderRules
 
     plugins: [
+        new webpack.EnvironmentPlugin({
+            MONGO_LANGUAGE_SERVER_PATH: path.join('dist', 'mongo-languageServer.bundle.js'),
+        }),
         // Replace vscode-languageserver/lib/files.js with a modified version that doesn't have webpack issues
         new webpack.NormalModuleReplacementPlugin(
             /[/\\]vscode-languageserver[/\\]lib[/\\]files\.js/,

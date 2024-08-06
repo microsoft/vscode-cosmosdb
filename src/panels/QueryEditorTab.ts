@@ -62,8 +62,7 @@ export class QueryEditorTab {
     private getWebviewContent(): string {
         const ctx = ext.context;
         const cspSource = this.panel.webview.cspSource;
-        // TODO: how run webpack server in production mode?
-        const isProduction = true; //ext.context.extensionMode === vscode.ExtensionMode.Production;
+        const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
         const nonce = randomBytes(16).toString('base64');
 
         const uri = (...parts: string[]) =>

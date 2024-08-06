@@ -2,3 +2,5 @@ gulpfile.ts
 .eslintrc.js
 **/*.d.ts
 test/
+webpack.config.js
+webpack.config.*.js

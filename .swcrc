@@ -4,7 +4,7 @@
   "sourceMaps": "inline",
   "jsc": {
     "target": "es2021",
-    "baseUrl": "./src",
+    "baseUrl": "./",
     "parser": {
       "syntax": "typescript",
       "tsx": true,

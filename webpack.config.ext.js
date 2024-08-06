@@ -45,7 +45,6 @@ module.exports = (env, { mode }) => {
         output: {
             path: path.resolve(__dirname, 'dist'),
             filename: '[name].js',
-            chunkFilename: 'feature-[name].js',
             chunkFormat: 'commonjs',
             libraryTarget: 'commonjs2',
             devtoolModuleFilenameTemplate: '[resource-path]',

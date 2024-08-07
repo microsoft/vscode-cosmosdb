@@ -1,26 +1,65 @@
-// eslint-disable-next-line import/no-internal-modules
-import { JSX } from 'react';
+import { type JSX } from 'react';
 import './fluentUiDemo.scss';
 
-
-import { Avatar, Badge, Button, Caption2, Checkbox, Dropdown, Input, makeStyles, Menu, MenuButton, MenuItemCheckbox, MenuList, MenuPopover, MenuTrigger, Option, Radio, RadioGroup, shorthands, Slider, Switch, Tab, TabList, tokens, useId } from '@fluentui/react-components';
-import { bundleIcon, CalendarLtrFilled, CalendarLtrRegular, ChevronRightRegular, ClipboardPasteFilled, ClipboardPasteRegular, CutFilled, CutRegular, EditFilled, EditRegular, MeetNowFilled, MeetNowRegular, SearchRegular } from "@fluentui/react-icons";
+import {
+    Avatar,
+    Badge,
+    Button,
+    Caption2,
+    Checkbox,
+    Dropdown,
+    FluentProvider,
+    Input,
+    makeStyles,
+    Menu,
+    MenuButton,
+    MenuItemCheckbox,
+    MenuList,
+    MenuPopover,
+    MenuTrigger,
+    Option,
+    Radio,
+    RadioGroup,
+    shorthands,
+    Slider,
+    Switch,
+    Tab,
+    TabList,
+    tokens,
+    useId,
+} from '@fluentui/react-components';
+import {
+    bundleIcon,
+    CalendarLtrFilled,
+    CalendarLtrRegular,
+    ChevronRightRegular,
+    ClipboardPasteFilled,
+    ClipboardPasteRegular,
+    CutFilled,
+    CutRegular,
+    EditFilled,
+    EditRegular,
+    MeetNowFilled,
+    MeetNowRegular,
+    SearchRegular,
+} from '@fluentui/react-icons';
+import { adaptiveTheme } from '../themeGenerator';
 
 // this is the 'fluent ui' way of doing this, left in here so that the demo code is executed,
 // work with scss if possible for easier management
 const useStyles = makeStyles({
     root: {
-        display: "grid",
-        gridTemplateRows: "50vh 50vh"
+        display: 'grid',
+        gridTemplateRows: '50vh 50vh',
     },
     row: {
-        height: "50vh",
-        display: "grid",
-        alignItems: "start",
-        justifyContent: "center",
-        gridTemplateColumns: "repeat(3, 1fr)",
-        gridTemplateRows: "auto",
-        gridColumnGap: tokens.spacingHorizontalXXXL
+        height: '50vh',
+        display: 'grid',
+        alignItems: 'start',
+        justifyContent: 'center',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gridTemplateRows: 'auto',
+        gridColumnGap: tokens.spacingHorizontalXXXL,
     },
     col2: {
         display: 'flex',
@@ -66,8 +105,6 @@ const useStyles = makeStyles({
     },
 });
 
-
-
 export const Column1 = (): JSX.Element => {
     const styles = useStyles();
     return (
@@ -87,7 +124,7 @@ export const Column1 = (): JSX.Element => {
                     <Caption2>Senior Researcher at Contoso</Caption2>
                 </div>
             </div>
-        </div >
+        </div>
     );
 };
 
@@ -129,7 +166,9 @@ export const Column2 = (): JSX.Element => {
             </TabList>
             <Input
                 placeholder="Find"
-                contentAfter={<Button aria-label="Find" appearance="transparent" icon={<SearchRegular />} size="small" />}
+                contentAfter={
+                    <Button aria-label="Find" appearance="transparent" icon={<SearchRegular />} size="small" />
+                }
             />
             <Dropdown aria-labelledby={dropdownId} placeholder="Select" inlinePopup>
                 <Option value="Action 1">Action 1</Option>
@@ -159,11 +198,7 @@ export const Column3 = (): JSX.Element => {
     return (
         <div className={styles.col3}>
             <Button appearance="primary">Sign Up</Button>
-            <Button
-                appearance="transparent"
-                icon={<ChevronRightRegular />}
-                iconPosition="after"
-            >
+            <Button appearance="transparent" icon={<ChevronRightRegular />} iconPosition="after">
                 Learn More
             </Button>
             <Slider className={styles.twoCol} defaultValue={50} />
@@ -186,19 +221,20 @@ export const Column3 = (): JSX.Element => {
     );
 };
 
-
 export const FluentUiDemo = (): JSX.Element => {
     const styles = useStyles();
 
     return (
-        <div className='webview'>
-            <div className={styles.root}>
-                <div className={styles.row}>
-                    <Column1 />
-                    <Column2 />
-                    <Column3 />
+        <FluentProvider theme={adaptiveTheme}>
+            <div className="webview">
+                <div className={styles.root}>
+                    <div className={styles.row}>
+                        <Column1 />
+                        <Column2 />
+                        <Column3 />
+                    </div>
                 </div>
             </div>
-        </div >
+        </FluentProvider>
     );
 };

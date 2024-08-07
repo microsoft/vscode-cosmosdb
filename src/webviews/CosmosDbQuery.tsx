@@ -1,3 +1,4 @@
+import { Button, Text } from '@fluentui/react-components';
 import { useContext, useState } from 'react';
 import { WebviewContext } from './WebviewContext';
 
@@ -16,7 +17,9 @@ export const CosmosDbQuery = () => {
     return (
         <div>
             <div style={{ display: 'flex' }}>
-                <button
+                <Button
+                    appearance={'primary'}
+                    shape={'square'}
                     onClick={() => {
                         void channel.postMessage({
                             type: 'event',
@@ -25,10 +28,12 @@ export const CosmosDbQuery = () => {
                         });
                     }}>
                     Say Hello!
-                </button>
+                </Button>
             </div>
             <div style={{ display: 'flex', marginTop: 10 }}>
-                <button
+                <Button
+                    appearance={'secondary'}
+                    shape={'square'}
                     onClick={() => {
                         void channel
                             .postMessage({
@@ -46,8 +51,8 @@ export const CosmosDbQuery = () => {
                         setBMessage('Pinging...');
                     }}>
                     Ping
-                </button>
-                <div>{bMessage}</div>
+                </Button>
+                <Text block={true}>{bMessage}</Text>
             </div>
         </div>
     );

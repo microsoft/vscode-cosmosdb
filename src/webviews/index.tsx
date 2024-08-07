@@ -3,17 +3,19 @@ import * as React from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import { FluentProvider } from '@fluentui/react-components';
 import { createRoot } from 'react-dom/client';
-import { WebviewApi } from 'vscode-webview';
+import { type WebviewApi } from 'vscode-webview';
 import { CosmosDbQuery } from './CosmosDbQuery';
 import { FluentUiDemo } from './FluentUIDemo/FluentUiDemo';
 import { adaptiveTheme } from './themeGenerator';
+import { CollectionView } from './vCore/collectionView';
 import { WithWebviewContext } from './WebviewContext';
 
 provideVSCodeDesignSystem().register(vsCodeButton());
 
 export const Views = {
     cosmosDbQuery: CosmosDbQuery,
-    fluentUiDemo: FluentUiDemo
+    fluentUiDemo: FluentUiDemo,
+    vCoreCollectionView: CollectionView
 } as const;
 
 export type ViewKey = keyof typeof Views;

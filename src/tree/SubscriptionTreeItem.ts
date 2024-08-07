@@ -6,7 +6,7 @@
 import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { DatabaseAccountGetResults, DatabaseAccountListKeysResult } from '@azure/arm-cosmosdb/src/models';
 import { ILocationWizardContext, LocationListStep, ResourceGroupListStep, SubscriptionTreeItemBase, getResourceGroupFromId, uiUtils } from '@microsoft/vscode-azext-azureutils';
-import { AzExtParentTreeItem, AzExtTreeItem, AzureWizard, AzureWizardPromptStep, IActionContext } from '@microsoft/vscode-azext-utils';
+import { AzExtParentTreeItem, AzExtTreeItem, AzureWizard, AzureWizardPromptStep, IActionContext, callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
 import { CosmosDBCredential, CosmosDBKeyCredential } from '../docdb/getCosmosClient';
@@ -140,19 +140,33 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             // disable key auth if the user has opted in to OAuth (AAD/Entra ID)
             if (!forceOAuth) {
                 let keyResult: DatabaseAccountListKeysResult | undefined;
-                try {
-                    const acc = await client.databaseAccounts.get(resourceGroup, name);
-                    // If the account has local auth disabled, don't even try to use key auth
-                    if (!acc.disableLocalAuth) {
-                        keyResult = await client.databaseAccounts.listKeys(resourceGroup, name);
-                        keyCred = keyResult?.primaryMasterKey ? {
-                            type: "key",
-                            key: keyResult.primaryMasterKey
-                        } : undefined;
+                await callWithTelemetryAndErrorHandling('cosmosDB.listAccountKeys', async (context: IActionContext) => {
+                    try {
+                        context.errorHandling.suppressDisplay = true;
+                        const acc = await client.databaseAccounts.get(resourceGroup, name);
+                        const localAuthDisabled = acc.disableLocalAuth === true;
+                        context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
+                        // If the account has local auth disabled, don't even try to use key auth
+                        if (!localAuthDisabled) {
+                            keyResult = await client.databaseAccounts.listKeys(resourceGroup, name);
+                            keyCred = keyResult?.primaryMasterKey ? {
+                                type: "key",
+                                key: keyResult.primaryMasterKey
+                            } : undefined;
+                        } else {
+                            throw new Error("Local auth is disabled");
+                        }
+                    } catch (error) {
+                        const message = localize("keyPermissionErrorMsg", "You do not have the required permissions to list auth keys for [{0}].\nFalling back to using Entra ID.\nYou can change the default authentication in the settings.", name);
+                        const openSettingsItem = localize("openSettings", "Open Settings");
+                        void vscode.window.showWarningMessage(message, ...[openSettingsItem]).then((item) => {
+                            if (item === openSettingsItem) {
+                                void vscode.commands.executeCommand('workbench.action.openSettings', 'azureDatabases.useCosmosOAuth');
+                            }
+                        });
+                        throw error; // rethrow to log the failure
                     }
-                } catch (error) {
-                    // If the client failed to list keys, proceed without using keys
-                }
+                });
             }
 
             // OAuth is always enabled for Cosmos DB and will be used as a fall back if key auth is unavailable

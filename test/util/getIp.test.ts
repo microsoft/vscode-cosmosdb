@@ -6,13 +6,13 @@
 import { createTestActionContext } from '@microsoft/vscode-azext-dev';
 import * as assert from 'assert';
 import { isIPv4 } from 'net';
-import { getPublicIpv4, isIpInRanges } from '../../extension.bundle';
+import { getPublicIpv4, IActionContext, isIpInRanges } from '../../extension.bundle';
 
 suite("getPublicIpv4", () => {
     test("get IP", async () => {
         try {
             const context = await createTestActionContext();
-            const ip = await getPublicIpv4(context);
+            const ip = await getPublicIpv4(context as IActionContext);
             assert(isIPv4(ip), "IP address isn't v4");
         } catch (error) {
             assert(false, error.message ?? "Fail to get IP address");

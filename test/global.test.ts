@@ -4,8 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { TestOutputChannel, TestUserInput } from '@microsoft/vscode-azext-dev';
+import { IAzureUserInput } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext, registerOnActionStartHandler } from '../extension.bundle';
+
 
 const longRunningLocalTestsEnabled: boolean = !/^(false|0)?$/i.test(process.env.AzCode_EnableLongRunningTestsLocal || '');
 const longRunningRemoteTestsEnabled: boolean = !/^(false|0)?$/i.test(process.env.AzCode_UseAzureFederatedCredentials || '');
@@ -20,6 +22,6 @@ suiteSetup(async function (this: Mocha.Context): Promise<void> {
 
     registerOnActionStartHandler(context => {
         // Use `TestUserInput` by default so we get an error if an unexpected call to `context.ui` occurs, rather than timing out
-        context.ui = new TestUserInput(vscode);
+        context.ui = new TestUserInput(vscode) as IAzureUserInput;
     });
 });

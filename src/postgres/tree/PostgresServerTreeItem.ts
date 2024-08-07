@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as SingleModels from '@azure/arm-postgresql';
-import * as FlexibleModels from '@azure/arm-postgresql-flexible';
+import type * as SingleModels from '@azure/arm-postgresql';
+import type * as FlexibleModels from '@azure/arm-postgresql-flexible';
 import { getResourceGroupFromId, parseAzureResourceId, uiUtils } from '@microsoft/vscode-azext-azureutils';
-import { AzExtParentTreeItem, AzExtTreeItem, IActionContext, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
-import { ClientConfig } from 'pg';
-import { SemVer, coerce, gte } from 'semver';
+import { AzExtParentTreeItem, type AzExtTreeItem, type IActionContext, type ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
+import { type ClientConfig } from 'pg';
+import { coerce, gte, type SemVer } from 'semver';
 import * as vscode from 'vscode';
 import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
@@ -16,10 +16,10 @@ import { isIpInRanges } from '../../utils/getIp';
 import { getSecretStorageKey } from '../../utils/getSecretStorageKey';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { AbstractPostgresClient, createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
-import { PostgresAbstractServer, PostgresServerType } from '../abstract/models';
+import { createAbstractPostgresClient, type AbstractPostgresClient } from '../abstract/AbstractPostgresClient';
+import { PostgresServerType, type PostgresAbstractServer } from '../abstract/models';
 import { getPublicIp } from '../commands/configurePostgresFirewall';
-import { ParsedPostgresConnectionString } from '../postgresConnectionStrings';
+import { type ParsedPostgresConnectionString } from '../postgresConnectionStrings';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresClientConfigFactory } from './ClientConfigFactory';
 import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
@@ -181,6 +181,12 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
         }
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
         const version: SemVer | null = coerce(this.serverVersion);
+
+        // hot-fix added after a package upgrade. gte(..) didn't accept a 'null' anymore
+        if (version === null) {
+            return false;
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
         return gte(version, '11.0.0');
     }

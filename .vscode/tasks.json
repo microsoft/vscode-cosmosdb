@@ -21,7 +21,10 @@
         },
         {
             "label": "Watch",
-            "dependsOn": ["watch:ext", "watch:views"]
+            "dependsOn": [
+                "watch:ext",
+                "watch:views"
+            ]
         },
         {
             "label": "watch:ext",
@@ -29,7 +32,10 @@
             "script": "watch:ext",
             "group": "build",
             "isBackground": true,
-            "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
+            "problemMatcher": [
+                "$ts-webpack-watch",
+                "$tslint-webpack-watch"
+            ],
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -43,10 +49,13 @@
         {
             "label": "watch:views",
             "type": "npm",
-            "script": "watch:views",
+            "script": "watch.extension",
             "group": "build",
             "isBackground": true,
-            "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
+            "problemMatcher": [
+                "$ts-webpack-watch",
+                "$tslint-webpack-watch"
+            ],
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -56,6 +65,54 @@
                 "clear": true,
                 "group": "cosmosdb-vscode-extension"
             }
-        }
+        },
+        {
+            "label": "Watch_Extension_and_Webviews",
+            "dependsOn": [
+                "watch.extension",
+                "devserver.webviews"
+            ]
+        },
+        {
+            "label": "watch.extension",
+            "type": "npm",
+            "script": "watch.extension",
+            "group": "build",
+            "isBackground": true,
+            "problemMatcher": [
+                "$tsc-watch",
+                "$ts-webpack-watch",
+                "$tslint-webpack-watch"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": false,
+                "clear": true,
+                "group": "Cosmos DB Extension Watch"
+            }
+        },
+        {
+            "label": "devserver.webviews",
+            "type": "npm",
+            "script": "serve.dev.webviews",
+            "group": "build",
+            "isBackground": true,
+            "problemMatcher": [
+                "$ts-webpack-watch",
+                "$tslint-webpack-watch"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": false,
+                "clear": true,
+                "group": "Cosmos DB Extension Watch"
+            }
+        },
     ]
 }

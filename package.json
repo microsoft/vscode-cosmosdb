@@ -1122,7 +1122,13 @@
         "watch:views": "webpack serve --mode development --config ./webpack.config.views.js",
         "all": "npm i && npm run lint && npm test",
         "prepare": "husky install",
-        "reset": "rimraf out node_modules dist && npm install"
+        "resapi.resetall": "rimraf out node_modules dist && npm install && npm run resapi.link",
+        "resapi.link": "npm link @microsoft/vscode-azureresources-api",
+        "build.dev.webviews": "webpack --mode development --config ./webpack.config.views.js",
+        "serve.dev.webviews": "webpack serve --mode development --config ./webpack.config.views.js",
+        "watch.dev.webviews": "webpack watch --mode development --config ./webpack.config.views.js",
+        "watch.extension": "tsc -watch",
+        "build.extension": "tsc"
     },
     "devDependencies": {
         "@azure/arm-resources": "^4.2.2",

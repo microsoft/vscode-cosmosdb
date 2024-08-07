@@ -60,8 +60,12 @@
             "type": "extensionHost",
             "request": "launch",
             "runtimeExecutable": "${execPath}",
-            "args": [ "--extensionDevelopmentPath=${workspaceFolder}/dist" ],
-            "outFiles": [ "${workspaceFolder}/dist/**/*.js" ],
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/dist"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
             "preLaunchTask": "Watch",
             "autoAttachChildProcesses": true,
             "debugWebWorkerHost": true,
@@ -148,6 +152,42 @@
             "outFiles": [
                 "${workspaceFolder}/out/src"
             ]
+        },
+        {
+            "name": "Run+Watch Extension+Webviews+Host",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "--profile=vCoreDevelopment", // uses a local profile with a limited number of installed extensions
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/out/**/*.js",
+                "${workspaceFolder}/dist/**/*.js",
+            ],
+            "preLaunchTask": "Watch_Extension_and_Webviews",
+            "env": {
+                "DEBUGTELEMETRY": "v",
+                "NODE_DEBUG": "",
+                "DEBUG_WEBPACK": "true"
+            },
+            "debugWebWorkerHost": true,
+            "rendererDebugOptions": {
+                "pauseForSourceMap": true,
+                "sourceMapRenames": true,
+                "sourceMaps": true,
+                "webRoot": "${workspaceFolder}/src/webviews/"
+            },
+            "skipFiles": [
+                "**/node_modules/**"
+            ],
+            "smartStep": true,
+            "sourceMapRenames": true,
+            "sourceMaps": true,
+            "pauseForSourceMap": true,
+            "trace": true
         },
         {
             // INSTRUCTIONS

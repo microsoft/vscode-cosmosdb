@@ -40,13 +40,20 @@ module.exports = (env, { mode }) => {
                     exclude: /node_modules/u,
                 },
                 {
-                    test: /\.s?css$/,
+                    test: /\.css$/i,
+                    use: ['style-loader', 'css-loader'],
+                },
+                {
+                    test: /\.s[ac]ss$/i,
                     use: [
-                        'style-loader', // Injects styles into the DOM
-                        'css-loader',   // Resolves @import and url() paths
-                        'sass-loader'   // Compiles Sass to CS
+                        // Creates `style` nodes from JS strings
+                        'style-loader',
+                        // Translates CSS into CommonJS
+                        'css-loader',
+                        // Compiles Sass to CSS
+                        'sass-loader',
                     ],
-                }
+                },
             ],
         },
         devServer: {

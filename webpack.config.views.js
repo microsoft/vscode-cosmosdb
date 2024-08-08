@@ -40,6 +40,10 @@ module.exports = (env, { mode }) => {
                     exclude: /node_modules/u,
                 },
                 {
+                    test: /\.css$/i,
+                    use: ['style-loader', 'css-loader'],
+                },
+                {
                     test: /\.s[ac]ss$/i,
                     use: [
                         // Creates `style` nodes from JS strings
@@ -79,7 +83,7 @@ module.exports = (env, { mode }) => {
                 patterns: [{ from: 'src/webviews/static', to: 'static', noErrorOnMissing: true }].filter(Boolean),
             }),
         ].filter(Boolean),
-        devtool: isDev ? 'inline-cheap-module-source-map' : false,
+        devtool: isDev ? 'source-map' : false,
         infrastructureLogging: {
             level: 'log', // enables logging required for problem matchers
         },

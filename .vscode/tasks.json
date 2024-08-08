@@ -49,7 +49,7 @@
         {
             "label": "watch:views",
             "type": "npm",
-            "script": "watch.extension",
+            "script": "watch:views",
             "group": "build",
             "isBackground": true,
             "problemMatcher": [
@@ -113,6 +113,6 @@
                 "clear": true,
                 "group": "Cosmos DB Extension Watch"
             }
-        },
+        }
     ]
 }

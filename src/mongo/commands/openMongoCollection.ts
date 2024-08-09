@@ -8,7 +8,7 @@ import { ext } from "../../extensionVariables";
 import { MongoCollectionTreeItem } from "../tree/MongoCollectionTreeItem";
 import { pickMongo } from "./pickMongo";
 
-export async function openMongoCollection(context: IActionContext, node?: MongoCollectionTreeItem) {
+export async function openMongoCollection(context: IActionContext, node?: MongoCollectionTreeItem): Promise<void> {
     if (!node) {
         node = await pickMongo<MongoCollectionTreeItem>(context, MongoCollectionTreeItem.contextValue);
     }

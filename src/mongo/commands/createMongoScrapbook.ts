@@ -5,6 +5,6 @@
 
 import * as vscodeUtil from "../../utils/vscodeUtils";
 
-export async function createMongoSrapbook() {
+export async function createMongoSrapbook(): Promise<void> {
     await vscodeUtil.showNewFile('', 'Scrapbook', '.mongo');
 }

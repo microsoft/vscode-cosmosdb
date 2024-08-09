@@ -75,7 +75,7 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
         await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).delete();
     }
 
-    public async execute(context: IActionContext, partitionKey: string, parameters?: any[]): Promise<void> {
+    public async execute(context: IActionContext, partitionKey: string, parameters?: unknown[]): Promise<void> {
         const client = this.root.getCosmosClient();
         const result = await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).execute(partitionKey, parameters);
 

@@ -7,7 +7,7 @@ import { IActionContext, ITreeItemPickerContext } from "@microsoft/vscode-azext-
 import { DocDBStoredProcedureTreeItem } from "../tree/DocDBStoredProcedureTreeItem";
 import { pickDocDBAccount } from "./pickDocDBAccount";
 
-export async function deleteDocDBStoredProcedure(context: IActionContext, node?: DocDBStoredProcedureTreeItem) {
+export async function deleteDocDBStoredProcedure(context: IActionContext, node?: DocDBStoredProcedureTreeItem): Promise<void> {
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {

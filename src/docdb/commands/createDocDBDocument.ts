@@ -9,7 +9,7 @@ import { DocDBDocumentTreeItem } from "../tree/DocDBDocumentTreeItem";
 import { DocDBDocumentsTreeItem } from "../tree/DocDBDocumentsTreeItem";
 import { pickDocDBAccount } from "./pickDocDBAccount";
 
-export async function createDocDBDocument(context: IActionContext, node?: DocDBDocumentsTreeItem) {
+export async function createDocDBDocument(context: IActionContext, node?: DocDBDocumentsTreeItem): Promise<void> {
     if (!node) {
         node = await pickDocDBAccount<DocDBDocumentsTreeItem>(context, DocDBDocumentsTreeItem.contextValue);
     }

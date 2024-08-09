@@ -7,7 +7,7 @@ import { IActionContext, ITreeItemPickerContext } from "@microsoft/vscode-azext-
 import { MongoDocumentTreeItem } from "../tree/MongoDocumentTreeItem";
 import { pickMongo } from "./pickMongo";
 
-export async function deleteMongoDocument(context: IActionContext, node?: MongoDocumentTreeItem) {
+export async function deleteMongoDocument(context: IActionContext, node?: MongoDocumentTreeItem): Promise<void> {
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {

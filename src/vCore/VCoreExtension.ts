@@ -15,7 +15,7 @@ export class VCoreExtension implements vscode.Disposable {
 
     constructor() {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.MongoVCore as string, new MongoVCoreResolver());
+        ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.MongoClusters as string, new MongoVCoreResolver());
     }
 
     async activate(): Promise<void> {

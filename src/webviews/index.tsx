@@ -1,11 +1,11 @@
 import * as React from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import { createRoot } from 'react-dom/client';
-import { WebviewApi } from 'vscode-webview';
+import { type WebviewApi } from 'vscode-webview';
 import { CosmosDbQuery } from './CosmosDbQuery';
 import { FluentUiDemo } from './FluentUIDemo/FluentUiDemo';
 import { DynamicThemeProvider } from './theme/DynamicThemeProvider';
-import { CollectionView } from './vCore/collectionView';
+import { CollectionView } from './vCore/collectionView/collectionView';
 import { WithWebviewContext } from './WebviewContext';
 
 export const Views = {
@@ -37,7 +37,7 @@ export function render<V extends ViewKey>(
     const root = createRoot(container);
 
     root.render(
-        <DynamicThemeProvider>
+        <DynamicThemeProvider useAdaptive={true}>
             <WithWebviewContext vscodeApi={vscodeApi}>
                 <Component />
             </WithWebviewContext>

@@ -1,0 +1,11 @@
+@import '../index.scss';
+
+$media-breakpoint-query-control-area: 1024px;
+
+.webview {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    row-gap: 10px;
+}
+

@@ -1,0 +1,46 @@
+@import '../vCoreStyles.scss';
+
+.row-separator {
+    padding: 10px;
+}
+
+.queryControlArea {
+    display: flex;
+    gap: 10px;
+
+    flex-direction: column;
+
+    @media (min-width: $media-breakpoint-query-control-area) {
+        flex-direction: row;
+    }
+}
+
+.findQueryComponent {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-grow: 1;
+}
+
+.actionBar {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.resultsDisplayArea {
+    flex-grow: 1;
+    height: 100%;
+}
+
+.toolbarDividerTransparent {
+    padding: 4px;
+}
+
+.lblPageNumber {
+    text-wrap: nowrap;
+}

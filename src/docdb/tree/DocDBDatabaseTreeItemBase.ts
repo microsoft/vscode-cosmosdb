@@ -3,8 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ContainerDefinition, ContainerResponse, CosmosClient, DatabaseDefinition, FeedOptions, QueryIterator, RequestOptions, Resource } from '@azure/cosmos';
-import { AzExtTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import {
+    ContainerDefinition,
+    ContainerResponse,
+    CosmosClient,
+    DatabaseDefinition,
+    FeedOptions,
+    QueryIterator,
+    RequestOptions,
+    Resource,
+} from '@azure/cosmos';
+import {
+    AzExtTreeItem,
+    DialogResponses,
+    IActionContext,
+    ICreateChildImplContext,
+    TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { nonNullProp } from '../../utils/nonNull';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
@@ -60,7 +75,11 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
     // Delete the database
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete database '${this.label}' and its contents?`;
-        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteDatabase' }, DialogResponses.deleteResponse);
+        await context.ui.showWarningMessage(
+            message,
+            { modal: true, stepName: 'deleteDatabase' },
+            DialogResponses.deleteResponse,
+        );
         const client = this.root.getCosmosClient();
         await client.database(this.id).delete();
     }
@@ -70,30 +89,32 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
         const containerName = await context.ui.showInputBox({
             placeHolder: `Enter an id for your ${this.childTypeLabel}`,
             validateInput: validateCollectionName,
-            stepName: `create${this.childTypeLabel}`
+            stepName: `create${this.childTypeLabel}`,
         });
 
         const containerDefinition: ContainerDefinition = {
-            id: containerName
+            id: containerName,
         };
 
         const partitionKey = await this.getNewPartitionKey(context);
         if (partitionKey) {
             containerDefinition.partitionKey = {
-                paths: [partitionKey]
+                paths: [partitionKey],
             };
         }
         const options: RequestOptions = {};
 
         if (!this.parent.isServerless) {
-            const isFixed: boolean = !(containerDefinition.partitionKey);
+            const isFixed: boolean = !containerDefinition.partitionKey;
             const minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
-            const throughput: number = Number(await context.ui.showInputBox({
-                value: minThroughput.toString(),
-                prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput} inclusive in increments of ${throughputStepSize}. Enter 0 if the account doesn't support throughput.`,
-                stepName: 'throughputCapacity',
-                validateInput: (input: string) => validateThroughput(isFixed, input)
-            }));
+            const throughput: number = Number(
+                await context.ui.showInputBox({
+                    value: minThroughput.toString(),
+                    prompt: `Initial throughput capacity, between ${minThroughput} and ${maxThroughput} inclusive in increments of ${throughputStepSize}. Enter 0 if the account doesn't support throughput.`,
+                    stepName: 'throughputCapacity',
+                    validateInput: (input: string) => validateThroughput(isFixed, input),
+                }),
+            );
 
             if (throughput !== 0) {
                 options.offerThroughput = throughput;
@@ -102,7 +123,9 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
 
         context.showCreatingTreeItem(containerName);
         const client = this.root.getCosmosClient();
-        const container: ContainerResponse = await client.database(this.id).containers.create(containerDefinition, options);
+        const container: ContainerResponse = await client
+            .database(this.id)
+            .containers.create(containerDefinition, options);
 
         return this.initChild(nonNullProp(container, 'resource'));
     }
@@ -112,7 +135,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
             prompt: 'Enter the partition key for the collection, or leave blank for fixed size.',
             stepName: 'partitionKeyForCollection',
             validateInput: this.validatePartitionKey,
-            placeHolder: 'e.g. /address/zipCode'
+            placeHolder: 'e.g. /address/zipCode',
         });
 
         if (partitionKey && partitionKey.length && partitionKey[0] !== '/') {
@@ -124,14 +147,14 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
 
     protected validatePartitionKey(key: string): string | undefined {
         if (/[#?\\]/.test(key)) {
-            return "Cannot contain these characters: ?,#,\\, etc.";
+            return 'Cannot contain these characters: ?,#,\\, etc.';
         }
         return undefined;
     }
 }
 
 function validateThroughput(isFixed: boolean, input: string): string | undefined | null {
-    if (input === "0") {
+    if (input === '0') {
         return undefined;
     }
 
@@ -142,17 +165,17 @@ function validateThroughput(isFixed: boolean, input: string): string | undefined
             return `Value must be between ${minThroughput} and ${maxThroughput} in increments of ${throughputStepSize}`;
         }
     } catch (err) {
-        return "Input must be a number";
+        return 'Input must be a number';
     }
     return undefined;
 }
 
 function validateCollectionName(name: string): string | undefined | null {
     if (!name) {
-        return "Collection name cannot be empty";
+        return 'Collection name cannot be empty';
     }
-    if (name.endsWith(" ")) {
-        return "Collection name cannot end with space";
+    if (name.endsWith(' ')) {
+        return 'Collection name cannot end with space';
     }
     if (/[/\\?#]/.test(name)) {
         return `Collection name cannot contain the characters '\\', '/', '#', '?'`;

@@ -21,10 +21,7 @@
         },
         {
             "label": "Watch",
-            "dependsOn": [
-                "watch:ext",
-                "watch:views"
-            ]
+            "dependsOn": ["watch:ext", "watch:views"]
         },
         {
             "label": "watch:ext",
@@ -32,10 +29,7 @@
             "script": "watch:ext",
             "group": "build",
             "isBackground": true,
-            "problemMatcher": [
-                "$ts-webpack-watch",
-                "$tslint-webpack-watch"
-            ],
+            "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -52,10 +46,7 @@
             "script": "watch:views",
             "group": "build",
             "isBackground": true,
-            "problemMatcher": [
-                "$ts-webpack-watch",
-                "$tslint-webpack-watch"
-            ],
+            "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -68,10 +59,7 @@
         },
         {
             "label": "Watch_Extension_and_Webviews",
-            "dependsOn": [
-                "watch.extension",
-                "devserver.webviews"
-            ]
+            "dependsOn": ["watch.extension", "devserver.webviews"]
         },
         {
             "label": "watch.extension",
@@ -79,11 +67,7 @@
             "script": "watch.extension",
             "group": "build",
             "isBackground": true,
-            "problemMatcher": [
-                "$tsc-watch",
-                "$ts-webpack-watch",
-                "$tslint-webpack-watch"
-            ],
+            "problemMatcher": ["$tsc-watch", "$ts-webpack-watch", "$tslint-webpack-watch"],
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -100,10 +84,7 @@
             "script": "serve.dev.webviews",
             "group": "build",
             "isBackground": true,
-            "problemMatcher": [
-                "$ts-webpack-watch",
-                "$tslint-webpack-watch"
-            ],
+            "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
             "presentation": {
                 "echo": true,
                 "reveal": "always",

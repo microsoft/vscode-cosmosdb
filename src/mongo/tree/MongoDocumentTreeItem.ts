@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
-import { EJSON } from "bson";
+import { EJSON } from 'bson';
 import { Collection, DeleteResult, Document as MongoDocument, ObjectId, UpdateResult } from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
@@ -22,7 +22,7 @@ export interface IMongoDocument {
 }
 
 export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTreeItem {
-    public static contextValue: string = "MongoDocument";
+    public static contextValue: string = 'MongoDocument';
     public readonly contextValue: string = MongoDocumentTreeItem.contextValue;
     public document: IMongoDocument;
     public readonly parent: MongoCollectionTreeItem;
@@ -81,7 +81,11 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete document '${this._label}'?`;
-        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteMongoDocument' }, DialogResponses.deleteResponse);
+        await context.ui.showWarningMessage(
+            message,
+            { modal: true, stepName: 'deleteMongoDocument' },
+            DialogResponses.deleteResponse,
+        );
         const deleteResult: DeleteResult = await this.parent.collection.deleteOne({ _id: this.document._id });
         if (deleteResult.deletedCount !== 1) {
             throw new Error(`Failed to delete document with _id '${this.document._id}'.`);

@@ -7,12 +7,8 @@
             "type": "extensionHost",
             "request": "launch",
             "runtimeExecutable": "${execPath}",
-            "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/out/**/*.js"
-            ],
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
                 "DEBUGTELEMETRY": "v",
@@ -28,9 +24,7 @@
                 "--extensionDevelopmentPath=${workspaceFolder}",
                 "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups"
             ],
-            "outFiles": [
-                "${workspaceFolder}/out/**/*.js"
-            ],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
                 "DEBUGTELEMETRY": "v",
@@ -42,12 +36,8 @@
             "type": "extensionHost",
             "request": "launch",
             "runtimeExecutable": "${execPath}",
-            "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
-            ],
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
             "preLaunchTask": "npm: webpack",
             "env": {
                 "DEBUGTELEMETRY": "v",
@@ -60,12 +50,8 @@
             "type": "extensionHost",
             "request": "launch",
             "runtimeExecutable": "${execPath}",
-            "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}/dist"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
-            ],
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}/dist"],
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
             "preLaunchTask": "Watch",
             "autoAttachChildProcesses": true,
             "debugWebWorkerHost": true,
@@ -95,9 +81,7 @@
                 "--extensionTestsPath=${workspaceFolder}/out/test/index",
                 "${workspaceFolder}/test/test.code-workspace"
             ],
-            "outFiles": [
-                "${workspaceFolder}/out/**/*.js"
-            ],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
                 "MOCHA_grep": "", // RegExp of tests to run (empty for all)
@@ -117,9 +101,7 @@
                 "--extensionTestsPath=${workspaceFolder}/dist/test/index",
                 "${workspaceFolder}/test/test.code-workspace"
             ],
-            "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
-            ],
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
             "preLaunchTask": "npm: webpack",
             "env": {
                 "MOCHA_grep": "", // RegExp of tests to run (empty for all)
@@ -137,9 +119,7 @@
             "protocol": "inspector",
             "port": 6005,
             "sourceMaps": true,
-            "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
-            ]
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"]
         },
         {
             "type": "node",
@@ -149,9 +129,7 @@
             "port": 5870,
             "sourceMaps": true,
             "restart": true,
-            "outFiles": [
-                "${workspaceFolder}/out/src"
-            ]
+            "outFiles": ["${workspaceFolder}/out/src"]
         },
         {
             "name": "Run+Watch Extension+Webviews+Host",
@@ -163,10 +141,7 @@
                 "--extensionDevelopmentPath=${workspaceFolder}",
                 "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups"
             ],
-            "outFiles": [
-                "${workspaceFolder}/out/**/*.js",
-                "${workspaceFolder}/dist/**/*.js",
-            ],
+            "outFiles": ["${workspaceFolder}/out/**/*.js", "${workspaceFolder}/dist/**/*.js"],
             "preLaunchTask": "Watch_Extension_and_Webviews",
             "env": {
                 "DEBUGTELEMETRY": "v",
@@ -180,9 +155,7 @@
                 "sourceMaps": true,
                 "webRoot": "${workspaceFolder}/src/webviews/"
             },
-            "skipFiles": [
-                "**/node_modules/**"
-            ],
+            "skipFiles": ["**/node_modules/**"],
             "smartStep": true,
             "sourceMapRenames": true,
             "sourceMaps": true,

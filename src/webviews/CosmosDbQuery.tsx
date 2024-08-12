@@ -26,7 +26,8 @@ export const CosmosDbQuery = () => {
                             name: 'sayHello',
                             params: ['Hello from CosmosDbQuery!'],
                         });
-                    }}>
+                    }}
+                >
                     Say Hello!
                 </Button>
             </div>
@@ -49,7 +50,8 @@ export const CosmosDbQuery = () => {
                                 }
                             });
                         setBMessage('Pinging...');
-                    }}>
+                    }}
+                >
                     Ping
                 </Button>
                 <Text block={true}>{bMessage}</Text>

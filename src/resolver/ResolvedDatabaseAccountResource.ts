@@ -3,11 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, IActionContext, ICreateChildImplContext, TreeItemIconPath } from "@microsoft/vscode-azext-utils";
-import { AppResource, ResolvedAppResourceBase } from "@microsoft/vscode-azext-utils/hostapi";
-import { DocDBAccountTreeItemBase } from "../docdb/tree/DocDBAccountTreeItemBase";
-import { MongoAccountTreeItem } from "../mongo/tree/MongoAccountTreeItem";
-import { PostgresServerTreeItem } from "../postgres/tree/PostgresServerTreeItem";
+import {
+    AzExtTreeItem,
+    IActionContext,
+    ICreateChildImplContext,
+    TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
+import { AppResource, ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
+import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
+import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
+import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 
 export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase {
     public id: string;
@@ -25,7 +30,10 @@ export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase 
     hasMoreChildrenImpl?(): boolean;
     compareChildrenImpl?(item1: AzExtTreeItem, item2: AzExtTreeItem): number;
 
-    pickTreeItemImpl?(expectedContextValues: (string | RegExp)[], context: IActionContext): AzExtTreeItem | undefined | Promise<AzExtTreeItem | undefined>;
+    pickTreeItemImpl?(
+        expectedContextValues: (string | RegExp)[],
+        context: IActionContext,
+    ): AzExtTreeItem | undefined | Promise<AzExtTreeItem | undefined>;
     deleteTreeItemImpl?(context: IActionContext): Promise<void>;
     refreshImpl?(context: IActionContext): Promise<void>;
     isAncestorOfImpl?(contextValue: string): boolean;
@@ -33,7 +41,10 @@ export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase 
     connectionString: string;
     maskedValuestoAdd: string[] = [];
 
-    public constructor(ti: DocDBAccountTreeItemBase | MongoAccountTreeItem | PostgresServerTreeItem, resource: AppResource) {
+    public constructor(
+        ti: DocDBAccountTreeItemBase | MongoAccountTreeItem | PostgresServerTreeItem,
+        resource: AppResource,
+    ) {
         this.id = ti.id ?? resource.id;
         // PostgresServerTreeItem require on a property on the server so wait to do this
         this.description = ti instanceof PostgresServerTreeItem ? undefined : ti.description;
@@ -51,7 +62,7 @@ export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase 
         this.refreshImpl = ti.refreshImpl;
         this.isAncestorOfImpl = ti.isAncestorOfImpl;
 
-        this.contextValuesToAdd.push(ti.contextValue)
+        this.contextValuesToAdd.push(ti.contextValue);
         this.maskedValuestoAdd.push(...ti.valuesToMask);
     }
 }

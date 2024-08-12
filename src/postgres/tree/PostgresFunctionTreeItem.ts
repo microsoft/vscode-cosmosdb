@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, TreeItemIconPath } from "@microsoft/vscode-azext-utils";
-import { ThemeIcon } from "vscode";
-import { IPostgresProceduresQueryRow } from "../getPostgresProcedureQueryRows";
-import { runPostgresQuery, wrapArgInQuotes } from "../runPostgresQuery";
-import { PostgresFunctionsTreeItem } from "./PostgresFunctionsTreeItem";
+import { AzExtTreeItem, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import { ThemeIcon } from 'vscode';
+import { IPostgresProceduresQueryRow } from '../getPostgresProcedureQueryRows';
+import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
+import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 
 export class PostgresFunctionTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'postgresFunction';
@@ -43,6 +43,9 @@ export class PostgresFunctionTreeItem extends AzExtTreeItem {
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        await runPostgresQuery(this.parent.clientConfig, `DROP FUNCTION ${this.schema}.${wrapArgInQuotes(this.name)}(${this.args});`);
+        await runPostgresQuery(
+            this.parent.clientConfig,
+            `DROP FUNCTION ${this.schema}.${wrapArgInQuotes(this.name)}(${this.args});`,
+        );
     }
 }

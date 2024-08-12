@@ -7,18 +7,21 @@ import { parseError } from '@microsoft/vscode-azext-utils';
 import * as assert from 'assert';
 import { improveError } from '../extension.bundle';
 
-suite("improveError", () => {
-    test("no change", () => {
-        const msg: string = "where is c:\\Program Files\\MongoDB\Server\\4.0\\bin\\mongo.exe?";
+suite('improveError', () => {
+    test('no change', () => {
+        const msg: string = 'where is c:\\Program Files\\MongoDBServer\\4.0\\bin\\mongo.exe?';
         const improved: unknown = improveError(msg);
 
         assert.equal(parseError(improved).message, msg);
     });
 
-    test("spawn ENOENT", () => {
-        const msg: string = "spawn c:\\Program Files\\MongoDB\Server\\4.0\\bin\\mongo.exe ENOENT";
+    test('spawn ENOENT', () => {
+        const msg: string = 'spawn c:\\Program Files\\MongoDBServer\\4.0\\bin\\mongo.exe ENOENT';
         const improved: unknown = improveError(msg);
 
-        assert.equal(parseError(improved).message, "Could not find c:\\Program Files\\MongoDB\Server\\4.0\\bin\\mongo.exe");
+        assert.equal(
+            parseError(improved).message,
+            'Could not find c:\\Program Files\\MongoDBServer\\4.0\\bin\\mongo.exe',
+        );
     });
 });

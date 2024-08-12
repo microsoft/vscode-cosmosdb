@@ -16,8 +16,10 @@ import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPostgresServerWizardContext> {
     public priority: number = 200;
 
-    public async execute(context: IPostgresServerWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
-
+    public async execute(
+        context: IPostgresServerWizardContext,
+        progress: Progress<{ message?: string; increment?: number }>,
+    ): Promise<void> {
         let user: string;
         // Username doesn't contain servername prefix for Postgres Flexible Servers only
         // As present on the portal for any Flexbile Server instance
@@ -28,14 +30,22 @@ export class PostgresServerSetCredentialsStep extends AzureWizardExecuteStep<IPo
         }
         const newServerName: string = nonNullProp(context, 'newServerName');
 
-        const setupMessage: string = localize('setupCredentialsMessage', 'Setting up Credentials for server "{0}"...', newServerName);
+        const setupMessage: string = localize(
+            'setupCredentialsMessage',
+            'Setting up Credentials for server "{0}"...',
+            newServerName,
+        );
         progress.report({ message: setupMessage });
         ext.outputChannel.appendLog(setupMessage);
         const password: string = nonNullProp(context, 'adminPassword');
         const server: PostgresAbstractServer = nonNullProp(context, 'server');
 
         await setPostgresCredentials(user, password, nonNullProp(server, 'id'));
-        const completedMessage: string = localize('addedCredentialsMessage', 'Successfully setup credentials for server "{0}".', newServerName);
+        const completedMessage: string = localize(
+            'addedCredentialsMessage',
+            'Successfully setup credentials for server "{0}".',
+            newServerName,
+        );
         void vscode.window.showInformationMessage(completedMessage);
         ext.outputChannel.appendLog(completedMessage);
     }

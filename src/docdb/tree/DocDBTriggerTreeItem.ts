@@ -5,7 +5,7 @@
 
 import { Resource, TriggerDefinition } from '@azure/cosmos';
 import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
-import * as vscode from "vscode";
+import * as vscode from 'vscode';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
@@ -17,14 +17,14 @@ import { IDocDBTreeRoot } from './IDocDBTreeRoot';
  * Represents a Cosmos DB DocumentDB (SQL) trigger
  */
 export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTreeItem {
-    public static contextValue: string = "cosmosDBTrigger";
+    public static contextValue: string = 'cosmosDBTrigger';
     public readonly contextValue: string = DocDBTriggerTreeItem.contextValue;
     public readonly cTime: number = Date.now();
     public readonly parent: DocDBTriggersTreeItem;
-    public trigger: (TriggerDefinition & Resource);
+    public trigger: TriggerDefinition & Resource;
     public mTime: number = Date.now();
 
-    constructor(parent: DocDBTriggersTreeItem, trigger: (TriggerDefinition & Resource)) {
+    constructor(parent: DocDBTriggersTreeItem, trigger: TriggerDefinition & Resource) {
         super(parent);
         this.trigger = trigger;
         ext.fileSystem.fireChangedEvent(this);
@@ -77,7 +77,7 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
             id: this.id,
             triggerType: triggerType,
             triggerOperation: triggerOperation,
-            body: content
+            body: content,
         });
         this.trigger = nonNullProp(replace, 'resource');
     }
@@ -87,8 +87,16 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
     }
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
-        const message: string = localize("deleteCosmosTrigger", `Are you sure you want to delete trigger '{0}'?`, this.label);
-        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteTrigger' }, DialogResponses.deleteResponse);
+        const message: string = localize(
+            'deleteCosmosTrigger',
+            `Are you sure you want to delete trigger '{0}'?`,
+            this.label,
+        );
+        await context.ui.showWarningMessage(
+            message,
+            { modal: true, stepName: 'deleteTrigger' },
+            DialogResponses.deleteResponse,
+        );
         const client = this.root.getCosmosClient();
         await this.parent.getContainerClient(client).scripts.trigger(this.id).delete();
     }

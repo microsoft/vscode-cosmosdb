@@ -22,9 +22,7 @@
         "listeners": true,
         "visitors": false
     },
-    "vscode-nmake-tools.workspaceBuildDirectories": [
-        "."
-    ],
+    "vscode-nmake-tools.workspaceBuildDirectories": ["."],
     "vscode-nmake-tools.installOsRepoRustHelperExtension": false,
     "sarif-viewer.connectToGithubCodeScanning": "off"
 }

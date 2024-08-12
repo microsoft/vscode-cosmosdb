@@ -8,7 +8,7 @@ import * as vscode from 'vscode';
 import { PostgresTableTreeItem } from './PostgresTableTreeItem';
 
 export class PostgresColumnTreeItem extends AzExtTreeItem {
-    public static contextValue: string = "postgresColumn";
+    public static contextValue: string = 'postgresColumn';
     public readonly contextValue: string = PostgresColumnTreeItem.contextValue;
     public readonly columnName: string;
     public readonly parent: PostgresTableTreeItem;
@@ -29,5 +29,4 @@ export class PostgresColumnTreeItem extends AzExtTreeItem {
     public get iconPath(): TreeItemIconPath {
         return new vscode.ThemeIcon('split-horizontal');
     }
-
 }

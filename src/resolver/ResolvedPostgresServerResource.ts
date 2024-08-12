@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, IActionContext } from "@microsoft/vscode-azext-utils";
-import { AppResource, ResolvedAppResourceBase } from "@microsoft/vscode-azext-utils/hostapi";
-import { ClientConfig } from "pg";
-import { PostgresServerType } from "../postgres/abstract/models";
-import { ParsedPostgresConnectionString } from "../postgres/postgresConnectionStrings";
-import { PostgresServerTreeItem } from "../postgres/tree/PostgresServerTreeItem";
-import { ResolvedDatabaseAccountResource } from "./ResolvedDatabaseAccountResource";
+import { AzExtTreeItem, IActionContext } from '@microsoft/vscode-azext-utils';
+import { AppResource, ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
+import { ClientConfig } from 'pg';
+import { PostgresServerType } from '../postgres/abstract/models';
+import { ParsedPostgresConnectionString } from '../postgres/postgresConnectionStrings';
+import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
+import { ResolvedDatabaseAccountResource } from './ResolvedDatabaseAccountResource';
 
 export class ResolvedPostgresServerResource extends ResolvedDatabaseAccountResource implements ResolvedAppResourceBase {
     public readonly serverType?: PostgresServerType;
@@ -22,11 +22,14 @@ export class ResolvedPostgresServerResource extends ResolvedDatabaseAccountResou
     public serverVersion: string | undefined;
 
     setCredentials: (username: string, password: string) => void;
-    supportsStoredProcedures: (clientConfig: ClientConfig) => Promise<boolean>
-    deletePostgresCredentials: () => Promise<void>
-    getFullConnectionString: () => Promise<ParsedPostgresConnectionString>
-    validateDatabaseName: (name: string, getChildrenTask: Promise<AzExtTreeItem[]>) => Promise<string | undefined | null>
-    isFirewallRuleSet: (context: IActionContext) => Promise<boolean>
+    supportsStoredProcedures: (clientConfig: ClientConfig) => Promise<boolean>;
+    deletePostgresCredentials: () => Promise<void>;
+    getFullConnectionString: () => Promise<ParsedPostgresConnectionString>;
+    validateDatabaseName: (
+        name: string,
+        getChildrenTask: Promise<AzExtTreeItem[]>,
+    ) => Promise<string | undefined | null>;
+    isFirewallRuleSet: (context: IActionContext) => Promise<boolean>;
 
     public constructor(ti: PostgresServerTreeItem, resource: AppResource) {
         super(ti, resource);

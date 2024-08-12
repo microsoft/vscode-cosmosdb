@@ -3,15 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as SingleModels from "@azure/arm-postgresql";
-import * as FlexibleModels from "@azure/arm-postgresql-flexible";
+import * as SingleModels from '@azure/arm-postgresql';
+import * as FlexibleModels from '@azure/arm-postgresql-flexible';
 
 export enum PostgresServerType {
     Flexible = 'Flexible',
-    Single = 'Single'
+    Single = 'Single',
 }
 
-export type PostgresAbstractServer = (SingleModels.Server | FlexibleModels.Server) & { serverType?: PostgresServerType; }
+export type PostgresAbstractServer = (SingleModels.Server | FlexibleModels.Server) & {
+    serverType?: PostgresServerType;
+};
 
 export type PostgresAbstractDatabase = SingleModels.Database | FlexibleModels.Database;
 

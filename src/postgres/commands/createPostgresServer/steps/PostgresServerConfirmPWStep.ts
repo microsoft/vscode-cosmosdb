@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardPromptStep } from "@microsoft/vscode-azext-utils";
-import { localize } from "../../../../utils/localize";
-import { IPostgresServerWizardContext } from "../IPostgresServerWizardContext";
+import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import { localize } from '../../../../utils/localize';
+import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerConfirmPWStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
     public async prompt(context: IPostgresServerWizardContext): Promise<void> {
@@ -13,7 +13,8 @@ export class PostgresServerConfirmPWStep extends AzureWizardPromptStep<IPostgres
         await context.ui.showInputBox({
             prompt,
             password: true,
-            validateInput: async (value: string | undefined): Promise<string | undefined> => await this.validatePassword(context, value)
+            validateInput: async (value: string | undefined): Promise<string | undefined> =>
+                await this.validatePassword(context, value),
         });
     }
 
@@ -21,7 +22,10 @@ export class PostgresServerConfirmPWStep extends AzureWizardPromptStep<IPostgres
         return !!context.adminPassword;
     }
 
-    private async validatePassword(context: IPostgresServerWizardContext, passphrase: string | undefined): Promise<string | undefined> {
+    private async validatePassword(
+        context: IPostgresServerWizardContext,
+        passphrase: string | undefined,
+    ): Promise<string | undefined> {
         if (passphrase !== context.adminPassword) {
             return localize('pwMatch', 'The passwords must match.');
         }

@@ -9,15 +9,16 @@ import { openUrl } from '../../utils/openUrl';
 import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountCapacityStep extends AzureWizardPromptStep<ICosmosDBWizardContext> {
-
     public async prompt(context: ICosmosDBWizardContext): Promise<void> {
-
-        const placeHolder: string = localize('selectDBServerMsg', 'Select a capacity model.')
+        const placeHolder: string = localize('selectDBServerMsg', 'Select a capacity model.');
         const picks: IAzureQuickPickItem<boolean | undefined>[] = [
             { label: localize('provisionedOption', 'Provisioned Throughput'), data: false },
             { label: localize('serverlessOption', 'Serverless'), data: true },
         ];
-        const learnMore: IAzureQuickPickItem = { label: localize('learnMore', '$(link-external) Learn more...'), data: undefined };
+        const learnMore: IAzureQuickPickItem = {
+            label: localize('learnMore', '$(link-external) Learn more...'),
+            data: undefined,
+        };
         picks.push(learnMore);
         let pick: IAzureQuickPickItem<boolean | undefined>;
 

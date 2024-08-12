@@ -54,7 +54,8 @@ export const DynamicThemeProvider = ({ children, useAdaptive }: PropsWithChildre
                           : themeKind === 'vscode-high-contrast-light'
                             ? teamsLightTheme // TODO: find a better theme for this
                             : undefined
-            }>
+            }
+        >
             {children}
         </FluentProvider>
     );

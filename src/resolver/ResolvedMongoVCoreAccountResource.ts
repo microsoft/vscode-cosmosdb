@@ -5,29 +5,33 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import {
+    AzExtTreeItem,
+    AzureWizard,
+    IActionContext,
+    ISubscriptionContext,
+    callWithTelemetryAndErrorHandling,
+    nonNullProp,
+    nonNullValue,
+} from '@microsoft/vscode-azext-utils';
+import { AppResource, ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
+import { getThemeAgnosticIconPath } from '../constants';
+import { IMongoTreeRoot } from '../mongo/tree/IMongoTreeRoot';
 
-import { AzExtTreeItem, AzureWizard, IActionContext, ISubscriptionContext, callWithTelemetryAndErrorHandling, nonNullProp, nonNullValue } from "@microsoft/vscode-azext-utils";
-import { AppResource, ResolvedAppResourceBase } from "@microsoft/vscode-azext-utils/hostapi";
-import { getThemeAgnosticIconPath } from "../constants";
-import { IMongoTreeRoot } from "../mongo/tree/IMongoTreeRoot";
+import { createHttpHeaders } from '@azure/core-rest-pipeline';
 
-import { createHttpHeaders } from "@azure/core-rest-pipeline";
-
-
-import { getResourceGroupFromId } from "@microsoft/vscode-azext-azureutils";
+import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import * as vscode from 'vscode';
-import { createCosmosDBClient } from "../utils/azureClients";
-import { localize } from "../utils/localize";
-import { CredentialsStore } from "../vCore/CredentialsStore";
-import { IVCoreClusterUser } from "../vCore/IVCoreClusterUser";
-import { VCoreDatabaseTreeItem } from "../vCore/tree/VCoreDatabaseTreeItem";
-import { addAuthenticationDataToConnectionString } from "../vCore/utils/connectionStringHelpers";
-import { VCoreClient, vCoreDatabaseInfo } from "../vCore/VCoreClient";
-import { IAuthenticateWizardContext } from "../vCore/wizards/authenticate/IAuthenticateWizardContext";
-import { ProvidePasswordStep } from "../vCore/wizards/authenticate/ProvidePasswordStep";
-import { SelectUserNameStep } from "../vCore/wizards/authenticate/SelectUserNameStep";
-
-
+import { createCosmosDBClient } from '../utils/azureClients';
+import { localize } from '../utils/localize';
+import { CredentialsStore } from '../vCore/CredentialsStore';
+import { IVCoreClusterUser } from '../vCore/IVCoreClusterUser';
+import { VCoreDatabaseTreeItem } from '../vCore/tree/VCoreDatabaseTreeItem';
+import { addAuthenticationDataToConnectionString } from '../vCore/utils/connectionStringHelpers';
+import { VCoreClient, vCoreDatabaseInfo } from '../vCore/VCoreClient';
+import { IAuthenticateWizardContext } from '../vCore/wizards/authenticate/IAuthenticateWizardContext';
+import { ProvidePasswordStep } from '../vCore/wizards/authenticate/ProvidePasswordStep';
+import { SelectUserNameStep } from '../vCore/wizards/authenticate/SelectUserNameStep';
 
 export interface IDatabaseInfo {
     name?: string;
@@ -36,30 +40,34 @@ export interface IDatabaseInfo {
 }
 
 export interface IMongoVCoreAccountDetails {
-    name: string,
-    version?: string,
-    sku?: string,
-    diskSize?: number,
-    provisioningState?: string,
-    clusterStatus?: string,
-    publicNetworkAccess?: string,
-    location?: string
+    name: string;
+    version?: string;
+    sku?: string;
+    diskSize?: number;
+    provisioningState?: string;
+    clusterStatus?: string;
+    publicNetworkAccess?: string;
+    location?: string;
 }
 
 export class ResolvedMongoVCoreAccountResource implements ResolvedAppResourceBase {
-
     public static kind = 'microsoft.documentdb/mongoclusters' as const;
 
-    public static contextValue: string = "cosmosDBMongoServer";
+    public static contextValue: string = 'cosmosDBMongoServer';
     //public readonly contextValue: string = MongoVCoreAccountTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Database";
+    public readonly childTypeLabel: string = 'Database';
     public readonly label: string;
     public readonly connectionString: string;
     // private readonly subscriptionContext: ISubscriptionContext;
 
     private _root: IMongoTreeRoot;
 
-    constructor(subContext: ISubscriptionContext, id: string, accountDetails: IMongoVCoreAccountDetails, resource: AppResource) {
+    constructor(
+        subContext: ISubscriptionContext,
+        id: string,
+        accountDetails: IMongoVCoreAccountDetails,
+        resource: AppResource,
+    ) {
         //super(undefined);
         //this.subscriptionContext = subContext;
         this.id = id;
@@ -81,7 +89,6 @@ export class ResolvedMongoVCoreAccountResource implements ResolvedAppResourceBas
         //this.connectionString = connectionString;
         //this._root = { isEmulator };
         //this.valuesToMask.push(connectionString);
-
     }
     _resource: AppResource;
     _subscription: ISubscriptionContext;
@@ -136,71 +143,74 @@ export class ResolvedMongoVCoreAccountResource implements ResolvedAppResourceBas
         return false;
     }
 
-
-
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
-        const result = await callWithTelemetryAndErrorHandling('vCore.loadMoreChildrenImpl', async (context: IActionContext): Promise<AzExtTreeItem[]> => {
-            context.errorHandling.suppressDisplay = true;
-            context.errorHandling.rethrow = true;
+        const result = await callWithTelemetryAndErrorHandling(
+            'vCore.loadMoreChildrenImpl',
+            async (context: IActionContext): Promise<AzExtTreeItem[]> => {
+                context.errorHandling.suppressDisplay = true;
+                context.errorHandling.rethrow = true;
 
-            void vscode.window.showInformationMessage('Loading Cluster Details for ' + this._resource.name + '...');
-            const resourceGroupName = getResourceGroupFromId(nonNullProp(this._resource, 'id'));
+                void vscode.window.showInformationMessage('Loading Cluster Details for ' + this._resource.name + '...');
+                const resourceGroupName = getResourceGroupFromId(nonNullProp(this._resource, 'id'));
 
-            const client = await createCosmosDBClient({ ...context, ...this._subscription });
-            const mongoCluster = await client.mongoClusters.get(resourceGroupName, this._resource.name);
+                const client = await createCosmosDBClient({ ...context, ...this._subscription });
+                const mongoCluster = await client.mongoClusters.get(resourceGroupName, this._resource.name);
 
-            const login = mongoCluster.administratorLogin;
-            const cString = mongoCluster.connectionString;
+                const login = mongoCluster.administratorLogin;
+                const cString = mongoCluster.connectionString;
 
-            // load users
-            const getUsersResponse = await client.sendRequest(
-                {
+                // load users
+                const getUsersResponse = await client.sendRequest({
                     method: 'GET',
                     url: `https://management.azure.com/subscriptions/${this._subscription.subscriptionId}/resourceGroups/${resourceGroupName}/providers/Microsoft.DocumentDB/mongoClusters/${this._resource.name}/users?api-version=2024-03-01-preview`,
                     headers: createHttpHeaders({ 'Content-Type': 'application/json' }),
                     timeout: 0,
                     withCredentials: false,
-                    requestId: ""
-                },
-            );
+                    requestId: '',
+                });
 
-            const clusterUsers: IVCoreClusterUser[] = nonNullProp(JSON.parse(nonNullValue(getUsersResponse.bodyAsText, '[]') as string), 'value') as IVCoreClusterUser[];
+                const clusterUsers: IVCoreClusterUser[] = nonNullProp(
+                    JSON.parse(nonNullValue(getUsersResponse.bodyAsText, '[]') as string),
+                    'value',
+                ) as IVCoreClusterUser[];
 
-            const clusterUsersNamesArray: string[] = clusterUsers
-                .filter((user) => user.name !== mongoCluster.administratorLogin)
-                .map(user => user.name);
+                const clusterUsersNamesArray: string[] = clusterUsers
+                    .filter((user) => user.name !== mongoCluster.administratorLogin)
+                    .map((user) => user.name);
 
+                const wizardContext: IAuthenticateWizardContext = {
+                    ...context,
+                    adminUserName: login as string,
+                    otherUserNames: clusterUsersNamesArray,
+                    resourceName: this._resource.name,
+                };
 
-            const wizardContext: IAuthenticateWizardContext = {
-                ...context,
-                adminUserName: login as string,
-                otherUserNames: clusterUsersNamesArray,
-                resourceName: this._resource.name
-            };
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                const wizard = new AzureWizard(wizardContext, {
+                    promptSteps: [new SelectUserNameStep(), new ProvidePasswordStep()],
+                    title: localize('authenticatevCoreCluster', 'Authenticate to your vCore Cluster'),
+                });
 
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            const wizard = new AzureWizard(wizardContext, {
-                promptSteps: [new SelectUserNameStep(), new ProvidePasswordStep()],
-                title: localize('authenticatevCoreCluster', 'Authenticate to your vCore Cluster')
-            });
+                await wizard.prompt();
 
-            await wizard.prompt();
+                void vscode.window.showInformationMessage('Connecting to vCore...');
 
-            void vscode.window.showInformationMessage('Connecting to vCore...');
-
-            const cStringPassword = addAuthenticationDataToConnectionString(cString as string, nonNullProp(wizardContext, 'selectedUserName'), nonNullProp(wizardContext, 'password'));
-            const clientId = CredentialsStore.setConnectionString(cStringPassword);
-
-            const vCoreClient: VCoreClient = await VCoreClient.getClient(clientId);
-
-            void vscode.window.showInformationMessage('Listing databases...');
-
-            return vCoreClient.listDatabases().then((databases: vCoreDatabaseInfo[]) => {
-                return databases.map(
-                    database => new VCoreDatabaseTreeItem(database.name as string, clientId)
+                const cStringPassword = addAuthenticationDataToConnectionString(
+                    cString as string,
+                    nonNullProp(wizardContext, 'selectedUserName'),
+                    nonNullProp(wizardContext, 'password'),
                 );
-            });
-        });
+                const clientId = CredentialsStore.setConnectionString(cStringPassword);
+
+                const vCoreClient: VCoreClient = await VCoreClient.getClient(clientId);
+
+                void vscode.window.showInformationMessage('Listing databases...');
+
+                return vCoreClient.listDatabases().then((databases: vCoreDatabaseInfo[]) => {
+                    return databases.map((database) => new VCoreDatabaseTreeItem(database.name as string, clientId));
+                });
+            },
+        );
 
         if (result === undefined) {
             return [];
@@ -209,17 +219,13 @@ export class ResolvedMongoVCoreAccountResource implements ResolvedAppResourceBas
         }
     }
 
-
     // try {
 
     //     const resourceGroupName = getResourceGroupFromId(nonNullProp(this._resource, 'id'));
 
     //     const client = await createCosmosDBClient({ context, ...this._subscription });
 
-
     //     const databaseAccount = await client.databaseAccounts.get(resourceGroupName, this.name);
-
-
 
     //     const result: AzExtTreeItem[] = [];
     //     result.push(new GenericTreeItem(undefined, {
@@ -240,7 +246,6 @@ export class ResolvedMongoVCoreAccountResource implements ResolvedAppResourceBas
     //     throw error;
     // }
     // return [];
-
 
     // public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDatabaseTreeItem> {
     //     const databaseName = await context.ui.showInputBox({
@@ -269,5 +274,3 @@ export class ResolvedMongoVCoreAccountResource implements ResolvedAppResourceBas
     //     await deleteCosmosDBAccount(context, this);
     // }
 }
-
-

@@ -82,7 +82,7 @@ export class InteractiveChildProcess {
             // Using shell=true would mean that we can pass paths that will be resolved by the shell, but since
             //   the command is run in the shell, handling errors (such as command not found) would be more indirect,
             //   coming through STDERR instead of the error event
-            shell: false
+            shell: false,
         };
 
         this.writeLineToOutputChannel(`Starting executable: "${this._options.command}" ${formattedArgs}`);
@@ -127,7 +127,7 @@ export class InteractiveChildProcess {
                     break;
                 } else {
                     if (Date.now() > started + processStartupTimeout) {
-                        reject("The process did not start in a timely manner");
+                        reject('The process did not start in a timely manner');
                         break;
                     }
                     await delay(50);
@@ -138,7 +138,7 @@ export class InteractiveChildProcess {
 
     private writeLineToOutputChannel(text: string, displayPrefix?: string): void {
         const filteredText = this.filterText(text);
-        const changedIntoEmptyString = (filteredText !== text && filteredText === '');
+        const changedIntoEmptyString = filteredText !== text && filteredText === '';
 
         if (!changedIntoEmptyString) {
             text = filteredText;
@@ -148,7 +148,7 @@ export class InteractiveChildProcess {
                     text = `${ms}ms: ${text}`;
                 }
 
-                text = (displayPrefix || "") + text;
+                text = (displayPrefix || '') + text;
                 this._options.outputChannel.appendLine(text);
             }
         }
@@ -162,7 +162,7 @@ export class InteractiveChildProcess {
 
     private filterText(text: string): string {
         if (this._options.outputFilterSearch) {
-            return text.replace(this._options.outputFilterSearch, this._options.outputFilterReplace || "");
+            return text.replace(this._options.outputFilterSearch, this._options.outputFilterReplace || '');
         }
 
         return text;
@@ -170,7 +170,7 @@ export class InteractiveChildProcess {
 }
 
 async function delay(milliseconds: number): Promise<void> {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
         setTimeout(resolve, milliseconds);
     });
 }

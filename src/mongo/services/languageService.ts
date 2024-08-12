@@ -6,8 +6,20 @@
 // NOTE: This file may not take a dependencey on vscode or anything that takes a dependency on it (such as @microsoft/vscode-azext-utils)
 
 import { Db } from 'mongodb';
-import { getLanguageService, LanguageService as JsonLanguageService, SchemaConfiguration } from 'vscode-json-languageservice';
-import { CompletionItem, IConnection, InitializeParams, InitializeResult, TextDocumentPositionParams, TextDocuments, TextDocumentSyncKind } from 'vscode-languageserver';
+import {
+    getLanguageService,
+    LanguageService as JsonLanguageService,
+    SchemaConfiguration,
+} from 'vscode-json-languageservice';
+import {
+    CompletionItem,
+    IConnection,
+    InitializeParams,
+    InitializeResult,
+    TextDocumentPositionParams,
+    TextDocuments,
+    TextDocumentSyncKind,
+} from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { IConnectionParams } from './IConnectionParams';
@@ -15,7 +27,6 @@ import { MongoScriptDocumentManager } from './mongoScript';
 import { SchemaService } from './schemaService';
 
 export class LanguageService {
-
     private textDocuments: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
     private readonly mongoDocumentsManager: MongoScriptDocumentManager;
     private db: Db;
@@ -25,7 +36,6 @@ export class LanguageService {
     private schemas: SchemaConfiguration[];
 
     constructor(connection: IConnection) {
-
         this.schemaService = new SchemaService();
 
         this.textDocuments.listen(connection);
@@ -35,24 +45,24 @@ export class LanguageService {
             return {
                 capabilities: {
                     textDocumentSync: TextDocumentSyncKind.Full, // Tell the client that the server works in FULL text document sync mode
-                    completionProvider: { triggerCharacters: ['.'] }
-                }
+                    completionProvider: { triggerCharacters: ['.'] },
+                },
             };
         });
 
-        connection.onCompletion(textDocumentPosition => {
+        connection.onCompletion((textDocumentPosition) => {
             return this.provideCompletionItems(textDocumentPosition);
         });
 
         connection.onRequest('connect', (connectionParams: IConnectionParams) => {
-            void connectToMongoClient(connectionParams.connectionString, connectionParams.extensionUserAgent)
-                .then(account => {
+            void connectToMongoClient(connectionParams.connectionString, connectionParams.extensionUserAgent).then(
+                (account) => {
                     this.db = account.db(connectionParams.databaseName);
-                    void this.schemaService.registerSchemas(this.db)
-                        .then(schemas => {
-                            this.configureSchemas(schemas);
-                        });
-                });
+                    void this.schemaService.registerSchemas(this.db).then((schemas) => {
+                        this.configureSchemas(schemas);
+                    });
+                },
+            );
         });
 
         connection.onRequest('disconnect', () => {
@@ -64,8 +74,8 @@ export class LanguageService {
         });
 
         this.jsonLanguageService = getLanguageService({
-            schemaRequestService: uri => this.schemaService.resolveSchema(uri),
-            contributions: []
+            schemaRequestService: (uri) => this.schemaService.resolveSchema(uri),
+            contributions: [],
         });
 
         this.mongoDocumentsManager = new MongoScriptDocumentManager(this.schemaService, this.jsonLanguageService);
@@ -84,7 +94,7 @@ export class LanguageService {
 
     public configureSchemas(schemas: SchemaConfiguration[]): void {
         this.jsonLanguageService.configure({
-            schemas
+            schemas,
         });
     }
 }

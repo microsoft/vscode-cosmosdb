@@ -13,12 +13,12 @@ export enum API {
     Table = 'Table',
     Core = 'Core',
     PostgresSingle = 'PostgresSingle',
-    PostgresFlexible = 'PostgresFlexible'
+    PostgresFlexible = 'PostgresFlexible',
 }
 
 export enum DBAccountKind {
     MongoDB = 'MongoDB',
-    GlobalDocumentDB = 'GlobalDocumentDB'
+    GlobalDocumentDB = 'GlobalDocumentDB',
 }
 
 export type CapabilityName = 'EnableGremlin' | 'EnableTable';
@@ -32,26 +32,26 @@ export function getExperienceFromApi(api: API): Experience {
 }
 
 export function getExperienceLabel(databaseAccount: DatabaseAccountGetResults): string {
-
     const experience: Experience | undefined = tryGetExperience(databaseAccount);
     if (experience) {
         return experience.shortName;
     }
     // Must be some new kind of resource that we aren't aware of.  Try to get a decent label
-    const defaultExperience: string = <API>(databaseAccount && databaseAccount.tags && databaseAccount.tags.defaultExperience);
+    const defaultExperience: string = <API>(
+        (databaseAccount && databaseAccount.tags && databaseAccount.tags.defaultExperience)
+    );
     const firstCapability = databaseAccount.capabilities && databaseAccount.capabilities[0];
     const firstCapabilityName = firstCapability?.name?.replace(/^Enable/, '');
     return defaultExperience || firstCapabilityName || nonNullProp(databaseAccount, 'kind');
-
 }
 
 export function tryGetExperience(resource: DatabaseAccountGetResults): Experience | undefined {
     // defaultExperience in the resource doesn't really mean anything, we can't depend on its value for determining resource type
     if (resource.kind === DBAccountKind.MongoDB) {
         return MongoExperience;
-    } else if (resource.capabilities?.find(cap => cap.name === 'EnableGremlin')) {
+    } else if (resource.capabilities?.find((cap) => cap.name === 'EnableGremlin')) {
         return GremlinExperience;
-    } else if (resource.capabilities?.find(cap => cap.name === 'EnableTable')) {
+    } else if (resource.capabilities?.find((cap) => cap.name === 'EnableTable')) {
         return TableExperience;
     } else if (resource.capabilities?.length === 0) {
         return CoreExperience;
@@ -80,17 +80,17 @@ export interface Experience {
 
 export function getExperienceQuickPicks(attached?: boolean): IAzureQuickPickItem<Experience>[] {
     if (attached) {
-        return experiencesArray.map(exp => getExperienceQuickPickForAttached(exp.api));
+        return experiencesArray.map((exp) => getExperienceQuickPickForAttached(exp.api));
     } else {
-        return experiencesArray.map(exp => getExperienceQuickPick(exp.api));
+        return experiencesArray.map((exp) => getExperienceQuickPick(exp.api));
     }
 }
 
 export function getCosmosExperienceQuickPicks(attached?: boolean): IAzureQuickPickItem<Experience>[] {
     if (attached) {
-        return cosmosExperiencesArray.map(exp => getExperienceQuickPickForAttached(exp.api));
+        return cosmosExperiencesArray.map((exp) => getExperienceQuickPickForAttached(exp.api));
     } else {
-        return cosmosExperiencesArray.map(exp => getExperienceQuickPick(exp.api));
+        return cosmosExperiencesArray.map((exp) => getExperienceQuickPick(exp.api));
     }
 }
 
@@ -106,13 +106,55 @@ export function getExperienceQuickPickForAttached(api: API): IAzureQuickPickItem
 
 // Mongo is distinguished by having kind="MongoDB". All others have kind="GlobalDocumentDB"
 // Table and Gremlin are distinguished from SQL by their capabilities
-export const CoreExperience: Experience = { api: API.Core, longName: "Core", description: "(SQL)", shortName: "SQL", kind: DBAccountKind.GlobalDocumentDB, tag: 'Core (SQL)' } as const;
-export const MongoExperience: Experience = { api: API.MongoDB, longName: "Azure Cosmos DB for MongoDB API", shortName: "MongoDB", kind: DBAccountKind.MongoDB, tag: "Azure Cosmos DB for MongoDB API" } as const;
-export const TableExperience: Experience = { api: API.Table, longName: "Azure Table", shortName: "Table", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableTable', tag: 'Azure Table' } as const;
-export const GremlinExperience: Experience = { api: API.Graph, longName: "Gremlin", description: "(graph)", shortName: "Gremlin", kind: DBAccountKind.GlobalDocumentDB, capability: 'EnableGremlin', tag: 'Gremlin (graph)' } as const;
-const PostgresSingleExperience: Experience = { api: API.PostgresSingle, longName: "PostgreSQL Single Server", shortName: "PostgreSQLSingle" };
-const PostgresFlexibleExperience: Experience = { api: API.PostgresFlexible, longName: "PostgreSQL Flexible Server", shortName: "PostgreSQLFlexible" };
+export const CoreExperience: Experience = {
+    api: API.Core,
+    longName: 'Core',
+    description: '(SQL)',
+    shortName: 'SQL',
+    kind: DBAccountKind.GlobalDocumentDB,
+    tag: 'Core (SQL)',
+} as const;
+export const MongoExperience: Experience = {
+    api: API.MongoDB,
+    longName: 'Azure Cosmos DB for MongoDB API',
+    shortName: 'MongoDB',
+    kind: DBAccountKind.MongoDB,
+    tag: 'Azure Cosmos DB for MongoDB API',
+} as const;
+export const TableExperience: Experience = {
+    api: API.Table,
+    longName: 'Azure Table',
+    shortName: 'Table',
+    kind: DBAccountKind.GlobalDocumentDB,
+    capability: 'EnableTable',
+    tag: 'Azure Table',
+} as const;
+export const GremlinExperience: Experience = {
+    api: API.Graph,
+    longName: 'Gremlin',
+    description: '(graph)',
+    shortName: 'Gremlin',
+    kind: DBAccountKind.GlobalDocumentDB,
+    capability: 'EnableGremlin',
+    tag: 'Gremlin (graph)',
+} as const;
+const PostgresSingleExperience: Experience = {
+    api: API.PostgresSingle,
+    longName: 'PostgreSQL Single Server',
+    shortName: 'PostgreSQLSingle',
+};
+const PostgresFlexibleExperience: Experience = {
+    api: API.PostgresFlexible,
+    longName: 'PostgreSQL Flexible Server',
+    shortName: 'PostgreSQLFlexible',
+};
 
 const cosmosExperiencesArray: Experience[] = [CoreExperience, MongoExperience, TableExperience, GremlinExperience];
-const experiencesArray: Experience[] = [...cosmosExperiencesArray, PostgresSingleExperience, PostgresFlexibleExperience];
-const experiencesMap = new Map<API, Experience>(experiencesArray.map((info: Experience): [API, Experience] => [info.api, info]));
+const experiencesArray: Experience[] = [
+    ...cosmosExperiencesArray,
+    PostgresSingleExperience,
+    PostgresFlexibleExperience,
+];
+const experiencesMap = new Map<API, Experience>(
+    experiencesArray.map((info: Experience): [API, Experience] => [info.api, info]),
+);

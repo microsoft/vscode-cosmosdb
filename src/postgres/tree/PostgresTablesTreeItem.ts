@@ -3,18 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { TreeItemIconPath } from "@microsoft/vscode-azext-utils";
-import { ClientConfig } from "pg";
+import { TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import { ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';
-import { getTables, IPostgresTable } from "../getTables";
-import { PostgresDatabaseTreeItem } from "./PostgresDatabaseTreeItem";
-import { PostgresResourcesTreeItemBase } from "./PostgresResourcesTreeItemBase";
-import { PostgresTableTreeItem } from "./PostgresTableTreeItem";
+import { getTables, IPostgresTable } from '../getTables';
+import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
+import { PostgresResourcesTreeItemBase } from './PostgresResourcesTreeItemBase';
+import { PostgresTableTreeItem } from './PostgresTableTreeItem';
 
 export class PostgresTablesTreeItem extends PostgresResourcesTreeItemBase {
-    public static contextValue: string = "postgresTables";
+    public static contextValue: string = 'postgresTables';
     public readonly contextValue: string = PostgresTablesTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Table";
+    public readonly childTypeLabel: string = 'Table';
     public readonly label: string = 'Tables';
     public suppressMaskLabel = true;
 
@@ -32,17 +32,14 @@ export class PostgresTablesTreeItem extends PostgresResourcesTreeItemBase {
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresTableTreeItem[]> {
-
         const tables: IPostgresTable[] = await getTables(this.clientConfig);
         this.resourcesAndSchemas = {};
         for (const table of tables) {
             this.addResourcesAndSchemasEntry(table.name.trim(), table.schemaName);
         }
-        return tables.map(table => new PostgresTableTreeItem(
-            this,
-            table,
-            this.isDuplicateResource(table.name.trim())
-        ));
+        return tables.map(
+            (table) => new PostgresTableTreeItem(this, table, this.isDuplicateResource(table.name.trim())),
+        );
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { localize } from "../../../utils/localize";
+import { localize } from '../../../utils/localize';
 
 export function validateIdentifier(identifier: string): string | undefined {
     // Identifier naming rules: https://aka.ms/AA8618j
@@ -13,7 +13,12 @@ export function validateIdentifier(identifier: string): string | undefined {
     const max = 63;
 
     if (identifier.length < min || identifier.length > max) {
-        return localize('postgresResourcesNameLengthCheck', 'The name must be between {0} and {1} characters.', min, max);
+        return localize(
+            'postgresResourcesNameLengthCheck',
+            'The name must be between {0} and {1} characters.',
+            min,
+            max,
+        );
     }
 
     if (!identifier[0].match(/[a-z_]/i)) {
@@ -21,7 +26,10 @@ export function validateIdentifier(identifier: string): string | undefined {
     }
 
     if (identifier.match(/[^a-z_\d$]/i)) {
-        return localize('canOnlyContainCertainCharacters', 'Name can only contain letters, underscores, digits (0-9), and dollar signs ($).');
+        return localize(
+            'canOnlyContainCertainCharacters',
+            'Name can only contain letters, underscores, digits (0-9), and dollar signs ($).',
+        );
     }
 
     if (reservedWords.has(identifier.toLowerCase())) {
@@ -109,5 +117,5 @@ const reservedWords: Set<string> = new Set([
     'when',
     'where',
     'window',
-    'with'
+    'with',
 ]);

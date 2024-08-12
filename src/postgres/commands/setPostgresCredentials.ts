@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ext } from "../../extensionVariables";
-import { getSecretStorageKey } from "../../utils/getSecretStorageKey";
-import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
+import { ext } from '../../extensionVariables';
+import { getSecretStorageKey } from '../../utils/getSecretStorageKey';
+import { PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
 
 interface IPersistedServer {
     id: string;
@@ -19,11 +19,13 @@ export async function setPostgresCredentials(username: string, password: string,
     let servers: IPersistedServer[] = storedValue ? JSON.parse(storedValue) : [];
 
     // Remove this server from the cache if it's there
-    servers = servers.filter((server: IPersistedServer) => { return server.id !== serverId; });
+    servers = servers.filter((server: IPersistedServer) => {
+        return server.id !== serverId;
+    });
 
     const newServer: IPersistedServer = {
         id: serverId,
-        username
+        username,
     };
 
     servers.push(newServer);

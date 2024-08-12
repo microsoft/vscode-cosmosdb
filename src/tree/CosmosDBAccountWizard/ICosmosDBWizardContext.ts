@@ -8,7 +8,6 @@ import { ExecuteActivityContext } from '@microsoft/vscode-azext-utils';
 import { IAzureDBWizardContext } from '../IAzureDBWizardContext';
 
 export interface ICosmosDBWizardContext extends IAzureDBWizardContext, ExecuteActivityContext {
-
     /**
      * The newly created Cosmos DB account
      * This will be defined after `CosmosDBAccountStep.execute` occurs.

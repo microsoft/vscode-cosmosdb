@@ -1,6 +1,6 @@
 // These variables VSCode injects into HTML tag
 vscodeDarkModernTheme {
-    --vscode-font-family: "Segoe WPC", "Segoe UI", sans-serif;
+    --vscode-font-family: 'Segoe WPC', 'Segoe UI', sans-serif;
     --vscode-font-weight: normal;
     --vscode-font-size: 13px;
     --vscode-editor-font-family: Consolas, 'Courier New', monospace;
@@ -287,7 +287,7 @@ vscodeDarkModernTheme {
     --vscode-editorUnicodeHighlight-border: #cca700;
     --vscode-editor-placeholder\.foreground: rgba(255, 255, 255, 0.34);
     --vscode-diffEditor-move\.border: rgba(139, 139, 139, 0.61);
-    --vscode-diffEditor-moveActive\.border: #ffa500 ;
+    --vscode-diffEditor-moveActive\.border: #ffa500;
     --vscode-diffEditor-unchangedRegionShadow: #000000;
     --vscode-editorOverviewRuler-bracketMatchForeground: #a0a0a0;
     --vscode-editor-foldBackground: rgba(38, 79, 120, 0.3);
@@ -713,7 +713,6 @@ vscodeDarkModernTheme {
     --vscode-testExplorer-errorDecorationBackground: #5a1d1d;
 }
 
-
 // Styles that VSCode applies to webview
 html {
     scrollbar-color: var(--vscode-scrollbarSlider-background) var(--vscode-editor-background);
@@ -730,12 +729,14 @@ body {
     padding: 0 20px;
 }
 
-img, video {
+img,
+video {
     max-width: 100%;
     max-height: 100%;
 }
 
-a, a code {
+a,
+a code {
     color: var(--vscode-textLink-foreground);
 }
 

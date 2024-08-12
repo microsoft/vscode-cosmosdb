@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext } from "@microsoft/vscode-azext-utils";
-import * as vscode from "vscode";
-import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
-import { pickMongo } from "./pickMongo";
+import { IActionContext } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
+import { MongoDatabaseTreeItem } from '../tree/MongoDatabaseTreeItem';
+import { pickMongo } from './pickMongo';
 
 export async function createMongoCollection(context: IActionContext, node?: MongoDatabaseTreeItem): Promise<void> {
     if (!node) {

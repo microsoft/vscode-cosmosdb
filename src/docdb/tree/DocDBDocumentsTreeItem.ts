@@ -15,9 +15,9 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
  * This class provides logic for DocumentDB collections
  */
 export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
-    public static contextValue: string = "cosmosDBDocumentsGroup";
+    public static contextValue: string = 'cosmosDBDocumentsGroup';
     public readonly contextValue: string = DocDBDocumentsTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Documents";
+    public readonly childTypeLabel: string = 'Documents';
     public readonly parent: DocDBCollectionTreeItem;
     public suppressMaskLabel = true;
 
@@ -31,11 +31,11 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public get id(): string {
-        return "$Documents";
+        return '$Documents';
     }
 
     public get label(): string {
-        return "Documents";
+        return 'Documents';
     }
 
     public get link(): string {
@@ -51,11 +51,14 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBDocumentTreeItem> {
-        let docID = await context.ui.showInputBox({ prompt: "Enter a document ID or leave blank for a generated ID", stepName: 'createDocument' });
+        let docID = await context.ui.showInputBox({
+            prompt: 'Enter a document ID or leave blank for a generated ID',
+            stepName: 'createDocument',
+        });
 
         docID = docID.trim();
         let body: ItemDefinition = { id: docID };
-        body = (await this.promptForPartitionKey(context, body));
+        body = await this.promptForPartitionKey(context, body);
         context.showCreatingTreeItem(docID);
         const item: ItemDefinition = await this.createDocument(body);
 
@@ -63,7 +66,9 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public async createDocument(body: ItemDefinition): Promise<ItemDefinition> {
-        const item: ItemResponse<ItemDefinition> = await this.getContainerClient(this.root.getCosmosClient()).items.create(body);
+        const item: ItemResponse<ItemDefinition> = await this.getContainerClient(
+            this.root.getCosmosClient(),
+        ).items.create(body);
         return nonNullProp(item, 'resource');
     }
 
@@ -95,7 +100,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
         if (partitionKey) {
             const partitionKeyValue: string = await context.ui.showInputBox({
                 prompt: `Enter a value for the partition key ("${partitionKey}")`,
-                stepName: 'valueforParititionKey'
+                stepName: 'valueforParititionKey',
             });
             // Unlike delete/replace, createDocument does not accept a partition key value via an options parameter.
             // We need to present the partitionKey value as part of the document contents

@@ -16,7 +16,7 @@ import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 import { GraphTreeItem } from './GraphTreeItem';
 
 export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
-    public static contextValue: string = "cosmosDBGraphAccount";
+    public static contextValue: string = 'cosmosDBGraphAccount';
     public contextValue: string = GraphAccountTreeItem.contextValue;
 
     constructor(
@@ -27,7 +27,7 @@ export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
         private _gremlinEndpoint: IGremlinEndpoint | undefined,
         credentials: CosmosDBCredential[],
         isEmulator: boolean | undefined,
-        readonly databaseAccount?: DatabaseAccountGetResults
+        readonly databaseAccount?: DatabaseAccountGetResults,
     ) {
         super(parent, id, label, documentEndpoint, credentials, isEmulator, databaseAccount);
         this.valuesToMask.push(documentEndpoint);

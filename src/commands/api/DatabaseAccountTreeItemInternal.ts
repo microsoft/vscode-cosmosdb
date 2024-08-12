@@ -20,7 +20,10 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
     protected _parsedCS: ParsedConnectionString;
     private _accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem | undefined;
 
-    constructor(parsedCS: ParsedConnectionString, accountNode?: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem) {
+    constructor(
+        parsedCS: ParsedConnectionString,
+        accountNode?: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem,
+    ) {
         this._parsedCS = parsedCS;
         this._accountNode = accountNode;
     }
@@ -37,32 +40,35 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
         return this._parsedCS.port;
     }
 
-    public get azureData(): { accountName: string, accountId: string } | undefined {
-        if (this._accountNode instanceof MongoAccountTreeItem || this._accountNode instanceof DocDBAccountTreeItemBase) {
+    public get azureData(): { accountName: string; accountId: string } | undefined {
+        if (
+            this._accountNode instanceof MongoAccountTreeItem ||
+            this._accountNode instanceof DocDBAccountTreeItemBase
+        ) {
             if (this._accountNode?.databaseAccount) {
                 return {
                     accountName: nonNullProp(this._accountNode.databaseAccount, 'name'),
-                    accountId: this._accountNode.fullId
+                    accountId: this._accountNode.fullId,
                 };
             }
         } else if (this._accountNode instanceof PostgresServerTreeItem) {
             if (this._accountNode.azureName) {
                 return {
                     accountName: this._accountNode.azureName,
-                    accountId: this._accountNode.fullId
+                    accountId: this._accountNode.fullId,
                 };
             }
         }
         return undefined;
     }
 
-    public get docDBData(): { masterKey: string; documentEndpoint: string; } | undefined {
+    public get docDBData(): { masterKey: string; documentEndpoint: string } | undefined {
         if (this._accountNode instanceof DocDBAccountTreeItemBase) {
             const keyCred = getCosmosKeyCredential(this._accountNode.root.credentials);
             if (keyCred) {
                 return {
                     documentEndpoint: this._accountNode.root.endpoint,
-                    masterKey: keyCred.key
+                    masterKey: keyCred.key,
                 };
             } else {
                 return undefined;
@@ -77,7 +83,7 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
             const connectionString = this._parsedCS;
             return {
                 username: connectionString.username,
-                password: connectionString.password
+                password: connectionString.password,
             };
         } else {
             return undefined;
@@ -92,10 +98,11 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
         });
     }
 
-    protected async getAccountNode(context: IActionContext): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
+    protected async getAccountNode(
+        context: IActionContext,
+    ): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
         // If this._accountNode is undefined, attach a new node based on connection string
         if (!this._accountNode) {
-
             let apiType: API;
             if (this._parsedCS instanceof ParsedMongoConnectionString) {
                 apiType = API.MongoDB;
@@ -104,7 +111,11 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
             } else {
                 apiType = API.Core;
             }
-            this._accountNode = await ext.attachedAccountsNode.attachConnectionString(context, this.connectionString, apiType);
+            this._accountNode = await ext.attachedAccountsNode.attachConnectionString(
+                context,
+                this.connectionString,
+                apiType,
+            );
         }
 
         return this._accountNode;

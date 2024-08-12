@@ -4,8 +4,8 @@
  * singletone on a client with a getter from a connection pool..
  */
 
-import { ListDatabasesResult, MongoClient } from "mongodb";
-import { CredentialsStore } from "./CredentialsStore";
+import { ListDatabasesResult, MongoClient } from 'mongodb';
+import { CredentialsStore } from './CredentialsStore';
 
 export interface vCoreDatabaseInfo {
     name?: string;
@@ -16,9 +16,8 @@ export interface vCoreCollectionInfo {
 }
 
 export class VCoreClient {
-
     // cache of active/existing clients
-    static _clients : Map<string, VCoreClient> = new Map();
+    static _clients: Map<string, VCoreClient> = new Map();
 
     private _mongoClient: MongoClient;
 
@@ -29,8 +28,8 @@ export class VCoreClient {
         return;
     }
 
-    private async initClient(clientId: string) : Promise<void> {
-        if (! CredentialsStore.hasConnectionString(clientId)) {
+    private async initClient(clientId: string): Promise<void> {
+        if (!CredentialsStore.hasConnectionString(clientId)) {
             throw new Error(`No credentials found for client with id ${clientId}`);
         }
         const cStringPassword = CredentialsStore.getConnectionString(clientId);
@@ -38,7 +37,7 @@ export class VCoreClient {
         this._mongoClient = await MongoClient.connect(cStringPassword as string);
     }
 
-    public static async getClient(clientId: string) : Promise<VCoreClient> {
+    public static async getClient(clientId: string): Promise<VCoreClient> {
         let client: VCoreClient;
 
         if (VCoreClient._clients.has(clientId)) {
@@ -55,16 +54,18 @@ export class VCoreClient {
         return client;
     }
 
-    async listDatabases() : Promise<vCoreDatabaseInfo[]> {
+    async listDatabases(): Promise<vCoreDatabaseInfo[]> {
         const rawDatabases: ListDatabasesResult = await this._mongoClient.db().admin().listDatabases();
         const databases: vCoreDatabaseInfo[] = rawDatabases.databases;
 
         return databases;
     }
 
-    async listCollections(databaseName: string) : Promise<vCoreCollectionInfo[]> {
+    async listCollections(databaseName: string): Promise<vCoreCollectionInfo[]> {
         const rawCollections = await this._mongoClient.db(databaseName).listCollections().toArray();
-        const collections: vCoreCollectionInfo[] = rawCollections.map((collection) => { return { name: collection.name }; });
+        const collections: vCoreCollectionInfo[] = rawCollections.map((collection) => {
+            return { name: collection.name };
+        });
 
         return collections;
     }

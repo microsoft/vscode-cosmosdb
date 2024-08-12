@@ -3,7 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext, IParsedError, openReadOnlyContent, parseError, ReadOnlyContent } from '@microsoft/vscode-azext-utils';
+import {
+    IActionContext,
+    IParsedError,
+    openReadOnlyContent,
+    parseError,
+    ReadOnlyContent,
+} from '@microsoft/vscode-azext-utils';
 import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
@@ -26,13 +32,13 @@ import { MongoCollectionTreeItem } from './tree/MongoCollectionTreeItem';
 import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
 import { IMongoDocument, MongoDocumentTreeItem } from './tree/MongoDocumentTreeItem';
 
-const notInScrapbookMessage = "You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.";
+const notInScrapbookMessage = 'You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.';
 
 export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vscode.Diagnostic[] {
     const commands = getAllCommandsFromTextDocument(document);
     const errors: vscode.Diagnostic[] = [];
     for (const command of commands) {
-        for (const error of (command.errors || [])) {
+        for (const error of command.errors || []) {
             const diagnostic = new vscode.Diagnostic(error.range, error.message);
             errors.push(diagnostic);
         }
@@ -42,12 +48,15 @@ export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vsc
 }
 
 export async function executeAllCommandsFromActiveEditor(context: IActionContext): Promise<void> {
-    ext.outputChannel.appendLog("Executing all commands in scrapbook...");
+    ext.outputChannel.appendLog('Executing all commands in scrapbook...');
     const commands = getAllCommandsFromActiveEditor();
     await executeCommands(context, commands);
 }
 
-export async function executeCommandFromActiveEditor(context: IActionContext, position?: vscode.Position): Promise<void> {
+export async function executeCommandFromActiveEditor(
+    context: IActionContext,
+    position?: vscode.Position,
+): Promise<void> {
     const commands = getAllCommandsFromActiveEditor();
     const command = findCommandAtPosition(commands, position || vscode.window.activeTextEditor?.selection.start);
     return await executeCommand(context, command);
@@ -70,7 +79,9 @@ export function getAllCommandsFromTextDocument(document: vscode.TextDocument): M
 async function executeCommands(context: IActionContext, commands: MongoCommand[]): Promise<void> {
     const label: string = 'Scrapbook-execute-all-results';
     const fullId: string = `${ext.connectedMongoDB?.fullId}/${label}`;
-    const readOnlyContent: ReadOnlyContent = await openReadOnlyContent({ label, fullId }, '', '.txt', { viewColumn: vscode.ViewColumn.Beside });
+    const readOnlyContent: ReadOnlyContent = await openReadOnlyContent({ label, fullId }, '', '.txt', {
+        viewColumn: vscode.ViewColumn.Beside,
+    });
 
     for (const command of commands) {
         try {
@@ -87,7 +98,11 @@ async function executeCommands(context: IActionContext, commands: MongoCommand[]
     }
 }
 
-async function executeCommand(context: IActionContext, command: MongoCommand, readOnlyContent?: ReadOnlyContent): Promise<void> {
+async function executeCommand(
+    context: IActionContext,
+    command: MongoCommand,
+    readOnlyContent?: ReadOnlyContent,
+): Promise<void> {
     if (command) {
         try {
             context.telemetry.properties.command = command.name;
@@ -98,12 +113,19 @@ async function executeCommand(context: IActionContext, command: MongoCommand, re
 
         const database = ext.connectedMongoDB;
         if (!database) {
-            throw new Error('Please select a MongoDB database to run against by selecting it in the explorer and selecting the "Connect" context menu item');
+            throw new Error(
+                'Please select a MongoDB database to run against by selecting it in the explorer and selecting the "Connect" context menu item',
+            );
         }
         if (command.errors && command.errors.length > 0) {
             //Currently, we take the first error pushed. Tests correlate that the parser visits errors in left-to-right, top-to-bottom.
             const err = command.errors[0];
-            throw new Error(localize('unableToParseSyntax', `Unable to parse syntax. Error near line ${err.range.start.line + 1}, column ${err.range.start.character + 1}: "${err.message}"`));
+            throw new Error(
+                localize(
+                    'unableToParseSyntax',
+                    `Unable to parse syntax. Error near line ${err.range.start.line + 1}, column ${err.range.start.character + 1}: "${err.message}"`,
+                ),
+            );
         }
 
         // we don't handle chained commands so we can only handle "find" if isn't chained
@@ -118,7 +140,7 @@ async function executeCommand(context: IActionContext, command: MongoCommand, re
         } else {
             const result = await database.executeCommand(command, context);
             if (command.name === 'findOne') {
-                if (result === "null") {
+                if (result === 'null') {
                     throw new Error(`Could not find any documents`);
                 }
 
@@ -127,7 +149,10 @@ async function executeCommand(context: IActionContext, command: MongoCommand, re
                 const collectionName: string = nonNullProp(command, 'collection');
 
                 const collectionId: string = `${database.fullId}/${collectionName}`;
-                const colNode: MongoCollectionTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(collectionId, context);
+                const colNode: MongoCollectionTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(
+                    collectionId,
+                    context,
+                );
                 if (!colNode) {
                     throw new Error(localize('failedToFind', 'Failed to find collection "{0}".', collectionName));
                 }
@@ -139,7 +164,9 @@ async function executeCommand(context: IActionContext, command: MongoCommand, re
                 } else {
                     const label: string = 'Scrapbook-results';
                     const fullId: string = `${database.fullId}/${label}`;
-                    await openReadOnlyContent({ label, fullId }, result, '.json', { viewColumn: vscode.ViewColumn.Beside });
+                    await openReadOnlyContent({ label, fullId }, result, '.json', {
+                        viewColumn: vscode.ViewColumn.Beside,
+                    });
                 }
 
                 await refreshTreeAfterCommand(database, command, context);
@@ -150,11 +177,22 @@ async function executeCommand(context: IActionContext, command: MongoCommand, re
     }
 }
 
-async function refreshTreeAfterCommand(database: MongoDatabaseTreeItem, command: MongoCommand, context: IActionContext): Promise<void> {
+async function refreshTreeAfterCommand(
+    database: MongoDatabaseTreeItem,
+    command: MongoCommand,
+    context: IActionContext,
+): Promise<void> {
     if (command.name === 'drop') {
         await database.refresh(context);
-    } else if (command.collection && command.name && /^(insert|update|delete|replace|remove|write|bulkWrite)/i.test(command.name)) {
-        const collectionNode = await ext.rgApi.appResourceTree.findTreeItem(database.fullId + "/" + command.collection, context);
+    } else if (
+        command.collection &&
+        command.name &&
+        /^(insert|update|delete|replace|remove|write|bulkWrite)/i.test(command.name)
+    ) {
+        const collectionNode = await ext.rgApi.appResourceTree.findTreeItem(
+            database.fullId + '/' + command.collection,
+            context,
+        );
         if (collectionNode) {
             await collectionNode.refresh(context);
         }
@@ -194,7 +232,7 @@ export function getAllCommandsFromText(content: string): MongoCommand[] {
                 collection: undefined,
                 name: undefined,
                 range: err.range,
-                text: ""
+                text: '',
             };
             emptyCommand.errors = [err];
             commands.push(emptyCommand);
@@ -230,12 +268,17 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         const funcCallCount: number = filterType(ctx.children, mongoParser.FunctionCallContext).length;
         const stop = nonNullProp(ctx, 'stop');
         this.commands.push({
-            range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, stop.line - 1, stop.charPositionInLine),
+            range: new vscode.Range(
+                ctx.start.line - 1,
+                ctx.start.charPositionInLine,
+                stop.line - 1,
+                stop.charPositionInLine,
+            ),
             text: ctx.text,
             name: '',
             arguments: [],
             argumentObjects: [],
-            chained: funcCallCount > 1 ? true : false
+            chained: funcCallCount > 1 ? true : false,
         });
         return super.visitCommand(ctx);
     }
@@ -247,7 +290,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 
     public visitFunctionCall(ctx: mongoParser.FunctionCallContext): MongoCommand[] {
         if (ctx.parent instanceof mongoParser.CommandContext) {
-            this.commands[this.commands.length - 1].name = (ctx._FUNCTION_NAME && ctx._FUNCTION_NAME.text) || "";
+            this.commands[this.commands.length - 1].name = (ctx._FUNCTION_NAME && ctx._FUNCTION_NAME.text) || '';
         }
         return super.visitFunctionCall(ctx);
     }
@@ -268,7 +311,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
                     try {
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
                         ejsonParsed = EJSON.parse(escapeHandled);
-                    } catch (error) { //EJSON parse failed due to a wrong flag, etc.
+                    } catch (error) {
+                        //EJSON parse failed due to a wrong flag, etc.
                         const parsedError: IParsedError = parseError(error);
                         this.addErrorToCommand(parsedError.message, ctx);
                     }
@@ -287,7 +331,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
     }
 
     private contextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
-        if (!ctx || ctx.childCount === 0) { //Base case and malformed statements
+        if (!ctx || ctx.childCount === 0) {
+            //Base case and malformed statements
             return {};
         }
         // In a well formed expression, Argument and propertyValue tokens should have exactly one child, from their definitions in mongo.g4
@@ -308,10 +353,17 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         }
     }
 
-    private literalContextToObject(child: mongoParser.LiteralContext, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
+    private literalContextToObject(
+        child: mongoParser.LiteralContext,
+        ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
+    ): Object {
         const text = child.text;
         const tokenType = child.start.type;
-        const nonStringLiterals = [mongoParser.mongoParser.NullLiteral, mongoParser.mongoParser.BooleanLiteral, mongoParser.mongoParser.NumericLiteral];
+        const nonStringLiterals = [
+            mongoParser.mongoParser.NullLiteral,
+            mongoParser.mongoParser.BooleanLiteral,
+            mongoParser.mongoParser.NumericLiteral,
+        ];
         if (tokenType === mongoParser.mongoParser.StringLiteral) {
             return stripQuotes(text);
         } else if (tokenType === mongoParser.mongoParser.RegexLiteral) {
@@ -327,11 +379,15 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
 
     private objectLiteralContextToObject(child: mongoParser.ObjectLiteralContext): Object {
         const propertyNameAndValue = findType(child.children, mongoParser.PropertyNameAndValueListContext);
-        if (!propertyNameAndValue) { // Argument is {}
+        if (!propertyNameAndValue) {
+            // Argument is {}
             return {};
         } else {
             const parsedObject: Object = {};
-            const propertyAssignments = filterType(propertyNameAndValue.children, mongoParser.PropertyAssignmentContext);
+            const propertyAssignments = filterType(
+                propertyNameAndValue.children,
+                mongoParser.PropertyAssignmentContext,
+            );
             for (const propertyAssignment of propertyAssignments) {
                 const propertyAssignmentChildren = nonNullProp(propertyAssignment, 'children');
                 const propertyName = <mongoParser.PropertyNameContext>propertyAssignmentChildren[0];
@@ -352,16 +408,26 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         }
     }
 
-    private functionCallContextToObject(child: mongoParser.FunctionCallContext, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
+    private functionCallContextToObject(
+        child: mongoParser.FunctionCallContext,
+        ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
+    ): Object {
         const functionTokens = child.children;
         const constructorCall: TerminalNode = nonNullValue(findType(functionTokens, TerminalNode), 'constructorCall');
-        const argumentsToken: mongoParser.ArgumentsContext = nonNullValue(findType(functionTokens, mongoParser.ArgumentsContext), 'argumentsToken');
-        if (!(argumentsToken._CLOSED_PARENTHESIS && argumentsToken._OPEN_PARENTHESIS)) { //argumentsToken does not have '(' or ')'
+        const argumentsToken: mongoParser.ArgumentsContext = nonNullValue(
+            findType(functionTokens, mongoParser.ArgumentsContext),
+            'argumentsToken',
+        );
+        if (!(argumentsToken._CLOSED_PARENTHESIS && argumentsToken._OPEN_PARENTHESIS)) {
+            //argumentsToken does not have '(' or ')'
             this.addErrorToCommand(`Expecting parentheses or quotes at '${constructorCall.text}'`, ctx);
             return {};
         }
 
-        const argumentContextArray: mongoParser.ArgumentContext[] = filterType(argumentsToken.children, mongoParser.ArgumentContext);
+        const argumentContextArray: mongoParser.ArgumentContext[] = filterType(
+            argumentsToken.children,
+            mongoParser.ArgumentContext,
+        );
         if (argumentContextArray.length > 1) {
             this.addErrorToCommand(`Too many arguments. Expecting 0 or 1 argument(s) to ${constructorCall}`, ctx);
             return {};
@@ -376,12 +442,18 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
             case 'Date':
                 return this.dateToObject(ctx, tokenText);
             default:
-                this.addErrorToCommand(`Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`, ctx);
+                this.addErrorToCommand(
+                    `Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`,
+                    ctx,
+                );
                 return {};
         }
     }
 
-    private dateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): { $date: string } | {} {
+    private dateToObject(
+        ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
+        tokenText?: string,
+    ): { $date: string } | {} {
         const date: Date | {} = this.tryToConstructDate(ctx, tokenText);
         if (date instanceof Date) {
             return { $date: date.toString() };
@@ -390,7 +462,10 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         }
     }
 
-    private isodateToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): { $date: string } | {} {
+    private isodateToObject(
+        ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
+        tokenText?: string,
+    ): { $date: string } | {} {
         const date: Date | {} = this.tryToConstructDate(ctx, tokenText, true);
 
         if (date instanceof Date) {
@@ -400,8 +475,13 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         }
     }
 
-    private tryToConstructDate(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string, isIsodate: boolean = false): Date | {} {
-        if (!tokenText) { // usage : ObjectID()
+    private tryToConstructDate(
+        ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
+        tokenText?: string,
+        isIsodate: boolean = false,
+    ): Date | {} {
+        if (!tokenText) {
+            // usage : ObjectID()
             return new Date();
         } else {
             try {
@@ -423,10 +503,14 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         }
     }
 
-    private objectIdToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, tokenText?: string): Object {
+    private objectIdToObject(
+        ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
+        tokenText?: string,
+    ): Object {
         let hexID: string;
         let constructedObject: ObjectId;
-        if (!tokenText) { // usage : ObjectID()
+        if (!tokenText) {
+            // usage : ObjectID()
             constructedObject = new ObjectId();
         } else {
             hexID = stripQuotes(<string>tokenText);
@@ -441,9 +525,12 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         return { $oid: constructedObject.toString() };
     }
 
-    private regexLiteralContextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext, text: string): Object {
+    private regexLiteralContextToObject(
+        ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
+        text: string,
+    ): Object {
         const separator = text.lastIndexOf('/');
-        const flags = separator !== text.length - 1 ? text.substring(separator + 1) : "";
+        const flags = separator !== text.length - 1 ? text.substring(separator + 1) : '';
         const pattern = text.substring(1, separator);
         try {
             // validate the pattern and flags.
@@ -453,18 +540,30 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
             tokenObject = tokenObject;
             // we are passing back a $regex annotation, hence we ensure parity wit the $regex syntax
             return { $regex: this.regexToStringNotation(pattern), $options: flags };
-        } catch (error) { //User may not have finished typing
+        } catch (error) {
+            //User may not have finished typing
             const parsedError: IParsedError = parseError(error);
             this.addErrorToCommand(parsedError.message, ctx);
             return {};
         }
     }
 
-    private addErrorToCommand(errorMessage: string, ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): void {
+    private addErrorToCommand(
+        errorMessage: string,
+        ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
+    ): void {
         const command = this.commands[this.commands.length - 1];
         command.errors = command.errors || [];
         const stop = nonNullProp(ctx, 'stop');
-        const currentErrorDesc: ErrorDescription = { message: errorMessage, range: new vscode.Range(ctx.start.line - 1, ctx.start.charPositionInLine, stop.line - 1, stop.charPositionInLine) };
+        const currentErrorDesc: ErrorDescription = {
+            message: errorMessage,
+            range: new vscode.Range(
+                ctx.start.line - 1,
+                ctx.start.charPositionInLine,
+                stop.line - 1,
+                stop.charPositionInLine,
+            ),
+        };
         command.errors.push(currentErrorDesc);
     }
 
@@ -485,5 +584,4 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         */
         return argAsString.replace(removeDuplicatedBackslash, `\\\\$1`);
     }
-
 }

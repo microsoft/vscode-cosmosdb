@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, IActionContext } from "@microsoft/vscode-azext-utils";
-import { CodeLens, CodeLensProvider, Event, EventEmitter, Position, ProviderResult, Range } from "vscode";
-import { localize } from "../../utils/localize";
+import { callWithTelemetryAndErrorHandling, IActionContext } from '@microsoft/vscode-azext-utils';
+import { CodeLens, CodeLensProvider, Event, EventEmitter, Position, ProviderResult, Range } from 'vscode';
+import { localize } from '../../utils/localize';
 
 export class PostgresCodeLensProvider implements CodeLensProvider {
     private _onDidChangeEmitter: EventEmitter<void> = new EventEmitter<void>();
@@ -23,7 +23,7 @@ export class PostgresCodeLensProvider implements CodeLensProvider {
     }
 
     public provideCodeLenses(): ProviderResult<CodeLens[]> {
-        return callWithTelemetryAndErrorHandling("postgreSQL.provideCodeLenses", (context: IActionContext) => {
+        return callWithTelemetryAndErrorHandling('postgreSQL.provideCodeLenses', (context: IActionContext) => {
             // Suppress except for errors - this can fire on every keystroke
             context.telemetry.suppressIfSuccessful = true;
 
@@ -45,18 +45,18 @@ export class PostgresCodeLensProvider implements CodeLensProvider {
             lenses.push(<CodeLens>{
                 command: {
                     title,
-                    command: isInitialized && 'postgreSQL.connectDatabase'
+                    command: isInitialized && 'postgreSQL.connectDatabase',
                 },
-                range: new Range(new Position(0, 0), new Position(0, 0))
+                range: new Range(new Position(0, 0), new Position(0, 0)),
             });
 
             if (isConnected) {
                 lenses.push(<CodeLens>{
                     command: {
                         title: 'Execute Query',
-                        command: 'postgreSQL.executeQuery'
+                        command: 'postgreSQL.executeQuery',
                     },
-                    range: new Range(new Position(0, 0), new Position(0, 0))
+                    range: new Range(new Position(0, 0), new Position(0, 0)),
                 });
             }
 

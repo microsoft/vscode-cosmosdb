@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext, ITreeItemPickerContext } from "@microsoft/vscode-azext-utils";
-import { DocDBStoredProcedureTreeItem } from "../tree/DocDBStoredProcedureTreeItem";
-import { pickDocDBAccount } from "./pickDocDBAccount";
+import { IActionContext, ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
+import { DocDBStoredProcedureTreeItem } from '../tree/DocDBStoredProcedureTreeItem';
+import { pickDocDBAccount } from './pickDocDBAccount';
 
 export async function deleteDocDBStoredProcedure(context: IActionContext, node?: DocDBStoredProcedureTreeItem) {
     const suppressCreateContext: ITreeItemPickerContext = context;

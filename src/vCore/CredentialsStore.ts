@@ -1,5 +1,4 @@
-        'mongodb-connection-string-url'
-
+'mongodb-connection-string-url';
 
 interface VCoreCredentials {
     clientId: string;
@@ -7,15 +6,14 @@ interface VCoreCredentials {
 }
 
 export class CredentialsStore {
-
     // clientId -> VCoreCredentials
-    private static _store : Map<string, VCoreCredentials> = new Map();
+    private static _store: Map<string, VCoreCredentials> = new Map();
 
-    public static getConnectionString(clientId: string) : string {
+    public static getConnectionString(clientId: string): string {
         return CredentialsStore._store.get(clientId)?.connectionStringWithCredentials as string;
     }
 
-    public static hasConnectionString(clientId: string) : boolean {
+    public static hasConnectionString(clientId: string): boolean {
         return CredentialsStore._store.has(clientId) as boolean;
     }
 
@@ -23,12 +21,12 @@ export class CredentialsStore {
      *
      * @param connectinString connection string with credentials
      */
-    public static setConnectionString(connectinString: string) : string {
+    public static setConnectionString(connectinString: string): string {
         const clientId = Math.random().toString(36).substring(7); // maybe a hash?
 
         const credentials = {
             clientId: clientId,
-            connectionStringWithCredentials: connectinString
+            connectionStringWithCredentials: connectinString,
         };
 
         CredentialsStore._store.set(clientId, credentials);

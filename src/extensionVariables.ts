@@ -3,18 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtLogOutputChannel } from "@microsoft/vscode-azext-utils";
-import { AzureHostExtensionApi } from "@microsoft/vscode-azext-utils/hostapi";
-import { ExtensionContext, SecretStorage, TreeView } from "vscode";
-import { DatabasesFileSystem } from "./DatabasesFileSystem";
-import { NoSqlCodeLensProvider } from "./docdb/NoSqlCodeLensProvider";
-import { MongoDBLanguageClient } from "./mongo/languageClient";
-import { MongoCodeLensProvider } from "./mongo/services/MongoCodeLensProvider";
-import { MongoDatabaseTreeItem } from "./mongo/tree/MongoDatabaseTreeItem";
-import { PostgresCodeLensProvider } from "./postgres/services/PostgresCodeLensProvider";
-import { PostgresDatabaseTreeItem } from "./postgres/tree/PostgresDatabaseTreeItem";
-import { AttachedAccountsTreeItem } from "./tree/AttachedAccountsTreeItem";
-import { AzureAccountTreeItemWithAttached } from "./tree/AzureAccountTreeItemWithAttached";
+import { AzExtTreeDataProvider, AzExtTreeItem, IAzExtLogOutputChannel } from '@microsoft/vscode-azext-utils';
+import { AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostapi';
+import { ExtensionContext, SecretStorage, TreeView } from 'vscode';
+import { DatabasesFileSystem } from './DatabasesFileSystem';
+import { NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
+import { MongoDBLanguageClient } from './mongo/languageClient';
+import { MongoCodeLensProvider } from './mongo/services/MongoCodeLensProvider';
+import { MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
+import { PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
+import { PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
+import { AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
+import { AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -47,7 +47,7 @@ export namespace ext {
         export const batchSize = 'azureDatabases.batchSize';
 
         export namespace vsCode {
-            export const proxyStrictSSL = "http.proxyStrictSSL";
+            export const proxyStrictSSL = 'http.proxyStrictSSL';
         }
     }
 }

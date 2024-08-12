@@ -23,7 +23,7 @@ export interface IThemedIconPath {
 export function getThemedIconPath(iconName: string): IThemedIconPath {
     const a = {
         light: path.join(getResourcesPath(), 'icons', 'light', iconName),
-        dark: path.join(getResourcesPath(), 'icons', 'dark', iconName)
+        dark: path.join(getResourcesPath(), 'icons', 'dark', iconName),
     };
     assert(fs.existsSync(a.light));
     return a;
@@ -32,7 +32,7 @@ export function getThemedIconPath(iconName: string): IThemedIconPath {
 export function getThemeAgnosticIconPath(iconName: string): IThemedIconPath {
     const a = {
         light: path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName),
-        dark: path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName)
+        dark: path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName),
     };
     assert(fs.existsSync(a.light));
     return a;
@@ -44,8 +44,7 @@ export function getResourcesPath(): string {
 
 export const doubleClickDebounceDelay = 500; //milliseconds
 
-export const defaultStoredProcedure =
-    `function sample(prefix) {
+export const defaultStoredProcedure = `function sample(prefix) {
     var collection = getContext().getCollection();
 
     // Query documents and take 1st item.
@@ -70,13 +69,14 @@ export const defaultStoredProcedure =
         });
 
     if (!isAccepted) throw new Error('The query was not accepted by the server.');
-};` ;
+};`;
 
 export const defaultTrigger = `function trigger() {
 
 }`;
 
-export const emulatorPassword = 'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
+export const emulatorPassword =
+    'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
 
 // https://docs.mongodb.com/manual/mongo/#working-with-the-mongo-shell
 export const testDb: string = 'test';
@@ -91,14 +91,14 @@ export const SERVERLESS_CAPABILITY_NAME = 'EnableServerless';
 
 export const databaseAccountType = 'Microsoft.DocumentDB/databaseAccounts';
 
-export const mongoDefaultExperienceTag = "Azure Cosmos DB for MongoDB API";
+export const mongoDefaultExperienceTag = 'Azure Cosmos DB for MongoDB API';
 
 export const cosmosMongoFilter = {
     type: databaseAccountType,
     kind: MongoExperience.kind,
     tags: {
-        defaultExperience: mongoDefaultExperienceTag
-    }
+        defaultExperience: mongoDefaultExperienceTag,
+    },
 };
 
 export const gremlinDefaultExperienceTag = 'Gremlin (graph)';
@@ -107,8 +107,8 @@ export const cosmosGremlinFilter = {
     type: databaseAccountType,
     kind: GremlinExperience.kind,
     tags: {
-        defaultExperience: gremlinDefaultExperienceTag
-    }
+        defaultExperience: gremlinDefaultExperienceTag,
+    },
 };
 
 export const tableDefaultExperienceTag = 'Azure Table';
@@ -117,8 +117,8 @@ export const cosmosTableFilter = {
     type: databaseAccountType,
     kind: TableExperience.kind,
     tags: {
-        defaultExperience: tableDefaultExperienceTag
-    }
+        defaultExperience: tableDefaultExperienceTag,
+    },
 };
 
 export const sqlDefaultExperienceTag = 'Core (SQL)';
@@ -127,14 +127,14 @@ export const sqlFilter = {
     type: databaseAccountType,
     kind: CoreExperience.kind,
     tags: {
-        defaultExperience: sqlDefaultExperienceTag
-    }
+        defaultExperience: sqlDefaultExperienceTag,
+    },
 };
 
 export const postgresFlexibleFilter = {
-    type: 'Microsoft.DBforPostgreSQL/flexibleServers'
+    type: 'Microsoft.DBforPostgreSQL/flexibleServers',
 };
 
 export const postgresSingleFilter = {
-    type: 'Microsoft.DBForPostgreSQL/servers'
+    type: 'Microsoft.DBForPostgreSQL/servers',
 };

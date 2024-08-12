@@ -11,7 +11,7 @@ import { WithWebviewContext } from './WebviewContext';
 export const Views = {
     cosmosDbQuery: CosmosDbQuery,
     fluentUiDemo: FluentUiDemo,
-    vCoreCollectionView: CollectionView
+    vCoreCollectionView: CollectionView,
 } as const;
 
 export type ViewKey = keyof typeof Views;

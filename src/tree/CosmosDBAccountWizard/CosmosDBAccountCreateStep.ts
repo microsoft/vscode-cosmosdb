@@ -18,14 +18,22 @@ import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBWizardContext> {
     public priority: number = 130;
 
-    public async execute(context: ICosmosDBWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
+    public async execute(
+        context: ICosmosDBWizardContext,
+        progress: Progress<{ message?: string; increment?: number }>,
+    ): Promise<void> {
         const locationName: string = (await LocationListStep.getLocation(context)).name;
         const defaultExperience = nonNullProp(context, 'defaultExperience');
         const rgName: string = nonNullProp(nonNullProp(context, 'resourceGroup'), 'name');
         const accountName = nonNullProp(context, 'newServerName');
 
         const client = await createCosmosDBClient(context);
-        const creatingMessage: string = localize('creatingCosmosDBAccount', 'Creating Cosmos DB account "{0}" with the "{1}" API... It should be ready in several minutes.', accountName, defaultExperience.shortName);
+        const creatingMessage: string = localize(
+            'creatingCosmosDBAccount',
+            'Creating Cosmos DB account "{0}" with the "{1}" API... It should be ready in several minutes.',
+            accountName,
+            defaultExperience.shortName,
+        );
         ext.outputChannel.appendLog(creatingMessage);
         progress.report({ message: creatingMessage });
 
@@ -53,7 +61,11 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             options.capabilities?.push({ name: SERVERLESS_CAPABILITY_NAME });
         }
 
-        context.databaseAccount = await client.databaseAccounts.beginCreateOrUpdateAndWait(rgName, accountName, options);
+        context.databaseAccount = await client.databaseAccounts.beginCreateOrUpdateAndWait(
+            rgName,
+            accountName,
+            options,
+        );
         context.activityResult = context.databaseAccount as AppResource;
 
         ext.outputChannel.appendLog(`Successfully created Cosmos DB account "${accountName}".`);

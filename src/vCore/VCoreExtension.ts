@@ -10,12 +10,13 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { MongoVCoreResolver } from '../resolver/MongoVCoreResolver';
 
-
 export class VCoreExtension implements vscode.Disposable {
-
     constructor() {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.MongoClusters as string, new MongoVCoreResolver());
+        ext.rgApi.registerApplicationResourceResolver(
+            AzExtResourceType.MongoClusters as string,
+            new MongoVCoreResolver(),
+        );
     }
 
     async activate(): Promise<void> {
@@ -46,8 +47,8 @@ export class VCoreExtension implements vscode.Disposable {
             {
                 enableScripts: true,
                 enableCommandUris: true,
-                retainContextWhenHidden: true
-            } // Webview options. More on these later.
+                retainContextWhenHidden: true,
+            }, // Webview options. More on these later.
         );
 
         panel.webview.html = getWebviewContentReact();
@@ -57,7 +58,6 @@ export class VCoreExtension implements vscode.Disposable {
         return;
     }
 }
-
 
 // function getWebviewContent(): string {
 //     return `<!DOCTYPE html>
@@ -86,14 +86,12 @@ export class VCoreExtension implements vscode.Disposable {
 
 //     </script>
 
-
 //   </html>`;
 // }
 
-
 const getWebviewContentReact = () => {
-    const jsFile = "views.js";
-    const localServerUrl = "http://localhost:18080"; //webpack
+    const jsFile = 'views.js';
+    const localServerUrl = 'http://localhost:18080'; //webpack
 
     const scriptUrl = `${localServerUrl}/${jsFile}`;
 
@@ -123,4 +121,4 @@ const getWebviewContentReact = () => {
 
 	</body>
 	</html>`;
-}
+};

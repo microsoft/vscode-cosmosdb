@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, IActionContext } from "@microsoft/vscode-azext-utils";
-import * as vscode from "vscode";
-import { getAllCommandsFromTextDocument } from "../MongoScrapbook";
+import { callWithTelemetryAndErrorHandling, IActionContext } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
+import { getAllCommandsFromTextDocument } from '../MongoScrapbook';
 
 export class MongoCodeLensProvider implements vscode.CodeLensProvider {
     private _onDidChangeEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
@@ -22,8 +22,11 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
         this._onDidChangeEmitter.fire();
     }
 
-    public provideCodeLenses(document: vscode.TextDocument, _token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeLens[]> {
-        return callWithTelemetryAndErrorHandling("mongo.provideCodeLenses", (context: IActionContext) => {
+    public provideCodeLenses(
+        document: vscode.TextDocument,
+        _token: vscode.CancellationToken,
+    ): vscode.ProviderResult<vscode.CodeLens[]> {
+        return callWithTelemetryAndErrorHandling('mongo.provideCodeLenses', (context: IActionContext) => {
             // Suppress except for errors - this can fire on every keystroke
             context.telemetry.suppressIfSuccessful = true;
 
@@ -35,24 +38,24 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
             // Allow displaying and changing connected database
             lenses.push(<vscode.CodeLens>{
                 command: {
-                    title: !isInitialized ?
-                        'Initializing...' :
-                        isConnected ?
-                            `Connected to ${database}` :
-                            `Connect to a database`,
-                    command: isInitialized && 'cosmosDB.connectMongoDB'
+                    title: !isInitialized
+                        ? 'Initializing...'
+                        : isConnected
+                          ? `Connected to ${database}`
+                          : `Connect to a database`,
+                    command: isInitialized && 'cosmosDB.connectMongoDB',
                 },
-                range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0))
+                range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
             });
 
             if (isConnected) {
                 // Run all
                 lenses.push(<vscode.CodeLens>{
                     command: {
-                        title: "Execute All",
-                        command: 'cosmosDB.executeAllMongoCommands'
+                        title: 'Execute All',
+                        command: 'cosmosDB.executeAllMongoCommands',
                     },
-                    range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0))
+                    range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
                 });
 
                 const commands = getAllCommandsFromTextDocument(document);
@@ -60,11 +63,11 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
                     // run individual
                     lenses.push(<vscode.CodeLens>{
                         command: {
-                            title: "Execute",
+                            title: 'Execute',
                             command: 'cosmosDB.executeMongoCommand',
-                            arguments: [cmd.range.start]
+                            arguments: [cmd.range.start],
                         },
-                        range: cmd.range
+                        range: cmd.range,
                     });
                 }
             }

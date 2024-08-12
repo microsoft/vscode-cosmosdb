@@ -16,26 +16,26 @@ async function main(): Promise<void> {
             cli,
             [
                 ...args,
-                '--install-extension', 'ms-vscode.azure-account',
-                '--install-extension', 'ms-azuretools.vscode-azureresourcegroups',
+                '--install-extension',
+                'ms-vscode.azure-account',
+                '--install-extension',
+                'ms-azuretools.vscode-azureresourcegroups',
             ],
             {
                 encoding: 'utf-8',
-                stdio: 'inherit'
-            });
+                stdio: 'inherit',
+            },
+        );
 
         const repoRoot: string = path.resolve(__dirname, '..', '..');
         await runTests({
             vscodeExecutablePath,
             extensionDevelopmentPath: repoRoot,
-            launchArgs: [
-                path.resolve(repoRoot, 'test', 'test.code-workspace'),
-                '--disable-workspace-trust'
-            ],
+            launchArgs: [path.resolve(repoRoot, 'test', 'test.code-workspace'), '--disable-workspace-trust'],
             extensionTestsPath: path.resolve(repoRoot, 'dist', 'test', 'index'),
             extensionTestsEnv: {
-                DEBUGTELEMETRY: 'v'
-            }
+                DEBUGTELEMETRY: 'v',
+            },
         });
     } catch (err) {
         console.error('Failed to run tests', err);

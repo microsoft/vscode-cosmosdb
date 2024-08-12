@@ -7,8 +7,6 @@ import { IResourceGroupWizardContext } from '@microsoft/vscode-azext-azureutils'
 import { Experience } from '../AzureDBExperiences';
 
 export interface IAzureDBWizardContext extends IResourceGroupWizardContext {
-
     newServerName?: string;
     defaultExperience?: Experience;
-
 }

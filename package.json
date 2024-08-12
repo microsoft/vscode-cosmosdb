@@ -1214,6 +1214,7 @@
         "pg-connection-string": "^2.6.2",
         "pg-structure": "^7.15.0",
         "semver": "^7.5.2",
+        "slickgrid-react": "^5.5.0",
         "underscore": "^1.12.1",
         "uuid": "^10.0.0",
         "vscode-json-languageservice": "^3.0.8",

@@ -72,8 +72,7 @@ export const ToolbarPaging = (): JSX.Element => {
                 <Dropdown
                     style={{ minWidth: '100px', maxWidth: '100px' }}
                     defaultValue="50"
-                    defaultSelectedOptions={['50']}
-                >
+                    defaultSelectedOptions={['50']}>
                     <Option key="10">10</Option>
                     <Option key="10">50</Option>
                     <Option key="100">100</Option>
@@ -114,8 +113,7 @@ function ViewSwitch({ onViewChanged }): JSX.Element {
             style={{ minWidth: '120px', maxWidth: '120px' }}
             defaultValue="Tree View"
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
-            onOptionSelect={(_, data) => onViewChanged(data.optionValue)}
-        >
+            onOptionSelect={(_, data) => onViewChanged(data.optionValue)}>
             <Option key="table">Table View</Option>
             <Option key="tree">Tree View</Option>
             <Option key="json">JSON View</Option>
@@ -149,9 +147,11 @@ export const CollectionView = (): JSX.Element => {
                 Your Query Results
             </Divider>
 
-            {currentView === 'Table View' ? <DataViewPanelTable /> : ''}
-            {currentView === 'Tree View' ? <DataViewPanelTree /> : ''}
-            {currentView === 'JSON View' ? <DataViewPanelJSON /> : ''}
+            <div className="resultsDisplayArea">
+                {currentView === 'Table View' ? <DataViewPanelTable /> : ''}
+                {currentView === 'Tree View' ? <DataViewPanelTree /> : ''}
+                {currentView === 'JSON View' ? <DataViewPanelJSON /> : ''}
+            </div>
         </div>
     );
 };

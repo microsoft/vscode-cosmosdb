@@ -5,6 +5,7 @@
         "outDir": "out",
         "lib": ["ES2021", "dom", "dom.iterable", "webworker"],
         "sourceMap": true,
+        "allowSyntheticDefaultImports": true, // added by tnaum to fix SlickGrid integration, eager to discuss other approaches
         "noImplicitThis": true,
         "noImplicitReturns": true,
         "noUnusedLocals": true,

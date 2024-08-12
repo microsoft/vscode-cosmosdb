@@ -1,9 +1,7 @@
 import * as React from 'react';
 import { SlickgridReact, type GridOption } from 'slickgrid-react';
-import { CollectionViewContext } from './collectionViewContext';
 
 export const DataViewPanelTable = (): React.JSX.Element => {
-    const { currentView } = React.useContext(CollectionViewContext);
 
     type ColumnDef = { id: string; name: string; field: string; minWidth: number };
     type Data = { id: number; _id: string; firstName: string; lastName: string };

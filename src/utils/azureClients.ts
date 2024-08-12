@@ -19,6 +19,11 @@ export async function createPostgreSQLClient(context: AzExtClientContext): Promi
     return createAzureClient(context, (await import('@azure/arm-postgresql')).PostgreSQLManagementClient);
 }
 
-export async function createPostgreSQLFlexibleClient(context: AzExtClientContext): Promise<PostgreSQLManagementFlexibleServerClient> {
-    return createAzureClient(context, (await import('@azure/arm-postgresql-flexible')).PostgreSQLManagementFlexibleServerClient);
+export async function createPostgreSQLFlexibleClient(
+    context: AzExtClientContext,
+): Promise<PostgreSQLManagementFlexibleServerClient> {
+    return createAzureClient(
+        context,
+        (await import('@azure/arm-postgresql-flexible')).PostgreSQLManagementFlexibleServerClient,
+    );
 }

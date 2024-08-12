@@ -19,12 +19,10 @@ import { CompletionItemsVisitor } from './completionItemProvider';
 import { SchemaService } from './schemaService';
 
 export class MongoScriptDocumentManager {
-
     constructor(
         private schemaService: SchemaService,
-        private jsonLanguageService: JsonLanguageService
-    ) {
-    }
+        private jsonLanguageService: JsonLanguageService,
+    ) {}
 
     public getDocument(textDocument: TextDocument, db: Db): MongoScriptDocument {
         return new MongoScriptDocument(textDocument, db, this.schemaService, this.jsonLanguageService);
@@ -32,14 +30,13 @@ export class MongoScriptDocumentManager {
 }
 
 export class MongoScriptDocument {
-
     private readonly _lexer: mongoLexer;
 
     constructor(
         private textDocument: TextDocument,
         private db: Db,
         private schemaService: SchemaService,
-        private jsonLanguageService: JsonLanguageService
+        private jsonLanguageService: JsonLanguageService,
     ) {
         this._lexer = new mongoLexer(new InputStream(textDocument.getText()));
         this._lexer.removeErrorListeners();
@@ -52,14 +49,19 @@ export class MongoScriptDocument {
         const offset = this.textDocument.offsetAt(position);
         const lastNode = new NodeFinder(offset).visit(parser.commands());
         if (lastNode) {
-            return new CompletionItemsVisitor(this.textDocument, this.db, offset, this.schemaService, this.jsonLanguageService).visit(lastNode);
+            return new CompletionItemsVisitor(
+                this.textDocument,
+                this.db,
+                offset,
+                this.schemaService,
+                this.jsonLanguageService,
+            ).visit(lastNode);
         }
         return Promise.resolve([]);
     }
 }
 
 class NodeFinder extends MongoVisitor<ParseTree> {
-
     constructor(private offset: number) {
         super();
     }
@@ -86,12 +88,28 @@ class NodeFinder extends MongoVisitor<ParseTree> {
 
     protected aggregateResult(aggregate: ParseTree, nextResult: ParseTree): ParseTree {
         if (aggregate && nextResult) {
-            const aggregateStart = aggregate instanceof ParserRuleContext ? aggregate.start.startIndex : (<TerminalNode>aggregate).symbol.startIndex;
-            const aggregateStop = aggregate instanceof ParserRuleContext ? aggregate.start.stopIndex : (<TerminalNode>aggregate).symbol.stopIndex;
-            const nextResultStart = nextResult instanceof ParserRuleContext ? nextResult.start.startIndex : (<TerminalNode>nextResult).symbol.startIndex;
-            const nextResultStop = nextResult instanceof ParserRuleContext ? nextResult.start.stopIndex : (<TerminalNode>nextResult).symbol.stopIndex;
+            const aggregateStart =
+                aggregate instanceof ParserRuleContext
+                    ? aggregate.start.startIndex
+                    : (<TerminalNode>aggregate).symbol.startIndex;
+            const aggregateStop =
+                aggregate instanceof ParserRuleContext
+                    ? aggregate.start.stopIndex
+                    : (<TerminalNode>aggregate).symbol.stopIndex;
+            const nextResultStart =
+                nextResult instanceof ParserRuleContext
+                    ? nextResult.start.startIndex
+                    : (<TerminalNode>nextResult).symbol.startIndex;
+            const nextResultStop =
+                nextResult instanceof ParserRuleContext
+                    ? nextResult.start.stopIndex
+                    : (<TerminalNode>nextResult).symbol.stopIndex;
 
-            if (Interval.of(aggregateStart, aggregateStop).properlyContains(Interval.of(nextResultStart, nextResultStop))) {
+            if (
+                Interval.of(aggregateStart, aggregateStop).properlyContains(
+                    Interval.of(nextResultStart, nextResultStop),
+                )
+            ) {
                 return aggregate;
             }
             return nextResult;

@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ConnectionOptions, parse } from "pg-connection-string";
-import { postgresDefaultPort } from "../constants";
-import { ParsedConnectionString } from "../ParsedConnectionString";
-import { nonNullProp } from "../utils/nonNull";
+import { ConnectionOptions, parse } from 'pg-connection-string';
+import { postgresDefaultPort } from '../constants';
+import { ParsedConnectionString } from '../ParsedConnectionString';
+import { nonNullProp } from '../utils/nonNull';
 
 export function parsePostgresConnectionString(connectionString: string): ParsedPostgresConnectionString {
     const config: ConnectionOptions = parse(connectionString.trim());
@@ -19,7 +19,13 @@ export function addDatabaseToConnectionString(connectionString: string, database
     return url.toString();
 }
 
-export function createPostgresConnectionString(hostName: string, port: string = postgresDefaultPort, username?: string | undefined, password?: string | undefined, databaseName?: string | undefined): string {
+export function createPostgresConnectionString(
+    hostName: string,
+    port: string = postgresDefaultPort,
+    username?: string | undefined,
+    password?: string | undefined,
+    databaseName?: string | undefined,
+): string {
     let connectionString: string = `postgres://`;
     if (username) {
         const encodedUsername = encodeURIComponent(username);
@@ -38,7 +44,13 @@ export function createPostgresConnectionString(hostName: string, port: string = 
     return connectionString;
 }
 
-export function copyPostgresConnectionString(hostName: string, port: string = postgresDefaultPort, username?: string | undefined, password?: string | undefined, databaseName?: string | undefined): string {
+export function copyPostgresConnectionString(
+    hostName: string,
+    port: string = postgresDefaultPort,
+    username?: string | undefined,
+    password?: string | undefined,
+    databaseName?: string | undefined,
+): string {
     let connectionString: string = `postgres://`;
     if (username) {
         const encodedUsername = encodeURIComponent(username);

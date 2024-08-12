@@ -5,10 +5,10 @@
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function filterType<T>(arr: Object[] | undefined, genericConstructor: new (...args: any[]) => T): T[] {
-    return arr ? <T[]>arr.filter(element => element instanceof genericConstructor) : [];
+    return arr ? <T[]>arr.filter((element) => element instanceof genericConstructor) : [];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function findType<T>(arr: Object[] | undefined, genericConstructor: new (...args: any[]) => T): T | undefined {
-    return arr && <T>arr.find(element => element instanceof genericConstructor);
+    return arr && <T>arr.find((element) => element instanceof genericConstructor);
 }

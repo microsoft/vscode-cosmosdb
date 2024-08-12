@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardExecuteStep } from "@microsoft/vscode-azext-utils";
-import { nonNullProp } from "../../../../../utils/nonNull";
-import { wrapArgInQuotes } from "../../../../runPostgresQuery";
-import { IPostgresQueryWizardContext } from "../../IPostgresQueryWizardContext";
+import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import { nonNullProp } from '../../../../../utils/nonNull';
+import { wrapArgInQuotes } from '../../../../runPostgresQuery';
+import { IPostgresQueryWizardContext } from '../../IPostgresQueryWizardContext';
 
 export class StoredProcedureQueryCreateStep extends AzureWizardExecuteStep<IPostgresQueryWizardContext> {
     public priority: number = 100;
@@ -20,7 +20,9 @@ export class StoredProcedureQueryCreateStep extends AzureWizardExecuteStep<IPost
     }
 }
 
-const defaultStoredProcedureQuery = (name: string) => `CREATE OR REPLACE PROCEDURE ${wrapArgInQuotes(name)}(/* arguments */)
+const defaultStoredProcedureQuery = (
+    name: string,
+) => `CREATE OR REPLACE PROCEDURE ${wrapArgInQuotes(name)}(/* arguments */)
  LANGUAGE plpgsql
 AS $$
     BEGIN

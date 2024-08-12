@@ -1,4 +1,4 @@
-import { createLightTheme, type BrandVariants, type Theme } from "@fluentui/react-components";
+import { createLightTheme, type BrandVariants, type Theme } from '@fluentui/react-components';
 
 const vscodeVariants: BrandVariants = {
     /**
@@ -50,6 +50,6 @@ export const useVSCodeTheme = () => {
 
 export const adaptiveTheme: Theme = {
     ...createLightTheme(vscodeVariants),
-    colorNeutralBackground1: "var(--vscode-editor-background)"
+    colorNeutralBackground1: 'var(--vscode-editor-background)',
     // https://react.fluentui.dev/?path=/docs/concepts-developer-theming--page#overriding-existing-tokens
 };

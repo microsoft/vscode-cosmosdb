@@ -3,16 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext } from "@microsoft/vscode-azext-utils";
-import * as vscode from "vscode";
-import { ViewColumn } from "vscode";
-import { KeyValueStore } from "../../KeyValueStore";
-import { localize } from "../../utils/localize";
-import * as vscodeUtil from "../../utils/vscodeUtils";
-import { NoSqlQueryConnection, noSqlQueryConnectionKey } from "../NoSqlCodeLensProvider";
-import { CosmosDBCredential, getCosmosClient } from "../getCosmosClient";
+import { IActionContext } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
+import { ViewColumn } from 'vscode';
+import { KeyValueStore } from '../../KeyValueStore';
+import { localize } from '../../utils/localize';
+import * as vscodeUtil from '../../utils/vscodeUtils';
+import { NoSqlQueryConnection, noSqlQueryConnectionKey } from '../NoSqlCodeLensProvider';
+import { CosmosDBCredential, getCosmosClient } from '../getCosmosClient';
 
-export async function getNoSqlQueryPlan(_context: IActionContext, args: { queryText: string } | undefined): Promise<void> {
+export async function getNoSqlQueryPlan(
+    _context: IActionContext,
+    args: { queryText: string } | undefined,
+): Promise<void> {
     let queryText: string;
     if (!args) {
         const activeEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
@@ -26,17 +29,23 @@ export async function getNoSqlQueryPlan(_context: IActionContext, args: { queryT
     }
     const connectedCollection = KeyValueStore.instance.get(noSqlQueryConnectionKey);
     if (!connectedCollection) {
-        throw new Error("Unable to get query plan due to missing node data. Please connect to a Cosmos DB collection.");
+        throw new Error('Unable to get query plan due to missing node data. Please connect to a Cosmos DB collection.');
     } else {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const { databaseId, containerId, endpoint, masterKey, isEmulator } = connectedCollection as NoSqlQueryConnection;
+        const { databaseId, containerId, endpoint, masterKey, isEmulator } =
+            connectedCollection as NoSqlQueryConnection;
         const credentials: CosmosDBCredential[] = [];
         if (masterKey !== undefined) {
-            credentials.push({ type: "key", key: masterKey });
+            credentials.push({ type: 'key', key: masterKey });
         }
-        credentials.push({ type: "auth" });
+        credentials.push({ type: 'auth' });
         const client = getCosmosClient(endpoint, credentials, isEmulator);
         const response = await client.database(databaseId).container(containerId).getQueryPlan(queryText);
-        await vscodeUtil.showNewFile(JSON.stringify(response.result, undefined, 2), `query results for ${containerId}`, ".json", ViewColumn.Beside);
+        await vscodeUtil.showNewFile(
+            JSON.stringify(response.result, undefined, 2),
+            `query results for ${containerId}`,
+            '.json',
+            ViewColumn.Beside,
+        );
     }
 }

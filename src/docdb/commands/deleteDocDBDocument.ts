@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext, ITreeItemPickerContext } from "@microsoft/vscode-azext-utils";
-import { DocDBDocumentTreeItem } from "../tree/DocDBDocumentTreeItem";
-import { pickDocDBAccount } from "./pickDocDBAccount";
+import { IActionContext, ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
+import { DocDBDocumentTreeItem } from '../tree/DocDBDocumentTreeItem';
+import { pickDocDBAccount } from './pickDocDBAccount';
 
 export async function deleteDocDBDocument(context: IActionContext, node?: DocDBDocumentTreeItem) {
     const suppressCreateContext: ITreeItemPickerContext = context;

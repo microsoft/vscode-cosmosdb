@@ -4,7 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { VerifyProvidersStep } from '@microsoft/vscode-azext-azureutils';
-import { AzureWizardExecuteStep, AzureWizardPromptStep, IAzureQuickPickItem, IWizardOptions } from '@microsoft/vscode-azext-utils';
+import {
+    AzureWizardExecuteStep,
+    AzureWizardPromptStep,
+    IAzureQuickPickItem,
+    IWizardOptions,
+} from '@microsoft/vscode-azext-utils';
 import { API, Experience, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { PostgresServerType } from '../postgres/abstract/models';
 import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
@@ -28,16 +33,21 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
         const picks: IAzureQuickPickItem<Experience>[] = getExperienceQuickPicks();
 
         const result: IAzureQuickPickItem<Experience> = await context.ui.showQuickPick(picks, {
-            placeHolder: localize('selectDBServerMsg', 'Select an Azure Database Server.')
+            placeHolder: localize('selectDBServerMsg', 'Select an Azure Database Server.'),
         });
 
         context.defaultExperience = result.data;
     }
 
-    public async getSubWizard(context: IAzureDBWizardContext): Promise<IWizardOptions<IPostgresServerWizardContext | ICosmosDBWizardContext>> {
+    public async getSubWizard(
+        context: IAzureDBWizardContext,
+    ): Promise<IWizardOptions<IPostgresServerWizardContext | ICosmosDBWizardContext>> {
         let promptSteps: AzureWizardPromptStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[];
         let executeSteps: AzureWizardExecuteStep<IPostgresServerWizardContext | ICosmosDBWizardContext>[];
-        if (context.defaultExperience?.api === API.PostgresSingle || context.defaultExperience?.api === API.PostgresFlexible) {
+        if (
+            context.defaultExperience?.api === API.PostgresSingle ||
+            context.defaultExperience?.api === API.PostgresFlexible
+        ) {
             switch (context.defaultExperience?.api) {
                 case API.PostgresFlexible:
                     (context as IPostgresServerWizardContext).serverType = PostgresServerType.Flexible;
@@ -56,18 +66,15 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
             executeSteps = [
                 new PostgresServerCreateStep(),
                 new PostgresServerSetCredentialsStep(),
-                new VerifyProvidersStep(['Microsoft.DBforPostgreSQL'])
+                new VerifyProvidersStep(['Microsoft.DBforPostgreSQL']),
             ];
         } else {
             promptSteps = [
                 new CosmosDBAccountNameStep(),
                 new CosmosDBAccountCapacityStep(),
-                context.defaultExperience?.api === API.MongoDB ? new MongoVersionStep() : undefined
+                context.defaultExperience?.api === API.MongoDB ? new MongoVersionStep() : undefined,
             ].filter((step): step is AzureWizardPromptStep<ICosmosDBWizardContext> => step !== undefined);
-            executeSteps = [
-                new CosmosDBAccountCreateStep(),
-                new VerifyProvidersStep(['Microsoft.DocumentDB'])
-            ];
+            executeSteps = [new CosmosDBAccountCreateStep(), new VerifyProvidersStep(['Microsoft.DocumentDB'])];
         }
         return { promptSteps, executeSteps };
     }

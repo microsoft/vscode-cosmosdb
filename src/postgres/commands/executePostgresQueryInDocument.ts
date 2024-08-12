@@ -26,7 +26,9 @@ export async function loadPersistedPostgresDatabase(): Promise<void> {
         try {
             const persistedTreeItemId: string | undefined = ext.context.globalState.get(connectedPostgresKey);
             if (persistedTreeItemId) {
-                const persistedTreeItem: PostgresDatabaseTreeItem | undefined = <PostgresDatabaseTreeItem>await ext.rgApi.appResourceTree.findTreeItem(persistedTreeItemId, context);
+                const persistedTreeItem: PostgresDatabaseTreeItem | undefined = <PostgresDatabaseTreeItem>(
+                    await ext.rgApi.appResourceTree.findTreeItem(persistedTreeItemId, context)
+                );
                 if (persistedTreeItem) {
                     await connectPostgresDatabase(context, persistedTreeItem);
                 }
@@ -40,7 +42,6 @@ export async function loadPersistedPostgresDatabase(): Promise<void> {
     });
 }
 
-
 export async function executePostgresQueryInDocument(context: IActionContext): Promise<void> {
     await loadPersistedPostgresDatabase();
 
@@ -50,7 +51,7 @@ export async function executePostgresQueryInDocument(context: IActionContext): P
     } else {
         treeItem = await ext.rgApi.pickAppResource<PostgresDatabaseTreeItem>(context, {
             filter: [postgresSingleFilter, postgresFlexibleFilter],
-            expectedChildContextValue: PostgresDatabaseTreeItem.contextValue
+            expectedChildContextValue: PostgresDatabaseTreeItem.contextValue,
         });
     }
 
@@ -71,7 +72,7 @@ export async function executePostgresQueryInDocument(context: IActionContext): P
         const queryFileName: string = path.basename(activeEditor.document.fileName, fileExtension);
         const outputFileName: string = `${queryFileName}-output`;
 
-        const fields: string[] = queryResult.fields.map(f => f.name);
+        const fields: string[] = queryResult.fields.map((f) => f.name);
         let csvData: string = `${fields.join(',')}${EOL}`;
 
         for (const row of queryResult.rows) {

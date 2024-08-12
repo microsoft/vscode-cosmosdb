@@ -19,7 +19,9 @@ export interface AzureDatabasesExtensionApi {
      *
      * @param options Configures the behavior of the tree item picker
      */
-    pickTreeItem(options: PickTreeItemOptions & { resourceType: 'DatabaseAccount' }): Promise<DatabaseAccountTreeItem | undefined>;
+    pickTreeItem(
+        options: PickTreeItemOptions & { resourceType: 'DatabaseAccount' },
+    ): Promise<DatabaseAccountTreeItem | undefined>;
     pickTreeItem(options: PickTreeItemOptions & { resourceType: 'Database' }): Promise<DatabaseTreeItem | undefined>;
 
     /**
@@ -46,18 +48,17 @@ export interface DatabaseAccountTreeItem extends AzureDatabasesTreeItem {
     azureData?: {
         accountName: string;
         accountId: string;
-    }
+    };
 
     docDBData?: {
         masterKey: string;
         documentEndpoint: string;
-    }
+    };
 
     postgresData?: {
         username: string | undefined;
         password: string | undefined;
-    }
-
+    };
 }
 
 export interface DatabaseTreeItem extends DatabaseAccountTreeItem {
@@ -92,5 +93,5 @@ export interface TreeItemQuery {
         databaseName: string | undefined;
         username: string | undefined;
         password: string | undefined;
-    }
+    };
 }

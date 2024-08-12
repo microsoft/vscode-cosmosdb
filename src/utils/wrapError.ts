@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { parseError } from "@microsoft/vscode-azext-utils";
+import { parseError } from '@microsoft/vscode-azext-utils';
 import * as os from 'os';
 
 export function wrapError(outerError?: unknown, innerError?: unknown): unknown {

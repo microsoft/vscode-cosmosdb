@@ -8,44 +8,44 @@ import * as assert from 'assert';
 import * as os from 'os';
 import { wrapError } from '../extension.bundle';
 
-suite("wrapError", () => {
-    test("just outer string", () => {
+suite('wrapError', () => {
+    test('just outer string', () => {
         const wrapped = wrapError('Outer error');
         assert(typeof wrapped === 'string');
         assert.equal(wrapped, 'Outer error');
     });
 
-    test("just outer error", () => {
+    test('just outer error', () => {
         const wrapped = wrapError(new Error('Outer error'));
         assert(wrapped instanceof Error);
         assert.equal(parseError(wrapped).message, 'Outer error');
     });
 
-    test("just inner", () => {
+    test('just inner', () => {
         const wrapped = wrapError(undefined, 'Inner error');
         assert(typeof wrapped === 'string');
         assert.equal(wrapped, 'Inner error');
     });
 
-    test("outer string, inner string", () => {
+    test('outer string, inner string', () => {
         const wrapped = wrapError('Outer error.', 'Inner error.');
         assert(wrapped instanceof Error);
         assert.equal(parseError(wrapped).message, `Outer error.${os.EOL}Inner error.`);
     });
 
-    test("outer error, inner string", () => {
+    test('outer error, inner string', () => {
         const wrapped = wrapError(new Error('Outer error.'), 'Inner error.');
         assert(wrapped instanceof Error);
         assert.equal(parseError(wrapped).message, `Outer error.${os.EOL}Inner error.`);
     });
 
-    test("outer error, inner error", () => {
+    test('outer error, inner error', () => {
         const wrapped = wrapError(new Error('Outer error.'), new Error('Inner error.'));
         assert(wrapped instanceof Error);
         assert.equal(parseError(wrapped).message, `Outer error.${os.EOL}Inner error.`);
     });
 
-    test("outer string, inner error", () => {
+    test('outer string, inner error', () => {
         const wrapped = wrapError('Outer error.', new Error('Inner error.'));
         assert(wrapped instanceof Error);
         assert(parseError(wrapped).message, `Outer error.${os.EOL}Inner error.`);

@@ -1,5 +1,5 @@
-import { QueryEditorTab } from "../../panels/QueryEditorTab";
+import { QueryEditorTab } from '../../panels/QueryEditorTab';
 
 export const openNoSqlQueryEditor = () => {
-  QueryEditorTab.render();
+    QueryEditorTab.render();
 };

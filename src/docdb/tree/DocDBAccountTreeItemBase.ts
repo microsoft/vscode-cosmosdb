@@ -4,7 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
-import { CosmosClient, DatabaseDefinition, DatabaseResponse, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
+import {
+    CosmosClient,
+    DatabaseDefinition,
+    DatabaseResponse,
+    FeedOptions,
+    QueryIterator,
+    Resource,
+} from '@azure/cosmos';
 import { AzExtParentTreeItem, AzExtTreeItem, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
@@ -21,8 +28,7 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
  */
 export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<DatabaseDefinition & Resource> {
     public readonly label: string;
-    public readonly childTypeLabel: string = "Database";
-
+    public readonly childTypeLabel: string = 'Database';
 
     constructor(
         parent: AzExtParentTreeItem,
@@ -31,7 +37,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         endpoint: string,
         credentials: CosmosDBCredential[],
         isEmulator: boolean | undefined,
-        readonly databaseAccount?: DatabaseAccountGetResults
+        readonly databaseAccount?: DatabaseAccountGetResults,
     ) {
         super(parent);
         this.id = id;
@@ -40,11 +46,11 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
             endpoint,
             credentials,
             isEmulator,
-            getCosmosClient: () => getCosmosClient(endpoint, credentials, isEmulator)
+            getCosmosClient: () => getCosmosClient(endpoint, credentials, isEmulator),
         };
 
         const keys = credentials
-            .map((cred) => cred.type === "key" ? cred.key : undefined)
+            .map((cred) => (cred.type === 'key' ? cred.key : undefined))
             .filter((value): value is string => value !== undefined);
         this.valuesToMask.push(id, endpoint, ...keys);
     }
@@ -63,8 +69,9 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     public get isServerless(): boolean {
-        return this.databaseAccount?.capabilities ? this.databaseAccount.capabilities.some(cap => cap.name === SERVERLESS_CAPABILITY_NAME) : false;
-
+        return this.databaseAccount?.capabilities
+            ? this.databaseAccount.capabilities.some((cap) => cap.name === SERVERLESS_CAPABILITY_NAME)
+            : false;
     }
 
     public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<DatabaseDefinition & Resource> {
@@ -75,7 +82,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         const databaseName = await context.ui.showInputBox({
             placeHolder: 'Database Name',
             validateInput: validateDatabaseName,
-            stepName: 'createDatabase'
+            stepName: 'createDatabase',
         });
 
         const client = this.root.getCosmosClient();
@@ -85,8 +92,13 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
 
     public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (this.root.isEmulator) {
-            const unableToReachEmulatorMessage: string = "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.";
-            return await rejectOnTimeout(2000, () => super.loadMoreChildrenImpl(clearCache), unableToReachEmulatorMessage);
+            const unableToReachEmulatorMessage: string =
+                "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.";
+            return await rejectOnTimeout(
+                2000,
+                () => super.loadMoreChildrenImpl(clearCache),
+                unableToReachEmulatorMessage,
+            );
         } else {
             return await super.loadMoreChildrenImpl(clearCache);
         }
@@ -99,10 +111,10 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
 
 function validateDatabaseName(name: string): string | undefined | null {
     if (!name || name.length < 1 || name.length > 255) {
-        return "Name has to be between 1 and 255 chars long";
+        return 'Name has to be between 1 and 255 chars long';
     }
-    if (name.endsWith(" ")) {
-        return "Database name cannot end with space";
+    if (name.endsWith(' ')) {
+        return 'Database name cannot end with space';
     }
     if (/[/\\?#=]/.test(name)) {
         return `Database name cannot contain the characters '\\', '/', '#', '?', '='`;

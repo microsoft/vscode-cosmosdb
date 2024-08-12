@@ -6,7 +6,10 @@
 import { ParsedDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { ParsedMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
-import { ParsedPostgresConnectionString, parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
+import {
+    ParsedPostgresConnectionString,
+    parsePostgresConnectionString,
+} from '../../postgres/postgresConnectionStrings';
 import { DatabaseAccountTreeItem, DatabaseTreeItem } from '../../vscode-cosmosdb.api';
 
 /**
@@ -16,11 +19,16 @@ import { DatabaseAccountTreeItem, DatabaseTreeItem } from '../../vscode-cosmosdb
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const sessionCache: Map<string, DatabaseAccountTreeItem | DatabaseTreeItem> = new Map();
 
-export function cacheTreeItem(parsedCS: ParsedConnectionString, treeItem: DatabaseAccountTreeItem | DatabaseTreeItem): void {
+export function cacheTreeItem(
+    parsedCS: ParsedConnectionString,
+    treeItem: DatabaseAccountTreeItem | DatabaseTreeItem,
+): void {
     sessionCache.set(parsedCS.fullId, treeItem);
 }
 
-export function tryGetTreeItemFromCache(parsedCS: ParsedConnectionString): DatabaseAccountTreeItem | DatabaseTreeItem | undefined {
+export function tryGetTreeItemFromCache(
+    parsedCS: ParsedConnectionString,
+): DatabaseAccountTreeItem | DatabaseTreeItem | undefined {
     return sessionCache.get(parsedCS.fullId);
 }
 
@@ -36,7 +44,7 @@ export function removeTreeItemFromCache(expected: ParsedConnectionString): void 
             } else {
                 actual = new ParsedDocDBConnectionString(value.connectionString, value.hostName, value.port, undefined);
             }
-            if (actual && (actual.accountId === expected.accountId)) {
+            if (actual && actual.accountId === expected.accountId) {
                 sessionCache.delete(key);
             }
         }

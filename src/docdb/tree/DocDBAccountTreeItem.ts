@@ -13,7 +13,7 @@ import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 
 export class DocDBAccountTreeItem extends DocDBAccountTreeItemBase {
-    public static contextValue: string = "cosmosDBDocumentServer";
+    public static contextValue: string = 'cosmosDBDocumentServer';
     public contextValue: string = DocDBAccountTreeItem.contextValue;
 
     public initChild(resource: DatabaseDefinition & Resource): DocDBDatabaseTreeItem {

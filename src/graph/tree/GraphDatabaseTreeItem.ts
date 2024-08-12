@@ -12,11 +12,15 @@ import { GraphAccountTreeItem } from './GraphAccountTreeItem';
 import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 
 export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
-    public static contextValue: string = "cosmosDBGraphDatabase";
+    public static contextValue: string = 'cosmosDBGraphDatabase';
     public readonly contextValue: string = GraphDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Graph';
 
-    constructor(parent: GraphAccountTreeItem, private _gremlinEndpoint: IGremlinEndpoint | undefined, database: DatabaseDefinition & Resource) {
+    constructor(
+        parent: GraphAccountTreeItem,
+        private _gremlinEndpoint: IGremlinEndpoint | undefined,
+        database: DatabaseDefinition & Resource,
+    ) {
         super(parent, database);
     }
 
@@ -35,7 +39,6 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
 
     public getDatabaseClient(client: CosmosClient): Database {
         return client.database(this.id);
-
     }
 
     protected override async getNewPartitionKey(context: IActionContext): Promise<string | undefined> {
@@ -43,7 +46,7 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
             prompt: 'Enter the partition key for the collection, or leave blank for fixed size.',
             stepName: 'partitionKeyForCollection',
             validateInput: this.validatePartitionKey,
-            placeHolder: 'e.g. /address'
+            placeHolder: 'e.g. /address',
         });
 
         if (partitionKey && partitionKey.length && partitionKey[0] !== '/') {
@@ -55,10 +58,10 @@ export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
 
     protected validatePartitionKey(key: string): string | undefined {
         if (/[#?\\]/.test(key)) {
-            return "Cannot contain these characters: ?,#,\\, etc.";
+            return 'Cannot contain these characters: ?,#,\\, etc.';
         }
         if (/.+\//.test(key)) {
-            return "Cannot be a nested path";
+            return 'Cannot be a nested path';
         }
         return undefined;
     }

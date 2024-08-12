@@ -4,7 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
-import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, ICreateChildImplContext, parseError } from '@microsoft/vscode-azext-utils';
+import {
+    appendExtensionUserAgent,
+    AzExtParentTreeItem,
+    AzExtTreeItem,
+    ICreateChildImplContext,
+    parseError,
+} from '@microsoft/vscode-azext-utils';
 import { MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
 import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
@@ -19,15 +25,22 @@ import { MongoDatabaseTreeItem } from './MongoDatabaseTreeItem';
 import { MongoDocumentTreeItem } from './MongoDocumentTreeItem';
 
 export class MongoAccountTreeItem extends AzExtParentTreeItem {
-    public static contextValue: string = "cosmosDBMongoServer";
+    public static contextValue: string = 'cosmosDBMongoServer';
     public readonly contextValue: string = MongoAccountTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Database";
+    public readonly childTypeLabel: string = 'Database';
     public readonly label: string;
     public readonly connectionString: string;
 
     private _root: IMongoTreeRoot;
 
-    constructor(parent: AzExtParentTreeItem, id: string, label: string, connectionString: string, isEmulator: boolean | undefined, readonly databaseAccount?: DatabaseAccountGetResults) {
+    constructor(
+        parent: AzExtParentTreeItem,
+        id: string,
+        label: string,
+        connectionString: string,
+        isEmulator: boolean | undefined,
+        readonly databaseAccount?: DatabaseAccountGetResults,
+    ) {
         super(parent);
         this.id = id;
         this.label = label;
@@ -59,15 +72,21 @@ export class MongoAccountTreeItem extends AzExtParentTreeItem {
             }
 
             // Azure MongoDB accounts need to have the name passed in for private endpoints
-            mongoClient = await connectToMongoClient(this.connectionString, this.databaseAccount ? nonNullProp(this.databaseAccount, 'name') : appendExtensionUserAgent());
+            mongoClient = await connectToMongoClient(
+                this.connectionString,
+                this.databaseAccount ? nonNullProp(this.databaseAccount, 'name') : appendExtensionUserAgent(),
+            );
 
             const databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);
-            if (databaseInConnectionString && !this.root.isEmulator) { // emulator violates the connection string format
+            if (databaseInConnectionString && !this.root.isEmulator) {
+                // emulator violates the connection string format
                 // If the database is in the connection string, that's all we connect to (we might not even have permissions to list databases)
-                databases = [{
-                    name: databaseInConnectionString,
-                    empty: false
-                }];
+                databases = [
+                    {
+                        name: databaseInConnectionString,
+                        empty: false,
+                    },
+                ];
             } else {
                 // https://mongodb.github.io/node-mongodb-native/3.1/api/index.html
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -75,17 +94,21 @@ export class MongoAccountTreeItem extends AzExtParentTreeItem {
                 databases = result.databases;
             }
             return databases
-                .filter((database: IDatabaseInfo) => !(database.name && database.name.toLowerCase() === "admin" && database.empty)) // Filter out the 'admin' database if it's empty
-                .map(database => new MongoDatabaseTreeItem(this, nonNullProp(database, 'name'), this.connectionString));
+                .filter(
+                    (database: IDatabaseInfo) =>
+                        !(database.name && database.name.toLowerCase() === 'admin' && database.empty),
+                ) // Filter out the 'admin' database if it's empty
+                .map(
+                    (database) => new MongoDatabaseTreeItem(this, nonNullProp(database, 'name'), this.connectionString),
+                );
         } catch (error) {
             const message = parseError(error).message;
-            if (this._root.isEmulator && message.includes("ECONNREFUSED")) {
+            if (this._root.isEmulator && message.includes('ECONNREFUSED')) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 error.message = `Unable to reach emulator. See ${Links.LocalConnectionDebuggingTips} for debugging tips.\n${message}`;
             }
             throw error;
-        }
-        finally {
+        } finally {
             if (mongoClient) {
                 void mongoClient.close();
             }
@@ -94,10 +117,10 @@ export class MongoAccountTreeItem extends AzExtParentTreeItem {
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDatabaseTreeItem> {
         const databaseName = await context.ui.showInputBox({
-            placeHolder: "Database Name",
-            prompt: "Enter the name of the database",
+            placeHolder: 'Database Name',
+            prompt: 'Enter the name of the database',
             stepName: 'createMongoDatabase',
-            validateInput: validateDatabaseName
+            validateInput: validateDatabaseName,
         });
         context.showCreatingTreeItem(databaseName);
 
@@ -129,7 +152,7 @@ export function validateDatabaseName(database: string): string | undefined | nul
         return `Database name must be between ${min} and ${max} characters.`;
     }
     if (/[/\\. "$#?=]/.test(database)) {
-        return "Database name cannot contain these characters - `/\\. \"$#?=`";
+        return 'Database name cannot contain these characters - `/\\. "$#?=`';
     }
     return undefined;
 }

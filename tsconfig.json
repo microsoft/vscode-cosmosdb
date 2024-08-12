@@ -3,12 +3,7 @@
         "module": "commonjs",
         "target": "ES2021",
         "outDir": "out",
-        "lib": [
-            "ES2021",
-            "dom",
-            "dom.iterable",
-            "webworker"
-        ],
+        "lib": ["ES2021", "dom", "dom.iterable", "webworker"],
         "sourceMap": true,
         "noImplicitThis": true,
         "noImplicitReturns": true,
@@ -21,16 +16,9 @@
         "baseUrl": "./",
         "alwaysStrict": true,
         "paths": {
-            "*": [
-                "node_modules/@types/*",
-                "*"
-            ]
+            "*": ["node_modules/@types/*", "*"]
         },
-      "jsx": "react-jsx"
+        "jsx": "react-jsx"
     },
-    "exclude": [
-        "node_modules",
-        ".vscode-test",
-        "gulpfile.ts"
-    ]
+    "exclude": ["node_modules", ".vscode-test", "gulpfile.ts"]
 }

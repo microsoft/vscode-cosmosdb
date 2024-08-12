@@ -3,16 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext } from "@microsoft/vscode-azext-utils";
-import * as vscode from "vscode";
-import { ViewColumn } from "vscode";
-import { KeyValueStore } from "../../KeyValueStore";
-import { localize } from "../../utils/localize";
-import * as vscodeUtil from "../../utils/vscodeUtils";
-import { NoSqlQueryConnection, noSqlQueryConnectionKey } from "../NoSqlCodeLensProvider";
-import { CosmosDBCredential, getCosmosClient } from "../getCosmosClient";
+import { IActionContext } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
+import { ViewColumn } from 'vscode';
+import { KeyValueStore } from '../../KeyValueStore';
+import { localize } from '../../utils/localize';
+import * as vscodeUtil from '../../utils/vscodeUtils';
+import { NoSqlQueryConnection, noSqlQueryConnectionKey } from '../NoSqlCodeLensProvider';
+import { CosmosDBCredential, getCosmosClient } from '../getCosmosClient';
 
-export async function executeNoSqlQuery(_context: IActionContext, args: { queryText: string, populateQueryMetrics?: boolean }): Promise<void> {
+export async function executeNoSqlQuery(
+    _context: IActionContext,
+    args: { queryText: string; populateQueryMetrics?: boolean },
+): Promise<void> {
     let queryText: string;
     let populateQueryMetrics: boolean;
     if (!args) {
@@ -29,26 +32,47 @@ export async function executeNoSqlQuery(_context: IActionContext, args: { queryT
     }
     const connectedCollection = KeyValueStore.instance.get(noSqlQueryConnectionKey);
     if (!connectedCollection) {
-        throw new Error("Unable to execute query due to missing node data. Please connect to a Cosmos DB collection node.");
+        throw new Error(
+            'Unable to execute query due to missing node data. Please connect to a Cosmos DB collection node.',
+        );
     } else {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const { databaseId, containerId, endpoint, masterKey, isEmulator } = connectedCollection as NoSqlQueryConnection;
+        const { databaseId, containerId, endpoint, masterKey, isEmulator } =
+            connectedCollection as NoSqlQueryConnection;
         const credentials: CosmosDBCredential[] = [];
         if (masterKey !== undefined) {
-            credentials.push({ type: "key", key: masterKey });
+            credentials.push({ type: 'key', key: masterKey });
         }
-        credentials.push({ type: "auth" });
+        credentials.push({ type: 'auth' });
         const client = getCosmosClient(endpoint, credentials, isEmulator);
         const options = { populateQueryMetrics };
-        const response = await client.database(databaseId).container(containerId).items.query(queryText, options).fetchAll();
+        const response = await client
+            .database(databaseId)
+            .container(containerId)
+            .items.query(queryText, options)
+            .fetchAll();
         const resultDocumentTitle = `query results for ${containerId}`;
         if (populateQueryMetrics === true) {
-            await vscodeUtil.showNewFile(JSON.stringify({
-                result: response.resources,
-                queryMetrics: response.queryMetrics
-            }, undefined, 2), resultDocumentTitle, ".json", ViewColumn.Beside);
+            await vscodeUtil.showNewFile(
+                JSON.stringify(
+                    {
+                        result: response.resources,
+                        queryMetrics: response.queryMetrics,
+                    },
+                    undefined,
+                    2,
+                ),
+                resultDocumentTitle,
+                '.json',
+                ViewColumn.Beside,
+            );
         } else {
-            await vscodeUtil.showNewFile(JSON.stringify(response.resources, undefined, 2), resultDocumentTitle, ".json", ViewColumn.Beside);
+            await vscodeUtil.showNewFile(
+                JSON.stringify(response.resources, undefined, 2),
+                resultDocumentTitle,
+                '.json',
+                ViewColumn.Beside,
+            );
         }
     }
 }

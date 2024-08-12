@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardExecuteStep } from "@microsoft/vscode-azext-utils";
-import { IDeleteWizardContext } from "./IDeleteWizardContext";
+import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import { IDeleteWizardContext } from './IDeleteWizardContext';
 
 export class DatabaseAccountDeleteStep extends AzureWizardExecuteStep<IDeleteWizardContext> {
     public priority: number = 100;

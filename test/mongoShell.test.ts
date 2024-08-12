@@ -5,7 +5,7 @@
 
 // CONSIDER: Run in pipeline
 import * as assert from 'assert';
-import * as cp from "child_process";
+import * as cp from 'child_process';
 import * as fse from 'fs-extra';
 import * as os from 'os';
 import * as path from 'path';
@@ -25,7 +25,7 @@ if (!isWindows) {
     testsSupported = false;
 }
 
-suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
+suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
     // https://github.com/mochajs/mocha/issues/2025
     this.timeout(10000);
 
@@ -41,10 +41,10 @@ suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
 
     // CONSIDER: Make more generic
     let mongodCP: cp.ChildProcess;
-    const mongodPath = "c:\\Program Files\\MongoDB\\Server\\4.2\\bin\\mongod.exe";
-    const mongoPath = "c:\\Program Files\\MongoDB\\Server\\4.2\\bin\\mongo.exe";
-    let mongoDOutput = "";
-    let mongoDErrors = "";
+    const mongodPath = 'c:\\Program Files\\MongoDB\\Server\\4.2\\bin\\mongod.exe';
+    const mongoPath = 'c:\\Program Files\\MongoDB\\Server\\4.2\\bin\\mongo.exe';
+    let mongoDOutput = '';
+    let mongoDErrors = '';
     let isClosed = false;
 
     if (!fse.existsSync(mongodPath)) {
@@ -66,30 +66,30 @@ suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
             assert(value !== undefined);
             assert(!value.includes('undefined'));
             this.output = this.output ? this.output + os.EOL + value : value;
-            log(value, "Output channel: ");
+            log(value, 'Output channel: ');
         }
         public appendLine(value: string): void {
             assert(value !== undefined);
             this.append(value + os.EOL);
         }
-        public clear(): void { }
+        public clear(): void {}
         public show(preserveFocus?: boolean): void;
         public show(column?: vscode.ViewColumn, preserveFocus?: boolean): void;
-        public show(_column?: any, _preserveFocus?: any): void { }
-        public hide(): void { }
-        public dispose(): void { }
-        public replace(_value: string): void { }
+        public show(_column?: any, _preserveFocus?: any): void {}
+        public hide(): void {}
+        public dispose(): void {}
+        public replace(_value: string): void {}
     }
 
     function log(text: string, linePrefix: string): void {
-        text = text.replace(/(^|[\r\n]+)/g, "$1" + linePrefix);
+        text = text.replace(/(^|[\r\n]+)/g, '$1' + linePrefix);
         if (VERBOSE) {
             console.log(text);
         }
     }
 
     async function delay(milliseconds: number): Promise<void> {
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
             setTimeout(resolve, milliseconds);
         });
     }
@@ -107,24 +107,27 @@ suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
             try {
                 executeInShell('taskkill /f /im mongod.exe');
             } catch (error) {
-                assert(/The process .* not found/.test(parseError(error).message), `Error killing mongod: ${parseError(error).message}`);
+                assert(
+                    /The process .* not found/.test(parseError(error).message),
+                    `Error killing mongod: ${parseError(error).message}`,
+                );
             }
 
             mongodCP = cp.spawn(mongodPath, ['--quiet']);
 
-            mongodCP.stdout?.on("data", (buffer: Buffer) => {
-                log(buffer.toString(), "mongo server: ");
+            mongodCP.stdout?.on('data', (buffer: Buffer) => {
+                log(buffer.toString(), 'mongo server: ');
                 mongoDOutput += buffer.toString();
             });
-            mongodCP.stderr?.on("data", (buffer: Buffer) => {
-                log(buffer.toString(), "mongo server STDERR: ");
+            mongodCP.stderr?.on('data', (buffer: Buffer) => {
+                log(buffer.toString(), 'mongo server STDERR: ');
                 mongoDErrors += buffer.toString();
             });
-            mongodCP.on("error", (error: unknown) => {
-                log(parseError(error).message, "mongo server Error: ");
+            mongodCP.on('error', (error: unknown) => {
+                log(parseError(error).message, 'mongo server Error: ');
                 mongoDErrors += parseError(error).message + os.EOL;
             });
-            mongodCP.on("close", (code?: number) => {
+            mongodCP.on('close', (code?: number) => {
                 console.log(`mongo server: Close code=${code}`);
                 isClosed = true;
                 if (isNumber(code) && code !== 0) {
@@ -140,9 +143,9 @@ suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
         }
     });
 
-    await testIfSupported("Verify mongod running", async () => {
+    await testIfSupported('Verify mongod running', async () => {
         while (!mongoDOutput.includes('waiting for connections on port 27017')) {
-            assert.equal(mongoDErrors, "", "Expected no errors");
+            assert.equal(mongoDErrors, '', 'Expected no errors');
             assert(!isClosed);
             await delay(50);
         }
@@ -161,7 +164,7 @@ suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
     }): Promise<void> {
         await testIfSupported(options.title || options.script, async () => {
             assert(!isClosed);
-            assert(mongoDErrors === "");
+            assert(mongoDErrors === '');
 
             let previousEnv: IDisposable | undefined;
             let shell: MongoShell | undefined;
@@ -169,7 +172,14 @@ suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
 
             try {
                 previousEnv = setEnvironmentVariables(options.env || {});
-                shell = await MongoShell.create(options.mongoPath || mongoPath, options.args || [], '', false, outputChannel, options.timeoutSeconds || 5);
+                shell = await MongoShell.create(
+                    options.mongoPath || mongoPath,
+                    options.args || [],
+                    '',
+                    false,
+                    outputChannel,
+                    options.timeoutSeconds || 5,
+                );
                 const result = await shell.executeScript(options.script);
                 if (options.expectedError) {
                     assert(false, `Expected error did not occur: '${options.expectedError}'`);
@@ -181,7 +191,10 @@ suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
                 const message = parseError(error).message;
 
                 if (options.expectedError instanceof RegExp) {
-                    assert(options.expectedError.test(message), `Actual error did not match expected error regex. Actual error: ${message}`);
+                    assert(
+                        options.expectedError.test(message),
+                        `Actual error did not match expected error regex. Actual error: ${message}`,
+                    );
                 } else if (typeof options.expectedError === 'string') {
                     assert.equal(message, options.expectedError);
                 } else {
@@ -189,7 +202,10 @@ suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
                 }
 
                 if (options.expectedOutput instanceof RegExp) {
-                    assert(options.expectedOutput.test(outputChannel.output), `Actual contents written to output channel did not match expected regex. Actual output channel contents: ${outputChannel.output}`);
+                    assert(
+                        options.expectedOutput.test(outputChannel.output),
+                        `Actual contents written to output channel did not match expected regex. Actual output channel contents: ${outputChannel.output}`,
+                    );
                 }
             } finally {
                 if (shell) {
@@ -204,73 +220,74 @@ suite("MongoShell", async function (this: Mocha.Suite): Promise<void> {
 
     await testShellCommand({
         script: 'use abc',
-        expectedResult: 'switched to db abc'
+        expectedResult: 'switched to db abc',
     });
 
     await testShellCommand({
-        title: "Incorrect path",
+        title: 'Incorrect path',
         script: 'use abc',
-        mongoPath: "/notfound/mongo.exe",
-        expectedError: /Could not find .*notfound.*mongo.exe/
+        mongoPath: '/notfound/mongo.exe',
+        expectedError: /Could not find .*notfound.*mongo.exe/,
     });
 
     await testShellCommand({
-        title: "Find mongo through PATH",
+        title: 'Find mongo through PATH',
         script: 'use abc',
-        mongoPath: "mongo",
+        mongoPath: 'mongo',
         expectedResult: 'switched to db abc',
         env: {
-            PATH: process.env.path! + ";" + path.dirname(mongoPath)
-        }
+            PATH: process.env.path! + ';' + path.dirname(mongoPath),
+        },
     });
 
     await testShellCommand({
-        title: "With valid argument",
+        title: 'With valid argument',
         script: 'use abc',
-        args: ["--quiet"],
-        expectedResult: 'switched to db abc'
+        args: ['--quiet'],
+        expectedResult: 'switched to db abc',
     });
 
     await testShellCommand({
-        title: "With invalid argument",
+        title: 'With invalid argument',
         script: '',
-        args: ["--hey-man-how-are-you"],
-        expectedError: /Error parsing command line: unrecognised option/
+        args: ['--hey-man-how-are-you'],
+        expectedError: /Error parsing command line: unrecognised option/,
     });
 
     await testShellCommand({
-        title: "Output window may contain additional information",
+        title: 'Output window may contain additional information',
         script: '',
-        args: ["-u", "baduser", "-p", "badpassword"],
-        expectedError: /The output window may contain additional information/
+        args: ['-u', 'baduser', '-p', 'badpassword'],
+        expectedError: /The output window may contain additional information/,
     });
 
     await testShellCommand({
-        title: "With bad credentials",
+        title: 'With bad credentials',
         script: '',
-        args: ["-u", "baduser", "-p", "badpassword"],
+        args: ['-u', 'baduser', '-p', 'badpassword'],
         expectedError: /The process exited with code 1/,
-        expectedOutput: /Authentication failed/
+        expectedOutput: /Authentication failed/,
     });
 
     await testShellCommand({
-        title: "Process exits immediately",
+        title: 'Process exits immediately',
         script: '',
-        args: ["--version"],
-        expectedError: /The process exited prematurely/
+        args: ['--version'],
+        expectedError: /The process exited prematurely/,
     });
 
     await testShellCommand({
-        title: "Javascript",
-        script: "for (var i = 0; i < 123; ++i) { }; i",
-        expectedResult: "123"
+        title: 'Javascript',
+        script: 'for (var i = 0; i < 123; ++i) { }; i',
+        expectedResult: '123',
     });
 
     await testShellCommand({
-        title: "Actual timeout",
-        script: "for (var i = 0; i < 10000000; ++i) { }; i",
-        expectedError: /Timed out trying to execute the Mongo script. To use a longer timeout, modify the VS Code 'mongo.shell.timeout' setting./,
-        timeoutSeconds: 2
+        title: 'Actual timeout',
+        script: 'for (var i = 0; i < 10000000; ++i) { }; i',
+        expectedError:
+            /Timed out trying to execute the Mongo script. To use a longer timeout, modify the VS Code 'mongo.shell.timeout' setting./,
+        timeoutSeconds: 2,
     });
 
     await testIfSupported("More results than displayed (type 'it' for more -> (More))", async () => {

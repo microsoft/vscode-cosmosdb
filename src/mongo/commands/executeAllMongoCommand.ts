@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext } from "@microsoft/vscode-azext-utils";
-import { executeAllCommandsFromActiveEditor } from "../MongoScrapbook";
-import { loadPersistedMongoDB } from "./connectMongoDatabase";
+import { IActionContext } from '@microsoft/vscode-azext-utils';
+import { executeAllCommandsFromActiveEditor } from '../MongoScrapbook';
+import { loadPersistedMongoDB } from './connectMongoDatabase';
 
 export async function executeAllMongoCommand(context: IActionContext) {
     await loadPersistedMongoDB();

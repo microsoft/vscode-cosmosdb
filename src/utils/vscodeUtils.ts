@@ -19,7 +19,7 @@ export interface IDisposable {
 }
 
 export function dispose<T extends IDisposable>(disposables: T[]): T[] {
-    disposables.forEach(d => d.dispose());
+    disposables.forEach((d) => d.dispose());
     return [];
 }
 
@@ -27,12 +27,21 @@ export function toDisposable(dispose: () => void): IDisposable {
     return { dispose };
 }
 
-export async function showNewFile(data: string, fileName: string, fileExtension: string, column?: vscode.ViewColumn): Promise<void> {
+export async function showNewFile(
+    data: string,
+    fileName: string,
+    fileExtension: string,
+    column?: vscode.ViewColumn,
+): Promise<void> {
     const folderPath: string = getRootPath() || ext.context.extensionPath;
     const fullFileName: string | undefined = await getUniqueFileName(folderPath, fileName, fileExtension);
     const uri: vscode.Uri = vscode.Uri.file(path.join(folderPath, fullFileName)).with({ scheme: 'untitled' });
     const textDocument = await vscode.workspace.openTextDocument(uri);
-    const editor = await vscode.window.showTextDocument(textDocument, column ? column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column : undefined, true);
+    const editor = await vscode.window.showTextDocument(
+        textDocument,
+        column ? (column > vscode.ViewColumn.Three ? vscode.ViewColumn.One : column) : undefined,
+        true,
+    );
     await writeToEditor(editor, data);
 }
 
@@ -40,7 +49,12 @@ export async function writeToEditor(editor: vscode.TextEditor, data: string): Pr
     await editor.edit((editBuilder: vscode.TextEditorEdit) => {
         if (editor.document.lineCount > 0) {
             const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
-            editBuilder.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(lastLine.range.start.line, lastLine.range.end.character)));
+            editBuilder.delete(
+                new vscode.Range(
+                    new vscode.Position(0, 0),
+                    new vscode.Position(lastLine.range.start.line, lastLine.range.end.character),
+                ),
+            );
         }
 
         editBuilder.insert(new vscode.Position(0, 0), data);
@@ -57,7 +71,8 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
 
         const fullPath: string = path.join(folderPath, fullFileName);
         const pathExists: boolean = await fse.pathExists(fullPath);
-        const editorExists: boolean = vscode.workspace.textDocuments.find(doc => doc.uri.fsPath === fullPath) !== undefined;
+        const editorExists: boolean =
+            vscode.workspace.textDocuments.find((doc) => doc.uri.fsPath === fullPath) !== undefined;
         if (!pathExists && !editorExists) {
             return fullFileName;
         }
@@ -80,7 +95,7 @@ export function getNodeEditorLabel(node: AzExtTreeItem): string {
 }
 
 function isAccountTreeItem(treeItem: AzExtTreeItem): boolean {
-    return (treeItem instanceof MongoAccountTreeItem) || (treeItem instanceof DocDBAccountTreeItemBase);
+    return treeItem instanceof MongoAccountTreeItem || treeItem instanceof DocDBAccountTreeItemBase;
 }
 
 export function getDocumentTreeItemLabel(document: IMongoDocument | ItemDefinition): string {

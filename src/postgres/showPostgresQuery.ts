@@ -5,10 +5,12 @@
 
 import { postgresBaseFileName, postgresFileExtension } from '../constants';
 import * as vscodeUtil from '../utils/vscodeUtils';
-import { PostgresFunctionTreeItem } from "./tree/PostgresFunctionTreeItem";
-import { PostgresStoredProcedureTreeItem } from "./tree/PostgresStoredProcedureTreeItem";
+import { PostgresFunctionTreeItem } from './tree/PostgresFunctionTreeItem';
+import { PostgresStoredProcedureTreeItem } from './tree/PostgresStoredProcedureTreeItem';
 
-export async function showPostgresQuery(treeItem: PostgresFunctionTreeItem | PostgresStoredProcedureTreeItem): Promise<void> {
+export async function showPostgresQuery(
+    treeItem: PostgresFunctionTreeItem | PostgresStoredProcedureTreeItem,
+): Promise<void> {
     const fileName: string = `${treeItem.label}-${postgresBaseFileName}`;
     await vscodeUtil.showNewFile(treeItem.definition, fileName, postgresFileExtension);
 }

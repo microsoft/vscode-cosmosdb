@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { QueryResult } from "pg";
-import { runPostgresQuery } from "./runPostgresQuery";
-import { PostgresFunctionsTreeItem } from "./tree/PostgresFunctionsTreeItem";
-import { PostgresResourcesTreeItemBase } from "./tree/PostgresResourcesTreeItemBase";
+import { QueryResult } from 'pg';
+import { runPostgresQuery } from './runPostgresQuery';
+import { PostgresFunctionsTreeItem } from './tree/PostgresFunctionsTreeItem';
+import { PostgresResourcesTreeItemBase } from './tree/PostgresResourcesTreeItemBase';
 
 export interface IPostgresProceduresQueryRow {
     schema: string;
@@ -33,12 +33,14 @@ function getProceduresQuery(conditions: string): string {
         order by name;`;
 }
 
-export async function getPostgresProcedureQueryRows(treeItem: PostgresResourcesTreeItemBase): Promise<IPostgresProceduresQueryRow[]> {
+export async function getPostgresProcedureQueryRows(
+    treeItem: PostgresResourcesTreeItemBase,
+): Promise<IPostgresProceduresQueryRow[]> {
     let conditions: string;
 
     if (treeItem instanceof PostgresFunctionsTreeItem) {
         conditions = `and p.proname not in ('pg_buffercache_pages', 'pg_stat_statements_reset', 'pg_stat_statements')
-        ${await treeItem.parent.parent.supportsStoredProcedures(treeItem.clientConfig) ? "and p.prokind = 'f'" : ''}`;
+        ${(await treeItem.parent.parent.supportsStoredProcedures(treeItem.clientConfig)) ? "and p.prokind = 'f'" : ''}`;
     } else {
         // Assume stored procedures
         conditions = "and p.prokind = 'p'";

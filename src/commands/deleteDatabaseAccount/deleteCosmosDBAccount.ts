@@ -20,12 +20,19 @@ export async function deleteCosmosDBAccount(context: IDeleteWizardContext, node:
     const deletePromise = client.databaseAccounts.beginDeleteAndWait(resourceGroup, accountName);
     if (!context.suppressNotification) {
         const deletingMessage: string = `Deleting account "${accountName}"...`;
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: deletingMessage }, async () => {
-            await deletePromise;
-            const deleteMessage: string = localize("deleteAccountMsg", `Successfully deleted account "{0}".`, accountName);
-            void vscode.window.showInformationMessage(deleteMessage);
-            ext.outputChannel.appendLog(deleteMessage);
-        });
+        await vscode.window.withProgress(
+            { location: vscode.ProgressLocation.Notification, title: deletingMessage },
+            async () => {
+                await deletePromise;
+                const deleteMessage: string = localize(
+                    'deleteAccountMsg',
+                    `Successfully deleted account "{0}".`,
+                    accountName,
+                );
+                void vscode.window.showInformationMessage(deleteMessage);
+                ext.outputChannel.appendLog(deleteMessage);
+            },
+        );
     } else {
         await deletePromise;
     }

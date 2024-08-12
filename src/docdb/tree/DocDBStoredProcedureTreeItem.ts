@@ -4,8 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Resource, StoredProcedureDefinition } from '@azure/cosmos';
-import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath, openReadOnlyJson, randomUtils } from '@microsoft/vscode-azext-utils';
-import * as vscode from "vscode";
+import {
+    AzExtTreeItem,
+    DialogResponses,
+    IActionContext,
+    TreeItemIconPath,
+    openReadOnlyJson,
+    randomUtils,
+} from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
@@ -17,13 +24,16 @@ import { IDocDBTreeRoot } from './IDocDBTreeRoot';
  * Represents a Cosmos DB DocumentDB (SQL) stored procedure
  */
 export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEditableTreeItem {
-    public static contextValue: string = "cosmosDBStoredProcedure";
+    public static contextValue: string = 'cosmosDBStoredProcedure';
     public readonly contextValue: string = DocDBStoredProcedureTreeItem.contextValue;
     public readonly cTime: number = Date.now();
     public readonly parent: DocDBStoredProceduresTreeItem;
     public mTime: number = Date.now();
 
-    constructor(parent: DocDBStoredProceduresTreeItem, public procedure: (StoredProcedureDefinition & Resource)) {
+    constructor(
+        parent: DocDBStoredProceduresTreeItem,
+        public procedure: StoredProcedureDefinition & Resource,
+    ) {
         super(parent);
         ext.fileSystem.fireChangedEvent(this);
         this.commandId = 'cosmosDB.openStoredProcedure';
@@ -51,7 +61,6 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
 
     public async getFileContent(): Promise<string> {
         return typeof this.procedure.body === 'string' ? this.procedure.body : '';
-
     }
 
     public async refreshImpl(): Promise<void> {
@@ -60,7 +69,10 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
         const client = this.root.getCosmosClient();
-        const replace = await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).replace({ id: this.id, body: content });
+        const replace = await this.parent
+            .getContainerClient(client)
+            .scripts.storedProcedure(this.id)
+            .replace({ id: this.id, body: content });
         this.procedure = nonNullProp(replace, 'resource');
     }
 
@@ -69,15 +81,26 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
     }
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
-        const message: string = localize("deleteCosmosStoredProcedure", `Are you sure you want to delete stored procedure '{0}'?`, this.label);
-        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteStoredProcedure' }, DialogResponses.deleteResponse);
+        const message: string = localize(
+            'deleteCosmosStoredProcedure',
+            `Are you sure you want to delete stored procedure '{0}'?`,
+            this.label,
+        );
+        await context.ui.showWarningMessage(
+            message,
+            { modal: true, stepName: 'deleteStoredProcedure' },
+            DialogResponses.deleteResponse,
+        );
         const client = this.root.getCosmosClient();
         await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).delete();
     }
 
     public async execute(context: IActionContext, partitionKey: string, parameters?: any[]): Promise<void> {
         const client = this.root.getCosmosClient();
-        const result = await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).execute(partitionKey, parameters);
+        const result = await this.parent
+            .getContainerClient(client)
+            .scripts.storedProcedure(this.id)
+            .execute(partitionKey, parameters);
 
         try {
             const resultFileName = `${this.label}-result`;

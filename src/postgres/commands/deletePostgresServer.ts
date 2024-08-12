@@ -14,9 +14,9 @@ export async function deletePostgresServer(context: IActionContext, node?: Postg
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
         node = await ext.rgApi.pickAppResource<PostgresServerTreeItem>(context, {
-            filter: [postgresSingleFilter, postgresFlexibleFilter]
+            filter: [postgresSingleFilter, postgresFlexibleFilter],
         });
     }
 
-    await deleteDatabaseAccount(context, node, true)
+    await deleteDatabaseAccount(context, node, true);
 }

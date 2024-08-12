@@ -19,7 +19,12 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
     public databaseName: string;
     private _dbNode: AzExtTreeItem | undefined;
 
-    constructor(parsedCS: ParsedConnectionString, databaseName: string, accountNode?: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem, dbNode?: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase | PostgresDatabaseTreeItem) {
+    constructor(
+        parsedCS: ParsedConnectionString,
+        databaseName: string,
+        accountNode?: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem,
+        dbNode?: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase | PostgresDatabaseTreeItem,
+    ) {
         super(parsedCS, accountNode);
         this.databaseName = databaseName;
         this._dbNode = dbNode;
@@ -30,7 +35,8 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
             context.errorHandling.suppressDisplay = true;
             context.errorHandling.rethrow = true;
 
-            const accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem = await this.getAccountNode(context);
+            const accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem =
+                await this.getAccountNode(context);
             if (!this._dbNode) {
                 const databaseId = `${accountNode.fullId}/${this.databaseName}`;
                 this._dbNode = await ext.rgApi.workspaceResourceTree.findTreeItem(databaseId, context);

@@ -55,12 +55,12 @@
             "preLaunchTask": "Watch",
             "autoAttachChildProcesses": true,
             "debugWebWorkerHost": true,
-            "debugWebviews": true,
+            "debugWebviews": false,
             "trace": true,
             "sourceMaps": true,
             "pauseForSourceMap": true,
             "rendererDebugOptions": {
-                "webRoot": "${workspaceFolder}/dist"
+                "webRoot": "${workspaceFolder}"
             },
             "sourceMapPathOverrides": {
                 "./*": "${workspaceFolder}/*"

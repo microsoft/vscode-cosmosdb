@@ -5,6 +5,7 @@ const path = require('path');
 const webpack = require('webpack');
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 
 module.exports = (env, { mode }) => {
     const isDev = mode === 'development';
@@ -34,9 +35,7 @@ module.exports = (env, { mode }) => {
             rules: [
                 {
                     test: /\.(tsx?)?$/iu,
-                    use: {
-                        loader: 'swc-loader',
-                    },
+                    use: ['swc-loader'],
                     exclude: /node_modules/u,
                 },
                 {
@@ -54,6 +53,16 @@ module.exports = (env, { mode }) => {
                         'sass-loader',
                     ],
                 },
+                {
+                    test: /\.js$/,
+                    enforce: 'pre',
+                    use: ['source-map-loader'],
+                    exclude: /node_modules/u,
+                },
+                {
+                    test: /\.ttf$/,
+                    type: 'asset/resource',
+                },
             ],
         },
         devServer: {
@@ -68,13 +77,18 @@ module.exports = (env, { mode }) => {
                 'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
             },
             hot: true,
+            host: '127.0.0.1',
             client: {
                 overlay: true,
             },
             compress: true,
             port: 18080,
+            webSocketServer: 'ws',
         },
         plugins: [
+            new MonacoWebpackPlugin({
+                languages: ['sql'],
+            }),
             new webpack.ProvidePlugin({
                 React: 'react',
             }),

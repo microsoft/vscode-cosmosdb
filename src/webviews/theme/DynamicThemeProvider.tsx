@@ -6,7 +6,7 @@ const observerConfig = {
     attributes: true,
 };
 
-const useMutationObserver = (callback: (themeKind: string) => void) => {
+export const useThemeMutationObserver = (callback: (themeKind: string) => void) => {
     const observer = useMemo(
         () =>
             new MutationObserver((mutations) => {
@@ -38,25 +38,21 @@ export type DynamicThemeProviderProps = {
 export const DynamicThemeProvider = ({ children, useAdaptive }: PropsWithChildren<DynamicThemeProviderProps>) => {
     const [themeKind, setThemeKind] = useState(useVSCodeTheme());
 
-    useMutationObserver(setThemeKind);
+    useThemeMutationObserver(setThemeKind);
 
-    return (
-        <FluentProvider
-            theme={
-                useAdaptive
-                    ? adaptiveTheme
-                    : themeKind === 'vscode-light'
-                      ? teamsLightTheme
-                      : themeKind === 'vscode-dark'
-                        ? teamsDarkTheme
-                        : themeKind === 'vscode-high-contrast'
-                          ? teamsHighContrastTheme
-                          : themeKind === 'vscode-high-contrast-light'
-                            ? teamsLightTheme // TODO: find a better theme for this
-                            : undefined
-            }
-        >
-            {children}
-        </FluentProvider>
-    );
+    const getFluentUiTheme = (isAdaptive: boolean = false, themeKind: string) => {
+        return isAdaptive
+            ? adaptiveTheme
+            : themeKind === 'vscode-light'
+              ? teamsLightTheme
+              : themeKind === 'vscode-dark'
+                ? teamsDarkTheme
+                : themeKind === 'vscode-high-contrast'
+                  ? teamsHighContrastTheme
+                  : themeKind === 'vscode-high-contrast-light'
+                    ? teamsLightTheme // TODO: find a better theme for this
+                    : undefined;
+    };
+
+    return <FluentProvider theme={getFluentUiTheme(useAdaptive, themeKind)}>{children}</FluentProvider>;
 };

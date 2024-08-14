@@ -29,10 +29,13 @@ export const DataViewPanelTable = (): React.JSX.Element => {
     ];
 
     const gridOptions : GridOption = {
-        enableFiltering: true,
-        gridHeight: 600,
-        gridWidth: "100%",
+        autoResize: {
+            calculateAvailableSizeBy: 'container',
+            container: '.resultsDisplayArea', // this is a selector of the parent container, in this case it's the collectionView.tsx and the class is "resultsDisplayArea"
+            delay: 100
+        },
         enableAutoResize: true,
+        enableFiltering: true,
         enableSorting: false,
     };
 

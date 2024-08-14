@@ -12,7 +12,7 @@ import {
     Toolbar,
     ToolbarButton,
     ToolbarDivider,
-    Tooltip,
+    Tooltip
 } from '@fluentui/react-components';
 import {
     ArrowClockwiseFilled,
@@ -111,7 +111,7 @@ function ViewSwitch({ onViewChanged }): JSX.Element {
     return (
         <Dropdown
             style={{ minWidth: '120px', maxWidth: '120px' }}
-            defaultValue="Tree View"
+            defaultValue="JSON View"
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
             onOptionSelect={(_, data) => onViewChanged(data.optionValue)}>
             <Option key="table">Table View</Option>
@@ -122,15 +122,15 @@ function ViewSwitch({ onViewChanged }): JSX.Element {
 }
 
 export const CollectionView = (): JSX.Element => {
-    const [currentView, setCurrentView] = useState('Tree View');
+    const [currentView, setCurrentView] = useState('JSON View');
 
     const handleViewChanged = (optionValue: string) => {
         setCurrentView(optionValue);
     };
 
     return (
-        <div className="webview">
-            <Divider appearance="brand" alignContent="start">
+        <div className="collectionView">
+            <Divider appearance="brand" alignContent="start" style={{paddingTop: '16px'}}>
                 Your Query
             </Divider>
 
@@ -147,10 +147,14 @@ export const CollectionView = (): JSX.Element => {
                 Your Query Results
             </Divider>
 
-            <div className="resultsDisplayArea">
-                {currentView === 'Table View' ? <DataViewPanelTable /> : ''}
-                {currentView === 'Tree View' ? <DataViewPanelTree /> : ''}
-                {currentView === 'JSON View' ? <DataViewPanelJSON /> : ''}
+            <div className="resultsDisplayArea" id='resultsDisplayAreaId'>
+                {
+                    {
+                        'Table View': <DataViewPanelTable />,
+                        'Tree View': <DataViewPanelTree />,
+                        'JSON View': <DataViewPanelJSON />,
+                    }[currentView] // switch-statement
+                }
             </div>
         </div>
     );

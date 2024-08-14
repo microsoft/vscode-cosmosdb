@@ -32,10 +32,14 @@ export const DataViewPanelTree = (): React.JSX.Element => {
     ];
 
     const gridOptions: GridOption = {
+        autoResize: {
+            calculateAvailableSizeBy: 'container',
+            container: '.resultsDisplayArea', // this is a selector of the parent container, in this case it's the collectionView.tsx and the class is "resultsDisplayArea"
+            delay: 100,
+        },
+        enableAutoResize: true,
+
         enableFiltering: true,
-        gridHeight: 600,
-        gridWidth: '100%',
-        // enableAutoRetype: true,
         enableSorting: false,
 
         enableTreeData: true, // you must enable this flag for the filtering & sorting to work as expected

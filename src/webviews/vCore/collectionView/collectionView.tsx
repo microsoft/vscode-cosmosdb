@@ -12,7 +12,7 @@ import {
     Toolbar,
     ToolbarButton,
     ToolbarDivider,
-    Tooltip
+    Tooltip,
 } from '@fluentui/react-components';
 import {
     ArrowClockwiseFilled,
@@ -29,6 +29,8 @@ import {
 import { DataViewPanelJSON } from './dataViewPanelJSON';
 import { DataViewPanelTable } from './dataViewPanelTable';
 import { DataViewPanelTree } from './dataViewPanelTree';
+
+const defaultView: string = 'Table View';
 
 export const FindQueryComponent = (): JSX.Element => {
     return (
@@ -111,7 +113,7 @@ function ViewSwitch({ onViewChanged }): JSX.Element {
     return (
         <Dropdown
             style={{ minWidth: '120px', maxWidth: '120px' }}
-            defaultValue="JSON View"
+            defaultValue={defaultView}
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
             onOptionSelect={(_, data) => onViewChanged(data.optionValue)}>
             <Option key="table">Table View</Option>
@@ -122,7 +124,7 @@ function ViewSwitch({ onViewChanged }): JSX.Element {
 }
 
 export const CollectionView = (): JSX.Element => {
-    const [currentView, setCurrentView] = useState('JSON View');
+    const [currentView, setCurrentView] = useState(defaultView);
 
     const handleViewChanged = (optionValue: string) => {
         setCurrentView(optionValue);
@@ -130,7 +132,7 @@ export const CollectionView = (): JSX.Element => {
 
     return (
         <div className="collectionView">
-            <Divider appearance="brand" alignContent="start" style={{paddingTop: '16px'}}>
+            <Divider appearance="brand" alignContent="start" style={{ paddingTop: '16px' }}>
                 Your Query
             </Divider>
 
@@ -147,7 +149,7 @@ export const CollectionView = (): JSX.Element => {
                 Your Query Results
             </Divider>
 
-            <div className="resultsDisplayArea" id='resultsDisplayAreaId'>
+            <div className="resultsDisplayArea" id="resultsDisplayAreaId">
                 {
                     {
                         'Table View': <DataViewPanelTable />,

@@ -47,18 +47,32 @@ $slick-placeholder-color: var(--vscode-editor-background);
 $slick-cell-active-box-shadow: var(--vscode-editor-background);
 $slick-cell-text-color: var(--vscode-editor-foreground);
 $slick-cell-even-background-color: var(--vscode-editor-background); // todo: investigate, it looks like that one isn't being used
-$slick-cell-odd-background-color: brightness(0.6);//rgba(var(--vscode-editor-background), 0.5);//var(--vscode-editor-background);
+$slick-cell-odd-background-color: var(--vscode-diffEditor-unchangedRegionBackground);
 
 /* row */
 $slick-row-mouse-hover-color: var(--vscode-list-hoverBackground);
 $slick-row-selected-color: var(--vscode-list-activeSelectionBackground);
 
 /* header */
-$slick-header-background-color: var(--vscode-editor-background);
-$slick-header-column-sortable-background-hover: var(--vscode-list-hoverBackground);
+$slick-header-row-count:                                    1 !default;                                 // how many rows to display on the header
+$slick-header-border-top:                                   1px solid !default;                      // header, column titles, that is without the Filters
+$slick-header-border-right:                                 1px solid !default;
+$slick-header-border-bottom:                                1px solid !default;
+$slick-header-border-left:                                  1px solid !default;
+$slick-header-column-border-top:                            1px solid !default;                      // header, column titles, that is without the Filters
+$slick-header-column-border-right:                          1px solid !default;
+$slick-header-column-border-bottom:                         1px solid !default;
+$slick-header-column-border-left:                           1px solid !default;
+$slick-header-filter-row-border-top:                        1px solid !default;                      // header row is where the Filters are showing
+$slick-header-filter-row-border-right:                      1px solid !default;
+$slick-header-filter-row-border-bottom:                     1px solid !default;
+$slick-header-filter-row-border-left:                       1px solid !default;
+
+$slick-header-background-color: var(--vscode-list-inactiveSelectionBackground);
+$slick-header-column-sortable-background-hover: var(--vscode-button-hoverBackground);
 $slick-header-row-background-color: var(--vscode-editor-background);
 $slick-header-text-color: var(--vscode-editor-foreground);
-$slick-header-resizable-hover: var(--vscode-list-hoverBackground);
+$slick-header-resizable-hover: var(--vscode-button-hoverBackground);
 
 /* Frozen pinned rows/columns */
 $slick-frozen-border-bottom: var(--vscode-editorWidget-border);

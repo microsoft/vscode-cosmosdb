@@ -35,7 +35,7 @@ export const DataViewPanelTable = (): React.JSX.Element => {
             delay: 100
         },
         enableAutoResize: true,
-        enableFiltering: true,
+        //enableFiltering: true,
         enableSorting: false,
         enableCellNavigation: true,
         enableCheckboxSelector: true,

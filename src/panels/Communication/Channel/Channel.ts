@@ -1,4 +1,4 @@
-import { Transport } from '../Transport/Transport';
+import { type Transport } from '../Transport/Transport';
 
 export const isChannelPayload = (payload: unknown): payload is ChannelPayload => {
     return typeof payload === 'object' && payload !== null && 'type' in payload;

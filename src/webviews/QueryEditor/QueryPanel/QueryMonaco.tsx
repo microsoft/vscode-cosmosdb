@@ -18,13 +18,13 @@ export const QueryMonaco = () => {
 
     const getVscodeTheme = (themeKind: string) => {
         return themeKind === 'vscode-light'
-            ? 'light'
+            ? 'vs'
             : themeKind === 'vscode-dark'
               ? 'vs-dark'
               : themeKind === 'vscode-high-contrast'
                 ? 'hc-black'
                 : themeKind === 'vscode-high-contrast-light'
-                  ? 'light' // TODO: find a better theme for this
+                  ? 'hc-light'
                   : 'light';
     };
 

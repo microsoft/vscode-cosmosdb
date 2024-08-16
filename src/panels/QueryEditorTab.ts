@@ -2,10 +2,17 @@ import { randomBytes } from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import { OpenFileCommand, ShowInformationMessageCommand, type Command, type CommandResult } from './Commands';
+import { ShowErrorMessageCommand } from './Commands/ShowErrorMessageCommand';
 import { type Channel } from './Communication/Channel/Channel';
 import { VSCodeChannel } from './Communication/Channel/VSCodeChannel';
 
 const DEV_SERVER_HOST = 'http://localhost:18080';
+
+type CommandPayload = {
+    commandName: string;
+    params: unknown[];
+};
 
 export class QueryEditorTab {
     public static currentPanel: QueryEditorTab | undefined;
@@ -134,14 +141,36 @@ export class QueryEditorTab {
     }
 
     private initController() {
-        this.channel.on('ping', (payload) => {
-            console.log('ping', payload);
+        this.channel.on<CommandResult<unknown>>('command', async (payload: CommandPayload) => {
+            // TODO: Telemetry
+            console.log('command', payload);
 
-            if (payload === 'PING') {
-                return 'PONG';
-            } else {
-                throw new Error(`Something went wrong, the request is ${payload}`);
+            const command = this.getCommand(payload);
+
+            if (!command) {
+                throw new Error(`Unknown command: ${payload.commandName}`);
+            }
+
+            try {
+                const result = await command.execute();
+                return { isSuccess: true, value: result };
+            } catch (error) {
+                return { isSuccess: false, value: error instanceof Error ? error : new Error(String(error)) };
             }
         });
+    }
+
+    private getCommand(payload: CommandPayload): Command | undefined {
+        const commandName = payload.commandName;
+        switch (commandName) {
+            case 'openFile':
+                return new OpenFileCommand();
+            case 'showInformationMessage':
+                return new ShowInformationMessageCommand(payload.params[0] as string);
+            case 'showErrorMessage':
+                return new ShowErrorMessageCommand(payload.params[0] as string);
+        }
+
+        return undefined;
     }
 }

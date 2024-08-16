@@ -12,10 +12,8 @@
 
 // override some of existing and add some missing definitions:
 .grid-canvas {
-    .slick-cell {
-        .selected {
-            color: var(--vscode-list-activeSelectionForeground);
-        }
+    .slick-cell.selected {
+        color: var(--vscode-list-activeSelectionForeground);
     }
 }
 

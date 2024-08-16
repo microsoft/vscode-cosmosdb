@@ -30,7 +30,7 @@ import { DataViewPanelJSON } from './dataViewPanelJSON';
 import { DataViewPanelTable } from './dataViewPanelTable';
 import { DataViewPanelTree } from './dataViewPanelTree';
 
-const defaultView: string = 'Table View';
+const defaultView: string = 'Tree View';
 
 export const FindQueryComponent = (): JSX.Element => {
     return (

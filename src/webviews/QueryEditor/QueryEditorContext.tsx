@@ -1,155 +1,110 @@
 import * as React from 'react';
-import { createContext } from 'react';
+import { createContext, useContext, useReducer } from 'react';
 import { type WebviewApi } from 'vscode-webview';
-import { type CommandResult } from '../../panels/Commands/Command';
+import { type CommandResult } from '../../panels/Commands';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { type WebviewState } from '../WebviewContext';
 
 const DEFAULT_QUERY_VALUE = `SELECT * FROM c;`;
 
-export interface QueryEditorContextValue {
-    dbName: string; // The name of the database
-    collectionName: string; // The name of the collection
-    isExecuting: boolean; // Whether the query is currently executing
-    queryValue: string; // The value of the query editor
+const defaultState: QueryEditorState = {
+    dbName: '',
+    dbNames: [],
+    collectionName: '',
+    collectionNames: [],
+    currentExecutionId: '',
+    queryHistory: [],
+    queryValue: DEFAULT_QUERY_VALUE,
+    isExecuting: false,
+};
 
-    runQuery: () => Promise<boolean>; // Run the query
-    stopQuery: () => Promise<boolean>; // Stop the query
+export type QueryEditorState = {
+    dbName: string;
+    dbNames: string[];
+    collectionName: string;
+    collectionNames: string[];
+    currentExecutionId: string;
+    queryHistory: string[];
+    queryValue: string;
 
-    openFile: () => Promise<string>; // Open a file
-    saveFile: () => Promise<boolean>; // Save a file
+    isExecuting: boolean;
+};
 
-    getCurrentDatabase: () => Promise<string>; // Get the current database
-    getCurrentCollection: () => Promise<string>; // Get the current collection
+export type QueryEditorContextDispatcher = {
+    runQuery: (query: string) => Promise<boolean>; // Run the query
+    stopQuery: (executionId: string) => Promise<boolean>; // Stop the query
 
-    setDatabase: (dbName: string) => Promise<boolean>; // Change the database
-    setCollection: (collectionName: string) => Promise<boolean>; // Change the collection
+    openFile: () => Promise<void>; // Open a file
+    saveToFile: (query: string) => Promise<boolean>; // Save to file
 
-    getDatabaseNames: () => Promise<string[]>; // Get the names of the databases
-    getCollectionNames: (db: string) => Promise<string[]>; // Get the names of the db's collections
+    setDatabase: (dbName: string) => void; // Change the database
+    setCollection: (collectionName: string) => void; // Change the collection
+
+    extractDatabaseNames: () => Promise<boolean>; // Get the names of the databases
+    extractCollectionNames: (db: string) => Promise<boolean>; // Get the names of the db's collections
 
     showInformationMessage: (message: string) => void; // Show an information message
     showErrorMessage: (message: string) => void; // Show an error message
-}
+};
 
-class QueryEditorContextValueImpl implements QueryEditorContextValue {
-    private channel: Channel;
-    private vscodeApi: WebviewApi<WebviewState>;
-    private currentExecutionId: string;
+class QueryEditorContextDispatcherImpl implements QueryEditorContextDispatcher {
+    constructor(
+        private readonly channel: Channel,
+        private readonly dispatch: (action: Partial<QueryEditorState>) => void,
+    ) {
+        this.initEventListeners();
+    }
 
-    public dbName = '';
-    public collectionName = '';
-    public isExecuting = false;
-    public queryValue = '';
+    public async runQuery(query: string): Promise<boolean> {
+        const result = await this.sendCommand<CommandResult<string>>('runQuery', query);
 
-    constructor(channel: Channel, vscodeApi: WebviewApi<WebviewState>) {
-        this.channel = channel;
-        this.vscodeApi = vscodeApi;
+        if (result && result.isSuccess) {
+            this.dispatch({
+                isExecuting: true,
+                currentExecutionId: result.value,
+            });
+        }
 
-        const currentState = vscodeApi.getState();
-        if (currentState) {
-            this.dbName = currentState.noSqlDbName;
-            this.collectionName = currentState.noSqlCollectionName;
-            this.queryValue = currentState.noSqlQueryValue;
+        return result?.isSuccess ?? false;
+    }
+    public async stopQuery(executionId: string): Promise<boolean> {
+        const result = await this.sendCommand<CommandResult<boolean>>('stopQuery', executionId);
+
+        if (result && result.isSuccess) {
+            this.dispatch({ isExecuting: false, currentExecutionId: '' });
         } else {
-            this.initState();
+            this.dispatch({ isExecuting: true });
         }
+
+        return result?.isSuccess ?? false;
     }
 
-    public async runQuery(): Promise<boolean> {
-        const result = await this.sendCommand<CommandResult<string>>('runQuery');
-
-        if (result && result.isSuccess) {
-            this.isExecuting = true;
-            this.currentExecutionId = result.value;
-        }
-
-        return this.isExecuting;
+    public async openFile(): Promise<void> {
+        await this.sendCommand<CommandResult<void>>('openFile');
     }
-    public async stopQuery(): Promise<boolean> {
-        if (!this.isExecuting || !this.currentExecutionId) {
-            return false;
-        }
-
-        const result = await this.sendCommand<CommandResult<boolean>>('stopQuery', this.currentExecutionId);
-
-        if (result) {
-            this.isExecuting = !result.isSuccess;
-        }
-
-        return !this.isExecuting;
-    }
-
-    public async openFile(): Promise<string> {
-        const result = await this.sendCommand<CommandResult<string>>('openFile');
-
-        if (result && result.isSuccess) {
-            this.queryValue = result.value;
-            this.updateState();
-        }
-
-        return this.queryValue;
-    }
-    public async saveFile(): Promise<boolean> {
+    public async saveToFile(query: string): Promise<boolean> {
         // We don't follow the new file, just create file and save it
-        const result = await this.sendCommand<CommandResult<void>>('saveFile', this.queryValue);
+        const result = await this.sendCommand<CommandResult<void>>('saveFile', query);
 
         return result?.isSuccess ?? false;
     }
 
-    public async getCurrentDatabase(): Promise<string> {
-        if (!this.dbName) {
-            const result = await this.sendCommand<CommandResult<string>>('getCurrentDatabase');
-            if (result && result.isSuccess) {
-                this.dbName = result.value;
-                this.updateState();
-            }
-        }
-
-        return this.dbName;
+    public setDatabase(dbName: string): void {
+        this.dispatch({ dbName });
     }
-    public async getCurrentCollection(): Promise<string> {
-        if (!this.collectionName) {
-            const result = await this.sendCommand<CommandResult<string>>('getCurrentCollection');
-            if (result && result.isSuccess) {
-                this.collectionName = result.value;
-                this.updateState();
-            }
-        }
-
-        return this.collectionName;
+    public setCollection(collectionName: string): void {
+        this.dispatch({ collectionName });
     }
 
-    public async setDatabase(dbName: string): Promise<boolean> {
-        const result = await this.sendCommand<CommandResult<boolean>>('setDatabase', dbName);
-
-        if (result && result.isSuccess) {
-            this.dbName = dbName;
-            this.updateState();
-        }
+    public async extractDatabaseNames(): Promise<boolean> {
+        const result = await this.sendCommand<CommandResult<void>>('getDatabaseNames');
 
         return result?.isSuccess ?? false;
     }
-    public async setCollection(collectionName: string): Promise<boolean> {
-        const result = await this.sendCommand<CommandResult<boolean>>('setCollection', collectionName);
-
-        if (result && result.isSuccess) {
-            this.collectionName = collectionName;
-            this.updateState();
-        }
+    public async extractCollectionNames(db: string): Promise<boolean> {
+        const result = await this.sendCommand<CommandResult<void>>('getCollectionNames', db);
 
         return result?.isSuccess ?? false;
-    }
-
-    public async getDatabaseNames(): Promise<string[]> {
-        const result = await this.sendCommand<CommandResult<string[]>>('getDatabaseNames');
-
-        return result?.isSuccess ? result.value : [];
-    }
-    public async getCollectionNames(db: string): Promise<string[]> {
-        const result = await this.sendCommand<CommandResult<string[]>>('getCollectionNames', db);
-
-        return result?.isSuccess ? result.value : [];
     }
 
     public async showInformationMessage(message: string) {
@@ -157,21 +112,6 @@ class QueryEditorContextValueImpl implements QueryEditorContextValue {
     }
     public async showErrorMessage(message: string) {
         await this.sendCommand<void>('showErrorMessage', message);
-    }
-
-    private initState() {
-        // Initialize the state
-        // Send init request to main thread to get the current database and collection
-        void Promise.resolve({
-            dbName: 'testDb',
-            collectionName: 'testCollection',
-        }).then(({ dbName, collectionName }) => {
-            this.dbName = dbName;
-            this.collectionName = collectionName;
-            this.queryValue = DEFAULT_QUERY_VALUE;
-
-            this.updateState();
-        });
     }
 
     private async sendCommand<T>(command: string, ...args: unknown[]): Promise<T | null> {
@@ -198,29 +138,43 @@ class QueryEditorContextValueImpl implements QueryEditorContextValue {
         return null;
     }
 
-    private updateState = () => {
-        const currentState = this.vscodeApi.getState() ?? {};
-
-        this.vscodeApi.setState({
-            ...currentState,
-            noSqlDbName: this.dbName,
-            noSqlCollectionName: this.collectionName,
-            noSqlQueryValue: this.queryValue,
+    private initEventListeners() {
+        this.channel.on('fileOpened', (query: string) => {
+            this.dispatch({ queryValue: query ?? '' });
         });
-    };
+    }
 }
 
-export const QueryEditorContext = createContext<QueryEditorContextValue>({} as QueryEditorContextValue);
+export const QueryEditorContext = createContext<QueryEditorState>(defaultState);
+export const QueryEditorDispatcherContext = createContext<QueryEditorContextDispatcher>(
+    {} as QueryEditorContextDispatcher,
+);
+
+export function useQueryEditorState() {
+    return useContext(QueryEditorContext);
+}
+
+export function useQueryEditorDispatcher() {
+    return useContext(QueryEditorDispatcherContext);
+}
 
 export const WithQueryEditorContext = ({
     channel,
-    vscodeApi,
     children,
 }: {
     channel: Channel;
     vscodeApi: WebviewApi<WebviewState>;
     children: React.ReactNode;
 }) => {
-    const value = new QueryEditorContextValueImpl(channel, vscodeApi);
-    return <QueryEditorContext.Provider value={value}>{children}</QueryEditorContext.Provider>;
+    const queryEditorReducer = (state: QueryEditorState, newState: Partial<QueryEditorState>): QueryEditorState => {
+        return { ...state, ...newState };
+    };
+    const [state, dispatch] = useReducer(queryEditorReducer, { ...defaultState });
+    const dispatcher = new QueryEditorContextDispatcherImpl(channel, dispatch);
+
+    return (
+        <QueryEditorContext.Provider value={state}>
+            <QueryEditorDispatcherContext.Provider value={dispatcher}>{children}</QueryEditorDispatcherContext.Provider>
+        </QueryEditorContext.Provider>
+    );
 };

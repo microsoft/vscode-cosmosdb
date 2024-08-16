@@ -152,7 +152,7 @@ export class QueryEditorTab {
             }
 
             try {
-                const result = await command.execute();
+                const result = await command.execute(this.channel);
                 return { isSuccess: true, value: result };
             } catch (error) {
                 return { isSuccess: false, value: error instanceof Error ? error : new Error(String(error)) };

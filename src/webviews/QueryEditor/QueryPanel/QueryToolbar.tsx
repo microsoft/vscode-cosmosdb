@@ -25,8 +25,8 @@ import {
     SaveRegular,
     StopRegular,
 } from '@fluentui/react-icons';
-import { useContext, useState } from 'react';
-import { QueryEditorContext } from '../QueryEditorContext';
+import { useState } from 'react';
+import { useQueryEditorDispatcher, useQueryEditorState } from '../QueryEditorContext';
 
 const useClasses = makeStyles({
     iconPlay: {
@@ -42,7 +42,8 @@ const useClasses = makeStyles({
 
 const BaseActionsSection = () => {
     const classes = useClasses();
-    const contextValue = useContext(QueryEditorContext);
+    const state = useQueryEditorState();
+    const dispatcher = useQueryEditorDispatcher();
     const [isQueryRunning, setIsQueryRunning] = useState(false); // TODO: should be global state hook
 
     return (
@@ -61,10 +62,13 @@ const BaseActionsSection = () => {
                 onClick={() => setIsQueryRunning(false)}>
                 Cancel
             </ToolbarButton>
-            <ToolbarButton aria-label="Open" icon={<FolderOpenRegular />} onClick={() => void contextValue.openFile()}>
+            <ToolbarButton aria-label="Open" icon={<FolderOpenRegular />} onClick={() => void dispatcher.openFile()}>
                 Open
             </ToolbarButton>
-            <ToolbarButton aria-label="Save query" icon={<SaveRegular />}>
+            <ToolbarButton
+                aria-label="Save query"
+                icon={<SaveRegular />}
+                onClick={() => void dispatcher.saveToFile(state.queryValue)}>
                 Save
             </ToolbarButton>
         </>

@@ -5,13 +5,13 @@ import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 import { useEffect, useState } from 'react';
 import { useThemeMutationObserver } from '../../theme/DynamicThemeProvider';
 import { useVSCodeTheme } from '../../themeGenerator';
-
-const value = `SELECT * FROM c`;
+import { useQueryEditorState } from '../QueryEditorContext';
 
 loader.config({ monaco: monacoEditor });
 
 export const QueryMonaco = () => {
     const monaco = useMonaco();
+    const state = useQueryEditorState();
     const [themeKind, setThemeKind] = useState(useVSCodeTheme());
 
     useThemeMutationObserver(setThemeKind);
@@ -34,5 +34,13 @@ export const QueryMonaco = () => {
         }
     }, [monaco]);
 
-    return <Editor height={'100%'} width={'100%'} language="sql" theme={getVscodeTheme(themeKind)} value={value} />;
+    return (
+        <Editor
+            height={'100%'}
+            width={'100%'}
+            language="sql"
+            theme={getVscodeTheme(themeKind)}
+            value={state.queryValue}
+        />
+    );
 };

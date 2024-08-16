@@ -10,11 +10,12 @@
 //@import '@slickgrid-universal/common/dist/styles/sass/slickgrid-theme-material.lite.scss';
 //@import '@slickgrid-universal/common/dist/styles/sass/slickgrid-theme-bootstrap.scss';
 
-
 // override some of existing and add some missing definitions:
 .grid-canvas {
-    .slick-cell.selected {
-        color: var(--vscode-list-activeSelectionForeground);
+    .slick-cell {
+        .selected {
+            color: var(--vscode-list-activeSelectionForeground);
+        }
     }
 }
 
@@ -28,4 +29,3 @@
 // .slick-header-menu .slick-menu-item:hover {
 //     color: var(--vscode-menu-selectionForeground);
 // }
-

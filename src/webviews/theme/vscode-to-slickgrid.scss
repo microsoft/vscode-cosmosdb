@@ -5,9 +5,7 @@
 // $primary-color: var(--vscode-foreground);
 @use 'sass:color';
 
-$slick-focus-color: red;//var(--vscode-list-focusBackground);
-
-
+$slick-focus-color: red; //var(--vscode-list-focusBackground);
 
 /** extra styling when Bootstrap isn't provided */
 $slick-highlight-color: var(--vscode-list-activeSelectionBackground);
@@ -44,29 +42,42 @@ $slick-sorting-header-color: var(--vscode-editor-background);
 $slick-placeholder-color: var(--vscode-editor-background);
 
 /* cell */
-$slick-cell-active-box-shadow: var(--vscode-editor-background);
+$slick-cell-active-border:                                 1px solid var(--vscode-button-background);
+$slick-cell-active-box-shadow:                              inset 0 0 0 1px var(--vscode-button-background);
+
+//$slick-cell-active-box-shadow: var(--vscode-editor-background);
 $slick-cell-text-color: var(--vscode-editor-foreground);
-$slick-cell-even-background-color: var(--vscode-editor-background); // todo: investigate, it looks like that one isn't being used
+$slick-cell-even-background-color: var(
+    --vscode-editor-background
+); //it looks like that one isn't being applied, but instead $slick-canvas-bg-color is used for the entire canvas
 $slick-cell-odd-background-color: var(--vscode-diffEditor-unchangedRegionBackground);
+
+// $slick-cell-border-top:                                     1px solid var(--vscode-editorWidget-border);
+$slick-cell-border-bottom:                                  1px solid var(--vscode-editorWidget-border);
+// disabled right+left due to rendering issues while resizing columns
+// $slick-cell-border-right:                                   1px solid var(--vscode-editorWidget-border);
+// $slick-cell-border-left:                                    1px solid var(--vscode-editorWidget-border);
 
 /* row */
 $slick-row-mouse-hover-color: var(--vscode-list-hoverBackground);
 $slick-row-selected-color: var(--vscode-list-activeSelectionBackground);
 
 /* header */
-$slick-header-row-count:                                    1 !default;                                 // how many rows to display on the header
-$slick-header-border-top:                                   1px solid !default;                      // header, column titles, that is without the Filters
-$slick-header-border-right:                                 1px solid !default;
-$slick-header-border-bottom:                                1px solid !default;
-$slick-header-border-left:                                  1px solid !default;
-$slick-header-column-border-top:                            1px solid !default;                      // header, column titles, that is without the Filters
-$slick-header-column-border-right:                          1px solid !default;
-$slick-header-column-border-bottom:                         1px solid !default;
-$slick-header-column-border-left:                           1px solid !default;
-$slick-header-filter-row-border-top:                        1px solid !default;                      // header row is where the Filters are showing
-$slick-header-filter-row-border-right:                      1px solid !default;
-$slick-header-filter-row-border-bottom:                     1px solid !default;
-$slick-header-filter-row-border-left:                       1px solid !default;
+$slick-header-row-count: 1 ; // how many rows to display on the header
+
+$slick-header-border-top: 1px solid var(--vscode-button-background) ; // header, column titles, that is without the Filters
+$slick-header-border-bottom: 1px solid var(--vscode-button-background) ;
+$slick-header-border-right:  1px solid var(--vscode-button-background);
+$slick-header-border-left: 1px solid var(--vscode-button-background);
+
+// $slick-header-column-border-top: 1px solid red ; // header, column titles, that is without the Filters
+// $slick-header-column-border-right: 1px solid red ;
+// $slick-header-column-border-bottom: 1px solid red ;
+// $slick-header-column-border-left: 1px solid red ;
+// $slick-header-filter-row-border-top: 1px solid red ; // header row is where the Filters are showing
+// $slick-header-filter-row-border-right: 1px solid red ;
+// $slick-header-filter-row-border-bottom: 1px solid red ;
+// $slick-header-filter-row-border-left: 1px solid red ;
 
 $slick-header-background-color: var(--vscode-list-inactiveSelectionBackground);
 $slick-header-column-sortable-background-hover: var(--vscode-button-hoverBackground);
@@ -132,7 +143,7 @@ $slick-menu-close-btn-bg-color: var(--vscode-menubar-selectionForeground);
 $slick-menu-close-btn-border: var(--vscode-menubar-selectionBorder);
 $slick-menu-close-btn-color: var(--vscode-menubar-selectionForeground);
 $slick-menu-divider-color: var(--vscode-menubar-selectionForeground);
-$slick-menu-item-hover-border: red;// var(--vscode-menubar-selectionBorder);
+$slick-menu-item-hover-border: red; // var(--vscode-menubar-selectionBorder);
 $slick-menu-item-hover-color: \var(--vscode-menu-selectionBackground);
 $slick-menu-title-color: var(--vscode-menubar-selectionForeground);
 $slick-menu-title-border-bottom: var(--vscode-menubar-selectionBorder);
@@ -243,4 +254,3 @@ $slick-dark-base-dark-menu-item-border-color: var(--vscode-menu-bar-selectionBor
 $slick-dark-base-dark-menu-item-hover-color: var(--vscode-menu-bar-selectionForeground);
 $slick-dark-base-dark-invalid-color: var(--vscode-editor-background);
 $slick-dark-text-color: var(--vscode-editor-foreground);
-

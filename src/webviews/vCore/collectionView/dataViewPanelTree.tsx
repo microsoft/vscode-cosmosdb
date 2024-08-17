@@ -69,12 +69,13 @@ export const DataViewPanelTree = (): React.JSX.Element => {
             indentMarginLeft: 15,
             initiallyCollapsed: true,
 
-            initialSort: {
-                // tn: incredible! this is actually needed if you want to shown chevrons to expand/collapse the tree (!??? 2h+ to find this by trial&error)
-                // https://github.com/ghiscoding/slickgrid-react/discussions/393
-                columnId: 'fieldId',
-                direction: 'ASC',
-            },
+            // initialSort: {
+            //     // tn: incredible! this is actually needed if you want to shown chevrons to expand/collapse the tree (!??? 2h+ to find this by trial&error)
+            //     // https://github.com/ghiscoding/slickgrid-react/discussions/393
+            //     // with the 5.5.1 release of slickgrid-react, this is no longer needed
+            //     columnId: 'fieldId',
+            //     direction: 'ASC',
+            // },
 
             // we can also add a custom Formatter just for the title text portion
             titleFormatter: (_row, _cell, value, _def, dataContext) => {

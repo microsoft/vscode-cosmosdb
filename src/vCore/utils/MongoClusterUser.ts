@@ -1,4 +1,4 @@
-export interface IVCoreClusterUser {
+export interface MongoClusterUser {
     id: string;
     name: string;
     type: string;

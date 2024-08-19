@@ -8,20 +8,16 @@ import { callWithTelemetryAndErrorHandling, registerCommand, type IActionContext
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
-import { MongoVCoreResolver } from '../resolver/MongoVCoreResolver';
+import { MongoClustersBranchDataProvider } from '../vCore/tree/MongoClustersBranchDataProvider';
 
 export class VCoreExtension implements vscode.Disposable {
-    constructor() {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        ext.rgApi.registerApplicationResourceResolver(
-            AzExtResourceType.MongoClusters as string,
-            new MongoVCoreResolver(),
-        );
-    }
 
     async activate(): Promise<void> {
-        await callWithTelemetryAndErrorHandling('vCore.activate', async (activateContext: IActionContext) => {
+        await callWithTelemetryAndErrorHandling('mongoClusters.activate', async (activateContext: IActionContext) => {
             activateContext.telemetry.properties.isActivationEvent = 'true';
+
+            ext.mongoClustersBranchDataProvider = new MongoClustersBranchDataProvider();
+            ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(AzExtResourceType.MongoClusters, ext.mongoClustersBranchDataProvider);
 
             // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
             // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling

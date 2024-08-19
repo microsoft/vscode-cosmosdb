@@ -7,15 +7,15 @@
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { QuickPickItemKind, ThemeIcon } from 'vscode';
 import { localize } from '../../../utils/localize';
-import { IAuthenticateWizardContext } from './IAuthenticateWizardContext';
+import { type IAuthenticateWizardContext } from './IAuthenticateWizardContext';
 
 export class SelectUserNameStep extends AzureWizardPromptStep<IAuthenticateWizardContext> {
     public async prompt(context: IAuthenticateWizardContext): Promise<void> {
         const res = await context.ui.showQuickPick(
             [
+                { label: 'Administrator', kind: QuickPickItemKind.Separator },
                 {
                     label: context.adminUserName,
-                    description: 'Administrator',
                     iconPath: new ThemeIcon('account'), // https://code.visualstudio.com/api/references/icons-in-labels#icon-listing
                 },
                 { label: 'All Users', kind: QuickPickItemKind.Separator },

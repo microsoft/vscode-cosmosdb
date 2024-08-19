@@ -16,6 +16,7 @@ import {
     registerEvent,
     registerReportIssueCommand,
     registerUIExtensionVariables,
+    TreeElementStateManager,
     type apiUtils,
     type AzExtParentTreeItem,
     type AzExtTreeItem,
@@ -23,7 +24,7 @@ import {
     type IActionContext,
     type ITreeItemPickerContext,
 } from '@microsoft/vscode-azext-utils';
-import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import { platform } from 'os';
 import * as vscode from 'vscode';
 import { findTreeItem } from './commands/api/findTreeItem';
@@ -90,6 +91,14 @@ export async function activateInternal(
         ext.secretStorage = context.secrets;
 
         ext.rgApi = await getResourceGroupsApi();
+
+        // getAzureResourcesExtensionApi provides a way to get the Azure Resources extension's API V2
+        // and is used to work with the tree view structure, as an improved alternative to the
+        // AzureResourceGraph API V1 provided by the getResourceGroupsApi call above.
+        // TreeElementStateManager is needed here too
+        ext.state = new TreeElementStateManager();
+        ext.rgApiV2 = await getAzureResourcesExtensionApi(context, '2.0.0');
+
         ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.AzureCosmosDb, new DatabaseResolver());
         ext.rgApi.registerApplicationResourceResolver(
             AzExtResourceType.PostgresqlServersStandard,
@@ -115,7 +124,7 @@ export async function activateInternal(
 
         registerCommand('development.showUiDemo', showFluentUiDemo);
 
-        // init and activate vCore-support (commands, ...)
+        // init and activate vCore-support (branch data provider, commands, ...)
         const vCoreSupport: VCoreExtension = new VCoreExtension();
         context.subscriptions.push(vCoreSupport); // to be disposed when extension is deactivated.
         await vCoreSupport.activate();

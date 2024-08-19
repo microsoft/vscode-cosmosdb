@@ -6,7 +6,7 @@
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../../utils/localize';
-import { IAuthenticateWizardContext } from './IAuthenticateWizardContext';
+import { type IAuthenticateWizardContext } from './IAuthenticateWizardContext';
 
 export class ProvidePasswordStep extends AzureWizardPromptStep<IAuthenticateWizardContext> {
     public async prompt(context: IAuthenticateWizardContext): Promise<void> {

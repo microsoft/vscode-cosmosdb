@@ -7,6 +7,7 @@
         "sourceMap": true,
         "allowSyntheticDefaultImports": true, // added by tnaum to fix SlickGrid integration, eager to discuss other approaches
         "noImplicitThis": true,
+        //"noImplicitAny": true,
         "noImplicitReturns": true,
         "noUnusedLocals": true,
         "strictNullChecks": true,
@@ -19,7 +20,11 @@
         "paths": {
             "*": ["node_modules/@types/*", "*"]
         },
-        "jsx": "react-jsx"
+        "jsx": "react-jsx",
+        "typeRoots": [
+            //"typings",
+            "node_modules/@types"
+        ]
     },
     "exclude": ["node_modules", ".vscode-test", "gulpfile.ts"]
 }

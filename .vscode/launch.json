@@ -138,10 +138,10 @@
             "runtimeExecutable": "${execPath}",
             "args": [
                 "--profile=vCoreDevelopment", // uses a local profile with a limited number of installed extensions
-                "--extensionDevelopmentPath=${workspaceFolder}",
-                "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups"
+                "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups",
+                "--extensionDevelopmentPath=${workspaceFolder}"
             ],
-            "outFiles": ["${workspaceFolder}/out/**/*.js", "${workspaceFolder}/dist/**/*.js"],
+            "outFiles": ["${workspaceFolder}/out/**/*.js", "${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../vscode-azureresourcegroups/out/**/*.js"],
             "preLaunchTask": "Watch_Extension_and_Webviews",
             "env": {
                 "DEBUGTELEMETRY": "v",

@@ -3,10 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { PostgreSQLManagementClient } from '@azure/arm-postgresql';
-import { PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
-import { AzExtClientContext, createAzureClient } from '@microsoft/vscode-azext-azureutils';
+import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
+import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
+import { createAzureClient, type AzExtClientContext } from '@microsoft/vscode-azext-azureutils';
+import { createSubscriptionContext, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 
 // Lazy-load @azure packages to improve startup performance.
 // NOTE: The client is the only import that matters, the rest of the types disappear when compiled to JavaScript
@@ -15,12 +17,9 @@ export async function createCosmosDBClient(context: AzExtClientContext): Promise
     return createAzureClient(context, (await import('@azure/arm-cosmosdb')).CosmosDBManagementClient);
 }
 
-export async function createvCoreClient(context: AzExtClientContext): Promise<CosmosDBManagementClient> {
-    const client: CosmosDBManagementClient = createAzureClient(
-        context,
-        (await import('@azure/arm-cosmosdb')).CosmosDBManagementClient,
-    );
-    return client;
+export async function createMongoClustersClient(context: IActionContext, subscription: AzureSubscription): Promise<CosmosDBManagementClient> {
+    const subContext = createSubscriptionContext(subscription);
+    return createAzureClient([context, subContext], (await import('@azure/arm-cosmosdb')).CosmosDBManagementClient);
 }
 
 // export async function createvCoreClient(context: AzExtClientContext): Promise<MongoClusterManagementClient> {

@@ -4,15 +4,22 @@
  * singletone on a client with a getter from a connection pool..
  */
 
-import { ListDatabasesResult, MongoClient } from 'mongodb';
+import { MongoClient, type ListDatabasesResult } from 'mongodb';
 import { CredentialsStore } from './CredentialsStore';
 
-export interface vCoreDatabaseInfo {
-    name?: string;
+
+export interface DatabaseItemModel {
+    name: string;
+    sizeOnDisk?: number;
+    empty?: boolean;
 }
 
-export interface vCoreCollectionInfo {
+export interface CollectionItemModel {
     name: string;
+    type?: string;
+    info?: {
+        readOnly?: false;
+    };
 }
 
 export class VCoreClient {
@@ -54,18 +61,16 @@ export class VCoreClient {
         return client;
     }
 
-    async listDatabases(): Promise<vCoreDatabaseInfo[]> {
+    async listDatabases(): Promise<DatabaseItemModel[]> {
         const rawDatabases: ListDatabasesResult = await this._mongoClient.db().admin().listDatabases();
-        const databases: vCoreDatabaseInfo[] = rawDatabases.databases;
+        const databases: DatabaseItemModel[] = rawDatabases.databases;
 
         return databases;
     }
 
-    async listCollections(databaseName: string): Promise<vCoreCollectionInfo[]> {
+    async listCollections(databaseName: string): Promise<CollectionItemModel[]> {
         const rawCollections = await this._mongoClient.db(databaseName).listCollections().toArray();
-        const collections: vCoreCollectionInfo[] = rawCollections.map((collection) => {
-            return { name: collection.name };
-        });
+        const collections: CollectionItemModel[] = rawCollections;
 
         return collections;
     }

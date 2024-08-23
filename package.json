@@ -1101,7 +1101,7 @@
     "devDependencies": {
         "@azure/arm-resources": "^4.0.0",
         "@microsoft/eslint-config-azuretools": "^0.1.0",
-        "@microsoft/vscode-azext-dev": "^2.0.2",
+        "@microsoft/vscode-azext-dev": "^2.0.4",
         "@types/copy-webpack-plugin": "^6.4.0",
         "@types/documentdb": "^1.10.2",
         "@types/fs-extra": "^8.1.0",
@@ -1136,7 +1136,7 @@
         "@azure/cosmos": "^3.6.3",
         "@microsoft/vscode-azext-azureauth": "^2.3.0",
         "@microsoft/vscode-azext-azureutils": "^3.0.1",
-        "@microsoft/vscode-azext-utils": "^2.4.0",
+        "@microsoft/vscode-azext-utils": "^2.5.6",
         "antlr4ts": "^0.4.1-alpha.0",
         "bson": "^6.0.0",
         "fs-extra": "^8.0.0",

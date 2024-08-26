@@ -1,7 +1,7 @@
 import { Textarea } from '@fluentui/react-components';
 import * as React from 'react';
 
-export const DataViewPanelJSON = (): React.JSX.Element => {
+export const DataViewPanelJSON = ({ value }): React.JSX.Element => {
     React.useEffect(() => {
         // This runs after the component has mounted
         console.log('Component has mounted');
@@ -16,7 +16,8 @@ export const DataViewPanelJSON = (): React.JSX.Element => {
         <Textarea
             style={{ height: '100%', width: '100%' }}
             textarea={{ style: { maxHeight: 'unset' } }}
-            defaultValue="JSON View"
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            value={value}
         />
     );
 };

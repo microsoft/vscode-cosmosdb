@@ -4,9 +4,8 @@
  * singletone on a client with a getter from a connection pool..
  */
 
-import { MongoClient, type ListDatabasesResult } from 'mongodb';
+import { MongoClient, type Document, type FindOptions, type ListDatabasesResult, type WithId } from 'mongodb';
 import { CredentialsStore } from './CredentialsStore';
-
 
 export interface DatabaseItemModel {
     name: string;
@@ -20,6 +19,15 @@ export interface CollectionItemModel {
     info?: {
         readOnly?: false;
     };
+}
+
+type TableColumnDef = { id: string; name: string; field: string; minWidth: number };
+
+export interface QueryReponsePack {
+    table?: object[];
+    tableColumns?: TableColumnDef[];
+    tree?: string;
+    json?: string;
 }
 
 export class VCoreClient {
@@ -73,5 +81,83 @@ export class VCoreClient {
         const collections: CollectionItemModel[] = rawCollections;
 
         return collections;
+    }
+
+    //todo: this is just a to see how it could work, we need to use a cursor here for paging
+    async queryDocuments(
+        databaseName: string,
+        collectionName: string,
+        findQuery: string,
+        skip: number,
+        limit: number,
+    ): Promise<QueryReponsePack> {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        if (findQuery === undefined || findQuery.trim().length === 0) {
+            findQuery = '{}';
+        }
+        //const findQueryObj = JSON.parse(findQuery) as Filter<Document>;
+
+        const options: FindOptions = {
+            skip: skip,
+            limit: limit,
+        };
+
+        const collection = this._mongoClient.db(databaseName).collection(collectionName);
+        const documents = await collection.find({}, options).toArray();
+
+        // json
+        const responsePack: QueryReponsePack = {
+            json: JSON.stringify(documents, null, 4),
+        };
+
+        // table
+        const topLevelKeys = this.allTopLevelKeys(documents);
+
+        responsePack.tableColumns = topLevelKeys.map((key) => {
+            return {
+                id: key,
+                name: key,
+                field: key,
+                minWidth: 100,
+            };
+        });
+
+        responsePack.table = this.topLevelData(documents);
+
+        return responsePack;
+    }
+
+    allTopLevelKeys(docs: WithId<Document>[]): string[] {
+        const keys = new Set<string>();
+
+        for (const doc of docs) {
+            for (const key of Object.keys(doc)) {
+                keys.add(key);
+            }
+        }
+
+        return Array.from(keys);
+    }
+
+    topLevelData(docs: WithId<Document>[]): object[] {
+        const result = new Array<object>();
+
+        let i = 0;
+        for (const doc of docs) {
+            const row = { id: i };
+            for (const key of Object.keys(doc)) {
+                if (key === '_id') {
+                    row[key] = doc[key].toString();
+                } else {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                    row[key] = `${doc[key]}`;
+                }
+            }
+
+            i++;
+            result.push(row);
+        }
+
+        return result;
     }
 }

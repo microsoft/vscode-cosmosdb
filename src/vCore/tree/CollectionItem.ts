@@ -22,8 +22,21 @@ export class CollectionItem implements MongoClusterItemBase {
                 contextValue: 'documents',
                 id: `${this.id}/documents`,
                 label: 'Documents',
+                commandId: 'mongocluster.internal.containerView.open',
+                commandArgs: [
+                    {
+                        id: this.id,
+                        viewTitle: `${this.collectionInfo.name}`,
+                        // viewTitle: `${this.mongoCluster.name}/${this.databaseInfo.name}/${this.collectionInfo.name}`, // using '/' as a separator to use VSCode's "title compression"(?) feature
+
+                        liveConnectionId: this.mongoCluster.session?.clientId,
+                        databaseName: this.databaseInfo.name,
+                        collectionName: this.collectionInfo.name,
+                    },
+                ],
                 iconPath: new ThemeIcon('explorer-view-icon'),
-            }),createGenericElement({
+            }),
+            createGenericElement({
                 contextValue: 'index',
                 id: `${this.id}/index`,
                 label: 'Index',

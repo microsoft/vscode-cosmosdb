@@ -8,6 +8,7 @@ export const isWindows: boolean = /^win/.test(process.platform);
 import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Uri } from 'vscode';
 import { CoreExperience, GremlinExperience, MongoExperience, TableExperience } from './AzureDBExperiences';
 import { ext } from './extensionVariables';
 
@@ -18,6 +19,11 @@ export namespace Links {
 export interface IThemedIconPath {
     light: string;
     dark: string;
+}
+
+export interface IThemedIconUri {
+    light: Uri;
+    dark: Uri;
 }
 
 export function getThemedIconPath(iconName: string): IThemedIconPath {
@@ -35,6 +41,15 @@ export function getThemeAgnosticIconPath(iconName: string): IThemedIconPath {
         dark: path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName),
     };
     assert(fs.existsSync(a.light));
+    return a;
+}
+
+export function getThemeAgnosticIconUri(iconName: string): IThemedIconUri {
+    const a = {
+        light: Uri.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName),
+        dark: Uri.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName),
+    };
+    assert(fs.existsSync(a.light.path));
     return a;
 }
 

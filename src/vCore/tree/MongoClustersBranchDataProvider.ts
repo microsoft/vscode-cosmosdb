@@ -34,7 +34,9 @@ export class MongoClustersBranchDataProvider
     }
 
     async getChildren(element: TreeElementBase): Promise<TreeElementBase[] | null | undefined> {
-        // element here is an instance of MongoClusterItem
+        /**
+         * getChildren is called for every element in the tree when expanding, the element being expanded is being passed as an argument
+         */
         return (await element.getChildren?.())?.map((child) => {
             if (child.id) {
                 return ext.state.wrapItemInStateHandling(child as TreeElementBase & { id: string }, () => this.refresh(child))

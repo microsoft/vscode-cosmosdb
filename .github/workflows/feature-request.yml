@@ -25,6 +25,8 @@ jobs:
         uses: ./actions/feature-request
         with:
           token: ${{secrets.AZCODE_BOT_PAT}}
+          owner: "microsoft"
+          repo: "vscode-cosmosdb"
           candidateMilestoneID: 28
           candidateMilestoneName: "Backlog Candidates"
           backlogMilestoneID: 33
@@ -40,4 +42,3 @@ jobs:
           warnDays: 60
           closeDays: 240
           milestoneDelaySeconds: 60
-

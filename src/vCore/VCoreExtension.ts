@@ -115,6 +115,7 @@ export class VCoreExtension implements vscode.Disposable {
                 json: responsePack?.json ?? 'No data',
                 table: responsePack?.table ?? [],
                 tableColumns: responsePack?.tableColumns ?? [],
+                tree: responsePack?.tree ?? []
             });
         });
     }

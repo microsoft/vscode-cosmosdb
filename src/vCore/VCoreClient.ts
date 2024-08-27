@@ -6,6 +6,7 @@
 
 import { MongoClient, type Document, type FindOptions, type ListDatabasesResult, type WithId } from 'mongodb';
 import { CredentialsStore } from './CredentialsStore';
+import { toSlickGridTree, type TreeData } from './utils/toSlickGridTree';
 
 export interface DatabaseItemModel {
     name: string;
@@ -26,7 +27,7 @@ type TableColumnDef = { id: string; name: string; field: string; minWidth: numbe
 export interface QueryReponsePack {
     table?: object[];
     tableColumns?: TableColumnDef[];
-    tree?: string;
+    tree?: TreeData[];
     json?: string;
 }
 
@@ -123,6 +124,8 @@ export class VCoreClient {
         });
 
         responsePack.table = this.topLevelData(documents);
+
+        responsePack.tree = toSlickGridTree(documents);
 
         return responsePack;
     }

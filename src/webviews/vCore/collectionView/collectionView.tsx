@@ -44,7 +44,7 @@ export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {
 
     return (
         <div className="findQueryComponent">
-            <Input contentBefore={<SearchFilled />} style={{ flexGrow: 1 }} value='{  }' readOnly={true} />
+            <Input contentBefore={<SearchFilled />} style={{ flexGrow: 1 }} value="{  }" readOnly={true} />
             <Button onClick={runQuery} icon={<PlayRegular />} appearance="primary" style={{ flexShrink: 0 }}>
                 Run Find Query
             </Button>
@@ -189,7 +189,13 @@ export const CollectionView = (): JSX.Element => {
     // quick/temp solution
     function handleMessage(event) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        setCurrentQueryResults((prev) => ({ ...prev, json: event.data?.json, table: event.data?.table, tableColumns: event.data?.tableColumns }));
+        setCurrentQueryResults((prev) => ({
+            ...prev,
+            json: event.data?.json,
+            table: event.data?.table,
+            tableColumns: event.data?.tableColumns,
+            tree: event.data?.tree
+        }));
 
         console.log('Received message:', event);
     }
@@ -214,7 +220,6 @@ export const CollectionView = (): JSX.Element => {
         console.log('Query:', queryConfig);
         window.config?.__vsCodeApi.postMessage({ type: 'queryConfig', queryConfig });
     }, [queryConfig]);
-
 
     const [currentQueryResults, setCurrentQueryResults] = useState<QueryResults>();
 
@@ -262,8 +267,13 @@ export const CollectionView = (): JSX.Element => {
                 <Suspense fallback={<div>Loading...</div>}>
                     {
                         {
-                            'Table View': <DataViewPanelTable liveColumns={currentQueryResults?.tableColumns} liveData={currentQueryResults?.table} />,
-                            'Tree View': <DataViewPanelTree />,
+                            'Table View': (
+                                <DataViewPanelTable
+                                    liveColumns={currentQueryResults?.tableColumns}
+                                    liveData={currentQueryResults?.table}
+                                />
+                            ),
+                            'Tree View': <DataViewPanelTree liveData={currentQueryResults?.tree} />,
                             'JSON View': <DataViewPanelJSON value={currentQueryResults?.json} />,
                         }[currentView] // switch-statement
                     }

@@ -6,4 +6,6 @@ describe('vCoreClient', () => {
     it('should be defined', () => {
         expect(VCoreClient).toBeDefined();
     });
+
+
 });

@@ -112,10 +112,10 @@ export class VCoreExtension implements vscode.Disposable {
 
             void panel.webview.postMessage({
                 message: 'Hello from the extension!',
-                json: responsePack?.json ?? 'No data',
-                table: responsePack?.table ?? [],
-                tableColumns: responsePack?.tableColumns ?? [],
-                tree: responsePack?.tree ?? []
+                json: responsePack?.json ?? '{ "noData": true }',
+                tableData: responsePack?.tableData ?? [],
+                tableHeaders: responsePack?.tableHeaders ?? [],
+                treeData: responsePack?.treeData ?? []
             });
         });
     }

@@ -1,31 +1,22 @@
 import * as React from 'react';
 import { SlickgridReact, type GridOption } from 'slickgrid-react';
 
-export const DataViewPanelTable = ({liveColumns, liveData}): React.JSX.Element => {
-    // type ColumnDef = { id: string; name: string; field: string; minWidth: number };
-    // type Data = { id: number; _id: string; firstName: string; lastName: string };
+interface Props {
+    liveHeaders: string[];
+    liveData: object[];
+}
 
-    // const [currentState, setCurrentState] = React.useState<{ columns: ColumnDef[]; data: object[] }>({
-    //     columns: [],
-    //     data: [],
-    // });
+export function DataViewPanelTable({ liveHeaders, liveData }: Props): React.JSX.Element {
+    type GridColumn = { id: string; name: string; field: string; minWidth: number };
 
-    // const columnsDef = [
-    //     { id: '_id', name: '_id', field: '_id', minWidth: 100 },
-    //     { id: 'firstName', name: 'firstName', field: 'firstName', minWidth: 100 },
-    //     { id: 'lastName', name: 'lastName', field: 'lastName', minWidth: 100 },
-    // ];
-
-    // const staticDataSource = [
-    //     { id: 1, _id: '66ba10dc1b5499e8b28805d3', firstName: 'Alan', lastName: 'Turing' },
-    //     { id: 18, _id: '66ba11075b531918a6ca7b29', firstName: 'Grace', lastName: 'Hopper' },
-    //     { id: 17, _id: '66ba11075b531918a6ca7b30', firstName: 'Ada', lastName: 'Lovelace' },
-    //     { id: 16, _id: '66ba11075b531918a6ca7b31', firstName: 'Charles', lastName: 'Babbage' },
-    //     { id: 15, _id: '66ba11075b531918a6ca7b32', firstName: 'John', lastName: 'von Neumann' },
-    //     { id: 14, _id: '66ba11075b531918a6ca7b33', firstName: 'Claude', lastName: 'Shannon' },
-    //     { id: 13, _id: '66ba11075b531918a6ca7b34', firstName: 'Donald', lastName: 'Knuth' },
-    //     { id: 12, _id: '66ba11075b531918a6ca7b35', firstName: 'Barbara', lastName: 'Liskov' },
-    // ];
+    const gridColumns: GridColumn[] = liveHeaders.map((header) => {
+        return {
+            id: header + '_id',
+            name: header,
+            field: header,
+            minWidth: 100,
+        };
+    });
 
     const gridOptions: GridOption = {
         autoResize: {
@@ -62,28 +53,15 @@ export const DataViewPanelTable = ({liveColumns, liveData}): React.JSX.Element =
         enableHeaderMenu: false,
     };
 
-    // React.useEffect(() => {
-    //     // This runs after the component has mounted
-    //     console.log('Component has mounted');
-
-    //     // // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    //     // setCurrentState({ columns: liveColumns, data: liveData });
-
-    //     // Optional cleanup function (similar to componentWillUnmount)
-    //     return () => {
-    //         console.log('Component will unmount');
-    //     };
-    // }, []); // Empty dependency array means this runs only once, like componentDidMount
-
     return (
         <SlickgridReact
             gridId="myGrid"
             gridOptions={gridOptions}
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            columnDefinitions={liveColumns}
+            columnDefinitions={gridColumns}
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             dataset={liveData}
             onReactGridCreated={() => console.log('Grid created')}
         />
     );
-};
+}

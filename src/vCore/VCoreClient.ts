@@ -4,8 +4,9 @@
  * singletone on a client with a getter from a connection pool..
  */
 
-import { MongoClient, type Document, type FindOptions, type ListDatabasesResult, type WithId } from 'mongodb';
+import { MongoClient, type FindOptions, type ListDatabasesResult } from 'mongodb';
 import { CredentialsStore } from './CredentialsStore';
+import { getDataTopLevel, getFieldsTopLevel } from './utils/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from './utils/toSlickGridTree';
 
 export interface DatabaseItemModel {
@@ -22,12 +23,14 @@ export interface CollectionItemModel {
     };
 }
 
-type TableColumnDef = { id: string; name: string; field: string; minWidth: number };
+// type TableColumnDef = { id: string; name: string; field: string; minWidth: number };
 
 export interface QueryReponsePack {
-    table?: object[];
-    tableColumns?: TableColumnDef[];
-    tree?: TreeData[];
+    tableHeaders?: string[];
+    tableData?: object[];
+
+    treeData?: TreeData[];
+
     json?: string;
 }
 
@@ -112,55 +115,18 @@ export class VCoreClient {
         };
 
         // table
-        const topLevelKeys = this.allTopLevelKeys(documents);
+        responsePack.tableHeaders = getFieldsTopLevel(documents);
+        responsePack.tableData = getDataTopLevel(documents);
 
-        responsePack.tableColumns = topLevelKeys.map((key) => {
-            return {
-                id: key,
-                name: key,
-                field: key,
-                minWidth: 100,
-            };
-        });
 
-        responsePack.table = this.topLevelData(documents);
 
-        responsePack.tree = toSlickGridTree(documents);
+
+        responsePack.treeData = toSlickGridTree(documents);
 
         return responsePack;
     }
 
-    allTopLevelKeys(docs: WithId<Document>[]): string[] {
-        const keys = new Set<string>();
 
-        for (const doc of docs) {
-            for (const key of Object.keys(doc)) {
-                keys.add(key);
-            }
-        }
 
-        return Array.from(keys);
-    }
 
-    topLevelData(docs: WithId<Document>[]): object[] {
-        const result = new Array<object>();
-
-        let i = 0;
-        for (const doc of docs) {
-            const row = { id: i };
-            for (const key of Object.keys(doc)) {
-                if (key === '_id') {
-                    row[key] = doc[key].toString();
-                } else {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                    row[key] = `${doc[key]}`;
-                }
-            }
-
-            i++;
-            result.push(row);
-        }
-
-        return result;
-    }
 }

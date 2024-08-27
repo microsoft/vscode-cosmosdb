@@ -174,12 +174,14 @@ declare global {
     }
 }
 
-type TableColumnDef = { id: string; name: string; field: string; minWidth: number };
+//type TableColumnDef = { id: string; name: string; field: string; minWidth: number };
 
 interface QueryResults {
-    table?: object[];
-    tableColumns?: TableColumnDef[];
-    tree?: string;
+    tableHeaders?: string[];
+    tableData?: object[];
+
+    treeData?: object[];
+
     json?: string;
 }
 
@@ -187,14 +189,19 @@ export const CollectionView = (): JSX.Element => {
     const [currentView, setCurrentView] = useState(defaultView);
 
     // quick/temp solution
-    function handleMessage(event) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    function handleMessage(event): void {
         setCurrentQueryResults((prev) => ({
             ...prev,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            tableHeaders: event.data?.tableHeaders,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            tableData: event.data?.tableData,
+
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            treeData: event.data?.treeData,
+
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
             json: event.data?.json,
-            table: event.data?.table,
-            tableColumns: event.data?.tableColumns,
-            tree: event.data?.tree
         }));
 
         console.log('Received message:', event);
@@ -269,11 +276,11 @@ export const CollectionView = (): JSX.Element => {
                         {
                             'Table View': (
                                 <DataViewPanelTable
-                                    liveColumns={currentQueryResults?.tableColumns}
-                                    liveData={currentQueryResults?.table}
+                                    liveHeaders={currentQueryResults?.tableHeaders ?? []}
+                                    liveData={currentQueryResults?.tableData ?? []}
                                 />
                             ),
-                            'Tree View': <DataViewPanelTree liveData={currentQueryResults?.tree} />,
+                            'Tree View': <DataViewPanelTree liveData={currentQueryResults?.treeData} />,
                             'JSON View': <DataViewPanelJSON value={currentQueryResults?.json} />,
                         }[currentView] // switch-statement
                     }

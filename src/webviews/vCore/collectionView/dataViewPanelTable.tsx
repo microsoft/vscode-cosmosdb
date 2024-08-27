@@ -28,7 +28,7 @@ export function DataViewPanelTable({ liveHeaders, liveData }: Props): React.JSX.
         enableAutoSizeColumns: true, // true by default, we disabled it under the assumption that there are a lot of columns in users' data in general
 
         enableCellNavigation: true,
-        enableCheckboxSelector: true, // todo: [post MVP] this is failing, it looks like it happens when we're defining columns after the grid has been created.. we're deleting the 'checkbox' column. we  can work around it, but it needs a bit more attention to get it done right.
+        enableCheckboxSelector: false, // todo: [post MVP] this is failing, it looks like it happens when we're defining columns after the grid has been created.. we're deleting the 'checkbox' column. we  can work around it, but it needs a bit more attention to get it done right.
         enableRowSelection: true,
         multiSelect: true,
         // checkboxSelector: {

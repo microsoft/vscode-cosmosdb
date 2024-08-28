@@ -174,13 +174,11 @@ declare global {
     }
 }
 
-//type TableColumnDef = { id: string; name: string; field: string; minWidth: number };
-
 interface QueryResults {
     tableHeaders?: string[];
-    tableData?: object[];
+    tableData?:  { [key: string]: undefined }[];
 
-    treeData?: object[];
+    treeData?:  { [key: string]: undefined }[];
 
     json?: string;
 }
@@ -203,8 +201,6 @@ export const CollectionView = (): JSX.Element => {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
             json: event.data?.json,
         }));
-
-        console.log('Received message:', event);
     }
 
     useEffect(() => {
@@ -229,18 +225,6 @@ export const CollectionView = (): JSX.Element => {
     }, [queryConfig]);
 
     const [currentQueryResults, setCurrentQueryResults] = useState<QueryResults>();
-
-    // function updateQuery(query: string) {
-    //     console.log('Updating query to:', query);
-
-    //     //window.config?.__vsCodeApi.postMessage({ type: 'query', query });
-
-    //     // setCurrentQueryResults( prev => ({ ...prev, json: query }));
-    // }
-
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    // const idValue = window.config?.__id;
-    // console.log('The value of id is:', idValue);
 
     const handleViewChanged = (optionValue: string) => {
         setCurrentView(optionValue);
@@ -280,8 +264,8 @@ export const CollectionView = (): JSX.Element => {
                                     liveData={currentQueryResults?.tableData ?? []}
                                 />
                             ),
-                            'Tree View': <DataViewPanelTree liveData={currentQueryResults?.treeData} />,
-                            'JSON View': <DataViewPanelJSON value={currentQueryResults?.json} />,
+                            'Tree View': <DataViewPanelTree liveData={currentQueryResults?.treeData ?? []} />,
+                            'JSON View': <DataViewPanelJSON value={currentQueryResults?.json ?? ''} />,
                         }[currentView] // switch-statement
                     }
                 </Suspense>

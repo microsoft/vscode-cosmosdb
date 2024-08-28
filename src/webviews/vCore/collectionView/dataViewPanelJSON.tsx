@@ -1,14 +1,16 @@
 import { Textarea } from '@fluentui/react-components';
 import * as React from 'react';
 
-export const DataViewPanelJSON = ({ value }): React.JSX.Element => {
-    React.useEffect(() => {
-        // This runs after the component has mounted
-        console.log('Component has mounted');
+interface Props {
+    value: string;
+}
 
-        // Optional cleanup function (similar to componentWillUnmount)
+export const DataViewPanelJSON = ({ value } : Props ): React.JSX.Element => {
+    React.useEffect(() => {
+        console.log('JSON View has mounted');
+
         return () => {
-            console.log('Component will unmount');
+            console.log('JSON View will unmount');
         };
     }, []); // Empty dependency array means this runs only once, like componentDidMount
 
@@ -16,7 +18,6 @@ export const DataViewPanelJSON = ({ value }): React.JSX.Element => {
         <Textarea
             style={{ height: '100%', width: '100%' }}
             textarea={{ style: { maxHeight: 'unset' } }}
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             value={value}
         />
     );

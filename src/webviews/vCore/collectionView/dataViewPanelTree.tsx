@@ -1,7 +1,11 @@
 import * as React from 'react';
 import { FieldType, Formatters, SlickgridReact, type GridOption } from 'slickgrid-react';
 
-export const DataViewPanelTree = ({ liveData }): React.JSX.Element => {
+interface Props {
+    liveData:  { [key: string]: undefined }[];
+}
+
+export const DataViewPanelTree = ({ liveData } : Props): React.JSX.Element => {
     const columnsDef = [
         {
             id: 'id_field',
@@ -37,18 +41,18 @@ export const DataViewPanelTree = ({ liveData }): React.JSX.Element => {
         treeDataOptions: {
             columnId: 'id_field',
             parentPropName: 'parentId',
-            // // this is optional, you can define the tree level property name that will be used for the sorting/indentation, internally it will use "__treeLevel"
+            // this is optional, you can define the tree level property name that will be used for the sorting/indentation, internally it will use "__treeLevel"
             levelPropName: 'treeLevel',
             indentMarginLeft: 15,
             initiallyCollapsed: true,
 
-            initialSort: {
-                // tn: incredible! this is actually needed if you want to shown chevrons to expand/collapse the tree (!??? 2h+ to find this by trial&error)
-                // https://github.com/ghiscoding/slickgrid-react/discussions/393
-                // with the 5.5.1 release of slickgrid-react, this is no longer needed
-                columnId: 'id_field',
-                direction: 'ASC',
-            },
+            // initialSort: {
+            //     // tn: incredible! this is actually needed if you want to shown chevrons to expand/collapse the tree (!??? 2h+ to find this by trial&error)
+            //     // https://github.com/ghiscoding/slickgrid-react/discussions/393
+            //     // with the 5.5.1 release of slickgrid-react, this is no longer needed
+            //     columnId: 'id_field',
+            //     direction: 'ASC',
+            // },
 
             // we can also add a custom Formatter just for the title text portion
             titleFormatter: (_row, _cell, value, _def, dataContext) => {
@@ -67,14 +71,28 @@ export const DataViewPanelTree = ({ liveData }): React.JSX.Element => {
     };
 
     React.useEffect(() => {
-        // This runs after the component has mounted
-        console.log('Component has mounted');
+        console.log('Tree View has mounted');
 
-        // Optional cleanup function (similar to componentWillUnmount)
         return () => {
-            console.log('Component will unmount');
+            console.log('Tree View will unmount');
+
+            /**
+             * The folowing code is required to undo modifications made to the data
+             * by the SlickGrid Tree Data plugin. If you don't do this, the data
+             * will start to duplicate as the 'children' property is filled with
+             * new nodes on each mount. This leads to duplicates and the tree view crashing.
+             *
+             * This is a known issue with the SlickGrid Tree Data plugin and is being discussed here:
+             * https://github.com/ghiscoding/slickgrid-universal/discussions/1655
+             */
+            liveData.forEach((item) => {
+                delete item.children;
+            });
         };
-    }, []); // Empty dependency array means this runs only once, like componentDidMount
+
+    }, []);
+
+    // Empty dependency array means this runs only once, like componentDidMount
 
     return (
         <SlickgridReact
@@ -83,7 +101,7 @@ export const DataViewPanelTree = ({ liveData }): React.JSX.Element => {
             columnDefinitions={columnsDef}
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             dataset={liveData}
-            onReactGridCreated={() => console.log('Grid created')}
+            onReactGridCreated={() => console.log('Tree View created')}
         />
     );
 };

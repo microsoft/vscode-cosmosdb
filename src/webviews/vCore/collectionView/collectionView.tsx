@@ -44,7 +44,14 @@ export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {
 
     return (
         <div className="findQueryComponent">
-            <Input contentBefore={<SearchFilled />} style={{ flexGrow: 1 }} value="{  }" readOnly={true} />
+            <Input
+                contentBefore={<SearchFilled />}
+                style={{ flexGrow: 1 }}
+                defaultValue="{  }"
+                onKeyUp={(e) => {
+                    if (e.key === 'Enter') { runQuery() }
+                }}
+            />
             <Button onClick={runQuery} icon={<PlayRegular />} appearance="primary" style={{ flexShrink: 0 }}>
                 Run Find Query
             </Button>
@@ -176,9 +183,9 @@ declare global {
 
 interface QueryResults {
     tableHeaders?: string[];
-    tableData?:  { [key: string]: undefined }[];
+    tableData?: { [key: string]: undefined }[];
 
-    treeData?:  { [key: string]: undefined }[];
+    treeData?: { [key: string]: undefined }[];
 
     json?: string;
 }

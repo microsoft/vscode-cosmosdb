@@ -4,8 +4,9 @@
  * singletone on a client with a getter from a connection pool..
  */
 
-import { MongoClient, type FindOptions, type ListDatabasesResult } from 'mongodb';
+import { MongoClient, type Filter, type FindOptions, type ListDatabasesResult } from 'mongodb';
 import { CredentialsStore } from './CredentialsStore';
+import { toFilterQueryObj } from './utils/toFilterQuery';
 import { getDataTopLevel, getFieldsTopLevel } from './utils/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from './utils/toSlickGridTree';
 
@@ -99,7 +100,8 @@ export class VCoreClient {
         if (findQuery === undefined || findQuery.trim().length === 0) {
             findQuery = '{}';
         }
-        //const findQueryObj = JSON.parse(findQuery) as Filter<Document>;
+
+        const findQueryObj: Filter<Document> = toFilterQueryObj(findQuery);
 
         const options: FindOptions = {
             skip: skip,
@@ -107,7 +109,7 @@ export class VCoreClient {
         };
 
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
-        const documents = await collection.find({}, options).toArray();
+        const documents = await collection.find(findQueryObj, options).toArray();
 
         // json
         const responsePack: QueryReponsePack = {

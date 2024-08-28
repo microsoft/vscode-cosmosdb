@@ -2,6 +2,7 @@ import { type MongoCluster, type Resource } from '@azure/arm-cosmosdb';
 import {
     AzureWizard,
     callWithTelemetryAndErrorHandling,
+    createGenericElement,
     nonNullProp,
     nonNullValue,
     type IActionContext,
@@ -122,7 +123,26 @@ export class MongoClusterItem implements MongoClusterItemBase {
                 const clientId = CredentialsStore.setConnectionString(connectionStringWithPassword);
                 this.mongoCluster.session = { clientId };
 
-                const vCoreClient: VCoreClient = await VCoreClient.getClient(clientId);
+                let vCoreClient: VCoreClient;
+                try {
+                    vCoreClient = await VCoreClient.getClient(clientId).catch((error: Error) => {
+                        void vscode.window.showErrorMessage(
+                            `Failed to connect to the cluster: ${(error as Error).message}`,
+                        );
+
+                        throw error;
+                    });
+                } catch (error) {
+                    return [
+                        createGenericElement({
+                            contextValue: 'error',
+                            id: `${this.id}/error`,
+                            label: (error as Error).message + ' (click to retry)',
+                            iconPath: new vscode.ThemeIcon('chrome-close'),
+                            commandId: 'azureResourceGroups.refreshTree',
+                        })
+                    ]
+                }
 
                 void vscode.window.showInformationMessage('Listing databases...');
 

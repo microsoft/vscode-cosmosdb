@@ -2,7 +2,7 @@ import { randomBytes } from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
-import { Channel } from './Communication/Channel/Channel';
+import { type Channel } from './Communication/Channel/Channel';
 import { VSCodeChannel } from './Communication/Channel/VSCodeChannel';
 
 const DEV_SERVER_HOST = 'http://localhost:18080';
@@ -80,13 +80,17 @@ export class QueryEditorTab {
                       `default-src ${cspSource};`,
                       `script-src ${cspSource} 'nonce-${nonce}';`,
                       `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
+                      `font-src ${cspSource} ${DEV_SERVER_HOST};`,
+                      `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
                   ]
                 : [
                       `form-action 'none';`,
                       `default-src ${cspSource} ${DEV_SERVER_HOST};`,
                       `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
                       `script-src ${cspSource} ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
-                      `connect-src 'self' ${cspSource} ${DEV_SERVER_HOST} ws:;`,
+                      `connect-src ${cspSource} ${DEV_SERVER_HOST} ws:;`,
+                      `font-src ${cspSource} ${DEV_SERVER_HOST};`,
+                      `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
                   ]
         ).join(' ');
 
@@ -138,10 +142,6 @@ export class QueryEditorTab {
             } else {
                 throw new Error(`Something went wrong, the request is ${payload}`);
             }
-        });
-
-        this.channel.on('sayHello', (payload) => {
-            console.log('sayHello', payload);
         });
     }
 }

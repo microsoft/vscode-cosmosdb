@@ -2,14 +2,14 @@ import * as React from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import { createRoot } from 'react-dom/client';
 import { type WebviewApi } from 'vscode-webview';
-import { CosmosDbQuery } from './CosmosDbQuery';
 import { FluentUiDemo } from './FluentUIDemo/FluentUiDemo';
+import { QueryEditor } from './QueryEditor/QueryEditor';
 import { DynamicThemeProvider } from './theme/DynamicThemeProvider';
 import { CollectionView } from './vCore/collectionView/collectionView';
 import { WithWebviewContext } from './WebviewContext';
 
 export const Views = {
-    cosmosDbQuery: CosmosDbQuery,
+    cosmosDbQuery: QueryEditor,
     fluentUiDemo: FluentUiDemo,
     vCoreCollectionView: CollectionView,
 } as const;

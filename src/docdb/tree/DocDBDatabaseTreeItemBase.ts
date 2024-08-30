@@ -4,25 +4,25 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
-    ContainerDefinition,
-    ContainerResponse,
-    CosmosClient,
-    DatabaseDefinition,
-    FeedOptions,
-    QueryIterator,
-    RequestOptions,
-    Resource,
+    type ContainerDefinition,
+    type ContainerResponse,
+    type CosmosClient,
+    type DatabaseDefinition,
+    type FeedOptions,
+    type QueryIterator,
+    type RequestOptions,
+    type Resource,
 } from '@azure/cosmos';
 import {
-    AzExtTreeItem,
     DialogResponses,
-    IActionContext,
-    ICreateChildImplContext,
-    TreeItemIconPath,
+    type AzExtTreeItem,
+    type IActionContext,
+    type ICreateChildImplContext,
+    type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { nonNullProp } from '../../utils/nonNull';
-import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
+import { type DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
 const minThroughputFixed: number = 400;
@@ -40,6 +40,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
 
     constructor(parent: DocDBAccountTreeItemBase, database: DatabaseDefinition & Resource) {
         super(parent);
+        this.parent = parent;
         this._database = database;
         this.root = this.parent.root;
     }

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseDefinition, Resource } from '@azure/cosmos';
+import { type DatabaseDefinition, type Resource } from '@azure/cosmos';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';

@@ -5,7 +5,7 @@ import { type WebviewApi } from 'vscode-webview';
 import { FluentUiDemo } from './FluentUIDemo/FluentUiDemo';
 import { QueryEditor } from './QueryEditor/QueryEditor';
 import { DynamicThemeProvider } from './theme/DynamicThemeProvider';
-import { WithWebviewContext } from './WebviewContext';
+import { WithWebviewContext, type WebviewState } from './WebviewContext';
 
 export const Views = {
     cosmosDbQuery: QueryEditor,
@@ -16,7 +16,7 @@ export type ViewKey = keyof typeof Views;
 
 export function render<V extends ViewKey>(
     key: V,
-    vscodeApi: WebviewApi<unknown>,
+    vscodeApi: WebviewApi<WebviewState>,
     publicPath: string,
     rootId = 'root',
 ): void {

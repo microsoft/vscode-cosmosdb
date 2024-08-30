@@ -1,9 +1,19 @@
 import { randomBytes } from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { ext } from '../extensionVariables';
-import { OpenFileCommand, ShowInformationMessageCommand, type Command, type CommandResult } from './Commands';
-import { ShowErrorMessageCommand } from './Commands/ShowErrorMessageCommand';
+import { KeyValueStore } from '../KeyValueStore';
+import {
+    ConnectToDatabaseCommand,
+    DisconnectFromDatabaseCommand,
+    OpenFileCommand,
+    SaveFileCommand,
+    ShowErrorMessageCommand,
+    ShowInformationMessageCommand,
+    type Command,
+    type CommandResult,
+} from './Commands';
 import { type Channel } from './Communication/Channel/Channel';
 import { VSCodeChannel } from './Communication/Channel/VSCodeChannel';
 
@@ -31,7 +41,12 @@ export class QueryEditorTab {
 
         this.panel.webview.html = this.getWebviewContent();
 
+        // TODO: Should be another EventEmitter
+        ext.noSqlCodeLensProvider.onDidChangeCodeLenses(this.updateConnection, this, this.disposables);
+
         this.initController();
+
+        void this.updateConnection();
     }
 
     public static render(): void {
@@ -165,12 +180,37 @@ export class QueryEditorTab {
         switch (commandName) {
             case 'openFile':
                 return new OpenFileCommand();
+            case 'saveFile':
+                return new SaveFileCommand(payload.params[0] as string);
             case 'showInformationMessage':
                 return new ShowInformationMessageCommand(payload.params[0] as string);
             case 'showErrorMessage':
                 return new ShowErrorMessageCommand(payload.params[0] as string);
+            case 'connectToDatabase':
+                return new ConnectToDatabaseCommand();
+            case 'disconnectFromDatabase':
+                return new DisconnectFromDatabaseCommand();
         }
 
         return undefined;
+    }
+
+    private async updateConnection(): Promise<void> {
+        const connection = KeyValueStore.instance.get(noSqlQueryConnectionKey);
+        if (connection) {
+            const { databaseId, containerId } = connection as NoSqlQueryConnection;
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'databaseConnected',
+                params: [databaseId, containerId],
+            });
+        } else {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'databaseDisconnected',
+                params: [],
+            });
+        }
     }
 }

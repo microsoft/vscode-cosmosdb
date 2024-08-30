@@ -9,24 +9,22 @@ const DEFAULT_QUERY_VALUE = `SELECT * FROM c;`;
 
 const defaultState: QueryEditorState = {
     dbName: '',
-    dbNames: [],
     collectionName: '',
-    collectionNames: [],
     currentExecutionId: '',
     queryHistory: [],
     queryValue: DEFAULT_QUERY_VALUE,
+    isConnected: false,
     isExecuting: false,
 };
 
 export type QueryEditorState = {
-    dbName: string;
-    dbNames: string[];
-    collectionName: string;
-    collectionNames: string[];
+    dbName: string; // Database which is currently selected
+    collectionName: string; // Collection which is currently selected
     currentExecutionId: string;
     queryHistory: string[];
     queryValue: string;
 
+    isConnected: boolean;
     isExecuting: boolean;
 };
 
@@ -36,15 +34,13 @@ export type QueryEditorContextDispatcher = {
 
     openFile: () => Promise<void>; // Open a file
     saveToFile: (query: string) => Promise<boolean>; // Save to file
+    insertText: (text: string) => void; // Insert text to the editor
 
-    setDatabase: (dbName: string) => void; // Change the database
-    setCollection: (collectionName: string) => void; // Change the collection
+    connectToDatabase: () => Promise<void>; // Connect to the database
+    disconnectFromDatabase: () => Promise<void>; // Disconnect from the database
 
-    extractDatabaseNames: () => Promise<boolean>; // Get the names of the databases
-    extractCollectionNames: (db: string) => Promise<boolean>; // Get the names of the db's collections
-
-    showInformationMessage: (message: string) => void; // Show an information message
-    showErrorMessage: (message: string) => void; // Show an error message
+    showInformationMessage: (message: string) => Promise<void>; // Show an information message
+    showErrorMessage: (message: string) => Promise<void>; // Show an error message
 };
 
 class QueryEditorContextDispatcherImpl implements QueryEditorContextDispatcher {
@@ -88,23 +84,16 @@ class QueryEditorContextDispatcherImpl implements QueryEditorContextDispatcher {
 
         return result?.isSuccess ?? false;
     }
-
-    public setDatabase(dbName: string): void {
-        this.dispatch({ dbName });
-    }
-    public setCollection(collectionName: string): void {
-        this.dispatch({ collectionName });
+    public insertText(query: string): void {
+        this.dispatch({ queryValue: query ?? '' });
     }
 
-    public async extractDatabaseNames(): Promise<boolean> {
-        const result = await this.sendCommand<CommandResult<void>>('getDatabaseNames');
-
-        return result?.isSuccess ?? false;
+    public async connectToDatabase(): Promise<void> {
+        await this.sendCommand<CommandResult<void>>('connectToDatabase');
     }
-    public async extractCollectionNames(db: string): Promise<boolean> {
-        const result = await this.sendCommand<CommandResult<void>>('getCollectionNames', db);
 
-        return result?.isSuccess ?? false;
+    public async disconnectFromDatabase(): Promise<void> {
+        await this.sendCommand<CommandResult<void>>('disconnectFromDatabase');
     }
 
     public async showInformationMessage(message: string) {
@@ -140,7 +129,15 @@ class QueryEditorContextDispatcherImpl implements QueryEditorContextDispatcher {
 
     private initEventListeners() {
         this.channel.on('fileOpened', (query: string) => {
-            this.dispatch({ queryValue: query ?? '' });
+            this.insertText(query);
+        });
+
+        this.channel.on('databaseConnected', (dbName: string, collectionName: string) => {
+            this.dispatch({ isConnected: true, dbName, collectionName });
+        });
+
+        this.channel.on('databaseDisconnected', () => {
+            this.dispatch({ isConnected: false, dbName: '', collectionName: '' });
         });
     }
 }

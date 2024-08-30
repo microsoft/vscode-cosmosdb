@@ -7,7 +7,7 @@
 import { callWithTelemetryAndErrorHandling, registerCommand, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { randomBytes } from 'crypto';
-import path from 'path';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { MongoClustersBranchDataProvider } from '../vCore/tree/MongoClustersBranchDataProvider';
@@ -30,7 +30,7 @@ export class VCoreExtension implements vscode.Disposable {
             registerCommand('vCore.cmd.webview', this.commandShowWebview);
             registerCommand('mongocluster.internal.containerView.open', this.commandContainerViewOpen);
 
-            ext.outputChannel.appendLine(`mongoClusters activated`);
+            ext.outputChannel.appendLine(`mongoClusters: activated.`);
 
         });
     }
@@ -43,7 +43,7 @@ export class VCoreExtension implements vscode.Disposable {
     }
 
     commandShowWebview(): void {
-        ext.outputChannel.appendLine('vCore: webview');
+
 
         const panel = vscode.window.createWebviewPanel(
             'vCore.view.docs', // Identifies the type of the webview. Used internally
@@ -56,8 +56,9 @@ export class VCoreExtension implements vscode.Disposable {
             }, // Webview options. More on these later.
         );
 
+
         //panel.iconPath = getThemeAgnosticIconUri('CosmosDBAccount.svg');
-        panel.webview.html = getWebviewContentReact();
+        panel.webview.html = getWebviewContentReact(panel.webview);
 
         panel.webview.onDidReceiveMessage((message) => {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -86,7 +87,6 @@ export class VCoreExtension implements vscode.Disposable {
             collectionName: string;
         },
     ): void {
-        ext.outputChannel.appendLine(`commandContainerViewOpen: ${_props.id}`);
 
         const panel = vscode.window.createWebviewPanel(
             'vCore.view.docs', // Identifies the type of the webview. Used internally
@@ -98,7 +98,7 @@ export class VCoreExtension implements vscode.Disposable {
                 retainContextWhenHidden: true,
             }, // Webview options. More on these later.
         );
-        ext.outputChannel.appendLine(`commandContainerViewOpen: ${panel.title}`);
+
 
         // panel.iconPath = getThemeAgnosticIconUri('CosmosDBAccount.svg');
         panel.webview.html = getWebviewContentReact(panel.webview, _props.id, _props.liveConnectionId);
@@ -154,38 +154,40 @@ const getWebviewContentReact = (
     const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
     const nonce = randomBytes(16).toString('base64');
 
+
     // const scriptUrl = `${localServerUrl}/${jsFile}`;
+
 
     const uri = (...parts: string[]) =>
         webview?.asWebviewUri(vscode.Uri.file(path.join(ext.context.extensionPath, 'dist', ...parts))).toString(true);
 
+
     const publicPath = isProduction ? uri() : `${DEV_SERVER_HOST}/`;
     const srcUri = isProduction ? uri('views.js') : `${DEV_SERVER_HOST}/views.js`;
 
-    ext.outputChannel.appendLine(`srcUri: ${srcUri}`);
 
     const csp = (
         isProduction
             ? [
-                  `form-action 'none';`,
-                  `default-src ${webview?.cspSource};`,
-                  `script-src ${webview?.cspSource} 'nonce-${nonce}';`,
-                  `style-src ${webview?.cspSource} vscode-resource: 'unsafe-inline';`,
-                  `img-src ${webview?.cspSource} data: vscode-resource:;`,
-                  `connect-src ${webview?.cspSource} ws:;`,
-                  `font-src ${webview?.cspSource};`,
-                  `worker-src ${webview?.cspSource} blob:;`,
-              ]
+                `form-action 'none';`,
+                `default-src ${webview?.cspSource};`,
+                `script-src ${webview?.cspSource} 'nonce-${nonce}';`,
+                `style-src ${webview?.cspSource} vscode-resource: 'unsafe-inline';`,
+                `img-src ${webview?.cspSource} data: vscode-resource:;`,
+                `connect-src ${webview?.cspSource} ws:;`,
+                `font-src ${webview?.cspSource};`,
+                `worker-src ${webview?.cspSource} blob:;`,
+            ]
             : [
-                  `form-action 'none';`,
-                  `default-src ${DEV_SERVER_HOST};`,
-                  `script-src ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
-                  `style-src ${DEV_SERVER_HOST} vscode-resource: 'unsafe-inline';`,
-                  `img-src ${DEV_SERVER_HOST} data: vscode-resource:;`,
-                  `connect-src ${DEV_SERVER_HOST} ws:;`,
-                  `font-src ${DEV_SERVER_HOST};`,
-                  `worker-src ${DEV_SERVER_HOST} blob:;`,
-              ]
+                `form-action 'none';`,
+                `default-src ${DEV_SERVER_HOST};`,
+                `script-src ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
+                `style-src ${DEV_SERVER_HOST} vscode-resource: 'unsafe-inline';`,
+                `img-src ${DEV_SERVER_HOST} data: vscode-resource:;`,
+                `connect-src ${DEV_SERVER_HOST} ws:;`,
+                `font-src ${DEV_SERVER_HOST};`,
+                `worker-src ${DEV_SERVER_HOST} blob:;`,
+            ]
     ).join(' ');
 
     // const isProduction = context.extensionMode === ExtensionMode.Production;

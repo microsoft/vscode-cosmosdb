@@ -32,5 +32,6 @@ testWorkspace/**
 gulp*
 stats.json
 test-results.xml
-tsconfig.json
+tsconfig.*
 webpack.config*
+jest.config.js

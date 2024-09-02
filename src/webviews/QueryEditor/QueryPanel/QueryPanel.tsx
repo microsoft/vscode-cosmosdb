@@ -1,7 +1,4 @@
 import { makeStyles } from '@fluentui/react-components';
-import { useContext } from 'react';
-import { WebviewContext } from 'src/webviews/WebviewContext';
-import { WithQueryEditorContext } from '../QueryEditorContext';
 import { QueryMonaco } from './QueryMonaco';
 import { QueryToolbar } from './QueryToolbar';
 
@@ -23,18 +20,15 @@ const useClasses = makeStyles({
 
 export const QueryPanel = () => {
     const classes = useClasses();
-    const { channel, vscodeApi } = useContext(WebviewContext);
 
     return (
         <section className={classes.container}>
-            <WithQueryEditorContext channel={channel} vscodeApi={vscodeApi}>
-                <div className={classes.toolbarContainer}>
-                    <QueryToolbar />
-                </div>
-                <div className={classes.monacoContainer}>
-                    <QueryMonaco />
-                </div>
-            </WithQueryEditorContext>
+            <div className={classes.toolbarContainer}>
+                <QueryToolbar />
+            </div>
+            <div className={classes.monacoContainer}>
+                <QueryMonaco />
+            </div>
         </section>
     );
 };

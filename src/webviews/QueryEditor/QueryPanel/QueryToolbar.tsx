@@ -6,10 +6,12 @@ import {
     MenuList,
     MenuPopover,
     MenuTrigger,
+    SplitButton,
     tokens,
     Toolbar,
     ToolbarButton,
     ToolbarDivider,
+    type MenuButtonProps,
     type ToolbarProps,
 } from '@fluentui/react-components';
 import {
@@ -30,6 +32,9 @@ const useClasses = makeStyles({
     iconStop: {
         color: tokens.colorStatusDangerBorderActive,
     },
+    iconConnect: {
+        color: tokens.colorStatusWarningBorderActive,
+    },
 });
 
 const BaseActionsSection = () => {
@@ -37,15 +42,40 @@ const BaseActionsSection = () => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
+    const truncateString = (str: string, maxLength: number) => {
+        if (str.length > maxLength) {
+            return str.slice(0, maxLength - 3) + '...';
+        }
+        return str;
+    };
+
     return (
         <>
-            <ToolbarButton
-                aria-label="Run"
-                icon={<PlayRegular className={classes.iconPlay} />}
-                disabled={state.isExecuting}
-                onClick={() => void dispatcher.runQuery(state.queryValue)}>
-                Run
-            </ToolbarButton>
+            <Menu>
+                <MenuTrigger>
+                    {(triggerProps: MenuButtonProps) => (
+                        <SplitButton
+                            aria-label="Run"
+                            icon={<PlayRegular className={classes.iconPlay} />}
+                            disabled={state.isExecuting || !state.isConnected}
+                            menuButton={triggerProps}
+                            primaryActionButton={{
+                                onClick: () => void dispatcher.runQuery(state.queryValue),
+                            }}>
+                            Run
+                        </SplitButton>
+                    )}
+                </MenuTrigger>
+                <MenuPopover>
+                    {state.queryHistory.length === 0 && <MenuItem disabled>No history</MenuItem>}
+                    {state.queryHistory.length > 0 &&
+                        state.queryHistory.map((query) => (
+                            <MenuItem onClick={() => dispatcher.insertText(query)}>
+                                {truncateString(query, 50)}
+                            </MenuItem>
+                        ))}
+                </MenuPopover>
+            </Menu>
             <ToolbarButton
                 aria-label="Cancel"
                 icon={<StopRegular className={classes.iconStop} />}
@@ -69,7 +99,7 @@ const BaseActionsSection = () => {
 const LearnSection = () => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
-    const samples = ['SELECT * FROM c', 'SELECT * FROM c WHERE xyz', 'SELECT * FROM c ...etc'];
+    const samples = ['SELECT * FROM c', 'SELECT * FROM c ORDER BY c.id', 'SELECT * FROM c OFFSET 0 LIMIT 10'];
     const noSqlQuickReferenceUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/';
     const noSqlLearningCenterUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/';
 
@@ -123,12 +153,14 @@ const ConnectedActionsSection = () => {
 };
 
 const DisconnectedActionsSection = () => {
+    const classes = useClasses();
     const dispatcher = useQueryEditorDispatcher();
 
     return (
         <ToolbarButton
             aria-label="Connect"
-            icon={<DatabasePlugConnectedRegular />}
+            appearance={'primary'}
+            icon={<DatabasePlugConnectedRegular className={classes.iconConnect} />}
             onClick={() => void dispatcher.connectToDatabase()}>
             Connect
         </ToolbarButton>

@@ -41,5 +41,6 @@ export interface Channel {
     on<ReturnType = unknown>(event: string, callback: ChannelCallback<ReturnType>): Channel;
     once<ReturnType = unknown>(event: string, callback: ChannelCallback<ReturnType>): Channel;
     off<ReturnType extends never>(event: string, callback: ChannelCallback<ReturnType>): Channel;
+    removeAllListeners(event?: string): Channel;
     dispose(): void;
 }

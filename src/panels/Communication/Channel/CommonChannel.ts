@@ -44,7 +44,7 @@ function toErrorWithMessage(maybeError: unknown): ErrorWithMessage {
     }
 }
 
-function getErrorMessage(error: unknown) {
+export function getErrorMessage(error: unknown) {
     return toErrorWithMessage(error).message;
 }
 
@@ -91,7 +91,10 @@ export class CommonChannel implements Channel {
             const deferred = new Deferred();
             this.pendingRequests[id] = { expiresAt: now + 15000, deferred };
             // Automatically remove pending request from the list to clean up memory
-            void deferred.promise.then(() => delete this.pendingRequests[id]);
+            void deferred.promise.then(
+                () => delete this.pendingRequests[id],
+                () => delete this.pendingRequests[id],
+            );
         }
 
         void this.transport.post({ id, payload });
@@ -132,6 +135,20 @@ export class CommonChannel implements Channel {
 
         if (this.listeners[event]) {
             this.listeners[event] = this.listeners[event].filter((cb) => cb.callback !== callback);
+        }
+
+        return this;
+    }
+
+    removeAllListeners(event?: string): Channel {
+        if (this.isDisposed) {
+            return this;
+        }
+
+        if (event) {
+            delete this.listeners[event];
+        } else {
+            this.listeners = {};
         }
 
         return this;

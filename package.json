@@ -69,7 +69,7 @@
         "watch:ext": "webpack --mode development --config ./webpack.config.ext.js --watch",
         "watch:views": "webpack serve --mode development --config ./webpack.config.views.js",
         "all": "npm i && npm run lint && npm test",
-        "prepare": "husky install",
+        "prepare": "husky",
         "resapi.resetall": "rimraf out node_modules dist && npm install && npm run resapi.link",
         "resapi.link": "npm link @microsoft/vscode-azureresources-api",
         "build.dev.webviews": "webpack --mode development --config ./webpack.config.views.js",

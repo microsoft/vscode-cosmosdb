@@ -7,36 +7,36 @@
 
 import {
     AzExtParentTreeItem,
-    AzExtTreeItem,
     DialogResponses,
-    IActionContext,
-    ICreateChildImplContext,
-    TreeItemIconPath,
+    type AzExtTreeItem,
+    type IActionContext,
+    type ICreateChildImplContext,
+    type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
 import * as assert from 'assert';
 import { EJSON } from 'bson';
+import { omit } from 'lodash-es';
 import {
-    AnyBulkWriteOperation,
-    BulkWriteOptions,
-    BulkWriteResult,
-    Collection,
-    CountOptions,
-    DeleteResult,
-    Filter,
-    FindCursor,
-    InsertManyResult,
-    InsertOneResult,
-    Document as MongoDocument,
+    type AnyBulkWriteOperation,
+    type BulkWriteOptions,
+    type BulkWriteResult,
+    type Collection,
+    type CountOptions,
+    type DeleteResult,
+    type Filter,
+    type FindCursor,
+    type InsertManyResult,
+    type InsertOneResult,
+    type Document as MongoDocument,
 } from 'mongodb';
-import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { IEditableTreeItem } from '../../DatabasesFileSystem';
+import { type IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { nonNullValue } from '../../utils/nonNull';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
-import { MongoCommand } from '../MongoCommand';
-import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
+import { type MongoCommand } from '../MongoCommand';
+import { MongoDocumentTreeItem, type IMongoDocument } from './MongoDocumentTreeItem';
 
 type MongoFunction = (...args: ({} | {}[] | undefined)[]) => Thenable<string>;
 class FunctionDescriptor {
@@ -84,7 +84,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
                 replaceOne: {
                     filter: { _id: document._id },
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-                    replacement: _.omit(document, '_id'),
+                    replacement: omit(document, '_id'),
                     upsert: false,
                 },
             };

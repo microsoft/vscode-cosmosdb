@@ -3,9 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardPromptStep, IAzureQuickPickItem, IWizardOptions } from '@microsoft/vscode-azext-utils';
+import  { type IAzureQuickPickItem, type IWizardOptions } from '@microsoft/vscode-azext-utils';
+import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../../../../utils/localize';
-import { IPostgresFunctionQueryWizardContext } from '../IPostgresFunctionQueryWizardContext';
+import  { type IPostgresFunctionQueryWizardContext } from '../IPostgresFunctionQueryWizardContext';
 import { FunctionQueryCustomReturnTypeStep } from './FunctionQueryCustomReturnTypeStep';
 
 export class FunctionQueryReturnTypeStep extends AzureWizardPromptStep<IPostgresFunctionQueryWizardContext> {

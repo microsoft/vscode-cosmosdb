@@ -3,19 +3,20 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Container, ContainerDefinition, CosmosClient, Resource } from '@azure/cosmos';
+import  { type Container, type ContainerDefinition, type CosmosClient, type Resource } from '@azure/cosmos';
+import  {
+    type AzExtTreeItem,
+    type IActionContext,
+    type TreeItemIconPath} from '@microsoft/vscode-azext-utils';
 import {
     AzExtParentTreeItem,
-    AzExtTreeItem,
-    DialogResponses,
-    IActionContext,
-    TreeItemIconPath,
+    DialogResponses
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from '../../docdb/tree/DocDBStoredProcedureTreeItem';
-import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
-import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
+import  { type IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
+import  { type GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 import { GraphTreeItem } from './GraphTreeItem';
 
 export class GraphCollectionTreeItem extends AzExtParentTreeItem {

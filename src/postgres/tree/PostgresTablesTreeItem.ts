@@ -3,11 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { TreeItemIconPath } from '@microsoft/vscode-azext-utils';
-import { ClientConfig } from 'pg';
+import  { type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import  { type ClientConfig } from 'pg';
 import { ThemeIcon } from 'vscode';
-import { getTables, IPostgresTable } from '../getTables';
-import { PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
+import  { type IPostgresTable } from '../getTables';
+import { getTables } from '../getTables';
+import  { type PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresResourcesTreeItemBase } from './PostgresResourcesTreeItemBase';
 import { PostgresTableTreeItem } from './PostgresTableTreeItem';
 

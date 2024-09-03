@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, IActionContext } from '@microsoft/vscode-azext-utils';
+import  { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { getAllCommandsFromTextDocument } from '../MongoScrapbook';
 

@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext } from '@microsoft/vscode-azext-utils';
+import  { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresServerType } from '../abstract/models';
-import { PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
+import  { type PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
 import { setPostgresCredentials } from './setPostgresCredentials';
 
 /**

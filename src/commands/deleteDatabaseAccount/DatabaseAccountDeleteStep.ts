@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
-import { IDeleteWizardContext } from './IDeleteWizardContext';
+import  { type IDeleteWizardContext } from './IDeleteWizardContext';
 
 export class DatabaseAccountDeleteStep extends AzureWizardExecuteStep<IDeleteWizardContext> {
     public priority: number = 100;

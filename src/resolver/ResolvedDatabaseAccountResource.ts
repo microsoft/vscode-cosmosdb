@@ -3,15 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    AzExtTreeItem,
-    IActionContext,
-    ICreateChildImplContext,
-    TreeItemIconPath,
+import  {
+    type AzExtTreeItem,
+    type IActionContext,
+    type ICreateChildImplContext,
+    type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
-import { AppResource, ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
-import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
-import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
+import  { type AppResource, type ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
+import  { type DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
+import  { type MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 
 export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase {

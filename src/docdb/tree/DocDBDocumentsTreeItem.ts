@@ -84,6 +84,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
         return nonNullProp(item, 'resource');
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
     public documentHasPartitionKey(doc: Object): boolean {
         let interim = doc;
         let partitionKey: string | undefined = this.parent.partitionKey && this.parent.partitionKey.paths[0];
@@ -126,13 +127,16 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     // Create a nested Object given the partition key path and value
+    // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
     private createPartitionPathObject(partitionKey: string, partitionKeyValue: string): Object {
         //remove leading slash
         if (partitionKey[0] === '/') {
             partitionKey = partitionKey.slice(1);
         }
         const keyPath = partitionKey.split('/');
+        // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
         const PartitionPath: Object = {};
+        // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
         let interim: Object = PartitionPath;
         let i: number;
         for (i = 0; i < keyPath.length - 1; i++) {

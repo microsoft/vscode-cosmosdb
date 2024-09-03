@@ -96,6 +96,7 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
         await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).delete();
     }
 
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
     public async execute(context: IActionContext, partitionKey: string, parameters?: any[]): Promise<void> {
         const client = this.root.getCosmosClient();
         const result = await this.parent
@@ -106,7 +107,7 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
         try {
             const resultFileName = `${this.label}-result`;
             await openReadOnlyJson({ label: resultFileName, fullId: randomUtils.getRandomHexString() }, result);
-        } catch (error) {
+        } catch {
             await context.ui.showWarningMessage(`Unable to parse execution result`);
         }
     }

@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext, callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { EOL } from 'os';
 import * as path from 'path';
-import { ClientConfig, QueryResult } from 'pg';
+import { type ClientConfig, type QueryResult } from 'pg';
 import * as vscode from 'vscode';
 import { connectedPostgresKey, postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
@@ -78,7 +78,7 @@ export async function executePostgresQueryInDocument(context: IActionContext): P
         for (const row of queryResult.rows) {
             const fieldValues: string[] = [];
             for (const field of fields) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument,@typescript-eslint/no-unsafe-member-access
                 fieldValues.push(row[field]);
             }
             csvData += `${fieldValues.join(',')}${EOL}`;

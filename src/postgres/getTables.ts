@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ClientConfig, QueryResult } from 'pg';
+import { type ClientConfig, type QueryResult } from 'pg';
 import { runPostgresQuery } from './runPostgresQuery';
 
 export interface IPostgresTable {
@@ -27,11 +27,14 @@ export async function getTables(clientConfig: ClientConfig): Promise<IPostgresTa
     const tableInfoRows: QueryResult = await runPostgresQuery(clientConfig, tablesQuery);
     const tablesArray: IPostgresTable[] = [];
     for (const row of tableInfoRows.rows) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         tablesArray.push({
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
             schemaName: row.schemaname,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
             name: row.tablename,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
             oid: row.oid,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
             columnNames: row.columnnames,
         });
     }

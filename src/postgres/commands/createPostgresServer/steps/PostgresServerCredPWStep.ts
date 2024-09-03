@@ -6,7 +6,7 @@
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
-import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
+import  { type IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 const pwConditionMsg = localize(
     'passwordConditionMsg',

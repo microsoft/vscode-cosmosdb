@@ -20,12 +20,12 @@ import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 import { RecognitionException } from 'antlr4ts/RecognitionException';
 import { RuleVersion } from 'antlr4ts/RuleVersion';
 import { Token } from 'antlr4ts/Token';
-import { TokenStream } from 'antlr4ts/TokenStream';
-import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
-import { Vocabulary } from 'antlr4ts/Vocabulary';
+import  { type TokenStream } from 'antlr4ts/TokenStream';
+import  { type TerminalNode } from 'antlr4ts/tree/TerminalNode';
+import  { type Vocabulary } from 'antlr4ts/Vocabulary';
 import { VocabularyImpl } from 'antlr4ts/VocabularyImpl';
-import { mongoListener } from './mongoListener';
-import { mongoVisitor } from './mongoVisitor';
+import  { type mongoListener } from './mongoListener';
+import  { type mongoVisitor } from './mongoVisitor';
 
 export class mongoParser extends Parser {
     public static readonly T__0 = 1;

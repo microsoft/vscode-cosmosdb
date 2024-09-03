@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtServiceClientCredentials } from '@microsoft/vscode-azext-utils';
+import  { type AzExtServiceClientCredentials } from '@microsoft/vscode-azext-utils';
 
 /**
  * Gets a function that can request an access token for a specified scope for the signed-in azure account.

@@ -3,9 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { apiUtils } from '@microsoft/vscode-azext-utils';
-import { AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostapi';
-import { Extension, extensions } from 'vscode';
+import  { type apiUtils } from '@microsoft/vscode-azext-utils';
+import  { type AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostapi';
+import  { type Extension} from 'vscode';
+import { extensions } from 'vscode';
 import { localize } from './utils/localize';
 
 export async function getApiExport<T>(extensionId: string): Promise<T | undefined> {

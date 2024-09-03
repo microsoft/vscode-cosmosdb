@@ -9,15 +9,15 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 
-import { ATN } from 'antlr4ts/atn/ATN';
+import  { type ATN } from 'antlr4ts/atn/ATN';
 import { ATNDeserializer } from 'antlr4ts/atn/ATNDeserializer';
 import { LexerATNSimulator } from 'antlr4ts/atn/LexerATNSimulator';
-import { CharStream } from 'antlr4ts/CharStream';
+import  { type CharStream } from 'antlr4ts/CharStream';
 import { NotNull, Override } from 'antlr4ts/Decorators';
 import { Lexer } from 'antlr4ts/Lexer';
 import * as Utils from 'antlr4ts/misc/Utils';
-import { RuleContext } from 'antlr4ts/RuleContext';
-import { Vocabulary } from 'antlr4ts/Vocabulary';
+import  { type RuleContext } from 'antlr4ts/RuleContext';
+import  { type Vocabulary } from 'antlr4ts/Vocabulary';
 import { VocabularyImpl } from 'antlr4ts/VocabularyImpl';
 
 export class mongoLexer extends Lexer {

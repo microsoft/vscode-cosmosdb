@@ -5,25 +5,25 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ParseTreeVisitor } from 'antlr4ts/tree/ParseTreeVisitor';
-import {
-    ArgumentContext,
-    ArgumentsContext,
-    ArrayLiteralContext,
-    CollectionContext,
-    CommandContext,
-    CommandsContext,
-    CommentContext,
-    ElementListContext,
-    EmptyCommandContext,
-    FunctionCallContext,
-    LiteralContext,
-    MongoCommandsContext,
-    ObjectLiteralContext,
-    PropertyAssignmentContext,
-    PropertyNameAndValueListContext,
-    PropertyNameContext,
-    PropertyValueContext,
+import  { type ParseTreeVisitor } from 'antlr4ts/tree/ParseTreeVisitor';
+import  {
+    type ArgumentContext,
+    type ArgumentsContext,
+    type ArrayLiteralContext,
+    type CollectionContext,
+    type CommandContext,
+    type CommandsContext,
+    type CommentContext,
+    type ElementListContext,
+    type EmptyCommandContext,
+    type FunctionCallContext,
+    type LiteralContext,
+    type MongoCommandsContext,
+    type ObjectLiteralContext,
+    type PropertyAssignmentContext,
+    type PropertyNameAndValueListContext,
+    type PropertyNameContext,
+    type PropertyValueContext,
 } from './mongoParser';
 
 /**

@@ -100,7 +100,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         try {
             parseDocDBConnectionString(value);
             return undefined;
-        } catch (error) {
+        } catch {
             return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..."';
         }
     }

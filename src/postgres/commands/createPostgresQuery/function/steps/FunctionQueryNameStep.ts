@@ -6,7 +6,7 @@
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../../../../utils/localize';
 import { validateIdentifier } from '../../validateIdentifier';
-import { IPostgresFunctionQueryWizardContext } from '../IPostgresFunctionQueryWizardContext';
+import  { type IPostgresFunctionQueryWizardContext } from '../IPostgresFunctionQueryWizardContext';
 
 export class FunctionQueryNameStep extends AzureWizardPromptStep<IPostgresFunctionQueryWizardContext> {
     public async prompt(context: IPostgresFunctionQueryWizardContext): Promise<void> {

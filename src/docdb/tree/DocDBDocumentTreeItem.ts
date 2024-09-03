@@ -88,7 +88,8 @@ export class DocDBDocumentTreeItem extends AzExtTreeItem implements IEditableTre
     }
 
     public async getFileContent(): Promise<string> {
-        const clonedDoc: {} = { ...this.document };
+        // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+        const clonedDoc: Object = { ...this.document };
         for (const field of hiddenFields) {
             delete clonedDoc[field];
         }

@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext } from '@microsoft/vscode-azext-utils';
-import { DocDBAccountTreeItem } from '../tree/DocDBAccountTreeItem';
-import { DocDBDatabaseTreeItem } from '../tree/DocDBDatabaseTreeItem';
+import  { type IActionContext } from '@microsoft/vscode-azext-utils';
+import  { type DocDBAccountTreeItem } from '../tree/DocDBAccountTreeItem';
+import  { type DocDBDatabaseTreeItem } from '../tree/DocDBDatabaseTreeItem';
 import { pickDocDBAccount } from './pickDocDBAccount';
 
 export async function createDocDBDatabase(context: IActionContext, node?: DocDBAccountTreeItem): Promise<void> {

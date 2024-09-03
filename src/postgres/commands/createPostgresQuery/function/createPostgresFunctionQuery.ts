@@ -3,10 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizard, IActionContext } from '@microsoft/vscode-azext-utils';
-import { PostgresFunctionsTreeItem } from '../../../tree/PostgresFunctionsTreeItem';
+import  { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { AzureWizard } from '@microsoft/vscode-azext-utils';
+import  { type PostgresFunctionsTreeItem } from '../../../tree/PostgresFunctionsTreeItem';
 import { runPostgresQueryWizard } from '../runPostgresQueryWizard';
-import { IPostgresFunctionQueryWizardContext } from './IPostgresFunctionQueryWizardContext';
+import  { type IPostgresFunctionQueryWizardContext } from './IPostgresFunctionQueryWizardContext';
 import { FunctionQueryCreateStep } from './steps/FunctionQueryCreateStep';
 import { FunctionQueryNameStep } from './steps/FunctionQueryNameStep';
 import { FunctionQueryReturnTypeStep } from './steps/FunctionQueryReturnTypeStep';

@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizard } from '@microsoft/vscode-azext-utils';
+import  { type AzureWizard } from '@microsoft/vscode-azext-utils';
 import { postgresBaseFileName, postgresFileExtension } from '../../../constants';
 import { nonNullProp } from '../../../utils/nonNull';
 import * as vscodeUtil from '../../../utils/vscodeUtils';
-import { PostgresFunctionsTreeItem } from '../../tree/PostgresFunctionsTreeItem';
-import { PostgresStoredProceduresTreeItem } from '../../tree/PostgresStoredProceduresTreeItem';
+import  { type PostgresFunctionsTreeItem } from '../../tree/PostgresFunctionsTreeItem';
+import  { type PostgresStoredProceduresTreeItem } from '../../tree/PostgresStoredProceduresTreeItem';
 import { connectPostgresDatabase } from '../connectPostgresDatabase';
-import { IPostgresQueryWizardContext } from './IPostgresQueryWizardContext';
+import  { type IPostgresQueryWizardContext } from './IPostgresQueryWizardContext';
 
 export async function runPostgresQueryWizard(
     wizard: AzureWizard<IPostgresQueryWizardContext>,

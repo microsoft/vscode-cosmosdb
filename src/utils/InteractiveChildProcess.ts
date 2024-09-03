@@ -7,8 +7,8 @@ import { parseError } from '@microsoft/vscode-azext-utils';
 import * as cp from 'child_process';
 import * as os from 'os';
 import { isNumber } from 'util';
-import * as vscode from 'vscode';
-import { Event, EventEmitter } from 'vscode';
+import type * as vscode from 'vscode';
+import { EventEmitter, type Event } from 'vscode';
 import { improveError } from './improveError';
 
 // We add these when we display to the output window
@@ -120,6 +120,7 @@ export class InteractiveChildProcess {
             // eslint-disable-next-line no-constant-condition
             while (true) {
                 if (!!this._error || this._isKilling) {
+                    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                     reject(this._error);
                     break;
                 } else if (this._childProc.pid) {
@@ -127,6 +128,7 @@ export class InteractiveChildProcess {
                     break;
                 } else {
                     if (Date.now() > started + processStartupTimeout) {
+                        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                         reject('The process did not start in a timely manner');
                         break;
                     }

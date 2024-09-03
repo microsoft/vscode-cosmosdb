@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { sendRequestWithTimeout } from '@microsoft/vscode-azext-azureutils';
-import { IActionContext } from '@microsoft/vscode-azext-utils';
+import  { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { isIPv4 } from 'net';
 import { localize } from './localize';
 

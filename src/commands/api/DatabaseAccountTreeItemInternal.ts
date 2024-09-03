@@ -3,18 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, IActionContext } from '@microsoft/vscode-azext-utils';
+import  { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { API } from '../../AzureDBExperiences';
 import { getCosmosKeyCredential } from '../../docdb/getCosmosClient';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { ParsedMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
-import { ParsedConnectionString } from '../../ParsedConnectionString';
+import  { type ParsedConnectionString } from '../../ParsedConnectionString';
 import { ParsedPostgresConnectionString } from '../../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { nonNullProp } from '../../utils/nonNull';
-import { DatabaseAccountTreeItem } from '../../vscode-cosmosdb.api';
+import  { type DatabaseAccountTreeItem } from '../../vscode-cosmosdb.api';
 
 export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem {
     protected _parsedCS: ParsedConnectionString;

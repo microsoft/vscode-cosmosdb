@@ -5,24 +5,24 @@
 
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import {
-    AzExtParentTreeItem,
-    AzExtTreeItem,
     callWithTelemetryAndErrorHandling,
-    IActionContext,
-    ISubscriptionContext,
     nonNullProp,
     nonNullValue,
+    type AzExtParentTreeItem,
+    type AzExtTreeItem,
+    type IActionContext,
+    type ISubscriptionContext,
 } from '@microsoft/vscode-azext-utils';
-import { AppResource, AppResourceResolver } from '@microsoft/vscode-azext-utils/hostapi';
-import { tryGetExperience } from '../AzureDBExperiences';
-import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
+import { type AppResource, type AppResourceResolver } from '@microsoft/vscode-azext-utils/hostapi';
+import { API, tryGetExperience } from '../AzureDBExperiences';
+import { type DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { ext } from '../extensionVariables';
-import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { PostgresAbstractServer } from '../postgres/abstract/models';
-import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
+import { type MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
+import { type PostgresAbstractServer } from '../postgres/abstract/models';
+import { type PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { SubscriptionTreeItem } from '../tree/SubscriptionTreeItem';
 import { createCosmosDBClient, createPostgreSQLClient, createPostgreSQLFlexibleClient } from '../utils/azureClients';
-import { ResolvedDatabaseAccountResource } from './ResolvedDatabaseAccountResource';
+import { type ResolvedDatabaseAccountResource } from './ResolvedDatabaseAccountResource';
 import { ResolvedDocDBAccountResource } from './ResolvedDocDBAccountResource';
 import { ResolvedMongoAccountResource } from './ResolvedMongoAccountResource';
 import { ResolvedPostgresServerResource } from './ResolvedPostgresServerResource';
@@ -60,7 +60,7 @@ export class DatabaseResolver implements AppResourceResolver {
                         );
                         const experience = tryGetExperience(databaseAccount);
 
-                        return experience?.api === 'MongoDB'
+                        return experience?.api === API.MongoDB
                             ? new ResolvedMongoAccountResource(dbChild as MongoAccountTreeItem, resource)
                             : new ResolvedDocDBAccountResource(dbChild as DocDBAccountTreeItem, resource);
                     case resourceTypes[1]:

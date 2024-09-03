@@ -5,7 +5,7 @@
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../../../utils/localize';
-import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
+import  { type IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerConfirmPWStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
     public async prompt(context: IPostgresServerWizardContext): Promise<void> {

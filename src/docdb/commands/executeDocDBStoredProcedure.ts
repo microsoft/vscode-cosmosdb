@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext, ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
+import { type IActionContext, type ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../utils/localize';
 import { DocDBStoredProcedureTreeItem } from '../tree/DocDBStoredProcedureTreeItem';
 import { pickDocDBAccount } from './pickDocDBAccount';
@@ -33,7 +33,7 @@ export async function executeDocDBStoredProcedure(context: IActionContext, node?
     if (paramString !== '') {
         try {
             parameters = JSON.parse(paramString) as (string | number | object)[];
-        } catch (error) {
+        } catch {
             // Ignore parameters if they are invalid
         }
     }

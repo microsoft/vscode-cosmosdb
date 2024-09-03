@@ -3,17 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccountCreateUpdateParameters } from '@azure/arm-cosmosdb/src/models';
+import { type DatabaseAccountCreateUpdateParameters } from '@azure/arm-cosmosdb/src/models';
 import { LocationListStep } from '@microsoft/vscode-azext-azureutils';
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
-import { AppResource } from '@microsoft/vscode-azext-utils/hostapi';
-import { Progress } from 'vscode';
+import { type AppResource } from '@microsoft/vscode-azext-utils/hostapi';
+import { type Progress } from 'vscode';
+import { API } from '../../AzureDBExperiences';
 import { SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
+import { type ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBWizardContext> {
     public priority: number = 130;
@@ -47,7 +48,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             tags: { defaultExperience: nonNullProp(defaultExperience, 'tag') },
         };
 
-        if (defaultExperience?.api === 'MongoDB') {
+        if (defaultExperience?.api === API.MongoDB) {
             if (context.mongoVersion !== undefined) {
                 options.apiProperties = { serverVersion: context.mongoVersion };
             }

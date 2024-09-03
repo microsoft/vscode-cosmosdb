@@ -3,11 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import  { type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import { AzExtTreeItem } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon } from 'vscode';
-import { IPostgresProceduresQueryRow } from '../getPostgresProcedureQueryRows';
+import  { type IPostgresProceduresQueryRow } from '../getPostgresProcedureQueryRows';
 import { runPostgresQuery } from '../runPostgresQuery';
-import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
+import  { type PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
 
 export class PostgresStoredProcedureTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'postgresStoredProcedure';

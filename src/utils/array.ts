@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-wrapper-object-types
 export function filterType<T>(arr: Object[] | undefined, genericConstructor: new (...args: any[]) => T): T[] {
     return arr ? <T[]>arr.filter((element) => element instanceof genericConstructor) : [];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-wrapper-object-types
 export function findType<T>(arr: Object[] | undefined, genericConstructor: new (...args: any[]) => T): T | undefined {
     return arr && <T>arr.find((element) => element instanceof genericConstructor);
 }

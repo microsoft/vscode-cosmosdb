@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { MongoClient, MongoClientOptions } from 'mongodb';
+import { MongoClient, type MongoClientOptions } from 'mongodb';
 import { emulatorPassword, Links } from '../constants';
 
 export async function connectToMongoClient(connectionString: string, appName: string): Promise<MongoClient> {
@@ -34,6 +34,7 @@ export async function connectToMongoClient(connectionString: string, appName: st
             throw new MongoConnectError();
         }
 
+        // eslint-disable-next-line @typescript-eslint/only-throw-error
         throw error;
     }
 }

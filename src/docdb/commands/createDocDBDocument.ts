@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext } from '@microsoft/vscode-azext-utils';
+import  { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { commands } from 'vscode';
-import { DocDBDocumentTreeItem } from '../tree/DocDBDocumentTreeItem';
+import  { type DocDBDocumentTreeItem } from '../tree/DocDBDocumentTreeItem';
 import { DocDBDocumentsTreeItem } from '../tree/DocDBDocumentsTreeItem';
 import { pickDocDBAccount } from './pickDocDBAccount';
 

@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ConnectionOptions, parse } from 'pg-connection-string';
+import  { type ConnectionOptions} from 'pg-connection-string';
+import { parse } from 'pg-connection-string';
 import { postgresDefaultPort } from '../constants';
 import { ParsedConnectionString } from '../ParsedConnectionString';
 import { nonNullProp } from '../utils/nonNull';

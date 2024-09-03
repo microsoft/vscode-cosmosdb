@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DialogResponses, IActionContext, ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
+import  { type IActionContext, type ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
+import { DialogResponses } from '@microsoft/vscode-azext-utils';
 import { window } from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';

@@ -3,37 +3,37 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { DatabaseAccountGetResults, DatabaseAccountListKeysResult } from '@azure/arm-cosmosdb/src/models';
+import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { type DatabaseAccountGetResults, type DatabaseAccountListKeysResult } from '@azure/arm-cosmosdb/src/models';
 import {
-    ILocationWizardContext,
     LocationListStep,
     ResourceGroupListStep,
     SubscriptionTreeItemBase,
     getResourceGroupFromId,
     uiUtils,
+    type ILocationWizardContext,
 } from '@microsoft/vscode-azext-azureutils';
 import {
-    AzExtParentTreeItem,
-    AzExtTreeItem,
     AzureWizard,
-    AzureWizardPromptStep,
-    IActionContext,
+    type AzExtParentTreeItem,
+    type AzExtTreeItem,
+    type AzureWizardPromptStep,
+    type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { API, Experience, getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
-import { CosmosDBCredential } from '../docdb/getCosmosClient';
+import { API, getExperienceLabel, tryGetExperience, type Experience } from '../AzureDBExperiences';
+import { type CosmosDBCredential } from '../docdb/getCosmosClient';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { ext } from '../extensionVariables';
 import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
 import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { PostgresAbstractServer, PostgresServerType } from '../postgres/abstract/models';
-import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
+import { PostgresServerType, type PostgresAbstractServer } from '../postgres/abstract/models';
+import { type IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
 import {
-    ParsedPostgresConnectionString,
     createPostgresConnectionString,
     parsePostgresConnectionString,
+    type ParsedPostgresConnectionString,
 } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
@@ -42,7 +42,7 @@ import { createCosmosDBClient, createPostgreSQLClient, createPostgreSQLFlexibleC
 import { localize } from '../utils/localize';
 import { nonNullProp } from '../utils/nonNull';
 import { AzureDBAPIStep } from './AzureDBAPIStep';
-import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
+import { type ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
 
 export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
     public childTypeLabel: string = 'Account';
@@ -170,7 +170,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const label: string = name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
         const isEmulator: boolean = false;
 
-        if (experience && experience.api === 'MongoDB') {
+        if (experience && experience.api === API.MongoDB) {
             const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, name);
             const connectionString: URL = new URL(
                 nonNullProp(nonNullProp(result, 'connectionStrings')[0], 'connectionString'),
@@ -195,7 +195,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             let keyResult: DatabaseAccountListKeysResult | undefined;
             try {
                 keyResult = await client.databaseAccounts.listKeys(resourceGroup, name);
-            } catch (error) {
+            } catch {
                 // If the client failed to list keys, proceed without using keys
             }
 
@@ -212,7 +212,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             const authCred = { type: 'auth' };
             const credentials = [keyCred, authCred].filter((cred): cred is CosmosDBCredential => cred !== undefined);
             switch (experience && experience.api) {
-                case 'Table':
+                case API.Table:
                     return new TableAccountTreeItem(
                         parent,
                         id,
@@ -222,7 +222,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
                         isEmulator,
                         databaseAccount,
                     );
-                case 'Graph': {
+                case API.Graph: {
                     const gremlinEndpoint = await tryGetGremlinEndpointFromAzure(client, resourceGroup, name);
                     return new GraphAccountTreeItem(
                         parent,
@@ -235,7 +235,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
                         databaseAccount,
                     );
                 }
-                case 'Core':
+                case API.Core:
                 default:
                     // Default to DocumentDB, the base type for all Cosmos DB Accounts
                     return new DocDBAccountTreeItem(

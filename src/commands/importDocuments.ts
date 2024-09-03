@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ItemDefinition } from '@azure/cosmos';
-import { IActionContext, parseError } from '@microsoft/vscode-azext-utils';
+import { type ItemDefinition } from '@azure/cosmos';
+import { parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
 import { cosmosMongoFilter, sqlFilter } from '../constants';
@@ -119,9 +119,9 @@ async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
     return documents;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function insertDocumentsIntoDocdb(
     collectionNode: DocDBCollectionTreeItem,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     documents: any[],
     uris: vscode.Uri[],
 ): Promise<string> {
@@ -144,6 +144,7 @@ async function insertDocumentsIntoDocdb(
         );
     }
     for (const document of documents) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const retrieved: ItemDefinition = await collectionNode.documentsTreeItem.createDocument(document);
         if (retrieved.id) {
             ids.push(retrieved.id);
@@ -159,6 +160,7 @@ async function insertDocumentsIntoDocdb(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function insertDocumentsIntoMongo(node: MongoCollectionTreeItem, documents: any[]): Promise<string> {
     let output = '';
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const parsed = await node.collection.insertMany(documents);
     if (parsed.acknowledged) {
         output = `Import into mongo successful. Inserted ${parsed.insertedCount} document(s). See output for more details.`;

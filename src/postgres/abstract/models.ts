@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as SingleModels from '@azure/arm-postgresql';
-import * as FlexibleModels from '@azure/arm-postgresql-flexible';
+import type * as SingleModels from '@azure/arm-postgresql';
+import type * as FlexibleModels from '@azure/arm-postgresql-flexible';
 
 export enum PostgresServerType {
     Flexible = 'Flexible',
@@ -29,6 +29,7 @@ export interface AbstractSku {
      * The tier of the particular SKU, e.g. Basic. Possible values include: 'Basic',
      * 'GeneralPurpose', 'MemoryOptimized'
      */
+    // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
     tier: SingleModels.SkuTier | FlexibleModels.SkuTier;
     /**
      * The scale up/out capacity, representing server's compute units.

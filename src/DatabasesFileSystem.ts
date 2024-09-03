@@ -3,14 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import  {
+    type AzExtTreeItem,
+    type IActionContext} from '@microsoft/vscode-azext-utils';
 import {
     AzExtTreeFileSystem,
-    AzExtTreeItem,
     DialogResponses,
-    IActionContext,
     UserCancelledError,
 } from '@microsoft/vscode-azext-utils';
-import { FileStat, FileType, MessageItem, Uri, workspace } from 'vscode';
+import  { type FileStat, type MessageItem, type Uri} from 'vscode';
+import { FileType, workspace } from 'vscode';
 import { FileChangeType } from 'vscode-languageclient';
 import { ext } from './extensionVariables';
 import { localize } from './utils/localize';

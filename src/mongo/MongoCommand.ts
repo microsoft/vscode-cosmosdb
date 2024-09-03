@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { RecognitionException } from 'antlr4ts';
-import * as vscode from 'vscode';
+import { type RecognitionException } from 'antlr4ts';
+import type * as vscode from 'vscode';
 
 export interface MongoCommand {
     range: vscode.Range;
@@ -12,6 +12,7 @@ export interface MongoCommand {
     collection?: string;
     name?: string;
     arguments?: string[];
+    // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
     argumentObjects?: Object[];
     errors?: ErrorDescription[];
     chained?: boolean;

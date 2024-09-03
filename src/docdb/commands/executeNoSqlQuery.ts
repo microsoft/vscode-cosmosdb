@@ -3,14 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext } from '@microsoft/vscode-azext-utils';
+import  { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ViewColumn } from 'vscode';
 import { KeyValueStore } from '../../KeyValueStore';
 import { localize } from '../../utils/localize';
 import * as vscodeUtil from '../../utils/vscodeUtils';
-import { NoSqlQueryConnection, noSqlQueryConnectionKey } from '../NoSqlCodeLensProvider';
-import { CosmosDBCredential, getCosmosClient } from '../getCosmosClient';
+import  { type NoSqlQueryConnection} from '../NoSqlCodeLensProvider';
+import { noSqlQueryConnectionKey } from '../NoSqlCodeLensProvider';
+import  { type CosmosDBCredential} from '../getCosmosClient';
+import { getCosmosClient } from '../getCosmosClient';
 
 export async function executeNoSqlQuery(
     _context: IActionContext,

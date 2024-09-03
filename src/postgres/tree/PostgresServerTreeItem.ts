@@ -225,7 +225,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
             this.serverVersion = result.rows[0].server_version;
         }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-redundant-type-constituents,@typescript-eslint/no-unsafe-assignment
         const version: SemVer | null = coerce(this.serverVersion);
 
         // hot-fix added after a package upgrade. gte(..) didn't accept a 'null' anymore
@@ -293,7 +293,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
             PostgresServerTreeItem.ipAddr = publicIp;
 
             return isIpInRanges(publicIp, results);
-        } catch (error) {
+        } catch {
             // We cannot get the firewall rules from attached databases because we cannot get the subscription object.
             // We assume the database server has configured the necessary firewall rules to allow connections from the current IP.
             return true;

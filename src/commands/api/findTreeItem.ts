@@ -3,7 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, callWithTelemetryAndErrorHandling, IActionContext } from '@microsoft/vscode-azext-utils';
+import {
+    callWithTelemetryAndErrorHandling,
+    type AzExtTreeItem,
+    type IActionContext,
+} from '@microsoft/vscode-azext-utils';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
@@ -11,7 +15,7 @@ import { ext } from '../../extensionVariables';
 import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
-import { ParsedConnectionString } from '../../ParsedConnectionString';
+import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import {
     createPostgresConnectionString,
     parsePostgresConnectionString,
@@ -20,7 +24,7 @@ import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTr
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
 import { nonNullProp } from '../../utils/nonNull';
-import { DatabaseAccountTreeItem, DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
+import { type DatabaseAccountTreeItem, type DatabaseTreeItem, type TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
@@ -163,7 +167,7 @@ async function searchDbAccounts(
                 }
             }
         }
-    } catch (error) {
+    } catch {
         // Swallow all errors to avoid blocking the db account search
         // https://github.com/microsoft/vscode-cosmosdb/issues/966
     }

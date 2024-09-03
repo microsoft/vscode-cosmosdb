@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ext } from '../extensionVariables';
-import { MongoDatabaseTreeItem } from './tree/MongoDatabaseTreeItem';
+import  { type MongoDatabaseTreeItem } from './tree/MongoDatabaseTreeItem';
 
 export function setConnectedNode(node: MongoDatabaseTreeItem | undefined): void {
     ext.connectedMongoDB = node;

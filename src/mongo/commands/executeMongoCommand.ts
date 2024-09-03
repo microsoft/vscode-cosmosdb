@@ -1,5 +1,5 @@
-import { IActionContext } from '@microsoft/vscode-azext-utils';
-import * as vscode from 'vscode';
+import  { type IActionContext } from '@microsoft/vscode-azext-utils';
+import type * as vscode from 'vscode';
 import { executeCommandFromActiveEditor } from '../MongoScrapbook';
 import { loadPersistedMongoDB } from './connectMongoDatabase';
 

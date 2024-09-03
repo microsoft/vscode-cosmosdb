@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DialogResponses, IActionContext } from '@microsoft/vscode-azext-utils';
+import  { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { DialogResponses } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
@@ -11,9 +12,10 @@ import { getPublicIpv4 } from '../../utils/getIp';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { randomUtils } from '../../utils/randomUtils';
-import { AbstractPostgresClient, createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
-import { AbstractFirewallRule, PostgresServerType } from '../abstract/models';
-import { PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
+import  { type AbstractPostgresClient} from '../abstract/AbstractPostgresClient';
+import { createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
+import  { type AbstractFirewallRule, type PostgresServerType } from '../abstract/models';
+import  { type PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
 
 export async function configurePostgresFirewall(
     context: IActionContext,

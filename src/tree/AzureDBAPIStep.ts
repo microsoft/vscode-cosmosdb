@@ -4,15 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { VerifyProvidersStep } from '@microsoft/vscode-azext-azureutils';
+import  {
+    type AzureWizardExecuteStep,
+    type IAzureQuickPickItem,
+    type IWizardOptions} from '@microsoft/vscode-azext-utils';
 import {
-    AzureWizardExecuteStep,
-    AzureWizardPromptStep,
-    IAzureQuickPickItem,
-    IWizardOptions,
+    AzureWizardPromptStep
 } from '@microsoft/vscode-azext-utils';
-import { API, Experience, getExperienceQuickPicks } from '../AzureDBExperiences';
+import  { type Experience} from '../AzureDBExperiences';
+import { API, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { PostgresServerType } from '../postgres/abstract/models';
-import { IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
+import  { type IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
 import { PostgresServerConfirmPWStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerConfirmPWStep';
 import { PostgresServerCreateStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerCreateStep';
 import { PostgresServerCredPWStep } from '../postgres/commands/createPostgresServer/steps/PostgresServerCredPWStep';
@@ -24,9 +26,9 @@ import { localize } from '../utils/localize';
 import { CosmosDBAccountCapacityStep } from './CosmosDBAccountWizard/CosmosDBAccountCapacityStep';
 import { CosmosDBAccountCreateStep } from './CosmosDBAccountWizard/CosmosDBAccountCreateStep';
 import { CosmosDBAccountNameStep } from './CosmosDBAccountWizard/CosmosDBAccountNameStep';
-import { ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
+import  { type ICosmosDBWizardContext } from './CosmosDBAccountWizard/ICosmosDBWizardContext';
 import { MongoVersionStep } from './CosmosDBAccountWizard/MongoDBVersionStep';
-import { IAzureDBWizardContext } from './IAzureDBWizardContext';
+import  { type IAzureDBWizardContext } from './IAzureDBWizardContext';
 
 export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardContext | ICosmosDBWizardContext> {
     public async prompt(context: IAzureDBWizardContext): Promise<void> {

@@ -5,10 +5,10 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unsafe-member-access */
 
-import { Db, FindCursor } from 'mongodb';
-import { SchemaConfiguration } from 'vscode-json-languageservice';
+import { type Db, type FindCursor } from 'mongodb';
+import { type SchemaConfiguration } from 'vscode-json-languageservice';
 // eslint-disable-next-line import/no-internal-modules
-import { JSONSchema } from 'vscode-json-languageservice/lib/umd/jsonSchema';
+import { type JSONSchema } from 'vscode-json-languageservice/lib/umd/jsonSchema';
 
 export class SchemaService {
     private _db: Db;
@@ -117,6 +117,7 @@ export class SchemaService {
 
     private setSchemaForDocument(parent: string, document: any, schema: JSONSchema): void {
         if (this.getMongoDocumentType(document) === 'object') {
+            //eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             for (const property of Object.keys(document)) {
                 if (!parent && ['_id'].indexOf(property) !== -1) {
                     continue;

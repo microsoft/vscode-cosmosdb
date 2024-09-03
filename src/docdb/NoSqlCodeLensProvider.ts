@@ -3,17 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext, callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import {
-    CancellationToken,
     CodeLens,
-    CodeLensProvider,
-    Event,
     EventEmitter,
     Position,
-    ProviderResult,
     Range,
-    TextDocument,
+    type CancellationToken,
+    type CodeLensProvider,
+    type Event,
+    type ProviderResult,
+    type TextDocument,
 } from 'vscode';
 import { KeyValueStore } from '../KeyValueStore';
 
@@ -47,7 +47,7 @@ export class NoSqlCodeLensProvider implements CodeLensProvider {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
             const connectedCollection: NoSqlQueryConnection | undefined = KeyValueStore.instance.get(
                 noSqlQueryConnectionKey,
-            ) as any;
+            ) as unknown as NoSqlQueryConnection;
             let connectCodeLens: CodeLens;
             if (!connectedCollection) {
                 connectCodeLens = new CodeLens(new Range(new Position(0, 0), new Position(0, 0)), {

@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ANTLRErrorListener } from 'antlr4ts/ANTLRErrorListener';
-import { RecognitionException } from 'antlr4ts/RecognitionException';
-import { Recognizer } from 'antlr4ts/Recognizer';
-import { Token } from 'antlr4ts/Token';
+import  { type ANTLRErrorListener } from 'antlr4ts/ANTLRErrorListener';
+import  { type RecognitionException } from 'antlr4ts/RecognitionException';
+import  { type Recognizer } from 'antlr4ts/Recognizer';
+import  { type Token } from 'antlr4ts/Token';
 import * as vscode from 'vscode';
-import { ErrorDescription } from './MongoCommand';
+import  { type ErrorDescription } from './MongoCommand';
 
 export class ParserErrorListener implements ANTLRErrorListener<Token> {
     private _errors: ErrorDescription[] = [];

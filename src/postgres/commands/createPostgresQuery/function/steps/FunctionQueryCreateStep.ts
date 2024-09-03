@@ -6,7 +6,7 @@
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import { nonNullProp } from '../../../../../utils/nonNull';
 import { wrapArgInQuotes } from '../../../../runPostgresQuery';
-import { IPostgresFunctionQueryWizardContext } from '../IPostgresFunctionQueryWizardContext';
+import  { type IPostgresFunctionQueryWizardContext } from '../IPostgresFunctionQueryWizardContext';
 
 export class FunctionQueryCreateStep extends AzureWizardExecuteStep<IPostgresFunctionQueryWizardContext> {
     public priority: number = 100;

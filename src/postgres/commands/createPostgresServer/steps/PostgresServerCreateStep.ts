@@ -6,14 +6,15 @@ import * as SingleModels from '@azure/arm-postgresql';
 import * as FlexibleModels from '@azure/arm-postgresql-flexible';
 import { LocationListStep } from '@microsoft/vscode-azext-azureutils';
 import { AzureWizardExecuteStep, callWithMaskHandling } from '@microsoft/vscode-azext-utils';
-import { AppResource } from '@microsoft/vscode-azext-utils/hostapi';
-import { Progress } from 'vscode';
+import  { type AppResource } from '@microsoft/vscode-azext-utils/hostapi';
+import  { type Progress } from 'vscode';
 import { ext } from '../../../../extensionVariables';
 import { createPostgreSQLClient, createPostgreSQLFlexibleClient } from '../../../../utils/azureClients';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
-import { AbstractServerCreate, PostgresServerType } from '../../../abstract/models';
-import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
+import  { type AbstractServerCreate} from '../../../abstract/models';
+import { PostgresServerType } from '../../../abstract/models';
+import  { type IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerCreateStep extends AzureWizardExecuteStep<IPostgresServerWizardContext> {
     public priority: number = 150;

@@ -10,8 +10,8 @@
 // This is the extension entrypoint module, which imports extension.bundle.js, the actual extension code.
 // This is in a separate file so we can properly measure extension.bundle.js load time.
 
-import { apiUtils } from '@microsoft/vscode-azext-utils';
-import * as vscode from 'vscode';
+import  { type apiUtils } from '@microsoft/vscode-azext-utils';
+import type * as vscode from 'vscode';
 import * as extension from './src/extension';
 
 const perfStats = {

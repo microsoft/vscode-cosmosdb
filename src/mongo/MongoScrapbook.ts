@@ -4,19 +4,19 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
-    IActionContext,
-    IParsedError,
     openReadOnlyContent,
     parseError,
-    ReadOnlyContent,
+    type IActionContext,
+    type IParsedError,
+    type ReadOnlyContent,
 } from '@microsoft/vscode-azext-utils';
 import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
-import { ParseTree } from 'antlr4ts/tree/ParseTree';
+import { type ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { EJSON, ObjectId } from 'bson';
-import { Collection } from 'mongodb';
+import { type Collection } from 'mongodb';
 import { EOL } from 'os';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
@@ -27,10 +27,10 @@ import { LexerErrorListener, ParserErrorListener } from './errorListeners';
 import { mongoLexer } from './grammar/mongoLexer';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
-import { ErrorDescription, MongoCommand } from './MongoCommand';
+import { type ErrorDescription, type MongoCommand } from './MongoCommand';
 import { MongoCollectionTreeItem } from './tree/MongoCollectionTreeItem';
-import { MongoDatabaseTreeItem, stripQuotes } from './tree/MongoDatabaseTreeItem';
-import { IMongoDocument, MongoDocumentTreeItem } from './tree/MongoDocumentTreeItem';
+import { stripQuotes, type MongoDatabaseTreeItem } from './tree/MongoDatabaseTreeItem';
+import { MongoDocumentTreeItem, type IMongoDocument } from './tree/MongoDocumentTreeItem';
 
 const notInScrapbookMessage = 'You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.';
 
@@ -107,7 +107,7 @@ async function executeCommand(
         try {
             context.telemetry.properties.command = command.name;
             context.telemetry.properties.argsCount = String(command.arguments ? command.arguments.length : 0);
-        } catch (error) {
+        } catch {
             // Ignore
         }
 
@@ -330,6 +330,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         return this.commands;
     }
 
+    //eslint-disable-next-line  @typescript-eslint/no-wrapper-object-types
     private contextToObject(ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext): Object {
         if (!ctx || ctx.childCount === 0) {
             //Base case and malformed statements
@@ -356,6 +357,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
     private literalContextToObject(
         child: mongoParser.LiteralContext,
         ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
+        //eslint-disable-next-line  @typescript-eslint/no-wrapper-object-types
     ): Object {
         const text = child.text;
         const tokenType = child.start.type;
@@ -377,13 +379,13 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         }
     }
 
-    private objectLiteralContextToObject(child: mongoParser.ObjectLiteralContext): Object {
+    private objectLiteralContextToObject(child: mongoParser.ObjectLiteralContext): object {
         const propertyNameAndValue = findType(child.children, mongoParser.PropertyNameAndValueListContext);
         if (!propertyNameAndValue) {
             // Argument is {}
             return {};
         } else {
-            const parsedObject: Object = {};
+            const parsedObject: object = {};
             const propertyAssignments = filterType(
                 propertyNameAndValue.children,
                 mongoParser.PropertyAssignmentContext,
@@ -402,6 +404,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         const elementList = findType(child.children, mongoParser.ElementListContext);
         if (elementList) {
             const elementItems = filterType(elementList.children, mongoParser.PropertyValueContext);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             return elementItems.map(this.contextToObject.bind(this));
         } else {
             return [];
@@ -411,6 +414,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
     private functionCallContextToObject(
         child: mongoParser.FunctionCallContext,
         ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
+        // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
     ): Object {
         const functionTokens = child.children;
         const constructorCall: TerminalNode = nonNullValue(findType(functionTokens, TerminalNode), 'constructorCall');
@@ -453,8 +457,10 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
     private dateToObject(
         ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
         tokenText?: string,
-    ): { $date: string } | {} {
-        const date: Date | {} = this.tryToConstructDate(ctx, tokenText);
+        // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+    ): { $date: string } | Object {
+        // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+        const date: Date | Object = this.tryToConstructDate(ctx, tokenText);
         if (date instanceof Date) {
             return { $date: date.toString() };
         } else {
@@ -465,8 +471,10 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
     private isodateToObject(
         ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
         tokenText?: string,
-    ): { $date: string } | {} {
-        const date: Date | {} = this.tryToConstructDate(ctx, tokenText, true);
+        // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+    ): { $date: string } | Object {
+        // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+        const date: Date | Object = this.tryToConstructDate(ctx, tokenText, true);
 
         if (date instanceof Date) {
             return { $date: date.toISOString() };
@@ -479,7 +487,8 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
         tokenText?: string,
         isIsodate: boolean = false,
-    ): Date | {} {
+        // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+    ): Date | Object {
         if (!tokenText) {
             // usage : ObjectID()
             return new Date();
@@ -506,6 +515,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
     private objectIdToObject(
         ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
         tokenText?: string,
+        // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
     ): Object {
         let hexID: string;
         let constructedObject: ObjectId;
@@ -528,6 +538,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
     private regexLiteralContextToObject(
         ctx: mongoParser.ArgumentContext | mongoParser.PropertyValueContext,
         text: string,
+        // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
     ): Object {
         const separator = text.lastIndexOf('/');
         const flags = separator !== text.length - 1 ? text.substring(separator + 1) : '';

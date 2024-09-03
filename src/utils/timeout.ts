@@ -47,6 +47,7 @@ export async function rejectOnTimeout<T>(
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             error = err;
             clearTimeout(timer);
+            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
             reject(error);
         }
     });

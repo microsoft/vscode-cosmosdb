@@ -123,11 +123,13 @@ export class MongoShell extends vscode.Disposable {
                             // Mongo shell only writes to STDERR for errors relating to starting up. Script errors go to STDOUT.
                             //   So consider this an error.
                             // (It's okay if we fire this multiple times, the first one wins.)
+                            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                             reject(wrapCheckOutputWindow(text.trim()));
                         }),
                     );
                     disposables.push(
                         this._process.onError((error) => {
+                            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                             reject(error);
                         }),
                     );
@@ -151,6 +153,7 @@ export class MongoShell extends vscode.Disposable {
                         error = new Error('The process exited prematurely.');
                     }
 
+                    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                     reject(wrapCheckOutputWindow(error));
                 }
             });
@@ -165,7 +168,7 @@ export class MongoShell extends vscode.Disposable {
     }
 }
 
-function startScriptTimeout(timeoutSeconds: number | 0, reject: (err: unknown) => void): void {
+function startScriptTimeout(timeoutSeconds: number, reject: (err: unknown) => void): void {
     if (timeoutSeconds > 0) {
         setTimeout(() => {
             reject(timeoutMessage);

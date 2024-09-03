@@ -165,7 +165,7 @@ function validateThroughput(isFixed: boolean, input: string): string | undefined
         if (value < minThroughput || value > maxThroughput || (value - minThroughput) % throughputStepSize !== 0) {
             return `Value must be between ${minThroughput} and ${maxThroughput} in increments of ${throughputStepSize}`;
         }
-    } catch (err) {
+    } catch {
         return 'Input must be a number';
     }
     return undefined;

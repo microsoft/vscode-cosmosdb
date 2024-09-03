@@ -3,10 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardPromptStep, IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
+import  { type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
+import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../utils/localize';
 import { openUrl } from '../../utils/openUrl';
-import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
+import  { type ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountCapacityStep extends AzureWizardPromptStep<ICosmosDBWizardContext> {
     public async prompt(context: ICosmosDBWizardContext): Promise<void> {

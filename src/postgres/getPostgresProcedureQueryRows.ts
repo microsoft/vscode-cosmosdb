@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { QueryResult } from 'pg';
+import  { type QueryResult } from 'pg';
 import { runPostgresQuery } from './runPostgresQuery';
 import { PostgresFunctionsTreeItem } from './tree/PostgresFunctionsTreeItem';
-import { PostgresResourcesTreeItemBase } from './tree/PostgresResourcesTreeItemBase';
+import  { type PostgresResourcesTreeItemBase } from './tree/PostgresResourcesTreeItemBase';
 
 export interface IPostgresProceduresQueryRow {
     schema: string;

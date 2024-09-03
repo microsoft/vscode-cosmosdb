@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { appendExtensionUserAgent, IParsedError, parseError } from '@microsoft/vscode-azext-utils';
-import { MongoClient } from 'mongodb';
+import { appendExtensionUserAgent, parseError, type IParsedError } from '@microsoft/vscode-azext-utils';
+import { type MongoClient } from 'mongodb';
 import { ParsedConnectionString } from '../ParsedConnectionString';
 import { nonNullValue } from '../utils/nonNull';
 import { connectToMongoClient } from './connectToMongoClient';
@@ -31,7 +31,7 @@ export function getDatabaseNameFromConnectionString(connectionString: string): s
             'databaseNameMatch',
         );
         return databaseName;
-    } catch (error) {
+    } catch {
         // Shouldn't happen, but ignore if does
     }
 
@@ -41,7 +41,7 @@ export function getDatabaseNameFromConnectionString(connectionString: string): s
 export function addDatabaseToAccountConnectionString(connectionString: string, databaseName: string): string {
     try {
         return connectionString.replace(mongoConnectionStringRegExp, `$1\/${encodeURIComponent(databaseName)}`);
-    } catch (error) {
+    } catch {
         // Shouldn't happen, but ignore if does. Original connection string could be in a format we don't expect, but might already have the db name or might still work without it
         return connectionString;
     }

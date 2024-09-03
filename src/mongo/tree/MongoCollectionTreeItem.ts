@@ -38,7 +38,8 @@ import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { type MongoCommand } from '../MongoCommand';
 import { MongoDocumentTreeItem, type IMongoDocument } from './MongoDocumentTreeItem';
 
-type MongoFunction = (...args: ({} | {}[] | undefined)[]) => Thenable<string>;
+// eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+type MongoFunction = (...args: (Object | Object[] | undefined)[]) => Thenable<string>;
 class FunctionDescriptor {
     public constructor(
         public mongoFunction: MongoFunction,
@@ -55,7 +56,8 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     public readonly childTypeLabel: string = 'Document';
     public readonly collection: Collection;
     public parent: AzExtParentTreeItem;
-    public findArgs?: {}[];
+    // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+    public findArgs?: Object[];
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
 
@@ -65,7 +67,8 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     private _hasMoreChildren: boolean = true;
     private _batchSize: number = getBatchSizeSetting();
 
-    constructor(parent: AzExtParentTreeItem, collection: Collection, findArgs?: {}[]) {
+    // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+    constructor(parent: AzExtParentTreeItem, collection: Collection, findArgs?: Object[]) {
         super(parent);
         this.collection = collection;
         this.findArgs = findArgs;
@@ -242,6 +245,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
                 return { deferToShell: true, result: undefined };
             }
             const result = await reportProgress<string>(
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                 descriptor.mongoFunction.apply(this, parameters),
                 descriptor.text,
             );
@@ -271,6 +275,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
             if (error.name === 'MongoError' && error.code === NamespaceNotFoundCode) {
                 return `Collection '${this.collection.collectionName}' could not be dropped because it does not exist.`;
             } else {
+                // eslint-disable-next-line @typescript-eslint/only-throw-error
                 throw error;
             }
         }
@@ -295,8 +300,8 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     }
 
     private async insertOne(document: MongoDocument, options?: any): Promise<string> {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         const insertOneResult: InsertOneResult<MongoDocument> = await this.collection.insertOne(document, {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
             writeConcern: options && options.writeConcern,
         });
         return this.stringify(insertOneResult);

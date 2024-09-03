@@ -3,13 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import  {
+    type AzExtParentTreeItem,
+    type AzExtTreeItem,
+    type IActionContext} from '@microsoft/vscode-azext-utils';
 import {
-    AzExtParentTreeItem,
-    AzExtTreeItem,
-    callWithTelemetryAndErrorHandling,
-    IActionContext,
+    callWithTelemetryAndErrorHandling
 } from '@microsoft/vscode-azext-utils';
-import { WorkspaceResourceProvider } from '@microsoft/vscode-azext-utils/hostapi';
+import  { type WorkspaceResourceProvider } from '@microsoft/vscode-azext-utils/hostapi';
 import { Disposable } from 'vscode';
 import { ext } from '../extensionVariables';
 import { AttachedAccountsTreeItem } from '../tree/AttachedAccountsTreeItem';

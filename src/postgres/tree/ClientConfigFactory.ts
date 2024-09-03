@@ -3,12 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ISubscriptionContext, callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
-import { AzureSubscription } from '@microsoft/vscode-azureresources-api';
-import { ClientConfig } from 'pg';
+import {
+    callWithTelemetryAndErrorHandling,
+    parseError,
+    type ISubscriptionContext,
+} from '@microsoft/vscode-azext-utils';
+import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
+import { type ClientConfig } from 'pg';
 import { getTokenFunction } from '../../azureAccountUtils';
 import { localize } from '../../utils/localize';
-import { PostgresClientConfigType, getClientConfigs, testClientConfig } from '../getClientConfig';
+import { getClientConfigs, testClientConfig, type PostgresClientConfigType } from '../getClientConfig';
 import { firewallNotConfiguredErrorType, invalidCredentialsErrorType, timeoutErrorType } from '../postgresConstants';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
 
@@ -40,7 +44,7 @@ export class PostgresClientConfigFactory {
             } else {
                 hasSubscription = false;
             }
-        } catch (error) {
+        } catch {
             hasSubscription = false;
         }
         const clientConfigs = await getClientConfigs(
@@ -97,6 +101,7 @@ export class PostgresClientConfigFactory {
                         'mustConfigureFirewall',
                         'Some network environments may not report the actual public-facing IP address needed to access your server. Contact your network administrator to add the actual IP address to the firewall rules.',
                     );
+                    // eslint-disable-next-line @typescript-eslint/only-throw-error
                     throw {
                         message: `${ipMessage} ${configureFirewallMessage}`,
                         code: firewallNotConfiguredErrorType,
@@ -107,6 +112,7 @@ export class PostgresClientConfigFactory {
             }
         }
 
+        // eslint-disable-next-line @typescript-eslint/only-throw-error
         throw {
             message: localize('mustEnterCredentials', 'Must enter credentials to connect to server.'),
             code: invalidCredentialsErrorType,

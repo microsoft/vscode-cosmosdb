@@ -3,16 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, callWithTelemetryAndErrorHandling, IActionContext } from '@microsoft/vscode-azext-utils';
-import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
-import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
+import  { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import  { type DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
+import  { type DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
-import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
-import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
-import { ParsedConnectionString } from '../../ParsedConnectionString';
-import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
-import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
-import { DatabaseTreeItem } from '../../vscode-cosmosdb.api';
+import  { type MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
+import  { type MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
+import  { type ParsedConnectionString } from '../../ParsedConnectionString';
+import  { type PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
+import  { type PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
+import  { type DatabaseTreeItem } from '../../vscode-cosmosdb.api';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 
 export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal implements DatabaseTreeItem {

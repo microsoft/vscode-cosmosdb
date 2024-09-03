@@ -3,12 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtParentTreeItem, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import  { type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import { AzExtParentTreeItem } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { IPostgresTable } from '../getTables';
+import  { type IPostgresTable } from '../getTables';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresColumnTreeItem } from './PostgresColumnTreeItem';
-import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
+import  { type PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
 export class PostgresTableTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = 'postgresTable';

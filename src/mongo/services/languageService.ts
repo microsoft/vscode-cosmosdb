@@ -5,24 +5,24 @@
 
 // NOTE: This file may not take a dependencey on vscode or anything that takes a dependency on it (such as @microsoft/vscode-azext-utils)
 
-import { Db } from 'mongodb';
+import { type Db } from 'mongodb';
 import {
     getLanguageService,
-    LanguageService as JsonLanguageService,
-    SchemaConfiguration,
+    type LanguageService as JsonLanguageService,
+    type SchemaConfiguration
 } from 'vscode-json-languageservice';
 import {
-    CompletionItem,
-    IConnection,
-    InitializeParams,
-    InitializeResult,
-    TextDocumentPositionParams,
     TextDocuments,
     TextDocumentSyncKind,
+    type CompletionItem,
+    type IConnection,
+    type InitializeParams,
+    type InitializeResult,
+    type TextDocumentPositionParams
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { connectToMongoClient } from '../connectToMongoClient';
-import { IConnectionParams } from './IConnectionParams';
+import { type IConnectionParams } from './IConnectionParams';
 import { MongoScriptDocumentManager } from './mongoScript';
 import { SchemaService } from './schemaService';
 

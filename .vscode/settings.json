@@ -24,5 +24,8 @@
     },
     "vscode-nmake-tools.workspaceBuildDirectories": ["."],
     "vscode-nmake-tools.installOsRepoRustHelperExtension": false,
-    "sarif-viewer.connectToGithubCodeScanning": "off"
+    "sarif-viewer.connectToGithubCodeScanning": "off",
+    // "eslint.workingDirectories": [
+    //     ".", "src"
+    //   ]
 }

@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
 import * as path from 'path';
-import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
+import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from 'vscode-languageclient';
 import * as nls from 'vscode-nls';
 import { ext } from '../extensionVariables';
-import { IConnectionParams } from './services/IConnectionParams';
+import { type IConnectionParams } from './services/IConnectionParams';
 
 const localize = nls.loadMessageBundle();
 

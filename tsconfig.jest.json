@@ -21,10 +21,11 @@
             "*": ["node_modules/@types/*", "*"]
         },
         "jsx": "react-jsx",
+        "types": ["jest", "node"],
         "typeRoots": [
             //"typings",
             "node_modules/@types"
         ]
     },
-    "exclude": ["node_modules", ".vscode-test", "gulpfile.ts"]
+    "include": ["test/jest/**/*.jesttest.ts"]
 }

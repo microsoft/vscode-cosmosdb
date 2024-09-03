@@ -1,0 +1,29 @@
+@import '@slickgrid-universal/common/dist/styles/sass/variables';
+
+@import 'vscode-to-slickgrid.scss';
+
+/* make sure to add the @import the SlickGrid Bootstrap Theme AFTER the variables changes */
+@import '@slickgrid-universal/common/dist/styles/sass/slickgrid-theme-salesforce.scss';
+
+// the themes below are also available but didn't render well, e.g. selected cells were
+// partialy hiding content in adjacent cells.
+//@import '@slickgrid-universal/common/dist/styles/sass/slickgrid-theme-material.lite.scss';
+//@import '@slickgrid-universal/common/dist/styles/sass/slickgrid-theme-bootstrap.scss';
+
+// override some of existing and add some missing definitions:
+.grid-canvas {
+    .slick-cell.selected {
+        color: var(--vscode-list-activeSelectionForeground);
+    }
+}
+
+// .slickgrid-container .slick-row.odd .slick-cell {
+//     //background-color: var(--vscode-list-activeSelectionForeground);
+// }
+
+// .slick-cell-menu .slick-menu-item:hover,
+// .slick-context-menu .slick-menu-item:hover,
+// .slick-grid-menu .slick-menu-item:hover,
+// .slick-header-menu .slick-menu-item:hover {
+//     color: var(--vscode-menu-selectionForeground);
+// }

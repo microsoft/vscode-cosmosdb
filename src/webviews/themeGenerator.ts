@@ -48,8 +48,8 @@ export const useVSCodeTheme = () => {
     return document.body.getAttribute('data-vscode-theme-kind') ?? 'vscode-light';
 };
 
+// https://react.fluentui.dev/?path=/docs/concepts-developer-theming--page#overriding-existing-tokens
 export const adaptiveTheme: Theme = {
     ...createLightTheme(vscodeVariants),
     colorNeutralBackground1: 'var(--vscode-editor-background)',
-    // https://react.fluentui.dev/?path=/docs/concepts-developer-theming--page#overriding-existing-tokens
 };

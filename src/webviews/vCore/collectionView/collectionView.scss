@@ -1,0 +1,58 @@
+@import '../../theme/slickgrid.scss';
+
+@import '../vCoreStyles.scss';
+
+.row-separator {
+    padding: 10px;
+}
+
+.collectionView {
+    display: flex;
+    flex-direction: column;
+    row-gap: 10px;
+
+    height: 100vh;
+
+    .queryControlArea {
+        display: flex;
+        gap: 10px;
+
+        flex-direction: column;
+
+        @media (min-width: $media-breakpoint-query-control-area) {
+            flex-direction: row;
+        }
+
+        .findQueryComponent {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-grow: 1;
+        }
+    }
+
+    .resultsDisplayArea {
+        height: 100%;
+        //background-color: aqua; // used to invstigate layout issues
+    }
+}
+
+.actionBar {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+
+
+.toolbarDividerTransparent {
+    padding: 4px;
+}
+
+.lblPageNumber {
+    text-wrap: nowrap;
+}

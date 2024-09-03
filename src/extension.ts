@@ -7,23 +7,24 @@
 
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
 import {
-    apiUtils,
-    AzExtParentTreeItem,
-    AzExtTreeItem,
-    AzureExtensionApi,
     callWithTelemetryAndErrorHandling,
     createApiProvider,
     createAzExtLogOutputChannel,
-    IActionContext,
-    ITreeItemPickerContext,
     registerCommand,
     registerCommandWithTreeNodeUnwrapping,
     registerErrorHandler,
     registerEvent,
     registerReportIssueCommand,
     registerUIExtensionVariables,
+    TreeElementStateManager,
+    type apiUtils,
+    type AzExtParentTreeItem,
+    type AzExtTreeItem,
+    type AzureExtensionApi,
+    type IActionContext,
+    type ITreeItemPickerContext,
 } from '@microsoft/vscode-azext-utils';
-import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import { platform } from 'os';
 import * as vscode from 'vscode';
 import { findTreeItem } from './commands/api/findTreeItem';
@@ -41,8 +42,8 @@ import {
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
-import { DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
-import { DocDBCollectionTreeItem } from './docdb/tree/DocDBCollectionTreeItem';
+import { type DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
+import { type DocDBCollectionTreeItem } from './docdb/tree/DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';
@@ -51,7 +52,7 @@ import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
 import { registerMongoCommands } from './mongo/registerMongoCommands';
 import { setConnectedNode } from './mongo/setConnectedNode';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
-import { MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
+import { type MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { registerPostgresCommands } from './postgres/commands/registerPostgresCommands';
 import { DatabaseResolver } from './resolver/AppResolver';
@@ -61,6 +62,7 @@ import { showFluentUiDemo } from './temp/fluentUiDemoHelpers';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
 import { localize } from './utils/localize';
+import { VCoreExtension } from './vCore/VCoreExtension';
 
 const cosmosDBTopLevelContextValues: string[] = [
     GraphAccountTreeItem.contextValue,
@@ -89,6 +91,14 @@ export async function activateInternal(
         ext.secretStorage = context.secrets;
 
         ext.rgApi = await getResourceGroupsApi();
+
+        // getAzureResourcesExtensionApi provides a way to get the Azure Resources extension's API V2
+        // and is used to work with the tree view structure, as an improved alternative to the
+        // AzureResourceGraph API V1 provided by the getResourceGroupsApi call above.
+        // TreeElementStateManager is needed here too
+        ext.state = new TreeElementStateManager();
+        ext.rgApiV2 = await getAzureResourcesExtensionApi(context, '2.0.0');
+
         ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.AzureCosmosDb, new DatabaseResolver());
         ext.rgApi.registerApplicationResourceResolver(
             AzExtResourceType.PostgresqlServersStandard,
@@ -113,6 +123,11 @@ export async function activateInternal(
         registerMongoCommands();
 
         registerCommand('development.showUiDemo', showFluentUiDemo);
+
+        // init and activate vCore-support (branch data provider, commands, ...)
+        const vCoreSupport: VCoreExtension = new VCoreExtension();
+        context.subscriptions.push(vCoreSupport); // to be disposed when extension is deactivated.
+        await vCoreSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),

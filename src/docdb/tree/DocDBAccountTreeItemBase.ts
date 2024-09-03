@@ -3,23 +3,27 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
+import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import {
-    CosmosClient,
-    DatabaseDefinition,
-    DatabaseResponse,
-    FeedOptions,
-    QueryIterator,
-    Resource,
+    type CosmosClient,
+    type DatabaseDefinition,
+    type DatabaseResponse,
+    type FeedOptions,
+    type QueryIterator,
+    type Resource,
 } from '@azure/cosmos';
-import { AzExtParentTreeItem, AzExtTreeItem, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
-import * as vscode from 'vscode';
-import { IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
+import {
+    type AzExtParentTreeItem,
+    type AzExtTreeItem,
+    type ICreateChildImplContext,
+} from '@microsoft/vscode-azext-utils';
+import type * as vscode from 'vscode';
+import { type IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
 import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
 import { SERVERLESS_CAPABILITY_NAME, getThemeAgnosticIconPath } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
 import { rejectOnTimeout } from '../../utils/timeout';
-import { CosmosDBCredential, getCosmosClient, getCosmosKeyCredential } from '../getCosmosClient';
+import { getCosmosClient, getCosmosKeyCredential, type CosmosDBCredential } from '../getCosmosClient';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
 /**

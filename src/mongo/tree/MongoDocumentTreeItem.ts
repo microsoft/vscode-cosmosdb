@@ -3,15 +3,26 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import {
+    AzExtTreeItem,
+    DialogResponses,
+    type IActionContext,
+    type TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
 import { EJSON } from 'bson';
-import { Collection, DeleteResult, Document as MongoDocument, ObjectId, UpdateResult } from 'mongodb';
-import * as _ from 'underscore';
+import { omit } from 'lodash-es';
+import {
+    type Collection,
+    type DeleteResult,
+    type Document as MongoDocument,
+    type ObjectId,
+    type UpdateResult,
+} from 'mongodb';
 import * as vscode from 'vscode';
-import { IEditableTreeItem } from '../../DatabasesFileSystem';
+import { type IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
-import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
+import { type MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 
 export interface IMongoDocument {
     _id: ObjectId;
@@ -62,7 +73,7 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
         }
         const filter: object = { _id: newDocument._id };
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const result: MongoDocument | UpdateResult = await collection.replaceOne(filter, _.omit(newDocument, '_id'));
+        const result: MongoDocument | UpdateResult = await collection.replaceOne(filter, omit(newDocument, '_id'));
         if (result.modifiedCount !== 1) {
             throw new Error(`Failed to update document with _id '${newDocument._id}'.`);
         }

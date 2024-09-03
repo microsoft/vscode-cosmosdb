@@ -1,5 +1,5 @@
-import * as vscode from 'vscode';
-import { isTransportMessage, Transport, TransportMessage } from './Transport';
+import type * as vscode from 'vscode';
+import { isTransportMessage, type Transport, type TransportMessage } from './Transport';
 
 export class VSCodeTransport implements Transport {
     public readonly name = 'VSCodeTransport';

@@ -11,19 +11,24 @@ const useClasses = makeStyles({
         width: '100%',
         height: 'calc(100% - 50px)',
     },
+    container: {
+        'background-color': 'var(--vscode-editor-background)',
+        width: '100%',
+        height: '100%',
+    },
 });
 
 export const QueryPanel = () => {
     const classes = useClasses();
 
     return (
-        <>
+        <section className={classes.container}>
             <div className={classes.toolbarContainer}>
                 <QueryToolbar />
             </div>
             <div className={classes.monacoContainer}>
                 <QueryMonaco />
             </div>
-        </>
+        </section>
     );
 };

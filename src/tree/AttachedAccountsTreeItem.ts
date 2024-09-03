@@ -6,19 +6,19 @@
 import {
     appendExtensionUserAgent,
     AzExtParentTreeItem,
-    AzExtTreeItem,
     GenericTreeItem,
-    IActionContext,
-    ISubscriptionContext,
-    TreeItemIconPath,
+    type AzExtTreeItem,
+    type IActionContext,
+    type ISubscriptionContext,
+    type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
-import { MongoClient } from 'mongodb';
+import { type MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, isWindows } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
-import { CosmosDBCredential } from '../docdb/getCosmosClient';
+import { type CosmosDBCredential } from '../docdb/getCosmosClient';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../extensionVariables';
@@ -460,6 +460,10 @@ class AttachedAccountRoot implements ISubscriptionContext {
     private _error: Error = new Error('Cannot retrieve Azure subscription information for an attached account.');
 
     public get credentials(): never {
+        throw this._error;
+    }
+
+    public createCredentialsForScopes(): never {
         throw this._error;
     }
 

@@ -1,4 +1,4 @@
-import { Transport } from '../Transport/Transport';
+import { type Transport } from '../Transport/Transport';
 
 export const isChannelPayload = (payload: unknown): payload is ChannelPayload => {
     return typeof payload === 'object' && payload !== null && 'type' in payload;
@@ -41,5 +41,6 @@ export interface Channel {
     on<ReturnType = unknown>(event: string, callback: ChannelCallback<ReturnType>): Channel;
     once<ReturnType = unknown>(event: string, callback: ChannelCallback<ReturnType>): Channel;
     off<ReturnType extends never>(event: string, callback: ChannelCallback<ReturnType>): Channel;
+    removeAllListeners(event?: string): Channel;
     dispose(): void;
 }

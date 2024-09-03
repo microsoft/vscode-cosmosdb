@@ -3,23 +3,29 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Container, ContainerDefinition, CosmosClient, PartitionKeyDefinition, Resource } from '@azure/cosmos';
+import {
+    type Container,
+    type ContainerDefinition,
+    type CosmosClient,
+    type PartitionKeyDefinition,
+    type Resource,
+} from '@azure/cosmos';
 import {
     AzExtParentTreeItem,
-    AzExtTreeItem,
     DialogResponses,
-    IActionContext,
-    TreeItemIconPath,
+    type AzExtTreeItem,
+    type IActionContext,
+    type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
+import { type DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { DocDBTriggerTreeItem } from './DocDBTriggerTreeItem';
 import { DocDBTriggersTreeItem } from './DocDBTriggersTreeItem';
-import { IDocDBTreeRoot } from './IDocDBTreeRoot';
+import { type IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
  * Represents a DocumentDB collection

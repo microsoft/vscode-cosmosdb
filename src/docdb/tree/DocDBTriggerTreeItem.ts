@@ -3,15 +3,20 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Resource, TriggerDefinition } from '@azure/cosmos';
-import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import { type Resource, type TriggerDefinition } from '@azure/cosmos';
+import {
+    AzExtTreeItem,
+    DialogResponses,
+    type IActionContext,
+    type TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { IEditableTreeItem } from '../../DatabasesFileSystem';
+import { type IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { DocDBTriggersTreeItem, getTriggerOperation, getTriggerType } from './DocDBTriggersTreeItem';
-import { IDocDBTreeRoot } from './IDocDBTreeRoot';
+import { getTriggerOperation, getTriggerType, type DocDBTriggersTreeItem } from './DocDBTriggersTreeItem';
+import { type IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) trigger
@@ -26,6 +31,7 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
 
     constructor(parent: DocDBTriggersTreeItem, trigger: TriggerDefinition & Resource) {
         super(parent);
+        this.parent = parent;
         this.trigger = trigger;
         ext.fileSystem.fireChangedEvent(this);
         this.commandId = 'cosmosDB.openTrigger';

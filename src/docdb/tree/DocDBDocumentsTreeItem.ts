@@ -3,11 +3,22 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Container, CosmosClient, FeedOptions, ItemDefinition, ItemResponse, QueryIterator } from '@azure/cosmos';
-import { IActionContext, ICreateChildImplContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import {
+    type Container,
+    type CosmosClient,
+    type FeedOptions,
+    type ItemDefinition,
+    type ItemResponse,
+    type QueryIterator,
+} from '@azure/cosmos';
+import {
+    type IActionContext,
+    type ICreateChildImplContext,
+    type TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { nonNullProp } from '../../utils/nonNull';
-import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import { type DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
@@ -23,6 +34,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
 
     constructor(parent: DocDBCollectionTreeItem) {
         super(parent);
+        this.parent = parent;
         this.root = this.parent.root;
     }
 

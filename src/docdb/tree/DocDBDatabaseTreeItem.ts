@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ContainerDefinition, CosmosClient, Database, Resource } from '@azure/cosmos';
+import { type ContainerDefinition, type CosmosClient, type Database, type Resource } from '@azure/cosmos';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDatabaseTreeItemBase } from './DocDBDatabaseTreeItemBase';
 

@@ -3,16 +3,21 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosClient, Item, ItemDefinition, RequestOptions } from '@azure/cosmos';
-import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import { type CosmosClient, type Item, type ItemDefinition, type RequestOptions } from '@azure/cosmos';
+import {
+    AzExtTreeItem,
+    DialogResponses,
+    type IActionContext,
+    type TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { IEditableTreeItem } from '../../DatabasesFileSystem';
+import { type IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { nonNullProp } from '../../utils/nonNull';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
-import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
+import { type DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { sanitizeId } from './DocDBUtils';
-import { IDocDBTreeRoot } from './IDocDBTreeRoot';
+import { type IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 const hiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts'];
 
@@ -30,6 +35,7 @@ export class DocDBDocumentTreeItem extends AzExtTreeItem implements IEditableTre
 
     constructor(parent: DocDBDocumentsTreeItem, document: ItemDefinition) {
         super(parent);
+        this.parent = parent;
         this._document = document;
         this._label = getDocumentTreeItemLabel(this._document);
         ext.fileSystem.fireChangedEvent(this);

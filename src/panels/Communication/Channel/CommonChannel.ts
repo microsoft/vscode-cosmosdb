@@ -1,7 +1,13 @@
 import { v4 as uuid } from 'uuid';
-import { Transport, TransportMessage } from '../Transport/Transport';
-import { Channel, ChannelCallback, ChannelMessage, ChannelPayload, isChannelPayload } from './Channel';
-import { Deferred, DeferredPromise } from './DeferredPromise';
+import { type Transport, type TransportMessage } from '../Transport/Transport';
+import {
+    isChannelPayload,
+    type Channel,
+    type ChannelCallback,
+    type ChannelMessage,
+    type ChannelPayload,
+} from './Channel';
+import { Deferred, type DeferredPromise } from './DeferredPromise';
 
 type ListenerCallback = {
     type: 'on' | 'once';
@@ -38,7 +44,7 @@ function toErrorWithMessage(maybeError: unknown): ErrorWithMessage {
     }
 }
 
-function getErrorMessage(error: unknown) {
+export function getErrorMessage(error: unknown) {
     return toErrorWithMessage(error).message;
 }
 
@@ -48,6 +54,8 @@ export class CommonChannel implements Channel {
 
     private readonly handleMessageInternal: (msg: TransportMessage) => void;
     private readonly timeoutId: NodeJS.Timeout;
+
+    private isDisposed = false;
 
     constructor(
         public readonly name: string,
@@ -71,6 +79,10 @@ export class CommonChannel implements Channel {
     postMessage(message: ChannelPayload): PromiseLike<unknown>;
     postMessage(message: ChannelMessage): PromiseLike<unknown>;
     postMessage(message: ChannelMessage | ChannelPayload): PromiseLike<unknown> {
+        if (this.isDisposed) {
+            return Promise.reject(new Error('Channel disposed'));
+        }
+
         const now = Date.now();
         const id = 'id' in message ? message.id : uuid();
         const payload = 'id' in message ? message.payload : message;
@@ -79,7 +91,10 @@ export class CommonChannel implements Channel {
             const deferred = new Deferred();
             this.pendingRequests[id] = { expiresAt: now + 15000, deferred };
             // Automatically remove pending request from the list to clean up memory
-            void deferred.promise.then(() => delete this.pendingRequests[id]);
+            void deferred.promise.then(
+                () => delete this.pendingRequests[id],
+                () => delete this.pendingRequests[id],
+            );
         }
 
         void this.transport.post({ id, payload });
@@ -88,6 +103,10 @@ export class CommonChannel implements Channel {
     }
 
     on(event: string, callback: ChannelCallback): Channel {
+        if (this.isDisposed) {
+            return this;
+        }
+
         if (!this.listeners[event]) {
             this.listeners[event] = [];
         }
@@ -97,6 +116,10 @@ export class CommonChannel implements Channel {
     }
 
     once(event: string, callback: ChannelCallback): Channel {
+        if (this.isDisposed) {
+            return this;
+        }
+
         if (!this.listeners[event]) {
             this.listeners[event] = [];
         }
@@ -106,6 +129,10 @@ export class CommonChannel implements Channel {
     }
 
     off(event: string, callback: ChannelCallback): Channel {
+        if (this.isDisposed) {
+            return this;
+        }
+
         if (this.listeners[event]) {
             this.listeners[event] = this.listeners[event].filter((cb) => cb.callback !== callback);
         }
@@ -113,7 +140,23 @@ export class CommonChannel implements Channel {
         return this;
     }
 
+    removeAllListeners(event?: string): Channel {
+        if (this.isDisposed) {
+            return this;
+        }
+
+        if (event) {
+            delete this.listeners[event];
+        } else {
+            this.listeners = {};
+        }
+
+        return this;
+    }
+
     dispose(): void {
+        this.isDisposed = true;
+
         // Clean up listeners first to avoid any messages being processed
         this.listeners = {};
 

@@ -2,6 +2,9 @@ import { makeStyles } from '@fluentui/react-components';
 import { Allotment } from 'allotment';
 // eslint-disable-next-line import/no-internal-modules
 import 'allotment/dist/style.css';
+import { useContext } from 'react';
+import { WebviewContext } from '../WebviewContext';
+import { WithQueryEditorContext } from './QueryEditorContext';
 import { QueryPanel } from './QueryPanel/QueryPanel';
 import { ResultPanel } from './ResultPanel/ResultPanel';
 
@@ -16,18 +19,20 @@ const useStyles = makeStyles({
 
 export const QueryEditor = () => {
     const styles = useStyles();
-    // const { channel } = useContext(WebviewContext);
+    const { channel, vscodeApi } = useContext(WebviewContext);
 
     return (
         <div className={styles.root}>
-            <Allotment vertical={true} defaultSizes={[60, 40]}>
-                <Allotment.Pane minSize={400} maxSize={800} preferredSize={'60%'}>
-                    <QueryPanel />
-                </Allotment.Pane>
-                <Allotment.Pane preferredSize={'40%'}>
-                    <ResultPanel />
-                </Allotment.Pane>
-            </Allotment>
+            <WithQueryEditorContext channel={channel} vscodeApi={vscodeApi}>
+                <Allotment vertical={true} defaultSizes={[20, 80]}>
+                    <Allotment.Pane minSize={400} maxSize={800} preferredSize={'20%'}>
+                        <QueryPanel />
+                    </Allotment.Pane>
+                    <Allotment.Pane preferredSize={'80%'}>
+                        <ResultPanel />
+                    </Allotment.Pane>
+                </Allotment>
+            </WithQueryEditorContext>
         </div>
     );
 };

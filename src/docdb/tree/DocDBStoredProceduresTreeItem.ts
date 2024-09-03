@@ -4,20 +4,20 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
-    Container,
-    CosmosClient,
-    FeedOptions,
-    QueryIterator,
-    Resource,
-    StoredProcedureDefinition,
+    type Container,
+    type CosmosClient,
+    type FeedOptions,
+    type QueryIterator,
+    type Resource,
+    type StoredProcedureDefinition,
 } from '@azure/cosmos';
-import { AzExtTreeItem, ICreateChildImplContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import { type AzExtTreeItem, type ICreateChildImplContext, type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { defaultStoredProcedure } from '../../constants';
-import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
+import { type GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import { type DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
@@ -33,6 +33,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
 
     constructor(parent: DocDBCollectionTreeItem | GraphCollectionTreeItem) {
         super(parent);
+        this.parent = parent;
         this.root = this.parent.root;
     }
 

@@ -1,5 +1,5 @@
-import { WebviewApi } from 'vscode-webview';
-import { isTransportMessage, Transport, TransportMessage } from './Transport';
+import { type WebviewApi } from 'vscode-webview';
+import { isTransportMessage, type Transport, type TransportMessage } from './Transport';
 
 export class WebviewTransport<StateType = unknown> implements Transport {
     public readonly name = 'WebviewTransport';

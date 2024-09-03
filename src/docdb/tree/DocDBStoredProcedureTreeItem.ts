@@ -3,22 +3,22 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Resource, StoredProcedureDefinition } from '@azure/cosmos';
+import { type Resource, type StoredProcedureDefinition } from '@azure/cosmos';
 import {
     AzExtTreeItem,
     DialogResponses,
-    IActionContext,
-    TreeItemIconPath,
     openReadOnlyJson,
     randomUtils,
+    type IActionContext,
+    type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { IEditableTreeItem } from '../../DatabasesFileSystem';
+import { type IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
-import { IDocDBTreeRoot } from './IDocDBTreeRoot';
+import { type DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
+import { type IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
  * Represents a Cosmos DB DocumentDB (SQL) stored procedure
@@ -35,6 +35,7 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
         public procedure: StoredProcedureDefinition & Resource,
     ) {
         super(parent);
+        this.parent = parent;
         ext.fileSystem.fireChangedEvent(this);
         this.commandId = 'cosmosDB.openStoredProcedure';
     }

@@ -1,22 +1,20 @@
 import {
-    Button,
     makeStyles,
     Menu,
     MenuItem,
+    MenuItemLink,
     MenuList,
     MenuPopover,
     MenuTrigger,
-    Popover,
-    PopoverSurface,
-    PopoverTrigger,
+    SplitButton,
     tokens,
     Toolbar,
     ToolbarButton,
     ToolbarDivider,
+    type MenuButtonProps,
     type ToolbarProps,
 } from '@fluentui/react-components';
 import {
-    ChevronDownRegular,
     DatabasePlugConnectedRegular,
     DocumentMultipleRegular,
     FolderOpenRegular,
@@ -25,7 +23,7 @@ import {
     SaveRegular,
     StopRegular,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import { useQueryEditorDispatcher, useQueryEditorState } from '../QueryEditorContext';
 
 const useClasses = makeStyles({
     iconPlay: {
@@ -34,35 +32,64 @@ const useClasses = makeStyles({
     iconStop: {
         color: tokens.colorStatusDangerBorderActive,
     },
-    iconChevronDown: {
-        padding: '0 0 0 10px',
+    iconConnect: {
+        color: tokens.colorStatusWarningBorderActive,
     },
 });
 
 const BaseActionsSection = () => {
     const classes = useClasses();
-    const [isQueryRunning, setIsQueryRunning] = useState(false); // TODO: should be global state hook
+    const state = useQueryEditorState();
+    const dispatcher = useQueryEditorDispatcher();
+
+    const truncateString = (str: string, maxLength: number) => {
+        if (str.length > maxLength) {
+            return str.slice(0, maxLength - 3) + '...';
+        }
+        return str;
+    };
 
     return (
         <>
-            <ToolbarButton
-                aria-label="Run"
-                icon={<PlayRegular className={classes.iconPlay} />}
-                disabled={isQueryRunning}
-                onClick={() => setIsQueryRunning(true)}>
-                Run
-            </ToolbarButton>
+            <Menu>
+                <MenuTrigger>
+                    {(triggerProps: MenuButtonProps) => (
+                        <SplitButton
+                            aria-label="Run"
+                            icon={<PlayRegular className={classes.iconPlay} />}
+                            disabled={state.isExecuting || !state.isConnected}
+                            menuButton={triggerProps}
+                            primaryActionButton={{
+                                onClick: () => void dispatcher.runQuery(state.queryValue),
+                            }}>
+                            Run
+                        </SplitButton>
+                    )}
+                </MenuTrigger>
+                <MenuPopover>
+                    {state.queryHistory.length === 0 && <MenuItem disabled>No history</MenuItem>}
+                    {state.queryHistory.length > 0 &&
+                        state.queryHistory.map((query) => (
+                            <MenuItem onClick={() => dispatcher.insertText(query)}>
+                                {truncateString(query, 50)}
+                            </MenuItem>
+                        ))}
+                </MenuPopover>
+            </Menu>
             <ToolbarButton
                 aria-label="Cancel"
                 icon={<StopRegular className={classes.iconStop} />}
-                disabled={!isQueryRunning}
-                onClick={() => setIsQueryRunning(false)}>
+                disabled={!state.isExecuting}
+                onClick={() => void dispatcher.stopQuery(state.currentExecutionId)}>
                 Cancel
             </ToolbarButton>
-            <ToolbarButton aria-label="Open" icon={<FolderOpenRegular />}>
+            <ToolbarButton aria-label="Open" icon={<FolderOpenRegular />} onClick={() => void dispatcher.openFile()}>
                 Open
             </ToolbarButton>
-            <ToolbarButton aria-label="Save query" icon={<SaveRegular />}>
+            <ToolbarButton
+                aria-label="Save query"
+                icon={<SaveRegular />}
+                onClick={() => void dispatcher.saveToFile(state.queryValue)}>
                 Save
             </ToolbarButton>
         </>
@@ -70,6 +97,12 @@ const BaseActionsSection = () => {
 };
 
 const LearnSection = () => {
+    const state = useQueryEditorState();
+    const dispatcher = useQueryEditorDispatcher();
+    const samples = ['SELECT * FROM c', 'SELECT * FROM c ORDER BY c.id', 'SELECT * FROM c OFFSET 0 LIMIT 10'];
+    const noSqlQuickReferenceUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/';
+    const noSqlLearningCenterUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/';
+
     return (
         <Menu>
             <MenuTrigger>
@@ -84,13 +117,15 @@ const LearnSection = () => {
                             <MenuItem>Query examples</MenuItem>
                         </MenuTrigger>
                         <MenuPopover>
-                            <MenuItem>SELECT * FROM c</MenuItem>
-                            <MenuItem>SELECT * FROM c WHERE xyz</MenuItem>
-                            <MenuItem>SELECT * FROM c ...etc</MenuItem>
+                            {samples.map((sample) => (
+                                <MenuItem disabled={state.isExecuting} onClick={() => dispatcher.insertText(sample)}>
+                                    {sample}
+                                </MenuItem>
+                            ))}
                         </MenuPopover>
                     </Menu>
-                    <MenuItem>NoSQL quick reference</MenuItem>
-                    <MenuItem>Learning center</MenuItem>
+                    <MenuItemLink href={noSqlQuickReferenceUrl}>NoSQL quick reference</MenuItemLink>
+                    <MenuItemLink href={noSqlLearningCenterUrl}>Learning center</MenuItemLink>
                 </MenuList>
             </MenuPopover>
         </Menu>
@@ -98,54 +133,49 @@ const LearnSection = () => {
 };
 
 const ConnectedActionsSection = () => {
-    const classes = useClasses();
-    const [isOpen, setOpen] = useState<boolean>(false);
+    const state = useQueryEditorState();
+    const dispatcher = useQueryEditorDispatcher();
 
     return (
-        <Popover trapFocus open={isOpen} onOpenChange={(_, _data) => setOpen(!isOpen)}>
-            <PopoverTrigger disableButtonEnhancement>
-                <ToolbarButton aria-label="Collection" icon={<DocumentMultipleRegular />}>
-                    Disconnect <ChevronDownRegular className={classes.iconChevronDown} />
-                </ToolbarButton>
-            </PopoverTrigger>
-            <PopoverSurface>
-                <div>
-                    <h3>Quick Actions</h3>
-                    <Button onClick={() => setOpen(false)}>Close</Button>
-                </div>
-            </PopoverSurface>
-        </Popover>
+        <>
+            <ToolbarButton
+                aria-label="Disconnect"
+                icon={<DocumentMultipleRegular />}
+                onClick={() => void dispatcher.disconnectFromDatabase()}>
+                Disconnect
+            </ToolbarButton>
+            <ToolbarDivider />
+            <span aria-label="Database">
+                Connected to {state.dbName}/{state.collectionName}
+            </span>
+        </>
     );
 };
 
-type DisconnectedActionsSectionProps = {
-    onConnectionChange: (isConnected: boolean) => void;
-};
+const DisconnectedActionsSection = () => {
+    const classes = useClasses();
+    const dispatcher = useQueryEditorDispatcher();
 
-const DisconnectedActionsSection = (props: DisconnectedActionsSectionProps) => {
     return (
         <ToolbarButton
             aria-label="Connect"
-            icon={<DatabasePlugConnectedRegular />}
-            onClick={() => props.onConnectionChange(true)}>
+            appearance={'primary'}
+            icon={<DatabasePlugConnectedRegular className={classes.iconConnect} />}
+            onClick={() => void dispatcher.connectToDatabase()}>
             Connect
         </ToolbarButton>
     );
 };
 
 export const QueryToolbar = (props: Partial<ToolbarProps>) => {
-    const [isConnected, setIsConnected] = useState(false); // TODO: should be global useConnection hook
+    const state = useQueryEditorState();
 
     return (
         <Toolbar aria-label="Default" {...props}>
             <BaseActionsSection />
             <LearnSection />
             <ToolbarDivider />
-            {isConnected ? (
-                <ConnectedActionsSection />
-            ) : (
-                <DisconnectedActionsSection onConnectionChange={(isConnected) => setIsConnected(isConnected)} />
-            )}
+            {state.isConnected ? <ConnectedActionsSection /> : <DisconnectedActionsSection />}
         </Toolbar>
     );
 };

@@ -6,7 +6,7 @@ import { FluentUiDemo } from './FluentUIDemo/FluentUiDemo';
 import { QueryEditor } from './QueryEditor/QueryEditor';
 import { DynamicThemeProvider } from './theme/DynamicThemeProvider';
 import { CollectionView } from './vCore/collectionView/collectionView';
-import { WithWebviewContext } from './WebviewContext';
+import { WithWebviewContext, type WebviewState } from './WebviewContext';
 
 export const Views = {
     cosmosDbQuery: QueryEditor,
@@ -18,7 +18,7 @@ export type ViewKey = keyof typeof Views;
 
 export function render<V extends ViewKey>(
     key: V,
-    vscodeApi: WebviewApi<unknown>,
+    vscodeApi: WebviewApi<WebviewState>,
     publicPath: string,
     rootId = 'root',
 ): void {
@@ -37,7 +37,7 @@ export function render<V extends ViewKey>(
     const root = createRoot(container);
 
     root.render(
-        <DynamicThemeProvider useAdaptive={true}>
+        <DynamicThemeProvider>
             <WithWebviewContext vscodeApi={vscodeApi}>
                 <Component />
             </WithWebviewContext>

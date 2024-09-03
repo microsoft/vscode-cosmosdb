@@ -4,27 +4,27 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
-    Container,
-    CosmosClient,
-    FeedOptions,
-    QueryIterator,
-    Resource,
-    TriggerDefinition,
     TriggerOperation,
     TriggerType,
+    type Container,
+    type CosmosClient,
+    type FeedOptions,
+    type QueryIterator,
+    type Resource,
+    type TriggerDefinition,
 } from '@azure/cosmos';
 import {
-    AzExtTreeItem,
-    IActionContext,
-    ICreateChildImplContext,
-    TreeItemIconPath,
+    type AzExtTreeItem,
+    type IActionContext,
+    type ICreateChildImplContext,
+    type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { defaultTrigger } from '../../constants';
-import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
+import { type GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import { type DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 import { DocDBTriggerTreeItem } from './DocDBTriggerTreeItem';
 
@@ -35,11 +35,12 @@ export class DocDBTriggersTreeItem extends DocDBTreeItemBase<TriggerDefinition> 
     public static contextValue: string = 'cosmosDBTriggersGroup';
     public readonly contextValue: string = DocDBTriggersTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Trigger';
-    public readonly parent: DocDBCollectionTreeItem;
+    public readonly parent: DocDBCollectionTreeItem | GraphCollectionTreeItem;
     public suppressMaskLabel = true;
 
     constructor(parent: DocDBCollectionTreeItem | GraphCollectionTreeItem) {
         super(parent);
+        this.parent = parent;
         this.root = this.parent.root;
     }
 

@@ -57,7 +57,7 @@ export class VCoreExtension implements vscode.Disposable {
         );
 
 
-        //panel.iconPath = getThemeAgnosticIconUri('CosmosDBAccount.svg');
+        //panel.iconPath = getThemeAgnosticIconURI('CosmosDBAccount.svg');
         panel.webview.html = getWebviewContentReact(panel.webview);
 
         panel.webview.onDidReceiveMessage((message) => {
@@ -100,7 +100,7 @@ export class VCoreExtension implements vscode.Disposable {
         );
 
 
-        // panel.iconPath = getThemeAgnosticIconUri('CosmosDBAccount.svg');
+        // panel.iconPath = getThemeAgnosticIconURI('CosmosDBAccount.svg');
         panel.webview.html = getWebviewContentReact(panel.webview, _props.id, _props.liveConnectionId);
 
         panel.webview.onDidReceiveMessage(async (message) => {
@@ -189,14 +189,6 @@ const getWebviewContentReact = (
                 `worker-src ${DEV_SERVER_HOST} blob:;`,
             ]
     ).join(' ');
-
-    // const isProduction = context.extensionMode === ExtensionMode.Production;
-    // if (isProduction) {
-    //     scriptUrl = webView.asWebviewUri(vscode.Uri.file(join(context.extensionPath, 'dist', jsFile))).toString();
-    //     cssUrl = webView.asWebviewUri(vscode.Uri.file(join(context.extensionPath, 'dist', cssFile))).toString();
-    // } else {
-    //     scriptUrl = `${localServerUrl}/${jsFile}`;
-    // }
 
     return `<!DOCTYPE html>
 	<html lang="en">

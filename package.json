@@ -167,7 +167,7 @@
         "vscode-languageserver": "^6.1.1",
         "vscode-languageserver-textdocument": "^1.0.1",
         "vscode-nls": "^4.0.0",
-        "vscode-uri": "^1.0.1"
+        "vscode-uri": "^3.0.8"
     },
     "extensionDependencies": [
         "ms-azuretools.vscode-azureresourcegroups"

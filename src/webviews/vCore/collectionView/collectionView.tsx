@@ -6,6 +6,7 @@ import {
     Button,
     Divider,
     Dropdown,
+    FluentProvider,
     Input,
     Label,
     Option,
@@ -27,6 +28,7 @@ import {
     SearchFilled,
 } from '@fluentui/react-icons';
 import { type WebviewApi } from 'vscode-webview';
+import { adaptiveTheme } from '../../themeGenerator';
 import { DataViewPanelJSON } from './dataViewPanelJSON';
 import { DataViewPanelTable } from './dataViewPanelTable';
 import { DataViewPanelTree } from './dataViewPanelTree';
@@ -49,7 +51,9 @@ export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {
                 style={{ flexGrow: 1 }}
                 defaultValue="{  }"
                 onKeyUp={(e) => {
-                    if (e.key === 'Enter') { runQuery() }
+                    if (e.key === 'Enter') {
+                        runQuery();
+                    }
                 }}
             />
             <Button onClick={runQuery} icon={<PlayRegular />} appearance="primary" style={{ flexShrink: 0 }}>
@@ -238,45 +242,49 @@ export const CollectionView = (): JSX.Element => {
     };
 
     return (
-        <div className="collectionView">
-            <Divider appearance="brand" alignContent="start" style={{ paddingTop: '16px' }}>
-                Your Query
-            </Divider>
+        <FluentProvider theme={adaptiveTheme}>
+            <div className="collectionView">
+                <Divider appearance="brand" alignContent="start" style={{ paddingTop: '16px' }}>
+                    Your Query
+                </Divider>
 
-            <div className="queryControlArea">
-                <FindQueryComponent onQueryUpdate={(q: string) => setQueryConfig((prev) => ({ ...prev, query: q }))} />
-
-                <ActionBar>
-                    <ToolbarPaging
-                        onPageChange={(pageS: number, pageN: number) =>
-                            setQueryConfig((prev) => ({ ...prev, pageSize: pageS, pageNumber: pageN }))
-                        }
+                <div className="queryControlArea">
+                    <FindQueryComponent
+                        onQueryUpdate={(q: string) => setQueryConfig((prev) => ({ ...prev, query: q }))}
                     />
-                    <ToolbarDocuments />
-                    <ViewSwitch onViewChanged={handleViewChanged} />
-                </ActionBar>
-            </div>
 
-            <Divider appearance="brand" alignContent="start">
-                Your Query Results
-            </Divider>
+                    <ActionBar>
+                        <ToolbarPaging
+                            onPageChange={(pageS: number, pageN: number) =>
+                                setQueryConfig((prev) => ({ ...prev, pageSize: pageS, pageNumber: pageN }))
+                            }
+                        />
+                        <ToolbarDocuments />
+                        <ViewSwitch onViewChanged={handleViewChanged} />
+                    </ActionBar>
+                </div>
 
-            <div className="resultsDisplayArea" id="resultsDisplayAreaId">
-                <Suspense fallback={<div>Loading...</div>}>
-                    {
+                <Divider appearance="brand" alignContent="start">
+                    Your Query Results
+                </Divider>
+
+                <div className="resultsDisplayArea" id="resultsDisplayAreaId">
+                    <Suspense fallback={<div>Loading...</div>}>
                         {
-                            'Table View': (
-                                <DataViewPanelTable
-                                    liveHeaders={currentQueryResults?.tableHeaders ?? []}
-                                    liveData={currentQueryResults?.tableData ?? []}
-                                />
-                            ),
-                            'Tree View': <DataViewPanelTree liveData={currentQueryResults?.treeData ?? []} />,
-                            'JSON View': <DataViewPanelJSON value={currentQueryResults?.json ?? ''} />,
-                        }[currentView] // switch-statement
-                    }
-                </Suspense>
+                            {
+                                'Table View': (
+                                    <DataViewPanelTable
+                                        liveHeaders={currentQueryResults?.tableHeaders ?? []}
+                                        liveData={currentQueryResults?.tableData ?? []}
+                                    />
+                                ),
+                                'Tree View': <DataViewPanelTree liveData={currentQueryResults?.treeData ?? []} />,
+                                'JSON View': <DataViewPanelJSON value={currentQueryResults?.json ?? ''} />,
+                            }[currentView] // switch-statement
+                        }
+                    </Suspense>
+                </div>
             </div>
-        </div>
+        </FluentProvider>
     );
 };

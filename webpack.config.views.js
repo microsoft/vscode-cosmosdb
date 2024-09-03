@@ -6,6 +6,7 @@ const webpack = require('webpack');
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 module.exports = (env, { mode }) => {
     const isDev = mode === 'development';
@@ -35,7 +36,33 @@ module.exports = (env, { mode }) => {
             rules: [
                 {
                     test: /\.(tsx?)?$/iu,
-                    use: ['swc-loader'],
+                    use: {
+                        loader: 'swc-loader',
+                        options: {
+                            module: {
+                                type: 'es6',
+                            },
+                            isModule: true,
+                            sourceMaps: isDev,
+                            minify: !isDev,
+                            jsc: {
+                                minify: {
+                                    compress: true,
+                                    mangle: true,
+                                    format: {
+                                        asciiOnly: true,
+                                        comments: /^ webpack/,
+                                    },
+                                },
+                                keepClassNames: true,
+                                target: 'es2021',
+                                parser: {
+                                    syntax: 'typescript',
+                                    tsx: true,
+                                },
+                            },
+                        },
+                    },
                     exclude: /node_modules/u,
                 },
                 {
@@ -86,6 +113,7 @@ module.exports = (env, { mode }) => {
             webSocketServer: 'ws',
         },
         plugins: [
+            //new BundleAnalyzerPlugin(),
             new MonacoWebpackPlugin({
                 languages: ['sql'],
             }),

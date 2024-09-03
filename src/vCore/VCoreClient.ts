@@ -5,10 +5,10 @@
  */
 
 import { MongoClient, type Filter, type FindOptions, type ListDatabasesResult } from 'mongodb';
+import { getDataTopLevel, getFieldsTopLevel } from '../utils/slickgrid/mongo/toSlickGridTable';
+import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
 import { CredentialsStore } from './CredentialsStore';
 import { toFilterQueryObj } from './utils/toFilterQuery';
-import { getDataTopLevel, getFieldsTopLevel } from './utils/toSlickGridTable';
-import { toSlickGridTree, type TreeData } from './utils/toSlickGridTree';
 
 export interface DatabaseItemModel {
     name: string;

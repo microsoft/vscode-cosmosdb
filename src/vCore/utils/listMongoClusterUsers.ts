@@ -16,6 +16,15 @@ export async function listMongoClusterNonAdminUsers(
         requestId: '',
     });
 
+    if (getUsersResponse.status !== 200) {
+        // we didn't get a valid response, it could be that the cluster doesn't have the user-management feature enabled
+        // in this case we'll run the safe path and return an empty array
+
+        // TODO: add telemetry to track this scenario
+
+        return [];
+    }
+
     const clusterUsers: MongoClusterUser[] = nonNullProp(
         JSON.parse(nonNullValue(getUsersResponse.bodyAsText, '[]') as string),
         'value',

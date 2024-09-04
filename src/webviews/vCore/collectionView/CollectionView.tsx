@@ -1,5 +1,5 @@
 // eslint-disable-next-line import/no-internal-modules
-import { Suspense, useEffect, useRef, useState, type JSX } from 'react';
+import { useContext, useEffect, useRef, useState, type JSX } from 'react';
 import './collectionView.scss';
 
 import { Button, Divider, Dropdown, Input, Option, Toolbar, ToolbarButton } from '@fluentui/react-components';
@@ -26,6 +26,8 @@ import { ToolbarPaging } from './components/ToolbarPaging';
 const defaultView: string = 'Table View';
 
 export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {
+    const [currentContext] = useContext(CollectionViewContext);
+
     const inputField = useRef<HTMLInputElement>(null);
 
     function runQuery() {
@@ -37,6 +39,7 @@ export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {
     return (
         <div className="findQueryComponent">
             <Input
+                readOnly={currentContext.isLoading}
                 ref={inputField}
                 contentBefore={<SearchFilled />}
                 style={{ flexGrow: 1 }}
@@ -47,7 +50,12 @@ export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {
                     }
                 }}
             />
-            <Button onClick={runQuery} icon={<PlayRegular />} appearance="primary" style={{ flexShrink: 0 }}>
+            <Button
+                onClick={runQuery}
+                disabled={currentContext.isLoading}
+                icon={<PlayRegular />}
+                appearance="primary"
+                style={{ flexShrink: 0 }}>
                 Find Query
             </Button>
         </div>
@@ -69,8 +77,11 @@ export const ToolbarDocuments = (): JSX.Element => {
 };
 
 function ViewSwitch({ onViewChanged }): JSX.Element {
+    const [currentContext] = useContext(CollectionViewContext);
+
     return (
         <Dropdown
+            disabled={currentContext.isLoading}
             style={{ minWidth: '120px', maxWidth: '120px' }}
             defaultValue={defaultView}
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
@@ -121,6 +132,7 @@ export const CollectionView = (): JSX.Element => {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
             json: event.data?.json,
         }));
+        setCurrentContext((prev) => ({ ...prev, isLoading: false }));
     }
 
     useEffect(() => {
@@ -132,6 +144,7 @@ export const CollectionView = (): JSX.Element => {
     }, []);
 
     useEffect(() => {
+        setCurrentContext((prev) => ({ ...prev, isLoading: true }));
         console.log('Query:', currentContext.queryConfig);
         window.config?.__vsCodeApi.postMessage({ type: 'queryConfig', payload: currentContext.queryConfig });
     }, [currentContext.queryConfig]);
@@ -163,13 +176,21 @@ export const CollectionView = (): JSX.Element => {
         <CollectionViewContext.Provider value={[currentContext, setCurrentContext]}>
             <div className="collectionView">
                 <Divider appearance="brand" alignContent="start" style={{ paddingTop: '16px' }}>
-                    {window.config?.__databaseName as string ?? '' } / {window.config?.__collectionName as string ?? ''}
+                    {'Database: '}
+                    {(window.config?.__databaseName as string) ?? ''}
+                    {', Collection: '}
+                    {(window.config?.__collectionName as string) ?? ''}
+                    {', Status: '}
+                    {currentContext.isLoading ? 'Loading...' : 'Ready.'}
                 </Divider>
 
                 <div className="queryControlArea">
                     <FindQueryComponent
                         onQueryUpdate={(q: string) =>
-                            setCurrentContext((prev) => ({ ...prev, queryConfig: { ...prev.queryConfig, queryText: q } }))
+                            setCurrentContext((prev) => ({
+                                ...prev,
+                                queryConfig: { ...prev.queryConfig, queryText: q },
+                            }))
                         }
                     />
 
@@ -185,21 +206,19 @@ export const CollectionView = (): JSX.Element => {
                 </Divider>
 
                 <div className="resultsDisplayArea" id="resultsDisplayAreaId">
-                    <Suspense fallback={<div>Loading...</div>}>
+                    {
                         {
-                            {
-                                'Table View': (
-                                    <DataViewPanelTable
-                                        liveHeaders={currentQueryResults?.tableHeaders ?? []}
-                                        liveData={currentQueryResults?.tableData ?? []}
-                                    />
-                                ),
-                                'Tree View': <DataViewPanelTree liveData={currentQueryResults?.treeData ?? []} />,
-                                'JSON View': <DataViewPanelJSON value={currentQueryResults?.json ?? ''} />,
-                                default: <div>error '{currentContext.currentView}'</div>,
-                            }[currentContext.currentView] // switch-statement
-                        }
-                    </Suspense>
+                            'Table View': (
+                                <DataViewPanelTable
+                                    liveHeaders={currentQueryResults?.tableHeaders ?? []}
+                                    liveData={currentQueryResults?.tableData ?? []}
+                                />
+                            ),
+                            'Tree View': <DataViewPanelTree liveData={currentQueryResults?.treeData ?? []} />,
+                            'JSON View': <DataViewPanelJSON value={currentQueryResults?.json ?? ''} />,
+                            default: <div>error '{currentContext.currentView}'</div>,
+                        }[currentContext.currentView] // switch-statement
+                    }
                 </div>
             </div>
         </CollectionViewContext.Provider>

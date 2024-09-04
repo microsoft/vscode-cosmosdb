@@ -1,5 +1,8 @@
 import * as React from 'react';
+import { useContext } from 'react';
 import { SlickgridReact, type GridOption } from 'slickgrid-react';
+import { CollectionViewContext } from '../collectionViewContext';
+import { LoadingAnimationTable } from './LoadingAnimationTable';
 
 interface Props {
     liveHeaders: string[];
@@ -7,6 +10,8 @@ interface Props {
 }
 
 export function DataViewPanelTable({ liveHeaders, liveData }: Props): React.JSX.Element {
+    const [currentContext] = useContext(CollectionViewContext);
+
     type GridColumn = { id: string; name: string; field: string; minWidth: number };
 
     const gridColumns: GridColumn[] = liveHeaders.map((header) => {
@@ -53,15 +58,19 @@ export function DataViewPanelTable({ liveHeaders, liveData }: Props): React.JSX.
         enableHeaderMenu: false,
     };
 
-    return (
-        <SlickgridReact
-            gridId="myGrid"
-            gridOptions={gridOptions}
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            columnDefinitions={gridColumns}
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            dataset={liveData}
-            onReactGridCreated={() => console.log('Grid created')}
-        />
-    );
+    if (currentContext.isLoading) {
+        return <LoadingAnimationTable />;
+    } else {
+        return (
+            <SlickgridReact
+                gridId="myGrid"
+                gridOptions={gridOptions}
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                columnDefinitions={gridColumns}
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                dataset={liveData}
+                onReactGridCreated={() => console.log('Grid created')}
+            />
+        );
+    }
 }

@@ -1,5 +1,5 @@
-import { Dropdown, Label, Option, Toolbar, ToolbarButton, ToolbarDivider, Tooltip } from '@fluentui/react-components';
-import { ArrowClockwiseFilled, ArrowLeftFilled, ArrowPreviousFilled, ArrowRightFilled } from '@fluentui/react-icons';
+import { Dropdown, Label, Option, Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
+import { ArrowLeftFilled, ArrowPreviousFilled, ArrowRightFilled } from '@fluentui/react-icons';
 import { useContext } from 'react';
 import { CollectionViewContext } from '../collectionViewContext';
 import { ToolbarDividerTransparent } from './ToolbarDividerTransparent';
@@ -46,31 +46,57 @@ export const ToolbarPaging = (): JSX.Element => {
         });
     }
 
+    // function refresh() {
+    //     setCurrentContext({
+    //         ...currentContext
+    //     });
+    // }
 
     return (
         <Toolbar aria-label="with Popover" size="small">
-            <Tooltip content="Reload query results" relationship="description" withArrow>
-                <ToolbarButton aria-label="Refresh" icon={<ArrowClockwiseFilled />} />
+            {/* <Tooltip content="Reload query results" relationship="description" withArrow>
+                <ToolbarButton
+                    onClick={refresh}
+                    aria-label="Refresh"
+                    icon={<ArrowClockwiseFilled />}
+                    disabled={currentContext.isLoading}
+                />
             </Tooltip>
 
-            <ToolbarDivider />
+            <ToolbarDivider /> */}
 
             <Tooltip content="Go to first page" relationship="description" withArrow>
-                <ToolbarButton onClick={goToFirstPage} aria-label="Go to start" icon={<ArrowPreviousFilled />} />
+                <ToolbarButton
+                    onClick={goToFirstPage}
+                    aria-label="Go to start"
+                    icon={<ArrowPreviousFilled />}
+                    disabled={currentContext.isLoading}
+                />
             </Tooltip>
 
             <Tooltip content="Go to previous page" relationship="description" withArrow>
-                <ToolbarButton onClick={goToPreviousPage} aria-label="Go to previous page" icon={<ArrowLeftFilled />} />
+                <ToolbarButton
+                    onClick={goToPreviousPage}
+                    aria-label="Go to previous page"
+                    icon={<ArrowLeftFilled />}
+                    disabled={currentContext.isLoading}
+                />
             </Tooltip>
 
             <Tooltip content="Go to next page" relationship="description" withArrow>
-                <ToolbarButton onClick={goToNextPage} aria-label="Go to next page" icon={<ArrowRightFilled />} />
+                <ToolbarButton
+                    onClick={goToNextPage}
+                    aria-label="Go to next page"
+                    icon={<ArrowRightFilled />}
+                    disabled={currentContext.isLoading}
+                />
             </Tooltip>
 
             <ToolbarDividerTransparent />
 
             <Tooltip content="Change page size" relationship="description" withArrow>
                 <Dropdown
+                    disabled={currentContext.isLoading}
                     onOptionSelect={(_e, data) => {
                         setPageSize(parseInt(data.optionText ?? '10'));
                     }}

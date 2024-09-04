@@ -8,7 +8,7 @@ import { commands } from "vscode";
 import { DocDBTriggersTreeItem } from "../tree/DocDBTriggersTreeItem";
 import { pickDocDBAccount } from "./pickDocDBAccount";
 
-export async function createDocDBTrigger(context: IActionContext, node?: DocDBTriggersTreeItem) {
+export async function createDocDBTrigger(context: IActionContext, node?: DocDBTriggersTreeItem): Promise<void> {
     if (!node) {
         node = await pickDocDBAccount<DocDBTriggersTreeItem>(context, DocDBTriggersTreeItem.contextValue);
     }

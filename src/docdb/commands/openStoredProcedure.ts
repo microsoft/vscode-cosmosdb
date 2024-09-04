@@ -8,7 +8,7 @@ import { ext } from "../../extensionVariables";
 import { DocDBStoredProcedureTreeItem } from "../tree/DocDBStoredProcedureTreeItem";
 import { pickDocDBAccount } from "./pickDocDBAccount";
 
-export async function openStoredProcedure(context: IActionContext, node?: DocDBStoredProcedureTreeItem) {
+export async function openStoredProcedure(context: IActionContext, node?: DocDBStoredProcedureTreeItem): Promise<void> {
     if (!node) {
         node = await pickDocDBAccount<DocDBStoredProcedureTreeItem>(context, DocDBStoredProcedureTreeItem.contextValue);
     }

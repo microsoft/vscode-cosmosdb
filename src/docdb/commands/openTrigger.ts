@@ -8,7 +8,7 @@ import { ext } from "../../extensionVariables";
 import { DocDBTriggerTreeItem } from "../tree/DocDBTriggerTreeItem";
 import { pickDocDBAccount } from "./pickDocDBAccount";
 
-export async function openTrigger(context: IActionContext, node?: DocDBTriggerTreeItem) {
+export async function openTrigger(context: IActionContext, node?: DocDBTriggerTreeItem): Promise<void> {
     if (!node) {
         node = await pickDocDBAccount<DocDBTriggerTreeItem>(context, DocDBTriggerTreeItem.contextValue);
     }

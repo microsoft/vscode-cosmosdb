@@ -65,13 +65,13 @@ export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {
 export const ToolbarDocuments = (): JSX.Element => {
     return (
         <Toolbar aria-label="with Popover" size="small">
-            <ToolbarButton aria-label="Add new document" icon={<DocumentAddRegular />} />
+            <ToolbarButton aria-label="Add new document" icon={<DocumentAddRegular />} disabled={true} />
 
-            <ToolbarButton aria-label="View selected document" icon={<DocumentArrowDownRegular />} />
+            <ToolbarButton aria-label="View selected document" icon={<DocumentArrowDownRegular />} disabled={true} />
 
-            <ToolbarButton aria-label="Edit selected document" icon={<DocumentEditRegular />} />
+            <ToolbarButton aria-label="Edit selected document" icon={<DocumentEditRegular />} disabled={true} />
 
-            <ToolbarButton aria-label="Delete selected document" icon={<DocumentDismissRegular />} />
+            <ToolbarButton aria-label="Delete selected document" icon={<DocumentDismissRegular />} disabled={true} />
         </Toolbar>
     );
 };
@@ -200,10 +200,6 @@ export const CollectionView = (): JSX.Element => {
                         <ViewSwitch onViewChanged={handleViewChanged} />
                     </div>
                 </div>
-
-                <Divider appearance="brand" alignContent="start">
-                    Your Query Results
-                </Divider>
 
                 <div className="resultsDisplayArea" id="resultsDisplayAreaId">
                     {

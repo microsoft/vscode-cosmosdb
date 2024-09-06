@@ -123,6 +123,7 @@ export class VCoreExtension implements vscode.Disposable {
             );
 
             void panel.webview.postMessage({
+                type: 'queryResults',
                 json: responsePack?.json ?? '{ "noData": true }',
                 tableData: responsePack?.tableData ?? [],
                 tableHeaders: responsePack?.tableHeaders ?? [],

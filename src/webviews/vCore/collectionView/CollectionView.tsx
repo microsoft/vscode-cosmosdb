@@ -120,6 +120,11 @@ export const CollectionView = (): JSX.Element => {
 
     // quick/temp solution
     function handleMessage(event): void {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        if (event.data?.type !== 'queryResults') {
+            return;
+        }
+
         setCurrentContext((prev) => ({ ...prev, isLoading: false }));
         setCurrentQueryResults((prev) => ({
             ...prev,

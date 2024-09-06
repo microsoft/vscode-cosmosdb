@@ -120,6 +120,7 @@ export const CollectionView = (): JSX.Element => {
 
     // quick/temp solution
     function handleMessage(event): void {
+        setCurrentContext((prev) => ({ ...prev, isLoading: false }));
         setCurrentQueryResults((prev) => ({
             ...prev,
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
@@ -133,7 +134,6 @@ export const CollectionView = (): JSX.Element => {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
             json: event.data?.json,
         }));
-        setCurrentContext((prev) => ({ ...prev, isLoading: false }));
     }
 
     useEffect(() => {

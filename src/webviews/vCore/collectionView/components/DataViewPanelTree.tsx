@@ -55,9 +55,10 @@ export const DataViewPanelTree = ({ liveData } : Props): React.JSX.Element => {
             // },
 
             // we can also add a custom Formatter just for the title text portion
-            titleFormatter: (_row, _cell, value, _def, dataContext) => {
+            titleFormatter: (_row, _cell, value, _def, _dataContext) => {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-plus-operands
-                return `<span class="bold">${value}</span> <span style="font-size:11px; margin-left: 15px;">(id: ${dataContext.id} | ${dataContext.parentId ? `parentId: ` + dataContext.parentId : `root`})</span>`;
+                //return `<span class="bold">${value}</span> <span style="font-size:11px; margin-left: 15px;">(id: ${dataContext.id} | ${dataContext.parentId ? `parentId: ` + dataContext.parentId : `root`})</span>`;
+                return `<span class="bold">${value}</span>`;
             },
         },
         multiColumnSort: false, // multi-column sorting is not supported with Tree Data, so you need to disable it

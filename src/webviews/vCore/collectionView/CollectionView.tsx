@@ -116,6 +116,7 @@ interface QueryResults {
 
 export const CollectionView = (): JSX.Element => {
     const [currentContext, setCurrentContext] = useState<CollectionViewContextType>(DefaultCollectionViewContext);
+    const [currentQueryResults, setCurrentQueryResults] = useState<QueryResults>();
 
     // quick/temp solution
     function handleMessage(event): void {
@@ -148,8 +149,6 @@ export const CollectionView = (): JSX.Element => {
         console.log('Query:', currentContext.queryConfig);
         window.config?.__vsCodeApi.postMessage({ type: 'queryConfig', payload: currentContext.queryConfig });
     }, [currentContext.queryConfig]);
-
-    const [currentQueryResults, setCurrentQueryResults] = useState<QueryResults>();
 
     const handleViewChanged = (_optionValue: string) => {
         let selection: Views;

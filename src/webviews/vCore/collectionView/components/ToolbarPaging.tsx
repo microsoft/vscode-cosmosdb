@@ -113,7 +113,7 @@ export const ToolbarPaging = (): JSX.Element => {
             <ToolbarDividerTransparent />
 
             <Label weight="semibold" className="lblPageNumber">
-                Page {currentContext.queryConfig.pageNumber}
+                <pre>Page {currentContext.queryConfig.pageNumber}</pre>
             </Label>
         </Toolbar>
     );

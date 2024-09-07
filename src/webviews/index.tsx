@@ -5,13 +5,12 @@ import { type WebviewApi } from 'vscode-webview';
 import { FluentUiDemo } from './FluentUIDemo/FluentUiDemo';
 import { QueryEditor } from './QueryEditor/QueryEditor';
 import { DynamicThemeProvider } from './theme/DynamicThemeProvider';
-import { CollectionView } from './vCore/collectionView/collectionView';
+import { CollectionView } from './vCore/collectionView/CollectionView';
 import { WithWebviewContext, type WebviewState } from './WebviewContext';
 
 export const Views = {
     cosmosDbQuery: QueryEditor,
     fluentUiDemo: FluentUiDemo,
-    vCoreCollectionView: CollectionView,
     vCoreCollectionView: CollectionView,
 } as const;
 

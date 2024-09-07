@@ -44,8 +44,15 @@ const ARRAY_EXPANSION_LIMIT = 10; // allow array expansion only when the number 
 export function toSlickGridTree(documents: WithId<Document>[]): TreeData[] {
     const tree: TreeData[] = [];
 
+    /**
+     * adding a random element to the idPrefix to make sure that the IDs are unique
+     * otherwise, while the data is being updated in the tree, the ID would be the
+     * same and the tree would always update
+     */
+    const randomId = Date.now().toString().slice(-6);
+
     documents.forEach((doc, index) => {
-        const documentTree = documentToSlickGridTree(doc, `${index}-`);
+        const documentTree = documentToSlickGridTree(doc, `${index}/${randomId}-`);
         tree.push(...documentTree);
     });
 
@@ -167,7 +174,6 @@ export function documentToSlickGridTree(document: WithId<Document>, idPrefix?: s
             tree.push({
                 id: globalEntryId,
                 field: `${stackEntry.key}`,
-                // eslint-disable-next-line @typescript-eslint/no-base-to-string
                 value: stackEntry.value.toString(), // TODO: add better string representation for DBRef
                 type: 'DBRef',
                 parentId: stackEntry.parentId,
@@ -213,7 +219,6 @@ export function documentToSlickGridTree(document: WithId<Document>, idPrefix?: s
             tree.push({
                 id: globalEntryId,
                 field: `${stackEntry.key}`,
-                // eslint-disable-next-line @typescript-eslint/no-base-to-string
                 value: stackEntry.value.toString(), // TODO: add better string representation for MaxKey
                 type: 'ObjectId',
                 parentId: stackEntry.parentId,
@@ -223,7 +228,6 @@ export function documentToSlickGridTree(document: WithId<Document>, idPrefix?: s
             tree.push({
                 id: globalEntryId,
                 field: `${stackEntry.key}`,
-                // eslint-disable-next-line @typescript-eslint/no-base-to-string
                 value: stackEntry.value.toString(), // TODO: add better string representation for MinKey
                 type: 'ObjectId',
                 parentId: stackEntry.parentId,

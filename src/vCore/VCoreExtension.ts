@@ -31,7 +31,6 @@ export class VCoreExtension implements vscode.Disposable {
             registerCommand('mongocluster.internal.containerView.open', this.commandContainerViewOpen);
 
             ext.outputChannel.appendLine(`mongoClusters: activated.`);
-
         });
     }
 
@@ -43,8 +42,6 @@ export class VCoreExtension implements vscode.Disposable {
     }
 
     commandShowWebview(): void {
-
-
         const panel = vscode.window.createWebviewPanel(
             'vCore.view.docs', // Identifies the type of the webview. Used internally
             'prefix/vCore Mock', // Title of the panel displayed to the user
@@ -56,22 +53,20 @@ export class VCoreExtension implements vscode.Disposable {
             }, // Webview options. More on these later.
         );
 
-
         //panel.iconPath = getThemeAgnosticIconURI('CosmosDBAccount.svg');
         panel.webview.html = getWebviewContentReact(panel.webview);
 
         panel.webview.onDidReceiveMessage((message) => {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            const queryString = (message?.queryConfig?.query as string) ?? '{}';
+            const queryString = (message?.payload?.queryText as string) ?? '{}';
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            const pageNumber = (message?.queryConfig?.pageNumber as number) ?? 1;
+            const pageNumber = (message?.payload?.pageNumber as number) ?? 1;
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            const pageSize = (message?.queryConfig?.pageSize as number) ?? 50;
+            const pageSize = (message?.payload?.pageSize as number) ?? 10;
 
             console.log(`Query: ${queryString}, page: ${pageNumber}, size: ${pageSize}`);
 
             void panel.webview.postMessage({
-                message: 'Hello from the extension!',
                 json: `You asked for: ${queryString}, page: ${pageNumber}, size: ${pageSize}`,
             });
         });
@@ -87,7 +82,6 @@ export class VCoreExtension implements vscode.Disposable {
             collectionName: string;
         },
     ): void {
-
         const panel = vscode.window.createWebviewPanel(
             'vCore.view.docs', // Identifies the type of the webview. Used internally
             _props.viewTitle, // Title of the panel displayed to the user
@@ -99,17 +93,22 @@ export class VCoreExtension implements vscode.Disposable {
             }, // Webview options. More on these later.
         );
 
-
         // panel.iconPath = getThemeAgnosticIconURI('CosmosDBAccount.svg');
-        panel.webview.html = getWebviewContentReact(panel.webview, _props.id, _props.liveConnectionId);
-
+        panel.webview.html = getWebviewContentReact(
+            panel.webview,
+            _props.id,
+            _props.liveConnectionId,
+            _props.databaseName,
+            _props.collectionName,
+        );
+5
         panel.webview.onDidReceiveMessage(async (message) => {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            const queryString = (message?.queryConfig?.query as string) ?? '{}';
+            const queryString = (message?.payload?.queryText as string) ?? '{}';
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            const pageNumber = (message?.queryConfig?.pageNumber as number) ?? 1;
+            const pageNumber = (message?.payload?.pageNumber as number) ?? 1;
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            const pageSize = (message?.queryConfig?.pageSize as number) ?? 10;
+            const pageSize = (message?.payload?.pageSize as number) ?? 10;
 
             console.log(`Query: ${queryString}, page: ${pageNumber}, size: ${pageSize}`);
 
@@ -124,7 +123,7 @@ export class VCoreExtension implements vscode.Disposable {
             );
 
             void panel.webview.postMessage({
-                message: 'Hello from the extension!',
+                type: 'queryResults',
                 json: responsePack?.json ?? '{ "noData": true }',
                 tableData: responsePack?.tableData ?? [],
                 tableHeaders: responsePack?.tableHeaders ?? [],
@@ -154,40 +153,36 @@ const getWebviewContentReact = (
     const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
     const nonce = randomBytes(16).toString('base64');
 
-
     // const scriptUrl = `${localServerUrl}/${jsFile}`;
-
 
     const uri = (...parts: string[]) =>
         webview?.asWebviewUri(vscode.Uri.file(path.join(ext.context.extensionPath, 'dist', ...parts))).toString(true);
 
-
     const publicPath = isProduction ? uri() : `${DEV_SERVER_HOST}/`;
     const srcUri = isProduction ? uri('views.js') : `${DEV_SERVER_HOST}/views.js`;
-
 
     const csp = (
         isProduction
             ? [
-                `form-action 'none';`,
-                `default-src ${webview?.cspSource};`,
-                `script-src ${webview?.cspSource} 'nonce-${nonce}';`,
-                `style-src ${webview?.cspSource} vscode-resource: 'unsafe-inline';`,
-                `img-src ${webview?.cspSource} data: vscode-resource:;`,
-                `connect-src ${webview?.cspSource} ws:;`,
-                `font-src ${webview?.cspSource};`,
-                `worker-src ${webview?.cspSource} blob:;`,
-            ]
+                  `form-action 'none';`,
+                  `default-src ${webview?.cspSource};`,
+                  `script-src ${webview?.cspSource} 'nonce-${nonce}';`,
+                  `style-src ${webview?.cspSource} vscode-resource: 'unsafe-inline';`,
+                  `img-src ${webview?.cspSource} data: vscode-resource:;`,
+                  `connect-src ${webview?.cspSource} ws:;`,
+                  `font-src ${webview?.cspSource};`,
+                  `worker-src ${webview?.cspSource} blob:;`,
+              ]
             : [
-                `form-action 'none';`,
-                `default-src ${DEV_SERVER_HOST};`,
-                `script-src ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
-                `style-src ${DEV_SERVER_HOST} vscode-resource: 'unsafe-inline';`,
-                `img-src ${DEV_SERVER_HOST} data: vscode-resource:;`,
-                `connect-src ${DEV_SERVER_HOST} ws:;`,
-                `font-src ${DEV_SERVER_HOST};`,
-                `worker-src ${DEV_SERVER_HOST} blob:;`,
-            ]
+                  `form-action 'none';`,
+                  `default-src ${DEV_SERVER_HOST};`,
+                  `script-src ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
+                  `style-src ${DEV_SERVER_HOST} vscode-resource: 'unsafe-inline';`,
+                  `img-src ${DEV_SERVER_HOST} data: vscode-resource:;`,
+                  `connect-src ${DEV_SERVER_HOST} ws:;`,
+                  `font-src ${DEV_SERVER_HOST};`,
+                  `worker-src ${DEV_SERVER_HOST} blob:;`,
+              ]
     ).join(' ');
 
     return `<!DOCTYPE html>

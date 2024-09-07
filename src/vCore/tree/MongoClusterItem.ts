@@ -9,12 +9,13 @@ import {
     type TreeElementBase,
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
-import { TreeItemCollapsibleState, type TreeItem } from 'vscode';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { type TreeItem } from 'vscode';
 
 import * as vscode from 'vscode';
+import { ext } from '../../extensionVariables';
 import { createMongoClustersClient } from '../../utils/azureClients';
 import { localize } from '../../utils/localize';
+import { regionToDisplayName } from '../../utils/regionToDisplayName';
 import { CredentialsStore } from '../CredentialsStore';
 import { addAuthenticationDataToConnectionString } from '../utils/connectionStringHelpers';
 import { listMongoClusterNonAdminUsers } from '../utils/listMongoClusterUsers';
@@ -29,9 +30,26 @@ import { DatabaseItem } from './DatabaseItem';
 export type MongoClusterModel = (MongoCluster | ResourceModelInUse) & ResourceModelInUse;
 
 interface ResourceModelInUse extends Resource {
+    // from the original MongoCluster type
     id: string;
     name: string;
+    location?: string;
+    serverVersion?: string;
+    systemData?: {
+        createdAt?: Date;
+    };
+
+    // moved from nodeGroupSpecs[0] to the top level
+    // todo: check the spec learn more about the nodeGroupSpecs array
+    sku?: string;
+    nodeCount?: number;
+    diskSize?: number;
+    enableHa?: boolean;
+
+    // introduced new properties
     resourceGroup: string;
+
+    // introduced new property to track the live session / database connection
     session?: {
         clientId?: string;
     };
@@ -69,16 +87,14 @@ export class MongoClusterItem implements MongoClusterItemBase {
                 context.errorHandling.rethrow = true;
                 context.valuesToMask.push(this.id, this.mongoCluster.name);
 
-                void vscode.window.showInformationMessage(
-                    'Loading Cluster Details for ' + this.mongoCluster.name?.toString() + '...',
-                );
+                ext.outputChannel.appendLine(`mongoClusters: loading cluster details for ${this.mongoCluster.name}`);
 
                 const client = await createMongoClustersClient(context, this.subscription);
                 const cluster = await client.mongoClusters.get(this.mongoCluster.resourceGroup, this.mongoCluster.name);
 
                 context.valuesToMask.push(nonNullValue(cluster.connectionString));
 
-                void vscode.window.showInformationMessage('Listing users...');
+                ext.outputChannel.append(`mongoClusters: listing non-admin users for ${this.mongoCluster.name}... `);
 
                 const clusterNonAdminUsers: string[] = await listMongoClusterNonAdminUsers(client, {
                     clusterAdminUser: nonNullValue(cluster.administratorLogin),
@@ -86,6 +102,8 @@ export class MongoClusterItem implements MongoClusterItemBase {
                     resourceGroupName: this.mongoCluster.resourceGroup,
                     mongoClusterNamer: this.mongoCluster.name,
                 });
+
+                ext.outputChannel.appendLine(`discovered ${clusterNonAdminUsers.length} non-admin user(s).`);
 
                 const wizardContext: IAuthenticateWizardContext = {
                     ...context,
@@ -107,8 +125,8 @@ export class MongoClusterItem implements MongoClusterItemBase {
                     },
                 );
 
-                void vscode.window.showInformationMessage(
-                    `Connecting to the cluster as '${wizardContext.selectedUserName}'...`,
+                ext.outputChannel.append(
+                    `mongoClusters: connecting to the cluster as '${wizardContext.selectedUserName}'... `,
                 );
 
                 const connectionStringWithPassword = addAuthenticationDataToConnectionString(
@@ -126,9 +144,10 @@ export class MongoClusterItem implements MongoClusterItemBase {
                 let vCoreClient: VCoreClient;
                 try {
                     vCoreClient = await VCoreClient.getClient(clientId).catch((error: Error) => {
-                        void vscode.window.showErrorMessage(
-                            `Failed to connect to the cluster: ${(error as Error).message}`,
-                        );
+                        ext.outputChannel.appendLine('failed.');
+                        ext.outputChannel.appendLine(`Error: ${(error as Error).message}`);
+
+                        void vscode.window.showErrorMessage(`Failed to connect: ${(error as Error).message}`);
 
                         throw error;
                     });
@@ -140,11 +159,11 @@ export class MongoClusterItem implements MongoClusterItemBase {
                             label: (error as Error).message + ' (click to retry)',
                             iconPath: new vscode.ThemeIcon('chrome-close'),
                             commandId: 'azureResourceGroups.refreshTree',
-                        })
-                    ]
+                        }),
+                    ];
                 }
 
-                void vscode.window.showInformationMessage('Listing databases...');
+                ext.outputChannel.appendLine('connected.');
 
                 return vCoreClient.listDatabases().then((databases: DatabaseItemModel[]) => {
                     return databases.map(
@@ -161,10 +180,29 @@ export class MongoClusterItem implements MongoClusterItemBase {
         return {
             id: this.id,
             label: this.mongoCluster.name,
-            iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg'),
-            //description: 'description',
-            //tooltip: new MarkdownString('**a tooltip** with formatting'),
-            collapsibleState: TreeItemCollapsibleState.Collapsed,
+            description: this.mongoCluster.sku !== undefined ? `(${this.mongoCluster.sku})` : false,
+            // iconPath: getThemeAgnosticIconPath('CosmosDBAcscount.svg'),
+            tooltip: new vscode.MarkdownString(
+                `### Cluster: ${this.mongoCluster.name}\n\n` +
+                    `--- \n` +
+                    (this.mongoCluster.location
+                        ? `- Location: **${regionToDisplayName(this.mongoCluster.location)}**\n\n`
+                        : '') +
+                    (this.mongoCluster.diskSize ? `- Disk Size: **${this.mongoCluster.diskSize}GB**\n` : '') +
+                    (this.mongoCluster.sku ? `- SKU: **${this.mongoCluster.sku}**\n` : '') +
+                    (this.mongoCluster.enableHa
+                        ? `- High Avaialbility: **${this.mongoCluster.enableHa ? 'Enabled' : 'Disabled'}**\n`
+                        : '') +
+                    (this.mongoCluster.nodeCount ? `- Node Count: **${this.mongoCluster.nodeCount}**\n\n` : '') +
+                    (this.mongoCluster.serverVersion
+                        ? `- Server Version: **${this.mongoCluster.serverVersion}**\n`
+                        : '') +
+                    (this.mongoCluster.systemData?.createdAt
+                        ? `--- \n` +
+                          `- Created Date: **${this.mongoCluster.systemData?.createdAt?.toLocaleString()}**\n`
+                        : ''),
+            ),
+            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }
 }

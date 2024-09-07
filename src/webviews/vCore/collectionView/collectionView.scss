@@ -36,6 +36,19 @@
     .resultsDisplayArea {
         height: 100%;
         //background-color: aqua; // used to invstigate layout issues
+
+        .loadingAnimationTable {
+            .headerRow{
+                align-items: center;
+                padding-bottom: 10px;
+            }
+
+            .dataGrid {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr 1fr;
+                gap: 10px;
+            }
+        }
     }
 }
 

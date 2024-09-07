@@ -12,6 +12,7 @@ export const Views = {
     cosmosDbQuery: QueryEditor,
     fluentUiDemo: FluentUiDemo,
     vCoreCollectionView: CollectionView,
+    vCoreCollectionView: CollectionView,
 } as const;
 
 export type ViewKey = keyof typeof Views;
@@ -37,7 +38,7 @@ export function render<V extends ViewKey>(
     const root = createRoot(container);
 
     root.render(
-        <DynamicThemeProvider>
+        <DynamicThemeProvider useAdaptive={true}>
             <WithWebviewContext vscodeApi={vscodeApi}>
                 <Component />
             </WithWebviewContext>

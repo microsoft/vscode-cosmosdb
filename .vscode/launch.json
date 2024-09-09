@@ -79,9 +79,9 @@
             "args": [
                 "--profile=noExtensionsProfile", // uses a local profile with a limited number of installed extensions
                 "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups",
-                "--extensionDevelopmentPath=${workspaceFolder}"
+                "--extensionDevelopmentPath=${workspaceFolder}/dist"
             ],
-            "outFiles": ["${workspaceFolder}/out/**/*.js", "${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../vscode-azureresourcegroups/out/**/*.js"],
+            "outFiles": ["${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../vscode-azureresourcegroups/out/**/*.js"],
             "preLaunchTask": "Watch_Extension_and_Webviews",
             "env": {
                 "DEBUGTELEMETRY": "v",

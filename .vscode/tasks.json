@@ -59,15 +59,15 @@
         },
         {
             "label": "Watch_Extension_and_Webviews",
-            "dependsOn": ["watch.extension", "watch:views"]
+            "dependsOn": ["watch:ext", "watch:views"]
         },
         {
-            "label": "watch.extension",
+            "label": "watch:ext",
             "type": "npm",
-            "script": "watch.extension",
+            "script": "watch:ext",
             "group": "build",
             "isBackground": true,
-            "problemMatcher": ["$tsc-watch", "$ts-webpack-watch", "$tslint-webpack-watch"],
+            "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
             "presentation": {
                 "echo": true,
                 "reveal": "always",

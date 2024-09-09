@@ -10,7 +10,6 @@ import {
     callWithTelemetryAndErrorHandling,
     createApiProvider,
     createAzExtLogOutputChannel,
-    registerCommand,
     registerCommandWithTreeNodeUnwrapping,
     registerErrorHandler,
     registerEvent,
@@ -22,7 +21,7 @@ import {
     type AzExtTreeItem,
     type AzureExtensionApi,
     type IActionContext,
-    type ITreeItemPickerContext,
+    type ITreeItemPickerContext
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import { platform } from 'os';
@@ -58,7 +57,6 @@ import { registerPostgresCommands } from './postgres/commands/registerPostgresCo
 import { DatabaseResolver } from './resolver/AppResolver';
 import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
-import { showFluentUiDemo } from './temp/fluentUiDemoHelpers';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
 import { localize } from './utils/localize';
@@ -121,8 +119,6 @@ export async function activateInternal(
         registerGraphCommands();
         registerPostgresCommands();
         registerMongoCommands();
-
-        registerCommand('development.showUiDemo', showFluentUiDemo);
 
         // init and activate vCore-support (branch data provider, commands, ...)
         const vCoreSupport: VCoreExtension = new VCoreExtension();

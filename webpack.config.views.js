@@ -16,6 +16,7 @@ module.exports = (env, { mode }) => {
         mode: mode || 'none',
         entry: {
             views: './src/webviews/index.tsx',
+            'json.worker': 'monaco-editor/esm/vs/language/json/json.worker'
         },
         output: {
             path: path.resolve(__dirname, 'dist'),
@@ -115,7 +116,7 @@ module.exports = (env, { mode }) => {
         plugins: [
             //new BundleAnalyzerPlugin(),
             new MonacoWebpackPlugin({
-                languages: ['sql'],
+                languages: ['sql', 'json'],
             }),
             new webpack.ProvidePlugin({
                 React: 'react',

@@ -88,7 +88,7 @@ module.exports = (env, { mode }) => {
                             sourceMaps: isDev,
                             minify: !isDev,
                             jsc: {
-                                baseUrl: './',
+                                baseUrl: path.resolve(__dirname, './'),  // Set absolute path here
                                 minify: {
                                     compress: true,
                                     mangle: true,

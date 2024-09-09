@@ -4,13 +4,9 @@
 import { Textarea } from '@fluentui/react-components';
 import * as React from 'react';
 
-
-
 interface Props {
     value: string;
 }
-
-//loader.config({ monaco: monacoEditor });
 
 export const DataViewPanelJSON = ({ value }: Props): React.JSX.Element => {
     React.useEffect(() => {

@@ -1,7 +1,7 @@
 /**
- * entry-point for vCore-related code. Activated from ./src/extension.ts
+ * entry-point for mongoClusters-related code. Activated from ./src/extension.ts
  *
- * We'll try to have everything related to vCore-support managed from here.
+ * We'll try to have everything related to mongoClusters-support managed from here.
  * In case of a failure with this plan, this comment section will be updated.
  */
 import { callWithTelemetryAndErrorHandling, registerCommand, type IActionContext } from '@microsoft/vscode-azext-utils';
@@ -10,10 +10,10 @@ import { randomBytes } from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
-import { MongoClustersBranchDataProvider } from '../vCore/tree/MongoClustersBranchDataProvider';
-import { VCoreClient } from './VCoreClient';
+import { MongoClustersClient } from './MongoClustersClient';
+import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
 
-export class VCoreExtension implements vscode.Disposable {
+export class MongoClustersExtension implements vscode.Disposable {
     async activate(): Promise<void> {
         await callWithTelemetryAndErrorHandling('mongoClusters.activate', async (activateContext: IActionContext) => {
             activateContext.telemetry.properties.isActivationEvent = 'true';
@@ -26,9 +26,9 @@ export class VCoreExtension implements vscode.Disposable {
 
             // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
             // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
-            registerCommand('vCore.cmd.hello', this.commandSayHello);
-            registerCommand('vCore.cmd.webview', this.commandShowWebview);
-            registerCommand('mongocluster.internal.containerView.open', this.commandContainerViewOpen);
+            registerCommand('mongoClusters.cmd.hello', this.commandSayHello);
+            registerCommand('mongoClusters.cmd.webview', this.commandShowWebview);
+            registerCommand('mongoClusters.internal.containerView.open', this.commandContainerViewOpen);
 
             ext.outputChannel.appendLine(`mongoClusters: activated.`);
         });
@@ -43,8 +43,8 @@ export class VCoreExtension implements vscode.Disposable {
 
     commandShowWebview(): void {
         const panel = vscode.window.createWebviewPanel(
-            'vCore.view.docs', // Identifies the type of the webview. Used internally
-            'prefix/vCore Mock', // Title of the panel displayed to the user
+            'mongoClusters.view.docs', // Identifies the type of the webview. Used internally
+            'prefix/mongoClusters Mock', // Title of the panel displayed to the user
             vscode.ViewColumn.One, // Editor column to show the new webview panel in.
             {
                 enableScripts: true,
@@ -83,7 +83,7 @@ export class VCoreExtension implements vscode.Disposable {
         },
     ): void {
         const panel = vscode.window.createWebviewPanel(
-            'vCore.view.docs', // Identifies the type of the webview. Used internally
+            'mongoClusters.view.docs', // Identifies the type of the webview. Used internally
             _props.viewTitle, // Title of the panel displayed to the user
             vscode.ViewColumn.One, // Editor column to show the new webview panel in.
             {
@@ -113,8 +113,8 @@ export class VCoreExtension implements vscode.Disposable {
             console.log(`Query: ${queryString}, page: ${pageNumber}, size: ${pageSize}`);
 
             // run query
-            const vClient: VCoreClient = await VCoreClient.getClient(_props.liveConnectionId);
-            const responsePack = await vClient.queryDocuments(
+            const client: MongoClustersClient = await MongoClustersClient.getClient(_props.liveConnectionId);
+            const responsePack = await client.queryDocuments(
                 _props.databaseName,
                 _props.collectionName,
                 queryString,
@@ -206,7 +206,7 @@ const getWebviewContentReact = (
                 };
 
                 import { render } from "${srcUri}";
-                render('vCoreCollectionView', window.config.__vsCodeApi, "${publicPath}");
+                render('mongoClustersCollectionView', window.config.__vsCodeApi, "${publicPath}");
             </script>
 
 

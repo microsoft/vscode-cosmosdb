@@ -1,13 +1,13 @@
 'mongodb-connection-string-url';
 
-interface VCoreCredentials {
+interface MongoClustersCredentials {
     clientId: string;
     connectionStringWithCredentials: string;
 }
 
 export class CredentialsStore {
-    // clientId -> VCoreCredentials
-    private static _store: Map<string, VCoreCredentials> = new Map();
+    // clientId -> mongoClusters credentials
+    private static _store: Map<string, MongoClustersCredentials> = new Map();
 
     public static getConnectionString(clientId: string): string {
         return CredentialsStore._store.get(clientId)?.connectionStringWithCredentials as string;

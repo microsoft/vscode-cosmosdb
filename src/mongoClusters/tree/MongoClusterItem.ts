@@ -17,9 +17,9 @@ import { createMongoClustersClient } from '../../utils/azureClients';
 import { localize } from '../../utils/localize';
 import { regionToDisplayName } from '../../utils/regionToDisplayName';
 import { CredentialsStore } from '../CredentialsStore';
+import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersClient';
 import { addAuthenticationDataToConnectionString } from '../utils/connectionStringHelpers';
 import { listMongoClusterNonAdminUsers } from '../utils/listMongoClusterUsers';
-import { VCoreClient, type DatabaseItemModel } from '../VCoreClient';
 import { type IAuthenticateWizardContext } from '../wizards/authenticate/IAuthenticateWizardContext';
 import { ProvidePasswordStep } from '../wizards/authenticate/ProvidePasswordStep';
 import { SelectUserNameStep } from '../wizards/authenticate/SelectUserNameStep';
@@ -115,7 +115,7 @@ export class MongoClusterItem implements MongoClusterItemBase {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 const wizard = new AzureWizard(wizardContext, {
                     promptSteps: [new SelectUserNameStep(), new ProvidePasswordStep()],
-                    title: localize('authenticatevCoreCluster', 'Authenticate to your vCore Cluster'),
+                    title: localize('mongoClustersAuthenticateCluster', 'Authenticate to your Mongo Cluster'),
                 });
 
                 await callWithTelemetryAndErrorHandling(
@@ -137,13 +137,13 @@ export class MongoClusterItem implements MongoClusterItemBase {
 
                 context.valuesToMask.push(connectionStringWithPassword);
 
-                // todo: hide the store from the user and move it to vcoreclient
+                // todo: hide the store from the user and move it to mongoClusters client
                 const clientId = CredentialsStore.setConnectionString(connectionStringWithPassword);
                 this.mongoCluster.session = { clientId };
 
-                let vCoreClient: VCoreClient;
+                let mongoClustersClient: MongoClustersClient;
                 try {
-                    vCoreClient = await VCoreClient.getClient(clientId).catch((error: Error) => {
+                    mongoClustersClient = await MongoClustersClient.getClient(clientId).catch((error: Error) => {
                         ext.outputChannel.appendLine('failed.');
                         ext.outputChannel.appendLine(`Error: ${(error as Error).message}`);
 
@@ -165,7 +165,7 @@ export class MongoClusterItem implements MongoClusterItemBase {
 
                 ext.outputChannel.appendLine('connected.');
 
-                return vCoreClient.listDatabases().then((databases: DatabaseItemModel[]) => {
+                return mongoClustersClient.listDatabases().then((databases: DatabaseItemModel[]) => {
                     return databases.map(
                         (database) => new DatabaseItem(this.subscription, this.mongoCluster, database),
                     );

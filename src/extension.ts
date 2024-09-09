@@ -53,6 +53,7 @@ import { setConnectedNode } from './mongo/setConnectedNode';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { type MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
+import { MongoClustersExtension } from './mongoClusters/MongoClustersExtension';
 import { registerPostgresCommands } from './postgres/commands/registerPostgresCommands';
 import { DatabaseResolver } from './resolver/AppResolver';
 import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider';
@@ -60,7 +61,6 @@ import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
 import { localize } from './utils/localize';
-import { VCoreExtension } from './vCore/VCoreExtension';
 
 const cosmosDBTopLevelContextValues: string[] = [
     GraphAccountTreeItem.contextValue,
@@ -120,10 +120,10 @@ export async function activateInternal(
         registerPostgresCommands();
         registerMongoCommands();
 
-        // init and activate vCore-support (branch data provider, commands, ...)
-        const vCoreSupport: VCoreExtension = new VCoreExtension();
-        context.subscriptions.push(vCoreSupport); // to be disposed when extension is deactivated.
-        await vCoreSupport.activate();
+        // init and activate mongoClusters-support (branch data provider, commands, ...)
+        const mongoClustersSupport: MongoClustersExtension = new MongoClustersExtension();
+        context.subscriptions.push(mongoClustersSupport); // to be disposed when extension is deactivated.
+        await mongoClustersSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),

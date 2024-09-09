@@ -38,8 +38,8 @@ export class MongoClustersBranchDataProvider
     extends vscode.Disposable
     implements AzureResourceBranchDataProvider<TreeElementBase>
 {
-    private vCoreDetailsCacheUpdateRequested = true;
-    private vCoreDetailsCache: Map<string, MongoClusterModel> = new Map<string, MongoClusterModel>();
+    private detailsCacheUpdateRequested = true;
+    private detailsCache: Map<string, MongoClusterModel> = new Map<string, MongoClusterModel>();
 
     // Create a new lock
     lock = new AsyncLock();
@@ -80,58 +80,58 @@ export class MongoClustersBranchDataProvider
             async (_context: IActionContext) => {
                 /**
                  * todo: discuss:
-                 * this looks nice, we pull all the vCore accounts and cache them when needed,
+                 * this looks nice, we pull all the mongoClusters accounts and cache them when needed,
                  * and cache them for 10 seconds. Then we clear the cache to conserve memory.
                  * However, the 'resolveResource' functions is declared as async, so can it be called in parallel?
                  * If so, there is a problem here. JS/TS and race conditions? Is this a thing?
                  */
                 // eslint-disable-next-line no-constant-condition
-                if (this.vCoreDetailsCacheUpdateRequested) {
+                if (this.detailsCacheUpdateRequested) {
                     void (await callWithTelemetryAndErrorHandling(
                         'mongoClusters.getResourceItem.cacheUpdate',
                         async (context: IActionContext) => {
                             try {
                                 this.lock.enable();
 
-                                this.vCoreDetailsCacheUpdateRequested = false;
+                                this.detailsCacheUpdateRequested = false;
 
                                 setTimeout(() => {
-                                    this.vCoreDetailsCache.clear();
-                                    this.vCoreDetailsCacheUpdateRequested = true;
+                                    this.detailsCache.clear();
+                                    this.detailsCacheUpdateRequested = true;
                                 }, 1000 * 10); // clear cache after 10 seconds == keep cache for 10 seconds
 
                                 const client = await createMongoClustersClient(_context, element.subscription);
-                                const vCoreAccounts = await uiUtils.listAllIterator(client.mongoClusters.list());
+                                const accounts = await uiUtils.listAllIterator(client.mongoClusters.list());
 
-                                vCoreAccounts.map((vCoreAccount) => {
+                                accounts.map((MongoClustersAccount) => {
                                     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                                    this.vCoreDetailsCache.set(nonNullProp(vCoreAccount, 'id'), {
-                                        id: vCoreAccount.id as string,
-                                        name: vCoreAccount.name as string,
-                                        resourceGroup: getResourceGroupFromId(vCoreAccount.id as string),
+                                    this.detailsCache.set(nonNullProp(MongoClustersAccount, 'id'), {
+                                        id: MongoClustersAccount.id as string,
+                                        name: MongoClustersAccount.name as string,
+                                        resourceGroup: getResourceGroupFromId(MongoClustersAccount.id as string),
 
-                                        location: vCoreAccount.location as string,
-                                        serverVersion: vCoreAccount.serverVersion as string,
+                                        location: MongoClustersAccount.location as string,
+                                        serverVersion: MongoClustersAccount.serverVersion as string,
 
                                         systemData: {
-                                            createdAt: vCoreAccount.systemData?.createdAt,
+                                            createdAt: MongoClustersAccount.systemData?.createdAt,
                                         },
 
                                         sku:
-                                            vCoreAccount.nodeGroupSpecs !== undefined
-                                                ? (vCoreAccount.nodeGroupSpecs[0]?.sku as string)
+                                            MongoClustersAccount.nodeGroupSpecs !== undefined
+                                                ? (MongoClustersAccount.nodeGroupSpecs[0]?.sku as string)
                                                 : undefined,
                                         diskSize:
-                                            vCoreAccount.nodeGroupSpecs !== undefined
-                                                ? (vCoreAccount.nodeGroupSpecs[0]?.diskSizeGB as number)
+                                            MongoClustersAccount.nodeGroupSpecs !== undefined
+                                                ? (MongoClustersAccount.nodeGroupSpecs[0]?.diskSizeGB as number)
                                                 : undefined,
                                         nodeCount:
-                                            vCoreAccount.nodeGroupSpecs !== undefined
-                                                ? (vCoreAccount.nodeGroupSpecs[0]?.nodeCount as number)
+                                            MongoClustersAccount.nodeGroupSpecs !== undefined
+                                                ? (MongoClustersAccount.nodeGroupSpecs[0]?.nodeCount as number)
                                                 : undefined,
                                         enableHa:
-                                            vCoreAccount.nodeGroupSpecs !== undefined
-                                                ? (vCoreAccount.nodeGroupSpecs[0]?.enableHa as boolean)
+                                            MongoClustersAccount.nodeGroupSpecs !== undefined
+                                                ? (MongoClustersAccount.nodeGroupSpecs[0]?.enableHa as boolean)
                                                 : undefined,
 
                                     });
@@ -152,10 +152,10 @@ export class MongoClustersBranchDataProvider
 
                 let clusterInfo: MongoClusterModel = element as MongoClusterModel;
 
-                if (this.vCoreDetailsCache.has(clusterInfo.id)) {
+                if (this.detailsCache.has(clusterInfo.id)) {
                     clusterInfo = {
                         ...clusterInfo,
-                        ...this.vCoreDetailsCache.get(clusterInfo.id),
+                        ...this.detailsCache.get(clusterInfo.id),
                     };
                 }
 

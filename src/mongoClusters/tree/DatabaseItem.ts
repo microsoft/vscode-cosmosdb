@@ -1,7 +1,7 @@
 import { nonNullValue, type TreeElementBase } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
-import { VCoreClient, type DatabaseItemModel } from '../VCoreClient';
+import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersClient';
 import { CollectionItem } from './CollectionItem';
 import { type MongoClusterItemBase, type MongoClusterModel } from './MongoClusterItem';
 
@@ -17,7 +17,7 @@ export class DatabaseItem implements MongoClusterItemBase {
     }
 
     async getChildren(): Promise<TreeElementBase[]> {
-        const client: VCoreClient = await VCoreClient.getClient(nonNullValue(this.mongoCluster.session?.clientId));
+        const client: MongoClustersClient = await MongoClustersClient.getClient(nonNullValue(this.mongoCluster.session?.clientId));
         const collections = await client.listCollections(this.databaseInfo.name);
         return collections.map((collection) => {
             return new CollectionItem(this.subscription, this.mongoCluster, this.databaseInfo, collection);

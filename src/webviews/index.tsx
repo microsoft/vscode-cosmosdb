@@ -2,14 +2,14 @@ import * as React from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import { createRoot } from 'react-dom/client';
 import { type WebviewApi } from 'vscode-webview';
+import { CollectionView } from './mongoClusters/collectionView/CollectionView';
 import { QueryEditor } from './QueryEditor/QueryEditor';
 import { DynamicThemeProvider } from './theme/DynamicThemeProvider';
-import { CollectionView } from './vCore/collectionView/CollectionView';
 import { WithWebviewContext, type WebviewState } from './WebviewContext';
 
 export const Views = {
     cosmosDbQuery: QueryEditor,
-    vCoreCollectionView: CollectionView,
+    mongoClustersCollectionView: CollectionView,
 } as const;
 
 export type ViewKey = keyof typeof Views;

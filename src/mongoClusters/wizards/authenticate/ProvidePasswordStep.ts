@@ -11,10 +11,10 @@ import { type IAuthenticateWizardContext } from './IAuthenticateWizardContext';
 export class ProvidePasswordStep extends AzureWizardPromptStep<IAuthenticateWizardContext> {
     public async prompt(context: IAuthenticateWizardContext): Promise<void> {
         const passwordTemp = await context.ui.showInputBox({
-            //title: 'Authenticate to your vCore Cluster',
+            //title: 'Authenticate to your Mongo Cluster',
             prompt: `You need to provide the password for '${context.selectedUserName}' in order to continue. Your password will not be stored.`,
             placeHolder: `Password for ${context.selectedUserName}@${context.resourceName}`,
-            title: localize('authenticatevCoreCluster', 'Authenticate to your vCore Cluster'),
+            title: localize('mongoClustersAuthenticateCluster', 'Authenticate to your Mongo Cluster'),
             password: true,
         });
 

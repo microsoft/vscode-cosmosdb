@@ -1,7 +1,7 @@
 import { createGenericElement, type TreeElementBase } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
-import { type CollectionItemModel, type DatabaseItemModel } from '../VCoreClient';
+import { type CollectionItemModel, type DatabaseItemModel } from '../MongoClustersClient';
 import { type MongoClusterItemBase, type MongoClusterModel } from './MongoClusterItem';
 
 export class CollectionItem implements MongoClusterItemBase {
@@ -22,7 +22,7 @@ export class CollectionItem implements MongoClusterItemBase {
                 contextValue: 'documents',
                 id: `${this.id}/documents`,
                 label: 'Documents',
-                commandId: 'mongocluster.internal.containerView.open',
+                commandId: 'mongoClusters.internal.containerView.open',
                 commandArgs: [
                     {
                         id: this.id,

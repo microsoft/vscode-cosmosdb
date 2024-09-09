@@ -12,11 +12,11 @@ import { type NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
 import { type MongoDBLanguageClient } from './mongo/languageClient';
 import { type MongoCodeLensProvider } from './mongo/services/MongoCodeLensProvider';
 import { type MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
+import { type MongoClustersBranchDataProvider } from './mongoClusters/tree/MongoClustersBranchDataProvider';
 import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
 import { type AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
 import { type AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
-import { type MongoClustersBranchDataProvider } from './vCore/tree/MongoClustersBranchDataProvider';
 
 
 /**

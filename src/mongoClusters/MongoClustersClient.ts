@@ -35,9 +35,9 @@ export interface QueryReponsePack {
     json?: string;
 }
 
-export class VCoreClient {
+export class MongoClustersClient {
     // cache of active/existing clients
-    static _clients: Map<string, VCoreClient> = new Map();
+    static _clients: Map<string, MongoClustersClient> = new Map();
 
     private _mongoClient: MongoClient;
 
@@ -57,18 +57,18 @@ export class VCoreClient {
         this._mongoClient = await MongoClient.connect(cStringPassword as string);
     }
 
-    public static async getClient(clientId: string): Promise<VCoreClient> {
-        let client: VCoreClient;
+    public static async getClient(clientId: string): Promise<MongoClustersClient> {
+        let client: MongoClustersClient;
 
-        if (VCoreClient._clients.has(clientId)) {
-            client = VCoreClient._clients.get(clientId) as VCoreClient;
+        if (MongoClustersClient._clients.has(clientId)) {
+            client = MongoClustersClient._clients.get(clientId) as MongoClustersClient;
 
             // if the client is already connected, it's a NOOP.
             await client._mongoClient.connect();
         } else {
-            client = new VCoreClient();
+            client = new MongoClustersClient();
             await client.initClient(clientId);
-            VCoreClient._clients.set(clientId, client);
+            MongoClustersClient._clients.set(clientId, client);
         }
 
         return client;

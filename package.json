@@ -510,6 +510,16 @@
                 "title": "Create New NoSQL Query"
             },
             {
+                "category": "mongoClusters",
+                "command": "mongoClusters.cmd.hello",
+                "title": "Say Hello!"
+            },
+            {
+                "category": "mongoClusters",
+                "command": "mongoClusters.cmd.webview",
+                "title": "Show WebView"
+            },
+            {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.configureFirewall",
                 "title": "Configure Firewall"
@@ -589,16 +599,6 @@
                 "command": "postgreSQL.showPasswordlessWiki",
                 "title": "Learn more about authenticating with Azure Active Directory",
                 "icon": "$(warning)"
-            },
-            {
-                "category": "vCore",
-                "command": "vCore.cmd.hello",
-                "title": "Say Hello!"
-            },
-            {
-                "category": "vCore",
-                "command": "vCore.cmd.webview",
-                "title": "Show WebView"
             }
         ],
         "submenus": [

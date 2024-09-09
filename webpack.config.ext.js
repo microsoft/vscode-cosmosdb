@@ -59,27 +59,55 @@ module.exports = (env, { mode }) => {
             roots: [__dirname],
             extensions: ['.js', '.ts'],
         },
-        optimization: {
-            minimize: !isDev,
-            minimizer: [
-                new TerserPlugin({
-                    minify: TerserPlugin.swcMinify,
-                    // `terserOptions` options will be passed to `swc` (`@swc/core`)
-                    // Link to options - https://swc.rs/docs/config-js-minify
-                    terserOptions: {
-                        keep_classnames: true,
-                        // Don't mangle function names. https://github.com/microsoft/vscode-azurestorage/issues/525
-                        keep_fnames: true,
-                    },
-                }),
-            ],
-        },
+        // optimization: {
+        //     minimize: !isDev,
+        //     minimizer: [
+        //         new TerserPlugin({
+        //             minify: TerserPlugin.swcMinify,
+        //             // `terserOptions` options will be passed to `swc` (`@swc/core`)
+        //             // Link to options - https://swc.rs/docs/config-js-minify
+        //             terserOptions: {
+        //                 keep_classnames: true,
+        //                 // Don't mangle function names. https://github.com/microsoft/vscode-azurestorage/issues/525
+        //                 keep_fnames: true,
+        //             },
+        //         }),
+        //     ],
+        // },
         module: {
             rules: [
                 {
                     test: /\.(ts)$/iu,
                     use: {
                         loader: 'swc-loader',
+                        options: {
+                            module: {
+                                type: 'commonjs',
+                            },
+                            isModule: true,
+                            sourceMaps: isDev,
+                            minify: !isDev,
+                            jsc: {
+                                baseUrl: './',
+                                minify: {
+                                    compress: true,
+                                    mangle: true,
+                                    format: {
+                                        asciiOnly: true,
+                                        comments: /^ webpack/,
+                                    },
+                                },
+                                keepClassNames: true,
+                                target: 'es2021',
+                                parser: {
+                                    syntax: 'typescript',
+                                    tsx: true,
+                                    functionBind: false,
+                                    decorators: true,
+                                    dynamicImport: true,
+                                },
+                            },
+                        },
                     },
                     exclude: /node_modules/u,
                 },

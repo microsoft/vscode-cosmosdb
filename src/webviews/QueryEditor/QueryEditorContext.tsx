@@ -12,11 +12,13 @@ import type * as React_2 from 'react';
 import * as React from 'react';
 import { createContext, useContext, useEffect, useReducer } from 'react';
 import { type WebviewApi } from 'vscode-webview';
+import { type SerializedQueryResult } from '../../docdb/types/queryResult';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { type WebviewState } from '../WebviewContext';
 
-const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
-const QUERY_HISTORY_SIZE = 10;
+export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
+export const QUERY_HISTORY_SIZE = 10;
+export const DEFAULT_PAGE_SIZE = 100;
 
 const defaultState: QueryEditorState = {
     dbName: '',
@@ -26,7 +28,19 @@ const defaultState: QueryEditorState = {
     queryValue: DEFAULT_QUERY_VALUE,
     isConnected: false,
     isExecuting: false,
+
+    // Result state
+    pageNumber: 1,
+    pageSize: DEFAULT_PAGE_SIZE,
+
+    currentQueryResult: null,
+
+    tableViewMode: 'Tree',
+    editMode: 'View',
 };
+
+export type TableViewMode = 'Tree' | 'JSON' | 'Table';
+export type EditMode = 'View' | 'Edit';
 
 export type DispatchAction =
     | {
@@ -52,6 +66,27 @@ export type DispatchAction =
     | {
           type: 'appendQueryHistory';
           queryValue: string;
+      }
+    | {
+          type: 'setPageSize';
+          pageSize: number;
+      }
+    | {
+          type: 'setPageNumber';
+          pageNumber: number;
+      }
+    | {
+          type: 'updateQueryResult';
+          executionId: string;
+          result: SerializedQueryResult;
+      }
+    | {
+          type: 'setTableViewMode';
+          mode: TableViewMode;
+      }
+    | {
+          type: 'setEditMode';
+          mode: EditMode;
       };
 
 export type QueryEditorState = {
@@ -62,6 +97,15 @@ export type QueryEditorState = {
     queryValue: string;
     isConnected: boolean;
     isExecuting: boolean;
+
+    // Result state
+    pageNumber: number;
+    pageSize: number;
+
+    currentQueryResult: SerializedQueryResult | null;
+
+    tableViewMode: TableViewMode;
+    editMode: EditMode;
 };
 
 export type QueryEditorContextDispatcher = {
@@ -77,6 +121,12 @@ export type QueryEditorContextDispatcher = {
 
     showInformationMessage: (message: string) => Promise<void>; // Show an information message
     showErrorMessage: (message: string) => Promise<void>; // Show an error message
+
+    setPageSize: (pageSize: number) => void; // Set the page size
+    setPageNumber: (pageNumber: number) => void; // Set the page number
+
+    setTableViewMode: (mode: TableViewMode) => void; // Set the table view mode
+    setEditMode: (mode: EditMode) => void; // Set the edit mode
 
     dispose: () => void;
 };
@@ -107,6 +157,16 @@ class QueryEditorContextDispatcherImpl implements QueryEditorContextDispatcher {
                 }
                 return { ...state, queryHistory };
             }
+            case 'setPageSize':
+                return { ...state, pageSize: action.pageSize };
+            case 'setPageNumber':
+                return { ...state, pageNumber: action.pageNumber };
+            case 'updateQueryResult':
+                return { ...state, currentQueryResult: action.result };
+            case 'setTableViewMode':
+                return { ...state, tableViewMode: action.mode };
+            case 'setEditMode':
+                return { ...state, editMode: action.mode };
         }
     }
 
@@ -149,6 +209,21 @@ class QueryEditorContextDispatcherImpl implements QueryEditorContextDispatcher {
     }
     public async showErrorMessage(message: string) {
         await this.sendCommand('showErrorMessage', message);
+    }
+
+    public setPageSize(pageSize: number) {
+        this.dispatch({ type: 'setPageSize', pageSize });
+    }
+    public setPageNumber(pageNumber: number) {
+        this.dispatch({ type: 'setPageNumber', pageNumber });
+    }
+
+    public setTableViewMode(mode: TableViewMode) {
+        this.dispatch({ type: 'setTableViewMode', mode });
+    }
+
+    public setEditMode(mode: EditMode) {
+        this.dispatch({ type: 'setEditMode', mode });
     }
 
     private async sendCommand(command: string, ...args: unknown[]): Promise<void> {
@@ -194,7 +269,8 @@ class QueryEditorContextDispatcherImpl implements QueryEditorContextDispatcher {
             this.dispatch({ type: 'executionStopped', executionId });
         });
 
-        this.channel.on('queryResults', (executionId: string, _result: object) => {
+        this.channel.on('queryResults', (executionId: string, result: SerializedQueryResult) => {
+            this.dispatch({ type: 'updateQueryResult', executionId, result });
             this.dispatch({ type: 'executionStopped', executionId });
         });
 

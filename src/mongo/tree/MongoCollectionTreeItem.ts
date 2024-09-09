@@ -86,7 +86,6 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
             return {
                 replaceOne: {
                     filter: { _id: document._id },
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
                     replacement: omit(document, '_id'),
                     upsert: false,
                 },

@@ -1,125 +1,17 @@
-import { AbortError, ErrorResponse, TimeoutError, type CosmosClient, type QueryIterator } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { randomBytes } from 'crypto';
 import * as path from 'path';
-import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { connectNoSqlContainer, disconnectNoSqlContainer } from '../docdb/commands/connectNoSqlContainer';
-import { getCosmosClient, type CosmosDBCredential } from '../docdb/getCosmosClient';
 import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
+import { CosmosDBSession, type ResultViewMetadata } from '../docdb/session/CosmosDBSession';
 import { ext } from '../extensionVariables';
 import { KeyValueStore } from '../KeyValueStore';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { type Channel } from './Communication/Channel/Channel';
-import { getErrorMessage } from './Communication/Channel/CommonChannel';
 import { VSCodeChannel } from './Communication/Channel/VSCodeChannel';
 
 const DEV_SERVER_HOST = 'http://localhost:18080';
-
-type ResultViewMetadata = {
-    populateQueryMetrics?: boolean;
-    maxItemCount?: number;
-};
-
-class Session {
-    public readonly id: string;
-    private readonly channel: Channel;
-    private readonly client: CosmosClient;
-    private readonly databaseId: string;
-    private readonly containerId: string;
-    private readonly resultViewMetadata: ResultViewMetadata = {};
-    private readonly query: string;
-
-    private abortController: AbortController | null = null;
-    private iterator: QueryIterator<unknown> | null = null;
-    private isDisposed = false;
-
-    constructor(
-        connection: NoSqlQueryConnection,
-        channel: Channel,
-        query: string,
-        resultViewMetadata: ResultViewMetadata,
-    ) {
-        const { databaseId, containerId, endpoint, masterKey, isEmulator } = connection;
-        const credentials: CosmosDBCredential[] = [];
-        if (masterKey !== undefined) {
-            credentials.push({ type: 'key', key: masterKey });
-        }
-        credentials.push({ type: 'auth' });
-
-        this.id = uuid();
-        this.channel = channel;
-        this.client = getCosmosClient(endpoint, credentials, isEmulator);
-        this.databaseId = databaseId;
-        this.containerId = containerId;
-        this.resultViewMetadata = resultViewMetadata;
-        this.query = query;
-    }
-
-    public async run(): Promise<void> {
-        if (this.isDisposed || this.iterator) {
-            return;
-        }
-
-        try {
-            this.abortController = new AbortController();
-            this.iterator = this.client
-                .database(this.databaseId)
-                .container(this.containerId)
-                .items.query(this.query, {
-                    abortSignal: this.abortController.signal,
-                    populateQueryMetrics: this.resultViewMetadata?.populateQueryMetrics ?? false,
-                    maxItemCount: this.resultViewMetadata?.maxItemCount ?? 100,
-                    maxDegreeOfParallelism: 1000,
-                    bufferItems: true,
-                });
-
-            const results = await this.iterator.fetchNext();
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'queryResults',
-                params: [this.id, results],
-            });
-        } catch (error) {
-            if (error instanceof ErrorResponse) {
-                const code: string = `${error.code ?? 'Unknown'}`;
-                const message: string = error.body?.message ?? `Query failed with status code ${code}`;
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'queryError',
-                    params: [this.id, message],
-                });
-            } else if (error instanceof TimeoutError) {
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'queryError',
-                    params: [this.id, 'Query timed out'],
-                });
-            } else if (error instanceof AbortError) {
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'queryError',
-                    params: [this.id, 'Query was aborted'],
-                });
-            } else {
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'queryError',
-                    params: [this.id, getErrorMessage(error)],
-                });
-            }
-        }
-    }
-
-    public async stop(): Promise<void> {
-        this.abortController?.abort();
-    }
-
-    public dispose(): void {
-        this.isDisposed = true;
-        this.abortController?.abort();
-    }
-}
 
 type CommandPayload = {
     commandName: string;
@@ -133,7 +25,7 @@ export class QueryEditorTab {
 
     private readonly channel: Channel;
     private readonly panel: vscode.WebviewPanel;
-    private readonly sessions = new Map<string, Session>();
+    private readonly sessions = new Map<string, CosmosDBSession>();
     private disposables: vscode.Disposable[] = [];
 
     private constructor(panel: vscode.WebviewPanel) {
@@ -362,7 +254,7 @@ export class QueryEditorTab {
     }
 
     private async runQuery(query: string, options: ResultViewMetadata): Promise<void> {
-        const session = new Session(
+        const session = new CosmosDBSession(
             KeyValueStore.instance.get(noSqlQueryConnectionKey) as NoSqlQueryConnection,
             this.channel,
             query,

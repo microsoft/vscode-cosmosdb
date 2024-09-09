@@ -12,11 +12,11 @@ module.exports = (env, { mode }) => {
     const isDev = mode === 'development';
 
     return {
+        // stats: 'detailed',
         target: 'web',
         mode: mode || 'none',
         entry: {
             views: './src/webviews/index.tsx',
-            'json.worker': 'monaco-editor/esm/vs/language/json/json.worker'
         },
         output: {
             path: path.resolve(__dirname, 'dist'),
@@ -29,9 +29,6 @@ module.exports = (env, { mode }) => {
         resolve: {
             roots: [__dirname],
             extensions: ['.js', '.jsx', '.ts', '.tsx'],
-        },
-        optimization: {
-            minimize: !isDev,
         },
         module: {
             rules: [

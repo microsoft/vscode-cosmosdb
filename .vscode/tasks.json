@@ -59,7 +59,7 @@
         },
         {
             "label": "Watch_Extension_and_Webviews",
-            "dependsOn": ["watch.extension", "devserver.webviews"]
+            "dependsOn": ["watch.extension", "watch:views"]
         },
         {
             "label": "watch.extension",
@@ -79,9 +79,9 @@
             }
         },
         {
-            "label": "devserver.webviews",
+            "label": "watch:views",
             "type": "npm",
-            "script": "serve.dev.webviews",
+            "script": "watch:views",
             "group": "build",
             "isBackground": true,
             "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],

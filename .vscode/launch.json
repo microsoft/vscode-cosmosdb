@@ -72,6 +72,37 @@
             }
         },
         {
+            "name": "Watch + Run Extension + Webview + Host (noExtensionsProfile)",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "--profile=noExtensionsProfile", // uses a local profile with a limited number of installed extensions
+                "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups",
+                "--extensionDevelopmentPath=${workspaceFolder}"
+            ],
+            "outFiles": ["${workspaceFolder}/out/**/*.js", "${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../vscode-azureresourcegroups/out/**/*.js"],
+            "preLaunchTask": "Watch_Extension_and_Webviews",
+            "env": {
+                "DEBUGTELEMETRY": "v",
+                "NODE_DEBUG": "",
+                "DEBUG_WEBPACK": "true"
+            },
+            "debugWebWorkerHost": true,
+            "rendererDebugOptions": {
+                "pauseForSourceMap": true,
+                "sourceMapRenames": true,
+                "sourceMaps": true,
+                "webRoot": "${workspaceFolder}/src/webviews/"
+            },
+            "skipFiles": ["**/node_modules/**"],
+            "smartStep": true,
+            "sourceMapRenames": true,
+            "sourceMaps": true,
+            "pauseForSourceMap": true,
+            "trace": true
+        },
+        {
             "name": "Launch Tests",
             "type": "extensionHost",
             "request": "launch",
@@ -130,37 +161,6 @@
             "sourceMaps": true,
             "restart": true,
             "outFiles": ["${workspaceFolder}/out/src"]
-        },
-        {
-            "name": "Run+Watch Extension+Webviews+Host",
-            "type": "extensionHost",
-            "request": "launch",
-            "runtimeExecutable": "${execPath}",
-            "args": [
-                "--profile=vCoreDevelopment", // uses a local profile with a limited number of installed extensions
-                "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups",
-                "--extensionDevelopmentPath=${workspaceFolder}"
-            ],
-            "outFiles": ["${workspaceFolder}/out/**/*.js", "${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../vscode-azureresourcegroups/out/**/*.js"],
-            "preLaunchTask": "Watch_Extension_and_Webviews",
-            "env": {
-                "DEBUGTELEMETRY": "v",
-                "NODE_DEBUG": "",
-                "DEBUG_WEBPACK": "true"
-            },
-            "debugWebWorkerHost": true,
-            "rendererDebugOptions": {
-                "pauseForSourceMap": true,
-                "sourceMapRenames": true,
-                "sourceMaps": true,
-                "webRoot": "${workspaceFolder}/src/webviews/"
-            },
-            "skipFiles": ["**/node_modules/**"],
-            "smartStep": true,
-            "sourceMapRenames": true,
-            "sourceMaps": true,
-            "pauseForSourceMap": true,
-            "trace": true
         },
         {
             // INSTRUCTIONS

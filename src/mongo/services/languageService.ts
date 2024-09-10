@@ -9,7 +9,7 @@ import { type Db } from 'mongodb';
 import {
     getLanguageService,
     type LanguageService as JsonLanguageService,
-    type SchemaConfiguration
+    type SchemaConfiguration,
 } from 'vscode-json-languageservice';
 import {
     TextDocuments,
@@ -18,7 +18,7 @@ import {
     type IConnection,
     type InitializeParams,
     type InitializeResult,
-    type TextDocumentPositionParams
+    type TextDocumentPositionParams,
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { connectToMongoClient } from '../connectToMongoClient';
@@ -39,7 +39,7 @@ export class LanguageService {
         this.schemaService = new SchemaService();
 
         this.textDocuments.listen(connection);
-        // After the server has started the client sends an initilize request. The server receives
+        // After the server has started the client sends an initialize request. The server receives
         // in the passed params the rootPath of the workspace plus the client capabilities.
         connection.onInitialize((_params: InitializeParams): InitializeResult => {
             return {

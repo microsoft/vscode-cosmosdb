@@ -45,12 +45,13 @@ module.exports = (env, { mode }) => {
                             minify: !isDev,
                             jsc: {
                                 minify: {
-                                    compress: true,
-                                    mangle: true,
-                                    format: {
-                                        asciiOnly: true,
-                                        comments: /^ webpack/,
-                                    },
+                                    compress: !isDev,
+                                    mangle: isDev
+                                        ? false
+                                        : {
+                                              keep_classnames: true,
+                                              keep_fnames: true,
+                                          },
                                 },
                                 keepClassNames: true,
                                 target: 'es2021',
@@ -77,12 +78,6 @@ module.exports = (env, { mode }) => {
                         // Compiles Sass to CSS
                         'sass-loader',
                     ],
-                },
-                {
-                    test: /\.js$/,
-                    enforce: 'pre',
-                    use: ['source-map-loader'],
-                    exclude: /node_modules/u,
                 },
                 {
                     test: /\.ttf$/,
@@ -112,17 +107,14 @@ module.exports = (env, { mode }) => {
         },
         plugins: [
             //new BundleAnalyzerPlugin(),
-            new MonacoWebpackPlugin({
-                languages: ['sql', 'json'],
-            }),
-            new webpack.ProvidePlugin({
-                React: 'react',
-            }),
+            new MonacoWebpackPlugin({ languages: ['sql', 'json'] }),
+            new webpack.ProvidePlugin({ React: 'react' }),
+            isDev && new webpack.HotModuleReplacementPlugin(),
             isDev && new ReactRefreshWebpackPlugin(),
             new CopyWebpackPlugin({
                 patterns: [{ from: 'src/webviews/static', to: 'static', noErrorOnMissing: true }].filter(Boolean),
             }),
-        ].filter(Boolean),
+        ],
         devtool: isDev ? 'source-map' : false,
         infrastructureLogging: {
             level: 'log', // enables logging required for problem matchers

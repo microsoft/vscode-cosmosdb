@@ -61,7 +61,7 @@ export class SessionResult {
         if (result) {
             return {
                 activityId: result.activityId,
-                documents: result.documents,
+                documents: result.documents ?? [],
                 queryMetrics: {
                     documentLoadTime: result.queryMetrics.documentLoadTime.totalMilliseconds(),
                     documentWriteTime: result.queryMetrics.documentWriteTime.totalMilliseconds(),

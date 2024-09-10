@@ -1,12 +1,10 @@
-import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { randomBytes } from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { connectNoSqlContainer, disconnectNoSqlContainer } from '../docdb/commands/connectNoSqlContainer';
-import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
+import { getNoSqlQueryConnection } from '../docdb/commands/connectNoSqlContainer';
+import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { CosmosDBSession, type ResultViewMetadata } from '../docdb/session/CosmosDBSession';
 import { ext } from '../extensionVariables';
-import { KeyValueStore } from '../KeyValueStore';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { type Channel } from './Communication/Channel/Channel';
 import { VSCodeChannel } from './Communication/Channel/VSCodeChannel';
@@ -19,49 +17,56 @@ type CommandPayload = {
 };
 
 export class QueryEditorTab {
-    public static currentPanel: QueryEditorTab | undefined;
     public static readonly title = 'Query Editor';
     public static readonly viewType = 'cosmosDbQuery';
+    public static readonly openTabs: Set<QueryEditorTab> = new Set<QueryEditorTab>();
 
-    private readonly channel: Channel;
-    private readonly panel: vscode.WebviewPanel;
-    private readonly sessions = new Map<string, CosmosDBSession>();
+    public readonly channel: Channel;
+    public readonly panel: vscode.WebviewPanel;
+    public readonly sessions = new Map<string, CosmosDBSession>();
+
+    private connection: NoSqlQueryConnection | undefined;
     private disposables: vscode.Disposable[] = [];
 
-    private constructor(panel: vscode.WebviewPanel) {
+    private constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection) {
+        QueryEditorTab.openTabs.add(this);
+
         this.channel = new VSCodeChannel(panel.webview);
         this.panel = panel;
+        this.connection = connection;
 
         this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
 
         this.panel.webview.html = this.getWebviewContent();
 
-        // TODO: Should be another EventEmitter
-        ext.noSqlCodeLensProvider.onDidChangeCodeLenses(this.updateConnection, this, this.disposables);
-
         this.initController();
     }
 
-    public static render(): void {
-        if (QueryEditorTab.currentPanel) {
-            QueryEditorTab.currentPanel.panel.reveal(vscode.ViewColumn.One);
-        } else {
-            const panel = vscode.window.createWebviewPanel(
-                QueryEditorTab.viewType,
-                QueryEditorTab.title,
-                vscode.ViewColumn.One,
-                {
-                    enableScripts: true,
-                    retainContextWhenHidden: true, // TODO use vscode getState, setState to save/restore react state
-                },
+    public static render(connection?: NoSqlQueryConnection, viewColumn?: vscode.ViewColumn): QueryEditorTab {
+        const column = viewColumn ?? vscode.ViewColumn.One;
+        if (connection) {
+            const openTab = [...QueryEditorTab.openTabs].find(
+                (openTab) =>
+                    openTab.connection?.endpoint === connection.endpoint &&
+                    openTab.connection?.databaseId === connection.databaseId &&
+                    openTab.connection?.containerId === connection.containerId,
             );
-
-            QueryEditorTab.currentPanel = new QueryEditorTab(panel);
+            if (openTab) {
+                openTab.panel.reveal(column);
+                return openTab;
+            }
         }
+
+        const panel = vscode.window.createWebviewPanel(QueryEditorTab.viewType, QueryEditorTab.title, column, {
+            enableScripts: true,
+            retainContextWhenHidden: true,
+        });
+
+        return new QueryEditorTab(panel, connection);
     }
 
     public dispose(): void {
-        QueryEditorTab.currentPanel = undefined;
+        QueryEditorTab.openTabs.delete(this);
 
         this.channel.dispose();
         this.panel.dispose();
@@ -160,7 +165,7 @@ export class QueryEditorTab {
         });
 
         this.channel.on<void>('ready', async () => {
-            await this.updateConnection();
+            await this.updateConnection(this.connection);
         });
     }
 
@@ -188,10 +193,11 @@ export class QueryEditorTab {
         }
     }
 
-    private async updateConnection(): Promise<void> {
-        const connection = KeyValueStore.instance.get(noSqlQueryConnectionKey);
-        if (connection) {
-            const { databaseId, containerId } = connection as NoSqlQueryConnection;
+    private async updateConnection(connection?: NoSqlQueryConnection): Promise<void> {
+        this.connection = connection;
+
+        if (this.connection) {
+            const { databaseId, containerId } = this.connection;
 
             await this.channel.postMessage({
                 type: 'event',
@@ -244,32 +250,33 @@ export class QueryEditorTab {
     }
 
     private async connectToDatabase(): Promise<void> {
-        void callWithTelemetryAndErrorHandling<void>('cosmosDB.connectToDatabase', (context) =>
-            connectNoSqlContainer(context),
-        );
+        void getNoSqlQueryConnection().then(async (connection) => {
+            if (connection) {
+                await this.updateConnection(connection);
+            }
+        });
     }
 
     private async disconnectFromDatabase(): Promise<void> {
-        return disconnectNoSqlContainer();
+        return this.updateConnection(undefined);
     }
 
     private async runQuery(query: string, options: ResultViewMetadata): Promise<void> {
-        const session = new CosmosDBSession(
-            KeyValueStore.instance.get(noSqlQueryConnectionKey) as NoSqlQueryConnection,
-            this.channel,
-            query,
-            options,
-        );
+        if (!this.connection) {
+            throw new Error('No connection');
+        }
+
+        const session = new CosmosDBSession(this.connection, this.channel, query, options);
 
         this.sessions.set(session.id, session);
 
-        void this.channel.postMessage({
+        await this.channel.postMessage({
             type: 'event',
             name: 'executionStarted',
             params: [session.id],
         });
 
-        return session.run();
+        void session.run();
     }
 
     private async stopQuery(executionId: string): Promise<void> {
@@ -279,7 +286,7 @@ export class QueryEditorTab {
             this.sessions.delete(executionId);
         }
 
-        void this.channel.postMessage({
+        await this.channel.postMessage({
             type: 'event',
             name: 'executionStopped',
             params: [executionId],

@@ -19,20 +19,6 @@ const TerserPlugin = require('terser-webpack-plugin');
 module.exports = (env, { mode }) => {
     const isDev = mode === 'development';
 
-    const config = dev.getDefaultWebpackConfig({
-        projectRoot: __dirname,
-        verbosity: isDev ? 'debug' : 'normal',
-        target: 'node',
-        externalNodeModules: [
-            // Modules that we can't easily webpack for some reason.
-            // These and their dependencies will be copied into node_modules rather than placed in the bundle
-            // Keep this list small, because all the subdependencies will also be excluded
-            'mongodb',
-            'pg',
-            'pg-structure',
-        ],
-    });
-
     return {
         target: 'node',
         mode: mode || 'none',
@@ -53,27 +39,22 @@ module.exports = (env, { mode }) => {
         externals: {
             vs: 'vs',
             vscode: 'commonjs vscode',
-            ...config.externals,
+            /* Mongodb optional dependencies */
+            kerberos: 'commonjs kerberos',
+            '@mongodb-js/zstd': 'commonjs @mongodb-js/zstd',
+            '@aws-sdk/credential-providers': 'commonjs @aws-sdk/credential-providers',
+            'gcp-metadata': 'commonjs gcp-metadata',
+            snappy: 'commonjs snappy',
+            socks: 'commonjs socks',
+            aws4: 'commonjs aws4',
+            'mongodb-client-encryption': 'commonjs mongodb-client-encryption',
+            /* PG optional dependencies */
+            'pg-native': 'commonjs pg-native',
         },
         resolve: {
             roots: [__dirname],
             extensions: ['.js', '.ts'],
         },
-        // optimization: {
-        //     minimize: !isDev,
-        //     minimizer: [
-        //         new TerserPlugin({
-        //             minify: TerserPlugin.swcMinify,
-        //             // `terserOptions` options will be passed to `swc` (`@swc/core`)
-        //             // Link to options - https://swc.rs/docs/config-js-minify
-        //             terserOptions: {
-        //                 keep_classnames: true,
-        //                 // Don't mangle function names. https://github.com/microsoft/vscode-azurestorage/issues/525
-        //                 keep_fnames: true,
-        //             },
-        //         }),
-        //     ],
-        // },
         module: {
             rules: [
                 {
@@ -90,12 +71,13 @@ module.exports = (env, { mode }) => {
                             jsc: {
                                 baseUrl: path.resolve(__dirname, './'),  // Set absolute path here
                                 minify: {
-                                    compress: true,
-                                    mangle: true,
-                                    format: {
-                                        asciiOnly: true,
-                                        comments: /^ webpack/,
-                                    },
+                                    compress: !isDev,
+                                    mangle: isDev
+                                        ? false
+                                        : {
+                                              keep_classnames: true,
+                                              keep_fnames: true,
+                                          },
                                 },
                                 keepClassNames: true,
                                 target: 'es2021',
@@ -109,7 +91,6 @@ module.exports = (env, { mode }) => {
                             },
                         },
                     },
-                    exclude: /node_modules/u,
                 },
             ],
         },
@@ -179,10 +160,6 @@ module.exports = (env, { mode }) => {
                 /[/\\]vscode-languageserver[/\\]lib[/\\]files\.js/,
                 require.resolve('./build/vscode-languageserver-files-stub.js'),
             ),
-            // Azure Dev Utils has its own mechanism to copy excluded node_modules with native modules to dist folder
-            // However this mechanism isn't exported from the package
-            // So we need to add this plugin here
-            config.plugins[config.plugins.length - 1],
         ].filter(Boolean),
         devtool: isDev ? 'source-map' : false,
         infrastructureLogging: {

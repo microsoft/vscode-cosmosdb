@@ -1,7 +1,11 @@
 {
+    "$schema": "https://swc.rs/schema.json",
     "test": ".tsx?$",
     "exclude": ["node_modules"],
-    "sourceMaps": "inline",
+    "sourceMaps": true,
+    "module": {
+        "type": "commonjs",
+    },
     "jsc": {
         "target": "es2021",
         "baseUrl": "./",

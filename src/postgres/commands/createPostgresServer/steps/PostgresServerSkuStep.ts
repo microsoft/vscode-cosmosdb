@@ -2,14 +2,12 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import  { type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
-import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import { AzureWizardPromptStep, type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
 import { openUrl } from '../../../../utils/openUrl';
-import  { type AbstractSku} from '../../../abstract/models';
-import { PostgresServerType } from '../../../abstract/models';
-import  { type IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
+import { PostgresServerType, type AbstractSku } from '../../../abstract/models';
+import { type IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 interface ISkuOption {
     label: string;

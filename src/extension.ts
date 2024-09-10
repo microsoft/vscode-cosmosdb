@@ -21,7 +21,7 @@ import {
     type AzExtTreeItem,
     type AzureExtensionApi,
     type IActionContext,
-    type ITreeItemPickerContext
+    type ITreeItemPickerContext,
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import { platform } from 'os';

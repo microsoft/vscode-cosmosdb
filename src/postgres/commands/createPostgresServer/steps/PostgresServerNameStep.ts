@@ -7,11 +7,9 @@ import { ResourceGroupListStep, resourceGroupNamingRules } from '@microsoft/vsco
 import { AzureNameStep } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
-import  { type AbstractPostgresClient} from '../../../abstract/AbstractPostgresClient';
-import { createAbstractPostgresClient } from '../../../abstract/AbstractPostgresClient';
-import  { type AbstractNameAvailability} from '../../../abstract/models';
-import { PostgresServerType } from '../../../abstract/models';
-import  { type IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
+import { createAbstractPostgresClient, type AbstractPostgresClient } from '../../../abstract/AbstractPostgresClient';
+import { PostgresServerType, type AbstractNameAvailability } from '../../../abstract/models';
+import { type IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerNameStep extends AzureNameStep<IPostgresServerWizardContext> {
     public async prompt(context: IPostgresServerWizardContext): Promise<void> {

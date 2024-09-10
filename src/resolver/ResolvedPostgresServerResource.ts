@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
-import  { type AppResource, type ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
-import  { type ClientConfig } from 'pg';
-import  { type PostgresServerType } from '../postgres/abstract/models';
-import  { type ParsedPostgresConnectionString } from '../postgres/postgresConnectionStrings';
-import  { type PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
+import { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type AppResource, type ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
+import { type ClientConfig } from 'pg';
+import { type PostgresServerType } from '../postgres/abstract/models';
+import { type ParsedPostgresConnectionString } from '../postgres/postgresConnectionStrings';
+import { type PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { ResolvedDatabaseAccountResource } from './ResolvedDatabaseAccountResource';
 
 export class ResolvedPostgresServerResource extends ResolvedDatabaseAccountResource implements ResolvedAppResourceBase {

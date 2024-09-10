@@ -133,7 +133,6 @@ export class MongoClustersBranchDataProvider
                                             MongoClustersAccount.nodeGroupSpecs !== undefined
                                                 ? (MongoClustersAccount.nodeGroupSpecs[0]?.enableHa as boolean)
                                                 : undefined,
-
                                     });
                                 });
                             } catch (e) {

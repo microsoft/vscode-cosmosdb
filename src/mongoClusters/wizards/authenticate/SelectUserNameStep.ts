@@ -25,7 +25,10 @@ export class SelectUserNameStep extends AzureWizardPromptStep<IAuthenticateWizar
                 ),
             ],
             {
-                placeHolder: localize('mongoClustersAuthWizardUserName', 'Please select a user name to authenticate with'),
+                placeHolder: localize(
+                    'mongoClustersAuthWizardUserName',
+                    'Please select a user name to authenticate with',
+                ),
                 suppressPersistence: true,
             },
         );

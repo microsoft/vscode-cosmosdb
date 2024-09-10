@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { ResourceGroupListStep, resourceGroupNamingRules } from '@microsoft/vscode-azext-azureutils';
 import { AzureNameStep } from '@microsoft/vscode-azext-utils';
 import { createCosmosDBClient } from '../../utils/azureClients';
-import  { type ICosmosDBWizardContext } from './ICosmosDBWizardContext';
+import { type ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContext> {
     public async prompt(context: ICosmosDBWizardContext): Promise<void> {

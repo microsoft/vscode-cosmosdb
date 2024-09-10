@@ -15,5 +15,3 @@ describe('toFilterQuery', () => {
         expect(toFilterQueryObj(q5)).toEqual({ name: 'John', age: { $gt: 30, $lt: 40 } });
     });
 });
-
-

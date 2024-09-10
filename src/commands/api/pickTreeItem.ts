@@ -3,9 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
-import  { type PickAppResourceOptions } from '@microsoft/vscode-azext-utils/hostapi';
+import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type PickAppResourceOptions } from '@microsoft/vscode-azext-utils/hostapi';
 import { databaseAccountType } from '../../constants';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
@@ -16,11 +15,11 @@ import { GraphDatabaseTreeItem } from '../../graph/tree/GraphDatabaseTreeItem';
 import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
-import  { type ParsedConnectionString } from '../../ParsedConnectionString';
+import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { localize } from '../../utils/localize';
-import  {
+import {
     type AzureDatabasesApiType,
     type DatabaseAccountTreeItem,
     type DatabaseTreeItem,

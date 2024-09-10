@@ -222,13 +222,13 @@ export const ResultTab = () => {
                     {tableViewMode === 'Table' && (
                         <DataViewPanelTable
                             liveData={tableViewData!.dataset}
-                            liveHeaders={tableViewData!.headers}></DataViewPanelTable>
+                            liveHeaders={tableViewData!.headers}
+                        ></DataViewPanelTable>
                     )}
                     {tableViewMode === 'Tree' && (
                         <DataViewPanelTree
-                            liveData={
-                                (treeViewData ?? []) as unknown as { [key: string]: undefined }[]
-                            }></DataViewPanelTree>
+                            liveData={(treeViewData ?? []) as unknown as { [key: string]: undefined }[]}
+                        ></DataViewPanelTree>
                     )}
                     {tableViewMode === 'JSON' && (
                         <DataViewPanelJSON value={jsonViewData || 'No result'}></DataViewPanelJSON>

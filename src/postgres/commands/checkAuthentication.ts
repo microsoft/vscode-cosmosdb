@@ -3,12 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type IActionContext, type IParsedError} from '@microsoft/vscode-azext-utils';
-import { parseError } from '@microsoft/vscode-azext-utils';
-import  { type ClientConfig } from 'pg';
+import { parseError, type IActionContext, type IParsedError } from '@microsoft/vscode-azext-utils';
+import { type ClientConfig } from 'pg';
 import { invalidCredentialsErrorType } from '../postgresConstants';
 import { PostgresClientConfigFactory } from '../tree/ClientConfigFactory';
-import  { type PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
+import { type PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
 import { configurePostgresFirewall } from './configurePostgresFirewall';
 import { enterPostgresCredentials } from './enterPostgresCredentials';
 

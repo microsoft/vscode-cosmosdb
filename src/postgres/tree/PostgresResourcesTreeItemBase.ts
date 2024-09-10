@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtParentTreeItem } from '@microsoft/vscode-azext-utils';
-import  { type ClientConfig } from 'pg';
-import  { type PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
+import { type ClientConfig } from 'pg';
+import { type PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 
 // Base class for Postgres tree items whose children are individual resources
 export abstract class PostgresResourcesTreeItemBase extends AzExtParentTreeItem {

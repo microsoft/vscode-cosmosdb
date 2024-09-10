@@ -3,12 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type ContainerDefinition, type CosmosClient, type Database, type DatabaseDefinition, type Resource } from '@azure/cosmos';
-import  { type IActionContext } from '@microsoft/vscode-azext-utils';
+import {
+    type ContainerDefinition,
+    type CosmosClient,
+    type Database,
+    type DatabaseDefinition,
+    type Resource,
+} from '@azure/cosmos';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
-import  { type IGremlinEndpoint } from '../../vscode-cosmosdbgraph.api';
+import { type IGremlinEndpoint } from '../../vscode-cosmosdbgraph.api';
 import { getPossibleGremlinEndpoints } from '../gremlinEndpoints';
-import  { type GraphAccountTreeItem } from './GraphAccountTreeItem';
+import { type GraphAccountTreeItem } from './GraphAccountTreeItem';
 import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 
 export class GraphDatabaseTreeItem extends DocDBDatabaseTreeItemBase {

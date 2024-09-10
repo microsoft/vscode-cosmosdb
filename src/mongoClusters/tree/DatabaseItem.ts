@@ -17,7 +17,9 @@ export class DatabaseItem implements MongoClusterItemBase {
     }
 
     async getChildren(): Promise<TreeElementBase[]> {
-        const client: MongoClustersClient = await MongoClustersClient.getClient(nonNullValue(this.mongoCluster.session?.clientId));
+        const client: MongoClustersClient = await MongoClustersClient.getClient(
+            nonNullValue(this.mongoCluster.session?.clientId),
+        );
         const collections = await client.listCollections(this.databaseInfo.name);
         return collections.map((collection) => {
             return new CollectionItem(this.subscription, this.mongoCluster, this.databaseInfo, collection);

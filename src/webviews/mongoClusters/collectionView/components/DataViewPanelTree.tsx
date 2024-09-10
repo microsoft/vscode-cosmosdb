@@ -2,10 +2,10 @@ import * as React from 'react';
 import { FieldType, Formatters, SlickgridReact, type GridOption } from 'slickgrid-react';
 
 interface Props {
-    liveData:  { [key: string]: undefined }[];
+    liveData: { [key: string]: undefined }[];
 }
 
-export const DataViewPanelTree = ({ liveData } : Props): React.JSX.Element => {
+export const DataViewPanelTree = ({ liveData }: Props): React.JSX.Element => {
     const columnsDef = [
         {
             id: 'id_field',
@@ -90,7 +90,6 @@ export const DataViewPanelTree = ({ liveData } : Props): React.JSX.Element => {
                 delete item.children;
             });
         };
-
     }, []);
 
     // Empty dependency array means this runs only once, like componentDidMount

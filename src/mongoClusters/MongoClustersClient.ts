@@ -120,15 +120,8 @@ export class MongoClustersClient {
         responsePack.tableHeaders = getFieldsTopLevel(documents);
         responsePack.tableData = getDataTopLevel(documents);
 
-
-
-
         responsePack.treeData = toSlickGridTree(documents);
 
         return responsePack;
     }
-
-
-
-
 }

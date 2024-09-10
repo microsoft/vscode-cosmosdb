@@ -3,15 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  {
-    type AzExtTreeItem,
-    type IActionContext,
-    type ITreeItemPickerContext} from '@microsoft/vscode-azext-utils';
 import {
     callWithTelemetryAndErrorHandling,
+    type AzExtTreeItem,
+    type IActionContext,
+    type ITreeItemPickerContext,
 } from '@microsoft/vscode-azext-utils';
-import  { type Experience} from '../../AzureDBExperiences';
-import { MongoExperience } from '../../AzureDBExperiences';
+import { MongoExperience, type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { setConnectedNode } from '../setConnectedNode';
 import { MongoDatabaseTreeItem } from '../tree/MongoDatabaseTreeItem';

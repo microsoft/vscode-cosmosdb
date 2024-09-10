@@ -3,15 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type ItemDefinition } from '@azure/cosmos';
-import  { type AzExtTreeItem } from '@microsoft/vscode-azext-utils';
+import { type ItemDefinition } from '@azure/cosmos';
+import { type AzExtTreeItem } from '@microsoft/vscode-azext-utils';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../extensionVariables';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import  { type IMongoDocument } from '../mongo/tree/MongoDocumentTreeItem';
+import { type IMongoDocument } from '../mongo/tree/MongoDocumentTreeItem';
 import { getRootPath } from './workspacUtils';
 
 export interface IDisposable {

@@ -3,9 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type AzExtTreeDataProvider, type AzExtTreeItem, type IAzExtLogOutputChannel, type TreeElementStateManager } from '@microsoft/vscode-azext-utils';
+import {
+    type AzExtTreeDataProvider,
+    type AzExtTreeItem,
+    type IAzExtLogOutputChannel,
+    type TreeElementStateManager,
+} from '@microsoft/vscode-azext-utils';
 import { type AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostapi';
-import { type AzureResourcesExtensionApi } from "@microsoft/vscode-azureresources-api";
+import { type AzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import { type ExtensionContext, type SecretStorage, type TreeView } from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
@@ -17,7 +22,6 @@ import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeL
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
 import { type AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
 import { type AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
-
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -45,7 +49,6 @@ export namespace ext {
     export let state: TreeElementStateManager;
 
     export let mongoClustersBranchDataProvider: MongoClustersBranchDataProvider;
-
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

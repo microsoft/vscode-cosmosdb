@@ -5,7 +5,7 @@
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../../../../utils/localize';
-import  { type IPostgresQueryWizardContext } from '../../IPostgresQueryWizardContext';
+import { type IPostgresQueryWizardContext } from '../../IPostgresQueryWizardContext';
 import { validateIdentifier } from '../../validateIdentifier';
 
 export class StoredProcedureQueryNameStep extends AzureWizardPromptStep<IPostgresQueryWizardContext> {

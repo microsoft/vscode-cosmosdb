@@ -55,7 +55,8 @@ export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {
                 disabled={currentContext.isLoading}
                 icon={<PlayRegular />}
                 appearance="primary"
-                style={{ flexShrink: 0 }}>
+                style={{ flexShrink: 0 }}
+            >
                 Find Query
             </Button>
         </div>
@@ -85,7 +86,8 @@ function ViewSwitch({ onViewChanged }): JSX.Element {
             style={{ minWidth: '120px', maxWidth: '120px' }}
             defaultValue={defaultView}
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
-            onOptionSelect={(_, data) => onViewChanged(data.optionValue)}>
+            onOptionSelect={(_, data) => onViewChanged(data.optionValue)}
+        >
             <Option key="table">Table View</Option>
             <Option key="tree">Tree View</Option>
             <Option key="json">JSON View</Option>

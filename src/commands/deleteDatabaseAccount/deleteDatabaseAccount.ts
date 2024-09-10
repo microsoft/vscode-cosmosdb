@@ -3,12 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { AzureWizard, DeleteConfirmationStep } from '@microsoft/vscode-azext-utils';
+import {
+    AzureWizard,
+    DeleteConfirmationStep,
+    type AzExtTreeItem,
+    type IActionContext,
+} from '@microsoft/vscode-azext-utils';
 import { createActivityContext } from '../../utils/activityUtils';
 import { localize } from '../../utils/localize';
 import { DatabaseAccountDeleteStep } from './DatabaseAccountDeleteStep';
-import  { type IDeleteWizardContext } from './IDeleteWizardContext';
+import { type IDeleteWizardContext } from './IDeleteWizardContext';
 
 export async function deleteDatabaseAccount(
     context: IActionContext,

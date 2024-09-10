@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
-import  { type PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
-import  { type PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
+import { type PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
+import { type PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
 import { connectPostgresDatabase } from './connectPostgresDatabase';
 
 export async function createPostgresDatabase(context: IActionContext, node?: PostgresServerTreeItem): Promise<void> {

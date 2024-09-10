@@ -102,7 +102,8 @@ export const ToolbarPaging = (): JSX.Element => {
                     }}
                     style={{ minWidth: '100px', maxWidth: '100px' }}
                     defaultValue="10"
-                    defaultSelectedOptions={['10']}>
+                    defaultSelectedOptions={['10']}
+                >
                     <Option key="10">10</Option>
                     <Option key="10">50</Option>
                     <Option key="100">100</Option>

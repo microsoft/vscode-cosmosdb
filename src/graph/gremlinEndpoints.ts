@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { nonNullValue } from '../utils/nonNull';
-import  { type IGremlinEndpoint } from '../vscode-cosmosdbgraph.api';
+import { type IGremlinEndpoint } from '../vscode-cosmosdbgraph.api';
 
 export async function tryGetGremlinEndpointFromAzure(
     client: CosmosDBManagementClient,

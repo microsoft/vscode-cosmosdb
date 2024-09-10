@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type ParserRuleContext } from 'antlr4ts/ParserRuleContext';
-import  { type ErrorNode } from 'antlr4ts/tree/ErrorNode';
-import  { type ParseTree } from 'antlr4ts/tree/ParseTree';
-import  { type TerminalNode } from 'antlr4ts/tree/TerminalNode';
-import  {
+import { type ParserRuleContext } from 'antlr4ts/ParserRuleContext';
+import { type ErrorNode } from 'antlr4ts/tree/ErrorNode';
+import { type ParseTree } from 'antlr4ts/tree/ParseTree';
+import { type TerminalNode } from 'antlr4ts/tree/TerminalNode';
+import {
     type ArgumentContext,
     type ArgumentsContext,
     type CollectionContext,
@@ -16,7 +16,7 @@ import  {
     type FunctionCallContext,
     type MongoCommandsContext,
 } from './mongoParser';
-import  { type mongoVisitor } from './mongoVisitor';
+import { type mongoVisitor } from './mongoVisitor';
 
 export class MongoVisitor<T> implements mongoVisitor<T> {
     visitMongoCommands(ctx: MongoCommandsContext): T {

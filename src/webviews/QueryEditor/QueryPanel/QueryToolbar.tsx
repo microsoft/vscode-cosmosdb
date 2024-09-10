@@ -61,7 +61,8 @@ const BaseActionsSection = () => {
                             menuButton={triggerProps}
                             primaryActionButton={{
                                 onClick: () => void dispatcher.runQuery(state.queryValue),
-                            }}>
+                            }}
+                        >
                             Run
                         </SplitButton>
                     )}
@@ -80,7 +81,8 @@ const BaseActionsSection = () => {
                 aria-label="Cancel"
                 icon={<StopRegular className={classes.iconStop} />}
                 disabled={!state.isExecuting}
-                onClick={() => void dispatcher.stopQuery(state.currentExecutionId)}>
+                onClick={() => void dispatcher.stopQuery(state.currentExecutionId)}
+            >
                 Cancel
             </ToolbarButton>
             <ToolbarButton aria-label="Open" icon={<FolderOpenRegular />} onClick={() => void dispatcher.openFile()}>
@@ -89,7 +91,8 @@ const BaseActionsSection = () => {
             <ToolbarButton
                 aria-label="Save query"
                 icon={<SaveRegular />}
-                onClick={() => void dispatcher.saveToFile(state.queryValue)}>
+                onClick={() => void dispatcher.saveToFile(state.queryValue)}
+            >
                 Save
             </ToolbarButton>
         </>
@@ -141,7 +144,8 @@ const ConnectedActionsSection = () => {
             <ToolbarButton
                 aria-label="Disconnect"
                 icon={<DocumentMultipleRegular />}
-                onClick={() => void dispatcher.disconnectFromDatabase()}>
+                onClick={() => void dispatcher.disconnectFromDatabase()}
+            >
                 Disconnect
             </ToolbarButton>
             <ToolbarDivider />
@@ -161,7 +165,8 @@ const DisconnectedActionsSection = () => {
             aria-label="Connect"
             appearance={'primary'}
             icon={<DatabasePlugConnectedRegular className={classes.iconConnect} />}
-            onClick={() => void dispatcher.connectToDatabase()}>
+            onClick={() => void dispatcher.connectToDatabase()}
+        >
             Connect
         </ToolbarButton>
     );

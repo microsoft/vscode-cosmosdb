@@ -4,16 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
-import  {
-    type AzExtTreeItem,
-    type IActionContext,
-    type IParsedError,
-    type TreeItemIconPath} from '@microsoft/vscode-azext-utils';
 import {
     AzExtParentTreeItem,
     createContextValue,
     GenericTreeItem,
-    parseError
+    parseError,
+    type AzExtTreeItem,
+    type IActionContext,
+    type IParsedError,
+    type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon } from 'vscode';
 import { ext } from '../../extensionVariables';
@@ -22,7 +21,7 @@ import { firewallNotConfiguredErrorType, invalidCredentialsErrorType } from '../
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresClientConfigFactory } from './ClientConfigFactory';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
-import  { type PostgresServerTreeItem } from './PostgresServerTreeItem';
+import { type PostgresServerTreeItem } from './PostgresServerTreeItem';
 import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 

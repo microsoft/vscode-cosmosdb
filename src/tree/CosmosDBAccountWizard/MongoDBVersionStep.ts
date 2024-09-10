@@ -5,7 +5,7 @@
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../utils/localize';
-import  { type ICosmosDBWizardContext } from './ICosmosDBWizardContext';
+import { type ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class MongoVersionStep extends AzureWizardPromptStep<ICosmosDBWizardContext> {
     public async prompt(context: ICosmosDBWizardContext): Promise<void> {

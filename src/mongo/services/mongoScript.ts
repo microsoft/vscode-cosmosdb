@@ -6,17 +6,17 @@ import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { Interval } from 'antlr4ts/misc/Interval';
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
-import  { type ParseTree } from 'antlr4ts/tree/ParseTree';
+import { type ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
-import  { type Db } from 'mongodb';
-import  { type LanguageService as JsonLanguageService } from 'vscode-json-languageservice';
-import  { type CompletionItem, type Position } from 'vscode-languageserver';
-import  { type TextDocument } from 'vscode-languageserver-textdocument';
+import { type Db } from 'mongodb';
+import { type LanguageService as JsonLanguageService } from 'vscode-json-languageservice';
+import { type CompletionItem, type Position } from 'vscode-languageserver';
+import { type TextDocument } from 'vscode-languageserver-textdocument';
 import { mongoLexer } from './../grammar/mongoLexer';
 import * as mongoParser from './../grammar/mongoParser';
 import { MongoVisitor } from './../grammar/visitors';
 import { CompletionItemsVisitor } from './completionItemProvider';
-import  { type SchemaService } from './schemaService';
+import { type SchemaService } from './schemaService';
 
 export class MongoScriptDocumentManager {
     constructor(

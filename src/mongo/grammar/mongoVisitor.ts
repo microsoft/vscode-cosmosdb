@@ -5,8 +5,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type ParseTreeVisitor } from 'antlr4ts/tree/ParseTreeVisitor';
-import  {
+import { type ParseTreeVisitor } from 'antlr4ts/tree/ParseTreeVisitor';
+import {
     type ArgumentContext,
     type ArgumentsContext,
     type ArrayLiteralContext,

@@ -3,24 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
-import  {
-    type AzExtTreeItem,
-    type ICreateChildImplContext} from '@microsoft/vscode-azext-utils';
+import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import {
     appendExtensionUserAgent,
     AzExtParentTreeItem,
     parseError,
+    type AzExtTreeItem,
+    type ICreateChildImplContext,
 } from '@microsoft/vscode-azext-utils';
-import  { type MongoClient } from 'mongodb';
+import { type MongoClient } from 'mongodb';
 import type * as vscode from 'vscode';
 import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
-import  { type IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
+import { type IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
 import { getThemeAgnosticIconPath, Links, testDb } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../mongoConnectionStrings';
-import  { type IMongoTreeRoot } from './IMongoTreeRoot';
+import { type IMongoTreeRoot } from './IMongoTreeRoot';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 import { MongoDatabaseTreeItem } from './MongoDatabaseTreeItem';
 import { MongoDocumentTreeItem } from './MongoDocumentTreeItem';

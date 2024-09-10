@@ -3,10 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
-import { AzExtTreeItem } from '@microsoft/vscode-azext-utils';
+import { AzExtTreeItem, type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import  { type PostgresTableTreeItem } from './PostgresTableTreeItem';
+import { type PostgresTableTreeItem } from './PostgresTableTreeItem';
 
 export class PostgresColumnTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'postgresColumn';

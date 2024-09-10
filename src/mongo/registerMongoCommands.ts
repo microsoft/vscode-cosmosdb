@@ -3,14 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  {
-    type IActionContext,
-    type IErrorHandlerContext} from '@microsoft/vscode-azext-utils';
 import {
     callWithTelemetryAndErrorHandling,
     registerCommandWithTreeNodeUnwrapping,
     registerErrorHandler,
     registerEvent,
+    type IActionContext,
+    type IErrorHandlerContext,
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';

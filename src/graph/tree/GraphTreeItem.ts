@@ -3,13 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type ContainerDefinition, type Resource } from '@azure/cosmos';
-import  { type IActionContext, type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
-import { AzExtTreeItem } from '@microsoft/vscode-azext-utils';
+import { type ContainerDefinition, type Resource } from '@azure/cosmos';
+import { AzExtTreeItem, type IActionContext, type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { localize } from '../../utils/localize';
 import { openUrl } from '../../utils/openUrl';
-import  { type GraphCollectionTreeItem } from './GraphCollectionTreeItem';
+import { type GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 
 const alternativeGraphVisualizationToolsDocLink = 'https://aka.ms/cosmosdb-graph-alternative-tools';
 

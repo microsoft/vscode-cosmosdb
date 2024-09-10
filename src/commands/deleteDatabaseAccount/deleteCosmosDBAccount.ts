@@ -3,15 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
-import  { type AzExtTreeItem } from '@microsoft/vscode-azext-utils';
+import { type AzExtTreeItem } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
-import  { type IDeleteWizardContext } from './IDeleteWizardContext';
+import { type IDeleteWizardContext } from './IDeleteWizardContext';
 
 export async function deleteCosmosDBAccount(context: IDeleteWizardContext, node: AzExtTreeItem): Promise<void> {
     const client: CosmosDBManagementClient = await createCosmosDBClient([context, node.subscription]);

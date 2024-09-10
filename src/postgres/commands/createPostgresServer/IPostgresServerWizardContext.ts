@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type ExecuteActivityContext } from '@microsoft/vscode-azext-utils';
-import  { type IAzureDBWizardContext } from '../../../tree/IAzureDBWizardContext';
-import  { type AbstractSku, type PostgresAbstractServer, type PostgresServerType } from '../../abstract/models';
+import { type ExecuteActivityContext } from '@microsoft/vscode-azext-utils';
+import { type IAzureDBWizardContext } from '../../../tree/IAzureDBWizardContext';
+import { type AbstractSku, type PostgresAbstractServer, type PostgresServerType } from '../../abstract/models';
 
 export interface IPostgresServerWizardContext extends IAzureDBWizardContext, ExecuteActivityContext {
     /**

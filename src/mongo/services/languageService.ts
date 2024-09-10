@@ -9,7 +9,7 @@ import { type Db } from 'mongodb';
 import {
     getLanguageService,
     type LanguageService as JsonLanguageService,
-    type SchemaConfiguration
+    type SchemaConfiguration,
 } from 'vscode-json-languageservice';
 import {
     TextDocuments,
@@ -18,7 +18,7 @@ import {
     type IConnection,
     type InitializeParams,
     type InitializeResult,
-    type TextDocumentPositionParams
+    type TextDocumentPositionParams,
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { connectToMongoClient } from '../connectToMongoClient';

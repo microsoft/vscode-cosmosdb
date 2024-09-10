@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type AppResource, type ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
-import  { type IMongoTreeRoot } from '../mongo/tree/IMongoTreeRoot';
-import  { type MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
+import { type AppResource, type ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
+import { type IMongoTreeRoot } from '../mongo/tree/IMongoTreeRoot';
+import { type MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { ResolvedDatabaseAccountResource } from './ResolvedDatabaseAccountResource';
 
 export class ResolvedMongoAccountResource extends ResolvedDatabaseAccountResource implements ResolvedAppResourceBase {

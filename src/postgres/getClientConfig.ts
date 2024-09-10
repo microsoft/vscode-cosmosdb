@@ -3,14 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type ClientConfig } from 'pg';
-import { Client } from 'pg';
-import  { type ConnectionOptions } from 'tls';
+import { Client, type ClientConfig } from 'pg';
+import { type ConnectionOptions } from 'tls';
 import { postgresDefaultPort } from '../constants';
 import { nonNullProp } from '../utils/nonNull';
 import { PostgresServerType } from './abstract/models';
-import  { type ParsedPostgresConnectionString} from './postgresConnectionStrings';
-import { addDatabaseToConnectionString } from './postgresConnectionStrings';
+import { addDatabaseToConnectionString, type ParsedPostgresConnectionString } from './postgresConnectionStrings';
 
 export type PostgresClientConfigs = {
     password: ClientConfig | undefined;

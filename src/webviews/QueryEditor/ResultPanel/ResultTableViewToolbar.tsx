@@ -50,13 +50,15 @@ export const ResultTableViewToolbar = () => {
             size="small"
             checkedValues={checkedValues}
             className={styles.toolbar}
-            onCheckedValueChange={onCheckedValueChange}>
+            onCheckedValueChange={onCheckedValueChange}
+        >
             <ToolbarRadioButton
                 aria-label="Tree view"
                 name={'tableViewMode'}
                 value={'Tree'}
                 appearance={'transparent'}
-                className={styles.viewModeButton}>
+                className={styles.viewModeButton}
+            >
                 Tree
             </ToolbarRadioButton>
 
@@ -67,7 +69,8 @@ export const ResultTableViewToolbar = () => {
                 name={'tableViewMode'}
                 value={'JSON'}
                 appearance={'transparent'}
-                className={styles.viewModeButton}>
+                className={styles.viewModeButton}
+            >
                 JSON
             </ToolbarRadioButton>
 
@@ -78,7 +81,8 @@ export const ResultTableViewToolbar = () => {
                 name={'tableViewMode'}
                 value={'Table'}
                 appearance={'transparent'}
-                className={styles.viewModeButton}>
+                className={styles.viewModeButton}
+            >
                 Table
             </ToolbarRadioButton>
 
@@ -90,7 +94,8 @@ export const ResultTableViewToolbar = () => {
                 name={'editMode'}
                 value={'View'}
                 appearance={'transparent'}
-                className={styles.editModeButton}>
+                className={styles.editModeButton}
+            >
                 View
             </ToolbarRadioButton>
 
@@ -103,7 +108,8 @@ export const ResultTableViewToolbar = () => {
                 value={'Edit'}
                 appearance={'transparent'}
                 className={styles.editModeButton}
-                disabled={true}>
+                disabled={true}
+            >
                 Edit
             </ToolbarRadioButton>
         </Toolbar>

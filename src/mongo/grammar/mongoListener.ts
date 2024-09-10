@@ -5,8 +5,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type ParseTreeListener } from 'antlr4ts/tree/ParseTreeListener';
-import  {
+import { type ParseTreeListener } from 'antlr4ts/tree/ParseTreeListener';
+import {
     type ArgumentContext,
     type ArgumentsContext,
     type ArrayLiteralContext,

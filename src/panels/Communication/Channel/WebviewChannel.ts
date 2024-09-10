@@ -1,4 +1,4 @@
-import  { type WebviewApi } from 'vscode-webview';
+import { type WebviewApi } from 'vscode-webview';
 import { WebviewTransport } from '../Transport/WebviewTransport';
 import { CommonChannel } from './CommonChannel';
 

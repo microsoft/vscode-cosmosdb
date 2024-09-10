@@ -6,6 +6,4 @@ describe('MongoClustersClient', () => {
     it('should be defined', () => {
         expect(MongoClustersClient).toBeDefined();
     });
-
-
 });

@@ -3,11 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type CosmosClient, type DatabaseDefinition, type FeedOptions, type QueryIterator, type Resource } from '@azure/cosmos';
-import  { type AzExtTreeItem } from '@microsoft/vscode-azext-utils';
-import  { type AppResource, type ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
-import  { type DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
-import  { type IDocDBTreeRoot } from '../docdb/tree/IDocDBTreeRoot';
+import {
+    type CosmosClient,
+    type DatabaseDefinition,
+    type FeedOptions,
+    type QueryIterator,
+    type Resource,
+} from '@azure/cosmos';
+import { type AzExtTreeItem } from '@microsoft/vscode-azext-utils';
+import { type AppResource, type ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
+import { type DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
+import { type IDocDBTreeRoot } from '../docdb/tree/IDocDBTreeRoot';
 import { ResolvedDatabaseAccountResource } from './ResolvedDatabaseAccountResource';
 
 export class ResolvedDocDBAccountResource extends ResolvedDatabaseAccountResource implements ResolvedAppResourceBase {

@@ -101,7 +101,7 @@ export class MongoClustersExtension implements vscode.Disposable {
             _props.databaseName,
             _props.collectionName,
         );
-5
+        5;
         panel.webview.onDidReceiveMessage(async (message) => {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             const queryString = (message?.payload?.queryText as string) ?? '{}';

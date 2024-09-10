@@ -5,12 +5,12 @@
 
 import { ParsedDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { ParsedMongoConnectionString } from '../../mongo/mongoConnectionStrings';
-import  { type ParsedConnectionString } from '../../ParsedConnectionString';
+import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import {
     ParsedPostgresConnectionString,
     parsePostgresConnectionString,
 } from '../../postgres/postgresConnectionStrings';
-import  { type DatabaseAccountTreeItem, type DatabaseTreeItem } from '../../vscode-cosmosdb.api';
+import { type DatabaseAccountTreeItem, type DatabaseTreeItem } from '../../vscode-cosmosdb.api';
 
 /**
  * This cache is used to speed up api calls from other extensions to the Cosmos DB extension

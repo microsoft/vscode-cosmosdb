@@ -3,10 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type AzExtTreeItem} from '@microsoft/vscode-azext-utils';
-import { GenericTreeItem } from '@microsoft/vscode-azext-utils';
+import { GenericTreeItem, type AzExtTreeItem } from '@microsoft/vscode-azext-utils';
 import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
-import  { type IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
+import { type IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 
 export class TableAccountTreeItem extends DocDBAccountTreeItemBase {

@@ -5,8 +5,8 @@
 
 import { postgresBaseFileName, postgresFileExtension } from '../constants';
 import * as vscodeUtil from '../utils/vscodeUtils';
-import  { type PostgresFunctionTreeItem } from './tree/PostgresFunctionTreeItem';
-import  { type PostgresStoredProcedureTreeItem } from './tree/PostgresStoredProcedureTreeItem';
+import { type PostgresFunctionTreeItem } from './tree/PostgresFunctionTreeItem';
+import { type PostgresStoredProcedureTreeItem } from './tree/PostgresStoredProcedureTreeItem';
 
 export async function showPostgresQuery(
     treeItem: PostgresFunctionTreeItem | PostgresStoredProcedureTreeItem,

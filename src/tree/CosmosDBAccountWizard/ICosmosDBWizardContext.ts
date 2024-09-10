@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
-import  { type ExecuteActivityContext } from '@microsoft/vscode-azext-utils';
-import  { type IAzureDBWizardContext } from '../IAzureDBWizardContext';
+import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
+import { type ExecuteActivityContext } from '@microsoft/vscode-azext-utils';
+import { type IAzureDBWizardContext } from '../IAzureDBWizardContext';
 
 export interface ICosmosDBWizardContext extends IAzureDBWizardContext, ExecuteActivityContext {
     /**

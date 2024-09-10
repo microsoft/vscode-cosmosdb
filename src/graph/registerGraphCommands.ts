@@ -3,16 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  {
-    type AzExtTreeItem,
-    type IActionContext,
-    type ITreeItemPickerContext} from '@microsoft/vscode-azext-utils';
 import {
     registerCommandWithTreeNodeUnwrapping,
+    type AzExtTreeItem,
+    type IActionContext,
+    type ITreeItemPickerContext,
 } from '@microsoft/vscode-azext-utils';
 import { cosmosGremlinFilter, doubleClickDebounceDelay } from '../constants';
 import { ext } from '../extensionVariables';
-import  { type GraphAccountTreeItem } from './tree/GraphAccountTreeItem';
+import { type GraphAccountTreeItem } from './tree/GraphAccountTreeItem';
 import { GraphCollectionTreeItem } from './tree/GraphCollectionTreeItem';
 import { GraphDatabaseTreeItem } from './tree/GraphDatabaseTreeItem';
 import { GraphTreeItem } from './tree/GraphTreeItem';

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type IActionContext, type ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
+import { type IActionContext, type ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
 import { MongoDocumentTreeItem } from '../tree/MongoDocumentTreeItem';
 import { pickMongo } from './pickMongo';
 

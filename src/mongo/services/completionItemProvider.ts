@@ -7,17 +7,16 @@
 
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
-import  { type ParseTree } from 'antlr4ts/tree/ParseTree';
+import { type ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
-import  { type Db } from 'mongodb';
-import  { type LanguageService as JsonLanguageService } from 'vscode-json-languageservice';
-import  { type CompletionItem} from 'vscode-languageserver';
-import { CompletionItemKind, Position, Range } from 'vscode-languageserver';
+import { type Db } from 'mongodb';
+import { type LanguageService as JsonLanguageService } from 'vscode-json-languageservice';
+import { CompletionItemKind, Position, Range, type CompletionItem } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { mongoLexer } from './../grammar/mongoLexer';
 import * as mongoParser from './../grammar/mongoParser';
 import { MongoVisitor } from './../grammar/visitors';
-import  { type SchemaService } from './schemaService';
+import { type SchemaService } from './schemaService';
 
 export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[]>> {
     private at: Position;

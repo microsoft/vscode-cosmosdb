@@ -3,18 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  {
-    type IActionContext,
-    type ICreateChildImplContext,
-    type TreeItemIconPath} from '@microsoft/vscode-azext-utils';
 import {
     appendExtensionUserAgent,
     AzExtParentTreeItem,
     DialogResponses,
     UserCancelledError,
+    type IActionContext,
+    type ICreateChildImplContext,
+    type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
 import * as fse from 'fs-extra';
-import  { type Collection, type CreateCollectionOptions, type Db } from 'mongodb';
+import { type Collection, type CreateCollectionOptions, type Db } from 'mongodb';
 import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
@@ -22,11 +21,11 @@ import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
 import { nonNullProp, nonNullValue } from '../../utils/nonNull';
 import { connectToMongoClient } from '../connectToMongoClient';
-import  { type MongoCommand } from '../MongoCommand';
+import { type MongoCommand } from '../MongoCommand';
 import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings';
 import { MongoShell } from '../MongoShell';
-import  { type IMongoTreeRoot } from './IMongoTreeRoot';
-import  { type MongoAccountTreeItem } from './MongoAccountTreeItem';
+import { type IMongoTreeRoot } from './IMongoTreeRoot';
+import { type MongoAccountTreeItem } from './MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 
 const mongoExecutableFileName = process.platform === 'win32' ? 'mongo.exe' : 'mongo';

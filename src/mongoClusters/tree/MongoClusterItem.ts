@@ -16,7 +16,7 @@ import { ext } from '../../extensionVariables';
 import { createMongoClustersClient } from '../../utils/azureClients';
 import { localize } from '../../utils/localize';
 import { regionToDisplayName } from '../../utils/regionToDisplayName';
-import { CredentialsStore } from '../CredentialsStore';
+import { CredentialCache } from '../CredentialCache';
 import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersClient';
 import { addAuthenticationDataToConnectionString } from '../utils/connectionStringHelpers';
 import { listMongoClusterNonAdminUsers } from '../utils/listMongoClusterUsers';
@@ -51,7 +51,7 @@ interface ResourceModelInUse extends Resource {
 
     // introduced new property to track the live session / database connection
     session?: {
-        clientId?: string;
+        credentialId?: string;
     };
 }
 
@@ -137,13 +137,12 @@ export class MongoClusterItem implements MongoClusterItemBase {
 
                 context.valuesToMask.push(connectionStringWithPassword);
 
-                // todo: hide the store from the user and move it to mongoClusters client
-                const clientId = CredentialsStore.setConnectionString(connectionStringWithPassword);
-                this.mongoCluster.session = { clientId };
+                const credentialId = CredentialCache.setConnectionString(connectionStringWithPassword);
+                this.mongoCluster.session = { credentialId: credentialId };
 
                 let mongoClustersClient: MongoClustersClient;
                 try {
-                    mongoClustersClient = await MongoClustersClient.getClient(clientId).catch((error: Error) => {
+                    mongoClustersClient = await MongoClustersClient.getClient(credentialId).catch((error: Error) => {
                         ext.outputChannel.appendLine('failed.');
                         ext.outputChannel.appendLine(`Error: ${(error as Error).message}`);
 

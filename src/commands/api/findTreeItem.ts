@@ -3,7 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, callWithTelemetryAndErrorHandling, IActionContext } from '@microsoft/vscode-azext-utils';
+import {
+    callWithTelemetryAndErrorHandling,
+    type AzExtTreeItem,
+    type IActionContext,
+} from '@microsoft/vscode-azext-utils';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
@@ -11,18 +15,23 @@ import { ext } from '../../extensionVariables';
 import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
-import { ParsedConnectionString } from '../../ParsedConnectionString';
-import { createPostgresConnectionString, parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
+import { type ParsedConnectionString } from '../../ParsedConnectionString';
+import {
+    createPostgresConnectionString,
+    parsePostgresConnectionString,
+} from '../../postgres/postgresConnectionStrings';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
 import { nonNullProp } from '../../utils/nonNull';
-import { DatabaseAccountTreeItem, DatabaseTreeItem, TreeItemQuery } from '../../vscode-cosmosdb.api';
+import { type DatabaseAccountTreeItem, type DatabaseTreeItem, type TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
-export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
+export async function findTreeItem(
+    query: TreeItemQuery,
+): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
     return await callWithTelemetryAndErrorHandling('api.findTreeItem', async (context: IActionContext) => {
         context.errorHandling.suppressDisplay = true;
         context.errorHandling.rethrow = true;
@@ -30,7 +39,13 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
         let parsedCS: ParsedConnectionString;
         if (query.postgresData) {
             const postgresData = query.postgresData;
-            const connectionString: string = createPostgresConnectionString(postgresData.hostName, postgresData.port, postgresData.username, postgresData.password, postgresData.databaseName);
+            const connectionString: string = createPostgresConnectionString(
+                postgresData.hostName,
+                postgresData.port,
+                postgresData.username,
+                postgresData.password,
+                postgresData.databaseName,
+            );
             parsedCS = parsePostgresConnectionString(connectionString);
         } else {
             const connectionString = nonNullProp(query, 'connectionString');
@@ -87,7 +102,12 @@ export async function findTreeItem(query: TreeItemQuery): Promise<DatabaseAccoun
     });
 }
 
-async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedConnectionString, context: IActionContext, maxTime: number): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
+async function searchDbAccounts(
+    dbAccounts: AzExtTreeItem[],
+    expected: ParsedConnectionString,
+    context: IActionContext,
+    maxTime: number,
+): Promise<DatabaseAccountTreeItem | DatabaseTreeItem | undefined> {
     try {
         for (const dbAccount of dbAccounts) {
             if (Date.now() > maxTime) {
@@ -109,12 +129,24 @@ async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedCon
                 if (expected.databaseName) {
                     const dbs = await dbAccount.getCachedChildren(context);
                     for (const db of dbs) {
-                        if ((db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) && expected.databaseName === db.databaseName) {
+                        if (
+                            (db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) &&
+                            expected.databaseName === db.databaseName
+                        ) {
                             return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
                         }
-                        if ((db instanceof PostgresDatabaseTreeItem && dbAccount instanceof PostgresServerTreeItem) && expected.databaseName === db.databaseName) {
+                        if (
+                            db instanceof PostgresDatabaseTreeItem &&
+                            dbAccount instanceof PostgresServerTreeItem &&
+                            expected.databaseName === db.databaseName
+                        ) {
                             const fullConnectionString = await dbAccount.getFullConnectionString();
-                            return new DatabaseTreeItemInternal(fullConnectionString, expected.databaseName, dbAccount, db);
+                            return new DatabaseTreeItemInternal(
+                                fullConnectionString,
+                                expected.databaseName,
+                                dbAccount,
+                                db,
+                            );
                         }
                     }
 
@@ -125,7 +157,6 @@ async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedCon
                     } else {
                         return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount);
                     }
-
                 }
 
                 if (dbAccount instanceof PostgresServerTreeItem) {
@@ -134,10 +165,9 @@ async function searchDbAccounts(dbAccounts: AzExtTreeItem[], expected: ParsedCon
                 } else {
                     return new DatabaseAccountTreeItemInternal(expected, dbAccount);
                 }
-
             }
         }
-    } catch (error) {
+    } catch {
         // Swallow all errors to avoid blocking the db account search
         // https://github.com/microsoft/vscode-cosmosdb/issues/966
     }

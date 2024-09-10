@@ -3,14 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, IActionContext, ITreeItemPickerContext, callWithTelemetryAndErrorHandling } from "@microsoft/vscode-azext-utils";
-import { Experience, MongoExperience } from "../../AzureDBExperiences";
-import { ext } from "../../extensionVariables";
-import { setConnectedNode } from "../setConnectedNode";
-import { MongoDatabaseTreeItem } from "../tree/MongoDatabaseTreeItem";
-import { pickMongo } from "./pickMongo";
+import {
+    callWithTelemetryAndErrorHandling,
+    type AzExtTreeItem,
+    type IActionContext,
+    type ITreeItemPickerContext,
+} from '@microsoft/vscode-azext-utils';
+import { MongoExperience, type Experience } from '../../AzureDBExperiences';
+import { ext } from '../../extensionVariables';
+import { setConnectedNode } from '../setConnectedNode';
+import { MongoDatabaseTreeItem } from '../tree/MongoDatabaseTreeItem';
+import { pickMongo } from './pickMongo';
 
-export const connectedMongoKey: string = "ms-azuretools.vscode-cosmosdb.connectedDB";
+export const connectedMongoKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
 
 export async function loadPersistedMongoDB(): Promise<void> {
     return callWithTelemetryAndErrorHandling('cosmosDB.loadPersistedMongoDB', async (context: IActionContext) => {
@@ -38,7 +43,10 @@ export async function loadPersistedMongoDB(): Promise<void> {
 export async function connectMongoDatabase(context: IActionContext, node?: MongoDatabaseTreeItem): Promise<void> {
     if (!node) {
         // Include defaultExperience in the context to prevent https://github.com/microsoft/vscode-cosmosdb/issues/1517
-        const experienceContext: ITreeItemPickerContext & { defaultExperience?: Experience } = { ...context, defaultExperience: MongoExperience };
+        const experienceContext: ITreeItemPickerContext & { defaultExperience?: Experience } = {
+            ...context,
+            defaultExperience: MongoExperience,
+        };
         node = await pickMongo<MongoDatabaseTreeItem>(experienceContext, MongoDatabaseTreeItem.contextValue);
     }
 

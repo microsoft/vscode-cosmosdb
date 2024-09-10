@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { apiUtils } from "@microsoft/vscode-azext-utils";
-import { AzureHostExtensionApi } from "@microsoft/vscode-azext-utils/hostapi";
-import { Extension, extensions } from "vscode";
-import { localize } from "./utils/localize";
+import { type apiUtils } from '@microsoft/vscode-azext-utils';
+import { type AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostapi';
+import { extensions, type Extension } from 'vscode';
+import { localize } from './utils/localize';
 
 export async function getApiExport<T>(extensionId: string): Promise<T | undefined> {
     const extension: Extension<T> | undefined = extensions.getExtension(extensionId);
@@ -22,7 +22,9 @@ export async function getApiExport<T>(extensionId: string): Promise<T | undefine
 }
 
 export async function getResourceGroupsApi(): Promise<AzureHostExtensionApi> {
-    const rgApiProvider = await getApiExport<apiUtils.AzureExtensionApiProvider>('ms-azuretools.vscode-azureresourcegroups');
+    const rgApiProvider = await getApiExport<apiUtils.AzureExtensionApiProvider>(
+        'ms-azuretools.vscode-azureresourcegroups',
+    );
     if (rgApiProvider) {
         return rgApiProvider.getApi<AzureHostExtensionApi>('^0.0.1');
     } else {

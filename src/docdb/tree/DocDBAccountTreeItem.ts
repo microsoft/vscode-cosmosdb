@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseDefinition, Resource } from '@azure/cosmos';
+import { type DatabaseDefinition, type Resource } from '@azure/cosmos';
 import { DocDBAccountTreeItemBase } from './DocDBAccountTreeItemBase';
 import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
@@ -13,7 +13,7 @@ import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 
 export class DocDBAccountTreeItem extends DocDBAccountTreeItemBase {
-    public static contextValue: string = "cosmosDBDocumentServer";
+    public static contextValue: string = 'cosmosDBDocumentServer';
     public contextValue: string = DocDBAccountTreeItem.contextValue;
 
     public initChild(resource: DatabaseDefinition & Resource): DocDBDatabaseTreeItem {

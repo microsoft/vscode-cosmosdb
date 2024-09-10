@@ -3,15 +3,26 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
-import { EJSON } from "bson";
-import { Collection, DeleteResult, Document as MongoDocument, ObjectId, UpdateResult } from 'mongodb';
+import {
+    AzExtTreeItem,
+    DialogResponses,
+    type IActionContext,
+    type TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
+import { EJSON } from 'bson';
+import {
+    type Collection,
+    type DeleteResult,
+    type Document as MongoDocument,
+    type ObjectId,
+    type UpdateResult,
+} from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { IEditableTreeItem } from '../../DatabasesFileSystem';
+import { type IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
-import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
+import { type MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 
 export interface IMongoDocument {
     _id: ObjectId;
@@ -22,7 +33,7 @@ export interface IMongoDocument {
 }
 
 export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTreeItem {
-    public static contextValue: string = "MongoDocument";
+    public static contextValue: string = 'MongoDocument';
     public readonly contextValue: string = MongoDocumentTreeItem.contextValue;
     public document: IMongoDocument;
     public readonly parent: MongoCollectionTreeItem;
@@ -61,7 +72,7 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
             throw new Error(`The "_id" field is required to update a document.`);
         }
         const filter: object = { _id: newDocument._id };
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-argument
         const result: MongoDocument | UpdateResult = await collection.replaceOne(filter, _.omit(newDocument, '_id'));
         if (result.modifiedCount !== 1) {
             throw new Error(`Failed to update document with _id '${newDocument._id}'.`);
@@ -81,7 +92,11 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete document '${this._label}'?`;
-        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteMongoDocument' }, DialogResponses.deleteResponse);
+        await context.ui.showWarningMessage(
+            message,
+            { modal: true, stepName: 'deleteMongoDocument' },
+            DialogResponses.deleteResponse,
+        );
         const deleteResult: DeleteResult = await this.parent.collection.deleteOne({ _id: this.document._id });
         if (deleteResult.deletedCount !== 1) {
             throw new Error(`Failed to delete document with _id '${this.document._id}'.`);

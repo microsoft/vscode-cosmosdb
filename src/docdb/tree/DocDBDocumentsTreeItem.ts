@@ -3,11 +3,22 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Container, CosmosClient, FeedOptions, ItemDefinition, ItemResponse, QueryIterator } from '@azure/cosmos';
-import { IActionContext, ICreateChildImplContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import {
+    type Container,
+    type CosmosClient,
+    type FeedOptions,
+    type ItemDefinition,
+    type ItemResponse,
+    type QueryIterator,
+} from '@azure/cosmos';
+import {
+    type IActionContext,
+    type ICreateChildImplContext,
+    type TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { nonNullProp } from '../../utils/nonNull';
-import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import { type DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
@@ -15,9 +26,9 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
  * This class provides logic for DocumentDB collections
  */
 export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
-    public static contextValue: string = "cosmosDBDocumentsGroup";
+    public static contextValue: string = 'cosmosDBDocumentsGroup';
     public readonly contextValue: string = DocDBDocumentsTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Documents";
+    public readonly childTypeLabel: string = 'Documents';
     public readonly parent: DocDBCollectionTreeItem;
     public suppressMaskLabel = true;
 
@@ -31,11 +42,11 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public get id(): string {
-        return "$Documents";
+        return '$Documents';
     }
 
     public get label(): string {
-        return "Documents";
+        return 'Documents';
     }
 
     public get link(): string {
@@ -51,11 +62,14 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<DocDBDocumentTreeItem> {
-        let docID = await context.ui.showInputBox({ prompt: "Enter a document ID or leave blank for a generated ID", stepName: 'createDocument' });
+        let docID = await context.ui.showInputBox({
+            prompt: 'Enter a document ID or leave blank for a generated ID',
+            stepName: 'createDocument',
+        });
 
         docID = docID.trim();
         let body: ItemDefinition = { id: docID };
-        body = (await this.promptForPartitionKey(context, body));
+        body = await this.promptForPartitionKey(context, body);
         context.showCreatingTreeItem(docID);
         const item: ItemDefinition = await this.createDocument(body);
 
@@ -63,11 +77,13 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public async createDocument(body: ItemDefinition): Promise<ItemDefinition> {
-        const item: ItemResponse<ItemDefinition> = await this.getContainerClient(this.root.getCosmosClient()).items.create(body);
+        const item: ItemResponse<ItemDefinition> = await this.getContainerClient(
+            this.root.getCosmosClient(),
+        ).items.create(body);
         return nonNullProp(item, 'resource');
     }
 
-    public documentHasPartitionKey(doc: Object): boolean {
+    public documentHasPartitionKey(doc: object): boolean {
         let interim = doc;
         let partitionKey: string | undefined = this.parent.partitionKey && this.parent.partitionKey.paths[0];
         if (!partitionKey) {
@@ -95,7 +111,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
         if (partitionKey) {
             const partitionKeyValue: string = await context.ui.showInputBox({
                 prompt: `Enter a value for the partition key ("${partitionKey}")`,
-                stepName: 'valueforParititionKey'
+                stepName: 'valueforParititionKey',
             });
             // Unlike delete/replace, createDocument does not accept a partition key value via an options parameter.
             // We need to present the partitionKey value as part of the document contents
@@ -109,14 +125,14 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     // Create a nested Object given the partition key path and value
-    private createPartitionPathObject(partitionKey: string, partitionKeyValue: string): Object {
+    private createPartitionPathObject(partitionKey: string, partitionKeyValue: string): object {
         //remove leading slash
         if (partitionKey[0] === '/') {
             partitionKey = partitionKey.slice(1);
         }
         const keyPath = partitionKey.split('/');
-        const PartitionPath: Object = {};
-        let interim: Object = PartitionPath;
+        const PartitionPath: object = {};
+        let interim: object = PartitionPath;
         let i: number;
         for (i = 0; i < keyPath.length - 1; i++) {
             interim[keyPath[i]] = {};

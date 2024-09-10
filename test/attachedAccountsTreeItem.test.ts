@@ -16,9 +16,11 @@ suite(`attachedAccountsTreeItem`, () => {
         // Connection strings follow the following format (https://docs.mongodb.com/manual/reference/connection-string/):
         // mongodb[+srv]://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
 
-        test('allows "mongodb://"', () => assertConnectionValid(`mongodb://your-mongo.documents.azure.com:10255`, undefined));
+        test('allows "mongodb://"', () =>
+            assertConnectionValid(`mongodb://your-mongo.documents.azure.com:10255`, undefined));
 
-        test('allows "mongodb+srv://"', () => assertConnectionValid(`mongodb+srv://usr:pwd@mongodb.net:27017`, undefined));
+        test('allows "mongodb+srv://"', () =>
+            assertConnectionValid(`mongodb+srv://usr:pwd@mongodb.net:27017`, undefined));
 
         test('rejects bad prefix', () => assertConnectionValid(`http://localhost/`, MONGO_CONNECTION_EXPECTED));
 

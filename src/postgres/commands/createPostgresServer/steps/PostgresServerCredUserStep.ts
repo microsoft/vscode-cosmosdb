@@ -6,14 +6,16 @@
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
-import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
+import { type IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
 export class PostgresServerCredUserStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
     public async prompt(context: IPostgresServerWizardContext): Promise<void> {
-        context.shortUserName = (await context.ui.showInputBox({
-            placeHolder: localize('usernamePlaceholder', 'Administrator Username'),
-            validateInput: validateUser,
-        })).trim();
+        context.shortUserName = (
+            await context.ui.showInputBox({
+                placeHolder: localize('usernamePlaceholder', 'Administrator Username'),
+                validateInput: validateUser,
+            })
+        ).trim();
         const usernameSuffix: string = `@${nonNullProp(context, 'newServerName')}`;
         context.longUserName = context.shortUserName + usernameSuffix;
     }
@@ -40,8 +42,12 @@ async function validateUser(username: string): Promise<string | undefined> {
     } else if (username.toLowerCase().startsWith('pg_')) {
         return localize('usernameStartWithCheck', 'Admin username cannot start with "pg_".');
     } else if (restricted.includes(username.toLowerCase())) {
-        const restrictedString = restricted.map(d => `"${d}"`).join(', ');
-        return localize('usernameRestrictedCheck', 'Admin username cannot be any of the following: {0}.', restrictedString);
+        const restrictedString = restricted.map((d) => `"${d}"`).join(', ');
+        return localize(
+            'usernameRestrictedCheck',
+            'Admin username cannot be any of the following: {0}.',
+            restrictedString,
+        );
     } else {
         return undefined;
     }

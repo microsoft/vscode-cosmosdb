@@ -3,11 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { nonNullValue } from '../utils/nonNull';
-import { IGremlinEndpoint } from '../vscode-cosmosdbgraph.api';
+import { type IGremlinEndpoint } from '../vscode-cosmosdbgraph.api';
 
-export async function tryGetGremlinEndpointFromAzure(client: CosmosDBManagementClient, resourceGroup: string, account: string): Promise<IGremlinEndpoint | undefined> {
+export async function tryGetGremlinEndpointFromAzure(
+    client: CosmosDBManagementClient,
+    resourceGroup: string,
+    account: string,
+): Promise<IGremlinEndpoint | undefined> {
     // Only 'bodyOfText' property of 'response' contains the 'gremlinEndpoint' property in the @azure/arm-cosmosdb@9 sdk
     const response = await client.databaseAccounts.get(resourceGroup, account);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
@@ -39,9 +43,12 @@ export function getPossibleGremlinEndpoints(documentEndpoint: string): IGremlinE
  * @param url An account URL such as 'https://<graphname>.documents.azure.com:443/'
  */
 function parseEndpointUrl(url: string): IGremlinEndpoint {
-    const [, protocol, host, , portString] = nonNullValue(url.match(/^([^:]+):\/\/([^:]+)(:([0-9]+))?\/?$/), 'urlMatch');
-    console.assert(!!protocol && !!host, "Unexpected endpoint format");
-    const port = parseInt(portString || "443", 10);
-    console.assert(port > 0, "Unexpected port");
-    return { host, port, ssl: protocol.toLowerCase() === "https" };
+    const [, protocol, host, , portString] = nonNullValue(
+        url.match(/^([^:]+):\/\/([^:]+)(:([0-9]+))?\/?$/),
+        'urlMatch',
+    );
+    console.assert(!!protocol && !!host, 'Unexpected endpoint format');
+    const port = parseInt(portString || '443', 10);
+    console.assert(port > 0, 'Unexpected port');
+    return { host, port, ssl: protocol.toLowerCase() === 'https' };
 }

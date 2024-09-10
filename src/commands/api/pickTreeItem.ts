@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, IActionContext } from '@microsoft/vscode-azext-utils';
-import { PickAppResourceOptions } from '@microsoft/vscode-azext-utils/hostapi';
+import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type PickAppResourceOptions } from '@microsoft/vscode-azext-utils/hostapi';
 import { databaseAccountType } from '../../constants';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
@@ -15,16 +15,26 @@ import { GraphDatabaseTreeItem } from '../../graph/tree/GraphDatabaseTreeItem';
 import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
-import { ParsedConnectionString } from '../../ParsedConnectionString';
+import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { localize } from '../../utils/localize';
-import { AzureDatabasesApiType, DatabaseAccountTreeItem, DatabaseTreeItem, PickTreeItemOptions } from '../../vscode-cosmosdb.api';
+import {
+    type AzureDatabasesApiType,
+    type DatabaseAccountTreeItem,
+    type DatabaseTreeItem,
+    type PickTreeItemOptions,
+} from '../../vscode-cosmosdb.api';
 import { cacheTreeItem } from './apiCache';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
-const databaseContextValues = [MongoDatabaseTreeItem.contextValue, DocDBDatabaseTreeItem.contextValue, GraphDatabaseTreeItem.contextValue, PostgresDatabaseTreeItem.contextValue];
+const databaseContextValues = [
+    MongoDatabaseTreeItem.contextValue,
+    DocDBDatabaseTreeItem.contextValue,
+    GraphDatabaseTreeItem.contextValue,
+    PostgresDatabaseTreeItem.contextValue,
+];
 function getDatabaseContextValue(apiType: AzureDatabasesApiType): string {
     switch (apiType) {
         case 'Mongo':
@@ -40,8 +50,9 @@ function getDatabaseContextValue(apiType: AzureDatabasesApiType): string {
     }
 }
 
-
-export async function pickTreeItem(pickTreeOptions: PickTreeItemOptions): Promise<DatabaseTreeItem | DatabaseAccountTreeItem | undefined> {
+export async function pickTreeItem(
+    pickTreeOptions: PickTreeItemOptions,
+): Promise<DatabaseTreeItem | DatabaseAccountTreeItem | undefined> {
     return await callWithTelemetryAndErrorHandling('api.pickTreeItem', async (context: IActionContext) => {
         context.errorHandling.suppressDisplay = true;
         context.errorHandling.rethrow = true;
@@ -50,9 +61,9 @@ export async function pickTreeItem(pickTreeOptions: PickTreeItemOptions): Promis
         switch (pickTreeOptions.resourceType) {
             case 'Database':
                 options.filter = { type: databaseAccountType };
-                options.expectedChildContextValue = pickTreeOptions.apiType ?
-                    pickTreeOptions.apiType.map(getDatabaseContextValue) :
-                    databaseContextValues;
+                options.expectedChildContextValue = pickTreeOptions.apiType
+                    ? pickTreeOptions.apiType.map(getDatabaseContextValue)
+                    : databaseContextValues;
                 break;
             case 'DatabaseAccount':
                 options.filter = { type: databaseAccountType };
@@ -91,9 +102,9 @@ export async function pickTreeItem(pickTreeOptions: PickTreeItemOptions): Promis
             throw new RangeError(localize('invalidItem', 'Invalid item "{0}".', pickedItem.constructor.name));
         }
 
-        const result = databaseNode ?
-            new DatabaseTreeItemInternal(parsedCS, databaseNode.databaseName, accountNode, databaseNode) :
-            new DatabaseAccountTreeItemInternal(parsedCS, accountNode);
+        const result = databaseNode
+            ? new DatabaseTreeItemInternal(parsedCS, databaseNode.databaseName, accountNode, databaseNode)
+            : new DatabaseAccountTreeItemInternal(parsedCS, accountNode);
         cacheTreeItem(parsedCS, result);
         return result;
     });

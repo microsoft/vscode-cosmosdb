@@ -3,25 +3,32 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, IActionContext, IErrorHandlerContext, registerCommandWithTreeNodeUnwrapping, registerErrorHandler, registerEvent } from "@microsoft/vscode-azext-utils";
+import {
+    callWithTelemetryAndErrorHandling,
+    registerCommandWithTreeNodeUnwrapping,
+    registerErrorHandler,
+    registerEvent,
+    type IActionContext,
+    type IErrorHandlerContext,
+} from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { ext } from "../extensionVariables";
-import { connectMongoDatabase, loadPersistedMongoDB } from "./commands/connectMongoDatabase";
-import { createMongoCollection } from "./commands/createMongoCollection";
-import { createMongoDatabase } from "./commands/createMongoDatabase";
-import { createMongoDocument } from "./commands/createMongoDocument";
-import { createMongoSrapbook } from "./commands/createMongoScrapbook";
-import { deleteMongoCollection } from "./commands/deleteMongoCollection";
-import { deleteMongoDB } from "./commands/deleteMongoDatabase";
-import { deleteMongoDocument } from "./commands/deleteMongoDocument";
-import { executeAllMongoCommand } from "./commands/executeAllMongoCommand";
-import { executeMongoCommand } from "./commands/executeMongoCommand";
-import { launchMongoShell } from "./commands/launchMongoShell";
-import { openMongoCollection } from "./commands/openMongoCollection";
+import { ext } from '../extensionVariables';
+import { connectMongoDatabase, loadPersistedMongoDB } from './commands/connectMongoDatabase';
+import { createMongoCollection } from './commands/createMongoCollection';
+import { createMongoDatabase } from './commands/createMongoDatabase';
+import { createMongoDocument } from './commands/createMongoDocument';
+import { createMongoSrapbook } from './commands/createMongoScrapbook';
+import { deleteMongoCollection } from './commands/deleteMongoCollection';
+import { deleteMongoDB } from './commands/deleteMongoDatabase';
+import { deleteMongoDocument } from './commands/deleteMongoDocument';
+import { executeAllMongoCommand } from './commands/executeAllMongoCommand';
+import { executeMongoCommand } from './commands/executeMongoCommand';
+import { launchMongoShell } from './commands/launchMongoShell';
+import { openMongoCollection } from './commands/openMongoCollection';
 import { MongoConnectError } from './connectToMongoClient';
-import { MongoDBLanguageClient } from "./languageClient";
-import { getAllErrorsFromTextDocument } from "./MongoScrapbook";
-import { MongoCodeLensProvider } from "./services/MongoCodeLensProvider";
+import { MongoDBLanguageClient } from './languageClient';
+import { getAllErrorsFromTextDocument } from './MongoScrapbook';
+import { MongoCodeLensProvider } from './services/MongoCodeLensProvider';
 
 let diagnosticsCollection: vscode.DiagnosticCollection;
 const mongoLanguageId: string = 'mongo';
@@ -30,7 +37,9 @@ export function registerMongoCommands(): void {
     ext.mongoLanguageClient = new MongoDBLanguageClient();
 
     ext.mongoCodeLensProvider = new MongoCodeLensProvider();
-    ext.context.subscriptions.push(vscode.languages.registerCodeLensProvider(mongoLanguageId, ext.mongoCodeLensProvider));
+    ext.context.subscriptions.push(
+        vscode.languages.registerCodeLensProvider(mongoLanguageId, ext.mongoCodeLensProvider),
+    );
 
     diagnosticsCollection = vscode.languages.createDiagnosticCollection('cosmosDB.mongo');
     ext.context.subscriptions.push(diagnosticsCollection);
@@ -74,14 +83,16 @@ export function registerMongoCommands(): void {
 
 function setUpErrorReporting(): void {
     // Update errors immediately in case a scrapbook is already open
-    void callWithTelemetryAndErrorHandling(
-        "initialUpdateErrorsInActiveDocument",
-        async (context: IActionContext) => {
-            updateErrorsInScrapbook(context, vscode.window.activeTextEditor?.document);
-        });
+    void callWithTelemetryAndErrorHandling('initialUpdateErrorsInActiveDocument', async (context: IActionContext) => {
+        updateErrorsInScrapbook(context, vscode.window.activeTextEditor?.document);
+    });
 
     // Update errors when document opened/changed
-    registerEvent('vscode.workspace.onDidOpenTextDocument', vscode.workspace.onDidOpenTextDocument, updateErrorsInScrapbook);
+    registerEvent(
+        'vscode.workspace.onDidOpenTextDocument',
+        vscode.workspace.onDidOpenTextDocument,
+        updateErrorsInScrapbook,
+    );
     registerEvent(
         'vscode.workspace.onDidChangeTextDocument',
         vscode.workspace.onDidChangeTextDocument,
@@ -90,7 +101,8 @@ function setUpErrorReporting(): void {
             context.telemetry.suppressIfSuccessful = true;
 
             updateErrorsInScrapbook(context, event.document);
-        });
+        },
+    );
     registerEvent(
         'vscode.workspace.onDidCloseTextDocument',
         vscode.workspace.onDidCloseTextDocument,
@@ -101,7 +113,8 @@ function setUpErrorReporting(): void {
             } else {
                 context.telemetry.suppressIfSuccessful = true;
             }
-        });
+        },
+    );
 
     registerErrorHandler((context: IErrorHandlerContext) => {
         if (context.error instanceof MongoConnectError) {

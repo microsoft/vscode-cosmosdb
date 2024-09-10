@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { appendExtensionUserAgent, IParsedError, parseError } from "@microsoft/vscode-azext-utils";
-import { MongoClient } from "mongodb";
-import { ParsedConnectionString } from "../ParsedConnectionString";
-import { nonNullValue } from "../utils/nonNull";
-import { connectToMongoClient } from "./connectToMongoClient";
+import { appendExtensionUserAgent, parseError, type IParsedError } from '@microsoft/vscode-azext-utils';
+import { type MongoClient } from 'mongodb';
+import { ParsedConnectionString } from '../ParsedConnectionString';
+import { nonNullValue } from '../utils/nonNull';
+import { connectToMongoClient } from './connectToMongoClient';
 
 // Connection strings follow the following format (https://docs.mongodb.com/manual/reference/connection-string/):
 //   mongodb[+srv]://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
@@ -20,15 +20,18 @@ import { connectToMongoClient } from "./connectToMongoClient";
 //   mongodb[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]]
 //   [database]
 
-const parsePrefix = '([a-zA-Z]+:\/\/[^\/]*)';
-const parseDatabaseName = '\/?([^/?]+)?';
+const parsePrefix = '([a-zA-Z]+://[^/]*)';
+const parseDatabaseName = '/?([^/?]+)?';
 const mongoConnectionStringRegExp = new RegExp(parsePrefix + parseDatabaseName);
 
 export function getDatabaseNameFromConnectionString(connectionString: string): string | undefined {
     try {
-        const [, , databaseName] = nonNullValue(connectionString.match(mongoConnectionStringRegExp), 'databaseNameMatch');
+        const [, , databaseName] = nonNullValue(
+            connectionString.match(mongoConnectionStringRegExp),
+            'databaseNameMatch',
+        );
         return databaseName;
-    } catch (error) {
+    } catch {
         // Shouldn't happen, but ignore if does
     }
 
@@ -38,14 +41,13 @@ export function getDatabaseNameFromConnectionString(connectionString: string): s
 export function addDatabaseToAccountConnectionString(connectionString: string, databaseName: string): string {
     try {
         return connectionString.replace(mongoConnectionStringRegExp, `$1\/${encodeURIComponent(databaseName)}`);
-    } catch (error) {
+    } catch {
         // Shouldn't happen, but ignore if does. Original connection string could be in a format we don't expect, but might already have the db name or might still work without it
         return connectionString;
     }
 }
 
 export async function parseMongoConnectionString(connectionString: string): Promise<ParsedMongoConnectionString> {
-
     let mongoClient: MongoClient;
     try {
         mongoClient = await connectToMongoClient(connectionString, appendExtensionUserAgent());
@@ -62,7 +64,12 @@ export async function parseMongoConnectionString(connectionString: string): Prom
 
     const { host, port } = mongoClient.options.hosts[0];
 
-    return new ParsedMongoConnectionString(connectionString, host as string, (port as number).toString(), getDatabaseNameFromConnectionString(connectionString));
+    return new ParsedMongoConnectionString(
+        connectionString,
+        host as string,
+        (port as number).toString(),
+        getDatabaseNameFromConnectionString(connectionString),
+    );
 }
 
 export class ParsedMongoConnectionString extends ParsedConnectionString {

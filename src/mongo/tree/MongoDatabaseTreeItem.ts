@@ -3,9 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { appendExtensionUserAgent, AzExtParentTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath, UserCancelledError } from '@microsoft/vscode-azext-utils';
+import {
+    appendExtensionUserAgent,
+    AzExtParentTreeItem,
+    DialogResponses,
+    UserCancelledError,
+    type IActionContext,
+    type ICreateChildImplContext,
+    type TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
 import * as fse from 'fs-extra';
-import { Collection, CreateCollectionOptions, Db } from 'mongodb';
+import { type Collection, type CreateCollectionOptions, type Db } from 'mongodb';
 import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
@@ -13,20 +21,20 @@ import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
 import { nonNullProp, nonNullValue } from '../../utils/nonNull';
 import { connectToMongoClient } from '../connectToMongoClient';
-import { MongoCommand } from '../MongoCommand';
+import { type MongoCommand } from '../MongoCommand';
 import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings';
 import { MongoShell } from '../MongoShell';
-import { IMongoTreeRoot } from './IMongoTreeRoot';
-import { MongoAccountTreeItem } from './MongoAccountTreeItem';
+import { type IMongoTreeRoot } from './IMongoTreeRoot';
+import { type MongoAccountTreeItem } from './MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 
 const mongoExecutableFileName = process.platform === 'win32' ? 'mongo.exe' : 'mongo';
-const executingInShellMsg = "Executing command in Mongo shell";
+const executingInShellMsg = 'Executing command in Mongo shell';
 
 export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
-    public static contextValue: string = "mongoDb";
+    public static contextValue: string = 'mongoDb';
     public readonly contextValue: string = MongoDatabaseTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Collection";
+    public readonly childTypeLabel: string = 'Collection';
     public readonly connectionString: string;
     public readonly databaseName: string;
     public readonly parent: MongoAccountTreeItem;
@@ -67,15 +75,15 @@ export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<MongoCollectionTreeItem[]> {
         const db: Db = await this.connectToDb();
         const collections: Collection[] = await db.collections();
-        return collections.map(collection => new MongoCollectionTreeItem(this, collection));
+        return collections.map((collection) => new MongoCollectionTreeItem(this, collection));
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<MongoCollectionTreeItem> {
         const collectionName = await context.ui.showInputBox({
-            placeHolder: "Collection Name",
-            prompt: "Enter the name of the collection",
+            placeHolder: 'Collection Name',
+            prompt: 'Enter the name of the collection',
             stepName: 'createMongoCollection',
-            validateInput: validateMongoCollectionName
+            validateInput: validateMongoCollectionName,
         });
 
         context.showCreatingTreeItem(collectionName);
@@ -84,7 +92,11 @@ export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete database '${this.label}'?`;
-        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteMongoDatabase' }, DialogResponses.deleteResponse);
+        await context.ui.showWarningMessage(
+            message,
+            { modal: true, stepName: 'deleteMongoDatabase' },
+            DialogResponses.deleteResponse,
+        );
         const db = await this.connectToDb();
         await db.dropDatabase();
     }
@@ -106,18 +118,26 @@ export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
                 }
             }
             return withProgress(this.executeCommandInShell(command, context), executingInShellMsg);
-
         }
 
         if (command.name === 'createCollection') {
             // arguments  are all strings so DbCollectionOptions is represented as a JSON string which is why we pass argumentObjects instead
-            return withProgress(this.createCollection(stripQuotes(nonNullProp(command, 'arguments')[0]), nonNullProp(command, 'argumentObjects')[1]).then(() => JSON.stringify({ Created: 'Ok' })), 'Creating collection');
+            return withProgress(
+                this.createCollection(
+                    stripQuotes(nonNullProp(command, 'arguments')[0]),
+                    nonNullProp(command, 'argumentObjects')[1],
+                ).then(() => JSON.stringify({ Created: 'Ok' })),
+                'Creating collection',
+            );
         } else {
             return withProgress(this.executeCommandInShell(command, context), executingInShellMsg);
         }
     }
 
-    public async createCollection(collectionName: string, options?: CreateCollectionOptions): Promise<MongoCollectionTreeItem> {
+    public async createCollection(
+        collectionName: string,
+        options?: CreateCollectionOptions,
+    ): Promise<MongoCollectionTreeItem> {
         const db: Db = await this.connectToDb();
         const newCollection: Collection = await db.createCollection(collectionName, options);
         // db.createCollection() doesn't create empty collections for some reason
@@ -129,7 +149,7 @@ export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
     }
 
     private async executeCommandInShell(command: MongoCommand, context: IActionContext): Promise<string> {
-        context.telemetry.properties.executeInShell = "true";
+        context.telemetry.properties.executeInShell = 'true';
 
         if (this.root.isEmulator) {
             // Ensure the emulator is running before creating the shell. Shell errors are generic and don't include emulator specific info
@@ -160,11 +180,22 @@ export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
         }
         this._cachedShellPathOrCmd = shellPath;
 
-        const timeout = 1000 * nonNullValue(config.get<number>(ext.settingsKeys.mongoShellTimeout), 'mongoShellTimeout');
-        return MongoShell.create(shellPath, shellArgs, this.connectionString, this.root.isEmulator, ext.outputChannel, timeout);
+        const timeout =
+            1000 * nonNullValue(config.get<number>(ext.settingsKeys.mongoShellTimeout), 'mongoShellTimeout');
+        return MongoShell.create(
+            shellPath,
+            shellArgs,
+            this.connectionString,
+            this.root.isEmulator,
+            ext.outputChannel,
+            timeout,
+        );
     }
 
-    private async _determineShellPathOrCmd(context: IActionContext, shellPathSetting: string | undefined): Promise<string> {
+    private async _determineShellPathOrCmd(
+        context: IActionContext,
+        shellPathSetting: string | undefined,
+    ): Promise<string> {
         if (!shellPathSetting) {
             // User hasn't specified the path
             if (await cpUtils.commandSucceeds('mongo', '--version')) {
@@ -174,8 +205,14 @@ export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
                 // If all else fails, prompt the user for the mongo path
                 const openFile: vscode.MessageItem = { title: `Browse to ${mongoExecutableFileName}` };
                 const browse: vscode.MessageItem = { title: 'Open installation page' };
-                const noMongoError: string = 'This functionality requires the Mongo DB shell, but we could not find it in the path or using the mongo.shell.path setting.';
-                const response = await context.ui.showWarningMessage(noMongoError, { stepName: 'promptForMongoPath' }, browse, openFile);
+                const noMongoError: string =
+                    'This functionality requires the Mongo DB shell, but we could not find it in the path or using the mongo.shell.path setting.';
+                const response = await context.ui.showWarningMessage(
+                    noMongoError,
+                    { stepName: 'promptForMongoPath' },
+                    browse,
+                    openFile,
+                );
                 if (response === openFile) {
                     // eslint-disable-next-line no-constant-condition
                     while (true) {
@@ -193,17 +230,23 @@ export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
                                 `Expected a file named "${mongoExecutableFileName}, but the selected filename is "${baseName}"`,
                                 { stepName: 'confirmMongoExeFile' },
                                 useAnyway,
-                                tryAgain);
+                                tryAgain,
+                            );
                             if (response2 === tryAgain) {
                                 continue;
                             }
                         }
 
-                        await vscode.workspace.getConfiguration().update(ext.settingsKeys.mongoShellPath, fsPath, vscode.ConfigurationTarget.Global);
+                        await vscode.workspace
+                            .getConfiguration()
+                            .update(ext.settingsKeys.mongoShellPath, fsPath, vscode.ConfigurationTarget.Global);
                         return fsPath;
                     }
                 } else if (response === browse) {
-                    void vscode.commands.executeCommand('vscode.open', vscode.Uri.parse('https://docs.mongodb.com/manual/installation/'));
+                    void vscode.commands.executeCommand(
+                        'vscode.open',
+                        vscode.Uri.parse('https://docs.mongodb.com/manual/installation/'),
+                    );
                     // default down to cancel error because MongoShell.create errors out if undefined is passed as the shellPath
                 }
 
@@ -226,32 +269,36 @@ export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
 export function validateMongoCollectionName(collectionName: string): string | undefined | null {
     // https://docs.mongodb.com/manual/reference/limits/#Restriction-on-Collection-Names
     if (!collectionName) {
-        return "Collection name cannot be empty";
+        return 'Collection name cannot be empty';
     }
-    const systemPrefix = "system.";
+    const systemPrefix = 'system.';
     if (collectionName.startsWith(systemPrefix)) {
         return `"${systemPrefix}" prefix is reserved for internal use`;
     }
     if (/[$]/.test(collectionName)) {
-        return "Collection name cannot contain $";
+        return 'Collection name cannot contain $';
     }
     return undefined;
 }
 
-function withProgress<T>(promise: Thenable<T>, title: string, location: vscode.ProgressLocation = vscode.ProgressLocation.Window): Thenable<T> {
+function withProgress<T>(
+    promise: Thenable<T>,
+    title: string,
+    location: vscode.ProgressLocation = vscode.ProgressLocation.Window,
+): Thenable<T> {
     return vscode.window.withProgress<T>(
         {
             location: location,
-            title: title
+            title: title,
         },
         (_progress) => {
             return promise;
-        });
+        },
+    );
 }
 
 export function stripQuotes(term: string): string {
-    if ((term.startsWith('\'') && term.endsWith('\''))
-        || (term.startsWith('"') && term.endsWith('"'))) {
+    if ((term.startsWith("'") && term.endsWith("'")) || (term.startsWith('"') && term.endsWith('"'))) {
         return term.substring(1, term.length - 1);
     }
     return term;

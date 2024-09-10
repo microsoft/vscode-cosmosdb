@@ -3,16 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext, ITreeItemPickerContext } from "@microsoft/vscode-azext-utils";
-import { DocDBTriggerTreeItem } from "../tree/DocDBTriggerTreeItem";
-import { pickDocDBAccount } from "./pickDocDBAccount";
+import { type IActionContext, type ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
+import { DocDBTriggerTreeItem } from '../tree/DocDBTriggerTreeItem';
+import { pickDocDBAccount } from './pickDocDBAccount';
 
 export async function deleteDocDBTrigger(context: IActionContext, node?: DocDBTriggerTreeItem): Promise<void> {
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
         node = await pickDocDBAccount<DocDBTriggerTreeItem>(context, DocDBTriggerTreeItem.contextValue);
-
     }
     await node.deleteTreeItem(context);
 }

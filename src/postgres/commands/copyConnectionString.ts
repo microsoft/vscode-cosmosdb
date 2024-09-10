@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext } from '@microsoft/vscode-azext-utils';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
@@ -16,7 +16,7 @@ export async function copyConnectionString(context: IActionContext, node: Postgr
     if (!node) {
         node = await ext.rgApi.pickAppResource<PostgresDatabaseTreeItem>(context, {
             filter: [postgresSingleFilter, postgresFlexibleFilter],
-            expectedChildContextValue: PostgresDatabaseTreeItem.contextValue
+            expectedChildContextValue: PostgresDatabaseTreeItem.contextValue,
         });
     }
 
@@ -25,12 +25,21 @@ export async function copyConnectionString(context: IActionContext, node: Postgr
     let connectionString: string;
     if (node.parent.azureName) {
         const parsedCS = await node.parent.getFullConnectionString();
-        connectionString = copyPostgresConnectionString(parsedCS.hostName, parsedCS.port, parsedCS.username, parsedCS.password, node.databaseName);
+        connectionString = copyPostgresConnectionString(
+            parsedCS.hostName,
+            parsedCS.port,
+            parsedCS.username,
+            parsedCS.password,
+            node.databaseName,
+        );
     } else {
         connectionString = addDatabaseToConnectionString(parsedConnectionString.connectionString, node.databaseName);
     }
 
     await vscode.env.clipboard.writeText(connectionString);
-    const message = localize('copiedPostgresConnectStringMsg', 'The connection string has been copied to the clipboard');
+    const message = localize(
+        'copiedPostgresConnectStringMsg',
+        'The connection string has been copied to the clipboard',
+    );
     void vscode.window.showInformationMessage(message);
 }

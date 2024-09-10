@@ -3,20 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, IActionContext } from "@microsoft/vscode-azext-utils";
+import { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { Uri, window } from 'vscode';
 import { connectedPostgresKey, postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
-import { ext } from "../../extensionVariables";
-import { PostgresDatabaseTreeItem } from "../tree/PostgresDatabaseTreeItem";
+import { ext } from '../../extensionVariables';
+import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
 
-export async function connectPostgresDatabase(context: IActionContext, treeItem?: Uri | PostgresDatabaseTreeItem): Promise<void> {
+export async function connectPostgresDatabase(
+    context: IActionContext,
+    treeItem?: Uri | PostgresDatabaseTreeItem,
+): Promise<void> {
     if (!treeItem || treeItem instanceof Uri) {
         if (treeItem) {
             void window.showTextDocument(treeItem);
         }
         treeItem = await ext.rgApi.pickAppResource<PostgresDatabaseTreeItem>(context, {
             filter: [postgresSingleFilter, postgresFlexibleFilter],
-            expectedChildContextValue: PostgresDatabaseTreeItem.contextValue
+            expectedChildContextValue: PostgresDatabaseTreeItem.contextValue,
         });
     }
 
@@ -31,7 +34,10 @@ export async function connectPostgresDatabase(context: IActionContext, treeItem?
 
     if (oldTreeItemId) {
         // We have to use findTreeItem to get the instance of the old tree item that's being displayed in the ext.rgApi.appResourceTree. Our specific instance might have been out-of-date
-        const oldTreeItem: AzExtTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(oldTreeItemId, context);
+        const oldTreeItem: AzExtTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(
+            oldTreeItemId,
+            context,
+        );
         if (oldTreeItem) {
             await oldTreeItem.refresh(context);
         }

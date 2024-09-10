@@ -3,14 +3,21 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Container, CosmosClient, FeedOptions, QueryIterator, Resource, StoredProcedureDefinition } from '@azure/cosmos';
-import { AzExtTreeItem, ICreateChildImplContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
-import * as vscode from "vscode";
+import {
+    type Container,
+    type CosmosClient,
+    type FeedOptions,
+    type QueryIterator,
+    type Resource,
+    type StoredProcedureDefinition,
+} from '@azure/cosmos';
+import { type AzExtTreeItem, type ICreateChildImplContext, type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { defaultStoredProcedure } from '../../constants';
-import { GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
+import { type GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
+import { type DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
@@ -18,9 +25,9 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
  * This class represents the DocumentDB "Stored Procedures" node in the tree
  */
 export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProcedureDefinition> {
-    public static contextValue: string = "cosmosDBStoredProceduresGroup";
+    public static contextValue: string = 'cosmosDBStoredProceduresGroup';
     public readonly contextValue: string = DocDBStoredProceduresTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Stored Procedure";
+    public readonly childTypeLabel: string = 'Stored Procedure';
     public readonly parent: DocDBCollectionTreeItem | GraphCollectionTreeItem;
     public suppressMaskLabel = true;
 
@@ -42,13 +49,15 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
         const currStoredProcedureList: AzExtTreeItem[] = await this.getCachedChildren(context);
         const currStoredProcedureNames: string[] = [];
         for (const sp of currStoredProcedureList) {
-            currStoredProcedureNames.push(nonNullProp(sp, "id"));
+            currStoredProcedureNames.push(nonNullProp(sp, 'id'));
         }
-        const spID = (await context.ui.showInputBox({
-            prompt: "Enter a unique stored procedure ID",
-            stepName: 'createStoredProcedure',
-            validateInput: (name: string) => this.validateStoredProcedureName(name, currStoredProcedureNames)
-        })).trim();
+        const spID = (
+            await context.ui.showInputBox({
+                prompt: 'Enter a unique stored procedure ID',
+                stepName: 'createStoredProcedure',
+                validateInput: (name: string) => this.validateStoredProcedureName(name, currStoredProcedureNames),
+            })
+        ).trim();
         const body: StoredProcedureDefinition = { id: spID, body: defaultStoredProcedure };
         context.showCreatingTreeItem(spID);
         const sproc = await this.getContainerClient(client).scripts.storedProcedures.create(body);
@@ -57,18 +66,21 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
     }
 
     public get id(): string {
-        return "$StoredProcedures";
+        return '$StoredProcedures';
     }
 
     public get label(): string {
-        return "Stored Procedures";
+        return 'Stored Procedures';
     }
 
     public get link(): string {
         return this.parent.link;
     }
 
-    public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<StoredProcedureDefinition & Resource> {
+    public getIterator(
+        client: CosmosClient,
+        feedOptions: FeedOptions,
+    ): QueryIterator<StoredProcedureDefinition & Resource> {
         return this.getContainerClient(client).scripts.storedProcedures.readAll(feedOptions);
     }
 
@@ -78,14 +90,14 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
 
     private validateStoredProcedureName(name: string, currStoredProcedureNames: string[]): string | undefined {
         if (name.length < 1 || name.length > 255) {
-            return localize("nameLength", "Name has to be between 1 and 255 chars long");
+            return localize('nameLength', 'Name has to be between 1 and 255 chars long');
         }
 
         if (/[/\\?#&]/.test(name)) {
-            return localize("illegalChars", "Name contains illegal chars: /, \\, ?, #, &");
+            return localize('illegalChars', 'Name contains illegal chars: /, \\, ?, #, &');
         }
-        if (name[name.length - 1] === " ") {
-            return localize("endsWithSpace", "Name cannot end with a space.");
+        if (name[name.length - 1] === ' ') {
+            return localize('endsWithSpace', 'Name cannot end with a space.');
         }
         if (currStoredProcedureNames.includes(name)) {
             return localize('nameExists', 'Stored Procedure "{0}" already exists.', name);

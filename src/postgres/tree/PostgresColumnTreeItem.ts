@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import { AzExtTreeItem, type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { PostgresTableTreeItem } from './PostgresTableTreeItem';
+import { type PostgresTableTreeItem } from './PostgresTableTreeItem';
 
 export class PostgresColumnTreeItem extends AzExtTreeItem {
-    public static contextValue: string = "postgresColumn";
+    public static contextValue: string = 'postgresColumn';
     public readonly contextValue: string = PostgresColumnTreeItem.contextValue;
     public readonly columnName: string;
     public readonly parent: PostgresTableTreeItem;
@@ -29,5 +29,4 @@ export class PostgresColumnTreeItem extends AzExtTreeItem {
     public get iconPath(): TreeItemIconPath {
         return new vscode.ThemeIcon('split-horizontal');
     }
-
 }

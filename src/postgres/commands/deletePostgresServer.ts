@@ -3,20 +3,20 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext, ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
+import { type IActionContext, type ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
 import { deleteDatabaseAccount } from '../../commands/deleteDatabaseAccount/deleteDatabaseAccount';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
+import { type PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
 
 export async function deletePostgresServer(context: IActionContext, node?: PostgresServerTreeItem): Promise<void> {
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
         node = await ext.rgApi.pickAppResource<PostgresServerTreeItem>(context, {
-            filter: [postgresSingleFilter, postgresFlexibleFilter]
+            filter: [postgresSingleFilter, postgresFlexibleFilter],
         });
     }
 
-    await deleteDatabaseAccount(context, node, true)
+    await deleteDatabaseAccount(context, node, true);
 }

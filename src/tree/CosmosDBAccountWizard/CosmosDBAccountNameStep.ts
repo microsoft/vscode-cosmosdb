@@ -3,21 +3,22 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { ResourceGroupListStep, resourceGroupNamingRules } from '@microsoft/vscode-azext-azureutils';
 import { AzureNameStep } from '@microsoft/vscode-azext-utils';
 import { createCosmosDBClient } from '../../utils/azureClients';
-import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
+import { type ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContext> {
-
     public async prompt(context: ICosmosDBWizardContext): Promise<void> {
         const client = await createCosmosDBClient(context);
-        context.newServerName = (await context.ui.showInputBox({
-            placeHolder: "Account name",
-            prompt: "Provide a Cosmos DB account name",
-            validateInput: (name: string) => validateCosmosDBAccountName(name, client)
-        })).trim();
+        context.newServerName = (
+            await context.ui.showInputBox({
+                placeHolder: 'Account name',
+                prompt: 'Provide a Cosmos DB account name',
+                validateInput: (name: string) => validateCosmosDBAccountName(name, client),
+            })
+        ).trim();
         context.valuesToMask.push(context.newServerName);
         context.relatedNameTask = this.generateRelatedName(context, context.newServerName, resourceGroupNamingRules);
     }
@@ -31,7 +32,10 @@ export class CosmosDBAccountNameStep extends AzureNameStep<ICosmosDBWizardContex
     }
 }
 
-async function validateCosmosDBAccountName(name: string, client: CosmosDBManagementClient): Promise<string | undefined> {
+async function validateCosmosDBAccountName(
+    name: string,
+    client: CosmosDBManagementClient,
+): Promise<string | undefined> {
     name = name ? name.trim() : '';
 
     const min = 3;

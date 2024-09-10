@@ -5,7 +5,7 @@
 
 // eslint-disable-next-line import/no-internal-modules
 import { getSessionFromVSCode } from '@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode';
-import * as vscode from "vscode";
+import type * as vscode from 'vscode';
 
 export async function getSignedInPrincipalIdForAccountEndpoint(accountEndpoint: string): Promise<string | undefined> {
     const session = await getSessionForDatabaseAccount(accountEndpoint);

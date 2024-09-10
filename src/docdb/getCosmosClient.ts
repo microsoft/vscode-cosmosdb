@@ -3,42 +3,48 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosClient } from "@azure/cosmos";
-import { appendExtensionUserAgent } from "@microsoft/vscode-azext-utils";
-import * as https from "https";
+import { CosmosClient } from '@azure/cosmos';
+import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
+import * as https from 'https';
 import * as vscode from 'vscode';
-import { ext } from "../extensionVariables";
+import { ext } from '../extensionVariables';
 
 // eslint-disable-next-line import/no-internal-modules
-import { getSessionFromVSCode } from "@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode";
+import { getSessionFromVSCode } from '@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode';
 
 export type CosmosDBKeyCredential = {
-    type: "key";
+    type: 'key';
     key: string;
 };
 
 export type CosmosDBAuthCredential = {
-    type: "auth";
+    type: 'auth';
 };
 
 export type CosmosDBCredential = CosmosDBKeyCredential | CosmosDBAuthCredential;
 
 export function getCosmosKeyCredential(credentials: CosmosDBCredential[]): CosmosDBKeyCredential | undefined {
-    return credentials.filter((cred): cred is CosmosDBKeyCredential => cred.type === "key")[0];
+    return credentials.filter((cred): cred is CosmosDBKeyCredential => cred.type === 'key')[0];
 }
 
 export function getCosmosAuthCredential(credentials: CosmosDBCredential[]): CosmosDBAuthCredential | undefined {
-    return credentials.filter((cred): cred is CosmosDBAuthCredential => cred.type === "auth")[0];
+    return credentials.filter((cred): cred is CosmosDBAuthCredential => cred.type === 'auth')[0];
 }
 
 export function getCosmosClient(
     endpoint: string,
     credentials: CosmosDBCredential[],
-    isEmulator: boolean | undefined
+    isEmulator: boolean | undefined,
 ): CosmosClient {
-    const vscodeStrictSSL: boolean | undefined = vscode.workspace.getConfiguration().get<boolean>(ext.settingsKeys.vsCode.proxyStrictSSL);
-    const enableEndpointDiscovery: boolean | undefined = vscode.workspace.getConfiguration().get<boolean>(ext.settingsKeys.enableEndpointDiscovery);
-    const connectionPolicy = { enableEndpointDiscovery: (enableEndpointDiscovery === undefined) ? true : enableEndpointDiscovery };
+    const vscodeStrictSSL: boolean | undefined = vscode.workspace
+        .getConfiguration()
+        .get<boolean>(ext.settingsKeys.vsCode.proxyStrictSSL);
+    const enableEndpointDiscovery: boolean | undefined = vscode.workspace
+        .getConfiguration()
+        .get<boolean>(ext.settingsKeys.enableEndpointDiscovery);
+    const connectionPolicy = {
+        enableEndpointDiscovery: enableEndpointDiscovery === undefined ? true : enableEndpointDiscovery,
+    };
 
     const keyCred = getCosmosKeyCredential(credentials);
     const authCred = getCosmosAuthCredential(credentials);
@@ -47,13 +53,13 @@ export function getCosmosClient(
         endpoint,
         userAgentSuffix: appendExtensionUserAgent(),
         agent: new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL }),
-        connectionPolicy
+        connectionPolicy,
     };
     // @todo: Add telemetry to monitor usage of each credential type
     if (keyCred) {
         return new CosmosClient({
             ...commonProperties,
-            key: keyCred.key
+            key: keyCred.key,
         });
     } else if (authCred) {
         return new CosmosClient({
@@ -62,13 +68,13 @@ export function getCosmosClient(
                 getToken: async (scopes, _options) => {
                     const session = await getSessionFromVSCode(scopes, undefined, { createIfNone: true });
                     return {
-                        token: session?.accessToken ?? "",
-                        expiresOnTimestamp: 0
+                        token: session?.accessToken ?? '',
+                        expiresOnTimestamp: 0,
                     };
-                }
-            }
+                },
+            },
         });
     } else {
-        throw Error("No credential available to create CosmosClient.");
+        throw Error('No credential available to create CosmosClient.');
     }
 }

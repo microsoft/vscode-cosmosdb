@@ -6,25 +6,23 @@ import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { Interval } from 'antlr4ts/misc/Interval';
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
-import { ParseTree } from 'antlr4ts/tree/ParseTree';
+import { type ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
-import { Db } from 'mongodb';
-import { LanguageService as JsonLanguageService } from 'vscode-json-languageservice';
-import { CompletionItem, Position } from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import { type Db } from 'mongodb';
+import { type LanguageService as JsonLanguageService } from 'vscode-json-languageservice';
+import { type CompletionItem, type Position } from 'vscode-languageserver';
+import { type TextDocument } from 'vscode-languageserver-textdocument';
 import { mongoLexer } from './../grammar/mongoLexer';
 import * as mongoParser from './../grammar/mongoParser';
 import { MongoVisitor } from './../grammar/visitors';
 import { CompletionItemsVisitor } from './completionItemProvider';
-import { SchemaService } from './schemaService';
+import { type SchemaService } from './schemaService';
 
 export class MongoScriptDocumentManager {
-
     constructor(
         private schemaService: SchemaService,
-        private jsonLanguageService: JsonLanguageService
-    ) {
-    }
+        private jsonLanguageService: JsonLanguageService,
+    ) {}
 
     public getDocument(textDocument: TextDocument, db: Db): MongoScriptDocument {
         return new MongoScriptDocument(textDocument, db, this.schemaService, this.jsonLanguageService);
@@ -32,14 +30,13 @@ export class MongoScriptDocumentManager {
 }
 
 export class MongoScriptDocument {
-
     private readonly _lexer: mongoLexer;
 
     constructor(
         private textDocument: TextDocument,
         private db: Db,
         private schemaService: SchemaService,
-        private jsonLanguageService: JsonLanguageService
+        private jsonLanguageService: JsonLanguageService,
     ) {
         this._lexer = new mongoLexer(new InputStream(textDocument.getText()));
         this._lexer.removeErrorListeners();
@@ -52,14 +49,19 @@ export class MongoScriptDocument {
         const offset = this.textDocument.offsetAt(position);
         const lastNode = new NodeFinder(offset).visit(parser.commands());
         if (lastNode) {
-            return new CompletionItemsVisitor(this.textDocument, this.db, offset, this.schemaService, this.jsonLanguageService).visit(lastNode);
+            return new CompletionItemsVisitor(
+                this.textDocument,
+                this.db,
+                offset,
+                this.schemaService,
+                this.jsonLanguageService,
+            ).visit(lastNode);
         }
         return Promise.resolve([]);
     }
 }
 
 class NodeFinder extends MongoVisitor<ParseTree> {
-
     constructor(private offset: number) {
         super();
     }
@@ -86,12 +88,28 @@ class NodeFinder extends MongoVisitor<ParseTree> {
 
     protected aggregateResult(aggregate: ParseTree, nextResult: ParseTree): ParseTree {
         if (aggregate && nextResult) {
-            const aggregateStart = aggregate instanceof ParserRuleContext ? aggregate.start.startIndex : (<TerminalNode>aggregate).symbol.startIndex;
-            const aggregateStop = aggregate instanceof ParserRuleContext ? aggregate.start.stopIndex : (<TerminalNode>aggregate).symbol.stopIndex;
-            const nextResultStart = nextResult instanceof ParserRuleContext ? nextResult.start.startIndex : (<TerminalNode>nextResult).symbol.startIndex;
-            const nextResultStop = nextResult instanceof ParserRuleContext ? nextResult.start.stopIndex : (<TerminalNode>nextResult).symbol.stopIndex;
+            const aggregateStart =
+                aggregate instanceof ParserRuleContext
+                    ? aggregate.start.startIndex
+                    : (<TerminalNode>aggregate).symbol.startIndex;
+            const aggregateStop =
+                aggregate instanceof ParserRuleContext
+                    ? aggregate.start.stopIndex
+                    : (<TerminalNode>aggregate).symbol.stopIndex;
+            const nextResultStart =
+                nextResult instanceof ParserRuleContext
+                    ? nextResult.start.startIndex
+                    : (<TerminalNode>nextResult).symbol.startIndex;
+            const nextResultStop =
+                nextResult instanceof ParserRuleContext
+                    ? nextResult.start.stopIndex
+                    : (<TerminalNode>nextResult).symbol.stopIndex;
 
-            if (Interval.of(aggregateStart, aggregateStop).properlyContains(Interval.of(nextResultStart, nextResultStop))) {
+            if (
+                Interval.of(aggregateStart, aggregateStop).properlyContains(
+                    Interval.of(nextResultStart, nextResultStop),
+                )
+            ) {
                 return aggregate;
             }
             return nextResult;

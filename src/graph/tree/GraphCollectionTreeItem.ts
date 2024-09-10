@@ -3,17 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Container, ContainerDefinition, CosmosClient, Resource } from '@azure/cosmos';
-import { AzExtParentTreeItem, AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import { type Container, type ContainerDefinition, type CosmosClient, type Resource } from '@azure/cosmos';
+import {
+    AzExtParentTreeItem,
+    DialogResponses,
+    type AzExtTreeItem,
+    type IActionContext,
+    type TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
 import { DocDBStoredProcedureTreeItem } from '../../docdb/tree/DocDBStoredProcedureTreeItem';
-import { IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
-import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
+import { type IDocDBTreeRoot } from '../../docdb/tree/IDocDBTreeRoot';
+import { type GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 import { GraphTreeItem } from './GraphTreeItem';
 
 export class GraphCollectionTreeItem extends AzExtParentTreeItem {
-    public static contextValue: string = "cosmosDBGraph";
+    public static contextValue: string = 'cosmosDBGraph';
     public readonly contextValue: string = GraphCollectionTreeItem.contextValue;
     public readonly parent: GraphDatabaseTreeItem;
 
@@ -59,7 +65,11 @@ export class GraphCollectionTreeItem extends AzExtParentTreeItem {
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete graph '${this.label}' and its contents?`;
-        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteGraphCollection' }, DialogResponses.deleteResponse);
+        await context.ui.showWarningMessage(
+            message,
+            { modal: true, stepName: 'deleteGraphCollection' },
+            DialogResponses.deleteResponse,
+        );
         const client = this.root.getCosmosClient();
         await this.getContainerClient(client).delete();
     }
@@ -81,7 +91,6 @@ export class GraphCollectionTreeItem extends AzExtParentTreeItem {
     }
 
     public getContainerClient(client: CosmosClient): Container {
-        return (this.parent.getDatabaseClient(client)).container(this.id);
-
+        return this.parent.getDatabaseClient(client).container(this.id);
     }
 }

@@ -3,14 +3,22 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { appendExtensionUserAgent, AzExtParentTreeItem, AzExtTreeItem, GenericTreeItem, IActionContext, ISubscriptionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
-import { MongoClient } from 'mongodb';
+import {
+    appendExtensionUserAgent,
+    AzExtParentTreeItem,
+    GenericTreeItem,
+    type AzExtTreeItem,
+    type IActionContext,
+    type ISubscriptionContext,
+    type TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
+import { type MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
 import { emulatorPassword, isWindows } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
-import { CosmosDBCredential } from '../docdb/getCosmosClient';
+import { type CosmosDBCredential } from '../docdb/getCosmosClient';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../extensionVariables';
@@ -45,7 +53,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
     public childTypeLabel: string = 'Account';
     public suppressMaskLabel = true;
 
-    private readonly _serviceName: string = "ms-azuretools.vscode-cosmosdb.connectionStrings";
+    private readonly _serviceName: string = 'ms-azuretools.vscode-cosmosdb.connectionStrings';
     private _attachedAccounts: AzExtTreeItem[] | undefined;
 
     private _root: ISubscriptionContext;
@@ -92,7 +100,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         try {
             parseDocDBConnectionString(value);
             return undefined;
-        } catch (error) {
+        } catch {
             return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..."';
         }
     }
@@ -116,16 +124,15 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
                 contextValue: 'cosmosDBAttachDatabaseAccount',
                 label: 'Attach Database Account...',
                 commandId: 'cosmosDB.attachDatabaseAccount',
-                includeInTreeItemPicker: true
+                includeInTreeItemPicker: true,
             });
             const attachEmulator = new GenericTreeItem(this, {
                 contextValue: 'cosmosDBAttachEmulator',
                 label: 'Attach Emulator...',
                 commandId: 'cosmosDB.attachEmulator',
-                includeInTreeItemPicker: true
+                includeInTreeItemPicker: true,
             });
-            return isWindows ? [attachDatabaseAccount, attachEmulator] :
-                [attachDatabaseAccount];
+            return isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
         }
     }
 
@@ -146,7 +153,10 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
     }
 
     public async attachNewAccount(context: IActionContext): Promise<void> {
-        const defaultExperiencePick = await context.ui.showQuickPick(getExperienceQuickPicks(true), { placeHolder: "Select a Database type...", stepName: 'attachNewAccount' });
+        const defaultExperiencePick = await context.ui.showQuickPick(getExperienceQuickPicks(true), {
+            placeHolder: 'Select a Database type...',
+            stepName: 'attachNewAccount',
+        });
         const defaultExperience = defaultExperiencePick.data;
         let placeholder: string;
         let defaultValue: string | undefined;
@@ -158,27 +168,38 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             }
             validateInput = AttachedAccountsTreeItem.validateMongoConnectionString;
         } else if (defaultExperience.api === API.PostgresSingle || defaultExperience.api === API.PostgresFlexible) {
-            placeholder = localize('attachedPostgresPlaceholder', '"postgres://username:password@host" or "postgres://username:password@host/database"');
+            placeholder = localize(
+                'attachedPostgresPlaceholder',
+                '"postgres://username:password@host" or "postgres://username:password@host/database"',
+            );
             validateInput = AttachedAccountsTreeItem.validatePostgresConnectionString;
         } else {
             placeholder = 'AccountEndpoint=...;AccountKey=...';
             validateInput = AttachedAccountsTreeItem.validateDocDBConnectionString;
         }
 
-        const connectionString = (await context.ui.showInputBox({
-            placeHolder: placeholder,
-            prompt: 'Enter the connection string for your database account',
-            stepName: 'attachNewAccountConnectionString',
-            validateInput: validateInput,
-            value: defaultValue
-        })).trim();
+        const connectionString = (
+            await context.ui.showInputBox({
+                placeHolder: placeholder,
+                prompt: 'Enter the connection string for your database account',
+                stepName: 'attachNewAccountConnectionString',
+                validateInput: validateInput,
+                value: defaultValue,
+            })
+        ).trim();
 
         const treeItem: AzExtTreeItem = await this.createTreeItem(connectionString, defaultExperience.api);
         await this.attachAccount(context, treeItem, connectionString);
     }
 
-    public async attachConnectionString(context: IActionContext, connectionString: string, api: API.MongoDB | API.Core | API.PostgresSingle): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
-        const treeItem = <MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem>await this.createTreeItem(connectionString, api);
+    public async attachConnectionString(
+        context: IActionContext,
+        connectionString: string,
+        api: API.MongoDB | API.Core | API.PostgresSingle,
+    ): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
+        const treeItem = <MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem>(
+            await this.createTreeItem(connectionString, api)
+        );
         await this.attachAccount(context, treeItem, connectionString);
         await this.refresh(context);
         return treeItem;
@@ -187,20 +208,18 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
     public async attachEmulator(context: IActionContext): Promise<void> {
         let connectionString: string;
         const defaultExperiencePick = await context.ui.showQuickPick(
-            [
-                getExperienceQuickPick(API.MongoDB),
-                getExperienceQuickPick(API.Core)
-            ],
+            [getExperienceQuickPick(API.MongoDB), getExperienceQuickPick(API.Core)],
             {
-                placeHolder: "Select a Database Account API...",
-                stepName: 'attachEmulator'
-            });
+                placeHolder: 'Select a Database Account API...',
+                stepName: 'attachEmulator',
+            },
+        );
         const defaultExperience = defaultExperiencePick.data;
         let port: number | undefined;
         if (defaultExperience.api === API.MongoDB) {
-            port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.mongoPort");
+            port = vscode.workspace.getConfiguration().get<number>('cosmosDB.emulator.mongoPort');
         } else {
-            port = vscode.workspace.getConfiguration().get<number>("cosmosDB.emulator.port");
+            port = vscode.workspace.getConfiguration().get<number>('cosmosDB.emulator.port');
         }
         if (port) {
             if (defaultExperience.api === API.MongoDB) {
@@ -211,7 +230,12 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             }
             const label = `${defaultExperience.shortName} Emulator`;
             const treeItem: AzExtTreeItem = await this.createTreeItem(connectionString, defaultExperience.api, label);
-            if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof GraphAccountTreeItem || treeItem instanceof TableAccountTreeItem || treeItem instanceof MongoAccountTreeItem) {
+            if (
+                treeItem instanceof DocDBAccountTreeItem ||
+                treeItem instanceof GraphAccountTreeItem ||
+                treeItem instanceof TableAccountTreeItem ||
+                treeItem instanceof MongoAccountTreeItem
+            ) {
                 // CONSIDER: Why isn't this passed in to createTreeItem above?
                 treeItem.root.isEmulator = true;
             }
@@ -261,7 +285,10 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         }
         async function connect(): Promise<boolean> {
             try {
-                const db: MongoClient = await connectToMongoClient(localMongoConnectionString, appendExtensionUserAgent());
+                const db: MongoClient = await connectToMongoClient(
+                    localMongoConnectionString,
+                    appendExtensionUserAgent(),
+                );
                 void db.close();
                 return true;
             } catch {
@@ -271,14 +298,23 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         return await Promise.race([timeout(), connect()]);
     }
 
-    private async attachAccount(context: IActionContext, treeItem: AzExtTreeItem, connectionString: string): Promise<void> {
+    private async attachAccount(
+        context: IActionContext,
+        treeItem: AzExtTreeItem,
+        connectionString: string,
+    ): Promise<void> {
         const attachedAccounts: AzExtTreeItem[] = await this.getAttachedAccounts();
 
-        if (attachedAccounts.find(s => s.id === treeItem.id)) {
-            void context.ui.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`, { stepName: 'attachAccount' });
+        if (attachedAccounts.find((s) => s.id === treeItem.id)) {
+            void context.ui.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`, {
+                stepName: 'attachAccount',
+            });
         } else {
             attachedAccounts.push(treeItem);
-            await ext.secretStorage.store(getSecretStorageKey(this._serviceName, nonNullProp(treeItem, 'id')), connectionString);
+            await ext.secretStorage.store(
+                getSecretStorageKey(this._serviceName, nonNullProp(treeItem, 'id')),
+                connectionString,
+            );
             await this.persistIds(attachedAccounts);
         }
     }
@@ -289,34 +325,47 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         if (value) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const accounts: (string | IPersistedAccount)[] = JSON.parse(value);
-            await Promise.all(accounts.map(async account => {
-                let id: string;
-                let label: string;
-                let api: API;
-                let isEmulator: boolean | undefined;
-                if (typeof (account) === 'string') {
-                    // Default to Mongo if the value is a string for the sake of backwards compatibility
-                    // (Mongo was originally the only account type that could be attached)
-                    id = account;
-                    api = API.MongoDB;
-                    label = `${account} (${getExperienceFromApi(api).shortName})`;
-                    isEmulator = false;
-                } else {
-                    id = (<IPersistedAccount>account).id;
-                    api = (<IPersistedAccount>account).defaultExperience;
-                    isEmulator = (<IPersistedAccount>account).isEmulator;
-                    label = isEmulator ? `${getExperienceFromApi(api).shortName} Emulator` : `${id} (${getExperienceFromApi(api).shortName})`;
-                }
-                // TODO: keytar: migration plan?
-                const connectionString: string = nonNullValue(await ext.secretStorage.get(getSecretStorageKey(this._serviceName, id)), 'connectionString');
-                persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
-            }));
+            await Promise.all(
+                accounts.map(async (account) => {
+                    let id: string;
+                    let label: string;
+                    let api: API;
+                    let isEmulator: boolean | undefined;
+                    if (typeof account === 'string') {
+                        // Default to Mongo if the value is a string for the sake of backwards compatibility
+                        // (Mongo was originally the only account type that could be attached)
+                        id = account;
+                        api = API.MongoDB;
+                        label = `${account} (${getExperienceFromApi(api).shortName})`;
+                        isEmulator = false;
+                    } else {
+                        id = (<IPersistedAccount>account).id;
+                        api = (<IPersistedAccount>account).defaultExperience;
+                        isEmulator = (<IPersistedAccount>account).isEmulator;
+                        label = isEmulator
+                            ? `${getExperienceFromApi(api).shortName} Emulator`
+                            : `${id} (${getExperienceFromApi(api).shortName})`;
+                    }
+                    // TODO: keytar: migration plan?
+                    const connectionString: string = nonNullValue(
+                        await ext.secretStorage.get(getSecretStorageKey(this._serviceName, id)),
+                        'connectionString',
+                    );
+                    persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
+                }),
+            );
         }
 
         return persistedAccounts;
     }
 
-    private async createTreeItem(connectionString: string, api: API, label?: string, id?: string, isEmulator?: boolean): Promise<AzExtTreeItem> {
+    private async createTreeItem(
+        connectionString: string,
+        api: API,
+        label?: string,
+        id?: string,
+        isEmulator?: boolean,
+    ): Promise<AzExtTreeItem> {
         let treeItem: AzExtTreeItem;
         if (api === API.MongoDB) {
             if (id === undefined) {
@@ -334,16 +383,38 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
 
             label = label || `${parsedCS.accountId} (${getExperienceFromApi(api).shortName})`;
 
-            const credentials: CosmosDBCredential[] = [{ type: "key", key: parsedCS.masterKey }];
+            const credentials: CosmosDBCredential[] = [{ type: 'key', key: parsedCS.masterKey }];
             switch (api) {
                 case API.Table:
-                    treeItem = new TableAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, credentials, isEmulator);
+                    treeItem = new TableAccountTreeItem(
+                        this,
+                        parsedCS.accountId,
+                        label,
+                        parsedCS.documentEndpoint,
+                        credentials,
+                        isEmulator,
+                    );
                     break;
                 case API.Graph:
-                    treeItem = new GraphAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, undefined, credentials, isEmulator);
+                    treeItem = new GraphAccountTreeItem(
+                        this,
+                        parsedCS.accountId,
+                        label,
+                        parsedCS.documentEndpoint,
+                        undefined,
+                        credentials,
+                        isEmulator,
+                    );
                     break;
                 case API.Core:
-                    treeItem = new DocDBAccountTreeItem(this, parsedCS.accountId, label, parsedCS.documentEndpoint, credentials, isEmulator);
+                    treeItem = new DocDBAccountTreeItem(
+                        this,
+                        parsedCS.accountId,
+                        label,
+                        parsedCS.documentEndpoint,
+                        credentials,
+                        isEmulator,
+                    );
                     break;
                 default:
                     throw new Error(`Unexpected defaultExperience "${api}".`);
@@ -358,7 +429,12 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         const value: IPersistedAccount[] = attachedAccounts.map((node: AzExtTreeItem) => {
             let api: API;
             let isEmulator: boolean | undefined;
-            if (node instanceof MongoAccountTreeItem || node instanceof DocDBAccountTreeItem || node instanceof GraphAccountTreeItem || node instanceof TableAccountTreeItem) {
+            if (
+                node instanceof MongoAccountTreeItem ||
+                node instanceof DocDBAccountTreeItem ||
+                node instanceof GraphAccountTreeItem ||
+                node instanceof TableAccountTreeItem
+            ) {
                 isEmulator = node.root.isEmulator;
             }
             if (node instanceof MongoAccountTreeItem) {
@@ -421,7 +497,7 @@ class AttachedAccountRoot implements ISubscriptionContext {
 }
 
 async function delay(milliseconds: number): Promise<void> {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
         setTimeout(resolve, milliseconds);
     });
 }

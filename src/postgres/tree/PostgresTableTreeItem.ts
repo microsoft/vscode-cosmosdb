@@ -3,15 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtParentTreeItem, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import { AzExtParentTreeItem, type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { IPostgresTable } from '../getTables';
+import { type IPostgresTable } from '../getTables';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresColumnTreeItem } from './PostgresColumnTreeItem';
-import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
+import { type PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
 export class PostgresTableTreeItem extends AzExtParentTreeItem {
-    public static contextValue: string = "postgresTable";
+    public static contextValue: string = 'postgresTable';
     public readonly contextValue: string = PostgresTableTreeItem.contextValue;
     public readonly table: IPostgresTable;
     public readonly parent: PostgresTablesTreeItem;
@@ -45,12 +45,13 @@ export class PostgresTableTreeItem extends AzExtParentTreeItem {
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<PostgresColumnTreeItem[]> {
-
-        return this.table.columnNames.map(columnName => new PostgresColumnTreeItem(this, columnName));
+        return this.table.columnNames.map((columnName) => new PostgresColumnTreeItem(this, columnName));
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        await runPostgresQuery(this.parent.clientConfig, `Drop Table ${this.table.schemaName}.${wrapArgInQuotes(this.table.name)};`);
+        await runPostgresQuery(
+            this.parent.clientConfig,
+            `Drop Table ${this.table.schemaName}.${wrapArgInQuotes(this.table.name)};`,
+        );
     }
-
 }

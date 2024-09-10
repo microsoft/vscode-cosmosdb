@@ -3,23 +3,35 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Container, ContainerDefinition, CosmosClient, PartitionKeyDefinition, Resource } from '@azure/cosmos';
-import { AzExtParentTreeItem, AzExtTreeItem, DialogResponses, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import {
+    type Container,
+    type ContainerDefinition,
+    type CosmosClient,
+    type PartitionKeyDefinition,
+    type Resource,
+} from '@azure/cosmos';
+import {
+    AzExtParentTreeItem,
+    DialogResponses,
+    type AzExtTreeItem,
+    type IActionContext,
+    type TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
+import { type DocDBDatabaseTreeItem } from './DocDBDatabaseTreeItem';
 import { DocDBDocumentTreeItem } from './DocDBDocumentTreeItem';
 import { DocDBDocumentsTreeItem } from './DocDBDocumentsTreeItem';
 import { DocDBStoredProcedureTreeItem } from './DocDBStoredProcedureTreeItem';
 import { DocDBStoredProceduresTreeItem } from './DocDBStoredProceduresTreeItem';
 import { DocDBTriggerTreeItem } from './DocDBTriggerTreeItem';
 import { DocDBTriggersTreeItem } from './DocDBTriggersTreeItem';
-import { IDocDBTreeRoot } from './IDocDBTreeRoot';
+import { type IDocDBTreeRoot } from './IDocDBTreeRoot';
 
 /**
  * Represents a DocumentDB collection
  */
 export class DocDBCollectionTreeItem extends AzExtParentTreeItem {
-    public static contextValue: string = "cosmosDBDocumentCollection";
+    public static contextValue: string = 'cosmosDBDocumentCollection';
     public readonly contextValue: string = DocDBCollectionTreeItem.contextValue;
     public readonly parent: DocDBDatabaseTreeItem;
 
@@ -27,7 +39,10 @@ export class DocDBCollectionTreeItem extends AzExtParentTreeItem {
     private readonly _storedProceduresTreeItem: DocDBStoredProceduresTreeItem;
     private readonly _triggersTreeItem: DocDBTriggersTreeItem;
 
-    constructor(parent: DocDBDatabaseTreeItem, private _container: ContainerDefinition & Resource) {
+    constructor(
+        parent: DocDBDatabaseTreeItem,
+        private _container: ContainerDefinition & Resource,
+    ) {
         super(parent);
         this.parent = parent;
         this.documentsTreeItem = new DocDBDocumentsTreeItem(this);
@@ -61,7 +76,11 @@ export class DocDBCollectionTreeItem extends AzExtParentTreeItem {
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete collection '${this.label}' and its contents?`;
-        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteCollection' }, DialogResponses.deleteResponse);
+        await context.ui.showWarningMessage(
+            message,
+            { modal: true, stepName: 'deleteCollection' },
+            DialogResponses.deleteResponse,
+        );
         const client = this.root.getCosmosClient();
         await this.getContainerClient(client).delete();
     }
@@ -94,6 +113,6 @@ export class DocDBCollectionTreeItem extends AzExtParentTreeItem {
     }
 
     public getContainerClient(client: CosmosClient): Container {
-        return (this.parent.getDatabaseClient(client)).container(this.id);
+        return this.parent.getDatabaseClient(client).container(this.id);
     }
 }

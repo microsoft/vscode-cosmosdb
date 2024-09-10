@@ -3,16 +3,27 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
-import { CosmosClient, DatabaseDefinition, DatabaseResponse, FeedOptions, QueryIterator, Resource } from '@azure/cosmos';
-import { AzExtParentTreeItem, AzExtTreeItem, ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
-import * as vscode from 'vscode';
-import { IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
+import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
+import {
+    type CosmosClient,
+    type DatabaseDefinition,
+    type DatabaseResponse,
+    type FeedOptions,
+    type QueryIterator,
+    type Resource,
+} from '@azure/cosmos';
+import {
+    type AzExtParentTreeItem,
+    type AzExtTreeItem,
+    type ICreateChildImplContext,
+} from '@microsoft/vscode-azext-utils';
+import type * as vscode from 'vscode';
+import { type IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
 import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
 import { getThemeAgnosticIconPath, SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
 import { rejectOnTimeout } from '../../utils/timeout';
-import { CosmosDBCredential, getCosmosClient, getCosmosKeyCredential } from '../getCosmosClient';
+import { getCosmosClient, getCosmosKeyCredential, type CosmosDBCredential } from '../getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../utils/azureSessionHelper';
 import { ensureRbacPermission, isRbacException, showRbacPermissionError } from '../utils/rbacUtils';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -23,7 +34,7 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
  */
 export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<DatabaseDefinition & Resource> {
     public readonly label: string;
-    public readonly childTypeLabel: string = "Database";
+    public readonly childTypeLabel: string = 'Database';
     private hasShownRbacNotification: boolean = false;
 
     constructor(
@@ -33,7 +44,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         endpoint: string,
         credentials: CosmosDBCredential[],
         isEmulator: boolean | undefined,
-        readonly databaseAccount?: DatabaseAccountGetResults
+        readonly databaseAccount?: DatabaseAccountGetResults,
     ) {
         super(parent);
         this.id = id;
@@ -42,11 +53,11 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
             endpoint,
             credentials,
             isEmulator,
-            getCosmosClient: () => getCosmosClient(endpoint, credentials, isEmulator)
+            getCosmosClient: () => getCosmosClient(endpoint, credentials, isEmulator),
         };
 
         const keys = credentials
-            .map((cred) => cred.type === "key" ? cred.key : undefined)
+            .map((cred) => (cred.type === 'key' ? cred.key : undefined))
             .filter((value): value is string => value !== undefined);
         this.valuesToMask.push(id, endpoint, ...keys);
     }
@@ -65,8 +76,9 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     public get isServerless(): boolean {
-        return this.databaseAccount?.capabilities ? this.databaseAccount.capabilities.some(cap => cap.name === SERVERLESS_CAPABILITY_NAME) : false;
-
+        return this.databaseAccount?.capabilities
+            ? this.databaseAccount.capabilities.some((cap) => cap.name === SERVERLESS_CAPABILITY_NAME)
+            : false;
     }
 
     public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<DatabaseDefinition & Resource> {
@@ -77,7 +89,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         const databaseName = await context.ui.showInputBox({
             placeHolder: 'Database Name',
             validateInput: validateDatabaseName,
-            stepName: 'createDatabase'
+            stepName: 'createDatabase',
         });
 
         const client = this.root.getCosmosClient();
@@ -87,17 +99,22 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
 
     public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
         if (this.root.isEmulator) {
-            const unableToReachEmulatorMessage: string = "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.";
-            return await rejectOnTimeout(2000, () => super.loadMoreChildrenImpl(clearCache), unableToReachEmulatorMessage);
+            const unableToReachEmulatorMessage: string =
+                "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.";
+            return await rejectOnTimeout(
+                2000,
+                () => super.loadMoreChildrenImpl(clearCache),
+                unableToReachEmulatorMessage,
+            );
         } else {
             try {
                 return await super.loadMoreChildrenImpl(clearCache);
             } catch (e) {
                 if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
                     this.hasShownRbacNotification = true;
-                    const principalId = await getSignedInPrincipalIdForAccountEndpoint(this.root.endpoint) ?? '';
+                    const principalId = (await getSignedInPrincipalIdForAccountEndpoint(this.root.endpoint)) ?? '';
                     // chedck if the principal ID matches the one that is signed in, otherwise this might be a security problem, hence show the error message
-                    if (e.message.includes(`[${principalId}]`) && await ensureRbacPermission(this, principalId)) {
+                    if (e.message.includes(`[${principalId}]`) && (await ensureRbacPermission(this, principalId))) {
                         return await super.loadMoreChildrenImpl(clearCache);
                     } else {
                         void showRbacPermissionError(this.fullId, principalId);
@@ -115,10 +132,10 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
 
 function validateDatabaseName(name: string): string | undefined | null {
     if (!name || name.length < 1 || name.length > 255) {
-        return "Name has to be between 1 and 255 chars long";
+        return 'Name has to be between 1 and 255 chars long';
     }
-    if (name.endsWith(" ")) {
-        return "Database name cannot end with space";
+    if (name.endsWith(' ')) {
+        return 'Database name cannot end with space';
     }
     if (/[/\\?#=]/.test(name)) {
         return `Database name cannot contain the characters '\\', '/', '#', '?', '='`;

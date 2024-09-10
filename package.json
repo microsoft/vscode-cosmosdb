@@ -77,7 +77,6 @@
         "build.extension": "tsc"
     },
     "devDependencies": {
-        "@azure/arm-resources": "^4.2.2",
         "@microsoft/vscode-azext-dev": "^2.0.4",
         "@pmmmwh/react-refresh-webpack-plugin": "^0.5.15",
         "@swc/cli": "^0.4.0",
@@ -101,7 +100,6 @@
         "@vscode/test-electron": "^2.4.1",
         "@vscode/vsce": "~2.25.0",
         "antlr4ts-cli": "^0.5.0-alpha.4",
-        "clean-webpack-plugin": "^4.0.0",
         "copy-webpack-plugin": "^12.0.2",
         "css-loader": "^7.1.2",
         "eslint": "^8.57.0",
@@ -122,10 +120,8 @@
         "rimraf": "^5.0.10",
         "sass": "^1.77.8",
         "sass-loader": "^16.0.1",
-        "source-map-loader": "^5.0.0",
         "style-loader": "^4.0.0",
         "swc-loader": "^0.2.6",
-        "terser-webpack-plugin": "^5.3.10",
         "ts-jest": "^29.2.5",
         "ts-node": "^10.9.2",
         "typescript": "^5.5.4",

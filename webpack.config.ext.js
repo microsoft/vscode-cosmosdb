@@ -3,18 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-//@ts-check
-
-// See https://github.com/Microsoft/vscode-azuretools/wiki/webpack for guidance
-
 'use strict';
 
 const webpack = require('webpack');
-const dev = require('@microsoft/vscode-azext-dev');
 const path = require('path');
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = (env, { mode }) => {
     const isDev = mode === 'development';
@@ -69,7 +62,7 @@ module.exports = (env, { mode }) => {
                             sourceMaps: isDev,
                             minify: !isDev,
                             jsc: {
-                                baseUrl: path.resolve(__dirname, './'),  // Set absolute path here
+                                baseUrl: path.resolve(__dirname, './'), // Set absolute path here
                                 minify: {
                                     compress: !isDev,
                                     mangle: isDev

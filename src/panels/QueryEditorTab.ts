@@ -85,19 +85,21 @@ export class QueryEditorTab {
     private getWebviewContent(): string {
         const ctx = ext.context;
         const cspSource = this.panel.webview.cspSource;
-        const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
+        const useFileUri = ext.context.extensionMode === vscode.ExtensionMode.Production || ext.ignoreBundle;
         const nonce = randomBytes(16).toString('base64');
 
+        const dir = ext.ignoreBundle ? 'out/src/webviews' : '';
+        const filename = ext.ignoreBundle ? 'index.js' : 'views.js';
         const uri = (...parts: string[]) =>
             this.panel.webview
-                .asWebviewUri(vscode.Uri.file(path.join(ctx.extensionPath, 'dist', ...parts)))
+                .asWebviewUri(vscode.Uri.file(path.join(ctx.extensionPath, dir, ...parts)))
                 .toString(true);
 
-        const publicPath = isProduction ? uri() : `${DEV_SERVER_HOST}/`;
-        const srcUri = isProduction ? uri('views.js') : `${DEV_SERVER_HOST}/views.js`;
+        const publicPath = useFileUri ? uri() : `${DEV_SERVER_HOST}/`;
+        const srcUri = useFileUri ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
 
         const csp = (
-            isProduction
+            useFileUri
                 ? [
                       `form-action 'none';`,
                       `default-src ${cspSource};`,

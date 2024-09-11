@@ -13,7 +13,7 @@ declare let exports: { [key: string]: unknown };
 async function prepareForWebpack(): Promise<void> {
     const mainJsPath: string = path.join(__dirname, 'main.js');
     let contents: string = (await fse.readFile(mainJsPath)).toString();
-    contents = contents.replace('out/src/extension', 'dist/extension.bundle').replace(', true /* ignoreBundle */', '');
+    contents = contents.replace('out/src/extension', 'dist/extension.bundle');
     await fse.writeFile(mainJsPath, contents);
 }
 

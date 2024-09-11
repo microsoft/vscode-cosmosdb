@@ -43,7 +43,7 @@ let config = dev.getDefaultWebpackConfig({
 
     plugins: [
         new webpack.EnvironmentPlugin({
-            MONGO_LANGUAGE_SERVER_PATH: path.join('dist', 'mongo-languageServer.bundle.js'),
+            USED_WEBPACK: 'true',
         }),
         // Replace vscode-languageserver/lib/files.js with a modified version that doesn't have webpack issues
         new webpack.NormalModuleReplacementPlugin(

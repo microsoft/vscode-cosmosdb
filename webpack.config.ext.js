@@ -8,7 +8,6 @@
 const webpack = require('webpack');
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const fse = require('fs-extra');
 
 module.exports = (env, { mode }) => {
     const isDev = mode === 'development';
@@ -91,7 +90,8 @@ module.exports = (env, { mode }) => {
         plugins: [
             new webpack.EnvironmentPlugin({
                 NODE_ENV: mode,
-                USED_WEBPACK: 'true',
+                IS_BUNDLE: 'true',
+                DEVSERVER: process.env.DEVSERVER,
             }),
             // Copy everything what is needed to run the extension
             // - We can't bundle everything into one file because system-dependent binaries in node_modules

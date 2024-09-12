@@ -74,7 +74,7 @@ export async function activateInternal(
     perfStats: { loadStartTime: number; loadEndTime: number },
 ): Promise<apiUtils.AzureExtensionApiProvider> {
     ext.context = context;
-    ext.ignoreBundle = !process.env.USED_WEBPACK;
+    ext.isBundle = !!process.env.IS_BUNDLE;
 
     ext.outputChannel = createAzExtLogOutputChannel('Azure Databases');
     context.subscriptions.push(ext.outputChannel);

@@ -15,7 +15,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as assert from 'assert';
 import { EJSON } from 'bson';
-import { omit } from 'lodash-es';
+import { omit } from 'lodash';
 import {
     type AnyBulkWriteOperation,
     type BulkWriteOptions,

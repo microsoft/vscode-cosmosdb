@@ -40,7 +40,7 @@ export function getDatabaseNameFromConnectionString(connectionString: string): s
 
 export function addDatabaseToAccountConnectionString(connectionString: string, databaseName: string): string {
     try {
-        return connectionString.replace(mongoConnectionStringRegExp, `$1\/${encodeURIComponent(databaseName)}`);
+        return connectionString.replace(mongoConnectionStringRegExp, `$1/${encodeURIComponent(databaseName)}`);
     } catch {
         // Shouldn't happen, but ignore if does. Original connection string could be in a format we don't expect, but might already have the db name or might still work without it
         return connectionString;

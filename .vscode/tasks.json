@@ -10,7 +10,7 @@
             },
             "isBackground": true,
             "presentation": {
-                "reveal": "never"
+                "reveal": "always"
             },
             "problemMatcher": "$tsc-watch"
         },
@@ -21,44 +21,6 @@
         },
         {
             "label": "Watch",
-            "dependsOn": ["watch:ext", "watch:views"]
-        },
-        {
-            "label": "watch:ext",
-            "type": "npm",
-            "script": "watch:ext",
-            "group": "build",
-            "isBackground": true,
-            "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "new",
-                "showReuseMessage": false,
-                "clear": true,
-                "group": "cosmosdb-vscode-extension"
-            }
-        },
-        {
-            "label": "watch:views",
-            "type": "npm",
-            "script": "watch:views",
-            "group": "build",
-            "isBackground": true,
-            "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "new",
-                "showReuseMessage": false,
-                "clear": true,
-                "group": "cosmosdb-vscode-extension"
-            }
-        },
-        {
-            "label": "Watch_Extension_and_Webviews",
             "dependsOn": ["watch:ext", "watch:views"]
         },
         {

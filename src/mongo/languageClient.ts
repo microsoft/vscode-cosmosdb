@@ -14,9 +14,9 @@ export class MongoDBLanguageClient {
 
     constructor() {
         // The server is implemented in node
-        const serverPath = ext.ignoreBundle
-            ? path.join('out', 'src', 'mongo', 'languageServer.js') // Run without webpack
-            : process.env.MONGO_LANGUAGE_SERVER_PATH || path.join('dist', 'mongo', 'languageServer.js'); // Run with webpack
+        const serverPath = ext.isBundle
+            ? path.join('mongo-languageServer.bundle.js') // Run with webpack
+            : path.join('out', 'src', 'mongo', 'languageServer.js'); // Run without webpack
         const serverModule = ext.context.asAbsolutePath(serverPath);
         // The debug options for the server
         const debugOptions = { execArgv: ['--nolazy', '--inspect=6005'] };

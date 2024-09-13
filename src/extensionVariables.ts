@@ -34,7 +34,7 @@ export namespace ext {
     export let tree: AzExtTreeDataProvider;
     export let treeView: TreeView<AzExtTreeItem>;
     export let attachedAccountsNode: AttachedAccountsTreeItem;
-    export let ignoreBundle: boolean | undefined;
+    export let isBundle: boolean | undefined;
     export let azureAccountTreeItem: AzureAccountTreeItemWithAttached;
     export let secretStorage: SecretStorage;
     export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;

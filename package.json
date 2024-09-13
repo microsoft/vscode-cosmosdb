@@ -1117,7 +1117,7 @@
         "eslint": "^7.19.0",
         "eslint-plugin-import": "^2.22.1",
         "glob": "^7.1.6",
-        "gulp": "^4.0.0",
+        "gulp": "^5.0.0",
         "husky": "^7.0.2",
         "mocha": "^10.2.0",
         "mocha-junit-reporter": "^1.18.0",

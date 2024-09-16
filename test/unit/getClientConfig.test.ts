@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as assert from 'assert';
+import assert from 'assert';
 import { describe, it } from 'mocha';
 import { postgresDefaultPort } from '../../src/constants';
 import { PostgresServerType } from '../../src/postgres/abstract/models';

@@ -6,7 +6,7 @@
 export const isWindows: boolean = /^win/.test(process.platform);
 
 import * as fs from 'fs';
-import * as assert from 'node:assert';
+import assert from 'node:assert';
 import * as path from 'path';
 import { Utils, type URI } from 'vscode-uri';
 import { CoreExperience, GremlinExperience, MongoExperience, TableExperience } from './AzureDBExperiences';

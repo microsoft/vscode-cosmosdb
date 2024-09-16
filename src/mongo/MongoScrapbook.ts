@@ -546,9 +546,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         try {
             // validate the pattern and flags.
             // It is intended for the errors thrown here to be handled by the catch block.
-            let tokenObject = new RegExp(pattern, flags);
-            // eslint-disable-next-line no-self-assign, @typescript-eslint/no-unused-vars
-            tokenObject = tokenObject;
+            new RegExp(pattern, flags);
             // we are passing back a $regex annotation, hence we ensure parity wit the $regex syntax
             return { $regex: this.regexToStringNotation(pattern), $options: flags };
         } catch (error) {

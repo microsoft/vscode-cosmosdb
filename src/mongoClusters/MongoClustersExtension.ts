@@ -101,7 +101,6 @@ export class MongoClustersExtension implements vscode.Disposable {
             _props.databaseName,
             _props.collectionName,
         );
-        5;
         panel.webview.onDidReceiveMessage(async (message) => {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             const queryString = (message?.payload?.queryText as string) ?? '{}';
@@ -144,22 +143,20 @@ const getWebviewContentReact = (
     webview?: vscode.Webview,
     id?: string,
     liveConnectionId?: string,
-    databassName?: string,
+    databaseName?: string,
     collectionName?: string,
 ) => {
-    // const jsFile = 'views.js';
-    // const localServerUrl = 'http://localhost:18080'; //webpack
-
+    const devServer = !!process.env.DEVSERVER;
     const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
     const nonce = randomBytes(16).toString('base64');
 
-    // const scriptUrl = `${localServerUrl}/${jsFile}`;
-
+    const dir = ext.isBundle ? '' : 'out/src/webviews';
+    const filename = ext.isBundle ? 'views.js' : 'index.js';
     const uri = (...parts: string[]) =>
-        webview?.asWebviewUri(vscode.Uri.file(path.join(ext.context.extensionPath, 'dist', ...parts))).toString(true);
+        webview?.asWebviewUri(vscode.Uri.file(path.join(ext.context.extensionPath, dir, ...parts))).toString(true);
 
-    const publicPath = isProduction ? uri() : `${DEV_SERVER_HOST}/`;
-    const srcUri = isProduction ? uri('views.js') : `${DEV_SERVER_HOST}/views.js`;
+    const publicPath = isProduction || !devServer ? uri() : `${DEV_SERVER_HOST}/`;
+    const srcUri = isProduction || !devServer ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
 
     const csp = (
         isProduction
@@ -200,7 +197,7 @@ const getWebviewContentReact = (
                     ...window.config,
                     __id: '${id}',
                     __liveConnectionId: '${liveConnectionId}',
-                    __databaseName: '${databassName}',
+                    __databaseName: '${databaseName}',
                     __collectionName: '${collectionName}',
                     __vsCodeApi: acquireVsCodeApi(),
                 };

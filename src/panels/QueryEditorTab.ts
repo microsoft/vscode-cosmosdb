@@ -85,16 +85,19 @@ export class QueryEditorTab {
     private getWebviewContent(): string {
         const ctx = ext.context;
         const cspSource = this.panel.webview.cspSource;
+        const devServer = !!process.env.DEVSERVER;
         const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
         const nonce = randomBytes(16).toString('base64');
 
+        const dir = ext.isBundle ? '' : 'out/src/webviews';
+        const filename = ext.isBundle ? 'views.js' : 'index.js';
         const uri = (...parts: string[]) =>
             this.panel.webview
-                .asWebviewUri(vscode.Uri.file(path.join(ctx.extensionPath, 'dist', ...parts)))
+                .asWebviewUri(vscode.Uri.file(path.join(ctx.extensionPath, dir, ...parts)))
                 .toString(true);
 
-        const publicPath = isProduction ? uri() : `${DEV_SERVER_HOST}/`;
-        const srcUri = isProduction ? uri('views.js') : `${DEV_SERVER_HOST}/views.js`;
+        const publicPath = isProduction || !devServer ? uri() : `${DEV_SERVER_HOST}/`;
+        const srcUri = isProduction || !devServer ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
 
         const csp = (
             isProduction
@@ -105,6 +108,7 @@ export class QueryEditorTab {
                       `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
                       `font-src ${cspSource} ${DEV_SERVER_HOST};`,
                       `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
+                      `img-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
                   ]
                 : [
                       `form-action 'none';`,
@@ -114,6 +118,7 @@ export class QueryEditorTab {
                       `connect-src ${cspSource} ${DEV_SERVER_HOST} ws:;`,
                       `font-src ${cspSource} ${DEV_SERVER_HOST};`,
                       `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
+                      `img-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
                   ]
         ).join(' ');
 
@@ -175,7 +180,7 @@ export class QueryEditorTab {
             case 'openFile':
                 return this.openFile();
             case 'saveFile':
-                return this.saveFile(payload.params[0] as string);
+                return this.saveFile(payload.params[0] as string, payload.params[1] as string);
             case 'showInformationMessage':
                 return this.showInformationMessage(payload.params[0] as string);
             case 'showErrorMessage':
@@ -237,8 +242,8 @@ export class QueryEditorTab {
         });
     }
 
-    private async saveFile(query: string): Promise<void> {
-        await vscodeUtil.showNewFile(query, `New query`, '.nosql');
+    private async saveFile(query: string, ext: string): Promise<void> {
+        await vscodeUtil.showNewFile(query, `New query`, '.' + ext);
     }
 
     private async showInformationMessage(message: string) {

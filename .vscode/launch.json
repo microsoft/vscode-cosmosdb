@@ -1,6 +1,6 @@
 // A launch configuration that compiles the extension and then opens it inside a new window
 {
-    "version": "0.1.0",
+    "version": "0.2.0",
     "configurations": [
         {
             "name": "Launch Extension",
@@ -36,20 +36,6 @@
             "type": "extensionHost",
             "request": "launch",
             "runtimeExecutable": "${execPath}",
-            "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
-            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-            "preLaunchTask": "npm: webpack",
-            "env": {
-                "DEBUGTELEMETRY": "v",
-                "NODE_DEBUG": "",
-                "DEBUG_WEBPACK": "1"
-            }
-        },
-        {
-            "name": "Watch + Run Extension and Webview",
-            "type": "extensionHost",
-            "request": "launch",
-            "runtimeExecutable": "${execPath}",
             "args": ["--extensionDevelopmentPath=${workspaceFolder}/dist"],
             "outFiles": ["${workspaceFolder}/dist/**/*.js"],
             "preLaunchTask": "Watch",
@@ -68,11 +54,12 @@
             "env": {
                 "DEBUGTELEMETRY": "",
                 "NODE_DEBUG": "",
-                "DEBUG_WEBPACK": ""
+                "DEBUG_WEBPACK": "",
+                "DEVSERVER": "true"
             }
         },
         {
-            "name": "Watch + Run Extension + Webview + Host (noExtensionsProfile)",
+            "name": "Launch Extension + Host (webpack)",
             "type": "extensionHost",
             "request": "launch",
             "runtimeExecutable": "${execPath}",
@@ -82,11 +69,12 @@
                 "--extensionDevelopmentPath=${workspaceFolder}/dist"
             ],
             "outFiles": ["${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../vscode-azureresourcegroups/out/**/*.js"],
-            "preLaunchTask": "Watch_Extension_and_Webviews",
+            "preLaunchTask": "Watch",
             "env": {
                 "DEBUGTELEMETRY": "v",
                 "NODE_DEBUG": "",
-                "DEBUG_WEBPACK": "true"
+                "DEBUG_WEBPACK": "",
+                "DEVSERVER": "true"
             },
             "debugWebWorkerHost": true,
             "rendererDebugOptions": {

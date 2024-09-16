@@ -113,7 +113,7 @@ export type QueryEditorContextDispatcher = {
     stopQuery: (executionId: string) => Promise<void>; // Stop the query
 
     openFile: () => Promise<void>; // Open a file
-    saveToFile: (query: string) => Promise<void>; // Save to file
+    saveToFile: (query: string, ext: string) => Promise<void>; // Save to file
     insertText: (text: string) => void; // Insert text to the editor
 
     connectToDatabase: () => Promise<void>; // Connect to the database
@@ -190,8 +190,8 @@ class QueryEditorContextDispatcherImpl implements QueryEditorContextDispatcher {
     public async openFile(): Promise<void> {
         await this.sendCommand('openFile');
     }
-    public async saveToFile(query: string): Promise<void> {
-        await this.sendCommand('saveFile', query);
+    public async saveToFile(query: string, ext: string): Promise<void> {
+        await this.sendCommand('saveFile', query, ext);
     }
     public insertText(query: string): void {
         this.dispatch({ type: 'insertText', queryValue: query ?? '' });

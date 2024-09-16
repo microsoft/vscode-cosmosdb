@@ -12,8 +12,7 @@ export interface MongoCommand {
     collection?: string;
     name?: string;
     arguments?: string[];
-    // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
-    argumentObjects?: Object[];
+    argumentObjects?: object[];
     errors?: ErrorDescription[];
     chained?: boolean;
 }

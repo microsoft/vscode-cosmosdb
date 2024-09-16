@@ -174,6 +174,7 @@ export function documentToSlickGridTree(document: WithId<Document>, idPrefix?: s
             tree.push({
                 id: globalEntryId,
                 field: `${stackEntry.key}`,
+                // eslint-disable-next-line @typescript-eslint/no-base-to-string
                 value: stackEntry.value.toString(), // TODO: add better string representation for DBRef
                 type: 'DBRef',
                 parentId: stackEntry.parentId,
@@ -219,6 +220,7 @@ export function documentToSlickGridTree(document: WithId<Document>, idPrefix?: s
             tree.push({
                 id: globalEntryId,
                 field: `${stackEntry.key}`,
+                // eslint-disable-next-line @typescript-eslint/no-base-to-string
                 value: stackEntry.value.toString(), // TODO: add better string representation for MaxKey
                 type: 'ObjectId',
                 parentId: stackEntry.parentId,
@@ -228,6 +230,7 @@ export function documentToSlickGridTree(document: WithId<Document>, idPrefix?: s
             tree.push({
                 id: globalEntryId,
                 field: `${stackEntry.key}`,
+                // eslint-disable-next-line @typescript-eslint/no-base-to-string
                 value: stackEntry.value.toString(), // TODO: add better string representation for MinKey
                 type: 'ObjectId',
                 parentId: stackEntry.parentId,

@@ -22,9 +22,9 @@ export function addDatabaseToConnectionString(connectionString: string, database
 export function createPostgresConnectionString(
     hostName: string,
     port: string = postgresDefaultPort,
-    username?: string | undefined,
-    password?: string | undefined,
-    databaseName?: string | undefined,
+    username?: string,
+    password?: string,
+    databaseName?: string,
 ): string {
     let connectionString: string = `postgres://`;
     if (username) {
@@ -47,9 +47,9 @@ export function createPostgresConnectionString(
 export function copyPostgresConnectionString(
     hostName: string,
     port: string = postgresDefaultPort,
-    username?: string | undefined,
-    password?: string | undefined,
-    databaseName?: string | undefined,
+    username?: string,
+    password?: string,
+    databaseName?: string,
 ): string {
     let connectionString: string = `postgres://`;
     if (username) {

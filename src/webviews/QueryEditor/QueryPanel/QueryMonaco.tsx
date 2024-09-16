@@ -1,5 +1,5 @@
 import Editor, { loader } from '@monaco-editor/react';
-import { debounce } from 'lodash-es';
+import { debounce } from 'lodash';
 //import * as monacoEditor from 'monaco-editor';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
@@ -24,7 +24,7 @@ export const QueryMonaco = () => {
                     dispatcher.insertText(newValue);
                 }
             }, 500),
-        [dispatcher],
+        [dispatcher, state],
     );
 
     const getVscodeTheme = (themeKind: string) => {

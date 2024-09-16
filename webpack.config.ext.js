@@ -90,7 +90,8 @@ module.exports = (env, { mode }) => {
         plugins: [
             new webpack.EnvironmentPlugin({
                 NODE_ENV: mode,
-                MONGO_LANGUAGE_SERVER_PATH: 'mongo-languageServer.bundle.js',
+                IS_BUNDLE: 'true',
+                DEVSERVER: 'true',
             }),
             // Copy everything what is needed to run the extension
             // - We can't bundle everything into one file because system-dependent binaries in node_modules
@@ -122,10 +123,6 @@ module.exports = (env, { mode }) => {
                         to: 'CHANGELOG.md',
                     },
                     {
-                        from: 'CODE_OF_CONDUCT.md',
-                        to: 'CODE_OF_CONDUCT.md',
-                    },
-                    {
                         from: 'LICENSE.md',
                         to: 'LICENSE.md',
                     },
@@ -136,6 +133,13 @@ module.exports = (env, { mode }) => {
                     {
                         from: 'README.md',
                         to: 'README.md',
+                        transform(content, absoluteFrom) {
+                            let data = content.toString();
+                            return data.replace(
+                                /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis,
+                                '',
+                            );
+                        },
                     },
                     {
                         from: 'SECURITY.md',
@@ -145,14 +149,13 @@ module.exports = (env, { mode }) => {
                         from: 'SUPPORT.md',
                         to: 'SUPPORT.md',
                     },
+                    {
+                        from: '.vscodeignore',
+                        to: '.vscodeignore',
+                        toType: 'file',
+                    },
                 ],
             }),
-            // TODO: Is still necessary?
-            // Replace vscode-languageserver/lib/files.js with a modified version that doesn't have webpack issues
-            new webpack.NormalModuleReplacementPlugin(
-                /[/\\]vscode-languageserver[/\\]lib[/\\]files\.js/,
-                require.resolve('./build/vscode-languageserver-files-stub.js'),
-            ),
         ].filter(Boolean),
         devtool: isDev ? 'source-map' : false,
         infrastructureLogging: {

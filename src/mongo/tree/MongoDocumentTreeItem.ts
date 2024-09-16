@@ -10,7 +10,7 @@ import {
     type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
 import { EJSON } from 'bson';
-import { omit } from 'lodash-es';
+import { omit } from 'lodash';
 import {
     type Collection,
     type DeleteResult,

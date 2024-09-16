@@ -50,7 +50,7 @@ export class DatabaseResolver implements AppResourceResolver {
                 let dbChild: AzExtTreeItem;
 
                 switch (resource.type.toLowerCase()) {
-                    case resourceTypes[0]:
+                    case resourceTypes[0]: {
                         const client = await createCosmosDBClient({ ...context, ...subContext });
                         const databaseAccount = await client.databaseAccounts.get(resourceGroupName, name);
                         dbChild = await SubscriptionTreeItem.initCosmosDBChild(
@@ -63,8 +63,9 @@ export class DatabaseResolver implements AppResourceResolver {
                         return experience?.api === API.MongoDB
                             ? new ResolvedMongoAccountResource(dbChild as MongoAccountTreeItem, resource)
                             : new ResolvedDocDBAccountResource(dbChild as DocDBAccountTreeItem, resource);
+                    }
                     case resourceTypes[1]:
-                    case resourceTypes[2]:
+                    case resourceTypes[2]: {
                         const postgresClient =
                             resource.type.toLowerCase() === resourceTypes[1]
                                 ? await createPostgreSQLClient({ ...context, ...subContext })
@@ -74,6 +75,7 @@ export class DatabaseResolver implements AppResourceResolver {
                         dbChild = await SubscriptionTreeItem.initPostgresChild(postgresServer, nonNullValue(subNode));
 
                         return new ResolvedPostgresServerResource(dbChild as PostgresServerTreeItem, resource);
+                    }
                     default:
                         return null;
                 }

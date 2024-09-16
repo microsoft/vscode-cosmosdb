@@ -72,10 +72,9 @@ const cosmosDBTopLevelContextValues: string[] = [
 export async function activateInternal(
     context: vscode.ExtensionContext,
     perfStats: { loadStartTime: number; loadEndTime: number },
-    ignoreBundle?: boolean,
 ): Promise<apiUtils.AzureExtensionApiProvider> {
     ext.context = context;
-    ext.ignoreBundle = ignoreBundle;
+    ext.isBundle = !!process.env.IS_BUNDLE;
 
     ext.outputChannel = createAzExtLogOutputChannel('Azure Databases');
     context.subscriptions.push(ext.outputChannel);

@@ -1,5 +1,16 @@
 # Change Log
 
+## 0.23.0
+
+### Changed
+
+- Use Entra ID automatically for NoSQL accounts with local auth disabled.
+- Don't fetch NoSQL account keys when using Entra ID.
+
+### Added
+
+- Added RBAC permission error handling for NoSQL accounts. If RBAC permission is missing, show a notification with an option to assign a contributor role for the current account and a link to RBAC documentation.
+
 ## 0.22.0
 
 - Added support to authenticate with CosmosDB NoSQL database accounts using MS Entra ID.

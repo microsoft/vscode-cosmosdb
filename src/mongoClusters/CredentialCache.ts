@@ -1,20 +1,20 @@
 'mongodb-connection-string-url';
 
 interface MongoClustersCredentials {
-    clientId: string;
+    credentialId: string;
     connectionStringWithCredentials: string;
 }
 
-export class CredentialsStore {
+export class CredentialCache {
     // clientId -> mongoClusters credentials
     private static _store: Map<string, MongoClustersCredentials> = new Map();
 
     public static getConnectionString(clientId: string): string {
-        return CredentialsStore._store.get(clientId)?.connectionStringWithCredentials as string;
+        return CredentialCache._store.get(clientId)?.connectionStringWithCredentials as string;
     }
 
     public static hasConnectionString(clientId: string): boolean {
-        return CredentialsStore._store.has(clientId) as boolean;
+        return CredentialCache._store.has(clientId) as boolean;
     }
 
     /**
@@ -22,15 +22,15 @@ export class CredentialsStore {
      * @param connectinString connection string with credentials
      */
     public static setConnectionString(connectinString: string): string {
-        const clientId = Math.random().toString(36).substring(7); // maybe a hash?
+        const credentialId = Math.random().toString(36).substring(7); // maybe a hash?
 
         const credentials = {
-            clientId: clientId,
+            credentialId: credentialId,
             connectionStringWithCredentials: connectinString,
         };
 
-        CredentialsStore._store.set(clientId, credentials);
+        CredentialCache._store.set(credentialId, credentials);
 
-        return clientId;
+        return credentialId;
     }
 }

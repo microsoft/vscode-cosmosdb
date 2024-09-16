@@ -29,7 +29,7 @@ export class CollectionItem implements MongoClusterItemBase {
                         viewTitle: `${this.collectionInfo.name}`,
                         // viewTitle: `${this.mongoCluster.name}/${this.databaseInfo.name}/${this.collectionInfo.name}`, // using '/' as a separator to use VSCode's "title compression"(?) feature
 
-                        liveConnectionId: this.mongoCluster.session?.clientId,
+                        liveConnectionId: this.mongoCluster.session?.credentialId,
                         databaseName: this.databaseInfo.name,
                         collectionName: this.collectionInfo.name,
                     },

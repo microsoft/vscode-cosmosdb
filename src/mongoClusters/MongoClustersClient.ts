@@ -7,7 +7,7 @@
 import { MongoClient, type Filter, type FindOptions, type ListDatabasesResult } from 'mongodb';
 import { getDataTopLevel, getFieldsTopLevel } from '../utils/slickgrid/mongo/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
-import { CredentialsStore } from './CredentialsStore';
+import { CredentialCache } from './CredentialCache';
 import { toFilterQueryObj } from './utils/toFilterQuery';
 
 export interface DatabaseItemModel {
@@ -48,27 +48,27 @@ export class MongoClustersClient {
         return;
     }
 
-    private async initClient(clientId: string): Promise<void> {
-        if (!CredentialsStore.hasConnectionString(clientId)) {
-            throw new Error(`No credentials found for client with id ${clientId}`);
+    private async initClient(credentialId: string): Promise<void> {
+        if (!CredentialCache.hasConnectionString(credentialId)) {
+            throw new Error(`No credentials found for id ${credentialId}`);
         }
-        const cStringPassword = CredentialsStore.getConnectionString(clientId);
+        const cStringPassword = CredentialCache.getConnectionString(credentialId);
 
         this._mongoClient = await MongoClient.connect(cStringPassword as string);
     }
 
-    public static async getClient(clientId: string): Promise<MongoClustersClient> {
+    public static async getClient(credentialId: string): Promise<MongoClustersClient> {
         let client: MongoClustersClient;
 
-        if (MongoClustersClient._clients.has(clientId)) {
-            client = MongoClustersClient._clients.get(clientId) as MongoClustersClient;
+        if (MongoClustersClient._clients.has(credentialId)) {
+            client = MongoClustersClient._clients.get(credentialId) as MongoClustersClient;
 
             // if the client is already connected, it's a NOOP.
             await client._mongoClient.connect();
         } else {
             client = new MongoClustersClient();
-            await client.initClient(clientId);
-            MongoClustersClient._clients.set(clientId, client);
+            await client.initClient(credentialId);
+            MongoClustersClient._clients.set(credentialId, client);
         }
 
         return client;

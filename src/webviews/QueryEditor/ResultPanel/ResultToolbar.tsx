@@ -21,13 +21,14 @@ import {
     ArrowRightFilled,
     DocumentCopyRegular,
 } from '@fluentui/react-icons';
+import { queryMetricsToCsv, queryMetricsToTable, queryResultToCsv, queryResultToJson } from '../../utils';
 import { DEFAULT_PAGE_SIZE, useQueryEditorDispatcher, useQueryEditorState } from '../QueryEditorContext';
 
 const ToolbarDividerTransparent = () => {
     return <div style={{ padding: '4px' }} />;
 };
 
-export const ResultToolbar = () => {
+export const ResultToolbar = ({ selectedTab }: { selectedTab: string }) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
@@ -45,6 +46,26 @@ export const ResultToolbar = () => {
 
     function onOptionSelect(_event: SelectionEvents, data: OptionOnSelectData) {
         dispatcher.setPageSize(parseInt(data.optionText ?? '', 10) ?? -1);
+    }
+
+    async function onSaveAsCSV() {
+        if (selectedTab === 'result__tab') {
+            await dispatcher.saveToFile(queryResultToCsv(state.currentQueryResult), 'csv');
+        }
+
+        if (selectedTab === 'stats__tab') {
+            await dispatcher.saveToFile(queryMetricsToCsv(state.currentQueryResult), 'csv');
+        }
+    }
+
+    async function onSaveAsJSON() {
+        if (selectedTab === 'result__tab') {
+            await dispatcher.saveToFile(queryResultToJson(state.currentQueryResult), 'json');
+        }
+
+        if (selectedTab === 'stats__tab') {
+            await dispatcher.saveToFile(JSON.stringify(queryMetricsToTable(state.currentQueryResult), null, 4), 'json');
+        }
     }
 
     return (
@@ -89,8 +110,7 @@ export const ResultToolbar = () => {
                     onOptionSelect={onOptionSelect}
                     style={{ minWidth: '100px', maxWidth: '100px' }}
                     defaultValue={DEFAULT_PAGE_SIZE.toString()}
-                    defaultSelectedOptions={[DEFAULT_PAGE_SIZE.toString()]}
-                >
+                    defaultSelectedOptions={[DEFAULT_PAGE_SIZE.toString()]}>
                     <Option key="10">10</Option>
                     <Option key="10">50</Option>
                     <Option key="100">100</Option>
@@ -120,8 +140,8 @@ export const ResultToolbar = () => {
                     </MenuTrigger>
                     <MenuPopover>
                         <MenuList>
-                            <MenuItem>CSV</MenuItem>
-                            <MenuItem>JSON</MenuItem>
+                            <MenuItem onClick={() => void onSaveAsCSV()}>CSV</MenuItem>
+                            <MenuItem onClick={() => void onSaveAsJSON()}>JSON</MenuItem>
                         </MenuList>
                     </MenuPopover>
                 </Menu>

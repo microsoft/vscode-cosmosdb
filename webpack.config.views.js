@@ -114,6 +114,9 @@ module.exports = (env, { mode }) => {
             new CopyWebpackPlugin({
                 patterns: [{ from: 'src/webviews/static', to: 'static', noErrorOnMissing: true }].filter(Boolean),
             }),
+            new webpack.optimize.LimitChunkCountPlugin({
+                maxChunks: 1,
+            }),
         ],
         devtool: isDev ? 'source-map' : false,
         infrastructureLogging: {

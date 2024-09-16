@@ -24,7 +24,7 @@ export const QueryMonaco = () => {
                     dispatcher.insertText(newValue);
                 }
             }, 500),
-        [dispatcher],
+        [dispatcher, state],
     );
 
     const getVscodeTheme = (themeKind: string) => {

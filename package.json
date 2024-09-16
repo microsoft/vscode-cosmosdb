@@ -45,7 +45,7 @@
         "build": "tsc",
         "clean": "git clean -dfx",
         "compile": "tsc -watch",
-        "package": "cd dist && npm pkg delete \"scripts.vscode:prepublish\" && npx vsce package --no-dependencies",
+        "package": "npm run webpack-prod && cd dist && npm pkg delete \"scripts.vscode:prepublish\" && npx vsce package --no-dependencies",
         "lint": "eslint --quiet --ext .ts --ext .tsx .",
         "lint-fix": "eslint --ext .ts --ext .tsx . --fix",
         "pretest": "npm run webpack-prod",
@@ -155,9 +155,6 @@
     "extensionDependencies": [
         "ms-azuretools.vscode-azureresourcegroups"
     ],
-    "overrides": {
-        "es5-ext": "0.10.53"
-    },
     "contributes": {
         "x-azResources": {
             "azure": {

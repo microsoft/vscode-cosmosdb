@@ -1,11 +1,4 @@
-import {
-    makeStyles,
-    Tab,
-    TabList,
-    type SelectTabData,
-    type SelectTabEvent,
-    type TabValue,
-} from '@fluentui/react-components';
+import { makeStyles, Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { useState, type PropsWithChildren } from 'react';
 import { ResultTab } from './ResultTab';
 import { ResultToolbar } from './ResultToolbar';
@@ -48,17 +41,17 @@ const ActionBar = (props: PropsWithChildren) => {
 export const ResultPanel = () => {
     const styles = useStyles();
 
-    const [selectedValue, setSelectedValue] = useState<TabValue>('result__tab');
+    const [selectedTab, setSelectedTab] = useState<string>('result__tab');
 
     const onTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
-        setSelectedValue(data.value);
+        setSelectedTab(data.value as string);
     };
 
     return (
         <section className={styles.root}>
             <ActionBar>
                 <div className={styles.tabs}>
-                    <TabList selectedValue={selectedValue} onTabSelect={onTabSelect}>
+                    <TabList selectedValue={selectedTab} onTabSelect={onTabSelect}>
                         <Tab id="Result" value="result__tab">
                             Result
                         </Tab>
@@ -67,11 +60,11 @@ export const ResultPanel = () => {
                         </Tab>
                     </TabList>
                 </div>
-                <ResultToolbar />
+                <ResultToolbar selectedTab={selectedTab} />
             </ActionBar>
             <div className={[styles.tabContainer, 'resultsDisplayArea'].join(' ')}>
-                {selectedValue === 'result__tab' && <ResultTab />}
-                {selectedValue === 'stats__tab' && <StatsTab />}
+                {selectedTab === 'result__tab' && <ResultTab />}
+                {selectedTab === 'stats__tab' && <StatsTab />}
             </div>
         </section>
     );

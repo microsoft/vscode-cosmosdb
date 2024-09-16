@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ItemDefinition } from '@azure/cosmos';
-import { IActionContext, parseError } from '@microsoft/vscode-azext-utils';
+import { type ItemDefinition } from '@azure/cosmos';
+import { parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
 import { cosmosMongoFilter, sqlFilter } from '../constants';
@@ -14,7 +14,11 @@ import { MongoCollectionTreeItem } from '../mongo/tree/MongoCollectionTreeItem';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { getRootPath } from '../utils/workspacUtils';
 
-export async function importDocuments(context: IActionContext, uris: vscode.Uri[] | undefined, collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | undefined): Promise<void> {
+export async function importDocuments(
+    context: IActionContext,
+    uris: vscode.Uri[] | undefined,
+    collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | undefined,
+): Promise<void> {
     if (!uris) {
         uris = await askForDocuments(context);
     }
@@ -29,39 +33,36 @@ export async function importDocuments(context: IActionContext, uris: vscode.Uri[
     });
     if (ignoredUris.length) {
         ext.outputChannel.appendLog(`Ignoring the following files which are not json:`);
-        ignoredUris.forEach(uri => ext.outputChannel.appendLog(`${uri.fsPath}`));
+        ignoredUris.forEach((uri) => ext.outputChannel.appendLog(`${uri.fsPath}`));
         ext.outputChannel.show();
     }
     if (!collectionNode) {
         collectionNode = await ext.rgApi.pickAppResource<MongoCollectionTreeItem | DocDBCollectionTreeItem>(context, {
-            filter: [
-                cosmosMongoFilter,
-                sqlFilter
-            ],
-            expectedChildContextValue: [MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue]
+            filter: [cosmosMongoFilter, sqlFilter],
+            expectedChildContextValue: [MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue],
         });
     }
     let result: string;
     result = await vscode.window.withProgress(
         {
             location: vscode.ProgressLocation.Notification,
-            title: "Importing documents..."
+            title: 'Importing documents...',
         },
         async (progress) => {
             uris = nonNullValue(uris, 'uris');
             collectionNode = nonNullValue(collectionNode, 'collectionNode');
 
-            progress.report({ increment: 20, message: "Parsing documents for errors" });
+            progress.report({ increment: 20, message: 'Parsing documents for errors' });
             const documents = await parseDocuments(uris);
-            progress.report({ increment: 30, message: "Parsed documents. Importing" });
+            progress.report({ increment: 30, message: 'Parsed documents. Importing' });
             if (collectionNode instanceof MongoCollectionTreeItem) {
                 result = await insertDocumentsIntoMongo(collectionNode, documents);
             } else {
                 result = await insertDocumentsIntoDocdb(collectionNode, documents, uris);
             }
-            progress.report({ increment: 50, message: "Finished importing" });
+            progress.report({ increment: 50, message: 'Finished importing' });
             return result;
-        }
+        },
     );
 
     await collectionNode.refresh(context);
@@ -71,10 +72,10 @@ export async function importDocuments(context: IActionContext, uris: vscode.Uri[
 async function askForDocuments(context: IActionContext): Promise<vscode.Uri[]> {
     const openDialogOptions: vscode.OpenDialogOptions = {
         canSelectMany: true,
-        openLabel: "Import",
+        openLabel: 'Import',
         filters: {
-            JSON: ["json"]
-        }
+            JSON: ['json'],
+        },
     };
     const rootPath: string | undefined = getRootPath();
     if (rootPath) {
@@ -96,7 +97,7 @@ async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
         } catch (e) {
             if (!errorFoundFlag) {
                 errorFoundFlag = true;
-                ext.outputChannel.appendLog("Errors found in documents listed below. Please fix these.");
+                ext.outputChannel.appendLog('Errors found in documents listed below. Please fix these.');
                 ext.outputChannel.show();
             }
             const err = parseError(e);
@@ -118,8 +119,12 @@ async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
     return documents;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem, documents: any[], uris: vscode.Uri[]): Promise<string> {
+async function insertDocumentsIntoDocdb(
+    collectionNode: DocDBCollectionTreeItem,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    documents: any[],
+    uris: vscode.Uri[],
+): Promise<string> {
     const ids: string[] = [];
     let i = 0;
     const erroneousFiles: vscode.Uri[] = [];
@@ -132,11 +137,14 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
     }
     if (erroneousFiles.length) {
         ext.outputChannel.appendLog(`The following documents do not contain the required partition key:`);
-        erroneousFiles.forEach(file => ext.outputChannel.appendLog(file.path));
+        erroneousFiles.forEach((file) => ext.outputChannel.appendLog(file.path));
         ext.outputChannel.show();
-        throw new Error(`See output for list of documents that do not contain the partition key '${nonNullProp(collectionNode, 'partitionKey').paths[0]}' required by collection '${collectionNode.label}'`);
+        throw new Error(
+            `See output for list of documents that do not contain the partition key '${nonNullProp(collectionNode, 'partitionKey').paths[0]}' required by collection '${collectionNode.label}'`,
+        );
     }
     for (const document of documents) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const retrieved: ItemDefinition = await collectionNode.documentsTreeItem.createDocument(document);
         if (retrieved.id) {
             ids.push(retrieved.id);
@@ -151,7 +159,8 @@ async function insertDocumentsIntoDocdb(collectionNode: DocDBCollectionTreeItem,
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function insertDocumentsIntoMongo(node: MongoCollectionTreeItem, documents: any[]): Promise<string> {
-    let output = "";
+    let output = '';
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const parsed = await node.collection.insertMany(documents);
     if (parsed.acknowledged) {
         output = `Import into mongo successful. Inserted ${parsed.insertedCount} document(s). See output for more details.`;

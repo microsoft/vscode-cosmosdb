@@ -4,13 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureAccountTreeItemBase } from '@microsoft/vscode-azext-azureutils';
-import { AzExtTreeItem, IActionContext, ISubscriptionContext } from '@microsoft/vscode-azext-utils';
+import { type AzExtTreeItem, type IActionContext, type ISubscriptionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../extensionVariables';
 import { AttachedAccountsTreeItem } from './AttachedAccountsTreeItem';
 import { SubscriptionTreeItem } from './SubscriptionTreeItem';
 
 export class AzureAccountTreeItemWithAttached extends AzureAccountTreeItemBase {
-    public constructor(testAccount?: {}) {
+    public constructor(testAccount?: object) {
         super(undefined, testAccount);
         ext.attachedAccountsNode = new AttachedAccountsTreeItem(this);
     }

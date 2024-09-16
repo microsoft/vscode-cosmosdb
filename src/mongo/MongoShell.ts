@@ -11,33 +11,45 @@ import { randomUtils } from '../utils/randomUtils';
 import { getBatchSizeSetting } from '../utils/workspacUtils';
 import { wrapError } from '../utils/wrapError';
 
-const timeoutMessage = "Timed out trying to execute the Mongo script. To use a longer timeout, modify the VS Code 'mongo.shell.timeout' setting.";
+const timeoutMessage =
+    "Timed out trying to execute the Mongo script. To use a longer timeout, modify the VS Code 'mongo.shell.timeout' setting.";
 
 const mongoShellMoreMessage = 'Type "it" for more';
 const extensionMoreMessage = '(More)';
 
 const sentinelBase = 'EXECUTION COMPLETED';
-const sentinelRegex = /\"?EXECUTION COMPLETED [0-9a-fA-F]{10}\"?/;
-function createSentinel(): string { return `${sentinelBase} ${randomUtils.getRandomHexString(10)}`; }
+const sentinelRegex = /"?EXECUTION COMPLETED [0-9a-fA-F]{10}"?/;
+function createSentinel(): string {
+    return `${sentinelBase} ${randomUtils.getRandomHexString(10)}`;
+}
 
 export class MongoShell extends vscode.Disposable {
-
-    constructor(private _process: InteractiveChildProcess, private _timeoutSeconds: number) {
+    constructor(
+        private _process: InteractiveChildProcess,
+        private _timeoutSeconds: number,
+    ) {
         super(() => this.dispose());
     }
 
-    public static async create(execPath: string, execArgs: string[], connectionString: string, isEmulator: boolean | undefined, outputChannel: vscode.OutputChannel, timeoutSeconds: number): Promise<MongoShell> {
+    public static async create(
+        execPath: string,
+        execArgs: string[],
+        connectionString: string,
+        isEmulator: boolean | undefined,
+        outputChannel: vscode.OutputChannel,
+        timeoutSeconds: number,
+    ): Promise<MongoShell> {
         try {
             const args: string[] = execArgs.slice() || []; // Snapshot since we modify it
             args.push(connectionString);
 
             if (isEmulator) {
                 // Without these the connection will fail due to the self-signed DocDB certificate
-                if (args.indexOf("--ssl") < 0) {
-                    args.push("--ssl");
+                if (args.indexOf('--ssl') < 0) {
+                    args.push('--ssl');
                 }
-                if (args.indexOf("--sslAllowInvalidCertificates") < 0) {
-                    args.push("--sslAllowInvalidCertificates");
+                if (args.indexOf('--sslAllowInvalidCertificates') < 0) {
+                    args.push('--sslAllowInvalidCertificates');
                 }
             }
 
@@ -46,13 +58,13 @@ export class MongoShell extends vscode.Disposable {
                 command: execPath,
                 args,
                 outputFilterSearch: sentinelRegex,
-                outputFilterReplace: ''
+                outputFilterReplace: '',
             });
             const shell: MongoShell = new MongoShell(process, timeoutSeconds);
 
             // Try writing an empty script to verify the process is running correctly and allow us
             // to catch any errors related to the start-up of the process before trying to write to it.
-            await shell.executeScript("");
+            await shell.executeScript('');
 
             // Configure the batch size
             await shell.executeScript(`DBQuery.shellBatchSize = ${getBatchSizeSetting()}`);
@@ -74,7 +86,7 @@ export class MongoShell extends vscode.Disposable {
     public async executeScript(script: string): Promise<string> {
         script = convertToSingleLine(script);
 
-        let stdOut = "";
+        let stdOut = '';
         const sentinel = createSentinel();
 
         const disposables: vscode.Disposable[] = [];
@@ -86,7 +98,7 @@ export class MongoShell extends vscode.Disposable {
 
                     // Hook up events
                     disposables.push(
-                        this._process.onStdOut(text => {
+                        this._process.onStdOut((text) => {
                             stdOut += text;
                             // eslint-disable-next-line prefer-const
                             let { text: stdOutNoSentinel, removed } = removeSentinel(stdOut, sentinel);
@@ -97,22 +109,30 @@ export class MongoShell extends vscode.Disposable {
                                 //   since we're not currently interactive like that.
                                 // CONSIDER: Ideally we would allow users to click a button to iterate through more data,
                                 //   or even just do it for them
-                                stdOutNoSentinel = stdOutNoSentinel.replace(mongoShellMoreMessage, extensionMoreMessage);
+                                stdOutNoSentinel = stdOutNoSentinel.replace(
+                                    mongoShellMoreMessage,
+                                    extensionMoreMessage,
+                                );
 
                                 resolve(stdOutNoSentinel);
                             }
-                        }));
+                        }),
+                    );
                     disposables.push(
-                        this._process.onStdErr(text => {
+                        this._process.onStdErr((text) => {
                             // Mongo shell only writes to STDERR for errors relating to starting up. Script errors go to STDOUT.
                             //   So consider this an error.
                             // (It's okay if we fire this multiple times, the first one wins.)
+                            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                             reject(wrapCheckOutputWindow(text.trim()));
-                        }));
+                        }),
+                    );
                     disposables.push(
-                        this._process.onError(error => {
+                        this._process.onError((error) => {
+                            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                             reject(error);
-                        }));
+                        }),
+                    );
 
                     // Write the script to STDIN
                     if (script) {
@@ -123,7 +143,6 @@ export class MongoShell extends vscode.Disposable {
                     // it back out as a string value after it's done processing the script
                     const quotedSentinel = `"${sentinel}"`;
                     this._process.writeLine(quotedSentinel); // (Don't display the sentinel)
-
                 } catch (error) {
                     // new Promise() doesn't seem to catch exceptions in an async function, we need to explicitly reject it
 
@@ -131,16 +150,16 @@ export class MongoShell extends vscode.Disposable {
                         // Give a chance for start-up errors to show up before rejecting with this more general error message
                         await delay(500);
                         // eslint-disable-next-line no-ex-assign
-                        error = new Error("The process exited prematurely.");
+                        error = new Error('The process exited prematurely.');
                     }
 
+                    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                     reject(wrapCheckOutputWindow(error));
                 }
             });
 
             return result.trim();
-        }
-        finally {
+        } finally {
             // Dispose event handlers
             for (const d of disposables) {
                 d.dispose();
@@ -149,21 +168,19 @@ export class MongoShell extends vscode.Disposable {
     }
 }
 
-function startScriptTimeout(timeoutSeconds: number | 0, reject: (err: unknown) => void): void {
+function startScriptTimeout(timeoutSeconds: number, reject: (err: unknown) => void): void {
     if (timeoutSeconds > 0) {
-        setTimeout(
-            () => {
-                reject(timeoutMessage);
-            },
-            timeoutSeconds * 1000);
+        setTimeout(() => {
+            reject(timeoutMessage);
+        }, timeoutSeconds * 1000);
     }
 }
 
 function convertToSingleLine(script: string): string {
-    return script.split(os.EOL)
-        .map(line => line.trim())
+    return script
+        .split(os.EOL)
+        .map((line) => line.trim())
         .join('');
-
 }
 
 function removeSentinel(text: string, sentinel: string): { text: string; removed: boolean } {
@@ -176,12 +193,12 @@ function removeSentinel(text: string, sentinel: string): { text: string; removed
 }
 
 async function delay(milliseconds: number): Promise<void> {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
         setTimeout(resolve, milliseconds);
     });
 }
 
 function wrapCheckOutputWindow(error: unknown): unknown {
-    const checkOutputMsg = "The output window may contain additional information.";
+    const checkOutputMsg = 'The output window may contain additional information.';
     return parseError(error).message.includes(checkOutputMsg) ? error : wrapError(error, checkOutputMsg);
 }

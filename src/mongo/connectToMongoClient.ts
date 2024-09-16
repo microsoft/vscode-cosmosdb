@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { MongoClient, MongoClientOptions } from 'mongodb';
+import { MongoClient, type MongoClientOptions } from 'mongodb';
 import { emulatorPassword, Links } from '../constants';
 
 export async function connectToMongoClient(connectionString: string, appName: string): Promise<MongoClient> {
@@ -13,7 +13,7 @@ export async function connectToMongoClient(connectionString: string, appName: st
         appName: `@${appName}@`,
         // https://github.com/lmammino/mongo-uri-builder/issues/2
         useNewUrlParser: true,
-        useUnifiedTopology: true
+        useUnifiedTopology: true,
     };
 
     if (isCosmosEmulatorConnectionString(connectionString)) {
@@ -25,7 +25,7 @@ export async function connectToMongoClient(connectionString: string, appName: st
         return await MongoClient.connect(connectionString, options);
     } catch (err) {
         // Note: This file can't use `parseError` from `@microsoft/vscode-azext-utils` because it's used by languageService.ts - see that file for more info
-        const error = <{ message?: string, name?: string }>err;
+        const error = <{ message?: string; name?: string }>err;
         const message = error && error.message;
 
         // Example error: "failed to connect to server [localhost:10255] on first connect [MongoError: connect ECONNREFUSED 127.0.0.1:10255]"
@@ -34,13 +34,16 @@ export async function connectToMongoClient(connectionString: string, appName: st
             throw new MongoConnectError();
         }
 
+        // eslint-disable-next-line @typescript-eslint/only-throw-error
         throw error;
     }
 }
 
 export class MongoConnectError extends Error {
     constructor() {
-        super(`Unable to connect to local Mongo DB instance. Make sure it is started correctly. See ${Links.LocalConnectionDebuggingTips} for tips.`);
+        super(
+            `Unable to connect to local Mongo DB instance. Make sure it is started correctly. See ${Links.LocalConnectionDebuggingTips} for tips.`,
+        );
     }
 }
 

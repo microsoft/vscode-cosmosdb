@@ -3,17 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ContainerDefinition, Resource } from '@azure/cosmos';
-import { AzExtTreeItem, IActionContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import { type ContainerDefinition, type Resource } from '@azure/cosmos';
+import { AzExtTreeItem, type IActionContext, type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { localize } from '../../utils/localize';
 import { openUrl } from '../../utils/openUrl';
-import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
+import { type GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 
-const alternativeGraphVisualizationToolsDocLink = "https://aka.ms/cosmosdb-graph-alternative-tools";
+const alternativeGraphVisualizationToolsDocLink = 'https://aka.ms/cosmosdb-graph-alternative-tools';
 
 export class GraphTreeItem extends AzExtTreeItem {
-    public static contextValue: string = "cosmosDBGraphGraph";
+    public static contextValue: string = 'cosmosDBGraphGraph';
     public readonly contextValue: string = GraphTreeItem.contextValue;
     public readonly parent: GraphCollectionTreeItem;
     public suppressMaskLabel = true;
@@ -31,7 +31,7 @@ export class GraphTreeItem extends AzExtTreeItem {
     }
 
     public get label(): string {
-        return "Graph";
+        return 'Graph';
     }
 
     public get link(): string {
@@ -44,11 +44,8 @@ export class GraphTreeItem extends AzExtTreeItem {
 
     public async showExplorer(_context: IActionContext): Promise<void> {
         const message: string = localize('mustInstallGraph', 'Cosmos DB Graph extension has been retired.');
-        const alternativeToolsOption = "Alternative Tools";
-        const result = await vscode.window.showErrorMessage(
-            message,
-            alternativeToolsOption
-        );
+        const alternativeToolsOption = 'Alternative Tools';
+        const result = await vscode.window.showErrorMessage(message, alternativeToolsOption);
         if (result === alternativeToolsOption) {
             await openUrl(alternativeGraphVisualizationToolsDocLink);
         }

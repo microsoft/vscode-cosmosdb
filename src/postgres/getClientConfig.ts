@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Client, ClientConfig } from "pg";
-import { ConnectionOptions } from "tls";
-import { postgresDefaultPort } from "../constants";
-import { nonNullProp } from "../utils/nonNull";
-import { PostgresServerType } from "./abstract/models";
-import { ParsedPostgresConnectionString, addDatabaseToConnectionString } from "./postgresConnectionStrings";
+import { Client, type ClientConfig } from 'pg';
+import { type ConnectionOptions } from 'tls';
+import { postgresDefaultPort } from '../constants';
+import { nonNullProp } from '../utils/nonNull';
+import { PostgresServerType } from './abstract/models';
+import { addDatabaseToConnectionString, type ParsedPostgresConnectionString } from './postgresConnectionStrings';
 
 export type PostgresClientConfigs = {
     password: ClientConfig | undefined;
@@ -30,7 +30,10 @@ export async function testClientConfig(clientConfig: ClientConfig): Promise<void
     }
 }
 
-async function getConnectionStringClientConfig(parsedConnectionString: ParsedPostgresConnectionString, databaseName: string): Promise<ClientConfig> {
+async function getConnectionStringClientConfig(
+    parsedConnectionString: ParsedPostgresConnectionString,
+    databaseName: string,
+): Promise<ClientConfig> {
     let connectionString = parsedConnectionString.connectionString;
     if (!parsedConnectionString.databaseName) {
         connectionString = addDatabaseToConnectionString(connectionString, databaseName);
@@ -38,9 +41,15 @@ async function getConnectionStringClientConfig(parsedConnectionString: ParsedPos
     return { connectionString: connectionString };
 }
 
-async function getUsernamePasswordClientConfig(parsedConnectionString: ParsedPostgresConnectionString, sslAzure: ConnectionOptions, databaseName: string): Promise<ClientConfig | undefined> {
+async function getUsernamePasswordClientConfig(
+    parsedConnectionString: ParsedPostgresConnectionString,
+    sslAzure: ConnectionOptions,
+    databaseName: string,
+): Promise<ClientConfig | undefined> {
     const host = nonNullProp(parsedConnectionString, 'hostName');
-    const port: number = parsedConnectionString.port ? parseInt(parsedConnectionString.port) : parseInt(postgresDefaultPort);
+    const port: number = parsedConnectionString.port
+        ? parseInt(parsedConnectionString.port)
+        : parseInt(postgresDefaultPort);
     const username: string | undefined = parsedConnectionString.username;
     const password: string | undefined = parsedConnectionString.password;
 
@@ -56,10 +65,12 @@ async function getAzureAdClientConfig(
     sslAzure: ConnectionOptions,
     databaseName: string,
     azureAdUserId: string,
-    getToken: () => Promise<string>
+    getToken: () => Promise<string>,
 ): Promise<ClientConfig> {
     const host = nonNullProp(parsedConnectionString, 'hostName');
-    const port: number = parsedConnectionString.port ? parseInt(parsedConnectionString.port) : parseInt(postgresDefaultPort);
+    const port: number = parsedConnectionString.port
+        ? parseInt(parsedConnectionString.port)
+        : parseInt(postgresDefaultPort);
     return { user: azureAdUserId, password: getToken, ssl: sslAzure, host, port, database: databaseName };
 }
 
@@ -69,30 +80,46 @@ export async function getClientConfigs(
     hasSubscription: boolean,
     databaseName: string,
     azureUserId?: string,
-    getToken?: () => Promise<string>
+    getToken?: () => Promise<string>,
 ): Promise<PostgresClientConfigs> {
     const clientConfigs: PostgresClientConfigs = {
         password: undefined,
         azureAd: undefined,
-        connectionString: undefined
+        connectionString: undefined,
     };
     if (hasSubscription) {
         const sslAzure: ConnectionOptions = {
             // Always provide the certificate since it is accepted even when SSL is disabled
             // Single Server Root Cert --> BaltimoreCyberTrustRoot (Current), DigiCertGlobalRootG2 (TBA)
             // Flexible Server Root Cert --> DigiCertGlobalRootCA. More info: https://aka.ms/AAd75x5
-            ca: serverType === PostgresServerType.Single ? [BaltimoreCyberTrustRoot, DigiCertGlobalRootG2] : [DigiCertGlobalRootCA]
+            ca:
+                serverType === PostgresServerType.Single
+                    ? [BaltimoreCyberTrustRoot, DigiCertGlobalRootG2]
+                    : [DigiCertGlobalRootCA],
         };
-        const passwordClientConfig = await getUsernamePasswordClientConfig(parsedConnectionString, sslAzure, databaseName);
+        const passwordClientConfig = await getUsernamePasswordClientConfig(
+            parsedConnectionString,
+            sslAzure,
+            databaseName,
+        );
         if (passwordClientConfig) {
             clientConfigs.password = passwordClientConfig;
         }
         if (serverType === PostgresServerType.Flexible && !!azureUserId && !!getToken) {
-            const azureAdClientConfig = await getAzureAdClientConfig(parsedConnectionString, sslAzure, databaseName, azureUserId, getToken);
+            const azureAdClientConfig = await getAzureAdClientConfig(
+                parsedConnectionString,
+                sslAzure,
+                databaseName,
+                azureUserId,
+                getToken,
+            );
             clientConfigs.azureAd = azureAdClientConfig;
         }
     } else {
-        const connectionStringClientConfig = await getConnectionStringClientConfig(parsedConnectionString, databaseName);
+        const connectionStringClientConfig = await getConnectionStringClientConfig(
+            parsedConnectionString,
+            databaseName,
+        );
         clientConfigs.connectionString = connectionStringClientConfig;
     }
 
@@ -169,4 +196,3 @@ PnlUkiaY4IBIqDfv8NZ5YBberOgOzW6sRBc4L0na4UU+Krk2U886UAb3LujEV0ls
 YSEY1QSteDwsOoBrp+uvFRTp2InBuThs4pFsiv9kuXclVzDAGySj4dzp30d8tbQk
 CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=
 -----END CERTIFICATE-----`;
-

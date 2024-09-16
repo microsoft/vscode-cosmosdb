@@ -3,15 +3,22 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
-import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
-import { ParseTree } from 'antlr4ts/tree/ParseTree';
-import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
-import { ArgumentContext, ArgumentsContext, CollectionContext, CommandContext, CommandsContext, FunctionCallContext, MongoCommandsContext } from './mongoParser';
-import { mongoVisitor } from './mongoVisitor';
+import { type ParserRuleContext } from 'antlr4ts/ParserRuleContext';
+import { type ErrorNode } from 'antlr4ts/tree/ErrorNode';
+import { type ParseTree } from 'antlr4ts/tree/ParseTree';
+import { type TerminalNode } from 'antlr4ts/tree/TerminalNode';
+import {
+    type ArgumentContext,
+    type ArgumentsContext,
+    type CollectionContext,
+    type CommandContext,
+    type CommandsContext,
+    type FunctionCallContext,
+    type MongoCommandsContext,
+} from './mongoParser';
+import { type mongoVisitor } from './mongoVisitor';
 
 export class MongoVisitor<T> implements mongoVisitor<T> {
-
     visitMongoCommands(ctx: MongoCommandsContext): T {
         return this.visitChildren(ctx);
     }
@@ -46,7 +53,7 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 
     visitChildren(ctx: ParserRuleContext): T {
         let result = this.defaultResult(ctx);
-        const n = ctx.childCount
+        const n = ctx.childCount;
         for (let i = 0; i < n; i++) {
             if (!this.shouldVisitNextChild(ctx, result)) {
                 break;
@@ -69,7 +76,7 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
 
     protected defaultResult(_node: ParseTree): T {
         // grandfathered-in. Unclear why this is null instead of type T
-        return <T><unknown>null;
+        return <T>(<unknown>null);
     }
 
     protected aggregateResult(aggregate: T, nextResult: T): T {

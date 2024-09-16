@@ -3,12 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext, ITreeItemPickerContext } from "@microsoft/vscode-azext-utils";
-import { localize } from "../../utils/localize";
-import { DocDBStoredProcedureTreeItem } from "../tree/DocDBStoredProcedureTreeItem";
-import { pickDocDBAccount } from "./pickDocDBAccount";
+import { type IActionContext, type ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
+import { localize } from '../../utils/localize';
+import { DocDBStoredProcedureTreeItem } from '../tree/DocDBStoredProcedureTreeItem';
+import { pickDocDBAccount } from './pickDocDBAccount';
 
-export async function executeDocDBStoredProcedure(context: IActionContext, node?: DocDBStoredProcedureTreeItem): Promise<void> {
+export async function executeDocDBStoredProcedure(
+    context: IActionContext,
+    node?: DocDBStoredProcedureTreeItem,
+): Promise<void> {
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {
@@ -22,15 +25,18 @@ export async function executeDocDBStoredProcedure(context: IActionContext, node?
 
     const paramString = await context.ui.showInputBox({
         title: 'Parameters',
-        placeHolder: localize("executeCosmosStoredProcedureParameters", "empty or array of values e.g. [1, {key: value}]"),
+        placeHolder: localize(
+            'executeCosmosStoredProcedureParameters',
+            'empty or array of values e.g. [1, {key: value}]',
+        ),
         // @todo: add a learnMoreLink
     });
 
     let parameters: (string | number | object)[] | undefined = undefined;
-    if (paramString !== "") {
+    if (paramString !== '') {
         try {
             parameters = JSON.parse(paramString) as (string | number | object)[];
-        } catch (error) {
+        } catch {
             // Ignore parameters if they are invalid
         }
     }

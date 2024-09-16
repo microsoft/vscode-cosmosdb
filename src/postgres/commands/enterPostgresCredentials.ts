@@ -3,15 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext } from "@microsoft/vscode-azext-utils";
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { postgresFlexibleFilter, postgresSingleFilter } from "../../constants";
-import { ext } from "../../extensionVariables";
-import { localize } from "../../utils/localize";
+import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
+import { ext } from '../../extensionVariables';
+import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresServerType } from '../abstract/models';
-import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
-import { setPostgresCredentials } from "./setPostgresCredentials";
+import { type PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
+import { setPostgresCredentials } from './setPostgresCredentials';
 
 /**
  * Get the username and password for the Postgres database from user input.
@@ -20,12 +20,14 @@ async function getUsernamePassword(
     context: IActionContext,
     serverType: PostgresServerType,
     serverName: string,
-    serverDisplayName: string
-): Promise<{ username: string, password: string }> {
+    serverDisplayName: string,
+): Promise<{ username: string; password: string }> {
     let username: string = await context.ui.showInputBox({
         prompt: localize('enterUsername', 'Enter username for server "{0}"', serverDisplayName),
         stepName: 'enterPostgresUsername',
-        validateInput: (value: string) => { return (value && value.length) ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.'); }
+        validateInput: (value: string) => {
+            return value && value.length ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.');
+        },
     });
 
     // Username doesn't contain servername prefix for Postgres Flexible Servers only
@@ -39,7 +41,9 @@ async function getUsernamePassword(
         prompt: localize('enterPassword', 'Enter password for server "{0}"', serverDisplayName),
         stepName: 'enterPostgresPassword',
         password: true,
-        validateInput: (value: string) => { return (value && value.length) ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.'); }
+        validateInput: (value: string) => {
+            return value && value.length ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.');
+        },
     });
 
     return { username, password };
@@ -48,26 +52,42 @@ async function getUsernamePassword(
 /**
  * Save the username and password in secure local storage.
  */
-async function persistUsernamePassword(id: string, serverName: string, username: string, password: string): Promise<void> {
-    const progressMessage: string = localize('setupCredentialsMessage', 'Setting up credentials for server "{0}"...', serverName);
+async function persistUsernamePassword(
+    id: string,
+    serverName: string,
+    username: string,
+    password: string,
+): Promise<void> {
+    const progressMessage: string = localize(
+        'setupCredentialsMessage',
+        'Setting up credentials for server "{0}"...',
+        serverName,
+    );
     const options: vscode.ProgressOptions = {
         location: vscode.ProgressLocation.Notification,
-        title: progressMessage
+        title: progressMessage,
     };
 
     await vscode.window.withProgress(options, async () => {
         await setPostgresCredentials(username, password, id);
     });
 
-    const completedMessage: string = localize('setupCredentialsMessage', 'Successfully added credentials to server "{0}".', serverName);
+    const completedMessage: string = localize(
+        'setupCredentialsMessage',
+        'Successfully added credentials to server "{0}".',
+        serverName,
+    );
     void vscode.window.showInformationMessage(completedMessage);
     ext.outputChannel.appendLog(completedMessage);
 }
 
-export async function enterPostgresCredentials(context: IActionContext, treeItem?: PostgresServerTreeItem): Promise<void> {
+export async function enterPostgresCredentials(
+    context: IActionContext,
+    treeItem?: PostgresServerTreeItem,
+): Promise<void> {
     if (!treeItem) {
         treeItem = await ext.rgApi.pickAppResource<PostgresServerTreeItem>(context, {
-            filter: [postgresSingleFilter, postgresFlexibleFilter]
+            filter: [postgresSingleFilter, postgresFlexibleFilter],
         });
     }
 

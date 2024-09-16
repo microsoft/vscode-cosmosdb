@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IPostgresQueryWizardContext } from "../IPostgresQueryWizardContext";
+import { type IPostgresQueryWizardContext } from '../IPostgresQueryWizardContext';
 
 export interface IPostgresFunctionQueryWizardContext extends IPostgresQueryWizardContext {
     returnType?: string;

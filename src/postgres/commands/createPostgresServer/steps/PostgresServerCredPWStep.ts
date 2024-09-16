@@ -6,19 +6,22 @@
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../../../utils/localize';
 import { nonNullProp } from '../../../../utils/nonNull';
-import { IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
+import { type IPostgresServerWizardContext } from '../IPostgresServerWizardContext';
 
-const pwConditionMsg = localize('passwordConditionMsg', 'Password must contain characters from three of the following categories - uppercase letters, lowercase letters, numbers (0-9), and non-alphanumeric characters (!, $, etc.).');
+const pwConditionMsg = localize(
+    'passwordConditionMsg',
+    'Password must contain characters from three of the following categories - uppercase letters, lowercase letters, numbers (0-9), and non-alphanumeric characters (!, $, etc.).',
+);
 
 export class PostgresServerCredPWStep extends AzureWizardPromptStep<IPostgresServerWizardContext> {
     public async prompt(context: IPostgresServerWizardContext): Promise<void> {
         const user = nonNullProp(context, 'shortUserName');
-        context.adminPassword = (await context.ui.showInputBox({
+        context.adminPassword = await context.ui.showInputBox({
             placeHolder: localize('pwPlaceholder', 'Administrator Password'),
             prompt: pwConditionMsg,
             password: true,
             validateInput: (password: string) => validatePassword(user, password),
-        }));
+        });
     }
 
     public shouldPrompt(context: IPostgresServerWizardContext): boolean {
@@ -35,7 +38,7 @@ async function validatePassword(username: string, password: string): Promise<str
     const regex = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^a-zA-Z\d\s]/];
     let numOccurrence = 0;
 
-    regex.map(substring => {
+    regex.map((substring) => {
         if (password.match(substring)) {
             numOccurrence++;
         }

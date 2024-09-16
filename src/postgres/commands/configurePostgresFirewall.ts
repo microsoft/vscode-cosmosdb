@@ -3,62 +3,91 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DialogResponses, IActionContext } from "@microsoft/vscode-azext-utils";
+import { DialogResponses, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { postgresFlexibleFilter, postgresSingleFilter } from "../../constants";
-import { ext } from "../../extensionVariables";
-import { getPublicIpv4 } from "../../utils/getIp";
-import { localize } from "../../utils/localize";
+import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
+import { ext } from '../../extensionVariables';
+import { getPublicIpv4 } from '../../utils/getIp';
+import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { randomUtils } from '../../utils/randomUtils';
-import { AbstractPostgresClient, createAbstractPostgresClient } from '../abstract/AbstractPostgresClient';
-import { AbstractFirewallRule, PostgresServerType } from '../abstract/models';
-import { PostgresServerTreeItem } from "../tree/PostgresServerTreeItem";
+import { createAbstractPostgresClient, type AbstractPostgresClient } from '../abstract/AbstractPostgresClient';
+import { type AbstractFirewallRule, type PostgresServerType } from '../abstract/models';
+import { type PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
 
-export async function configurePostgresFirewall(context: IActionContext, treeItem?: PostgresServerTreeItem): Promise<void> {
+export async function configurePostgresFirewall(
+    context: IActionContext,
+    treeItem?: PostgresServerTreeItem,
+): Promise<void> {
     if (!treeItem) {
         treeItem = await ext.rgApi.pickAppResource<PostgresServerTreeItem>(context, {
-            filter: [postgresSingleFilter, postgresFlexibleFilter]
+            filter: [postgresSingleFilter, postgresFlexibleFilter],
         });
     }
 
     const ip: string = await getPublicIp(context);
     await context.ui.showWarningMessage(
-        localize('firewallRuleWillBeAdded', 'A firewall rule for your IP ({0}) will be added to server "{1}". Would you like to continue?', ip, treeItem.label),
+        localize(
+            'firewallRuleWillBeAdded',
+            'A firewall rule for your IP ({0}) will be added to server "{1}". Would you like to continue?',
+            ip,
+            treeItem.label,
+        ),
         {
             modal: true,
-            stepName: 'postgresAddFirewallRule'
+            stepName: 'postgresAddFirewallRule',
         },
-        { title: DialogResponses.yes.title }
+        { title: DialogResponses.yes.title },
     );
 
     await setFirewallRule(context, treeItem, ip);
 }
 
-export async function setFirewallRule(context: IActionContext, treeItem: PostgresServerTreeItem, ip: string): Promise<void> {
-
+export async function setFirewallRule(
+    context: IActionContext,
+    treeItem: PostgresServerTreeItem,
+    ip: string,
+): Promise<void> {
     const serverType: PostgresServerType = nonNullProp(treeItem, 'serverType');
-    const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [context, treeItem.subscription]);
+    const client: AbstractPostgresClient = await createAbstractPostgresClient(serverType, [
+        context,
+        treeItem.subscription,
+    ]);
     const resourceGroup: string = nonNullProp(treeItem, 'resourceGroup');
     const serverName: string = nonNullProp(treeItem, 'azureName');
 
-    const firewallRuleName: string = "azDbVSCode-Ip" + `-${randomUtils.getRandomHexString(6)}`;
+    const firewallRuleName: string = 'azDbVSCode-Ip' + `-${randomUtils.getRandomHexString(6)}`;
 
     const newFirewallRule: AbstractFirewallRule = {
         startIpAddress: ip,
-        endIpAddress: ip
+        endIpAddress: ip,
     };
 
-    const progressMessage: string = localize('configuringFirewallRule', 'Adding firewall rule for IP "{0}" to server "{1}"...', ip, serverName);
+    const progressMessage: string = localize(
+        'configuringFirewallRule',
+        'Adding firewall rule for IP "{0}" to server "{1}"...',
+        ip,
+        serverName,
+    );
     const options: vscode.ProgressOptions = {
         location: vscode.ProgressLocation.Notification,
-        title: progressMessage
+        title: progressMessage,
     };
     ext.outputChannel.appendLog(progressMessage);
     await vscode.window.withProgress(options, async () => {
-        await client.firewallRules.beginCreateOrUpdateAndWait(resourceGroup, serverName, firewallRuleName, newFirewallRule);
+        await client.firewallRules.beginCreateOrUpdateAndWait(
+            resourceGroup,
+            serverName,
+            firewallRuleName,
+            newFirewallRule,
+        );
     });
-    const completedMessage: string = localize('addedFirewallRule', 'Successfully added firewall rule for IP "{0}" to server "{1}".', ip, serverName);
+    const completedMessage: string = localize(
+        'addedFirewallRule',
+        'Successfully added firewall rule for IP "{0}" to server "{1}".',
+        ip,
+        serverName,
+    );
     void vscode.window.showInformationMessage(completedMessage);
     ext.outputChannel.appendLog(completedMessage);
     await treeItem.refresh(context);

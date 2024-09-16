@@ -3,15 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtParentTreeItem, AzExtTreeItem, callWithTelemetryAndErrorHandling, IActionContext } from "@microsoft/vscode-azext-utils";
-import { WorkspaceResourceProvider } from "@microsoft/vscode-azext-utils/hostapi";
-import { Disposable } from "vscode";
-import { ext } from "../extensionVariables";
-import { AttachedAccountsTreeItem } from "../tree/AttachedAccountsTreeItem";
-
+import {
+    callWithTelemetryAndErrorHandling,
+    type AzExtParentTreeItem,
+    type AzExtTreeItem,
+    type IActionContext,
+} from '@microsoft/vscode-azext-utils';
+import { type WorkspaceResourceProvider } from '@microsoft/vscode-azext-utils/hostapi';
+import { Disposable } from 'vscode';
+import { ext } from '../extensionVariables';
+import { AttachedAccountsTreeItem } from '../tree/AttachedAccountsTreeItem';
 
 export class DatabaseWorkspaceProvider implements WorkspaceResourceProvider {
-
     public disposables: Disposable[] = [];
 
     constructor(parent: AzExtParentTreeItem) {
@@ -19,10 +22,12 @@ export class DatabaseWorkspaceProvider implements WorkspaceResourceProvider {
     }
 
     public async provideResources(): Promise<AzExtTreeItem[] | null | undefined> {
-
-        return await callWithTelemetryAndErrorHandling('AzureAccountTreeItemWithProjects.provideResources', async (_context: IActionContext) => {
-            return [ext.attachedAccountsNode];
-        });
+        return await callWithTelemetryAndErrorHandling(
+            'AzureAccountTreeItemWithProjects.provideResources',
+            async (_context: IActionContext) => {
+                return [ext.attachedAccountsNode];
+            },
+        );
     }
     private _projectDisposables: Disposable[] = [];
 
@@ -30,4 +35,3 @@ export class DatabaseWorkspaceProvider implements WorkspaceResourceProvider {
         Disposable.from(...this._projectDisposables).dispose();
     }
 }
-

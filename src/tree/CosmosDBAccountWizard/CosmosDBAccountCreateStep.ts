@@ -3,29 +3,38 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccountCreateUpdateParameters } from '@azure/arm-cosmosdb/src/models';
+import { type DatabaseAccountCreateUpdateParameters } from '@azure/arm-cosmosdb/src/models';
 import { LocationListStep } from '@microsoft/vscode-azext-azureutils';
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
-import { AppResource } from '@microsoft/vscode-azext-utils/hostapi';
-import { Progress } from 'vscode';
+import { type AppResource } from '@microsoft/vscode-azext-utils/hostapi';
+import { type Progress } from 'vscode';
+import { API } from '../../AzureDBExperiences';
 import { SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { ICosmosDBWizardContext } from './ICosmosDBWizardContext';
+import { type ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBWizardContext> {
     public priority: number = 130;
 
-    public async execute(context: ICosmosDBWizardContext, progress: Progress<{ message?: string; increment?: number }>): Promise<void> {
+    public async execute(
+        context: ICosmosDBWizardContext,
+        progress: Progress<{ message?: string; increment?: number }>,
+    ): Promise<void> {
         const locationName: string = (await LocationListStep.getLocation(context)).name;
         const defaultExperience = nonNullProp(context, 'defaultExperience');
         const rgName: string = nonNullProp(nonNullProp(context, 'resourceGroup'), 'name');
         const accountName = nonNullProp(context, 'newServerName');
 
         const client = await createCosmosDBClient(context);
-        const creatingMessage: string = localize('creatingCosmosDBAccount', 'Creating Cosmos DB account "{0}" with the "{1}" API... It should be ready in several minutes.', accountName, defaultExperience.shortName);
+        const creatingMessage: string = localize(
+            'creatingCosmosDBAccount',
+            'Creating Cosmos DB account "{0}" with the "{1}" API... It should be ready in several minutes.',
+            accountName,
+            defaultExperience.shortName,
+        );
         ext.outputChannel.appendLog(creatingMessage);
         progress.report({ message: creatingMessage });
 
@@ -39,7 +48,7 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             tags: { defaultExperience: nonNullProp(defaultExperience, 'tag') },
         };
 
-        if (defaultExperience?.api === 'MongoDB') {
+        if (defaultExperience?.api === API.MongoDB) {
             if (context.mongoVersion !== undefined) {
                 options.apiProperties = { serverVersion: context.mongoVersion };
             }
@@ -53,7 +62,11 @@ export class CosmosDBAccountCreateStep extends AzureWizardExecuteStep<ICosmosDBW
             options.capabilities?.push({ name: SERVERLESS_CAPABILITY_NAME });
         }
 
-        context.databaseAccount = await client.databaseAccounts.beginCreateOrUpdateAndWait(rgName, accountName, options);
+        context.databaseAccount = await client.databaseAccounts.beginCreateOrUpdateAndWait(
+            rgName,
+            accountName,
+            options,
+        );
         context.activityResult = context.databaseAccount as AppResource;
 
         ext.outputChannel.appendLog(`Successfully created Cosmos DB account "${accountName}".`);

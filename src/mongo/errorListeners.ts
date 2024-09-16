@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ANTLRErrorListener } from 'antlr4ts/ANTLRErrorListener';
-import { RecognitionException } from 'antlr4ts/RecognitionException';
-import { Recognizer } from 'antlr4ts/Recognizer';
-import { Token } from 'antlr4ts/Token';
-import * as vscode from "vscode";
-import { ErrorDescription } from './MongoCommand';
+import { type ANTLRErrorListener } from 'antlr4ts/ANTLRErrorListener';
+import { type RecognitionException } from 'antlr4ts/RecognitionException';
+import { type Recognizer } from 'antlr4ts/Recognizer';
+import { type Token } from 'antlr4ts/Token';
+import * as vscode from 'vscode';
+import { type ErrorDescription } from './MongoCommand';
 
 export class ParserErrorListener implements ANTLRErrorListener<Token> {
     private _errors: ErrorDescription[] = [];
@@ -24,15 +24,15 @@ export class ParserErrorListener implements ANTLRErrorListener<Token> {
         line: number,
         charPositionInLine: number,
         msg: string,
-        e: RecognitionException | undefined): void {
-
+        e: RecognitionException | undefined,
+    ): void {
         const position = new vscode.Position(line - 1, charPositionInLine); // Symbol lines are 1-indexed. Position lines are 0-indexed
         const range = new vscode.Range(position, position);
 
         const error: ErrorDescription = {
             message: msg,
             range: range,
-            exception: e
+            exception: e,
         };
         this._errors.push(error);
     }
@@ -52,15 +52,15 @@ export class LexerErrorListener implements ANTLRErrorListener<number> {
         line: number,
         charPositionInLine: number,
         msg: string,
-        e: RecognitionException | undefined): void {
-
+        e: RecognitionException | undefined,
+    ): void {
         const position = new vscode.Position(line - 1, charPositionInLine); // Symbol lines are 1-indexed. Position lines are 0-indexed
         const range = new vscode.Range(position, position);
 
         const error: ErrorDescription = {
             message: msg,
             range: range,
-            exception: e
+            exception: e,
         };
         this._errors.push(error);
     }

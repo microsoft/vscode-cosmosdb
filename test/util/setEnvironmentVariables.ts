@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IDisposable } from "../../extension.bundle";
+import { IDisposable } from '../../extension.bundle';
 
 /**
  * Add a set of environment variables, and return to the previous values after disposing the result

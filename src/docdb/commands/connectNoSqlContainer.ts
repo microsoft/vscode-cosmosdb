@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IActionContext } from "@microsoft/vscode-azext-utils";
-import { KeyValueStore } from "../../KeyValueStore";
-import { ext } from "../../extensionVariables";
-import { NoSqlQueryConnection, noSqlQueryConnectionKey } from "../NoSqlCodeLensProvider";
-import { getCosmosKeyCredential } from "../getCosmosClient";
-import { DocDBCollectionTreeItem } from "../tree/DocDBCollectionTreeItem";
-import { pickDocDBAccount } from "./pickDocDBAccount";
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { KeyValueStore } from '../../KeyValueStore';
+import { ext } from '../../extensionVariables';
+import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
+import { getCosmosKeyCredential } from '../getCosmosClient';
+import { DocDBCollectionTreeItem } from '../tree/DocDBCollectionTreeItem';
+import { pickDocDBAccount } from './pickDocDBAccount';
 
 export function setConnectedNoSqlContainer(node: DocDBCollectionTreeItem): void {
     const root = node.root;
@@ -19,7 +19,7 @@ export function setConnectedNoSqlContainer(node: DocDBCollectionTreeItem): void 
         containerId: node.id,
         endpoint: root.endpoint,
         masterKey: keyCred?.key,
-        isEmulator: !!root.isEmulator
+        isEmulator: !!root.isEmulator,
     };
     KeyValueStore.instance.set(noSqlQueryConnectionKey, noSqlQueryConnection);
     ext.noSqlCodeLensProvider.updateCodeLens();

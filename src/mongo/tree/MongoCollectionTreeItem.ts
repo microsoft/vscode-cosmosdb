@@ -5,33 +5,59 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { AzExtParentTreeItem, AzExtTreeItem, DialogResponses, IActionContext, ICreateChildImplContext, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import {
+    AzExtParentTreeItem,
+    DialogResponses,
+    type AzExtTreeItem,
+    type IActionContext,
+    type ICreateChildImplContext,
+    type TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
 import * as assert from 'assert';
-import { EJSON } from "bson";
-import { AnyBulkWriteOperation, BulkWriteOptions, BulkWriteResult, Collection, CountOptions, DeleteResult, Filter, FindCursor, InsertManyResult, InsertOneResult, Document as MongoDocument } from 'mongodb';
+import { EJSON } from 'bson';
+import {
+    type AnyBulkWriteOperation,
+    type BulkWriteOptions,
+    type BulkWriteResult,
+    type Collection,
+    type CountOptions,
+    type DeleteResult,
+    type Filter,
+    type FindCursor,
+    type InsertManyResult,
+    type InsertOneResult,
+    type Document as MongoDocument,
+} from 'mongodb';
 import * as _ from 'underscore';
 import * as vscode from 'vscode';
-import { IEditableTreeItem } from '../../DatabasesFileSystem';
+import { type IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
 import { nonNullValue } from '../../utils/nonNull';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
-import { MongoCommand } from '../MongoCommand';
-import { IMongoDocument, MongoDocumentTreeItem } from './MongoDocumentTreeItem';
+import { type MongoCommand } from '../MongoCommand';
+import { MongoDocumentTreeItem, type IMongoDocument } from './MongoDocumentTreeItem';
 
-type MongoFunction = (...args: ({} | {}[] | undefined)[]) => Thenable<string>;
+// eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+type MongoFunction = (...args: (Object | Object[] | undefined)[]) => Thenable<string>;
 class FunctionDescriptor {
-    public constructor(public mongoFunction: MongoFunction, public text: string, public minShellArgs: number, public maxShellArgs: number, public maxHandledArgs: number) {
-    }
+    public constructor(
+        public mongoFunction: MongoFunction,
+        public text: string,
+        public minShellArgs: number,
+        public maxShellArgs: number,
+        public maxHandledArgs: number,
+    ) {}
 }
 
 export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEditableTreeItem {
-    public static contextValue: string = "MongoCollection";
+    public static contextValue: string = 'MongoCollection';
     public readonly contextValue: string = MongoCollectionTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Document";
+    public readonly childTypeLabel: string = 'Document';
     public readonly collection: Collection;
     public parent: AzExtParentTreeItem;
-    public findArgs?: {}[];
+    // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+    public findArgs?: Object[];
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
 
@@ -41,7 +67,8 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     private _hasMoreChildren: boolean = true;
     private _batchSize: number = getBatchSizeSetting();
 
-    constructor(parent: AzExtParentTreeItem, collection: Collection, findArgs?: {}[]) {
+    // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+    constructor(parent: AzExtParentTreeItem, collection: Collection, findArgs?: Object[]) {
         super(parent);
         this.collection = collection;
         this.findArgs = findArgs;
@@ -61,23 +88,28 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
                     filter: { _id: document._id },
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
                     replacement: _.omit(document, '_id'),
-                    upsert: false
-                }
+                    upsert: false,
+                },
             };
         });
 
         const result: BulkWriteResult = await this.collection.bulkWrite(operations);
-        ext.outputChannel.appendLog(`Successfully updated ${result.modifiedCount} document(s), inserted ${result.insertedCount} document(s)`);
+        ext.outputChannel.appendLog(
+            `Successfully updated ${result.modifiedCount} document(s), inserted ${result.insertedCount} document(s)`,
+        );
 
         // The current tree item may have been a temporary one used to execute a scrapbook command.
         // We want to refresh children for this one _and_ the actual one in the tree (if it's different)
-        const nodeInTree: MongoCollectionTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(this.fullId, context);
+        const nodeInTree: MongoCollectionTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(
+            this.fullId,
+            context,
+        );
         const nodesToRefresh: MongoCollectionTreeItem[] = [this];
         if (nodeInTree && this !== nodeInTree) {
             nodesToRefresh.push(nodeInTree);
         }
 
-        await Promise.all(nodesToRefresh.map(n => n.refreshChildren(context, documents)));
+        await Promise.all(nodesToRefresh.map((n) => n.refreshChildren(context, documents)));
 
         if (nodeInTree && this !== nodeInTree) {
             // Don't need to fire a changed event on the item being saved at the moment. Just the node in the tree if it's different
@@ -88,7 +120,11 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     public async getFileContent(context: IActionContext): Promise<string> {
         const children = <MongoDocumentTreeItem[]>await this.getCachedChildren(context);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        return EJSON.stringify(children.map(c => c.document), undefined, 2);
+        return EJSON.stringify(
+            children.map((c) => c.document),
+            undefined,
+            2,
+        );
     }
 
     public get id(): string {
@@ -155,20 +191,25 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
         return this.createTreeItemsWithErrorHandling<IMongoDocument>(
             documents,
             'invalidMongoDocument',
-            doc => new MongoDocumentTreeItem(this, doc),
-            getDocumentTreeItemLabel
+            (doc) => new MongoDocumentTreeItem(this, doc),
+            getDocumentTreeItemLabel,
         );
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDocumentTreeItem> {
-        context.showCreatingTreeItem("");
+        context.showCreatingTreeItem('');
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const result: InsertOneResult<MongoDocument> = await this.collection.insertOne({});
-        const newDocument: IMongoDocument = nonNullValue(await this.collection.findOne({ _id: result.insertedId }), 'newDocument');
+        const newDocument: IMongoDocument = nonNullValue(
+            await this.collection.findOne({ _id: result.insertedId }),
+            'newDocument',
+        );
         return new MongoDocumentTreeItem(this, newDocument);
     }
 
-    public async tryExecuteCommandDirectly(command: Partial<MongoCommand>): Promise<{ deferToShell: true; result: undefined } | { deferToShell: false; result: string }> {
+    public async tryExecuteCommandDirectly(
+        command: Partial<MongoCommand>,
+    ): Promise<{ deferToShell: true; result: undefined } | { deferToShell: false; result: string }> {
         // range and text are not necessary properties for this function so partial should suffice
         const parameters = command.arguments ? command.arguments.map(parseJSContent) : [];
 
@@ -181,7 +222,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
             insertOne: new FunctionDescriptor(this.insertOne, 'Inserting document', 1, 2, 2),
             deleteMany: new FunctionDescriptor(this.deleteMany, 'Deleting documents', 1, 2, 1),
             deleteOne: new FunctionDescriptor(this.deleteOne, 'Deleting document', 1, 2, 1),
-            remove: new FunctionDescriptor(this.remove, 'Deleting document(s)', 1, 2, 1)
+            remove: new FunctionDescriptor(this.remove, 'Deleting document(s)', 1, 2, 1),
         };
 
         // eslint-disable-next-line no-prototype-builtins
@@ -199,10 +240,15 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
             if (parameters.length > descriptor.maxShellArgs) {
                 throw new Error(`Too many arguments passed to command ${command.name}`);
             }
-            if (parameters.length > descriptor.maxHandledArgs) { //this function won't handle these arguments, but the shell will
+            if (parameters.length > descriptor.maxHandledArgs) {
+                //this function won't handle these arguments, but the shell will
                 return { deferToShell: true, result: undefined };
             }
-            const result = await reportProgress<string>(descriptor.mongoFunction.apply(this, parameters), descriptor.text);
+            const result = await reportProgress<string>(
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                descriptor.mongoFunction.apply(this, parameters),
+                descriptor.text,
+            );
             return { deferToShell: false, result };
         }
         return { deferToShell: true, result: undefined };
@@ -210,7 +256,11 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const message: string = `Are you sure you want to delete collection '${this.label}'?`;
-        await context.ui.showWarningMessage(message, { modal: true, stepName: 'deleteMongoCollection' }, DialogResponses.deleteResponse);
+        await context.ui.showWarningMessage(
+            message,
+            { modal: true, stepName: 'deleteMongoCollection' },
+            DialogResponses.deleteResponse,
+        );
         await this.drop();
     }
 
@@ -220,11 +270,12 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
             return `Dropped collection '${this.collection.collectionName}'.`;
         } catch (e) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            const error: { code?: number, name?: string } = e;
+            const error: { code?: number; name?: string } = e;
             const NamespaceNotFoundCode = 26;
             if (error.name === 'MongoError' && error.code === NamespaceNotFoundCode) {
                 return `Collection '${this.collection.collectionName}' could not be dropped because it does not exist.`;
             } else {
+                // eslint-disable-next-line @typescript-eslint/only-throw-error
                 throw error;
             }
         }
@@ -241,7 +292,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
 
     private async insert(document: MongoDocument): Promise<string> {
         if (!document) {
-            throw new Error("The insert command requires at least one argument");
+            throw new Error('The insert command requires at least one argument');
         }
 
         const insertResult = await this.collection.insertOne(document);
@@ -249,13 +300,15 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     }
 
     private async insertOne(document: MongoDocument, options?: any): Promise<string> {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        const insertOneResult: InsertOneResult<MongoDocument> = await this.collection.insertOne(document, { writeConcern: options && options.writeConcern });
+        const insertOneResult: InsertOneResult<MongoDocument> = await this.collection.insertOne(document, {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            writeConcern: options && options.writeConcern,
+        });
         return this.stringify(insertOneResult);
     }
 
     private async insertMany(documents: MongoDocument[], options?: any): Promise<string> {
-        assert.notEqual(documents.length, 0, "Array of documents cannot be empty");
+        assert.notEqual(documents.length, 0, 'Array of documents cannot be empty');
         const insertManyOptions: BulkWriteOptions = {};
         if (options) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -271,7 +324,10 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
         }
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const insertManyResult: InsertManyResult<MongoDocument> = await this.collection.insertMany(documents, insertManyOptions);
+        const insertManyResult: InsertManyResult<MongoDocument> = await this.collection.insertMany(
+            documents,
+            insertManyOptions,
+        );
         return this.stringify(insertManyResult);
     }
 
@@ -314,11 +370,12 @@ function reportProgress<T>(promise: Thenable<T>, title: string): Thenable<T> {
     return vscode.window.withProgress<T>(
         {
             location: vscode.ProgressLocation.Window,
-            title: title
+            title: title,
         },
         (_progress) => {
             return promise;
-        });
+        },
+    );
 }
 
 function parseJSContent(content: string): any {

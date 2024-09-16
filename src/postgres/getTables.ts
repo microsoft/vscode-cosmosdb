@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ClientConfig, QueryResult } from "pg";
-import { runPostgresQuery } from "./runPostgresQuery";
+import { type ClientConfig, type QueryResult } from 'pg';
+import { runPostgresQuery } from './runPostgresQuery';
 
 export interface IPostgresTable {
     schemaName: string;
@@ -27,8 +27,16 @@ export async function getTables(clientConfig: ClientConfig): Promise<IPostgresTa
     const tableInfoRows: QueryResult = await runPostgresQuery(clientConfig, tablesQuery);
     const tablesArray: IPostgresTable[] = [];
     for (const row of tableInfoRows.rows) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        tablesArray.push({ schemaName: row.schemaname, name: row.tablename, oid: row.oid, columnNames: row.columnnames });
+        tablesArray.push({
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
+            schemaName: row.schemaname,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
+            name: row.tablename,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
+            oid: row.oid,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
+            columnNames: row.columnnames,
+        });
     }
     return tablesArray;
 }

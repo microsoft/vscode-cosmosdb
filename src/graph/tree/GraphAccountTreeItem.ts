@@ -3,20 +3,20 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
-import { DatabaseDefinition, Resource } from '@azure/cosmos';
-import { AzExtParentTreeItem } from '@microsoft/vscode-azext-utils';
-import { CosmosDBCredential } from '../../docdb/getCosmosClient';
+import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
+import { type DatabaseDefinition, type Resource } from '@azure/cosmos';
+import { type AzExtParentTreeItem } from '@microsoft/vscode-azext-utils';
+import { type CosmosDBCredential } from '../../docdb/getCosmosClient';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBStoredProcedureTreeItem } from '../../docdb/tree/DocDBStoredProcedureTreeItem';
 import { DocDBStoredProceduresTreeItem } from '../../docdb/tree/DocDBStoredProceduresTreeItem';
-import { IGremlinEndpoint } from '../../vscode-cosmosdbgraph.api';
+import { type IGremlinEndpoint } from '../../vscode-cosmosdbgraph.api';
 import { GraphCollectionTreeItem } from './GraphCollectionTreeItem';
 import { GraphDatabaseTreeItem } from './GraphDatabaseTreeItem';
 import { GraphTreeItem } from './GraphTreeItem';
 
 export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
-    public static contextValue: string = "cosmosDBGraphAccount";
+    public static contextValue: string = 'cosmosDBGraphAccount';
     public contextValue: string = GraphAccountTreeItem.contextValue;
 
     constructor(
@@ -27,7 +27,7 @@ export class GraphAccountTreeItem extends DocDBAccountTreeItemBase {
         private _gremlinEndpoint: IGremlinEndpoint | undefined,
         credentials: CosmosDBCredential[],
         isEmulator: boolean | undefined,
-        readonly databaseAccount?: DatabaseAccountGetResults
+        readonly databaseAccount?: DatabaseAccountGetResults,
     ) {
         super(parent, id, label, documentEndpoint, credentials, isEmulator, databaseAccount);
         this.valuesToMask.push(documentEndpoint);

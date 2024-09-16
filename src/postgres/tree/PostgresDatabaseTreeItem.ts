@@ -4,7 +4,16 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
-import { AzExtParentTreeItem, AzExtTreeItem, createContextValue, GenericTreeItem, IActionContext, IParsedError, parseError, TreeItemIconPath } from '@microsoft/vscode-azext-utils';
+import {
+    AzExtParentTreeItem,
+    createContextValue,
+    GenericTreeItem,
+    parseError,
+    type AzExtTreeItem,
+    type IActionContext,
+    type IParsedError,
+    type TreeItemIconPath,
+} from '@microsoft/vscode-azext-utils';
 import { ThemeIcon } from 'vscode';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
@@ -12,14 +21,14 @@ import { firewallNotConfiguredErrorType, invalidCredentialsErrorType } from '../
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresClientConfigFactory } from './ClientConfigFactory';
 import { PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
-import { PostgresServerTreeItem } from './PostgresServerTreeItem';
+import { type PostgresServerTreeItem } from './PostgresServerTreeItem';
 import { PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
 import { PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
 export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
-    public static contextValue: string = "postgresDatabase";
+    public static contextValue: string = 'postgresDatabase';
     public contextValue: string = PostgresDatabaseTreeItem.contextValue;
-    public readonly childTypeLabel: string = "Resource Type";
+    public readonly childTypeLabel: string = 'Resource Type';
     public readonly databaseName: string;
     public readonly parent: PostgresServerTreeItem;
     public autoSelectInTreeItemPicker: boolean = true;
@@ -57,20 +66,23 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
             const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
                 contextValue: 'postgresFirewall',
                 label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
-                commandId: 'postgreSQL.configureFirewall'
+                commandId: 'postgreSQL.configureFirewall',
             });
             firewallTreeItem.commandArgs = [this.parent];
             return [firewallTreeItem];
         }
 
         try {
-            const { type, clientConfig } = await PostgresClientConfigFactory.getClientConfigFromNode(this.parent, this.databaseName);
-            if (type === "password") {
+            const { type, clientConfig } = await PostgresClientConfigFactory.getClientConfigFromNode(
+                this.parent,
+                this.databaseName,
+            );
+            if (type === 'password') {
                 void this.showPasswordWarning(context);
             }
             const children: AzExtTreeItem[] = [
                 new PostgresFunctionsTreeItem(this, clientConfig),
-                new PostgresTablesTreeItem(this, clientConfig)
+                new PostgresTablesTreeItem(this, clientConfig),
             ];
 
             if (await this.parent.supportsStoredProcedures(clientConfig)) {
@@ -82,16 +94,36 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
             const parsedError: IParsedError = parseError(error);
 
             if (this.parent.azureName && parsedError.errorType === invalidCredentialsErrorType) {
-                void context.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message), { stepName: 'loadPostgresDatabases' });
+                void context.ui.showWarningMessage(
+                    localize(
+                        'couldNotConnect',
+                        'Could not connect to "{0}": {1}',
+                        this.parent.label,
+                        parsedError.message,
+                    ),
+                    { stepName: 'loadPostgresDatabases' },
+                );
                 const credentialsTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
                     contextValue: 'postgresCredentials',
-                    label: localize('enterCredentials', 'Enter server credentials to connect to "{0}"...', this.parent.label),
-                    commandId: 'postgreSQL.enterCredentials'
+                    label: localize(
+                        'enterCredentials',
+                        'Enter server credentials to connect to "{0}"...',
+                        this.parent.label,
+                    ),
+                    commandId: 'postgreSQL.enterCredentials',
                 });
                 credentialsTreeItem.commandArgs = [this.parent];
                 return [credentialsTreeItem];
             } else if (this.parent.azureName && parsedError.errorType === firewallNotConfiguredErrorType) {
-                void context.ui.showWarningMessage(localize('couldNotConnect', 'Could not connect to "{0}": {1}', this.parent.label, parsedError.message), { stepName: 'loadPostgresDatabases' });
+                void context.ui.showWarningMessage(
+                    localize(
+                        'couldNotConnect',
+                        'Could not connect to "{0}": {1}',
+                        this.parent.label,
+                        parsedError.message,
+                    ),
+                    { stepName: 'loadPostgresDatabases' },
+                );
                 return [];
             } else {
                 throw error;
@@ -100,7 +132,10 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        const { clientConfig } = await PostgresClientConfigFactory.getClientConfigFromNode(this.parent, this.databaseName);
+        const { clientConfig } = await PostgresClientConfigFactory.getClientConfigFromNode(
+            this.parent,
+            this.databaseName,
+        );
         await runPostgresQuery(clientConfig, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);
     }
 
@@ -109,7 +144,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
             return;
         }
         this.isShowingPasswordWarning = true;
-        this.contextValue = createContextValue([PostgresDatabaseTreeItem.contextValue, "usesPassword"]);
+        this.contextValue = createContextValue([PostgresDatabaseTreeItem.contextValue, 'usesPassword']);
         await this.refresh(context);
     }
 }

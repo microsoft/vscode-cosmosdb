@@ -48,6 +48,8 @@
         "package": "npm run webpack-prod && cd dist && npm pkg delete \"scripts.vscode:prepublish\" && npx vsce package --no-dependencies",
         "lint": "eslint --quiet --ext .ts --ext .tsx .",
         "lint-fix": "eslint --ext .ts --ext .tsx . --fix",
+        "prettier": "prettier -c \"src/**/*.@(js|ts|jsx|tsx)\" \"test/**/*.@(js|ts|jsx|tsx)\"",
+        "prettier-fix": "prettier -w \"src/**/*.@(js|ts|jsx|tsx)\" \"test/**/*.@(js|ts|jsx|tsx)\"",
         "pretest": "npm run webpack-prod",
         "test": "node ./out/test/runTest.js",
         "unittest": "mocha ./out/test/unit/**/*.js",

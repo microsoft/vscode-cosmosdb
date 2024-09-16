@@ -110,7 +110,8 @@ export const ResultToolbar = ({ selectedTab }: { selectedTab: string }) => {
                     onOptionSelect={onOptionSelect}
                     style={{ minWidth: '100px', maxWidth: '100px' }}
                     defaultValue={DEFAULT_PAGE_SIZE.toString()}
-                    defaultSelectedOptions={[DEFAULT_PAGE_SIZE.toString()]}>
+                    defaultSelectedOptions={[DEFAULT_PAGE_SIZE.toString()]}
+                >
                     <Option key="10">10</Option>
                     <Option key="10">50</Option>
                     <Option key="100">100</Option>

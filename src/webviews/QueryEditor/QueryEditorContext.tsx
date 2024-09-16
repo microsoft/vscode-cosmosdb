@@ -283,7 +283,8 @@ class QueryEditorContextDispatcherImpl implements QueryEditorContextDispatcher {
                             <ToastTrigger>
                                 <Link>Dismiss</Link>
                             </ToastTrigger>
-                        }>
+                        }
+                    >
                         Query error
                     </ToastTitle>
                     <ToastBody>{error}</ToastBody>

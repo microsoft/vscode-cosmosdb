@@ -108,6 +108,7 @@ export class QueryEditorTab {
                       `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
                       `font-src ${cspSource} ${DEV_SERVER_HOST};`,
                       `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
+                      `img-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
                   ]
                 : [
                       `form-action 'none';`,
@@ -117,6 +118,7 @@ export class QueryEditorTab {
                       `connect-src ${cspSource} ${DEV_SERVER_HOST} ws:;`,
                       `font-src ${cspSource} ${DEV_SERVER_HOST};`,
                       `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
+                      `img-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
                   ]
         ).join(' ');
 
@@ -178,7 +180,7 @@ export class QueryEditorTab {
             case 'openFile':
                 return this.openFile();
             case 'saveFile':
-                return this.saveFile(payload.params[0] as string);
+                return this.saveFile(payload.params[0] as string, payload.params[1] as string);
             case 'showInformationMessage':
                 return this.showInformationMessage(payload.params[0] as string);
             case 'showErrorMessage':
@@ -240,8 +242,8 @@ export class QueryEditorTab {
         });
     }
 
-    private async saveFile(query: string): Promise<void> {
-        await vscodeUtil.showNewFile(query, `New query`, '.nosql');
+    private async saveFile(query: string, ext: string): Promise<void> {
+        await vscodeUtil.showNewFile(query, `New query`, '.' + ext);
     }
 
     private async showInformationMessage(message: string) {

@@ -18,7 +18,7 @@ const mongoShellMoreMessage = 'Type "it" for more';
 const extensionMoreMessage = '(More)';
 
 const sentinelBase = 'EXECUTION COMPLETED';
-const sentinelRegex = /\"?EXECUTION COMPLETED [0-9a-fA-F]{10}\"?/;
+const sentinelRegex = /"?EXECUTION COMPLETED [0-9a-fA-F]{10}"?/;
 function createSentinel(): string {
     return `${sentinelBase} ${randomUtils.getRandomHexString(10)}`;
 }

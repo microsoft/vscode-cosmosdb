@@ -8,7 +8,10 @@ import { localize } from '../../utils/localize';
 import { DocDBStoredProcedureTreeItem } from '../tree/DocDBStoredProcedureTreeItem';
 import { pickDocDBAccount } from './pickDocDBAccount';
 
-export async function executeDocDBStoredProcedure(context: IActionContext, node?: DocDBStoredProcedureTreeItem) {
+export async function executeDocDBStoredProcedure(
+    context: IActionContext,
+    node?: DocDBStoredProcedureTreeItem,
+): Promise<void> {
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {

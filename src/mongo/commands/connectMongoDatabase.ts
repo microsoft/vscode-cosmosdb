@@ -40,7 +40,7 @@ export async function loadPersistedMongoDB(): Promise<void> {
     });
 }
 
-export async function connectMongoDatabase(context: IActionContext, node?: MongoDatabaseTreeItem) {
+export async function connectMongoDatabase(context: IActionContext, node?: MongoDatabaseTreeItem): Promise<void> {
     if (!node) {
         // Include defaultExperience in the context to prevent https://github.com/microsoft/vscode-cosmosdb/issues/1517
         const experienceContext: ITreeItemPickerContext & { defaultExperience?: Experience } = {

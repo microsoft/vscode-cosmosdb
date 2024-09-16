@@ -7,7 +7,7 @@ import { type IActionContext, type ITreeItemPickerContext } from '@microsoft/vsc
 import { DocDBDocumentTreeItem } from '../tree/DocDBDocumentTreeItem';
 import { pickDocDBAccount } from './pickDocDBAccount';
 
-export async function deleteDocDBDocument(context: IActionContext, node?: DocDBDocumentTreeItem) {
+export async function deleteDocDBDocument(context: IActionContext, node?: DocDBDocumentTreeItem): Promise<void> {
     const suppressCreateContext: ITreeItemPickerContext = context;
     suppressCreateContext.suppressCreatePick = true;
     if (!node) {

@@ -20,10 +20,12 @@ import {
 import type * as vscode from 'vscode';
 import { type IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
 import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
-import { SERVERLESS_CAPABILITY_NAME, getThemeAgnosticIconPath } from '../../constants';
+import { getThemeAgnosticIconPath, SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { getCosmosClient, getCosmosKeyCredential, type CosmosDBCredential } from '../getCosmosClient';
+import { getSignedInPrincipalIdForAccountEndpoint } from '../utils/azureSessionHelper';
+import { ensureRbacPermission, isRbacException, showRbacPermissionError } from '../utils/rbacUtils';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 
 /**
@@ -33,6 +35,7 @@ import { DocDBTreeItemBase } from './DocDBTreeItemBase';
 export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<DatabaseDefinition & Resource> {
     public readonly label: string;
     public readonly childTypeLabel: string = 'Database';
+    private hasShownRbacNotification: boolean = false;
 
     constructor(
         parent: AzExtParentTreeItem,
@@ -104,7 +107,21 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
                 unableToReachEmulatorMessage,
             );
         } else {
-            return await super.loadMoreChildrenImpl(clearCache);
+            try {
+                return await super.loadMoreChildrenImpl(clearCache);
+            } catch (e) {
+                if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
+                    this.hasShownRbacNotification = true;
+                    const principalId = (await getSignedInPrincipalIdForAccountEndpoint(this.root.endpoint)) ?? '';
+                    // chedck if the principal ID matches the one that is signed in, otherwise this might be a security problem, hence show the error message
+                    if (e.message.includes(`[${principalId}]`) && (await ensureRbacPermission(this, principalId))) {
+                        return await super.loadMoreChildrenImpl(clearCache);
+                    } else {
+                        void showRbacPermissionError(this.fullId, principalId);
+                    }
+                }
+                throw e; // rethrowing tells the resources extension to show the exception message in the tree
+            }
         }
     }
 

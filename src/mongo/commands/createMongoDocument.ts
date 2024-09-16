@@ -8,7 +8,7 @@ import * as vscode from 'vscode';
 import { MongoCollectionTreeItem } from '../tree/MongoCollectionTreeItem';
 import { pickMongo } from './pickMongo';
 
-export async function createMongoDocument(context: IActionContext, node?: MongoCollectionTreeItem) {
+export async function createMongoDocument(context: IActionContext, node?: MongoCollectionTreeItem): Promise<void> {
     if (!node) {
         node = await pickMongo<MongoCollectionTreeItem>(context, MongoCollectionTreeItem.contextValue);
     }

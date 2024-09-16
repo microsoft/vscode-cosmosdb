@@ -40,6 +40,7 @@
  */
 
 import { assert } from 'console';
+import Denque from 'denque';
 import {
     Binary,
     BSONSymbol,
@@ -78,7 +79,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
     };
 
     // Initialize a FIFO queue for breadth-first traversal
-    const fifoQueue: WorkItem[] = [];
+    const fifoQueue: Denque<WorkItem> = new Denque();
 
     /**
      * Start by pushing all root-level elements of the document into the queue

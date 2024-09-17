@@ -6,7 +6,7 @@ import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 import { useMemo, useState } from 'react';
 import { useThemeMutationObserver } from '../../theme/DynamicThemeProvider';
 import { useVSCodeTheme } from '../../theme/themeGenerator';
-import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
+import { useQueryEditorDispatcher, useQueryEditorState } from '../QueryEditorContext';
 
 loader.config({ monaco: monacoEditor });
 

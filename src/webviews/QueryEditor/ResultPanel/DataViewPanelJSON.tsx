@@ -3,7 +3,7 @@ import Editor, { loader } from '@monaco-editor/react';
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 import { useState } from 'react';
 import { useThemeMutationObserver } from '../../theme/DynamicThemeProvider';
-import { useVSCodeTheme } from '../../themeGenerator';
+import { useVSCodeTheme } from '../../theme/themeGenerator';
 
 loader.config({ monaco: monacoEditor });
 

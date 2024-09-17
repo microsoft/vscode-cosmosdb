@@ -37,7 +37,7 @@ export function getDataTopLevel(documents: WithId<Document>[]): object[] {
                 row[key] = doc[key].toString();
             } else {
                 const value: unknown = doc[key];
-                const type: MongoBSONTypes = MongoBSONTypes.inferMongoType(value);
+                const type: MongoBSONTypes = MongoBSONTypes.inferType(value);
 
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 if (value instanceof Array) {

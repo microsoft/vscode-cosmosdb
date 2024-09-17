@@ -97,7 +97,7 @@ export function documentToSlickGridTree(document: WithId<Document>, idPrefix?: s
             continue;
         }
 
-        const dataType: MongoBSONTypes = MongoBSONTypes.inferMongoType(stackEntry.value);
+        const dataType: MongoBSONTypes = MongoBSONTypes.inferType(stackEntry.value);
 
         switch (dataType) {
             case MongoBSONTypes.Object: {
@@ -141,7 +141,7 @@ export function documentToSlickGridTree(document: WithId<Document>, idPrefix?: s
                     id: globalEntryId,
                     field: `${stackEntry.key}`,
                     value: valueToDisplayString(stackEntry.value, dataType),
-                    type: MongoBSONTypes.toDisplayString(MongoBSONTypes.inferMongoType(stackEntry.value)),
+                    type: MongoBSONTypes.toDisplayString(MongoBSONTypes.inferType(stackEntry.value)),
                     parentId: stackEntry.parentId,
                 });
                 break;

@@ -2,6 +2,17 @@
  * This is an example of a JSON Schema document that will be generated from MongoDB documents.
  * It's optimized for the use-case of generating a schema for a table view, the monaco editor, and schema statistics.
  *
+ * This is a 'work in progress' and will be updated as we progress with the project.
+ *
+ * Curent focus is:
+ *  - discovery of the document structure
+ *  - basic pre for future statistics work
+ *
+ * Future tasks:
+ *  - statistics aggregation
+ *  - meaningful 'description' and 'markdownDescription'
+ *  - add more properties to the schema, incl. properties like '$id', '$schema', and enable schema sharing/download
+ *
 
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -73,7 +84,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
      * Start by pushing all root-level elements of the document into the queue
      */
     for (const [name, value] of Object.entries(document)) {
-        const mongoDatatype = MongoBSONTypes.inferMongoType(value);
+        const mongoDatatype = MongoBSONTypes.inferType(value);
 
         // Ensure the field exists in the schema
         if (!schema.properties[name]) {
@@ -144,7 +155,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
 
                 // Iterate over the object's properties
                 for (const [name, value] of Object.entries(objValue)) {
-                    const mongoDatatype = MongoBSONTypes.inferMongoType(value);
+                    const mongoDatatype = MongoBSONTypes.inferType(value);
 
                     // Ensure the field exists in the schema
                     if (!item.propertySchema.properties[name]) {
@@ -214,7 +225,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
 
                 // Iterate over the array elements
                 for (const element of arrayValue) {
-                    const elementMongoType = MongoBSONTypes.inferMongoType(element);
+                    const elementMongoType = MongoBSONTypes.inferType(element);
 
                     // Find or create the type entry in 'items.anyOf'
                     let itemEntry = findTypeEntry(itemsSchema.anyOf as JSONSchema[], elementMongoType);
@@ -316,7 +327,7 @@ export function getSchemaFromDocument(document: WithId<Document>): JSONSchema {
      * Push all elements from the root of the document into the queue
      */
     for (const [name, value] of Object.entries(document)) {
-        const mongoDatatype = MongoBSONTypes.inferMongoType(value);
+        const mongoDatatype = MongoBSONTypes.inferType(value);
 
         const typeEntry = {
             type: MongoBSONTypes.toJSONType(mongoDatatype),
@@ -358,7 +369,7 @@ export function getSchemaFromDocument(document: WithId<Document>): JSONSchema {
                 item.propertyTypeEntry.properties = {};
 
                 for (const [name, value] of Object.entries(item.fieldValue as object)) {
-                    const mongoDatatype = MongoBSONTypes.inferMongoType(value);
+                    const mongoDatatype = MongoBSONTypes.inferType(value);
 
                     const typeEntry = {
                         type: MongoBSONTypes.toJSONType(mongoDatatype),
@@ -392,7 +403,7 @@ export function getSchemaFromDocument(document: WithId<Document>): JSONSchema {
 
                 // iterate over the array and infer the type of each element
                 for (const element of item.fieldValue as unknown[]) {
-                    const elementMongoType = MongoBSONTypes.inferMongoType(element);
+                    const elementMongoType = MongoBSONTypes.inferType(element);
 
                     let itemEntry: JSONSchema;
 

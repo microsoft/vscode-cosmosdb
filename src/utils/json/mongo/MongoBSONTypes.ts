@@ -132,7 +132,7 @@ export namespace MongoBSONTypes {
      * @param value The value of a field in a MongoDB 'Document' object
      * @returns
      */
-    export function inferMongoType(value: unknown): MongoBSONTypes {
+    export function inferType(value: unknown): MongoBSONTypes {
         if (value === null) return MongoBSONTypes.Null;
         if (value === undefined) return MongoBSONTypes.Undefined;
 

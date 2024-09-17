@@ -46,26 +46,6 @@ export function getBrandTokensFromPalette(keyColor: string, options: Options = {
     }, {}) as BrandVariants;
 }
 
-const themePaletteMapped = {
-    colorNeutralForeground1: 'var(--vscode-button-foreground)',
-    colorNeutralForeground1Hover: 'var(--vscode-button-foreground)',
-    colorNeutralForeground1Pressed: 'var(--vscode-button-foreground)',
-    colorNeutralForeground1Selected: 'var(--vscode-button-foreground)',
-    colorNeutralForeground2: 'var(--vscode-button-secondaryForeground)',
-    colorNeutralForeground2Hover: 'var(--vscode-button-secondaryForeground)',
-    colorNeutralForeground2Pressed: 'var(--vscode-button-secondaryForeground)',
-    colorNeutralForeground2Selected: 'var(--vscode-button-secondaryForeground)',
-
-    colorNeutralBackground1: 'var(--vscode-editor-background)',
-    // colorNeutralBackground1Hover: 'var(--vscode-editor-background)',
-    // colorNeutralBackground1Pressed: 'var(--vscode-editor-background)',
-    // colorNeutralBackground1Selected: 'var(--vscode-editor-background)',
-    // colorNeutralBackground2: 'var(--vscode-editor-background)',
-    // colorNeutralBackground2Hover: 'var(--vscode-editor-background)',
-    // colorNeutralBackground2Pressed: 'var(--vscode-editor-background)',
-    // colorNeutralBackground2Selected: 'var(--vscode-editor-background)',
-};
-
 // get class value from body element
 export const useVSCodeTheme = () => {
     return document.body.getAttribute('data-vscode-theme-kind') ?? 'vscode-light';
@@ -79,7 +59,14 @@ export const generateAdaptiveLightTheme = (): Theme => {
 
     return {
         ...createLightTheme(brandVSCode),
-        ...themePaletteMapped,
+        ...{
+            colorNeutralForeground1: 'var(--vscode-editor-foreground)',
+            colorNeutralForeground1Hover: 'var(--vscode-editor-foreground)',
+            colorNeutralForeground1Pressed: 'var(--vscode-editor-foreground)',
+            colorNeutralForeground1Selected: 'var(--vscode-editor-foreground)',
+
+            colorNeutralBackground1: 'var(--vscode-editor-background)',
+        },
     };
 };
 
@@ -90,6 +77,17 @@ export const generateAdaptiveDarkTheme = (): Theme => {
 
     return {
         ...createDarkTheme(brandVSCode),
-        ...themePaletteMapped,
+        ...{
+            colorNeutralForeground1: 'var(--vscode-button-foreground)',
+            colorNeutralForeground1Hover: 'var(--vscode-button-foreground)',
+            colorNeutralForeground1Pressed: 'var(--vscode-button-foreground)',
+            colorNeutralForeground1Selected: 'var(--vscode-button-foreground)',
+            colorNeutralForeground2: 'var(--vscode-button-secondaryForeground)',
+            colorNeutralForeground2Hover: 'var(--vscode-button-secondaryForeground)',
+            colorNeutralForeground2Pressed: 'var(--vscode-button-secondaryForeground)',
+            colorNeutralForeground2Selected: 'var(--vscode-button-secondaryForeground)',
+
+            colorNeutralBackground1: 'var(--vscode-editor-background)',
+        },
     };
 };

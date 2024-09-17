@@ -42,23 +42,11 @@
 import { assert } from 'console';
 import Denque from 'denque';
 import {
-    Binary,
-    BSONSymbol,
-    Code,
-    DBRef,
-    Decimal128,
-    Double,
-    Int32,
-    Long,
-    MaxKey,
-    MinKey,
-    ObjectId,
-    Timestamp,
     type Document,
-    type WithId,
+    type WithId
 } from 'mongodb';
 import { type JSONSchema } from '../JSONSchema';
-import { MongoDatatypes } from './MongoDatatypes';
+import { MongoBSONTypes } from './MongoBSONTypes';
 
 export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Document>): void {
     // Initialize schema if it's empty
@@ -72,7 +60,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
     // Define the structure of work items to be processed
     type WorkItem = {
         fieldName: string;
-        fieldMongoType: MongoDatatypes; // The inferred BSON type
+        fieldMongoType: MongoBSONTypes; // The inferred BSON type
         propertySchema: JSONSchema; // Reference to the schema entry within 'properties'
         fieldValue: unknown;
         pathSoFar: string; // Used for debugging and tracing
@@ -85,7 +73,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
      * Start by pushing all root-level elements of the document into the queue
      */
     for (const [name, value] of Object.entries(document)) {
-        const mongoDatatype = inferMongoType(value);
+        const mongoDatatype = MongoBSONTypes.inferMongoType(value);
 
         // Ensure the field exists in the schema
         if (!schema.properties[name]) {
@@ -108,7 +96,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
         if (!typeEntry) {
             // Create a new type entry
             typeEntry = {
-                type: MongoDatatypes.toJSONType(mongoDatatype),
+                type: MongoBSONTypes.toJSONType(mongoDatatype),
                 'x-bsonType': mongoDatatype,
                 'x-typeOccurrence': 0,
             };
@@ -142,7 +130,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
         }
 
         switch (item.fieldMongoType) {
-            case MongoDatatypes.Object: {
+            case MongoBSONTypes.Object: {
                 const objValue = item.fieldValue as Record<string, unknown>;
                 const objKeysCount = Object.keys(objValue).length;
 
@@ -156,7 +144,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
 
                 // Iterate over the object's properties
                 for (const [name, value] of Object.entries(objValue)) {
-                    const mongoDatatype = inferMongoType(value);
+                    const mongoDatatype = MongoBSONTypes.inferMongoType(value);
 
                     // Ensure the field exists in the schema
                     if (!item.propertySchema.properties[name]) {
@@ -179,7 +167,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
                     if (!typeEntry) {
                         // Create a new type entry
                         typeEntry = {
-                            type: MongoDatatypes.toJSONType(mongoDatatype),
+                            type: MongoBSONTypes.toJSONType(mongoDatatype),
                             'x-bsonType': mongoDatatype,
                             'x-typeOccurrence': 0,
                         };
@@ -204,7 +192,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
                 break;
             }
 
-            case MongoDatatypes.Array: {
+            case MongoBSONTypes.Array: {
                 const arrayValue = item.fieldValue as unknown[];
                 const arrayLength = arrayValue.length;
 
@@ -222,11 +210,11 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
                 assert(itemsSchema !== undefined, 'itemsSchema should not be undefined');
 
                 // Map to track types within the array
-                const encounteredMongoTypes: Map<MongoDatatypes, JSONSchema> = new Map();
+                const encounteredMongoTypes: Map<MongoBSONTypes, JSONSchema> = new Map();
 
                 // Iterate over the array elements
                 for (const element of arrayValue) {
-                    const elementMongoType = inferMongoType(element);
+                    const elementMongoType = MongoBSONTypes.inferMongoType(element);
 
                     // Find or create the type entry in 'items.anyOf'
                     let itemEntry = findTypeEntry(itemsSchema.anyOf as JSONSchema[], elementMongoType);
@@ -234,7 +222,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
                     if (!itemEntry) {
                         // Create a new type entry
                         itemEntry = {
-                            type: MongoDatatypes.toJSONType(elementMongoType),
+                            type: MongoBSONTypes.toJSONType(elementMongoType),
                             'x-bsonType': elementMongoType,
                             'x-typeOccurrence': 0,
                         };
@@ -259,7 +247,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
                     }
 
                     // If the element is an object or array, queue it for further processing
-                    if (elementMongoType === MongoDatatypes.Object || elementMongoType === MongoDatatypes.Array) {
+                    if (elementMongoType === MongoBSONTypes.Object || elementMongoType === MongoBSONTypes.Array) {
                         fifoQueue.push({
                             fieldName: '[]', // Array items don't have a specific field name
                             fieldMongoType: elementMongoType,
@@ -290,7 +278,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
 /**
  * Helper function to find a type entry in 'anyOf' array based on 'x-bsonType'
  */
-function findTypeEntry(anyOfArray: JSONSchema[], bsonType: MongoDatatypes): JSONSchema | undefined {
+function findTypeEntry(anyOfArray: JSONSchema[], bsonType: MongoBSONTypes): JSONSchema | undefined {
     return anyOfArray.find((entry) => entry['x-bsonType'] === bsonType);
 }
 
@@ -313,7 +301,7 @@ export function getSchemaFromDocument(document: WithId<Document>): JSONSchema {
 
     type WorkItem = {
         fieldName: string;
-        fieldMongoType: MongoDatatypes; // the inferred BSON type
+        fieldMongoType: MongoBSONTypes; // the inferred BSON type
         propertyTypeEntry: JSONSchema; // points to the entry within the 'anyOf' property of the schema
         fieldValue: unknown;
         pathSoFar: string; // used for debugging
@@ -328,10 +316,10 @@ export function getSchemaFromDocument(document: WithId<Document>): JSONSchema {
      * Push all elements from the root of the document into the queue
      */
     for (const [name, value] of Object.entries(document)) {
-        const mongoDatatype = inferMongoType(value);
+        const mongoDatatype = MongoBSONTypes.inferMongoType(value);
 
         const typeEntry = {
-            type: MongoDatatypes.toJSONType(mongoDatatype),
+            type: MongoBSONTypes.toJSONType(mongoDatatype),
             'x-bsonType': mongoDatatype,
             'x-typeOccurrence': 1,
         };
@@ -361,7 +349,7 @@ export function getSchemaFromDocument(document: WithId<Document>): JSONSchema {
         }
 
         switch (item.fieldMongoType) {
-            case MongoDatatypes.Object: {
+            case MongoBSONTypes.Object: {
                 const objKeys = Object.keys(item.fieldValue as object).length;
                 item.propertyTypeEntry['x-maxLength'] = objKeys;
                 item.propertyTypeEntry['x-minLength'] = objKeys;
@@ -370,10 +358,10 @@ export function getSchemaFromDocument(document: WithId<Document>): JSONSchema {
                 item.propertyTypeEntry.properties = {};
 
                 for (const [name, value] of Object.entries(item.fieldValue as object)) {
-                    const mongoDatatype = inferMongoType(value);
+                    const mongoDatatype = MongoBSONTypes.inferMongoType(value);
 
                     const typeEntry = {
-                        type: MongoDatatypes.toJSONType(mongoDatatype),
+                        type: MongoBSONTypes.toJSONType(mongoDatatype),
                         'x-bsonType': mongoDatatype,
                         'x-typeOccurrence': 1,
                     };
@@ -391,7 +379,7 @@ export function getSchemaFromDocument(document: WithId<Document>): JSONSchema {
                 }
                 break;
             }
-            case MongoDatatypes.Array: {
+            case MongoBSONTypes.Array: {
                 const arrayLength = (item.fieldValue as unknown[]).length;
                 item.propertyTypeEntry['x-maxLength'] = arrayLength;
                 item.propertyTypeEntry['x-minLength'] = arrayLength;
@@ -400,17 +388,17 @@ export function getSchemaFromDocument(document: WithId<Document>): JSONSchema {
                 item.propertyTypeEntry.items = {};
                 item.propertyTypeEntry.items.anyOf = [];
 
-                const encounteredMongoTypes: Map<MongoDatatypes, JSONSchema> = new Map();
+                const encounteredMongoTypes: Map<MongoBSONTypes, JSONSchema> = new Map();
 
                 // iterate over the array and infer the type of each element
                 for (const element of item.fieldValue as unknown[]) {
-                    const elementMongoType = inferMongoType(element);
+                    const elementMongoType = MongoBSONTypes.inferMongoType(element);
 
                     let itemEntry: JSONSchema;
 
                     if (!encounteredMongoTypes.has(elementMongoType)) {
                         itemEntry = {
-                            type: MongoDatatypes.toJSONType(elementMongoType),
+                            type: MongoBSONTypes.toJSONType(elementMongoType),
                             'x-bsonType': elementMongoType,
                             'x-typeOccurrence': 1, // Initialize type occurrence counter
                         };
@@ -434,7 +422,7 @@ export function getSchemaFromDocument(document: WithId<Document>): JSONSchema {
 
                     // an imporant exception for arrays as we have to start adding them already now to the schema
                     // (if we want to avoid more iterations over the data)
-                    if (elementMongoType === MongoDatatypes.Object || elementMongoType === MongoDatatypes.Array) {
+                    if (elementMongoType === MongoBSONTypes.Object || elementMongoType === MongoBSONTypes.Array) {
                         fifoQueue.push({
                             fieldName: '[]', // Array items don't have a field name
                             fieldMongoType: elementMongoType,
@@ -463,56 +451,56 @@ export function getSchemaFromDocument(document: WithId<Document>): JSONSchema {
  * Helper function to compute stats for a value based on its MongoDB data type
  * Updates the provided propertyTypeEntry with the computed stats
  */
-function initializeStatsForValue(value: unknown, mongoType: MongoDatatypes, propertyTypeEntry: JSONSchema): void {
+function initializeStatsForValue(value: unknown, mongoType: MongoBSONTypes, propertyTypeEntry: JSONSchema): void {
     switch (mongoType) {
-        case MongoDatatypes.String: {
+        case MongoBSONTypes.String: {
             const currentLength = (value as string).length;
             propertyTypeEntry['x-maxLength'] = currentLength;
             propertyTypeEntry['x-minLength'] = currentLength;
             break;
         }
 
-        case MongoDatatypes.Number:
-        case MongoDatatypes.Int32:
-        case MongoDatatypes.Long:
-        case MongoDatatypes.Double:
-        case MongoDatatypes.Decimal128: {
+        case MongoBSONTypes.Number:
+        case MongoBSONTypes.Int32:
+        case MongoBSONTypes.Long:
+        case MongoBSONTypes.Double:
+        case MongoBSONTypes.Decimal128: {
             const numericValue = Number(value);
             propertyTypeEntry['x-maxValue'] = numericValue;
             propertyTypeEntry['x-minValue'] = numericValue;
             break;
         }
 
-        case MongoDatatypes.Boolean: {
+        case MongoBSONTypes.Boolean: {
             const boolValue = value as boolean;
             propertyTypeEntry['x-trueCount'] = boolValue ? 1 : 0;
             propertyTypeEntry['x-falseCount'] = boolValue ? 0 : 1;
             break;
         }
 
-        case MongoDatatypes.Date: {
+        case MongoBSONTypes.Date: {
             const dateValue = (value as Date).getTime();
             propertyTypeEntry['x-maxDate'] = dateValue;
             propertyTypeEntry['x-minDate'] = dateValue;
             break;
         }
 
-        case MongoDatatypes.Binary: {
+        case MongoBSONTypes.Binary: {
             const binaryLength = (value as Buffer).length;
             propertyTypeEntry['x-maxLength'] = binaryLength;
             propertyTypeEntry['x-minLength'] = binaryLength;
             break;
         }
 
-        case MongoDatatypes.Null:
-        case MongoDatatypes.RegExp:
-        case MongoDatatypes.ObjectId:
-        case MongoDatatypes.MinKey:
-        case MongoDatatypes.MaxKey:
-        case MongoDatatypes.Symbol:
-        case MongoDatatypes.Timestamp:
-        case MongoDatatypes.DBRef:
-        case MongoDatatypes.Map:
+        case MongoBSONTypes.Null:
+        case MongoBSONTypes.RegExp:
+        case MongoBSONTypes.ObjectId:
+        case MongoBSONTypes.MinKey:
+        case MongoBSONTypes.MaxKey:
+        case MongoBSONTypes.Symbol:
+        case MongoBSONTypes.Timestamp:
+        case MongoBSONTypes.DBRef:
+        case MongoBSONTypes.Map:
             // No stats computation for other types
             break;
 
@@ -526,9 +514,9 @@ function initializeStatsForValue(value: unknown, mongoType: MongoDatatypes, prop
  * Helper function to aggregate stats for a value based on its MongoDB data type
  * Used when processing multiple values (e.g., elements in arrays)
  */
-function aggregateStatsForValue(value: unknown, mongoType: MongoDatatypes, propertyTypeEntry: JSONSchema): void {
+function aggregateStatsForValue(value: unknown, mongoType: MongoBSONTypes, propertyTypeEntry: JSONSchema): void {
     switch (mongoType) {
-        case MongoDatatypes.String: {
+        case MongoBSONTypes.String: {
             const currentLength = (value as string).length;
 
             // Update minLength
@@ -543,11 +531,11 @@ function aggregateStatsForValue(value: unknown, mongoType: MongoDatatypes, prope
             break;
         }
 
-        case MongoDatatypes.Number:
-        case MongoDatatypes.Int32:
-        case MongoDatatypes.Long:
-        case MongoDatatypes.Double:
-        case MongoDatatypes.Decimal128: {
+        case MongoBSONTypes.Number:
+        case MongoBSONTypes.Int32:
+        case MongoBSONTypes.Long:
+        case MongoBSONTypes.Double:
+        case MongoBSONTypes.Decimal128: {
             const numericValue = Number(value);
 
             // Update minValue
@@ -562,7 +550,7 @@ function aggregateStatsForValue(value: unknown, mongoType: MongoDatatypes, prope
             break;
         }
 
-        case MongoDatatypes.Boolean: {
+        case MongoBSONTypes.Boolean: {
             const boolValue = value as boolean;
 
             // Update trueCount and falseCount
@@ -580,7 +568,7 @@ function aggregateStatsForValue(value: unknown, mongoType: MongoDatatypes, prope
             break;
         }
 
-        case MongoDatatypes.Date: {
+        case MongoBSONTypes.Date: {
             const dateValue = (value as Date).getTime();
 
             // Update minDate
@@ -595,7 +583,7 @@ function aggregateStatsForValue(value: unknown, mongoType: MongoDatatypes, prope
             break;
         }
 
-        case MongoDatatypes.Binary: {
+        case MongoBSONTypes.Binary: {
             const binaryLength = (value as Buffer).length;
 
             // Update minLength
@@ -613,60 +601,5 @@ function aggregateStatsForValue(value: unknown, mongoType: MongoDatatypes, prope
         default:
             // No stats computation for other types
             break;
-    }
-}
-
-/**
- * Accepts a value from a MongoDB 'Document' object and returns the inferred type.
- * @param value The value of a field in a MongoDB 'Document' object
- * @returns
- */
-function inferMongoType(value: unknown): MongoDatatypes {
-    if (value === null) return MongoDatatypes.Null;
-    if (value === undefined) return MongoDatatypes.Undefined;
-
-    switch (typeof value) {
-        case 'string':
-            return MongoDatatypes.String;
-        case 'number':
-            return MongoDatatypes.Double; // JavaScript numbers are doubles
-        case 'boolean':
-            return MongoDatatypes.Boolean;
-        case 'object':
-            if (Array.isArray(value)) {
-                return MongoDatatypes.Array;
-            }
-
-            // Check for common BSON types first
-            if (value instanceof ObjectId) return MongoDatatypes.ObjectId;
-            if (value instanceof Int32) return MongoDatatypes.Int32;
-            if (value instanceof Double) return MongoDatatypes.Double;
-            if (value instanceof Date) return MongoDatatypes.Date;
-            if (value instanceof Timestamp) return MongoDatatypes.Timestamp;
-
-            // Less common types
-            if (value instanceof Decimal128) return MongoDatatypes.Decimal128;
-            if (value instanceof Long) return MongoDatatypes.Long;
-            if (value instanceof MinKey) return MongoDatatypes.MinKey;
-            if (value instanceof MaxKey) return MongoDatatypes.MaxKey;
-            if (value instanceof BSONSymbol) return MongoDatatypes.Symbol;
-            if (value instanceof DBRef) return MongoDatatypes.DBRef;
-            if (value instanceof Map) return MongoDatatypes.Map;
-            if (value instanceof Buffer || value instanceof Binary) return MongoDatatypes.Binary;
-            if (value instanceof RegExp) return MongoDatatypes.RegExp;
-            if (value instanceof Code) {
-                if (value.scope) {
-                    return MongoDatatypes.CodeWithScope;
-                } else {
-                    return MongoDatatypes.Code;
-                }
-            }
-
-            // Default to Object if none of the above match
-            return MongoDatatypes.Object;
-        default:
-            // This should never happen, but if it does, we'll catch it here
-            // TODO: add telemetry somewhere to know when it happens (not here, this could get hit too often)
-            return MongoDatatypes._UNKNOWN_;
     }
 }

@@ -1,19 +1,6 @@
-import {
-    Binary,
-    BSONRegExp,
-    BSONSymbol,
-    Code,
-    DBRef,
-    Decimal128,
-    Double,
-    Int32,
-    Long,
-    MaxKey,
-    MinKey,
-    ObjectId,
-    type Document,
-    type WithId,
-} from 'mongodb';
+import { type Document, type ObjectId, type WithId } from 'mongodb';
+import { MongoBSONTypes } from '../../json/mongo/MongoBSONTypes';
+import { valueToDisplayString } from '../../json/mongo/MongoValueFormatters';
 
 /**
  * The data structure for a single node entry in the tree data structure for SlickGrid.
@@ -110,169 +97,55 @@ export function documentToSlickGridTree(document: WithId<Document>, idPrefix?: s
             continue;
         }
 
-        //#region HANDLE 12 TYPES OF BSON VALUES + DATE, ETC.
+        const dataType: MongoBSONTypes = MongoBSONTypes.inferMongoType(stackEntry.value);
 
-        // TODO: can we use a switch here and work with _bsonType instad of instanceof?
-        // _bsonType isn't defined for all types, but it would reduce the number of type checks
-
-        if (stackEntry.value instanceof ObjectId) {
-            // Add the value as a new node
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: stackEntry.value.toString(), // TODO: add better string representation for ObjectId
-                type: 'ObjectId',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value instanceof Binary) {
-            // Add the value as a new node
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: `${stackEntry.value.length()}]`,
-                type: 'Binary',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value instanceof Date) {
-            // Add the value as a new node
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: stackEntry.value.toDateString(),
-                type: 'Date',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value instanceof BSONRegExp) {
-            // Add the value as a new node
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: `${stackEntry.value.pattern} ${stackEntry.value.options}`,
-                type: 'RegExp',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value instanceof BSONSymbol) {
-            // Add the value as a new node
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: stackEntry.value.toString(), // TODO: add better string representation for Symbol
-                type: 'Symbol',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value instanceof Code) {
-            // Add the value as a new node
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: stackEntry.value.code, // TODO: add better string representation for Code
-                type: 'ObjectId',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value instanceof DBRef) {
-            // Add the value as a new node
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                // eslint-disable-next-line @typescript-eslint/no-base-to-string
-                value: stackEntry.value.toString(), // TODO: add better string representation for DBRef
-                type: 'DBRef',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value instanceof Decimal128) {
-            // Add the value as a new node
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: stackEntry.value.toString(), // TODO: add better string representation for Decimal128
-                type: 'ObjectId',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value instanceof Double) {
-            // Add the value as a new node
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: stackEntry.value.toString(), // TODO: add better string representation for Double (e.g. rounding, points, commas etc.)
-                type: 'ObjectId',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value instanceof Int32) {
-            // Add the value as a new node
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: stackEntry.value.toString(),
-                type: 'ObjectId',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value instanceof Long) {
-            // Add the value as a new node
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: stackEntry.value.toString(),
-                type: 'ObjectId',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value instanceof MaxKey) {
-            // Add the value as a new node
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                // eslint-disable-next-line @typescript-eslint/no-base-to-string
-                value: stackEntry.value.toString(), // TODO: add better string representation for MaxKey
-                type: 'ObjectId',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value instanceof MinKey) {
-            // Add the value as a new node
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                // eslint-disable-next-line @typescript-eslint/no-base-to-string
-                value: stackEntry.value.toString(), // TODO: add better string representation for MinKey
-                type: 'ObjectId',
-                parentId: stackEntry.parentId,
-            });
-            //#endregion
-        } else if (stackEntry.value instanceof Array) {
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: `(elements: ${stackEntry.value.length})`,
-                type: 'Array',
-                parentId: stackEntry.parentId,
-            });
-
-            if (stackEntry.value.length <= ARRAY_EXPANSION_LIMIT) {
-                // Add the elements of the array to the stack
-                stackEntry.value.forEach((element, index) => {
-                    stack.push({ key: `${stackEntry.key}[${index}]`, value: element, parentId: globalEntryId });
+        switch (dataType) {
+            case MongoBSONTypes.Object: {
+                tree.push({
+                    id: globalEntryId,
+                    field: `${stackEntry.key}`,
+                    value: `{...}`,
+                    type: 'Object',
+                    parentId: stackEntry.parentId,
                 });
-            }
-        } else if (stackEntry.value instanceof Object) {
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: `{...}`,
-                type: 'Object',
-                parentId: stackEntry.parentId,
-            });
 
-            // Add the properties of the object to the stack
-            Object.entries(stackEntry.value).map(([key, value]) => {
-                stack.push({ key: `${key}`, value: value, parentId: globalEntryId });
-            });
-        } else {
-            // over time, this generic case should never be called once we cover all BSON types
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: `${stackEntry.value}`,
-                type: typeof stackEntry.value,
-                parentId: stackEntry.parentId,
-            });
+                // Add the properties of the object to the stack
+                Object.entries(stackEntry.value as ObjectId).map(([key, value]) => {
+                    stack.push({ key: `${key}`, value: value, parentId: globalEntryId });
+                });
+                break;
+            }
+            case MongoBSONTypes.Array: {
+                const value = stackEntry.value as unknown[];
+
+                tree.push({
+                    id: globalEntryId,
+                    field: `${stackEntry.key}`,
+                    value: `(elements: ${value.length})`,
+                    type: 'Array',
+                    parentId: stackEntry.parentId,
+                });
+
+                if (value.length <= ARRAY_EXPANSION_LIMIT) {
+                    // Add the elements of the array to the stack
+                    value.forEach((element, index) => {
+                        stack.push({ key: `${stackEntry.key}[${index}]`, value: element, parentId: globalEntryId });
+                    });
+                }
+                break;
+            }
+
+            default: {
+                // over time, this generic case should never be called once we cover all BSON types
+                tree.push({
+                    id: globalEntryId,
+                    field: `${stackEntry.key}`,
+                    value: valueToDisplayString(stackEntry.value, dataType),
+                    type: MongoBSONTypes.toDisplayString(MongoBSONTypes.inferMongoType(stackEntry.value)),
+                    parentId: stackEntry.parentId,
+                });
+                break;
+            }
         }
     }
 

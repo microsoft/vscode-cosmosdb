@@ -8,7 +8,7 @@ export type StatsItem = {
     tooltip: string;
 };
 
-export const queryResultToJson = (queryResult: SerializedQueryResult | null) => {
+export const queryResultToJSON = (queryResult: SerializedQueryResult | null) => {
     if (!queryResult) {
         return '';
     }
@@ -196,7 +196,9 @@ export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): 
         return [];
     }
 
-    const { queryMetrics } = queryResult;
+    const { queryMetrics, iteration, metadata } = queryResult;
+    const countPerPage = metadata.countPerPage ?? 100;
+
     const stats: StatsItem[] = [
         {
             metric: 'Request Charge',
@@ -204,7 +206,12 @@ export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): 
             formattedValue: `${queryResult.requestCharge} RUs`,
             tooltip: 'Request Charge',
         },
-        { metric: 'Showing Results', value: 0, formattedValue: '0', tooltip: 'Showing Results' },
+        {
+            metric: 'Showing Results',
+            value: `${(iteration - 1) * countPerPage} - ${iteration * countPerPage}`,
+            formattedValue: `${(iteration - 1) * countPerPage} - ${iteration * countPerPage}`,
+            tooltip: 'Showing Results',
+        },
         {
             metric: 'Retrieved document count',
             value: queryResult.documents?.length ?? 0,
@@ -294,6 +301,22 @@ export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): 
     return stats;
 };
 
+export const queryMetricsToJSON = (queryResult: SerializedQueryResult | null): string => {
+    if (!queryResult) {
+        return '';
+    }
+
+    return JSON.stringify(queryMetricsToTable(queryResult), null, 4);
+};
+
+const escapeCsvValue = (value: string): string => {
+    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+        return `"${value.replace(/"/g, '""')}"`;
+    }
+
+    return value;
+};
+
 export const queryMetricsToCsv = (queryResult: SerializedQueryResult | null): string => {
     if (!queryResult) {
         return '';
@@ -301,7 +324,7 @@ export const queryMetricsToCsv = (queryResult: SerializedQueryResult | null): st
 
     const stats = queryMetricsToTable(queryResult);
     const titles = stats.map((item) => item.metric).join(',');
-    const values = stats.map((item) => item.value).join(',');
+    const values = stats.map((item) => escapeCsvValue(item.value.toString())).join(',');
     return `${titles}\n${values}`;
 };
 
@@ -312,6 +335,6 @@ export const queryResultToCsv = (queryResult: SerializedQueryResult | null): str
 
     const tableView = queryResultToTable(queryResult);
     const headers = tableView.headers.join(',');
-    const rows = tableView.dataset.map((row) => Object.values(row).join(',')).join('\n');
+    const rows = tableView.dataset.map((row) => Object.values(row).map(escapeCsvValue).join(',')).join('\n');
     return `${headers}\n${rows}`;
 };

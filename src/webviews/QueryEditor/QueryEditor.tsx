@@ -4,9 +4,9 @@ import { Allotment } from 'allotment';
 import 'allotment/dist/style.css';
 import { useContext } from 'react';
 import { WebviewContext } from '../WebviewContext';
-import { WithQueryEditorContext } from './QueryEditorContext';
 import { QueryPanel } from './QueryPanel/QueryPanel';
 import { ResultPanel } from './ResultPanel/ResultPanel';
+import { WithQueryEditorContext } from './state/QueryEditorContext';
 
 // this is the 'fluent ui' way of doing this, left in here so that the demo code is executed,
 // work with scss if possible for easier management

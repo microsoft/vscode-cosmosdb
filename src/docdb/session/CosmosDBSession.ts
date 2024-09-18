@@ -4,11 +4,8 @@ import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
+import { type ResultViewMetadata } from '../types/queryResult';
 import { SessionResult } from './SessionResult';
-
-export type ResultViewMetadata = {
-    countPerPage?: number;
-};
 
 export class CosmosDBSession {
     public readonly id: string;
@@ -23,6 +20,7 @@ export class CosmosDBSession {
 
     private abortController: AbortController | null = null;
     private iterator: QueryIterator<unknown> | null = null;
+    private currentIteration = 0;
     private isDisposed = false;
 
     constructor(
@@ -46,7 +44,7 @@ export class CosmosDBSession {
         this.resultViewMetadata = resultViewMetadata;
         this.query = query;
 
-        this.sessionResult = new SessionResult(resultViewMetadata.countPerPage === -1);
+        this.sessionResult = new SessionResult(resultViewMetadata);
     }
 
     public async run(): Promise<void> {
@@ -83,8 +81,15 @@ export class CosmosDBSession {
         }
 
         try {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'executionStarted',
+                params: [this.id],
+            });
+
             const response = await this.iterator.fetchAll();
             this.sessionResult.push(response);
+
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryResults',
@@ -100,21 +105,58 @@ export class CosmosDBSession {
             return;
         }
 
-        try {
-            const response = await this.iterator.fetchNext();
-            this.sessionResult.push(response);
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'queryResults',
-                params: [this.id, this.sessionResult.getSerializedResult(this.sessionResult.iterationsCount)],
-            });
-        } catch (error) {
-            await this.errorHandling(error);
+        if (this.resultViewMetadata.countPerPage === -1) {
+            // TODO: Send telemetry. It should not happen
+            return;
         }
+
+        await this.wrappedFetch(async () => {
+            if (this.currentIteration + 1 > this.sessionResult.iterationsCount) {
+                const response = await this.iterator!.fetchNext();
+                this.sessionResult.push(response);
+            }
+
+            this.currentIteration++;
+        });
+    }
+
+    public async prevPage(): Promise<void> {
+        if (this.isDisposed || !this.iterator) {
+            return;
+        }
+
+        if (this.resultViewMetadata.countPerPage === -1) {
+            // TODO: Send telemetry. It should not happen
+            return;
+        }
+
+        if (this.currentIteration - 1 < 0) {
+            return;
+        }
+
+        await this.wrappedFetch(async () => {
+            this.currentIteration--;
+        });
+    }
+
+    public async firstPage(): Promise<void> {
+        if (this.isDisposed || !this.iterator) {
+            return;
+        }
+
+        await this.wrappedFetch(async () => {
+            this.currentIteration = 0;
+        });
     }
 
     public async stop(): Promise<void> {
         this.abortController?.abort();
+
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'executionStopped',
+            params: [this.id],
+        });
     }
 
     public dispose(): void {
@@ -149,6 +191,26 @@ export class CosmosDBSession {
                 name: 'queryError',
                 params: [this.id, getErrorMessage(error)],
             });
+        }
+    }
+
+    private async wrappedFetch(action: () => Promise<void>): Promise<void> {
+        try {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'executionStarted',
+                params: [this.id],
+            });
+
+            await action();
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'queryResults',
+                params: [this.id, this.sessionResult.getSerializedResult(this.currentIteration), this.currentIteration],
+            });
+        } catch (error) {
+            await this.errorHandling(error);
         }
     }
 }

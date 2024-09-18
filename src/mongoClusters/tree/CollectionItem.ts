@@ -2,6 +2,7 @@ import { createGenericElement, type TreeElementBase } from '@microsoft/vscode-az
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { type CollectionItemModel, type DatabaseItemModel } from '../MongoClustersClient';
+import { IndexesItem } from './IndexesItem';
 import { type MongoClusterItemBase, type MongoClusterModel } from './MongoClusterItem';
 
 export class CollectionItem implements MongoClusterItemBase {
@@ -36,13 +37,7 @@ export class CollectionItem implements MongoClusterItemBase {
                 ],
                 iconPath: new ThemeIcon('explorer-view-icon'),
             }),
-            createGenericElement({
-                contextValue: 'index',
-                id: `${this.id}/index`,
-                label: 'Index',
-                description: 'coming soon',
-                iconPath: new ThemeIcon('combine'),
-            }),
+            new IndexesItem(this.subscription, this.mongoCluster, this.databaseInfo, this.collectionInfo)
         ];
     }
 

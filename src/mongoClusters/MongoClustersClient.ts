@@ -24,6 +24,14 @@ export interface CollectionItemModel {
     };
 }
 
+export interface IndexItemModel {
+    name: string;
+    key: {
+        [key: string]: number | string;
+    };
+    version?: number;
+}
+
 // type TableColumnDef = { id: string; name: string; field: string; minWidth: number };
 
 export interface QueryReponsePack {
@@ -86,6 +94,18 @@ export class MongoClustersClient {
         const collections: CollectionItemModel[] = rawCollections;
 
         return collections;
+    }
+
+    async listIndexes(databaseName: string, collectionName: string): Promise<IndexItemModel[]> {
+        const collection = this._mongoClient.db(databaseName).collection(collectionName);
+        const indexes = await collection.indexes();
+
+        console.log(JSON.stringify(indexes, null, 4));
+
+        let i = 0; // backup for indexes with no names
+        return indexes.map((index) => {
+            return { name: index.name ?? 'idx_' + (i++).toString(), key: index.key, version: index.v };
+        });
     }
 
     //todo: this is just a to see how it could work, we need to use a cursor here for paging

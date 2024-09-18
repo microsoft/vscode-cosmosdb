@@ -19,7 +19,7 @@ import {
     type CollectionViewContextType,
 } from './collectionViewContext';
 import { DataViewPanelJSON } from './components/DataViewPanelJSON';
-import { DataViewPanelTable } from './components/DataViewPanelTable';
+import { DataViewPanelTableV2 } from './components/DataViewPanelTableV2';
 import { DataViewPanelTree } from './components/DataViewPanelTree';
 import { ToolbarPaging } from './components/ToolbarPaging';
 
@@ -211,7 +211,7 @@ export const CollectionView = (): JSX.Element => {
                     {
                         {
                             'Table View': (
-                                <DataViewPanelTable
+                                <DataViewPanelTableV2
                                     liveHeaders={currentQueryResults?.tableHeaders ?? []}
                                     liveData={currentQueryResults?.tableData ?? []}
                                 />

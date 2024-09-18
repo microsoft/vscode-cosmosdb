@@ -41,9 +41,9 @@ export function getDataTopLevel(documents: WithId<Document>[]): object[] {
 
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 if (value instanceof Array) {
-                    row[key] =  { value: `[ elements: ${value.length} ]`, type: MongoBSONTypes.Array };
+                    row[key] = `(elements: ${value.length})`;
                 } else {
-                    row[key] = { value: valueToDisplayString(value, type), type: type };
+                    row[key] = valueToDisplayString(value, type);
                 }
             }
         }

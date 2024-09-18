@@ -1,11 +1,7 @@
 import { makeStyles, Toolbar, ToolbarDivider, ToolbarRadioButton, type ToolbarProps } from '@fluentui/react-components';
 import { EditRegular, EyeRegular } from '@fluentui/react-icons';
-import {
-    useQueryEditorDispatcher,
-    useQueryEditorState,
-    type EditMode,
-    type TableViewMode,
-} from '../QueryEditorContext';
+import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
+import { type EditMode, type TableViewMode } from '../state/QueryEditorState';
 
 const useStyles = makeStyles({
     viewModeButton: {

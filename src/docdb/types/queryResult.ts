@@ -4,6 +4,8 @@ export type QueryResult = {
     activityId?: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     documents: any[];
+    iteration: number;
+    metadata: ResultViewMetadata;
     queryMetrics: QueryMetrics;
     requestCharge: number;
     roundTrips: number;
@@ -31,7 +33,13 @@ export type SerializedQueryResult = {
     activityId?: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     documents: any[];
+    iteration: number;
+    metadata: ResultViewMetadata;
     queryMetrics: SerializedQueryMetrics;
     requestCharge: number;
     roundTrips: number;
+};
+
+export type ResultViewMetadata = {
+    countPerPage?: number;
 };

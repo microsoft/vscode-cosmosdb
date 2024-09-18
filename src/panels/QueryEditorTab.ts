@@ -3,7 +3,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { getNoSqlQueryConnection } from '../docdb/commands/connectNoSqlContainer';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
-import { CosmosDBSession, type ResultViewMetadata } from '../docdb/session/CosmosDBSession';
+import { CosmosDBSession } from '../docdb/session/CosmosDBSession';
+import { type ResultViewMetadata } from '../docdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { type Channel } from './Communication/Channel/Channel';
@@ -180,7 +181,13 @@ export class QueryEditorTab {
             case 'openFile':
                 return this.openFile();
             case 'saveFile':
-                return this.saveFile(payload.params[0] as string, payload.params[1] as string);
+                return this.saveFile(
+                    payload.params[0] as string,
+                    payload.params[1] as string,
+                    payload.params[2] as string,
+                );
+            case 'copyToClipboard':
+                return this.copyToClipboard(payload.params[0] as string);
             case 'showInformationMessage':
                 return this.showInformationMessage(payload.params[0] as string);
             case 'showErrorMessage':
@@ -193,6 +200,12 @@ export class QueryEditorTab {
                 return this.runQuery(payload.params[0] as string, payload.params[1] as ResultViewMetadata);
             case 'stopQuery':
                 return this.stopQuery(payload.params[0] as string);
+            case 'nextPage':
+                return this.nextPage(payload.params[0] as string);
+            case 'prevPage':
+                return this.prevPage(payload.params[0] as string);
+            case 'firstPage':
+                return this.firstPage(payload.params[0] as string);
             default:
                 throw new Error(`Unknown command: ${commandName}`);
         }
@@ -218,7 +231,7 @@ export class QueryEditorTab {
         }
     }
 
-    private async openFile() {
+    private async openFile(): Promise<void> {
         const options: vscode.OpenDialogOptions = {
             canSelectMany: false,
             openLabel: 'Select',
@@ -231,7 +244,7 @@ export class QueryEditorTab {
             },
         };
 
-        void vscode.window.showOpenDialog(options).then((fileUri) => {
+        await vscode.window.showOpenDialog(options).then((fileUri) => {
             if (fileUri && fileUri[0]) {
                 return vscode.workspace.openTextDocument(fileUri[0]).then((document) => {
                     void this.channel.postMessage({ type: 'event', name: 'fileOpened', params: [document.getText()] });
@@ -242,8 +255,15 @@ export class QueryEditorTab {
         });
     }
 
-    private async saveFile(query: string, ext: string): Promise<void> {
-        await vscodeUtil.showNewFile(query, `New query`, '.' + ext);
+    private async saveFile(text: string, filename: string, ext: string): Promise<void> {
+        if (!ext.startsWith('.')) {
+            ext = `.${ext}`;
+        }
+        await vscodeUtil.showNewFile(text, filename, ext);
+    }
+
+    private async copyToClipboard(text: string): Promise<void> {
+        await vscode.env.clipboard.writeText(text);
     }
 
     private async showInformationMessage(message: string) {
@@ -255,7 +275,7 @@ export class QueryEditorTab {
     }
 
     private async connectToDatabase(): Promise<void> {
-        void getNoSqlQueryConnection().then(async (connection) => {
+        await getNoSqlQueryConnection().then(async (connection) => {
             if (connection) {
                 await this.updateConnection(connection);
             }
@@ -275,26 +295,55 @@ export class QueryEditorTab {
 
         this.sessions.set(session.id, session);
 
-        await this.channel.postMessage({
-            type: 'event',
-            name: 'executionStarted',
-            params: [session.id],
-        });
-
-        void session.run();
+        await session.run();
     }
 
     private async stopQuery(executionId: string): Promise<void> {
         const session = this.sessions.get(executionId);
-        if (session) {
-            await session.stop();
-            this.sessions.delete(executionId);
+        if (!session) {
+            throw new Error(`No session found for executionId: ${executionId}`);
         }
 
-        await this.channel.postMessage({
-            type: 'event',
-            name: 'executionStopped',
-            params: [executionId],
-        });
+        await session.stop();
+        this.sessions.delete(executionId);
+    }
+
+    private async nextPage(executionId: string): Promise<void> {
+        if (!this.connection) {
+            throw new Error('No connection');
+        }
+
+        const session = this.sessions.get(executionId);
+        if (!session) {
+            throw new Error(`No session found for executionId: ${executionId}`);
+        }
+
+        await session.nextPage();
+    }
+
+    private async prevPage(executionId: string): Promise<void> {
+        if (!this.connection) {
+            throw new Error('No connection');
+        }
+
+        const session = this.sessions.get(executionId);
+        if (!session) {
+            throw new Error(`No session found for executionId: ${executionId}`);
+        }
+
+        await session.prevPage();
+    }
+
+    private async firstPage(executionId: string): Promise<void> {
+        if (!this.connection) {
+            throw new Error('No connection');
+        }
+
+        const session = this.sessions.get(executionId);
+        if (!session) {
+            throw new Error(`No session found for executionId: ${executionId}`);
+        }
+
+        await session.firstPage();
     }
 }

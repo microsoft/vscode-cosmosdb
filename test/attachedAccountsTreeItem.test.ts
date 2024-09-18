@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as assert from 'assert';
+import assert from 'assert';
 import { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from '../extension.bundle';
 
 function assertConnectionValid(connectionString: string, expected: string | undefined): void {

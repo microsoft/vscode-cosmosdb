@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { parseError } from '@microsoft/vscode-azext-utils';
-import * as assert from 'assert';
+import assert from 'assert';
 import * as os from 'os';
 import { wrapError } from '../extension.bundle';
 

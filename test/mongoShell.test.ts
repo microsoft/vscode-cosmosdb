@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // CONSIDER: Run in pipeline
-import * as assert from 'assert';
+import assert from 'assert';
 import * as cp from 'child_process';
 import * as fse from 'fs-extra';
 import * as os from 'os';

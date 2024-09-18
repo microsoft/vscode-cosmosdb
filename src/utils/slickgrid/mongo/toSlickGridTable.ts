@@ -1,4 +1,6 @@
 import { type Document, type WithId } from 'mongodb';
+import { MongoBSONTypes } from '../../json/mongo/MongoBSONTypes';
+import { valueToDisplayString } from '../../json/mongo/MongoValueFormatters';
 
 export function getFieldsTopLevel(documents: WithId<Document>[]): string[] {
     const keys = new Set<string>();
@@ -34,11 +36,14 @@ export function getDataTopLevel(documents: WithId<Document>[]): object[] {
             if (key === '_id') {
                 row[key] = doc[key].toString();
             } else {
+                const value: unknown = doc[key];
+                const type: MongoBSONTypes = MongoBSONTypes.inferType(value);
+
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                if (doc[key] instanceof Array) {
-                    row[key] = `(elements: ${doc[key].length})`;
+                if (value instanceof Array) {
+                    row[key] = `(elements: ${value.length})`;
                 } else {
-                    row[key] = `${doc[key]}`; // TODO: merge value.toString methods from toSlickGridTree.ts and toSlickGridTable.ts into one location
+                    row[key] = valueToDisplayString(value, type);
                 }
             }
         }

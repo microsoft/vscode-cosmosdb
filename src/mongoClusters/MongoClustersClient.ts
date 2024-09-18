@@ -100,8 +100,6 @@ export class MongoClustersClient {
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
         const indexes = await collection.indexes();
 
-        console.log(JSON.stringify(indexes, null, 4));
-
         let i = 0; // backup for indexes with no names
         return indexes.map((index) => {
             return { name: index.name ?? 'idx_' + (i++).toString(), key: index.key, version: index.v };

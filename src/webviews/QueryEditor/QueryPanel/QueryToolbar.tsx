@@ -23,7 +23,7 @@ import {
     SaveRegular,
     StopRegular,
 } from '@fluentui/react-icons';
-import { useQueryEditorDispatcher, useQueryEditorState } from '../QueryEditorContext';
+import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 const useClasses = makeStyles({
     iconPlay: {
@@ -60,7 +60,8 @@ const BaseActionsSection = () => {
                             disabled={state.isExecuting || !state.isConnected}
                             menuButton={triggerProps}
                             primaryActionButton={{
-                                onClick: () => void dispatcher.runQuery(state.queryValue),
+                                onClick: () =>
+                                    void dispatcher.runQuery(state.queryValue, { countPerPage: state.pageSize }),
                             }}
                         >
                             Run
@@ -91,7 +92,7 @@ const BaseActionsSection = () => {
             <ToolbarButton
                 aria-label="Save query"
                 icon={<SaveRegular />}
-                onClick={() => void dispatcher.saveToFile(state.queryValue, 'nosql')}
+                onClick={() => void dispatcher.saveToFile(state.queryValue, 'New query', 'nosql')}
             >
                 Save
             </ToolbarButton>

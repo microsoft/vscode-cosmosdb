@@ -1,5 +1,13 @@
-import { type OptionOnSelectData, type SelectionEvents } from '@fluentui/react-combobox';
+import { type OptionOnSelectData } from '@fluentui/react-combobox';
 import {
+    Button,
+    Dialog,
+    DialogActions,
+    DialogBody,
+    DialogContent,
+    DialogSurface,
+    DialogTitle,
+    DialogTrigger,
     Dropdown,
     Label,
     Menu,
@@ -12,6 +20,7 @@ import {
     ToolbarButton,
     ToolbarDivider,
     Tooltip,
+    useRestoreFocusTarget,
 } from '@fluentui/react-components';
 import {
     ArrowClockwiseFilled,
@@ -21,123 +30,91 @@ import {
     ArrowRightFilled,
     DocumentCopyRegular,
 } from '@fluentui/react-icons';
-import { queryMetricsToCsv, queryMetricsToTable, queryResultToCsv, queryResultToJson } from '../../utils';
-import { DEFAULT_PAGE_SIZE, useQueryEditorDispatcher, useQueryEditorState } from '../QueryEditorContext';
+import { useState } from 'react';
+import { queryMetricsToCsv, queryMetricsToJSON, queryResultToCsv, queryResultToJSON } from '../../utils';
+import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
+import { DEFAULT_PAGE_SIZE } from '../state/QueryEditorState';
+
+type ResultToolbarProps = { selectedTab: string };
 
 const ToolbarDividerTransparent = () => {
     return <div style={{ padding: '4px' }} />;
 };
 
-export const ResultToolbar = ({ selectedTab }: { selectedTab: string }) => {
+const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
-    function nextPage() {
-        dispatcher.setPageNumber(state.pageNumber + 1);
-    }
-
-    function prevPage() {
-        dispatcher.setPageNumber(state.pageNumber - 1);
-    }
-
-    function firstPage() {
-        dispatcher.setPageNumber(1);
-    }
-
-    function onOptionSelect(_event: SelectionEvents, data: OptionOnSelectData) {
-        dispatcher.setPageSize(parseInt(data.optionText ?? '', 10) ?? -1);
-    }
-
-    async function onSaveAsCSV() {
+    async function onSaveToClipboardAsCSV() {
         if (selectedTab === 'result__tab') {
-            await dispatcher.saveToFile(queryResultToCsv(state.currentQueryResult), 'csv');
+            await dispatcher.copyToClipboard(queryResultToCsv(state.currentQueryResult));
         }
 
         if (selectedTab === 'stats__tab') {
-            await dispatcher.saveToFile(queryMetricsToCsv(state.currentQueryResult), 'csv');
+            await dispatcher.copyToClipboard(queryMetricsToCsv(state.currentQueryResult));
+        }
+    }
+
+    async function onSaveToClipboardAsJSON() {
+        if (selectedTab === 'result__tab') {
+            await dispatcher.copyToClipboard(queryResultToJSON(state.currentQueryResult));
+        }
+
+        if (selectedTab === 'stats__tab') {
+            await dispatcher.copyToClipboard(queryMetricsToJSON(state.currentQueryResult));
+        }
+    }
+
+    async function onSaveAsCSV() {
+        const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
+        if (selectedTab === 'result__tab') {
+            await dispatcher.saveToFile(queryResultToCsv(state.currentQueryResult), `${filename}_result`, 'csv');
+        }
+
+        if (selectedTab === 'stats__tab') {
+            await dispatcher.saveToFile(queryMetricsToCsv(state.currentQueryResult), `${filename}_stats`, 'csv');
         }
     }
 
     async function onSaveAsJSON() {
+        const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
         if (selectedTab === 'result__tab') {
-            await dispatcher.saveToFile(queryResultToJson(state.currentQueryResult), 'json');
+            await dispatcher.saveToFile(queryResultToJSON(state.currentQueryResult), `${filename}_result`, 'json');
         }
 
         if (selectedTab === 'stats__tab') {
-            await dispatcher.saveToFile(JSON.stringify(queryMetricsToTable(state.currentQueryResult), null, 4), 'json');
+            await dispatcher.saveToFile(queryMetricsToJSON(state.currentQueryResult), `${filename}_stats`, 'json');
         }
     }
 
     return (
-        <Toolbar aria-label="with Popover" size="small">
-            <Tooltip content="Reload query results" relationship="description" withArrow>
-                <ToolbarButton aria-label="Refresh" icon={<ArrowClockwiseFilled />} />
-            </Tooltip>
-
-            <ToolbarDivider />
-
-            <Tooltip content="Go to first page" relationship="description" withArrow>
-                <ToolbarButton
-                    onClick={firstPage}
-                    aria-label="Go to start"
-                    icon={<ArrowPreviousFilled />}
-                    disabled={state.pageNumber === 1}
-                />
-            </Tooltip>
-
-            <Tooltip content="Go to previous page" relationship="description" withArrow>
-                <ToolbarButton
-                    onClick={prevPage}
-                    aria-label="Go to previous page"
-                    icon={<ArrowLeftFilled />}
-                    disabled={state.pageNumber === 1}
-                />
-            </Tooltip>
-
-            <Tooltip content="Go to next page (Load more)" relationship="description" withArrow>
-                <ToolbarButton
-                    onClick={nextPage}
-                    aria-label="Go to next page"
-                    icon={<ArrowRightFilled />}
-                    disabled={state.pageSize === -1} // Disable if page size is set to 'All'
-                />
-            </Tooltip>
-
-            <ToolbarDividerTransparent />
-
-            <Tooltip content="Change page size" relationship="description" withArrow>
-                <Dropdown
-                    onOptionSelect={onOptionSelect}
-                    style={{ minWidth: '100px', maxWidth: '100px' }}
-                    defaultValue={DEFAULT_PAGE_SIZE.toString()}
-                    defaultSelectedOptions={[DEFAULT_PAGE_SIZE.toString()]}
-                >
-                    <Option key="10">10</Option>
-                    <Option key="10">50</Option>
-                    <Option key="100">100</Option>
-                    <Option key="500">500</Option>
-                    <Option key="All">All</Option>
-                </Dropdown>
-            </Tooltip>
-
-            <ToolbarDivider />
-
-            <Label weight="semibold" style={{ minWidth: '100px', maxWidth: '100px', textAlign: 'center' }}>
-                {state.currentQueryResult
-                    ? `${(state.pageNumber - 1) * state.pageSize} - ${state.pageNumber * state.pageSize}`
-                    : `0 - 0`}
-            </Label>
-
-            <ToolbarDivider />
-
+        <>
             <Tooltip content="Copy to clipboard" relationship="description" withArrow>
-                <ToolbarButton aria-label="Copy to clipboard" icon={<DocumentCopyRegular />} />
+                <Menu>
+                    <MenuTrigger>
+                        <ToolbarButton
+                            aria-label="Copy to clipboard"
+                            icon={<DocumentCopyRegular />}
+                            disabled={!state.isConnected}
+                        />
+                    </MenuTrigger>
+                    <MenuPopover>
+                        <MenuList>
+                            <MenuItem onClick={() => void onSaveToClipboardAsCSV()}>CSV</MenuItem>
+                            <MenuItem onClick={() => void onSaveToClipboardAsJSON()}>JSON</MenuItem>
+                        </MenuList>
+                    </MenuPopover>
+                </Menu>
             </Tooltip>
 
             <Tooltip content="Export results" relationship="description" withArrow>
                 <Menu>
                     <MenuTrigger>
-                        <ToolbarButton aria-label="Export" icon={<ArrowDownloadRegular />} />
+                        <ToolbarButton
+                            aria-label="Export"
+                            icon={<ArrowDownloadRegular />}
+                            disabled={!state.isConnected}
+                        />
                     </MenuTrigger>
                     <MenuPopover>
                         <MenuList>
@@ -147,6 +124,176 @@ export const ResultToolbar = ({ selectedTab }: { selectedTab: string }) => {
                     </MenuPopover>
                 </Menu>
             </Tooltip>
-        </Toolbar>
+        </>
+    );
+};
+
+type AlertDialogProps = {
+    open: boolean;
+    setOpen: (open: boolean) => void;
+    doAction: () => Promise<void>;
+};
+
+const AlertDialog = ({ open, setOpen, doAction }: AlertDialogProps) => {
+    return (
+        <Dialog modalType="alert" open={open} onOpenChange={(_event, data) => setOpen(data.open)}>
+            <DialogSurface>
+                <DialogBody>
+                    <DialogTitle>Attention</DialogTitle>
+                    <DialogContent>
+                        <div>All loaded data will be lost. The query will be executed again in new session.</div>
+                        <div>Are you sure you want to continue?</div>
+                    </DialogContent>
+
+                    <DialogActions>
+                        <Button appearance="secondary" onClick={() => void doAction()}>
+                            Continue
+                        </Button>
+
+                        <DialogTrigger disableButtonEnhancement>
+                            <Button appearance="primary">Close</Button>
+                        </DialogTrigger>
+                    </DialogActions>
+                </DialogBody>
+            </DialogSurface>
+        </Dialog>
+    );
+};
+
+export const ResultToolbar = ({ selectedTab }: ResultToolbarProps) => {
+    const state = useQueryEditorState();
+    const dispatcher = useQueryEditorDispatcher();
+    const restoreFocusTargetAttribute = useRestoreFocusTarget();
+
+    const [open, setOpen] = useState(false);
+    const [doAction, setDoAction] = useState<() => Promise<void>>(() => async () => {});
+
+    async function nextPage() {
+        await dispatcher.nextPage(state.currentExecutionId);
+    }
+
+    async function prevPage() {
+        await dispatcher.prevPage(state.currentExecutionId);
+    }
+
+    async function firstPage() {
+        await dispatcher.firstPage(state.currentExecutionId);
+    }
+
+    function reloadData() {
+        setOpen(true);
+        setDoAction(() => async () => {
+            setOpen(false);
+            await dispatcher.runQuery(state.queryHistory[state.queryHistory.length - 1], {
+                countPerPage: state.pageSize,
+            });
+        });
+    }
+
+    function onOptionSelect(data: OptionOnSelectData) {
+        const countPerPage = parseInt(data.optionText ?? '', 10) ?? -1;
+        if (!state.currentExecutionId) {
+            // The result is not loaded yet, just set the page size
+            dispatcher.setPageSize(countPerPage);
+            return;
+        }
+
+        setOpen(true);
+        setDoAction(() => async () => {
+            setOpen(false);
+            dispatcher.setPageSize(countPerPage);
+            await dispatcher.runQuery(state.queryHistory[state.queryHistory.length - 1], { countPerPage });
+        });
+    }
+
+    return (
+        <>
+            <AlertDialog open={open} setOpen={setOpen} doAction={doAction} />
+            <Toolbar aria-label="with Popover" size="small">
+                <Tooltip content="Reload query results" relationship="description" withArrow>
+                    <ToolbarButton
+                        onClick={() => reloadData()}
+                        aria-label="Refresh"
+                        icon={<ArrowClockwiseFilled />}
+                        {...restoreFocusTargetAttribute}
+                        disabled={!state.isConnected || !state.currentExecutionId}
+                    />
+                </Tooltip>
+
+                <ToolbarDivider />
+
+                <Tooltip content="Go to first page" relationship="description" withArrow>
+                    <ToolbarButton
+                        onClick={() => void firstPage()}
+                        aria-label="Go to start"
+                        icon={<ArrowPreviousFilled />}
+                        disabled={
+                            state.pageNumber === 1 ||
+                            !state.isConnected ||
+                            state.isExecuting ||
+                            !state.currentExecutionId
+                        }
+                    />
+                </Tooltip>
+
+                <Tooltip content="Go to previous page" relationship="description" withArrow>
+                    <ToolbarButton
+                        onClick={() => void prevPage()}
+                        aria-label="Go to previous page"
+                        icon={<ArrowLeftFilled />}
+                        disabled={
+                            state.pageNumber === 1 ||
+                            !state.isConnected ||
+                            state.isExecuting ||
+                            !state.currentExecutionId
+                        }
+                    />
+                </Tooltip>
+
+                <Tooltip content="Go to next page (Load more)" relationship="description" withArrow>
+                    <ToolbarButton
+                        onClick={() => void nextPage()}
+                        aria-label="Go to next page"
+                        icon={<ArrowRightFilled />}
+                        disabled={
+                            state.pageSize === -1 ||
+                            !state.isConnected ||
+                            state.isExecuting ||
+                            !state.currentExecutionId
+                        } // Disable if page size is set to 'All'
+                    />
+                </Tooltip>
+
+                <ToolbarDividerTransparent />
+
+                <Tooltip content="Change page size" relationship="description" withArrow>
+                    <Dropdown
+                        onOptionSelect={(_event, data) => onOptionSelect(data)}
+                        style={{ minWidth: '100px', maxWidth: '100px' }}
+                        defaultValue={DEFAULT_PAGE_SIZE.toString()}
+                        defaultSelectedOptions={[DEFAULT_PAGE_SIZE.toString()]}
+                        {...restoreFocusTargetAttribute}
+                    >
+                        <Option key="10">10</Option>
+                        <Option key="50">50</Option>
+                        <Option key="100">100</Option>
+                        <Option key="500">500</Option>
+                        <Option key="All">All</Option>
+                    </Dropdown>
+                </Tooltip>
+
+                <ToolbarDivider />
+
+                <Label weight="semibold" style={{ minWidth: '100px', maxWidth: '100px', textAlign: 'center' }}>
+                    {state.currentExecutionId
+                        ? `${(state.pageNumber - 1) * state.pageSize} - ${state.pageNumber * state.pageSize}`
+                        : `0 - 0`}
+                </Label>
+
+                <ToolbarDivider />
+
+                <ToolbarGroupSave selectedTab={selectedTab} />
+            </Toolbar>
+        </>
     );
 };

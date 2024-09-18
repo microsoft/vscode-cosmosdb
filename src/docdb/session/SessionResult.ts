@@ -1,14 +1,21 @@
 import { type FeedResponse, type QueryMetrics } from '@azure/cosmos';
-import { type QueryResult, type SerializedQueryMetrics, type SerializedQueryResult } from '../types/queryResult';
+import {
+    type QueryResult,
+    type ResultViewMetadata,
+    type SerializedQueryMetrics,
+    type SerializedQueryResult,
+} from '../types/queryResult';
 
 export class SessionResult {
     private readonly queryResults = new Map<number, QueryResult>();
     private readonly isFetchedAll: boolean;
+    private readonly metadata: ResultViewMetadata;
 
     private hasMoreResults = false;
 
-    constructor(isFetchedAll = false) {
-        this.isFetchedAll = isFetchedAll;
+    constructor(metadata: ResultViewMetadata) {
+        this.metadata = metadata;
+        this.isFetchedAll = metadata.countPerPage === -1;
     }
 
     public get iterationsCount(): number {
@@ -43,10 +50,12 @@ export class SessionResult {
         this.queryResults.set(pageNumber, {
             activityId: response.activityId,
             documents: response.resources,
+            iteration: pageNumber,
+            metadata: this.metadata,
             // CosmosDB library has wrong type definition
             queryMetrics: (response.queryMetrics as unknown as QueryMetrics[])['0'],
             requestCharge: response.requestCharge,
-            roundTrips: 1,
+            roundTrips: 1, // TODO: Is it required field? Query Pages Until Content Present
         });
         this.hasMoreResults = response.hasMoreResults;
     }
@@ -62,6 +71,8 @@ export class SessionResult {
             return {
                 activityId: result.activityId,
                 documents: result.documents ?? [],
+                iteration: result.iteration,
+                metadata: this.metadata,
                 queryMetrics: {
                     documentLoadTime: result.queryMetrics.documentLoadTime.totalMilliseconds(),
                     documentWriteTime: result.queryMetrics.documentWriteTime.totalMilliseconds(),

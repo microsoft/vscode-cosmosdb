@@ -2,8 +2,8 @@ import { makeStyles } from '@fluentui/react-components';
 import { Suspense, useMemo } from 'react';
 import { DataViewPanelTable } from '../../mongoClusters/collectionView/components/DataViewPanelTable';
 import { DataViewPanelTree } from '../../mongoClusters/collectionView/components/DataViewPanelTree';
-import { queryResultToJson, queryResultToTable, queryResultToTree } from '../../utils';
-import { useQueryEditorState } from '../QueryEditorContext';
+import { queryResultToJSON, queryResultToTable, queryResultToTree } from '../../utils';
+import { useQueryEditorState } from '../state/QueryEditorContext';
 import { DataViewPanelJSON } from './DataViewPanelJSON';
 import { ResultTableViewToolbar } from './ResultTableViewToolbar';
 
@@ -26,7 +26,7 @@ export const ResultTab = () => {
 
     const { tableViewMode, currentQueryResult } = useQueryEditorState();
 
-    const jsonViewData = useMemo(() => queryResultToJson(currentQueryResult), [currentQueryResult]);
+    const jsonViewData = useMemo(() => queryResultToJSON(currentQueryResult), [currentQueryResult]);
     const tableViewData = useMemo(() => queryResultToTable(currentQueryResult), [currentQueryResult]);
     const treeViewData = useMemo(() => queryResultToTree(currentQueryResult), [currentQueryResult]);
 

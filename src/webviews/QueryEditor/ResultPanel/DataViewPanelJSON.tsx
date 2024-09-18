@@ -34,7 +34,7 @@ export const DataViewPanelJSON = ({ value }: DataViewPanelJSONProps) => {
             width={'100%'}
             defaultLanguage={'json'}
             theme={getVscodeTheme(themeKind)}
-            defaultValue={value}
+            value={value}
             options={{ domReadOnly: true, readOnly: true }}
         />
     );

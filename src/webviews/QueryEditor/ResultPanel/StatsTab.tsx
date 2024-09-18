@@ -10,7 +10,7 @@ import {
     Tooltip,
 } from '@fluentui/react-components';
 import { queryMetricsToTable } from '../../utils';
-import { useQueryEditorState } from '../QueryEditorContext';
+import { useQueryEditorState } from '../state/QueryEditorContext';
 
 export const StatsTab = () => {
     const state = useQueryEditorState();

@@ -207,7 +207,7 @@ export class MongoClustersExtension implements vscode.Disposable {
 
                     void panel.webview.postMessage({
                         type: 'queryResults',
-                        json: responsePack?.json ?? '{ "noData": true }',
+                        json: responsePack?.jsonDocuments ?? '{ "noData": true }',
                         tableData: responsePack?.tableData ?? [],
                         tableHeaders: responsePack?.tableHeaders ?? [],
                         treeData: responsePack?.treeData ?? [],

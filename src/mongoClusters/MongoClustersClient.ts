@@ -4,7 +4,14 @@
  * singletone on a client with a getter from a connection pool..
  */
 
-import { MongoClient, ObjectId, type DeleteResult, type Filter, type FindOptions, type ListDatabasesResult } from 'mongodb';
+import {
+    MongoClient,
+    ObjectId,
+    type DeleteResult,
+    type Filter,
+    type FindOptions,
+    type ListDatabasesResult,
+} from 'mongodb';
 import { getDataTopLevel, getFieldsTopLevel } from '../utils/slickgrid/mongo/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
 import { CredentialCache } from './CredentialCache';
@@ -40,7 +47,7 @@ export interface QueryReponsePack {
 
     treeData?: TreeData[];
 
-    json?: string;
+    jsonDocuments?: string[];
 }
 
 export class MongoClustersClient {
@@ -131,7 +138,7 @@ export class MongoClustersClient {
 
         // json
         const responsePack: QueryReponsePack = {
-            json: JSON.stringify(documents, null, 4),
+            jsonDocuments: documents.map((doc) => JSON.stringify(doc, null, 4)),
         };
 
         // table
@@ -143,11 +150,7 @@ export class MongoClustersClient {
         return responsePack;
     }
 
-    async deleteDocuments(
-        databaseName: string,
-        collectionName: string,
-        documentObjectIds: string[]
-    ): Promise<boolean> {
+    async deleteDocuments(databaseName: string, collectionName: string, documentObjectIds: string[]): Promise<boolean> {
         // convert input data
         const objectIds = documentObjectIds.map((id) => new ObjectId(id));
 

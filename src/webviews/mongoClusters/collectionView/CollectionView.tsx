@@ -150,7 +150,7 @@ interface QueryResults {
 
     treeData?: { [key: string]: unknown }[];
 
-    json?: string;
+    jsonDocuments?: string[];
 }
 
 export const CollectionView = (): JSX.Element => {
@@ -214,7 +214,7 @@ export const CollectionView = (): JSX.Element => {
                     treeData: event.data?.treeData,
 
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-                    json: event.data?.json,
+                    jsonDocuments: event.data?.json,
                 }));
                 break;
             }
@@ -367,7 +367,7 @@ export const CollectionView = (): JSX.Element => {
                                 />
                             ),
                             'Tree View': <DataViewPanelTree liveData={currentQueryResults?.treeData ?? []} />,
-                            'JSON View': <DataViewPanelJSON value={currentQueryResults?.json ?? ''} />,
+                            'JSON View': <DataViewPanelJSON value={currentQueryResults?.jsonDocuments ?? []} />,
                             default: <div>error '{currentContext.currentView}'</div>,
                         }[currentContext.currentView] // switch-statement
                     }

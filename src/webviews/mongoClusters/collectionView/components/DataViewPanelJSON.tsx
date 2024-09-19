@@ -4,7 +4,7 @@ import * as React from 'react';
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
 interface Props {
-    value: string;
+    value: string[];
 }
 
 loader.config({ monaco: monacoEditor });
@@ -40,5 +40,5 @@ export const DataViewPanelJSON = ({ value }: Props): React.JSX.Element => {
         };
     }, []); // Empty dependency array means this runs only once, like componentDidMount
 
-    return <Editor height={'100%'} width={'100%'} language="json" options={monacoOptions} value={value} />;
+    return <Editor height={'100%'} width={'100%'} language="json" options={monacoOptions} value={value.join('\n\n')} />;
 };

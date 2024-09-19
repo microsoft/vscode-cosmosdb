@@ -4,7 +4,7 @@
  * singletone on a client with a getter from a connection pool..
  */
 
-import { MongoClient, type Filter, type FindOptions, type ListDatabasesResult } from 'mongodb';
+import { MongoClient, ObjectId, type DeleteResult, type Filter, type FindOptions, type ListDatabasesResult } from 'mongodb';
 import { getDataTopLevel, getFieldsTopLevel } from '../utils/slickgrid/mongo/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
 import { CredentialCache } from './CredentialCache';
@@ -141,5 +141,20 @@ export class MongoClustersClient {
         responsePack.treeData = toSlickGridTree(documents);
 
         return responsePack;
+    }
+
+    async deleteDocuments(
+        databaseName: string,
+        collectionName: string,
+        documentObjectIds: string[]
+    ): Promise<boolean> {
+        // convert input data
+        const objectIds = documentObjectIds.map((id) => new ObjectId(id));
+
+        // connect and extecute
+        const collection = this._mongoClient.db(databaseName).collection(collectionName);
+        const deleteResult: DeleteResult = await collection.deleteMany({ _id: { $in: objectIds } });
+
+        return deleteResult.acknowledged;
     }
 }

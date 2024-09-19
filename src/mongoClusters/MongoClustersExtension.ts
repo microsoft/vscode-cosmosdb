@@ -41,6 +41,12 @@ export class MongoClustersExtension implements vscode.Disposable {
     commandSayHello(): void {
         console.log(`Hello there here!!!`);
         void vscode.window.showInformationMessage('Saying hello here!');
+
+        void vscode.window.showWarningMessage(
+            `Are you sure?`,
+            { modal: true, detail: "You are about to:\n\ndelete 5 documents.\n\nThis action can't be undone." },
+            'Delete',
+        );
     }
 
     commandShowWebview(): void {
@@ -106,6 +112,32 @@ export class MongoClustersExtension implements vscode.Disposable {
             _props?.documentId ?? '',
             _props?.documentContent ?? '',
         );
+
+        panel.webview.onDidReceiveMessage(async (message) => {
+            console.log('Webview->Ext:', JSON.stringify(message, null, 2));
+
+            // // run query
+            // const client: MongoClustersClient = await MongoClustersClient.getClient(_props.liveConnectionId);
+
+            // void panel.webview.postMessage({
+            //     type: 'queryResults',
+            //     json: responsePack?.json ?? '{ "noData": true }',
+            //     tableData: responsePack?.tableData ?? [],
+            //     tableHeaders: responsePack?.tableHeaders ?? [],
+            //     treeData: responsePack?.treeData ?? [],
+            // });
+        });
+    }
+
+    getRandomArrayAndIndex(length: number): { numbers: number[]; index: number } {
+        // Generate an array of three random numbers between 0 and 100 (can adjust range)
+        const randomNumbers: number[] = Array.from({ length: length }, () => Math.floor(Math.random() * 101));
+
+        // Get a random index between 0 and 2
+        const randomIndex: number = Math.floor(Math.random() * randomNumbers.length);
+
+        // Return the object with fields "numbers" and "index"
+        return { numbers: randomNumbers, index: randomIndex };
     }
 
     commandContainerViewOpen(
@@ -138,32 +170,95 @@ export class MongoClustersExtension implements vscode.Disposable {
             _props.collectionName,
         );
         panel.webview.onDidReceiveMessage(async (message) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            const queryString = (message?.payload?.queryText as string) ?? '{}';
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            const pageNumber = (message?.payload?.pageNumber as number) ?? 1;
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            const pageSize = (message?.payload?.pageSize as number) ?? 10;
+            function getRandomArrayAndIndex(length: number): { numbers: number[]; index: number } {
+                // Generate an array of three random numbers between 0 and 100 (can adjust range)
+                const randomNumbers: number[] = Array.from({ length: length }, () => Math.floor(Math.random() * 101));
 
-            console.log(`Query: ${queryString}, page: ${pageNumber}, size: ${pageSize}`);
+                // Get a random index between 0 and 2
+                const randomIndex: number = Math.floor(Math.random() * randomNumbers.length);
 
-            // run query
-            const client: MongoClustersClient = await MongoClustersClient.getClient(_props.liveConnectionId);
-            const responsePack = await client.queryDocuments(
-                _props.databaseName,
-                _props.collectionName,
-                queryString,
-                pageNumber * pageSize - pageSize,
-                pageSize,
-            );
+                // Return the object with fields "numbers" and "index"
+                return { numbers: randomNumbers, index: randomIndex };
+            }
 
-            void panel.webview.postMessage({
-                type: 'queryResults',
-                json: responsePack?.json ?? '{ "noData": true }',
-                tableData: responsePack?.tableData ?? [],
-                tableHeaders: responsePack?.tableHeaders ?? [],
-                treeData: responsePack?.treeData ?? [],
-            });
+
+            console.log('Webview->Ext:', JSON.stringify(message, null, 2));
+
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            const messageType = message?.type as string;
+
+            switch (messageType) {
+                case 'queryConfig': {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    const queryString = (message?.payload?.queryText as string) ?? '{}';
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    const pageNumber = (message?.payload?.pageNumber as number) ?? 1;
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    const pageSize = (message?.payload?.pageSize as number) ?? 10;
+
+                    // run query
+                    const client: MongoClustersClient = await MongoClustersClient.getClient(_props.liveConnectionId);
+                    const responsePack = await client.queryDocuments(
+                        _props.databaseName,
+                        _props.collectionName,
+                        queryString,
+                        pageNumber * pageSize - pageSize,
+                        pageSize,
+                    );
+
+                    void panel.webview.postMessage({
+                        type: 'queryResults',
+                        json: responsePack?.json ?? '{ "noData": true }',
+                        tableData: responsePack?.tableData ?? [],
+                        tableHeaders: responsePack?.tableHeaders ?? [],
+                        treeData: responsePack?.treeData ?? [],
+                    });
+                    break;
+                }
+                case 'deleteDocumentsRequest': {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    const selectedDocumentObjectIds = message?.payload as string[];
+
+                    const randomInput: { numbers: number[]; index: number } = getRandomArrayAndIndex(3);
+
+                    const confirmation = await vscode.window.showWarningMessage(
+                        `Are you sure?`,
+                        {
+                            modal: true,
+                            detail: `You are about to:\ndelete ${selectedDocumentObjectIds.length} documents.\n\nThis action can't be undone.\nChoose '${randomInput.numbers[randomInput.index]}' to proceed.`,
+                        },
+                       randomInput.numbers[0].toString(),
+                       randomInput.numbers[1].toString(),
+                       randomInput.numbers[2].toString(),
+                    );
+
+                    if (confirmation !== randomInput.numbers[randomInput.index].toString()) {
+                        break;
+                    }
+
+                    const client: MongoClustersClient = await MongoClustersClient.getClient(_props.liveConnectionId);
+                    const acknowledged = await client.deleteDocuments(
+                        _props.databaseName,
+                        _props.collectionName,
+                        selectedDocumentObjectIds,
+                    );
+
+                    if (!acknowledged) {
+                        void vscode.window.showErrorMessage('Failed to delete documents. Unknown error.', {
+                            modal: true,
+                        });
+                    }
+
+                    void panel.webview.postMessage({
+                        type: 'deleteDocumentsResponse',
+                        payload: acknowledged,
+                    });
+
+                    break;
+                }
+                default:
+                    break;
+            }
         });
     }
 

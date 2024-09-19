@@ -2,7 +2,7 @@ import * as React from 'react';
 import { FieldType, Formatters, SlickgridReact, type GridOption } from 'slickgrid-react';
 
 interface Props {
-    liveData: { [key: string]: undefined }[];
+    liveData: { [key: string]: unknown }[];
 }
 
 export const DataViewPanelTree = ({ liveData }: Props): React.JSX.Element => {

@@ -181,7 +181,6 @@ export class MongoClustersExtension implements vscode.Disposable {
                 return { numbers: randomNumbers, index: randomIndex };
             }
 
-
             console.log('Webview->Ext:', JSON.stringify(message, null, 2));
 
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -227,9 +226,9 @@ export class MongoClustersExtension implements vscode.Disposable {
                             modal: true,
                             detail: `You are about to:\ndelete ${selectedDocumentObjectIds.length} documents.\n\nThis action can't be undone.\nChoose '${randomInput.numbers[randomInput.index]}' to proceed.`,
                         },
-                       randomInput.numbers[0].toString(),
-                       randomInput.numbers[1].toString(),
-                       randomInput.numbers[2].toString(),
+                        randomInput.numbers[0].toString(),
+                        randomInput.numbers[1].toString(),
+                        randomInput.numbers[2].toString(),
                     );
 
                     if (confirmation !== randomInput.numbers[randomInput.index].toString()) {
@@ -254,6 +253,23 @@ export class MongoClustersExtension implements vscode.Disposable {
                         payload: acknowledged,
                     });
 
+                    break;
+                }
+                case 'viewDocumentRequest': {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    const objectId = message?.payload?.objectId as string;
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    const index = message?.payload?.index as number;
+
+                    vscode.commands.executeCommand('mongoClusters.internal.documentView.open.view', {
+                        id: _props.id,
+                        liveConnectionId: _props.liveConnectionId,
+                        viewTitle: `${_props.databaseName}/${_props.collectionName}/${objectId}`,
+                        databaseName: _props.databaseName,
+                        collectionName: _props.collectionName,
+                        documentId: objectId,
+                        documentContent: JSON.stringify({ index: index, id: objectId }),
+                    });
                     break;
                 }
                 default:

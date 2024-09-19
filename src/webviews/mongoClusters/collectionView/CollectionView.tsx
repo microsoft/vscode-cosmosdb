@@ -322,6 +322,16 @@ export const CollectionView = (): JSX.Element => {
         });
     }
 
+    function handleViewRequest(): void {
+        window.config?.__vsCodeApi.postMessage({
+            type: 'viewDocumentRequest',
+            payload: {
+                objectId: currentContext.dataSelection.selectedDocumentObjectIds[0],
+                index: currentContext.dataSelection.selectedDocumentIndexes[0],
+            },
+        });
+    }
+
     return (
         <CollectionViewContext.Provider value={[currentContext, setCurrentContext]}>
             <div className="collectionView">
@@ -340,7 +350,7 @@ export const CollectionView = (): JSX.Element => {
                         <ToolbarDocuments
                             onDeleteClick={handleDeleteRequest}
                             onEditClick={() => console.log('Edit clicked')}
-                            onViewClick={() => console.log('View clicked')}
+                            onViewClick={handleViewRequest}
                             onAddClick={() => console.log('Add clicked')}
                         />
                         <ViewSwitch onViewChanged={handleViewChanged} />

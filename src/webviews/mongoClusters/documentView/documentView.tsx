@@ -78,7 +78,7 @@ export const DocumentToolbar = (): JSX.Element => {
 };
 
 export const DocumentView = (): JSX.Element => {
-    const editorContent: string = JSON.stringify(window.config ?? '{ "empty" : true}', null, 4);
+    const editorContent: string = JSON.stringify(window.config?.__documentContent ?? '{ }', null, 4);
 
     React.useEffect(() => {
         console.log('Document View has mounted');

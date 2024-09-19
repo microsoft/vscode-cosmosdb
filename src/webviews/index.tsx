@@ -3,6 +3,7 @@ import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { type WebviewApi } from 'vscode-webview';
 import { CollectionView } from './mongoClusters/collectionView/CollectionView';
+import { DocumentView } from './mongoClusters/documentView/documentView';
 import { QueryEditor } from './QueryEditor/QueryEditor';
 import { DynamicThemeProvider } from './theme/DynamicThemeProvider';
 import { WithWebviewContext, type WebviewState } from './WebviewContext';
@@ -10,6 +11,7 @@ import { WithWebviewContext, type WebviewState } from './WebviewContext';
 export const Views = {
     cosmosDbQuery: QueryEditor,
     mongoClustersCollectionView: CollectionView,
+    mongoClustersDocumentView: DocumentView
 } as const;
 
 export type ViewKey = keyof typeof Views;

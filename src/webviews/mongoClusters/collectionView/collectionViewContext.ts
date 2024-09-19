@@ -14,6 +14,18 @@ export type CollectionViewContextType = {
         pageNumber: number;
         pageSize: number;
     };
+    commands: {
+        disableAddDocument: boolean;
+        disableViewDocument: boolean;
+        disableEditDocument: boolean;
+        disableDeleteDocument: boolean;
+    };
+    dataSelection: {
+        // real document _id values, for easier lookup
+        selectedDocumentObjectIds: string[];
+        // actual index in the current snapshot of the data, for easier lookup
+        selectedDocumentIndexes: number[];
+    };
 };
 
 export const DefaultCollectionViewContext: CollectionViewContextType = {
@@ -23,6 +35,16 @@ export const DefaultCollectionViewContext: CollectionViewContextType = {
         queryText: '{  }',
         pageNumber: 1,
         pageSize: 10,
+    },
+    commands: {
+        disableAddDocument: false,
+        disableViewDocument: true,
+        disableEditDocument: true,
+        disableDeleteDocument: true,
+    },
+    dataSelection: {
+        selectedDocumentObjectIds: [],
+        selectedDocumentIndexes: [],
     },
 };
 

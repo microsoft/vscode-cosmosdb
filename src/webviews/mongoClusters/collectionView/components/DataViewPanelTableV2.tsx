@@ -1,28 +1,29 @@
 import * as React from 'react';
 import { useContext } from 'react';
-import { SlickgridReact, type Formatter, type GridOption } from 'slickgrid-react';
+import { SlickgridReact, type Formatter, type GridOption, type OnSelectedRowsChangedEventArgs } from 'slickgrid-react';
 import { type CellValue } from '../../../../webviews-extension-shared/gridSupport';
 import { CollectionViewContext } from '../collectionViewContext';
 import { LoadingAnimationTable } from './LoadingAnimationTable';
 
+import debounce from 'lodash.debounce';
 import { bsonStringToDisplayString } from '../../../utils/slickgrid/typeToDisplayString';
 import './dataViewPanelTableV2.scss';
 
 interface Props {
     liveHeaders: string[];
-    liveData: object[];
+    liveData: { 'x-objectid': string; [key: string]: unknown }[];
 }
 
 const cellFormatter: Formatter<object> = (_row: number, _cell: number, value: CellValue) => {
     return {
         text: value.value,
         addClasses: `typedTableCell type-${value.type}`,
-        toolTip: bsonStringToDisplayString(value.type)
+        toolTip: bsonStringToDisplayString(value.type),
     };
 };
 
 export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JSX.Element {
-    const [currentContext] = useContext(CollectionViewContext);
+    const [currentContext, setCurrentContext] = useContext(CollectionViewContext);
 
     type GridColumn = { id: string; name: string; field: string; minWidth: number };
 
@@ -35,6 +36,23 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
             formatter: cellFormatter,
         };
     });
+
+    function onSelectedRowsChanged(_eventData: unknown, _args: OnSelectedRowsChangedEventArgs) {
+        setCurrentContext({
+            ...currentContext,
+            commands: {
+                ...currentContext.commands,
+                disableAddDocument: false,
+                disableDeleteDocument: _args.rows.length === 0,
+                disableEditDocument: _args.rows.length !== 1,
+                disableViewDocument: _args.rows.length !== 1,
+            },
+            dataSelection: {
+                selectedDocumentIndexes: _args.rows,
+                selectedDocumentObjectIds: _args.rows.map((row) => liveData[row]['x-objectid']),
+            },
+        });
+    }
 
     const gridOptions: GridOption = {
         autoResize: {
@@ -83,6 +101,12 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 dataset={liveData}
                 onReactGridCreated={() => console.log('Grid created')}
+                // debouncing here as multiple events are fired on multiselect
+                onSelectedRowsChanged={debounce(
+                    (event: { detail: { eventData: unknown; args: OnSelectedRowsChangedEventArgs } }) =>
+                        onSelectedRowsChanged(event.detail.eventData, event.detail.args),
+                    100,
+                )}
             />
         );
     }

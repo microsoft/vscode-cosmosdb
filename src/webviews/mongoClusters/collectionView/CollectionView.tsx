@@ -2,7 +2,7 @@
 import { useContext, useEffect, useRef, useState, type JSX } from 'react';
 import './collectionView.scss';
 
-import { Button, Divider, Dropdown, Input, Option, Toolbar, ToolbarButton } from '@fluentui/react-components';
+import { Button, Dropdown, Input, Option, Toolbar, ToolbarButton } from '@fluentui/react-components';
 import {
     DocumentAddRegular,
     DocumentArrowDownRegular,
@@ -64,15 +64,33 @@ export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {
 };
 
 export const ToolbarDocuments = (): JSX.Element => {
+    const [currentContext] = useContext(CollectionViewContext);
+
     return (
         <Toolbar aria-label="with Popover" size="small">
-            <ToolbarButton aria-label="Add new document" icon={<DocumentAddRegular />} disabled={true} />
+            <ToolbarButton
+                aria-label="Add new document"
+                icon={<DocumentAddRegular />}
+                disabled={currentContext.commands.disableAddDocument}
+            />
 
-            <ToolbarButton aria-label="View selected document" icon={<DocumentArrowDownRegular />} disabled={true} />
+            <ToolbarButton
+                aria-label="View selected document"
+                icon={<DocumentArrowDownRegular />}
+                disabled={currentContext.commands.disableViewDocument}
+            />
 
-            <ToolbarButton aria-label="Edit selected document" icon={<DocumentEditRegular />} disabled={true} />
+            <ToolbarButton
+                aria-label="Edit selected document"
+                icon={<DocumentEditRegular />}
+                disabled={currentContext.commands.disableEditDocument}
+            />
 
-            <ToolbarButton aria-label="Delete selected document" icon={<DocumentDismissRegular />} disabled={true} />
+            <ToolbarButton
+                aria-label="Delete selected document"
+                icon={<DocumentDismissRegular />}
+                disabled={currentContext.commands.disableDeleteDocument}
+            />
         </Toolbar>
     );
 };
@@ -101,6 +119,9 @@ declare global {
             __id?: string;
             __liveConnectionId?: string;
             __databaseName: string;
+            __collectionName: string;
+            __documentId: string;
+            __documentContent: string;
             __vsCodeApi: WebviewApi<unknown>;
             [key: string]: unknown; // Optional: Allows any other properties in config
         };
@@ -151,6 +172,11 @@ export const CollectionView = (): JSX.Element => {
         };
     }, []);
 
+    //todo: remove, debugging only
+    useEffect(() => {
+        console.log('Selected rows / ObjectIds:', currentContext.dataSelection.selectedDocumentObjectIds);
+    }, [currentContext.dataSelection.selectedDocumentObjectIds]);
+
     useEffect(() => {
         setCurrentContext((prev) => ({ ...prev, isLoading: true }));
         console.log('Query:', currentContext.queryConfig);
@@ -181,15 +207,6 @@ export const CollectionView = (): JSX.Element => {
     return (
         <CollectionViewContext.Provider value={[currentContext, setCurrentContext]}>
             <div className="collectionView">
-                <Divider appearance="brand" alignContent="start" style={{ paddingTop: '16px' }}>
-                    {'Database: '}
-                    {(window.config?.__databaseName as string) ?? ''}
-                    {', Collection: '}
-                    {(window.config?.__collectionName as string) ?? ''}
-                    {', Status: '}
-                    {currentContext.isLoading ? 'Loading...' : 'Ready.'}
-                </Divider>
-
                 <div className="queryControlArea">
                     <FindQueryComponent
                         onQueryUpdate={(q: string) =>

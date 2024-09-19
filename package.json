@@ -501,6 +501,11 @@
             },
             {
                 "category": "mongoClusters",
+                "command": "mongoClusters.cmd.jsonview",
+                "title": "Show Document View"
+            },
+            {
+                "category": "mongoClusters",
                 "command": "mongoClusters.cmd.webview",
                 "title": "Show WebView"
             },

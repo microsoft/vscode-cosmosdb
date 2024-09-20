@@ -29,7 +29,7 @@
             "script": "watch:ext",
             "group": "build",
             "isBackground": true,
-            "problemMatcher": [],
+            "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -46,7 +46,7 @@
             "script": "watch:views",
             "group": "build",
             "isBackground": true,
-            "problemMatcher": [],
+            "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
             "presentation": {
                 "echo": true,
                 "reveal": "always",

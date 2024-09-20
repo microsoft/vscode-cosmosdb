@@ -19,10 +19,10 @@ export interface JSONSchema {
     $id?: string;
     $schema?: string;
     type?: string | string[];
-    "x-documentsInspected"?: number;
-    "x-occurrence"?: number;
-    "x-typeOccurrence"?: number;
-    "x-bsonType"?: string;  // Explicitly declare the key with a dash using quotes
+    'x-documentsInspected'?: number;
+    'x-occurrence'?: number;
+    'x-typeOccurrence'?: number;
+    'x-bsonType'?: string; // Explicitly declare the key with a dash using quotes
     title?: string;
     definitions?: {
         [name: string]: JSONSchema;
@@ -33,9 +33,11 @@ export interface JSONSchema {
     additionalProperties?: JSONSchemaRef;
     minProperties?: number;
     maxProperties?: number;
-    dependencies?: JSONSchemaMap | {
-        [prop: string]: string[];
-    };
+    dependencies?:
+        | JSONSchemaMap
+        | {
+              [prop: string]: string[];
+          };
     items?: JSONSchemaRef | JSONSchemaRef[];
 
     required?: string[];

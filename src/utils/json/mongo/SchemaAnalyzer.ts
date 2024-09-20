@@ -52,10 +52,7 @@
 
 import { assert } from 'console';
 import Denque from 'denque';
-import {
-    type Document,
-    type WithId
-} from 'mongodb';
+import { type Document, type WithId } from 'mongodb';
 import { type JSONSchema } from '../JSONSchema';
 import { MongoBSONTypes } from './MongoBSONTypes';
 
@@ -245,7 +242,6 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: WithId<Do
 
                     // Increment the type occurrence count
                     itemEntry['x-typeOccurrence'] = (itemEntry['x-typeOccurrence'] ?? 0) + 1;
-
 
                     // Update stats for the element
                     if (!encounteredMongoTypes.has(elementMongoType)) {

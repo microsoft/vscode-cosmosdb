@@ -8,9 +8,12 @@ import {
     MongoClient,
     ObjectId,
     type DeleteResult,
+    type Document,
     type Filter,
     type FindOptions,
     type ListDatabasesResult,
+    type UpdateResult,
+    type WithId
 } from 'mongodb';
 import { getDataTopLevel, getFieldsTopLevel } from '../utils/slickgrid/mongo/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
@@ -159,5 +162,44 @@ export class MongoClustersClient {
         const deleteResult: DeleteResult = await collection.deleteMany({ _id: { $in: objectIds } });
 
         return deleteResult.acknowledged;
+    }
+
+    async pointRead(databaseName: string, collectionName: string, documentId: string) {
+        const objectId = new ObjectId(documentId);
+
+        // connect and execute
+        const collection = this._mongoClient.db(databaseName).collection(collectionName);
+        const documentContent = await collection.findOne({ _id: objectId });
+
+        return documentContent;
+    }
+
+    async upsertDocument(
+        databaseName: string,
+        collectionName: string,
+        documentId: string,
+        documentContent: string
+    ): Promise<{ updateResult: UpdateResult; documentContent: WithId<Document> | null }> {
+        const objectId = documentId !== '' ? new ObjectId(documentId) : new ObjectId();
+
+        // connect and execute
+        const collection = this._mongoClient.db(databaseName).collection(collectionName);
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const documentObj = JSON.parse(documentContent);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        delete documentObj._id;
+
+
+        const updateResult = await collection.updateOne(
+            { _id: objectId },
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            { $set: documentObj, $setOnInsert: { _id: objectId } },
+            { upsert: true },
+        );
+
+        const newDocument = await collection.findOne({ _id: updateResult.upsertedId ?? objectId });
+
+        return { updateResult: updateResult, documentContent: newDocument };
     }
 }

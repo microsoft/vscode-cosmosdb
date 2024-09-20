@@ -134,6 +134,7 @@ declare global {
         config?: {
             __id?: string;
             __liveConnectionId?: string;
+            __mode?: string;
             __databaseName: string;
             __collectionName: string;
             __documentId: string;
@@ -328,7 +329,14 @@ export const CollectionView = (): JSX.Element => {
             payload: {
                 objectId: currentContext.dataSelection.selectedDocumentObjectIds[0],
                 index: currentContext.dataSelection.selectedDocumentIndexes[0],
+                documentContent: currentQueryResultsRef.current?.jsonDocuments?.[currentContext.dataSelection.selectedDocumentIndexes[0]],
             },
+        });
+    }
+
+    function handleAddRequest(): void {
+        window.config?.__vsCodeApi.postMessage({
+            type: 'request.collectionView.addDocument'
         });
     }
 
@@ -351,7 +359,7 @@ export const CollectionView = (): JSX.Element => {
                             onDeleteClick={handleDeleteRequest}
                             onEditClick={() => console.log('Edit clicked')}
                             onViewClick={handleViewRequest}
-                            onAddClick={() => console.log('Add clicked')}
+                            onAddClick={handleAddRequest}
                         />
                         <ViewSwitch onViewChanged={handleViewChanged} />
                     </div>

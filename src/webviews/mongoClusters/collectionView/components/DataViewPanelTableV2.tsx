@@ -15,6 +15,12 @@ interface Props {
 }
 
 const cellFormatter: Formatter<object> = (_row: number, _cell: number, value: CellValue) => {
+    if (value === undefined || value === null) {
+        return {
+            text: '',
+            toolTip: 'This field is not set',
+        }
+    }
     return {
         text: value.value,
         addClasses: `typedTableCell type-${value.type}`,

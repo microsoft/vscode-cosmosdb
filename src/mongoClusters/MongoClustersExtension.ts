@@ -31,6 +31,7 @@ export class MongoClustersExtension implements vscode.Disposable {
             registerCommand('mongoClusters.cmd.jsonview', this.commandShowDocumentView_View);
             registerCommand('mongoClusters.internal.containerView.open', this.commandContainerViewOpen);
             registerCommand('mongoClusters.internal.documentView.open.view', this.commandShowDocumentView_View);
+            registerCommand('mongoClusters.internal.documentView.open.add', this.commandShowDocumentView_View);
 
             ext.outputChannel.appendLine(`mongoClusters: activated.`);
         });
@@ -90,11 +91,12 @@ export class MongoClustersExtension implements vscode.Disposable {
             collectionName: string;
             documentId: string;
             documentContent: string;
+            mode?: string;
         },
     ): void {
         const panel = vscode.window.createWebviewPanel(
             'mongoClusters.documentView.view', // Identifies the type of the webview. Used internally
-            `${_props?.databaseName ?? 'unknown'}/${_props?.collectionName ?? 'unknown'}/${_props?.documentId ?? 'unknown'}`, // Title of the panel displayed to the user
+            _props.viewTitle, // Title of the panel displayed to the user
             vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
             {
                 enableScripts: true,
@@ -102,6 +104,88 @@ export class MongoClustersExtension implements vscode.Disposable {
                 retainContextWhenHidden: true,
             },
         );
+
+        panel.webview.onDidReceiveMessage(async (message) => {
+
+            function extractIdFromJson(jsonString: string): string | null {
+                let extractedId: string | null = null;
+
+                // Use JSON.parse with a reviver function
+                JSON.parse(jsonString, (key, value) => {
+                  if (key === "_id") {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                    extractedId = value;  // Extract _id when found
+                  }
+                  // Return the value to keep parsing
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                  return value;
+                });
+
+                return extractedId;
+              }
+
+            console.log('Webview->Ext:', JSON.stringify(message, null, 2));
+
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            const messageType = message?.type as string;
+
+            switch (messageType) {
+                case 'request.documentView.refreshDocument': {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    const documentId = (message?.payload?.documentId as string) ?? '';
+
+                    // run query
+                    const client: MongoClustersClient = await MongoClustersClient.getClient(_props.liveConnectionId);
+                    const documentContent = await client.pointRead(
+                        _props.databaseName,
+                        _props.collectionName,
+                        documentId,
+                    );
+
+                    const documentContetntAsString = JSON.stringify(documentContent, null, 4);
+
+                    void panel.webview.postMessage({
+                        type: 'response.documentView.refreshDocument',
+                        payload: { documentContent: documentContetntAsString },
+                    });
+
+                    break;
+                }
+                case 'request.documentView.saveDocument': {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    const documentContent = message?.payload?.documentContent as string;
+
+                    const documentId = extractIdFromJson(documentContent) ?? '';
+
+                    // run query
+                    const client: MongoClustersClient = await MongoClustersClient.getClient(_props.liveConnectionId);
+
+                    // when a document is saved and is missing an _id field, the _id field is added on the server
+                    // or by the mongodb driver.
+                    const upsertResult = await client.upsertDocument(
+                        _props.databaseName,
+                        _props.collectionName,
+                        documentId,
+                        documentContent,
+                    );
+
+                    const objectId = upsertResult?.updateResult.upsertedId?.toString() ?? documentId;
+
+                    panel.title = `${_props.databaseName}/${_props.collectionName}/${objectId}`;
+
+                    const newDocumentContetntAsString = JSON.stringify(upsertResult.documentContent, null, 4);
+
+                    void panel.webview.postMessage({
+                        type: 'response.documentView.saveDocument',
+                        payload: { documentContent: newDocumentContetntAsString, documentId: objectId },
+                    });
+
+                    break;
+                }
+                default:
+                    break;
+            }
+        });
 
         panel.webview.html = getDocumentViewContentReact(
             panel.webview,
@@ -111,21 +195,11 @@ export class MongoClustersExtension implements vscode.Disposable {
             _props?.collectionName ?? '',
             _props?.documentId ?? '',
             _props?.documentContent ?? '',
+            _props?.mode ?? 'view',
         );
 
         panel.webview.onDidReceiveMessage(async (message) => {
             console.log('Webview->Ext:', JSON.stringify(message, null, 2));
-
-            // // run query
-            // const client: MongoClustersClient = await MongoClustersClient.getClient(_props.liveConnectionId);
-
-            // void panel.webview.postMessage({
-            //     type: 'queryResults',
-            //     json: responsePack?.json ?? '{ "noData": true }',
-            //     tableData: responsePack?.tableData ?? [],
-            //     tableHeaders: responsePack?.tableHeaders ?? [],
-            //     treeData: responsePack?.treeData ?? [],
-            // });
         });
     }
 
@@ -224,7 +298,11 @@ export class MongoClustersExtension implements vscode.Disposable {
                         `Are you sure?`,
                         {
                             modal: true,
-                            detail: `You are about to:\ndelete ${selectedDocumentObjectIds.length} documents.\n\nThis action can't be undone.\nChoose '${randomInput.numbers[randomInput.index]}' to proceed.`,
+                            detail:
+                            `Delete ${selectedDocumentObjectIds.length} documents?\n\n`
+                            + `This can't be undone.\n`
+                            + `Choose '${randomInput.numbers[randomInput.index]}' to confirm.\n\n`
+                            + `(Planned: Adjust this safety check in the settings.)`,
                         },
                         randomInput.numbers[0].toString(),
                         randomInput.numbers[1].toString(),
@@ -259,7 +337,15 @@ export class MongoClustersExtension implements vscode.Disposable {
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                     const objectId = message?.payload?.objectId as string;
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                    const index = message?.payload?.index as number;
+                    //const index = message?.payload?.index as number;
+
+                    // TODO: introduce response cache to the client to avoid sending the document content back and forth
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    let documentContent = (message?.payload?.documentContent as string) ?? '{  }';
+
+                    //TODO: this is curcial to avoid breaking the webview, and make sure it's in the future API
+                    // for all the data to be sent in a safe way
+                    documentContent = encodeURIComponent(documentContent);
 
                     vscode.commands.executeCommand('mongoClusters.internal.documentView.open.view', {
                         id: _props.id,
@@ -268,10 +354,22 @@ export class MongoClustersExtension implements vscode.Disposable {
                         databaseName: _props.databaseName,
                         collectionName: _props.collectionName,
                         documentId: objectId,
-                        documentContent: JSON.stringify({ index: index, id: objectId }),
+                        documentContent: documentContent,
                     });
                     break;
                 }
+                case 'request.collectionView.addDocument': {
+                    vscode.commands.executeCommand('mongoClusters.internal.documentView.open.add', {
+                        id: _props.id,
+                        liveConnectionId: _props.liveConnectionId,
+                        viewTitle: `${_props.databaseName}/${_props.collectionName}/new`,
+                        databaseName: _props.databaseName,
+                        collectionName: _props.collectionName,
+                        mode: 'add',
+                    });
+                    break;
+                }
+
                 default:
                     break;
             }
@@ -367,6 +465,7 @@ const getDocumentViewContentReact = (
     collectionName?: string,
     documentId?: string,
     documentContent?: string,
+    mode?: string
 ) => {
     const devServer = !!process.env.DEVSERVER;
     const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
@@ -423,6 +522,7 @@ const getDocumentViewContentReact = (
                     __collectionName: '${collectionName}',
                     __documentId: '${documentId}',
                     __documentContent: '${documentContent}',
+                    __mode: '${mode}',
                     __vsCodeApi: acquireVsCodeApi(),
                 };
 

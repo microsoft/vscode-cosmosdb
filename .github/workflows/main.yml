@@ -18,4 +18,40 @@ on:
 
 jobs:
   Build:
-    uses: ./build.yml
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: '.'
+
+    steps:
+      # Setup
+      - uses: actions/checkout@v3
+      - name: Using Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+
+      # Lint
+      - run: npm run lint
+
+      # Prettier
+      - run: npm run prettier
+
+      # Compile (tsc)
+      - run: npm run build
+
+      # Package (vsce)
+      - run: npm run package
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: Artifacts
+          path: |
+            **/*.vsix
+            **/*.tgz
+            !**/node_modules
+
+      # Test
+      - run: xvfb-run -a npm test

@@ -3,16 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import assert from 'assert';
-import { describe, it } from 'mocha';
-import { postgresDefaultPort } from '../../src/constants';
-import { PostgresServerType } from '../../src/postgres/abstract/models';
-import { getClientConfigs } from '../../src/postgres/getClientConfig';
-import { ParsedPostgresConnectionString } from '../../src/postgres/postgresConnectionStrings';
+import { postgresDefaultPort } from '../constants';
+import { PostgresServerType } from './abstract/models';
+import { getClientConfigs } from './getClientConfig';
+import { ParsedPostgresConnectionString } from './postgresConnectionStrings';
 
-describe('getClientConfig Tests', () => {
+describe('getClientConfig', () => {
     describe('in subscription', () => {
-        it('Password only', async () => {
+        // Password only
+        it('Should use given port', async () => {
             const parsedConnectionString = new ParsedPostgresConnectionString('', {
                 host: 'fake_host.com',
                 port: '1234',
@@ -28,14 +27,13 @@ describe('getClientConfig Tests', () => {
                 true,
                 databaseName,
             );
-            assert(clientConfigs.password !== undefined);
-            assert(clientConfigs.azureAd === undefined);
-            assert(clientConfigs.connectionString === undefined);
+            expect(clientConfigs.password).toBeDefined();
+            expect(clientConfigs.azureAd).toBeUndefined();
+            expect(clientConfigs.connectionString).toBeUndefined();
         });
 
-        // Cannot test null/undefined host because if it is the case, the code has thrown much earlier when constructing the ParsedPostgresConnectionString object.
-
-        it('Password only - Missing port', async () => {
+        // Password only - Missing port
+        it('Should fallback to default port if port is missing', async () => {
             const parsedConnectionString = new ParsedPostgresConnectionString('', {
                 host: 'fake_host.com',
                 user: 'fake_user',
@@ -50,13 +48,14 @@ describe('getClientConfig Tests', () => {
                 true,
                 databaseName,
             );
-            assert(clientConfigs.password !== undefined);
-            assert(clientConfigs.azureAd === undefined);
-            assert(clientConfigs.connectionString === undefined);
-            assert(clientConfigs.password?.port === parseInt(postgresDefaultPort), 'Should fallback to default port');
+            expect(clientConfigs.password).toBeDefined();
+            expect(clientConfigs.azureAd).toBeUndefined();
+            expect(clientConfigs.connectionString).toBeUndefined();
+            expect(clientConfigs.password?.port).toEqual(parseInt(postgresDefaultPort));
         });
 
-        it('Password only - missing username', async () => {
+        // Password only - missing username
+        it('Should clean password if username is missing', async () => {
             const parsedConnectionString = new ParsedPostgresConnectionString('', {
                 host: 'fake_host.com',
                 port: '1234',
@@ -71,12 +70,13 @@ describe('getClientConfig Tests', () => {
                 true,
                 databaseName,
             );
-            assert(clientConfigs.password === undefined);
-            assert(clientConfigs.azureAd === undefined);
-            assert(clientConfigs.connectionString === undefined);
+            expect(clientConfigs.password).toBeUndefined();
+            expect(clientConfigs.azureAd).toBeUndefined();
+            expect(clientConfigs.connectionString).toBeUndefined();
         });
 
-        it('No credential', async () => {
+        // No credential
+        it('Should create instance if credential is missing', async () => {
             const parsedConnectionString = new ParsedPostgresConnectionString('', {
                 host: 'fake_host.com',
                 port: '1234',
@@ -91,9 +91,9 @@ describe('getClientConfig Tests', () => {
                 true,
                 databaseName,
             );
-            assert(clientConfigs.password === undefined);
-            assert(clientConfigs.azureAd === undefined);
-            assert(clientConfigs.connectionString === undefined);
+            expect(clientConfigs.password).toBeUndefined();
+            expect(clientConfigs.azureAd).toBeUndefined();
+            expect(clientConfigs.connectionString).toBeUndefined();
         });
 
         it('Aad only - Flexible server', async () => {
@@ -112,9 +112,9 @@ describe('getClientConfig Tests', () => {
                 'fake_azureAd_userId',
                 async () => 'fake_token',
             );
-            assert(clientConfigs.password === undefined);
-            assert(clientConfigs.azureAd !== undefined);
-            assert(clientConfigs.connectionString === undefined);
+            expect(clientConfigs.password).toBeUndefined();
+            expect(clientConfigs.azureAd).toBeDefined();
+            expect(clientConfigs.connectionString).toBeUndefined();
         });
 
         it('Aad and password - Flexible server', async () => {
@@ -135,9 +135,9 @@ describe('getClientConfig Tests', () => {
                 'fake_azureAd_userId',
                 async () => 'fake_token',
             );
-            assert(clientConfigs.password !== undefined);
-            assert(clientConfigs.azureAd !== undefined);
-            assert(clientConfigs.connectionString === undefined);
+            expect(clientConfigs.password).toBeDefined();
+            expect(clientConfigs.azureAd).toBeDefined();
+            expect(clientConfigs.connectionString).toBeUndefined();
         });
 
         it('Aad only - Single server', async () => {
@@ -156,9 +156,9 @@ describe('getClientConfig Tests', () => {
                 'fake_azureAd_userId',
                 async () => 'fake_token',
             );
-            assert(clientConfigs.password === undefined);
-            assert(clientConfigs.azureAd === undefined);
-            assert(clientConfigs.connectionString === undefined);
+            expect(clientConfigs.password).toBeUndefined();
+            expect(clientConfigs.azureAd).toBeUndefined();
+            expect(clientConfigs.connectionString).toBeUndefined();
         });
     });
 
@@ -177,7 +177,7 @@ describe('getClientConfig Tests', () => {
                 false,
                 databaseName,
             );
-            assert(clientConfigs.connectionString !== undefined);
+            expect(clientConfigs.connectionString).toBeDefined();
         });
     });
 });

@@ -284,11 +284,6 @@ export const CollectionView = (): JSX.Element => {
         };
     }, []);
 
-    //todo: remove, debugging only
-    useEffect(() => {
-        console.log('Selected rows / ObjectIds:', currentContext.dataSelection.selectedDocumentObjectIds);
-    }, [currentContext.dataSelection.selectedDocumentObjectIds]);
-
     useEffect(() => {
         setCurrentContext((prev) => ({ ...prev, isLoading: true }));
         console.log('Query:', currentContext.queryConfig);
@@ -313,6 +308,7 @@ export const CollectionView = (): JSX.Element => {
                 break;
         }
 
+        console.log('View changed to:', selection);
         setCurrentContext((prev) => ({ ...prev, currentView: selection }));
     };
 

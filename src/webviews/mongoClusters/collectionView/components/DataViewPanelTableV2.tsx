@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { useContext } from 'react';
-import { SlickgridReact, type Formatter, type GridOption, type OnSelectedRowsChangedEventArgs } from 'slickgrid-react';
+import { SlickgridReact, type Formatter, type GridOption, type OnSelectedRowsChangedEventArgs, type SlickgridReactInstance } from 'slickgrid-react';
 import { type CellValue } from '../../../../webviews-extension-shared/gridSupport';
-import { CollectionViewContext } from '../collectionViewContext';
 import { LoadingAnimationTable } from './LoadingAnimationTable';
 
 import debounce from 'lodash.debounce';
 import { bsonStringToDisplayString } from '../../../utils/slickgrid/typeToDisplayString';
+import { CollectionViewContext } from '../collectionViewContext';
 import './dataViewPanelTableV2.scss';
 
 interface Props {
@@ -29,7 +29,7 @@ const cellFormatter: Formatter<object> = (_row: number, _cell: number, value: Ce
 };
 
 export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JSX.Element {
-    const [currentContext, setCurrentContext] = useContext(CollectionViewContext);
+    const [currentContext, setCurrentContext] =  useContext(CollectionViewContext);
 
     type GridColumn = { id: string; name: string; field: string; minWidth: number };
 
@@ -44,8 +44,10 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
     });
 
     function onSelectedRowsChanged(_eventData: unknown, _args: OnSelectedRowsChangedEventArgs) {
-        setCurrentContext({
-            ...currentContext,
+        console.log('Selected Rows Changed');
+
+        setCurrentContext((prev) => ({
+            ...prev,
             commands: {
                 ...currentContext.commands,
                 disableAddDocument: false,
@@ -57,7 +59,7 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
                 selectedDocumentIndexes: _args.rows,
                 selectedDocumentObjectIds: _args.rows.map((row) => liveData[row]['x-objectid']),
             },
-        });
+        }));
     }
 
     const gridOptions: GridOption = {
@@ -95,6 +97,24 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
         enableHeaderMenu: false,
     };
 
+    let slickGrid: SlickgridReactInstance | null = null;
+
+
+    React.useEffect(() => {
+        console.log('Grid View has mounted');
+
+        return () => {
+            console.log('Grid View will unmount');
+            slickGrid?.gridService.setSelectedRows([]);
+        };
+    }, []);
+
+
+    function reactGridReady(grid: SlickgridReactInstance) {
+        console.log('Grid Ready');
+        slickGrid = grid;
+    }
+
     if (currentContext.isLoading) {
         return <LoadingAnimationTable />;
     } else {
@@ -106,7 +126,8 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
                 columnDefinitions={gridColumns}
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 dataset={liveData}
-                onReactGridCreated={() => console.log('Grid created')}
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                onReactGridCreated={(event) => reactGridReady(event.detail)}
                 // debouncing here as multiple events are fired on multiselect
                 onSelectedRowsChanged={debounce(
                     (event: { detail: { eventData: unknown; args: OnSelectedRowsChangedEventArgs } }) =>

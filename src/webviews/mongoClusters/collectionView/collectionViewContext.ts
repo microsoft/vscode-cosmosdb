@@ -48,7 +48,7 @@ export const DefaultCollectionViewContext: CollectionViewContextType = {
     },
 };
 
-export const CollectionViewContext = createContext([
+export const CollectionViewContext = createContext<[CollectionViewContextType, React.Dispatch<React.SetStateAction<CollectionViewContextType>>]>([
     DefaultCollectionViewContext,
     (_param: CollectionViewContextType): void => {
         // just a dummy placeholder for scenarios where the context is not set

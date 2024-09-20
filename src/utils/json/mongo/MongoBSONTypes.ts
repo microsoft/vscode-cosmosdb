@@ -10,7 +10,7 @@ import {
     MaxKey,
     MinKey,
     ObjectId,
-    Timestamp
+    Timestamp,
 } from 'mongodb';
 
 /**

@@ -41,7 +41,6 @@
         "onView:azureWorkspace"
     ],
     "scripts": {
-        "vscode:prepublish": "npm run webpack-prod",
         "build": "tsc",
         "clean": "git clean -dfx",
         "compile": "tsc -watch",

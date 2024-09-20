@@ -3,6 +3,7 @@
         "dbaeumer.vscode-eslint",
         "ms-vscode.azure-account",
         "ms-azuretools.vscode-azureresourcegroups",
-        "mike-lischke.vscode-antlr4"
+        "mike-lischke.vscode-antlr4",
+        "amodio.tsl-problem-matcher"
     ]
 }

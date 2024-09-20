@@ -12,7 +12,7 @@ import {
     MinKey,
     ObjectId,
     Timestamp,
-    WithId
+    WithId,
 } from 'mongodb';
 
 export const flatDocument: WithId<Document> = {
@@ -108,8 +108,11 @@ export const complexDocument: WithId<Document> = {
 };
 
 export const complexDocumentsArray: WithId<Document>[] = [
-    flatDocument, embeddedDocumentOnly, arraysWithDifferentDataTypes, complexDocument
-]
+    flatDocument,
+    embeddedDocumentOnly,
+    arraysWithDifferentDataTypes,
+    complexDocument,
+];
 
 export const sparseDocumentsArray: WithId<Document>[] = [
     {

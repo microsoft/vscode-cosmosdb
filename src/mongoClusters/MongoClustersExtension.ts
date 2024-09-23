@@ -12,6 +12,7 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { MongoClustersClient } from './MongoClustersClient';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
+import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
 
 export class MongoClustersExtension implements vscode.Disposable {
     async activate(): Promise<void> {
@@ -24,15 +25,17 @@ export class MongoClustersExtension implements vscode.Disposable {
                 ext.mongoClustersBranchDataProvider,
             );
 
-            // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
-            // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
-            registerCommand('mongoClusters.cmd.hello', this.commandSayHello);
-            registerCommand('mongoClusters.cmd.webview', this.commandShowWebview);
-            registerCommand('mongoClusters.cmd.jsonview', this.commandShowDocumentView_View);
-            registerCommand('mongoClusters.internal.containerView.open', this.commandContainerViewOpen);
-            registerCommand('mongoClusters.internal.documentView.open.view', this.commandShowDocumentView_View);
-            registerCommand('mongoClusters.internal.documentView.open.add', this.commandShowDocumentView_View);
+            if (isMongoClustersSupportenabled()) {
+                vscode.commands.executeCommand('setContext', 'vscodeDatabases.mongoClustersSupportEnabled', true);
 
+                // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
+                // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
+                registerCommand('mongoClusters.cmd.hello', this.commandSayHello);
+                registerCommand('mongoClusters.cmd.webview', this.commandShowWebview);
+                registerCommand('mongoClusters.internal.containerView.open', this.commandContainerViewOpen);
+            } else {
+                vscode.commands.executeCommand('setContext', 'vscodeDatabases.mongoClustersSupportEnabled', false);
+            }
             ext.outputChannel.appendLine(`mongoClusters: activated.`);
         });
     }

@@ -1,5 +1,5 @@
-import { JSONSchema } from '../../../../src/utils/json/JSONSchema';
-import { updateSchemaWithDocument } from '../../../../src/utils/json/mongo/SchemaAnalyzer';
+import { type JSONSchema } from '../JSONSchema';
+import { updateSchemaWithDocument } from './SchemaAnalyzer';
 import {
     arraysWithDifferentDataTypes,
     complexDocument,

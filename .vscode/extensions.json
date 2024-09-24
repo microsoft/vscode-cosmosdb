@@ -4,6 +4,7 @@
         "ms-vscode.azure-account",
         "ms-azuretools.vscode-azureresourcegroups",
         "mike-lischke.vscode-antlr4",
-        "amodio.tsl-problem-matcher"
+        "amodio.tsl-problem-matcher",
+        "Orta.vscode-jest"
     ]
 }

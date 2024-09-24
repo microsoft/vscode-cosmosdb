@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { TestOutputChannel, TestUserInput } from '@microsoft/vscode-azext-dev';
-import { IAzureUserInput } from '@microsoft/vscode-azext-utils';
+import { type IAzureUserInput } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext, registerOnActionStartHandler } from '../extension.bundle';
 

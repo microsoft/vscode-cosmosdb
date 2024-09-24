@@ -1,4 +1,4 @@
-import { toFilterQueryObj } from '../../../src/mongoClusters/utils/toFilterQuery';
+import { toFilterQueryObj } from './toFilterQuery';
 
 const q1 = '{ }';
 const q2 = '{ "name": "John" }';

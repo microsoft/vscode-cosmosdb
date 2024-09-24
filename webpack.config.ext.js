@@ -99,13 +99,6 @@ module.exports = (env, { mode }) => {
             // - The dist folder should be ready to be published to the marketplace and be only one working folder
             new CopyWebpackPlugin({
                 patterns: [
-                    // Test files -> dist/test (these files are ignored during packaging)
-                    {
-                        from: '**/*',
-                        context: path.posix.join(__dirname.replace(/\\/g, '/'), 'out', 'test'),
-                        to: path.posix.join(__dirname.replace(/\\/g, '/'), 'dist', 'test'),
-                        noErrorOnMissing: true,
-                    },
                     {
                         from: 'grammar',
                         to: 'grammar',

@@ -21,6 +21,7 @@
             "*": ["node_modules/@types/*", "*"]
         },
         "jsx": "react-jsx",
+        "types": ["jest", "mocha", "node"],
         "typeRoots": [
             //"typings",
             "node_modules/@types"

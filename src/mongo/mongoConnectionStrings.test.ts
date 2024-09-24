@@ -3,134 +3,127 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import assert from 'assert';
+import { emulatorPassword } from '../constants';
+import { isCosmosEmulatorConnectionString } from './connectToMongoClient';
 import {
     addDatabaseToAccountConnectionString,
-    emulatorPassword,
     encodeMongoConnectionString,
     getDatabaseNameFromConnectionString,
-    isCosmosEmulatorConnectionString,
-} from '../extension.bundle';
+} from './mongoConnectionStrings';
 
-function testDatabaseToAccountConnectionString(
-    connectionString: string,
-    databaseName: string,
-    expectedConnectionString: string | undefined,
-): void {
-    const databaseConnectionString = addDatabaseToAccountConnectionString(connectionString, databaseName);
-    assert.equal(databaseConnectionString, expectedConnectionString);
-}
-
-function testDatabaseNameFromConectionString(connectionString: string, expectedDatabaseName: string | undefined): void {
-    const databaseName = getDatabaseNameFromConnectionString(connectionString);
-    assert.equal(databaseName, expectedDatabaseName);
-}
-
-function testIsCosmosEmulatorConnectionString(connectionString: string, expected: boolean): void {
-    const actual: boolean = isCosmosEmulatorConnectionString(connectionString);
-    assert.equal(actual, expected);
-}
-
-function testEncodeMongoConnectionString(connectionString: string, expectedConnectionString: string): void {
-    connectionString = encodeMongoConnectionString(connectionString);
-    assert.equal(connectionString, expectedConnectionString);
-}
-
-suite(`mongoCollectionStrings`, () => {
-    test(`getDatabaseNameFromConnectionString`, () => {
+describe(`mongoCollectionStrings`, () => {
+    it(`getDatabaseNameFromConnectionString`, () => {
         // Connection strings follow the following format (https://docs.mongodb.com/manual/reference/connection-string/):
         // mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
+        function testDatabaseNameFromConnectionString(
+            connectionString: string,
+            expectedDatabaseName: string | undefined,
+        ): void {
+            const databaseName = getDatabaseNameFromConnectionString(connectionString);
+            expect(databaseName).toEqual(expectedDatabaseName);
+        }
 
-        testDatabaseNameFromConectionString(
+        // const databaseName = getDatabaseNameFromConnectionString(`mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`,);
+        // expect(databaseName).toEqual(undefined);
+        testDatabaseNameFromConnectionString(
             `mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`,
             undefined,
         );
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/our-mongo?ssl=true&replicaSet=globaldb`,
             'our-mongo',
         );
 
-        testDatabaseNameFromConectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118`, undefined);
-        testDatabaseNameFromConectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118/`, undefined);
-        testDatabaseNameFromConectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118/dbname`, `dbname`);
+        testDatabaseNameFromConnectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118`, undefined);
+        testDatabaseNameFromConnectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118/`, undefined);
+        testDatabaseNameFromConnectionString(`mongodb://dbuser:dbpassword@dbname.mlab.com:14118/dbname`, `dbname`);
 
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb://db1.example.net:27017,db2.example.net:2500/?replicaSet=test`,
             undefined,
         );
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb://db1.example.net:27017,db2.example.net:2500/my-database?replicaSet=test`,
             'my-database',
         );
 
-        testDatabaseNameFromConectionString(`mongodb://r1.example.net:27017,r2.example.net:27017/`, undefined);
-        testDatabaseNameFromConectionString(`mongodb://r1.example.net:27017,r2.example.net:27017`, undefined);
-        testDatabaseNameFromConectionString(`mongodb://r1.example.net:27017,r2.example.net:27017/db`, 'db');
+        testDatabaseNameFromConnectionString(`mongodb://r1.example.net:27017,r2.example.net:27017/`, undefined);
+        testDatabaseNameFromConnectionString(`mongodb://r1.example.net:27017,r2.example.net:27017`, undefined);
+        testDatabaseNameFromConnectionString(`mongodb://r1.example.net:27017,r2.example.net:27017/db`, 'db');
 
-        testDatabaseNameFromConectionString(`mongodb+srv://server.example.com/`, undefined);
-        testDatabaseNameFromConectionString(`mongodb+srv://server.example.com/db`, 'db');
+        testDatabaseNameFromConnectionString(`mongodb+srv://server.example.com/`, undefined);
+        testDatabaseNameFromConnectionString(`mongodb+srv://server.example.com/db`, 'db');
 
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=mySet&authSource=authDB`,
             undefined,
         );
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/MYDB?replicaSet=mySet&authSource=authDB`,
             'MYDB',
         );
 
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb+srv://server.example.com/?connectTimeoutMS=300000&authSource=aDifferentAuthDB`,
             undefined,
         );
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/my_db?connectTimeoutMS=300000&replicaSet=mySet&authSource=aDifferentAuthDB`,
             'my_db',
         );
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb://db1.example.net:27017,db2.example.net:2500/?replicaSet=test&connectTimeoutMS=300000`,
             undefined,
         );
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb://host.example.com/hello?readPreference=secondary&maxStalenessSeconds=120`,
             'hello',
         );
-        testDatabaseNameFromConectionString(`mongodb://localhost`, undefined);
-        testDatabaseNameFromConectionString(`mongodb://localhost/db`, 'db');
-        testDatabaseNameFromConectionString(`mongodb://sysop:moon@localhost/records`, 'records');
-        testDatabaseNameFromConectionString(`mongodb://%2Ftmp%2Fmongodb-27017.sock/db`, 'db');
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(`mongodb://localhost`, undefined);
+        testDatabaseNameFromConnectionString(`mongodb://localhost/db`, 'db');
+        testDatabaseNameFromConnectionString(`mongodb://sysop:moon@localhost/records`, 'records');
+        testDatabaseNameFromConnectionString(`mongodb://%2Ftmp%2Fmongodb-27017.sock/db`, 'db');
+        testDatabaseNameFromConnectionString(
             `mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/abc`,
             'abc',
         );
 
         // special characters
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/def-ghi_jkl`,
             'def-ghi_jkl',
         );
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb://router1.example.com:27017,router2.example2.com:27017,router3.example3.com:27017/Icantlikespaces`,
             'Icantlikespaces',
         );
 
         // emulator: mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@localhost:10255?ssl=true
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin?ssl=true`,
             'admin',
         );
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin-master?ssl=true`,
             'admin-master',
         );
         // test characters mentioned in : https://docs.mongodb.com/manual/reference/limits/#Restrictions-on-Database-Names-for-Windows
-        testDatabaseNameFromConectionString(
+        testDatabaseNameFromConnectionString(
             `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin!@%^()-_,[]?ssl=true`,
             'admin!@%^()-_,[]',
         );
     });
 
-    test('addDatabaseToAccountConnectionString', () => {
+    it('addDatabaseToAccountConnectionString', () => {
+        function testDatabaseToAccountConnectionString(
+            connectionString: string,
+            databaseName: string,
+            expectedConnectionString: string | undefined,
+        ): void {
+            const databaseConnectionString = addDatabaseToAccountConnectionString(connectionString, databaseName);
+            expect(databaseConnectionString).toEqual(expectedConnectionString);
+        }
+
         testDatabaseToAccountConnectionString(
             `mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`,
             'somedatabase',
@@ -275,7 +268,12 @@ suite(`mongoCollectionStrings`, () => {
         );
     });
 
-    test('isCosmosEmulatorConnectionString', () => {
+    it('isCosmosEmulatorConnectionString', () => {
+        function testIsCosmosEmulatorConnectionString(connectionString: string, expected: boolean): void {
+            const actual: boolean = isCosmosEmulatorConnectionString(connectionString);
+            expect(actual).toEqual(expected);
+        }
+
         testIsCosmosEmulatorConnectionString(
             `mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`,
             false,
@@ -364,7 +362,11 @@ suite(`mongoCollectionStrings`, () => {
         );
     });
 
-    test('encodeMongoConnectionString', () => {
+    it('encodeMongoConnectionString', () => {
+        function testEncodeMongoConnectionString(connectionString: string, expectedConnectionString: string): void {
+            connectionString = encodeMongoConnectionString(connectionString);
+            expect(connectionString).toEqual(expectedConnectionString);
+        }
         testEncodeMongoConnectionString(
             `mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`,
             `mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg%3D%3D@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb`,

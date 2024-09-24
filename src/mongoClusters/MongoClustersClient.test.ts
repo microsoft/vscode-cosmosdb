@@ -1,6 +1,4 @@
-/// <reference types="jest" />
-
-import { MongoClustersClient } from '../../src/mongoClusters/MongoClustersClient';
+import { MongoClustersClient } from './MongoClustersClient';
 
 describe('MongoClustersClient', () => {
     it('should be defined', () => {

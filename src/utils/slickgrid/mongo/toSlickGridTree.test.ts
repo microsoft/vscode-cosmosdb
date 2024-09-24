@@ -1,5 +1,5 @@
-import { Document, ObjectId, WithId } from 'mongodb';
-import { documentToSlickGridTree, toSlickGridTree } from '../../../src/utils/slickgrid/mongo/toSlickGridTree';
+import { ObjectId, type Document, type WithId } from 'mongodb';
+import { documentToSlickGridTree, toSlickGridTree } from './toSlickGridTree';
 
 const jsonDocuments = [
     {

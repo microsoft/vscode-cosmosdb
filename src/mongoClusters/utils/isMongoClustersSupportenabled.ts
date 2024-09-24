@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 
-
 /**
  * This is a temporary function usend to optionaly enable support for MongoClusters in the Azure Resources extension.
  *

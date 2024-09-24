@@ -3,22 +3,21 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import assert from 'assert';
-import { rejectOnTimeout, valueOnTimeout } from '../extension.bundle';
+import { rejectOnTimeout, valueOnTimeout } from './timeout';
 
-suite('timeout Tests', () => {
-    suite('rejectOnTimeout', () => {
-        test('executes synchronously', async () => {
+describe('timeout Tests', () => {
+    describe('rejectOnTimeout', () => {
+        it('executes synchronously', async () => {
             let executed: boolean = false;
 
             await rejectOnTimeout(1, () => {
                 executed = true;
             });
 
-            assert.equal(executed, true);
+            expect(executed).toBe(true);
         });
 
-        test('executes synchronously in promise', async () => {
+        it('executes synchronously in promise', async () => {
             let executed = false;
 
             await rejectOnTimeout(1, () => {
@@ -28,10 +27,10 @@ suite('timeout Tests', () => {
                 });
             });
 
-            assert.equal(executed, true);
+            expect(executed).toBe(true);
         });
 
-        test('executes asynchnously before time-out', async () => {
+        it('executes asynchronously before time-out', async () => {
             let executed = false;
 
             await rejectOnTimeout(1000, () => {
@@ -42,29 +41,28 @@ suite('timeout Tests', () => {
                     }, 1);
                 });
             });
-            assert.equal(executed, true);
+
+            expect(executed).toBe(true);
         });
 
-        test('timed out', async () => {
+        it('timed out', async () => {
             let executed = false;
 
-            try {
-                await rejectOnTimeout(1, async () => {
+            await expect(
+                rejectOnTimeout(1, async () => {
                     await new Promise<void>((resolve, _reject) => {
                         setTimeout(() => {
                             executed = true;
                             resolve();
                         }, 1000);
                     });
-                });
+                }),
+            ).rejects.toThrow('Execution timed out');
 
-                assert.fail(null, null, 'Expected exception');
-            } catch (error) {}
-
-            assert.equal(executed, false);
+            expect(executed).toBe(false);
         });
 
-        test('throws before time-out', async () => {
+        it('throws before time-out', async () => {
             const executed = false;
             let error: Error = new Error("I haven't thrown up yet");
 
@@ -78,13 +76,13 @@ suite('timeout Tests', () => {
                 error = err;
             }
 
-            assert.equal(executed, false);
-            assert.equal(error.message, 'I threw up');
+            expect(executed).toBe(false);
+            expect(error.message).toEqual('I threw up');
         });
     });
 
-    suite('valueOnTimeout', () => {
-        test('executed', async () => {
+    describe('valueOnTimeout', () => {
+        it('executed', async () => {
             const value = await valueOnTimeout(1000, 123, async () => {
                 return await new Promise<number>((resolve, _reject) => {
                     setTimeout(() => {
@@ -93,10 +91,10 @@ suite('timeout Tests', () => {
                 });
             });
 
-            assert.equal(value, -123);
+            expect(value).toEqual(-123);
         });
 
-        test('timed out', async () => {
+        it('timed out', async () => {
             const value = await valueOnTimeout(1, 123, async () => {
                 return await new Promise<number>((resolve, _reject) => {
                     setTimeout(() => {
@@ -105,24 +103,19 @@ suite('timeout Tests', () => {
                 });
             });
 
-            assert.equal(value, 123);
+            expect(value).toEqual(123);
         });
 
-        test('reject', async () => {
-            let error;
-            try {
-                await valueOnTimeout(1000, 123, async () => {
+        it('reject', async () => {
+            await expect(
+                valueOnTimeout(1000, 123, async () => {
                     return await new Promise<number>((_resolve, reject) => {
                         setTimeout(() => {
                             reject(new Error('rejected'));
                         }, 1);
                     });
-                });
-            } catch (err) {
-                error = err;
-            }
-
-            assert.equal(error && error.message, 'rejected');
+                }),
+            ).rejects.toThrow('rejected');
         });
     });
 });

@@ -9,9 +9,9 @@ import { Position } from 'vscode';
 import {
     findCommandAtPosition,
     getAllCommandsFromText,
-    MongoCommand,
     nonNullProp,
     ObjectId,
+    type MongoCommand,
 } from '../extension.bundle';
 
 function expectSingleCommand(text: string): MongoCommand {

@@ -10,8 +10,8 @@ import * as fse from 'fs-extra';
 import * as os from 'os';
 import * as path from 'path';
 import { isNumber } from 'util';
-import * as vscode from 'vscode';
-import { ext, IDisposable, isWindows, MongoShell, parseError } from '../extension.bundle';
+import type * as vscode from 'vscode';
+import { ext, isWindows, MongoShell, parseError, type IDisposable } from '../extension.bundle';
 import { runWithSetting } from './runWithSetting';
 import { setEnvironmentVariables } from './util/setEnvironmentVariables';
 

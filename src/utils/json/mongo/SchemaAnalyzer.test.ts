@@ -1,4 +1,4 @@
-import { type JSONSchema } from '../JSONSchema';
+import { type JSONSchema, type JSONSchemaRef } from '../JSONSchema';
 import { updateSchemaWithDocument } from './SchemaAnalyzer';
 import {
     arraysWithDifferentDataTypes,
@@ -33,7 +33,7 @@ describe('Mongo Schema Analyzer', () => {
         );
 
         // Check that the 'name' field is detected correctly
-        const nameField = schema.properties?.['name'];
+        const nameField: JSONSchema = schema.properties?.['name'];
         expect(nameField).toBeDefined();
         expect(nameField?.['x-occurrence']).toBeGreaterThan(0);
 
@@ -42,13 +42,13 @@ describe('Mongo Schema Analyzer', () => {
         expect(nameFieldTypes).toContain('string');
 
         // Check that the 'age' field has the correct type
-        const ageField = schema.properties?.['age'];
+        const ageField: JSONSchema = schema.properties?.['age'];
         expect(ageField).toBeDefined();
         const ageFieldTypes = ageField.anyOf?.map((typeEntry) => typeEntry['type']);
         expect(ageFieldTypes).toContain('number');
 
         // Check that the 'isActive' field is a boolean
-        const isActiveField = schema.properties?.['isActive'];
+        const isActiveField: JSONSchema = schema.properties?.['isActive'];
         expect(isActiveField).toBeDefined();
         const isActiveTypes = isActiveField.anyOf?.map((typeEntry) => typeEntry['type']);
         expect(isActiveTypes).toContain('boolean');
@@ -124,7 +124,7 @@ describe('Mongo Schema Analyzer', () => {
         function getArrayItemTypes(fieldName: string): string[] | undefined {
             const field = schema.properties?.[fieldName];
             const anyOf = field?.anyOf;
-            const itemsAnyOf = anyOf?.[0]?.items?.anyOf;
+            const itemsAnyOf: JSONSchemaRef[] = anyOf?.[0]?.items?.anyOf;
             return itemsAnyOf?.map((typeEntry) => typeEntry['type']);
         }
 
@@ -148,11 +148,13 @@ describe('Mongo Schema Analyzer', () => {
         // Access 'user.profile.hobbies'
         const userProfile = schema.properties && schema.properties['user'].anyOf?.[0]?.properties?.['profile'];
         const hobbies = userProfile?.anyOf?.[0]?.properties?.['hobbies'];
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         const hobbiesItemTypes = hobbies?.anyOf?.[0]?.items?.anyOf?.map((typeEntry) => typeEntry['type']);
         expect(hobbiesItemTypes).toContain('string');
 
         // Access 'user.profile.addresses'
         const addresses = userProfile?.anyOf?.[0]?.properties?.['addresses'];
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         const addressItemTypes = addresses?.anyOf?.[0]?.items?.anyOf?.map((typeEntry) => typeEntry['type']);
         expect(addressItemTypes).toContain('object');
 

@@ -4,7 +4,6 @@ import {
     Code,
     DBRef,
     Decimal128,
-    Document,
     Double,
     Int32,
     Long,
@@ -12,7 +11,8 @@ import {
     MinKey,
     ObjectId,
     Timestamp,
-    WithId,
+    type Document,
+    type WithId,
 } from 'mongodb';
 
 export const flatDocument: WithId<Document> = {

@@ -65,10 +65,14 @@
             "runtimeExecutable": "${execPath}",
             "args": [
                 "--profile=noExtensionsProfile", // uses a local profile with a limited number of installed extensions
-                "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups",
-                "--extensionDevelopmentPath=${workspaceFolder}/dist"
+                "--extensionDevelopmentPath=${workspaceFolder}/dist",
+                "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups"
             ],
             "outFiles": ["${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../vscode-azureresourcegroups/out/**/*.js"],
+            "resolveSourceMapLocations": ["${workspaceFolder}/dist/**", "!**/node_modules/**"],
+            "sourceMapPathOverrides": {
+                "./*": "${workspaceFolder}/*"
+            },
             "preLaunchTask": "Watch",
             "env": {
                 "DEBUGTELEMETRY": "v",

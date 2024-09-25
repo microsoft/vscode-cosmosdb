@@ -40,9 +40,6 @@ export function getDataTopLevel(documents: WithId<Document>[]): object[] {
                 const value: unknown = doc[key];
                 const type: MongoBSONTypes = MongoBSONTypes.inferType(value);
 
-                const value: unknown = doc[key];
-                const type: MongoBSONTypes = MongoBSONTypes.inferType(value);
-
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 if (value instanceof Array) {
                     row[key] = { value: `(elements: ${value.length})`, type: MongoBSONTypes.Array };

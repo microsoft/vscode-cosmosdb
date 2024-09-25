@@ -20,6 +20,11 @@ const perfStats = {
 };
 
 export async function activate(ctx: vscode.ExtensionContext): Promise<apiUtils.AzureExtensionApiProvider> {
+    if (process.env['STOP_ON_ENTRY'] === "true") {
+        // eslint-disable-next-line no-debugger
+        debugger;
+    }
+
     return extension.activateInternal(ctx, perfStats);
 }
 

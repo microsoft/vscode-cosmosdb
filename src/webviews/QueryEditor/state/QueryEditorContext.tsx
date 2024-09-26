@@ -1,6 +1,10 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import { Toaster, useId, useToastController } from '@fluentui/react-components';
-import * as React from 'react';
-import { createContext, useContext, useEffect, useReducer } from 'react';
+import { type ReactNode, createContext, useContext, useEffect, useReducer, useState } from 'react';
 import { type WebviewApi } from 'vscode-webview';
 import { type Channel } from '../../../panels/Communication/Channel/Channel';
 import { type WebviewState } from '../../WebviewContext';
@@ -24,12 +28,12 @@ export const WithQueryEditorContext = ({
 }: {
     channel: Channel;
     vscodeApi: WebviewApi<WebviewState>;
-    children: React.ReactNode;
+    children: ReactNode;
 }) => {
     const toasterId = useId('toaster');
     const { dispatchToast } = useToastController(toasterId);
     const [state, dispatch] = useReducer(QueryEditorDispatch, { ...defaultState });
-    const [provider, setProvider] = React.useState<QueryEditorContextProvider>({} as QueryEditorContextProvider);
+    const [provider, setProvider] = useState<QueryEditorContextProvider>({} as QueryEditorContextProvider);
 
     useEffect(() => {
         const provider = new QueryEditorContextProvider(channel, dispatch, dispatchToast);

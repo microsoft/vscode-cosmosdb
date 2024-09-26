@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 /**
  * wrapper for mongodclient, with handling of supported operations, plus, as a workaround, access to the raw mongodbclient.
  * also, client-pool, that handles active connections, over time adds notificaitons on dropped conenctions etc.

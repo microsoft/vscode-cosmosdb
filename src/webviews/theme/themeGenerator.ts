@@ -1,5 +1,12 @@
-import { createDarkTheme, createLightTheme, type BrandVariants, type Theme } from '@fluentui/react-components';
-import { hex_to_LCH, hexColorsFromPalette, RGBAToHexA, type Palette } from './utils';
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import { type BrandVariants, createDarkTheme, createLightTheme, type Theme } from '@fluentui/react-components';
+import { type MonacoBuiltinTheme, type MonacoColors, type MonacoThemeData } from './state/ThemeState';
+import { hex_to_LCH, hexColorsFromPalette, type Palette, RGBAToHexA } from './utils';
+import { vscodeThemeTokens, vscodeThemeTokenToCSSVar } from './vscodeThemeTokens';
 
 type Options = {
     darkCp?: number;
@@ -46,11 +53,6 @@ export function getBrandTokensFromPalette(keyColor: string, options: Options = {
     }, {}) as BrandVariants;
 }
 
-// get class value from body element
-export const useVSCodeTheme = () => {
-    return document.body.getAttribute('data-vscode-theme-kind') ?? 'vscode-light';
-};
-
 // https://react.fluentui.dev/?path=/docs/concepts-developer-theming--page#overriding-existing-tokens
 export const generateAdaptiveLightTheme = (): Theme => {
     const style = getComputedStyle(document.documentElement);
@@ -89,5 +91,27 @@ export const generateAdaptiveDarkTheme = (): Theme => {
 
             colorNeutralBackground1: 'var(--vscode-editor-background)',
         },
+    };
+};
+
+export const generateMonacoTheme = (baseTheme: MonacoBuiltinTheme): MonacoThemeData => {
+    const style = getComputedStyle(document.documentElement);
+    const colors = vscodeThemeTokens
+        .map((token) => {
+            let color = style.getPropertyValue(vscodeThemeTokenToCSSVar(token));
+            if (!color.startsWith('#')) {
+                if (color.startsWith('rgb')) {
+                    color = RGBAToHexA(color);
+                }
+            }
+            return [token, color];
+        })
+        .filter(([_, color]) => color !== '');
+
+    return {
+        base: baseTheme,
+        inherit: true,
+        rules: [],
+        colors: Object.fromEntries(colors) as MonacoColors,
     };
 };

@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 /**
  * We're not using the full JSON schema spec, so we're defining a subset of it here.
  * There is @types/json-schema available, but their support ends at JSON Schema draft-07,

@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import Editor, { loader } from '@monaco-editor/react';
 import * as React from 'react';
 // eslint-disable-next-line import/no-internal-modules

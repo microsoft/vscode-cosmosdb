@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import { Toaster, useId, useToastController } from '@fluentui/react-components';
 import { type ReactNode, createContext, useContext, useEffect, useReducer, useState } from 'react';
 import { type WebviewApi } from 'vscode-webview';

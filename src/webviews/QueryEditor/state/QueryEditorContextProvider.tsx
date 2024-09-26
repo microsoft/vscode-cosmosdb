@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import { Link, Toast, ToastBody, ToastTitle, ToastTrigger } from '@fluentui/react-components';
 import * as React from 'react';
 import { type ResultViewMetadata, type SerializedQueryResult } from '../../../docdb/types/queryResult';

@@ -1,4 +1,7 @@
-'mongodb-connection-string-url';
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
 
 interface MongoClustersCredentials {
     credentialId: string;
@@ -19,14 +22,14 @@ export class CredentialCache {
 
     /**
      *
-     * @param connectinString connection string with credentials
+     * @param connectionString connection string with credentials
      */
-    public static setConnectionString(connectinString: string): string {
+    public static setConnectionString(connectionString: string): string {
         const credentialId = Math.random().toString(36).substring(7); // maybe a hash?
 
         const credentials = {
             credentialId: credentialId,
-            connectionStringWithCredentials: connectinString,
+            connectionStringWithCredentials: connectionString,
         };
 
         CredentialCache._store.set(credentialId, credentials);

@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import { teamsDarkTheme, teamsHighContrastTheme, teamsLightTheme } from '@fluentui/react-components';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { generateAdaptiveDarkTheme, generateAdaptiveLightTheme, generateMonacoTheme } from '../themeGenerator';

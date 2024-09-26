@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 /**
  * This is an example of a JSON Schema document that will be generated from MongoDB documents.
  * It's optimized for the use-case of generating a schema for a table view, the monaco editor, and schema statistics.

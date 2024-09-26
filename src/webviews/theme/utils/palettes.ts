@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import { Lab_to_LCH, LAB_to_sRGB, LCH_to_Lab, snap_into_gamut, sRGB_to_LCH } from './csswg';
 import { getPointsOnCurvePath } from './geometry';
 import { hexToHue, hueToSnappingPointsMap } from './hueMap';

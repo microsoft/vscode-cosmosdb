@@ -3,16 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import Editor, { loader } from '@monaco-editor/react';
 import * as React from 'react';
-// eslint-disable-next-line import/no-internal-modules
-import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
+import { MonacoEditor } from '../../../MonacoEditor';
 
 interface Props {
     value: string;
 }
-
-loader.config({ monaco: monacoEditor });
 
 const monacoOptions = {
     // autoIndent: 'full',
@@ -37,13 +33,5 @@ const monacoOptions = {
 };
 
 export const DataViewPanelJSON = ({ value }: Props): React.JSX.Element => {
-    React.useEffect(() => {
-        console.log('JSON View has mounted');
-
-        return () => {
-            console.log('JSON View will unmount');
-        };
-    }, []); // Empty dependency array means this runs only once, like componentDidMount
-
-    return <Editor height={'100%'} width={'100%'} language="json" options={monacoOptions} value={value} />;
+    return <MonacoEditor height={'100%'} width={'100%'} language="json" options={monacoOptions} value={value} />;
 };

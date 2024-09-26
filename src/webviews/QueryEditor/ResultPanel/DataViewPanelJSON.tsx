@@ -1,9 +1,8 @@
-import Editor, { loader } from '@monaco-editor/react';
+import Editor, { loader, useMonaco } from '@monaco-editor/react';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
-import { useState } from 'react';
-import { useThemeMutationObserver } from '../../theme/DynamicThemeProvider';
-import { useVSCodeTheme } from '../../theme/themeGenerator';
+import { useEffect } from 'react';
+import { useThemeState } from '../../theme/state/ThemeContext';
 
 loader.config({ monaco: monacoEditor });
 
@@ -12,28 +11,24 @@ export type DataViewPanelJSONProps = {
 };
 
 export const DataViewPanelJSON = ({ value }: DataViewPanelJSONProps) => {
-    const [themeKind, setThemeKind] = useState(useVSCodeTheme());
+    const monaco = useMonaco();
+    const themeState = useThemeState();
 
-    useThemeMutationObserver(setThemeKind);
-
-    const getVscodeTheme = (themeKind: string) => {
-        return themeKind === 'vscode-light'
-            ? 'vs'
-            : themeKind === 'vscode-dark'
-              ? 'vs-dark'
-              : themeKind === 'vscode-high-contrast'
-                ? 'hc-black'
-                : themeKind === 'vscode-high-contrast-light'
-                  ? 'hc-light'
-                  : 'light';
-    };
+    useEffect(() => {
+        if (monaco) {
+            if (themeState.monaco.theme) {
+                monaco.editor.defineTheme(themeState.monaco.themeName, themeState.monaco.theme);
+                monaco.editor.setTheme(themeState.monaco.themeName);
+            }
+        }
+    }, [monaco, themeState]);
 
     return (
         <Editor
             height={'100%'}
             width={'100%'}
             defaultLanguage={'json'}
-            theme={getVscodeTheme(themeKind)}
+            theme={themeState.monaco.themeName}
             value={value}
             options={{ domReadOnly: true, readOnly: true }}
         />

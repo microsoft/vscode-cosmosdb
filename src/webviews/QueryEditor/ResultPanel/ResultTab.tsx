@@ -38,7 +38,7 @@ export const ResultTab = () => {
     return (
         <section className={classes.container}>
             <ResultTableViewToolbar></ResultTableViewToolbar>
-            <div className={classes.monacoContainer}>
+            <div className={[classes.monacoContainer, 'resultsDisplayArea'].join(' ')}>
                 <Suspense fallback={<div>Loading...</div>}>
                     {tableViewMode === 'Table' && (
                         <DataViewPanelTable liveData={tableViewData!.dataset} liveHeaders={tableViewData!.headers} />

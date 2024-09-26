@@ -67,7 +67,7 @@ export const ResultPanel = () => {
                 </div>
                 <ResultToolbar selectedTab={selectedTab} />
             </ActionBar>
-            <div className={[styles.tabContainer, 'resultsDisplayArea'].join(' ')}>
+            <div className={styles.tabContainer}>
                 {selectedTab === 'result__tab' && <ResultTab />}
                 {selectedTab === 'stats__tab' && <StatsTab />}
             </div>

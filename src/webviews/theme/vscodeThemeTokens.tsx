@@ -2,6 +2,8 @@
  *         const workspaceColorsDocUri = vscode.Uri.parse('vscode://schemas/workbench-colors');
  *         const doc = await vscode.workspace.openTextDocument(workspaceColorsDocUri);
  *         const workbenchColors = await JSON.parse(doc.getText());
+ *
+ *         https://code.visualstudio.com/api/references/theme-color#base-colors
  */
 
 export const vscodeThemeTokens = [

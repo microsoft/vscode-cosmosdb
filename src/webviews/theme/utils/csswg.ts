@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 // The following is a combination of several files retrieved from CSSWG’s
 // CSS Color 4 module. It was modified to support TypeScript types adapted for
 // the Fluent Blocks `colors` package and formatted to meet its style criteria.

@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { createHttpHeaders } from '@azure/core-rest-pipeline';
 import { nonNullProp, nonNullValue } from '@microsoft/vscode-azext-utils';

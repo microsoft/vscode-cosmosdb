@@ -1,11 +1,15 @@
-import Editor, { loader } from '@monaco-editor/react';
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import Editor, { loader, useMonaco } from '@monaco-editor/react';
 import { debounce } from 'lodash';
 //import * as monacoEditor from 'monaco-editor';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
-import { useMemo, useState } from 'react';
-import { useThemeMutationObserver } from '../../theme/DynamicThemeProvider';
-import { useVSCodeTheme } from '../../theme/themeGenerator';
+import { useEffect, useMemo } from 'react';
+import { useThemeState } from '../../theme/state/ThemeContext';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 loader.config({ monaco: monacoEditor });
@@ -13,9 +17,17 @@ loader.config({ monaco: monacoEditor });
 export const QueryMonaco = () => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
-    const [themeKind, setThemeKind] = useState(useVSCodeTheme());
+    const monaco = useMonaco();
+    const themeState = useThemeState();
 
-    useThemeMutationObserver(setThemeKind);
+    useEffect(() => {
+        if (monaco) {
+            if (themeState.monaco.theme) {
+                monaco.editor.defineTheme(themeState.monaco.themeName, themeState.monaco.theme);
+                monaco.editor.setTheme(themeState.monaco.themeName);
+            }
+        }
+    }, [monaco, themeState]);
 
     const onChange = useMemo(
         () =>
@@ -27,24 +39,12 @@ export const QueryMonaco = () => {
         [dispatcher, state],
     );
 
-    const getVscodeTheme = (themeKind: string) => {
-        return themeKind === 'vscode-light'
-            ? 'vs'
-            : themeKind === 'vscode-dark'
-              ? 'vs-dark'
-              : themeKind === 'vscode-high-contrast'
-                ? 'hc-black'
-                : themeKind === 'vscode-high-contrast-light'
-                  ? 'hc-light'
-                  : 'light';
-    };
-
     return (
         <Editor
             height={'100%'}
             width={'100%'}
             language="sql"
-            theme={getVscodeTheme(themeKind)}
+            theme={themeState.monaco.themeName}
             value={state.queryValue}
             onChange={onChange}
         />

@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 export function hexToHue(hexColor: string): number {
     // Parse the hex color string into its red, green, and blue components
     const red = parseInt(hexColor.substring(1, 3), 16);

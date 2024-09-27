@@ -3,19 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import Editor, { loader, useMonaco } from '@monaco-editor/react';
+import Editor, { loader, useMonaco, type EditorProps } from '@monaco-editor/react';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 import { useEffect } from 'react';
-import { useThemeState } from '../../theme/state/ThemeContext';
+import { useThemeState } from './theme/state/ThemeContext';
 
 loader.config({ monaco: monacoEditor });
 
-export type DataViewPanelJSONProps = {
-    value: string;
-};
-
-export const DataViewPanelJSON = ({ value }: DataViewPanelJSONProps) => {
+export const MonacoEditor = (props: EditorProps) => {
     const monaco = useMonaco();
     const themeState = useThemeState();
 
@@ -28,15 +24,10 @@ export const DataViewPanelJSON = ({ value }: DataViewPanelJSONProps) => {
         }
     }, [monaco, themeState]);
 
-    return (
-        <Editor
-            height={'100%'}
-            width={'100%'}
-            defaultLanguage={'json'}
-            theme={themeState.monaco.themeName}
-            value={value}
-            options={{ domReadOnly: true, readOnly: true }}
-        />
-    );
-};
+    const options = {
+        ...props,
+        theme: themeState.monaco.themeName,
+    };
 
+    return <Editor {...options} />;
+};

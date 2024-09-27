@@ -136,7 +136,7 @@ export const cosmosTableFilter = {
     },
 };
 
-export const sqlDefaultExperienceTag = 'Core (SQL)';
+export const sqlDefaultExperienceTag = 'NoSQL';
 
 export const sqlFilter = {
     type: databaseAccountType,

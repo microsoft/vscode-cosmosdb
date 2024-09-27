@@ -150,7 +150,7 @@ async function insertDocumentsIntoDocdb(
             ids.push(retrieved.id);
         }
     }
-    const result: string = `Import into SQL successful. Inserted ${ids.length} document(s). See output for more details.`;
+    const result: string = `Import into NoSQL successful. Inserted ${ids.length} document(s). See output for more details.`;
     for (const id of ids) {
         ext.outputChannel.appendLog(`Inserted document: ${id}`);
     }

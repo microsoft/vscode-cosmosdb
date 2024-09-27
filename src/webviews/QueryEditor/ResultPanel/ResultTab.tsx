@@ -5,11 +5,11 @@
 
 import { makeStyles } from '@fluentui/react-components';
 import { Suspense, useMemo } from 'react';
+import { MonacoEditor } from '../../MonacoEditor';
 import { DataViewPanelTable } from '../../mongoClusters/collectionView/components/DataViewPanelTable';
 import { DataViewPanelTree } from '../../mongoClusters/collectionView/components/DataViewPanelTree';
 import { queryResultToJSON, queryResultToTable, queryResultToTree } from '../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
-import { DataViewPanelJSON } from './DataViewPanelJSON';
 import { ResultTableViewToolbar } from './ResultTableViewToolbar';
 
 const useClasses = makeStyles({
@@ -38,21 +38,24 @@ export const ResultTab = () => {
     return (
         <section className={classes.container}>
             <ResultTableViewToolbar></ResultTableViewToolbar>
-            <div className={classes.monacoContainer}>
+            <div className={[classes.monacoContainer, 'resultsDisplayArea'].join(' ')}>
                 <Suspense fallback={<div>Loading...</div>}>
                     {tableViewMode === 'Table' && (
-                        <DataViewPanelTable
-                            liveData={tableViewData!.dataset}
-                            liveHeaders={tableViewData!.headers}
-                        ></DataViewPanelTable>
+                        <DataViewPanelTable liveData={tableViewData!.dataset} liveHeaders={tableViewData!.headers} />
                     )}
                     {tableViewMode === 'Tree' && (
                         <DataViewPanelTree
                             liveData={(treeViewData ?? []) as unknown as { [key: string]: undefined }[]}
-                        ></DataViewPanelTree>
+                        />
                     )}
                     {tableViewMode === 'JSON' && (
-                        <DataViewPanelJSON value={jsonViewData || 'No result'}></DataViewPanelJSON>
+                        <MonacoEditor
+                            height={'100%'}
+                            width={'100%'}
+                            defaultLanguage={'json'}
+                            value={jsonViewData || 'No result'}
+                            options={{ domReadOnly: true, readOnly: true }}
+                        />
                     )}
                 </Suspense>
             </div>

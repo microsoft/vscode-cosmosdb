@@ -309,27 +309,27 @@
                 "title": "Copy Connection String"
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.createDocDBCollection",
-                "title": "Create Collection..."
+                "title": "Create Container..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.createDocDBDatabase",
                 "title": "Create Database..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.createDocDBDocument",
                 "title": "Create Document..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.createDocDBStoredProcedure",
                 "title": "Create Stored Procedure..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.createDocDBTrigger",
                 "title": "Create Trigger..."
             },
@@ -364,27 +364,27 @@
                 "title": "Delete Account..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBCollection",
-                "title": "Delete Collection..."
+                "title": "Delete Container..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBDatabase",
                 "title": "Delete Database..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBDocument",
                 "title": "Delete Document..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBStoredProcedure",
                 "title": "Delete Stored Procedure..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBTrigger",
                 "title": "Delete Trigger..."
             },
@@ -419,7 +419,7 @@
                 "title": "Execute All MongoDB Commands"
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.executeDocDBStoredProcedure",
                 "title": "Execute Stored Procedure..."
             },
@@ -487,12 +487,12 @@
                 "title": "Open Trigger"
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.viewDocDBCollectionOffer",
-                "title": "View Collection Offer"
+                "title": "View Container Offer"
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.writeNoSqlQuery",
                 "title": "Create New NoSQL Query"
             },

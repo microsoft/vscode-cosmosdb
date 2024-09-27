@@ -89,7 +89,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
     public async createChildImpl(context: ICreateChildImplContext): Promise<AzExtTreeItem> {
         const containerName = await context.ui.showInputBox({
             placeHolder: `Enter an id for your ${this.childTypeLabel}`,
-            validateInput: validateCollectionName,
+            validateInput: this.validateCollectionName.bind(this),
             stepName: `create${this.childTypeLabel}`,
         });
 
@@ -152,6 +152,19 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
         }
         return undefined;
     }
+
+    protected validateCollectionName(name: string): string | undefined | null {
+        if (!name) {
+            return `${this.childTypeLabel} name cannot be empty`;
+        }
+        if (name.endsWith(' ')) {
+            return `${this.childTypeLabel} name cannot end with space`;
+        }
+        if (/[/\\?#]/.test(name)) {
+            return `${this.childTypeLabel} name cannot contain the characters '\\', '/', '#', '?'`;
+        }
+        return undefined;
+    }
 }
 
 function validateThroughput(isFixed: boolean, input: string): string | undefined | null {
@@ -167,19 +180,6 @@ function validateThroughput(isFixed: boolean, input: string): string | undefined
         }
     } catch {
         return 'Input must be a number';
-    }
-    return undefined;
-}
-
-function validateCollectionName(name: string): string | undefined | null {
-    if (!name) {
-        return 'Collection name cannot be empty';
-    }
-    if (name.endsWith(' ')) {
-        return 'Collection name cannot end with space';
-    }
-    if (/[/\\?#]/.test(name)) {
-        return `Collection name cannot contain the characters '\\', '/', '#', '?'`;
     }
     return undefined;
 }

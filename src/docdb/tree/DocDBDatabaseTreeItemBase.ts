@@ -89,7 +89,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
     public async createChildImpl(context: ICreateChildImplContext): Promise<AzExtTreeItem> {
         const containerName = await context.ui.showInputBox({
             placeHolder: `Enter an id for your ${this.childTypeLabel}`,
-            validateInput: this.validateCollectionName.bind(this),
+            validateInput: this.validateCollectionName.bind(this) as (name: string) => string | undefined | null,
             stepName: `create${this.childTypeLabel}`,
         });
 

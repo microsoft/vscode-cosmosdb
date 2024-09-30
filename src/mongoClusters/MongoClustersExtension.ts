@@ -50,8 +50,8 @@ export class MongoClustersExtension implements vscode.Disposable {
             registerCommand('mongoClusters.cmd.hello', this.commandSayHello);
             registerCommand('mongoClusters.cmd.webview', this.commandShowWebview);
             registerCommand('mongoClusters.internal.containerView.open', this.commandContainerViewOpen);
-            registerCommand('mongoClusters.internal.documentView.open.view', this.commandShowDocumentView_View);
-            registerCommand('mongoClusters.internal.documentView.open.add', this.commandShowDocumentView_View);
+            registerCommand('mongoClusters.internal.documentView.open.view', this.commandShowDocumentView);
+            registerCommand('mongoClusters.internal.documentView.open.add', this.commandShowDocumentView);
 
             ext.outputChannel.appendLine(`mongoClusters: activated.`);
         });
@@ -101,7 +101,7 @@ export class MongoClustersExtension implements vscode.Disposable {
         });
     }
 
-    commandShowDocumentView_View(
+    commandShowDocumentView(
         _context: IActionContext,
         _props: {
             id: string;

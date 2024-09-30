@@ -1,5 +1,5 @@
 // eslint-disable-next-line import/no-internal-modules
-import { useEffect, useRef, useState, type JSX } from 'react';
+import { useEffect, useRef, useState, type JSX, useContext } from 'react';
 
 import { Label, Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, SaveRegular, TextGrammarCheckmarkRegular } from '@fluentui/react-icons';
@@ -10,6 +10,7 @@ import { ToolbarDividerTransparent } from '../collectionView/components/ToolbarD
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
 import './documentView.scss';
+import { WebviewContext } from '../../WebviewContext';
 
 loader.config({ monaco: monacoEditor });
 
@@ -104,6 +105,10 @@ export const DocumentToolbar = ({
 };
 
 export const DocumentView = (): JSX.Element => {
+
+    const { vscodeApi } = useContext(WebviewContext);
+
+
     //TODO: this approach is temporary until we move to better base class and messaging
     const staticContent: string = decodeURIComponent(window.config?.__documentContent ?? '{ }');
     const [editorContent] = useState(staticContent);
@@ -182,7 +187,7 @@ export const DocumentView = (): JSX.Element => {
     function handleOnRefreshRequest(): void {
         const documentId: string = window.config?.__documentId as string;
 
-        window.config?.__vsCodeApi.postMessage({
+        vscodeApi.postMessage({
             type: 'request.documentView.refreshDocument',
             payload: {
                 documentId: documentId,
@@ -193,7 +198,7 @@ export const DocumentView = (): JSX.Element => {
     function handleOnSaveRequest(): void {
         const editorContent = editor.current?.getValue();
 
-        window.config?.__vsCodeApi.postMessage({
+        vscodeApi.postMessage({
             type: 'request.documentView.saveDocument',
             payload: {
                 // we're not setting the ID here becasue it has to be extracted from the document being sent over

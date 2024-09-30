@@ -17,6 +17,7 @@ import {
     SearchFilled,
 } from '@fluentui/react-icons';
 import { type WebviewApi } from 'vscode-webview';
+import { type Exp } from '../../api/sharedTypes/experiment';
 import {
     CollectionViewContext,
     DefaultCollectionViewContext,
@@ -283,6 +284,9 @@ export const CollectionView = (): JSX.Element => {
 
     useEffect(() => {
         window.addEventListener('message', handleMessage);
+
+        const ee : Exp = { one: "asdf", two: true}
+        console.log(ee);
 
         return () => {
             window.removeEventListener('message', handleMessage);

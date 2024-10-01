@@ -57,7 +57,7 @@
                 "NODE_DEBUG": "",
                 "DEBUG_WEBPACK": "",
                 "DEVSERVER": "true",
-                "STOP_ON_ENTRY": "true" // stop on entry is not allowed for "type": "extensionHost", therefore, it's emulated here (review main.ts)
+                "STOP_ON_ENTRY": "false" // stop on entry is not allowed for "type": "extensionHost", therefore, it's emulated here (review main.ts)
             }
         },
         {

@@ -74,51 +74,51 @@
         "@types/documentdb": "^1.10.13",
         "@types/fs-extra": "^11.0.4",
         "@types/gulp": "^4.0.17",
-        "@types/jest": "^29.5.12",
+        "@types/jest": "^29.5.13",
         "@types/lodash.debounce": "^4.0.9",
         "@types/lodash.omit": "^4.5.9",
-        "@types/mocha": "^10.0.6",
-        "@types/node": "^18.19.50",
-        "@types/pg": "^8.11.9",
-        "@types/react": "^18.3.5",
+        "@types/mocha": "^10.0.8",
+        "@types/node": "^18.19.54",
+        "@types/pg": "^8.11.10",
+        "@types/react": "^18.3.10",
         "@types/react-dom": "^18.3.0",
         "@types/uuid": "^10.0.0",
         "@types/vscode": "1.82.0",
         "@types/vscode-webview": "^1.57.5",
-        "@typescript-eslint/eslint-plugin": "^8.5.0",
-        "@typescript-eslint/parser": "^8.5.0",
+        "@typescript-eslint/eslint-plugin": "^8.7.0",
+        "@typescript-eslint/parser": "^8.7.0",
         "@vscode/test-electron": "^2.4.1",
         "@vscode/test-cli": "^0.0.10",
         "@vscode/vsce": "~2.32.0",
         "antlr4ts-cli": "^0.5.0-alpha.4",
         "copy-webpack-plugin": "^12.0.2",
         "css-loader": "^7.1.2",
-        "eslint": "^8.57.0",
+        "eslint": "^8.57.1",
         "eslint-plugin-import": "^2.30.0",
         "eslint-plugin-jest": "^28.8.3",
         "eslint-plugin-mocha": "^10.5.0",
         "glob": "^7.2.3",
-        "husky": "^9.1.5",
+        "husky": "^9.1.6",
         "jest": "^29.7.0",
-        "jest-mock-vscode": "^2.1.0",
+        "jest-mock-vscode": "^2.1.1",
         "mocha": "^10.7.3",
         "mocha-junit-reporter": "^2.2.1",
         "mocha-multi-reporters": "^1.5.1",
         "monaco-editor-webpack-plugin": "^7.1.0",
         "prettier": "^3.3.3",
-        "prettier-plugin-organize-imports": "^4.0.0",
+        "prettier-plugin-organize-imports": "^4.1.0",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "react-refresh": "^0.14.2",
         "rimraf": "^5.0.10",
-        "sass": "^1.78.0",
-        "sass-loader": "^16.0.1",
+        "sass": "^1.79.4",
+        "sass-loader": "^16.0.2",
         "style-loader": "^4.0.0",
         "swc-loader": "^0.2.6",
         "ts-jest": "^29.2.5",
         "ts-node": "^10.9.2",
         "typescript": "^5.6.2",
-        "webpack": "^5.94.0",
+        "webpack": "^5.95.0",
         "webpack-bundle-analyzer": "^4.10.2",
         "webpack-cli": "^5.1.4",
         "webpack-dev-server": "^5.1.0"
@@ -128,11 +128,11 @@
         "@azure/arm-postgresql": "^6.1.0",
         "@azure/arm-postgresql-flexible": "^7.1.0",
         "@azure/cosmos": "^4.1.1",
-        "@fluentui/react-components": "^9.54.14",
-        "@fluentui/react-icons": "^2.0.258",
+        "@fluentui/react-components": "^9.54.17",
+        "@fluentui/react-icons": "^2.0.259",
         "@microsoft/vscode-azext-azureauth": "^2.5.0",
-        "@microsoft/vscode-azext-azureutils": "^3.1.1",
-        "@microsoft/vscode-azext-utils": "^2.5.7",
+        "@microsoft/vscode-azext-azureutils": "^3.1.2",
+        "@microsoft/vscode-azext-utils": "^2.5.8",
         "@microsoft/vscode-azureresources-api": "2.3.2",
         "@monaco-editor/react": "^4.6.0",
         "allotment": "^1.20.2",
@@ -142,13 +142,13 @@
         "fs-extra": "^8.0.0",
         "lodash.debounce": "^4.0.8",
         "lodash.omit": "^4.5.0",
-        "monaco-editor": "^0.51.0",
-        "mongodb": "^6.8.1",
-        "pg": "^8.12.0",
-        "pg-connection-string": "^2.6.4",
+        "monaco-editor": "~0.51.0",
+        "mongodb": "^6.9.0",
+        "pg": "^8.13.0",
+        "pg-connection-string": "^2.7.0",
         "pg-structure": "^7.15.3",
         "semver": "^7.6.3",
-        "slickgrid-react": "^5.7.0",
+        "slickgrid-react": "^5.8.0",
         "uuid": "^10.0.0",
         "vscode-json-languageservice": "^5.4.1",
         "vscode-languageclient": "^6.1.4",
@@ -474,7 +474,7 @@
             {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.openNoSqlQueryEditor",
-                "title": "Open NoSQL Query Editor"
+                "title": "Open Query Editor (preview)"
             },
             {
                 "category": "Cosmos DB",
@@ -494,7 +494,7 @@
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.writeNoSqlQuery",
-                "title": "Create New NoSQL Query"
+                "title": "Open Query Scrapbook"
             },
             {
                 "category": "mongoClusters",
@@ -725,9 +725,19 @@
                     "group": "1@1"
                 },
                 {
+                    "command": "cosmosDB.openNoSqlQueryEditor",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection && config.cosmosDB.preview.queryEditor",
+                    "group": "1@1"
+                },
+                {
                     "command": "cosmosDB.writeNoSqlQuery",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
                     "group": "1@2"
+                },
+                {
+                    "command": "cosmosDB.importDocument",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
+                    "group": "1@3"
                 },
                 {
                     "command": "cosmosDB.createDocDBStoredProcedure",
@@ -832,12 +842,12 @@
                 {
                     "command": "cosmosDB.deleteDocDBCollection",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
-                    "group": "1@2"
+                    "group": "1@4"
                 },
                 {
                     "command": "cosmosDB.viewDocDBCollectionOffer",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
-                    "group": "1@3"
+                    "group": "1@5"
                 },
                 {
                     "command": "cosmosDB.deleteDocDBDocument",
@@ -1060,11 +1070,6 @@
                     "group": "1@3"
                 },
                 {
-                    "command": "cosmosDB.importDocument",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
-                    "group": "1@1"
-                },
-                {
                     "command": "postgreSQL.connectDatabase",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /postgresDatabase(?![a-z])/i",
                     "group": "1@1"
@@ -1078,11 +1083,6 @@
                     "command": "postgreSQL.createStoredProcedureQuery",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresStoredProcedures",
                     "group": "1@1"
-                },
-                {
-                    "command": "cosmosDB.openNoSqlQueryEditor",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
-                    "group": "1@2"
                 }
             ],
             "explorer/context": [
@@ -1178,10 +1178,20 @@
                     "description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 30 seconds.",
                     "default": 30
                 },
+                "azureDatabases.batchSize": {
+                    "type": "number",
+                    "description": "The batch size to be used when querying Azure Database resources.",
+                    "default": 50
+                },
                 "azureDatabases.showExplorer": {
                     "type": "boolean",
                     "default": true,
                     "description": "Show or hide the Azure Databases Explorer"
+                },
+                "azureDatabases.useCosmosOAuth": {
+                    "type": "boolean",
+                    "description": "Whether to use OAuth credential for Cosmos DB NoSQL resources",
+                    "default": false
                 },
                 "cosmosDB.documentLabelFields": {
                     "type": "array",
@@ -1198,21 +1208,6 @@
                     ],
                     "description": "The field values to display as labels in the treeview for Cosmos DB and MongoDB documents, in priority order"
                 },
-                "cosmosDB.enableEndpointDiscovery": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Flag to enable/disable automatic redirecting of requests based on read/write operations."
-                },
-                "cosmosDB.showSavePrompt": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Show warning dialog when uploading a document to the cloud."
-                },
-                "azureDatabases.batchSize": {
-                    "type": "number",
-                    "description": "The batch size to be used when querying Azure Database resources.",
-                    "default": 50
-                },
                 "cosmosDB.emulator.mongoPort": {
                     "type": "integer",
                     "default": 10255,
@@ -1223,10 +1218,20 @@
                     "default": 8081,
                     "description": "Port to use when connecting to a CosmosDB Emulator instance"
                 },
-                "azureDatabases.useCosmosOAuth": {
+                "cosmosDB.enableEndpointDiscovery": {
                     "type": "boolean",
-                    "description": "Whether to use OAuth credential for Cosmos DB NoSQL resources",
-                    "default": false
+                    "default": true,
+                    "description": "Flag to enable/disable automatic redirecting of requests based on read/write operations."
+                },
+                "cosmosDB.showSavePrompt": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show warning dialog when uploading a document to the cloud."
+                },
+                "cosmosDB.preview.queryEditor": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable the NoSQL Query Editor."
                 }
             }
         }

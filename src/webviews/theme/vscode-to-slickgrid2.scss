@@ -43,7 +43,7 @@ $slick-cell-border-top:                                     1px transparent;
 $slick-cell-border-right:                                   1px transparent;
 $slick-cell-border-bottom:                                  1px transparent;
 $slick-cell-border-left:                                    1px transparent;
-$slick-cell-even-background-color:                          var(--vscode-diffEditor-unchangedRegionBackground);
+$slick-cell-even-background-color:                          var(--vscode-diffEditor-unchangedCodeBackground);
 $slick-cell-odd-background-color:                           var(--vscode-diffEditor-unchangedCodeBackground); // for striping every second row
 $slick-cell-odd-active-background-color:                    var(--vscode-diffEditor-unchangedCodeBackground);
 // var(--vscode-diffEditor-removedLineBackground);
@@ -51,8 +51,8 @@ $slick-cell-odd-active-background-color:                    var(--vscode-diffEdi
 /* row */
 $slick-row-mouse-hover-color:                               var(--vscode-diffEditor-insertedLineBackground);
 $slick-row-mouse-hover-box-shadow:                          none;
-$slick-row-selected-color:                                  var(--vscode-diffEditor-insertedTextBackground);
-$slick-row-highlight-background-color:                      var(--vscode-diffEditor-insertedLineBackground);
+$slick-row-selected-color:                                  var(--vscode-list-activeSelectionBackground);
+$slick-row-highlight-background-color:                      var(--vscode-list-activeSelectionBackground);
 $slick-row-checkbox-selector-background:                    inherit;
 $slick-row-checkbox-selector-border:                        none;
 

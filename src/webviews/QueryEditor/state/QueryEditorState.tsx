@@ -14,47 +14,47 @@ export type EditMode = 'View' | 'Edit';
 
 export type DispatchAction =
     | {
-          type: 'insertText';
-          queryValue: string;
-      }
+        type: 'insertText';
+        queryValue: string;
+    }
     | {
-          type: 'databaseConnected';
-          dbName: string;
-          collectionName: string;
-      }
+        type: 'databaseConnected';
+        dbName: string;
+        collectionName: string;
+    }
     | {
-          type: 'databaseDisconnected';
-      }
+        type: 'databaseDisconnected';
+    }
     | {
-          type: 'executionStarted';
-          executionId: string;
-      }
+        type: 'executionStarted';
+        executionId: string;
+    }
     | {
-          type: 'executionStopped';
-          executionId: string;
-      }
+        type: 'executionStopped';
+        executionId: string;
+    }
     | {
-          type: 'appendQueryHistory';
-          queryValue: string;
-      }
+        type: 'appendQueryHistory';
+        queryValue: string;
+    }
     | {
-          type: 'setPageSize';
-          pageSize: number;
-      }
+        type: 'setPageSize';
+        pageSize: number;
+    }
     | {
-          type: 'updateQueryResult';
-          executionId: string;
-          result: SerializedQueryResult;
-          currentPage: number;
-      }
+        type: 'updateQueryResult';
+        executionId: string;
+        result: SerializedQueryResult;
+        currentPage: number;
+    }
     | {
-          type: 'setTableViewMode';
-          mode: TableViewMode;
-      }
+        type: 'setTableViewMode';
+        mode: TableViewMode;
+    }
     | {
-          type: 'setEditMode';
-          mode: EditMode;
-      };
+        type: 'setEditMode';
+        mode: EditMode;
+    };
 
 export type QueryEditorState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)

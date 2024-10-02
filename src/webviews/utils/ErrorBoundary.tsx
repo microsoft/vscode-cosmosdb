@@ -62,7 +62,6 @@ class ErrorBoundaryComponent extends React.Component<ErrorBoundaryProps, ErrorBo
     }
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-        // Error is not JSON serializable, send only relevant fields
         this.props.onError?.(error.message, error.stack, errorInfo?.componentStack);
 
         this.setState({

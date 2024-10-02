@@ -75,6 +75,8 @@ export class QueryEditorContextProvider {
     }
 
     public async reportError(message: string, stack: string | undefined, componentStack: string | null | undefined) {
+        // Error is not JSON serializable, so the original Error object cannot be sent to the webview host.
+        // Send only the relevant fields
         await this.sendCommand('reportError', message, stack, componentStack);
     }
 

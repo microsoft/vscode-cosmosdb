@@ -25,7 +25,6 @@ const useClasses = makeStyles({
 
 export const QueryPanel = () => {
     const classes = useClasses();
-    throw new Error("TEST ERROR");
     return (
         <section className={classes.container}>
             <div className={classes.toolbarContainer}>

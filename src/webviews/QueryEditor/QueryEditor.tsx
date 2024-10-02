@@ -17,7 +17,7 @@ import { WithQueryEditorContext } from './state/QueryEditorContext';
 // this is the 'fluent ui' way of doing this, left in here so that the demo code is executed,
 // work with scss if possible for easier management
 const useStyles = makeStyles({
-    container: {
+    root: {
         display: 'grid',
         gridTemplateRows: '100vh',
     },

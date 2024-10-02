@@ -74,8 +74,8 @@ export class QueryEditorContextProvider {
         this.dispatch({ type: 'setEditMode', mode });
     }
 
-    public async reportError(message: string) {
-        await this.sendCommand('reportError', message);
+    public async reportError(message: string, stack: string, componentStack: string | null | undefined) {
+        await this.sendCommand('reportError', message, stack, componentStack);
     }
 
     private async sendCommand(command: string, ...args: unknown[]): Promise<void> {

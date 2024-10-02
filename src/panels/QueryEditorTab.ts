@@ -11,6 +11,7 @@ import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { CosmosDBSession } from '../docdb/session/CosmosDBSession';
 import { type ResultViewMetadata } from '../docdb/types/queryResult';
 import { ext } from '../extensionVariables';
+import { TelemetryContext } from '../Telemetry';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { type Channel } from './Communication/Channel/Channel';
 import { VSCodeChannel } from './Communication/Channel/VSCodeChannel';
@@ -26,6 +27,8 @@ export class QueryEditorTab {
     public static readonly title = 'Query Editor';
     public static readonly viewType = 'cosmosDbQuery';
     public static readonly openTabs: Set<QueryEditorTab> = new Set<QueryEditorTab>();
+
+    private static telemetryContext: TelemetryContext;
 
     public readonly channel: Channel;
     public readonly panel: vscode.WebviewPanel;
@@ -49,6 +52,10 @@ export class QueryEditorTab {
     }
 
     public static render(connection?: NoSqlQueryConnection, viewColumn?: vscode.ViewColumn): QueryEditorTab {
+        if (!QueryEditorTab.telemetryContext) {
+            QueryEditorTab.telemetryContext = new TelemetryContext(connection);
+        }
+
         const column = viewColumn ?? vscode.ViewColumn.One;
         if (connection) {
             const openTab = [...QueryEditorTab.openTabs].find(
@@ -201,8 +208,11 @@ export class QueryEditorTab {
                 return this.connectToDatabase();
             case 'disconnectFromDatabase':
                 return this.disconnectFromDatabase();
-            case 'runQuery':
-                return this.runQuery(payload.params[0] as string, payload.params[1] as ResultViewMetadata);
+            case 'runQuery': {
+                const queryText = payload.params[0] as string;
+                QueryEditorTab.telemetryContext.addMaskedValue(queryText);
+                return this.runQuery(queryText, payload.params[1] as ResultViewMetadata);
+            }
             case 'stopQuery':
                 return this.stopQuery(payload.params[0] as string);
             case 'nextPage':
@@ -211,15 +221,12 @@ export class QueryEditorTab {
                 return this.prevPage(payload.params[0] as string);
             case 'firstPage':
                 return this.firstPage(payload.params[0] as string);
-            case 'reportError': {
-                const msg = payload.params[0] as string;
-                const details = payload.params[1] as string;
-                console.log('Report error here', msg, details);
-                return Promise.resolve();
-            }
-            // return callWithTelemetryAndErrorHandling('cosmosDBQuery', (_) => {
-            //     throw new Error(payload.params[0] as string);
-            // });
+            case 'reportError':
+                return QueryEditorTab.telemetryContext.reportError(
+                    payload.params[0] as string,
+                    payload.params[1] as string,
+                    payload.params[2] as string,
+                );
             default:
                 throw new Error(`Unknown command: ${commandName}`);
         }

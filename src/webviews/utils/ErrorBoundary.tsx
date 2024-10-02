@@ -12,7 +12,7 @@ import { useQueryEditorDispatcher } from "../QueryEditor/state/QueryEditorContex
 
 export const ErrorBoundary: React.FC<{ style?: React.CSSProperties, children?: React.ReactNode }> = ({ style, children }) => {
     const dispatcher = useQueryEditorDispatcher();
-    return <ErrorBoundaryComponent style={style} onError={(error) => void dispatcher.reportError(error)} children={children} />;
+    return <ErrorBoundaryComponent style={style} onError={(message, stack, componentStack) => void dispatcher.reportError(message, stack, componentStack)} children={children} />;
 }
 
 const useStyles = makeStyles({
@@ -46,7 +46,7 @@ type ErrorBoundaryState = {
 type ErrorBoundaryProps = {
     children: React.ReactNode;
     style?: React.CSSProperties;
-    onError?: (message: string, details: string | null | undefined) => void;
+    onError?: (message: string, stack: string | undefined, componentStack: string | null | undefined) => void;
 };
 
 class ErrorBoundaryComponent extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -60,9 +60,8 @@ class ErrorBoundaryComponent extends React.Component<ErrorBoundaryProps, ErrorBo
     }
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-        console.error("ErrorBoundary caught an error", this.state.error);
-        // Transition to error state send telemetry
-        this.props.onError?.(error.message, errorInfo?.componentStack);
+        // Error is not JSON serializable, send only relevant fields
+        this.props.onError?.(error.message, error.stack, errorInfo?.componentStack);
 
         this.setState({
             errorInfo,

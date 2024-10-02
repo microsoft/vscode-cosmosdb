@@ -15,6 +15,7 @@ import { randomBytes } from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import { DocumentsViewController } from '../webviews/mongoClusters/documentView/DocumentsViewController';
 import { MongoClustersClient } from './MongoClustersClient';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
 import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
@@ -114,113 +115,130 @@ export class MongoClustersExtension implements vscode.Disposable {
             mode?: string;
         },
     ): void {
-        const panel = vscode.window.createWebviewPanel(
-            'mongoClusters.documentView.view', // Identifies the type of the webview. Used internally
-            _props.viewTitle, // Title of the panel displayed to the user
-            vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
+
+        const view = new DocumentsViewController(
             {
-                enableScripts: true,
-                enableCommandUris: true,
-                retainContextWhenHidden: true,
-            },
-        );
+                id : _props.id,
 
-        panel.webview.onDidReceiveMessage(async (message) => {
+                liveConnectionId: _props.liveConnectionId,
+                databaseName: _props.databaseName,
+                collectionName: _props.collectionName,
+                documentId: _props.documentId,
 
-            function extractIdFromJson(jsonString: string): string | null {
-                let extractedId: string | null = null;
+                documentContent: _props.documentContent,
+                mode: _props.mode ?? 'view',
+            })
 
-                // Use JSON.parse with a reviver function
-                JSON.parse(jsonString, (key, value) => {
-                  if (key === "_id") {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                    extractedId = value;  // Extract _id when found
-                  }
-                  // Return the value to keep parsing
-                  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-                  return value;
-                });
+        view.revealToForeground();
 
-                return extractedId;
-              }
 
-            console.log('Webview->Ext:', JSON.stringify(message, null, 2));
+        // const panel = vscode.window.createWebviewPanel(
+        //     'mongoClusters.documentView.view', // Identifies the type of the webview. Used internally
+        //     _props.viewTitle, // Title of the panel displayed to the user
+        //     vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
+        //     {
+        //         enableScripts: true,
+        //         enableCommandUris: true,
+        //         retainContextWhenHidden: true,
+        //     },
+        // );
 
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            const messageType = message?.type as string;
-
-            switch (messageType) {
-                case 'request.documentView.refreshDocument': {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                    const documentId = (message?.payload?.documentId as string) ?? '';
-
-                    // run query
-                    const client: MongoClustersClient = await MongoClustersClient.getClient(_props.liveConnectionId);
-                    const documentContent = await client.pointRead(
-                        _props.databaseName,
-                        _props.collectionName,
-                        documentId,
-                    );
-
-                    const documentContetntAsString = JSON.stringify(documentContent, null, 4);
-
-                    void panel.webview.postMessage({
-                        type: 'response.documentView.refreshDocument',
-                        payload: { documentContent: documentContetntAsString },
-                    });
-
-                    break;
-                }
-                case 'request.documentView.saveDocument': {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                    const documentContent = message?.payload?.documentContent as string;
-
-                    const documentId = extractIdFromJson(documentContent) ?? '';
-
-                    // run query
-                    const client: MongoClustersClient = await MongoClustersClient.getClient(_props.liveConnectionId);
-
-                    // when a document is saved and is missing an _id field, the _id field is added on the server
-                    // or by the mongodb driver.
-                    const upsertResult = await client.upsertDocument(
-                        _props.databaseName,
-                        _props.collectionName,
-                        documentId,
-                        documentContent,
-                    );
-
-                    const objectId = upsertResult?.updateResult.upsertedId?.toString() ?? documentId;
-
-                    panel.title = `${_props.databaseName}/${_props.collectionName}/${objectId}`;
-
-                    const newDocumentContetntAsString = JSON.stringify(upsertResult.documentContent, null, 4);
-
-                    void panel.webview.postMessage({
-                        type: 'response.documentView.saveDocument',
-                        payload: { documentContent: newDocumentContetntAsString, documentId: objectId },
-                    });
-
-                    break;
-                }
-                default:
-                    break;
-            }
-        });
-
-        panel.webview.html = getDocumentViewContentReact(
-            panel.webview,
-            _props?.id ?? '',
-            _props?.liveConnectionId ?? '',
-            _props?.databaseName ?? '',
-            _props?.collectionName ?? '',
-            _props?.documentId ?? '',
-            _props?.documentContent ?? '',
-            _props?.mode ?? 'view',
-        );
-
-        panel.webview.onDidReceiveMessage(async (message) => {
-            console.log('Webview->Ext:', JSON.stringify(message, null, 2));
-        });
+        // panel.webview.onDidReceiveMessage(async (message) => {
+        //
+        //     function extractIdFromJson(jsonString: string): string | null {
+        //         let extractedId: string | null = null;
+        //
+        //         // Use JSON.parse with a reviver function
+        //         JSON.parse(jsonString, (key, value) => {
+        //           if (key === "_id") {
+        //             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        //             extractedId = value;  // Extract _id when found
+        //           }
+        //           // Return the value to keep parsing
+        //           // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        //           return value;
+        //         });
+        //
+        //         return extractedId;
+        //       }
+        //
+        //     console.log('Webview->Ext:', JSON.stringify(message, null, 2));
+        //
+        //     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        //     const messageType = message?.type as string;
+        //
+        //     switch (messageType) {
+        //         case 'request.documentView.refreshDocument': {
+        //             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        //             const documentId = (message?.payload?.documentId as string) ?? '';
+        //
+        //             // run query
+        //             const client: MongoClustersClient = await MongoClustersClient.getClient(_props.liveConnectionId);
+        //             const documentContent = await client.pointRead(
+        //                 _props.databaseName,
+        //                 _props.collectionName,
+        //                 documentId,
+        //             );
+        //
+        //             const documentContetntAsString = JSON.stringify(documentContent, null, 4);
+        //
+        //             void panel.webview.postMessage({
+        //                 type: 'response.documentView.refreshDocument',
+        //                 payload: { documentContent: documentContetntAsString },
+        //             });
+        //
+        //             break;
+        //         }
+        //         case 'request.documentView.saveDocument': {
+        //             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        //             const documentContent = message?.payload?.documentContent as string;
+        //
+        //             const documentId = extractIdFromJson(documentContent) ?? '';
+        //
+        //             // run query
+        //             const client: MongoClustersClient = await MongoClustersClient.getClient(_props.liveConnectionId);
+        //
+        //             // when a document is saved and is missing an _id field, the _id field is added on the server
+        //             // or by the mongodb driver.
+        //             const upsertResult = await client.upsertDocument(
+        //                 _props.databaseName,
+        //                 _props.collectionName,
+        //                 documentId,
+        //                 documentContent,
+        //             );
+        //
+        //             const objectId = upsertResult?.updateResult.upsertedId?.toString() ?? documentId;
+        //
+        //             panel.title = `${_props.databaseName}/${_props.collectionName}/${objectId}`;
+        //
+        //             const newDocumentContetntAsString = JSON.stringify(upsertResult.documentContent, null, 4);
+        //
+        //             void panel.webview.postMessage({
+        //                 type: 'response.documentView.saveDocument',
+        //                 payload: { documentContent: newDocumentContetntAsString, documentId: objectId },
+        //             });
+        //
+        //             break;
+        //         }
+        //         default:
+        //             break;
+        //     }
+        // });
+        //
+        // panel.webview.html = getDocumentViewContentReact(
+        //     panel.webview,
+        //     _props?.id ?? '',
+        //     _props?.liveConnectionId ?? '',
+        //     _props?.databaseName ?? '',
+        //     _props?.collectionName ?? '',
+        //     _props?.documentId ?? '',
+        //     _props?.documentContent ?? '',
+        //     _props?.mode ?? 'view',
+        // );
+        //
+        // panel.webview.onDidReceiveMessage(async (message) => {
+        //     console.log('Webview->Ext:', JSON.stringify(message, null, 2));
+        // });
     }
 
     getRandomArrayAndIndex(length: number): { numbers: number[]; index: number } {
@@ -476,81 +494,81 @@ const getCollectionWebviewContentReact = (
 	</html>`;
 };
 
-// ...args is just a temp solution for a MVP
-const getDocumentViewContentReact = (
-    webview?: vscode.Webview,
-    id?: string,
-    liveConnectionId?: string,
-    databaseName?: string,
-    collectionName?: string,
-    documentId?: string,
-    documentContent?: string,
-    mode?: string
-) => {
-    const devServer = !!process.env.DEVSERVER;
-    const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
-    const nonce = randomBytes(16).toString('base64');
+// // ...args is just a temp solution for a MVP
+// const getDocumentViewContentReact = (
+//     webview?: vscode.Webview,
+//     id?: string,
+//     liveConnectionId?: string,
+//     databaseName?: string,
+//     collectionName?: string,
+//     documentId?: string,
+//     documentContent?: string,
+//     mode?: string
+// ) => {
+//     const devServer = !!process.env.DEVSERVER;
+//     const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
+//     const nonce = randomBytes(16).toString('base64');
 
-    const dir = ext.isBundle ? '' : 'out/src/webviews';
-    const filename = ext.isBundle ? 'views.js' : 'index.js';
-    const uri = (...parts: string[]) =>
-        webview?.asWebviewUri(vscode.Uri.file(path.join(ext.context.extensionPath, dir, ...parts))).toString(true);
+//     const dir = ext.isBundle ? '' : 'out/src/webviews';
+//     const filename = ext.isBundle ? 'views.js' : 'index.js';
+//     const uri = (...parts: string[]) =>
+//         webview?.asWebviewUri(vscode.Uri.file(path.join(ext.context.extensionPath, dir, ...parts))).toString(true);
 
-    const publicPath = isProduction || !devServer ? uri() : `${DEV_SERVER_HOST}/`;
-    const srcUri = isProduction || !devServer ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
+//     const publicPath = isProduction || !devServer ? uri() : `${DEV_SERVER_HOST}/`;
+//     const srcUri = isProduction || !devServer ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
 
-    const csp = (
-        isProduction
-            ? [
-                  `form-action 'none';`,
-                  `default-src ${webview?.cspSource};`,
-                  `script-src ${webview?.cspSource} 'nonce-${nonce}';`,
-                  `style-src ${webview?.cspSource} vscode-resource: 'unsafe-inline';`,
-                  `img-src ${webview?.cspSource} data: vscode-resource:;`,
-                  `connect-src ${webview?.cspSource} ws:;`,
-                  `font-src ${webview?.cspSource};`,
-                  `worker-src ${webview?.cspSource} blob:;`,
-              ]
-            : [
-                  `form-action 'none';`,
-                  `default-src ${DEV_SERVER_HOST};`,
-                  `script-src ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
-                  `style-src ${DEV_SERVER_HOST} vscode-resource: 'unsafe-inline';`,
-                  `img-src ${DEV_SERVER_HOST} data: vscode-resource:;`,
-                  `connect-src ${DEV_SERVER_HOST} ws:;`,
-                  `font-src ${DEV_SERVER_HOST};`,
-                  `worker-src ${DEV_SERVER_HOST} blob:;`,
-              ]
-    ).join(' ');
+//     const csp = (
+//         isProduction
+//             ? [
+//                   `form-action 'none';`,
+//                   `default-src ${webview?.cspSource};`,
+//                   `script-src ${webview?.cspSource} 'nonce-${nonce}';`,
+//                   `style-src ${webview?.cspSource} vscode-resource: 'unsafe-inline';`,
+//                   `img-src ${webview?.cspSource} data: vscode-resource:;`,
+//                   `connect-src ${webview?.cspSource} ws:;`,
+//                   `font-src ${webview?.cspSource};`,
+//                   `worker-src ${webview?.cspSource} blob:;`,
+//               ]
+//             : [
+//                   `form-action 'none';`,
+//                   `default-src ${DEV_SERVER_HOST};`,
+//                   `script-src ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
+//                   `style-src ${DEV_SERVER_HOST} vscode-resource: 'unsafe-inline';`,
+//                   `img-src ${DEV_SERVER_HOST} data: vscode-resource:;`,
+//                   `connect-src ${DEV_SERVER_HOST} ws:;`,
+//                   `font-src ${DEV_SERVER_HOST};`,
+//                   `worker-src ${DEV_SERVER_HOST} blob:;`,
+//               ]
+//     ).join(' ');
 
-    return `<!DOCTYPE html>
-	<html lang="en">
-	<head>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="Content-Security-Policy" content="${csp}" />
-	</head>
-	<body>
-		<div id="root"></div>
+//     return `<!DOCTYPE html>
+// 	<html lang="en">
+// 	<head>
+// 		<meta charset="UTF-8">
+// 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+//         <meta http-equiv="Content-Security-Policy" content="${csp}" />
+// 	</head>
+// 	<body>
+// 		<div id="root"></div>
 
-            <script type="module" nonce="${nonce}">
-                window.config = {
-                    ...window.config,
-                    __id: '${id}',
-                    __liveConnectionId: '${liveConnectionId}',
-                    __databaseName: '${databaseName}',
-                    __collectionName: '${collectionName}',
-                    __documentId: '${documentId}',
-                    __documentContent: '${documentContent}',
-                    __mode: '${mode}',
-                    __vsCodeApi: acquireVsCodeApi(),
-                };
+//             <script type="module" nonce="${nonce}">
+//                 window.config = {
+//                     ...window.config,
+//                     __id: '${id}',
+//                     __liveConnectionId: '${liveConnectionId}',
+//                     __databaseName: '${databaseName}',
+//                     __collectionName: '${collectionName}',
+//                     __documentId: '${documentId}',
+//                     __documentContent: '${documentContent}',
+//                     __mode: '${mode}',
+//                     __vsCodeApi: acquireVsCodeApi(),
+//                 };
 
-                import { render } from "${srcUri}";
-                render('mongoClustersDocumentView', window.config.__vsCodeApi, "${publicPath}");
-            </script>
+//                 import { render } from "${srcUri}";
+//                 render('mongoClustersDocumentView', window.config.__vsCodeApi, "${publicPath}");
+//             </script>
 
 
-	</body>
-	</html>`;
-};
+// 	</body>
+// 	</html>`;
+// };

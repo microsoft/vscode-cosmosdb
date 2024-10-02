@@ -13,50 +13,40 @@ const DEV_SERVER_HOST = 'http://localhost:18080';
  * @template SharedState The type of the state object that the webview and extension will share
  * @template Reducers The type of the reducers that the webview will use
  */
-export abstract class ReactWebviewBaseController<SharedState, Reducers>
-    implements vscode.Disposable
-{
+export abstract class ReactWebviewBaseController<SharedState, Reducers> implements vscode.Disposable {
     private _disposables: vscode.Disposable[] = [];
     private _isDisposed: boolean = false;
     private _state: SharedState;
-    private _webviewRequestHandlers: { [key: string]: (params: any) => any } =
-        {};
+    private _webviewRequestHandlers: { [key: string]: (params: unknown) => unknown } = {};
     private _reducers: Record<
         keyof Reducers,
-        (
-            state: SharedState,
-            payload: Reducers[keyof Reducers],
-        ) => ReducerResponse<SharedState>
+        (state: SharedState, payload: Reducers[keyof Reducers]) => ReducerResponse<SharedState>
     > = {} as Record<
         keyof Reducers,
-        (
-            state: SharedState,
-            payload: Reducers[keyof Reducers],
-        ) => ReducerResponse<SharedState>
+        (state: SharedState, payload: Reducers[keyof Reducers]) => ReducerResponse<SharedState>
     >;
 
-    private _isFirstLoad: boolean = true;
-    private _loadStartTime: number = Date.now();
-    private _onDisposed: vscode.EventEmitter<void> =
-        new vscode.EventEmitter<void>();
+    // private _isFirstLoad: boolean = true;
+    // private _loadStartTime: number = Date.now();
+    private _onDisposed: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
 
     public readonly onDisposed: vscode.Event<void> = this._onDisposed.event;
 
     // TODO: TN fix typing
 
     protected _webviewMessageHandler = async (message) => {
-        if (message.type === "request") {
+        if (message.type === 'request') {
             const handler = this._webviewRequestHandlers[message.method];
             if (handler) {
                 //const _startTime = Date.now();
                 const result = await handler(message.params);
-                this.postMessage({ type: "response", id: message.id, result });
+                this.postMessage({ type: 'response', id: message.id, result });
                 //const _endTime = Date.now();
                 // sendActionEvent( --> TELEMETRY
                 //     TelemetryViews.WebviewController,
                 //     TelemetryActions.WebviewRequest,
                 //     {
-                //         type: this._sourceFile,
+                //         type: this._webviewName,
                 //         method: message.method,
                 //         reducer:
                 //             message.method === "action"
@@ -68,9 +58,7 @@ export abstract class ReactWebviewBaseController<SharedState, Reducers>
                 //     },
                 // );
             } else {
-                throw new Error(
-                    `No handler registered for method ${message.method}`,
-                );
+                throw new Error(`No handler registered for method ${message.method}`);
             }
         }
     };
@@ -78,17 +66,18 @@ export abstract class ReactWebviewBaseController<SharedState, Reducers>
     /**
      * Creates a new ReactWebviewPanelController
      * @param _context The context of the extension
-     * @param _sourceFile The source file that the webview will use
+     * @param _webviewName The source file that the webview will use
      * @param _initialData The initial state object that the webview will use
      */
     constructor(
         protected _context: vscode.ExtensionContext,
-        private _sourceFile: string,
-        private _initialData: SharedState,
-    ) {}
+        private _webviewName: string,
+        _initialData: SharedState,
+    ) {
+        this.state = _initialData;
+    }
 
     protected initializeBase() {
-        this.state = this._initialData;
         this._registerDefaultRequestHandlers();
         this.setupTheming();
     }
@@ -98,7 +87,6 @@ export abstract class ReactWebviewBaseController<SharedState, Reducers>
     }
 
     protected getDocumentTemplate(
-        webviewName: string,
         webview?: vscode.Webview,
         id?: string,
         liveConnectionId?: string,
@@ -106,7 +94,7 @@ export abstract class ReactWebviewBaseController<SharedState, Reducers>
         collectionName?: string,
         documentId?: string,
         documentContent?: string,
-        mode?: string
+        mode?: string,
     ) {
         const devServer = !!process.env.DEVSERVER;
         const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
@@ -123,25 +111,25 @@ export abstract class ReactWebviewBaseController<SharedState, Reducers>
         const csp = (
             isProduction
                 ? [
-                    `form-action 'none';`,
-                    `default-src ${webview?.cspSource};`,
-                    `script-src ${webview?.cspSource} 'nonce-${nonce}';`,
-                    `style-src ${webview?.cspSource} vscode-resource: 'unsafe-inline';`,
-                    `img-src ${webview?.cspSource} data: vscode-resource:;`,
-                    `connect-src ${webview?.cspSource} ws:;`,
-                    `font-src ${webview?.cspSource};`,
-                    `worker-src ${webview?.cspSource} blob:;`,
-                ]
+                      `form-action 'none';`,
+                      `default-src ${webview?.cspSource};`,
+                      `script-src ${webview?.cspSource} 'nonce-${nonce}';`,
+                      `style-src ${webview?.cspSource} vscode-resource: 'unsafe-inline';`,
+                      `img-src ${webview?.cspSource} data: vscode-resource:;`,
+                      `connect-src ${webview?.cspSource} ws:;`,
+                      `font-src ${webview?.cspSource};`,
+                      `worker-src ${webview?.cspSource} blob:;`,
+                  ]
                 : [
-                    `form-action 'none';`,
-                    `default-src ${DEV_SERVER_HOST};`,
-                    `script-src ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
-                    `style-src ${DEV_SERVER_HOST} vscode-resource: 'unsafe-inline';`,
-                    `img-src ${DEV_SERVER_HOST} data: vscode-resource:;`,
-                    `connect-src ${DEV_SERVER_HOST} ws:;`,
-                    `font-src ${DEV_SERVER_HOST};`,
-                    `worker-src ${DEV_SERVER_HOST} blob:;`,
-                ]
+                      `form-action 'none';`,
+                      `default-src ${DEV_SERVER_HOST};`,
+                      `script-src ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
+                      `style-src ${DEV_SERVER_HOST} vscode-resource: 'unsafe-inline';`,
+                      `img-src ${DEV_SERVER_HOST} data: vscode-resource:;`,
+                      `connect-src ${DEV_SERVER_HOST} ws:;`,
+                      `font-src ${DEV_SERVER_HOST};`,
+                      `worker-src ${DEV_SERVER_HOST} blob:;`,
+                  ]
         ).join(' ');
 
         return `<!DOCTYPE html>
@@ -150,7 +138,7 @@ export abstract class ReactWebviewBaseController<SharedState, Reducers>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta // noinspection JSAnnotator
-http-equiv="Content-Security-Policy" content="${csp}" />
+            http-equiv="Content-Security-Policy" content="${csp}" />
 	</head>
 	<body>
 		<div id="root"></div>
@@ -168,27 +156,19 @@ http-equiv="Content-Security-Policy" content="${csp}" />
             };
 
                 import { render } from "${srcUri}";
-                render('${webviewName}', acquireVsCodeApi(), "${publicPath}");
+                render('${this._webviewName}', acquireVsCodeApi(), "${publicPath}");
             </script>
 
 	</body>
 	</html>`;
     }
 
-    protected _getHtmlTemplate() {
-        const nonce =  randomBytes(16).toString('base64'); // getNonce();
+    protected _remove_getHtmlTemplate() {
+        const nonce = randomBytes(16).toString('base64'); // getNonce();
         const baseUrl =
             this._getWebview()
-                .asWebviewUri(
-                    vscode.Uri.joinPath(
-                        this._context.extensionUri,
-                        "out",
-                        "src",
-                        "reactviews",
-                        "assets",
-                    ),
-                )
-                .toString() + "/";
+                .asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'out', 'src', 'reactviews', 'assets'))
+                .toString() + '/';
 
         return `
 		<!DOCTYPE html>
@@ -208,9 +188,9 @@ http-equiv="Content-Security-Policy" content="${csp}" />
 				</style>
 				</head>
 				<body>
-					<link rel="stylesheet" href="${this._sourceFile}.css">
+					<link rel="stylesheet" href="${this._webviewName}.css">
 					<div id="root"></div>
-				  	<script type="module" nonce="${nonce}" src="${this._sourceFile}.js"></script> <!-- since our bundles are in esm format we need to use type="module" -->
+				  	<script type="module" nonce="${nonce}" src="${this._webviewName}.js"></script> <!-- since our bundles are in esm format we need to use type="module" -->
 				</body>
 			</html>
 		`;
@@ -234,47 +214,42 @@ http-equiv="Content-Security-Policy" content="${csp}" />
     }
 
     private _registerDefaultRequestHandlers() {
-        this._webviewRequestHandlers["getState"] = () => {
+        this._webviewRequestHandlers['getState'] = () => {
             return this.state;
         };
 
-        this._webviewRequestHandlers["action"] = async (action) => {
-            const reducer = this._reducers[action.type];
+        this._webviewRequestHandlers['action'] = async (action) => {
+            const typedAction = action as { type: keyof Reducers; payload: Reducers[keyof Reducers] };
+            const reducer = this._reducers[typedAction.type];
             if (reducer) {
-                this.state = await reducer(this.state, action.payload);
+                this.state = await reducer(this.state, typedAction.payload);
             } else {
-                throw new Error(
-                    `No reducer registered for action ${action.type}`,
-                );
+                throw new Error(`No reducer registered for action ${typedAction.type.toString()}`);
             }
         };
 
-        this._webviewRequestHandlers["getTheme"] = () => {
+        this._webviewRequestHandlers['getTheme'] = () => {
             return vscode.window.activeColorTheme.kind;
         };
 
-        this._webviewRequestHandlers["loadStats"] = (message) => {
-            const timeStamp = message.loadCompleteTimeStamp;
-            const timeToLoad = timeStamp - this._loadStartTime;
-            if (this._isFirstLoad) {
-                console.log(
-                    `Load stats for ${this._sourceFile}` +
-                    "\n" +
-                    `Total time: ${timeToLoad} ms`,
-                );
-                // sendActionEvent( --> TELEMETRY
-                //     TelemetryViews.WebviewController,
-                //     TelemetryActions.Load,
-                //     {
-                //         type: this._sourceFile,
-                //     },
-                //     {
-                //         durationMs: timeToLoad,
-                //     },
-                // );
-                this._isFirstLoad = false;
-            }
-        };
+        // this._webviewRequestHandlers['loadStats'] = (message) => {
+        //     const timeStamp = message.loadCompleteTimeStamp;
+        //     const timeToLoad = timeStamp - this._loadStartTime;
+        //     if (this._isFirstLoad) {
+        //         console.log(`Load stats for ${this._webviewName}` + '\n' + `Total time: ${timeToLoad} ms`);
+        //         // sendActionEvent( --> TELEMETRY
+        //         //     TelemetryViews.WebviewController,
+        //         //     TelemetryActions.Load,
+        //         //     {
+        //         //         type: this._webviewName,
+        //         //     },
+        //         //     {
+        //         //         durationMs: timeToLoad,
+        //         //     },
+        //         // );
+        //         this._isFirstLoad = false;
+        //     }
+        // };
 
         // this._webviewRequestHandlers["sendActionEvent"] = (
         //     message: WebviewTelemetryActionEvent,
@@ -302,11 +277,9 @@ http-equiv="Content-Security-Policy" content="${csp}" />
         //     );
         // };
 
-        this._webviewRequestHandlers["getLocalization"] = async () => {
+        this._webviewRequestHandlers['getLocalization'] = async () => {
             if (vscode.l10n.uri?.fsPath) {
-                const file = await vscode.workspace.fs.readFile(
-                    vscode.l10n.uri,
-                );
+                const file = await vscode.workspace.fs.readFile(vscode.l10n.uri);
                 const fileContents = Buffer.from(file).toString();
                 return fileContents;
             } else {
@@ -320,10 +293,7 @@ http-equiv="Content-Security-Policy" content="${csp}" />
      * @param method The method name that the webview will use to call the handler
      * @param handler The handler that will be called when the method is called
      */
-    public registerRequestHandler(
-        method: string,
-        handler: (params: unknown) => unknown,
-    ) {
+    public registerRequestHandler(method: string, handler: (params: unknown) => unknown) {
         this._webviewRequestHandlers[method] = handler;
     }
 
@@ -336,10 +306,7 @@ http-equiv="Content-Security-Policy" content="${csp}" />
      */
     public registerReducer<Method extends keyof Reducers>(
         method: Method,
-        reducer: (
-            state: SharedState,
-            payload: Reducers[Method],
-        ) => ReducerResponse<SharedState>,
+        reducer: (state: SharedState, payload: Reducers[Method]) => ReducerResponse<SharedState>,
     ) {
         this._reducers[method] = reducer;
     }
@@ -374,7 +341,7 @@ http-equiv="Content-Security-Policy" content="${csp}" />
      * @param params The parameters that will be passed to the method
      */
     public postNotification(method: string, params: unknown) {
-        this.postMessage({ type: "notification", method, params });
+        this.postMessage({ type: 'notification', method, params });
     }
 
     /**
@@ -399,8 +366,8 @@ http-equiv="Content-Security-Policy" content="${csp}" />
 }
 
 export enum DefaultWebviewNotifications {
-    updateState = "updateState",
-    onDidChangeTheme = "onDidChangeTheme",
+    updateState = 'updateState',
+    onDidChangeTheme = 'onDidChangeTheme',
 }
 
 export type ReducerResponse<T> = T | Promise<T>;

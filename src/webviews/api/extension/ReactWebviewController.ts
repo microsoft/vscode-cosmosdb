@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as vscode from "vscode";
-import { ReactWebviewBaseController } from "./ReactWebviewBaseController";
+import * as vscode from 'vscode';
+import { ReactWebviewBaseController } from './ReactWebviewBaseController';
 
 /**
  * ReactWebviewPanelController is a class that manages a vscode.WebviewPanel and provides
@@ -13,55 +13,56 @@ import { ReactWebviewBaseController } from "./ReactWebviewBaseController";
  * @template SharedState The type of the state object that the webview and the extension will share
  * @template Reducers The type of the reducers that the webview will use
  */
-export class ReactWebviewPanelController<
+export class ReactWebviewPanelController<SharedState, Reducers> extends ReactWebviewBaseController<
     SharedState,
-    Reducers,
-> extends ReactWebviewBaseController<SharedState, Reducers> {
+    Reducers
+> {
     private _panel: vscode.WebviewPanel;
 
     /**
      * Creates a new ReactWebviewPanelController
      * @param _context The context of the extension
      * @param title The title of the webview panel
-     * @param sourceFile The source file that the webview will use
-     * @param initialData The initial state object that the webview will use
+     * @param webviewName The source file that the webview will use
+     * @param initialState The initial state object that the webview will use
      * @param viewColumn The view column that the webview will be displayed in
      * @param _iconPath The icon path that the webview will use
      */
     constructor(
         _context: vscode.ExtensionContext,
         title: string,
-        sourceFile: string,
-        initialData: SharedState,
+        webviewName: string,
+        initialState: SharedState,
         viewColumn: vscode.ViewColumn = vscode.ViewColumn.One,
         private _iconPath?:
             | vscode.Uri
             | {
-            readonly light: vscode.Uri;
-            readonly dark: vscode.Uri;
-        },
+                  readonly light: vscode.Uri;
+                  readonly dark: vscode.Uri;
+              },
     ) {
-        super(_context, sourceFile, initialData);
-        this._panel = vscode.window.createWebviewPanel(
-            "mssql-react-webview",
-            title,
-            viewColumn,
-            {
-                enableScripts: true,
-                retainContextWhenHidden: true,
-                localResourceRoots: [
-                    vscode.Uri.file(this._context.extensionPath),
-                ],
-            },
+        super(_context, webviewName, initialState);
+
+        this._panel = vscode.window.createWebviewPanel('react-webview-' + webviewName, title, viewColumn, {
+            enableScripts: true,
+            retainContextWhenHidden: true,
+            localResourceRoots: [vscode.Uri.file(this._context.extensionPath)],
+        });
+
+        // this._panel.webview.html = this._getHtmlTemplate();
+        this._panel.webview.html = this.getDocumentTemplate(
+            this._panel.webview,
+            webviewName,
+            'asdf',
+            'dbname',
+            'collname',
+            'docid',
+            'just testing',
+            'view',
         );
 
-        this._panel.webview.html = this._getHtmlTemplate();
         this._panel.iconPath = this._iconPath;
-        this.registerDisposable(
-            this._panel.webview.onDidReceiveMessage(
-                this._webviewMessageHandler,
-            ),
-        );
+        this.registerDisposable(this._panel.webview.onDidReceiveMessage(this._webviewMessageHandler));
         this.registerDisposable(
             this._panel.onDidDispose(() => {
                 this.dispose();
@@ -87,9 +88,7 @@ export class ReactWebviewPanelController<
      * Displays the webview in the foreground
      * @param viewColumn The view column that the webview will be displayed in
      */
-    public revealToForeground(
-        viewColumn: vscode.ViewColumn = vscode.ViewColumn.One,
-    ): void {
+    public revealToForeground(viewColumn: vscode.ViewColumn = vscode.ViewColumn.One): void {
         this._panel.reveal(viewColumn, true);
     }
 }

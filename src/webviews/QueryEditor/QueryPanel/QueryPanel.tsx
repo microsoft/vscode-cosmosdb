@@ -25,6 +25,7 @@ const useClasses = makeStyles({
 
 export const QueryPanel = () => {
     const classes = useClasses();
+
     return (
         <section className={classes.container}>
             <div className={classes.toolbarContainer}>

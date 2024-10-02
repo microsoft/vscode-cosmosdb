@@ -29,6 +29,7 @@ export class TelemetryContext {
             // If it's a rendering error in the webview, swap the stack with the componentStack which is more helpful
             newError.stack = componentStack ?? stack;
 
+            // TODO Throw error when callback id is defined
             console.log('recreated error', JSON.parse(JSON.stringify(newError, Object.getOwnPropertyNames(newError))));
             // throw error;
         });

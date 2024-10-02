@@ -20,18 +20,14 @@ export class TelemetryContext {
     }
 
     public reportError = (message: string, stack: string, componentStack: string | undefined): Promise<void> =>
-        callWithTelemetryAndErrorHandling<void>('nosql.querytaberror', (actionContext) => {
+        callWithTelemetryAndErrorHandling<void>('queryTab.webviewError', (actionContext) => {
             actionContext.errorHandling.suppressDisplay = true;
             actionContext.valuesToMask = Array.from(this.valuesToMask);
 
             const newError = new Error(message);
-
             // If it's a rendering error in the webview, swap the stack with the componentStack which is more helpful
             newError.stack = componentStack ?? stack;
-
-            // TODO Throw error when callback id is defined
-            console.log('recreated error', JSON.parse(JSON.stringify(newError, Object.getOwnPropertyNames(newError))));
-            // throw error;
+            throw newError;
         });
 
     public addMaskedValue(value: string): void {

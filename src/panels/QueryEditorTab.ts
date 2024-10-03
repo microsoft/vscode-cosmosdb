@@ -212,6 +212,15 @@ export class QueryEditorTab {
                 return this.prevPage(payload.params[0] as string);
             case 'firstPage':
                 return this.firstPage(payload.params[0] as string);
+            case 'reportError': {
+                const msg = payload.params[0] as string;
+                const details = payload.params[1] as string;
+                console.log('Report error here', msg, details);
+                return Promise.resolve();
+            }
+            // return callWithTelemetryAndErrorHandling('cosmosDBQuery', (_) => {
+            //     throw new Error(payload.params[0] as string);
+            // });
             default:
                 throw new Error(`Unknown command: ${commandName}`);
         }

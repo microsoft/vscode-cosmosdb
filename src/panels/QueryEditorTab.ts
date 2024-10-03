@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { randomBytes } from 'crypto';
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import * as crypto from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { getNoSqlQueryConnection } from '../docdb/commands/connectNoSqlContainer';
@@ -93,7 +94,7 @@ export class QueryEditorTab {
         const cspSource = this.panel.webview.cspSource;
         const devServer = !!process.env.DEVSERVER;
         const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
-        const nonce = randomBytes(16).toString('base64');
+        const nonce = crypto.randomBytes(16).toString('base64');
 
         const dir = ext.isBundle ? '' : 'out/src/webviews';
         const filename = ext.isBundle ? 'views.js' : 'index.js';
@@ -249,26 +250,36 @@ export class QueryEditorTab {
             },
         };
 
-        await vscode.window.showOpenDialog(options).then((fileUri) => {
-            if (fileUri && fileUri[0]) {
-                return vscode.workspace.openTextDocument(fileUri[0]).then((document) => {
-                    void this.channel.postMessage({ type: 'event', name: 'fileOpened', params: [document.getText()] });
-                });
-            } else {
-                return undefined;
-            }
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.openFile', async () => {
+            await vscode.window.showOpenDialog(options).then((fileUri) => {
+                if (fileUri && fileUri[0]) {
+                    return vscode.workspace.openTextDocument(fileUri[0]).then((document) => {
+                        void this.channel.postMessage({
+                            type: 'event',
+                            name: 'fileOpened',
+                            params: [document.getText()],
+                        });
+                    });
+                } else {
+                    return undefined;
+                }
+            });
         });
     }
 
     private async saveFile(text: string, filename: string, ext: string): Promise<void> {
-        if (!ext.startsWith('.')) {
-            ext = `.${ext}`;
-        }
-        await vscodeUtil.showNewFile(text, filename, ext);
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.saveFile', async () => {
+            if (!ext.startsWith('.')) {
+                ext = `.${ext}`;
+            }
+            await vscodeUtil.showNewFile(text, filename, ext);
+        });
     }
 
     private async copyToClipboard(text: string): Promise<void> {
-        await vscode.env.clipboard.writeText(text);
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.copyToClipboard', async () => {
+            await vscode.env.clipboard.writeText(text);
+        });
     }
 
     private async showInformationMessage(message: string) {
@@ -280,75 +291,103 @@ export class QueryEditorTab {
     }
 
     private async connectToDatabase(): Promise<void> {
-        await getNoSqlQueryConnection().then(async (connection) => {
-            if (connection) {
-                await this.updateConnection(connection);
-            }
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.connectToDatabase', async (context) => {
+            await getNoSqlQueryConnection().then(async (connection) => {
+                if (connection) {
+                    context.telemetry.properties.databaseId = connection.databaseId;
+                    context.telemetry.properties.containerId = connection.containerId;
+                    context.telemetry.properties.isEmulator = connection.isEmulator.toString();
+
+                    await this.updateConnection(connection);
+                }
+            });
         });
     }
 
     private async disconnectFromDatabase(): Promise<void> {
-        return this.updateConnection(undefined);
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.disconnectFromDatabase', async () => {
+            return this.updateConnection(undefined);
+        });
     }
 
     private async runQuery(query: string, options: ResultViewMetadata): Promise<void> {
-        if (!this.connection) {
-            throw new Error('No connection');
-        }
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.runQuery', async (context) => {
+            if (!this.connection) {
+                throw new Error('No connection');
+            }
 
-        const session = new CosmosDBSession(this.connection, this.channel, query, options);
+            const session = new CosmosDBSession(this.connection, this.channel, query, options);
 
-        this.sessions.set(session.id, session);
+            context.telemetry.properties.executionId = session.id;
 
-        await session.run();
+            this.sessions.set(session.id, session);
+
+            await session.run();
+        });
     }
 
     private async stopQuery(executionId: string): Promise<void> {
-        const session = this.sessions.get(executionId);
-        if (!session) {
-            throw new Error(`No session found for executionId: ${executionId}`);
-        }
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.stopQuery', async (context) => {
+            context.telemetry.properties.executionId = executionId;
 
-        await session.stop();
-        this.sessions.delete(executionId);
+            const session = this.sessions.get(executionId);
+            if (!session) {
+                throw new Error(`No session found for executionId: ${executionId}`);
+            }
+
+            await session.stop();
+            this.sessions.delete(executionId);
+        });
     }
 
     private async nextPage(executionId: string): Promise<void> {
-        if (!this.connection) {
-            throw new Error('No connection');
-        }
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.nextPage', async (context) => {
+            context.telemetry.properties.executionId = executionId;
 
-        const session = this.sessions.get(executionId);
-        if (!session) {
-            throw new Error(`No session found for executionId: ${executionId}`);
-        }
+            if (!this.connection) {
+                throw new Error('No connection');
+            }
 
-        await session.nextPage();
+            const session = this.sessions.get(executionId);
+            if (!session) {
+                throw new Error(`No session found for executionId: ${executionId}`);
+            }
+
+            await session.nextPage();
+        });
     }
 
     private async prevPage(executionId: string): Promise<void> {
-        if (!this.connection) {
-            throw new Error('No connection');
-        }
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.prevPage', async (context) => {
+            context.telemetry.properties.executionId = executionId;
 
-        const session = this.sessions.get(executionId);
-        if (!session) {
-            throw new Error(`No session found for executionId: ${executionId}`);
-        }
+            if (!this.connection) {
+                throw new Error('No connection');
+            }
 
-        await session.prevPage();
+            const session = this.sessions.get(executionId);
+            if (!session) {
+                throw new Error(`No session found for executionId: ${executionId}`);
+            }
+
+            await session.prevPage();
+        });
     }
 
     private async firstPage(executionId: string): Promise<void> {
-        if (!this.connection) {
-            throw new Error('No connection');
-        }
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.firstPage', async (context) => {
+            context.telemetry.properties.executionId = executionId;
 
-        const session = this.sessions.get(executionId);
-        if (!session) {
-            throw new Error(`No session found for executionId: ${executionId}`);
-        }
+            if (!this.connection) {
+                throw new Error('No connection');
+            }
 
-        await session.firstPage();
+            const session = this.sessions.get(executionId);
+            if (!session) {
+                throw new Error(`No session found for executionId: ${executionId}`);
+            }
+
+            await session.firstPage();
+        });
     }
 }

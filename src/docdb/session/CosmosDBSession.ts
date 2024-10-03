@@ -4,6 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AbortError, ErrorResponse, TimeoutError, type CosmosClient, type QueryIterator } from '@azure/cosmos';
+import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
@@ -20,6 +22,9 @@ export class CosmosDBSession {
     private readonly containerId: string;
     private readonly resultViewMetadata: ResultViewMetadata = {};
     private readonly query: string;
+    // For telemetry
+    private readonly endpoint: string;
+    private readonly masterKey: string;
 
     private readonly sessionResult: SessionResult;
 
@@ -46,6 +51,8 @@ export class CosmosDBSession {
         this.client = getCosmosClient(endpoint, credentials, isEmulator);
         this.databaseId = databaseId;
         this.containerId = containerId;
+        this.endpoint = endpoint;
+        this.masterKey = masterKey ?? '';
         this.resultViewMetadata = resultViewMetadata;
         this.query = query;
 
@@ -53,114 +60,150 @@ export class CosmosDBSession {
     }
 
     public async run(): Promise<void> {
-        if (this.isDisposed || this.iterator) {
-            return;
-        }
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.run', async (context) => {
+            this.setTelemetryProperties(context);
 
-        try {
-            this.abortController = new AbortController();
-            this.iterator = this.client
-                .database(this.databaseId)
-                .container(this.containerId)
-                .items.query(this.query, {
-                    abortSignal: this.abortController.signal,
-                    populateQueryMetrics: true,
-                    maxItemCount: this.resultViewMetadata?.countPerPage ?? 100,
-                    maxDegreeOfParallelism: 1000,
-                    bufferItems: true,
-                });
-
-            if (this.resultViewMetadata.countPerPage === -1) {
-                await this.fetchAll();
-            } else {
-                await this.nextPage();
+            if (this.isDisposed) {
+                throw new Error('Session is disposed');
             }
-        } catch (error) {
-            await this.errorHandling(error);
-        }
+
+            if (this.iterator) {
+                throw new Error('Session is already running');
+            }
+
+            try {
+                this.abortController = new AbortController();
+                this.iterator = this.client
+                    .database(this.databaseId)
+                    .container(this.containerId)
+                    .items.query(this.query, {
+                        abortSignal: this.abortController.signal,
+                        populateQueryMetrics: true,
+                        maxItemCount: this.resultViewMetadata?.countPerPage ?? 100,
+                        maxDegreeOfParallelism: 1000,
+                        bufferItems: true,
+                    });
+
+                if (this.resultViewMetadata.countPerPage === -1) {
+                    await this.fetchAll();
+                } else {
+                    await this.nextPage();
+                }
+            } catch (error) {
+                await this.errorHandling(error);
+            }
+        });
     }
 
     public async fetchAll(): Promise<void> {
-        if (this.isDisposed || !this.iterator) {
-            return;
-        }
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.fetchAll', async (context) => {
+            this.setTelemetryProperties(context);
 
-        try {
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'executionStarted',
-                params: [this.id],
+            if (this.isDisposed) {
+                throw new Error('Session is disposed');
+            }
+
+            if (!this.iterator) {
+                throw new Error('Session is not running! Please run the session first');
+            }
+
+            await this.wrappedFetch(async () => {
+                const response = await this.iterator!.fetchAll();
+                this.sessionResult.push(response);
             });
-
-            const response = await this.iterator.fetchAll();
-            this.sessionResult.push(response);
-
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'queryResults',
-                params: [this.id, this.sessionResult.getSerializedResult(this.sessionResult.iterationsCount)],
-            });
-        } catch (error) {
-            await this.errorHandling(error);
-        }
+        });
     }
 
     public async nextPage(): Promise<void> {
-        if (this.isDisposed || !this.iterator) {
-            return;
-        }
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.nextPage', async (context) => {
+            this.setTelemetryProperties(context);
 
-        if (this.resultViewMetadata.countPerPage === -1) {
-            // TODO: Send telemetry. It should not happen
-            return;
-        }
-
-        await this.wrappedFetch(async () => {
-            if (this.currentIteration + 1 > this.sessionResult.iterationsCount) {
-                const response = await this.iterator!.fetchNext();
-                this.sessionResult.push(response);
+            if (this.isDisposed) {
+                throw new Error('Session is disposed');
             }
 
-            this.currentIteration++;
+            if (!this.iterator) {
+                throw new Error('Session is not running! Please run the session first');
+            }
+
+            if (this.resultViewMetadata.countPerPage === -1) {
+                throw new Error('Cannot fetch next page if all records have been fetched before');
+            }
+
+            await this.wrappedFetch(async () => {
+                if (this.currentIteration + 1 > this.sessionResult.iterationsCount) {
+                    const response = await this.iterator!.fetchNext();
+                    this.sessionResult.push(response);
+                }
+
+                this.currentIteration++;
+            });
         });
     }
 
     public async prevPage(): Promise<void> {
-        if (this.isDisposed || !this.iterator) {
-            return;
-        }
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.prevPage', async (context) => {
+            this.setTelemetryProperties(context);
 
-        if (this.resultViewMetadata.countPerPage === -1) {
-            // TODO: Send telemetry. It should not happen
-            return;
-        }
+            if (this.isDisposed) {
+                throw new Error('Session is disposed');
+            }
 
-        if (this.currentIteration - 1 < 0) {
-            return;
-        }
+            if (!this.iterator) {
+                throw new Error('Session is not running! Please run the session first');
+            }
 
-        await this.wrappedFetch(async () => {
-            this.currentIteration--;
+            if (this.resultViewMetadata.countPerPage === -1) {
+                throw new Error('Cannot fetch previous page if all records have been fetched before');
+            }
+
+            if (this.currentIteration - 1 < 0) {
+                throw new Error('Cannot fetch previous page if current page is the first page');
+            }
+
+            await this.wrappedFetch(async () => {
+                this.currentIteration--;
+            });
         });
     }
 
     public async firstPage(): Promise<void> {
-        if (this.isDisposed || !this.iterator) {
-            return;
-        }
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.firstPage', async (context) => {
+            this.setTelemetryProperties(context);
 
-        await this.wrappedFetch(async () => {
-            this.currentIteration = 0;
+            if (this.isDisposed) {
+                throw new Error('Session is disposed');
+            }
+
+            if (!this.iterator) {
+                throw new Error('Session is not running! Please run the session first');
+            }
+
+            await this.wrappedFetch(async () => {
+                this.currentIteration = 0;
+            });
         });
     }
 
     public async stop(): Promise<void> {
-        this.abortController?.abort();
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.stop', async (context) => {
+            this.setTelemetryProperties(context);
 
-        await this.channel.postMessage({
-            type: 'event',
-            name: 'executionStopped',
-            params: [this.id],
+            if (this.isDisposed) {
+                throw new Error('Session is disposed');
+            }
+
+            if (!this.iterator) {
+                throw new Error('Session is not running! Please run the session first');
+            }
+
+            this.abortController?.abort();
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'executionStopped',
+                params: [this.id],
+            });
         });
     }
 
@@ -197,6 +240,8 @@ export class CosmosDBSession {
                 params: [this.id, getErrorMessage(error)],
             });
         }
+
+        throw error;
     }
 
     private async wrappedFetch(action: () => Promise<void>): Promise<void> {
@@ -217,5 +262,19 @@ export class CosmosDBSession {
         } catch (error) {
             await this.errorHandling(error);
         }
+    }
+
+    private setTelemetryProperties(context: IActionContext): void {
+        context.valuesToMask.push(this.query, this.masterKey, this.endpoint, this.databaseId, this.containerId);
+
+        context.telemetry.eventVersion = 1;
+
+        context.errorHandling.suppressReportIssue = true;
+
+        context.telemetry.properties.sessionId = this.id;
+        context.telemetry.properties.query = crypto.createHash('sha256').update(this.query).digest('hex');
+        context.telemetry.properties.databaseId = crypto.createHash('sha256').update(this.databaseId).digest('hex');
+        context.telemetry.properties.containerId = crypto.createHash('sha256').update(this.containerId).digest('hex');
+        context.telemetry.properties.countPerPage = this.resultViewMetadata?.countPerPage?.toString() ?? '';
     }
 }

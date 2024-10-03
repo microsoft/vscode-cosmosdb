@@ -68,12 +68,21 @@ export class QueryEditorContextProvider {
     }
 
     public setTableViewMode(mode: TableViewMode) {
+        void this.reportEvent('setTableViewMode', { mode });
         this.dispatch({ type: 'setTableViewMode', mode });
     }
     public setEditMode(mode: EditMode) {
+        void this.reportEvent('setEditMode', { mode });
         this.dispatch({ type: 'setEditMode', mode });
     }
 
+    public async reportEvent(
+        eventName: string,
+        properties: Record<string, string> = {},
+        measurements: Record<string, number> = {},
+    ) {
+        await this.sendCommand('reportEvent', eventName, properties, measurements);
+    }
     public async reportError(message: string, stack: string | undefined, componentStack: string | null | undefined) {
         // Error is not JSON serializable, so the original Error object cannot be sent to the webview host.
         // Send only the relevant fields

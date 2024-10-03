@@ -6,6 +6,7 @@
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as crypto from 'crypto';
 import * as path from 'path';
+import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { getNoSqlQueryConnection } from '../docdb/commands/connectNoSqlContainer';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
@@ -35,11 +36,17 @@ export class QueryEditorTab {
     public readonly panel: vscode.WebviewPanel;
     public readonly sessions = new Map<string, CosmosDBSession>();
 
+    private readonly id: string;
+    private readonly start: number;
+
     private connection: NoSqlQueryConnection | undefined;
     private disposables: vscode.Disposable[] = [];
 
     private constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection) {
         QueryEditorTab.openTabs.add(this);
+
+        this.id = uuid();
+        this.start = Date.now();
 
         this.channel = new VSCodeChannel(panel.webview);
         this.panel = panel;
@@ -50,6 +57,11 @@ export class QueryEditorTab {
         this.panel.webview.html = this.getWebviewContent();
 
         this.initController();
+
+        void QueryEditorTab.telemetryContext.reportEvent('webviewOpened', {
+            panelId: this.id,
+            hasConnection: connection ? 'true' : 'false',
+        });
     }
 
     public static render(connection?: NoSqlQueryConnection, viewColumn?: vscode.ViewColumn): QueryEditorTab {
@@ -94,6 +106,14 @@ export class QueryEditorTab {
                 disposable.dispose();
             }
         }
+
+        void QueryEditorTab.telemetryContext.reportEvent(
+            'webviewClosed',
+            {
+                panelId: this.id,
+            },
+            { openedTime: (Date.now() - this.start) / 1000 },
+        );
     }
 
     private getWebviewContent(): string {
@@ -219,6 +239,12 @@ export class QueryEditorTab {
                 return this.prevPage(payload.params[0] as string);
             case 'firstPage':
                 return this.firstPage(payload.params[0] as string);
+            case 'reportEvent':
+                return QueryEditorTab.telemetryContext.reportEvent(
+                    payload.params[0] as string,
+                    payload.params[1] as Record<string, string>,
+                    payload.params[2] as Record<string, number>,
+                );
             case 'reportError':
                 return QueryEditorTab.telemetryContext.reportError(
                     payload.params[0] as string,

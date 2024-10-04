@@ -228,9 +228,6 @@ export class MongoClustersClient {
 
     async createDatabase(databaseName: string): Promise<boolean> {
         try {
-            await new Promise((resolve) => {
-                setTimeout(resolve, 5000);
-            });
             const newCollection = await this._mongoClient
                 .db(databaseName)
                 .createCollection('_dummy_collection_creation_forces_db_creation');

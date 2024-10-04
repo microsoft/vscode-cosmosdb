@@ -3,10 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createGenericElement, type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import {
+    createGenericElement,
+    nonNullValue,
+    type IActionContext,
+    type TreeElementBase,
+} from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
-import { type CollectionItemModel, type DatabaseItemModel } from '../MongoClustersClient';
+import { ext } from '../../extensionVariables';
+import { MongoClustersClient, type CollectionItemModel, type DatabaseItemModel } from '../MongoClustersClient';
 import { IndexesItem } from './IndexesItem';
 import { type MongoClusterItemBase, type MongoClusterModel } from './MongoClusterItem';
 
@@ -42,13 +48,26 @@ export class CollectionItem implements MongoClusterItemBase {
                 ],
                 iconPath: new ThemeIcon('explorer-view-icon'),
             }),
-            new IndexesItem(this.subscription, this.mongoCluster, this.databaseInfo, this.collectionInfo)
+            new IndexesItem(this.subscription, this.mongoCluster, this.databaseInfo, this.collectionInfo),
         ];
+    }
+
+    async delete(_context: IActionContext): Promise<boolean> {
+        const client = await MongoClustersClient.getClient(nonNullValue(this.mongoCluster.session?.credentialId));
+
+        await ext.state.showDeleting(this.id, async () => {
+            await client.dropCollection(this.databaseInfo.name, this.collectionInfo.name);
+        });
+
+        ext.state.notifyChildrenChanged(`${this.mongoCluster.id}/${this.databaseInfo.name}`);
+
+        return true;
     }
 
     getTreeItem(): TreeItem {
         return {
             id: this.id,
+            contextValue: 'mongoClusters.item.collection',
             label: this.collectionInfo.name,
             iconPath: new ThemeIcon('folder-opened'),
             collapsibleState: TreeItemCollapsibleState.Collapsed,

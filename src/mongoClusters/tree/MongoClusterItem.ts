@@ -25,7 +25,7 @@ import { CredentialCache } from '../CredentialCache';
 import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersClient';
 import { addAuthenticationDataToConnectionString } from '../utils/connectionStringHelpers';
 import { listMongoClusterNonAdminUsers } from '../utils/listMongoClusterUsers';
-import { type IAuthenticateWizardContext } from '../wizards/authenticate/IAuthenticateWizardContext';
+import { type AuthenticateWizardContext } from '../wizards/authenticate/AuthenticateWizardContext';
 import { ProvidePasswordStep } from '../wizards/authenticate/ProvidePasswordStep';
 import { SelectUserNameStep } from '../wizards/authenticate/SelectUserNameStep';
 import { DatabaseItem } from './DatabaseItem';
@@ -110,7 +110,7 @@ export class MongoClusterItem implements MongoClusterItemBase {
 
                 ext.outputChannel.appendLine(`discovered ${clusterNonAdminUsers.length} non-admin user(s).`);
 
-                const wizardContext: IAuthenticateWizardContext = {
+                const wizardContext: AuthenticateWizardContext = {
                     ...context,
                     adminUserName: nonNullValue(cluster.administratorLogin),
                     otherUserNames: clusterNonAdminUsers,
@@ -120,7 +120,10 @@ export class MongoClusterItem implements MongoClusterItemBase {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 const wizard = new AzureWizard(wizardContext, {
                     promptSteps: [new SelectUserNameStep(), new ProvidePasswordStep()],
-                    title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB (vCore) cluster'),
+                    title: localize(
+                        'mongoClustersAuthenticateCluster',
+                        'Authenticate to connect with your MongoDB (vCore) cluster',
+                    ),
                 });
 
                 await callWithTelemetryAndErrorHandling(
@@ -180,9 +183,26 @@ export class MongoClusterItem implements MongoClusterItemBase {
         return result ?? [];
     }
 
+    async createDatabase(_context: IActionContext, databaseName: string): Promise<boolean> {
+        const client = await MongoClustersClient.getClient(nonNullValue(this.mongoCluster.session?.credentialId));
+
+        let success = false;
+
+        await ext.state.showCreatingChild(
+            this.id,
+            localize('mongoClusters.tree.creating', 'Creating "{0}"...', databaseName),
+            async () => {
+                success = await client.createDatabase(databaseName);
+            },
+        );
+
+        return success;
+    }
+
     getTreeItem(): TreeItem {
         return {
             id: this.id,
+            contextValue: 'mongoClusters.item.mongoCluster',
             label: this.mongoCluster.name,
             description: this.mongoCluster.sku !== undefined ? `(${this.mongoCluster.sku})` : false,
             // iconPath: getThemeAgnosticIconPath('CosmosDBAcscount.svg'),

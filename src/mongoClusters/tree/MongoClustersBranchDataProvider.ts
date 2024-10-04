@@ -57,6 +57,10 @@ export class MongoClustersBranchDataProvider
         });
     }
 
+    get onDidChangeTreeData(): vscode.Event<TreeElementBase | undefined> {
+        return this.onDidChangeTreeDataEmitter.event;
+    }
+
     async getChildren(element: TreeElementBase): Promise<TreeElementBase[] | null | undefined> {
         /**
          * getChildren is called for every element in the tree when expanding, the element being expanded is being passed as an argument
@@ -91,7 +95,7 @@ export class MongoClustersBranchDataProvider
                  * If so, there is a problem here. JS/TS and race conditions? Is this a thing?
                  */
                 // eslint-disable-next-line no-constant-condition
-                if (this.detailsCacheUpdateRequested) {
+                if (this.detailsCacheUpdateRequested && false) {
                     void (await callWithTelemetryAndErrorHandling(
                         'mongoClusters.getResourceItem.cacheUpdate',
                         async (context: IActionContext) => {
@@ -179,8 +183,7 @@ export class MongoClustersBranchDataProvider
         return ti;
     }
 
-    refresh(_element?: TreeElementBase): void {
-        // this.onDidChangeTreeDataEmitter.fire(element);
-        console.log('wrapItemInStateHandling');
+    refresh(element?: TreeElementBase): void {
+        this.onDidChangeTreeDataEmitter.fire(element);
     }
 }

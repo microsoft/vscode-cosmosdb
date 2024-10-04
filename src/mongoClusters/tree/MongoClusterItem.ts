@@ -71,7 +71,7 @@ export class MongoClusterItem implements MongoClusterItemBase {
 
     constructor(
         public readonly subscription: AzureSubscription,
-        readonly mongoCluster: MongoClusterModel,
+        public mongoCluster: MongoClusterModel,
     ) {
         this.id = mongoCluster.id ?? '';
     }

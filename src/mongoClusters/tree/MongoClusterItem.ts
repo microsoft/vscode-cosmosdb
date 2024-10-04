@@ -92,85 +92,101 @@ export class MongoClusterItem implements MongoClusterItemBase {
                 context.errorHandling.rethrow = true;
                 context.valuesToMask.push(this.id, this.mongoCluster.name);
 
-                ext.outputChannel.appendLine(`mongoClusters: loading cluster details for ${this.mongoCluster.name}`);
-
-                const client = await createMongoClustersClient(context, this.subscription);
-                const cluster = await client.mongoClusters.get(this.mongoCluster.resourceGroup, this.mongoCluster.name);
-
-                context.valuesToMask.push(nonNullValue(cluster.connectionString));
-
-                ext.outputChannel.append(`mongoClusters: listing non-admin users for ${this.mongoCluster.name}... `);
-
-                const clusterNonAdminUsers: string[] = await listMongoClusterNonAdminUsers(client, {
-                    clusterAdminUser: nonNullValue(cluster.administratorLogin),
-                    subscriptionId: this.subscription.subscriptionId,
-                    resourceGroupName: this.mongoCluster.resourceGroup,
-                    mongoClusterNamer: this.mongoCluster.name,
-                });
-
-                ext.outputChannel.appendLine(`discovered ${clusterNonAdminUsers.length} non-admin user(s).`);
-
-                const wizardContext: AuthenticateWizardContext = {
-                    ...context,
-                    adminUserName: nonNullValue(cluster.administratorLogin),
-                    otherUserNames: clusterNonAdminUsers,
-                    resourceName: this.mongoCluster.name,
-                };
-
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                const wizard = new AzureWizard(wizardContext, {
-                    promptSteps: [new SelectUserNameStep(), new ProvidePasswordStep()],
-                    title: localize(
-                        'mongoClustersAuthenticateCluster',
-                        'Authenticate to connect with your MongoDB (vCore) cluster',
-                    ),
-                });
-
-                await callWithTelemetryAndErrorHandling(
-                    'mongoClusterItem.getChildren.passwordPrompt',
-                    async (_context: IActionContext) => {
-                        await wizard.prompt(); // This will prompt the user for the username and password, results are stored in the wizardContext
-                    },
-                );
-
-                ext.outputChannel.append(
-                    `mongoClusters: connecting to the cluster as '${wizardContext.selectedUserName}'... `,
-                );
-
-                const connectionStringWithPassword = addAuthenticationDataToConnectionString(
-                    nonNullValue(cluster.connectionString),
-                    nonNullProp(wizardContext, 'selectedUserName'),
-                    nonNullProp(wizardContext, 'password'),
-                );
-
-                context.valuesToMask.push(connectionStringWithPassword);
-
-                const credentialId = CredentialCache.setConnectionString(connectionStringWithPassword);
-                this.mongoCluster.session = { credentialId: credentialId };
+                ext.outputChannel.appendLine(`MongoDB (vCore): Loading cluster details for ${this.mongoCluster.name}`);
 
                 let mongoClustersClient: MongoClustersClient;
-                try {
-                    mongoClustersClient = await MongoClustersClient.getClient(credentialId).catch((error: Error) => {
-                        ext.outputChannel.appendLine('failed.');
-                        ext.outputChannel.appendLine(`Error: ${(error as Error).message}`);
 
-                        void vscode.window.showErrorMessage(`Failed to connect: ${(error as Error).message}`);
+                if (!this.mongoCluster.session) {
+                    ext.outputChannel.appendLine(`MongoDB (vCore): Authenticating with ${this.mongoCluster.name}`);
 
-                        throw error;
+                    const client = await createMongoClustersClient(context, this.subscription);
+                    const cluster = await client.mongoClusters.get(
+                        this.mongoCluster.resourceGroup,
+                        this.mongoCluster.name,
+                    );
+
+                    context.valuesToMask.push(nonNullValue(cluster.connectionString));
+
+                    ext.outputChannel.appendLine(
+                        `MongoDB (vCore): Listing non-admin users for ${this.mongoCluster.name}... `,
+                    );
+
+                    const clusterNonAdminUsers: string[] = await listMongoClusterNonAdminUsers(client, {
+                        clusterAdminUser: nonNullValue(cluster.administratorLogin),
+                        subscriptionId: this.subscription.subscriptionId,
+                        resourceGroupName: this.mongoCluster.resourceGroup,
+                        mongoClusterNamer: this.mongoCluster.name,
                     });
-                } catch (error) {
-                    return [
-                        createGenericElement({
-                            contextValue: 'error',
-                            id: `${this.id}/error`,
-                            label: (error as Error).message + ' (click to retry)',
-                            iconPath: new vscode.ThemeIcon('chrome-close'),
-                            commandId: 'azureResourceGroups.refreshTree',
-                        }),
-                    ];
-                }
 
-                ext.outputChannel.appendLine('connected.');
+                    ext.outputChannel.appendLine(`discovered ${clusterNonAdminUsers.length} non-admin user(s).`);
+
+                    const wizardContext: AuthenticateWizardContext = {
+                        ...context,
+                        adminUserName: nonNullValue(cluster.administratorLogin),
+                        otherUserNames: clusterNonAdminUsers,
+                        resourceName: this.mongoCluster.name,
+                    };
+
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                    const wizard = new AzureWizard(wizardContext, {
+                        promptSteps: [new SelectUserNameStep(), new ProvidePasswordStep()],
+                        title: localize(
+                            'mongoClustersAuthenticateCluster',
+                            'Authenticate to connect with your MongoDB (vCore) cluster',
+                        ),
+                    });
+
+                    await callWithTelemetryAndErrorHandling(
+                        'mongoClusterItem.getChildren.passwordPrompt',
+                        async (_context: IActionContext) => {
+                            await wizard.prompt(); // This will prompt the user for the username and password, results are stored in the wizardContext
+                        },
+                    );
+
+                    ext.outputChannel.append(
+                        `MongoDB (vCore): Connecting to the cluster as '${wizardContext.selectedUserName}'... `,
+                    );
+
+                    const connectionStringWithPassword = addAuthenticationDataToConnectionString(
+                        nonNullValue(cluster.connectionString),
+                        nonNullProp(wizardContext, 'selectedUserName'),
+                        nonNullProp(wizardContext, 'password'),
+                    );
+
+                    context.valuesToMask.push(connectionStringWithPassword);
+
+                    const credentialId = CredentialCache.setConnectionString(connectionStringWithPassword);
+                    this.mongoCluster.session = { credentialId: credentialId };
+
+                    try {
+                        mongoClustersClient = await MongoClustersClient.getClient(credentialId).catch(
+                            (error: Error) => {
+                                ext.outputChannel.appendLine('failed.');
+                                ext.outputChannel.appendLine(`Error: ${(error as Error).message}`);
+
+                                void vscode.window.showErrorMessage(`Failed to connect: ${(error as Error).message}`);
+
+                                throw error;
+                            },
+                        );
+                    } catch (error) {
+                        return [
+                            createGenericElement({
+                                contextValue: 'error',
+                                id: `${this.id}/error`,
+                                label: (error as Error).message + ' (click to retry)',
+                                iconPath: new vscode.ThemeIcon('chrome-close'),
+                                commandId: 'azureResourceGroups.refreshTree',
+                            }),
+                        ];
+                    }
+
+                    ext.outputChannel.appendLine('MongoDB (vCore): Connected.');
+                } else {
+                    ext.outputChannel.appendLine('MongoDB (vCore): Reusing active session');
+                    mongoClustersClient = await MongoClustersClient.getClient(
+                        nonNullValue(this.mongoCluster.session?.credentialId))
+                }
 
                 return mongoClustersClient.listDatabases().then((databases: DatabaseItemModel[]) => {
                     return databases.map(

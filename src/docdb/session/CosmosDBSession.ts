@@ -267,8 +267,7 @@ export class CosmosDBSession {
     private setTelemetryProperties(context: IActionContext): void {
         context.valuesToMask.push(this.query, this.masterKey, this.endpoint, this.databaseId, this.containerId);
 
-        context.telemetry.eventVersion = 1;
-
+        context.errorHandling.suppressDisplay = true;
         context.errorHandling.suppressReportIssue = true;
 
         context.telemetry.properties.sessionId = this.id;

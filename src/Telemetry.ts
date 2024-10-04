@@ -42,7 +42,11 @@ export class TelemetryContext {
             throw newError;
         });
 
-    public addMaskedValue(value: string): void {
-        this.valuesToMask.add(value);
+    public addMaskedValue(value: string | string[]): void {
+        if (Array.isArray(value)) {
+            value.filter((v) => !!v).forEach((v) => this.valuesToMask.add(v));
+        } else if (value) {
+            this.valuesToMask.add(value);
+        }
     }
 }

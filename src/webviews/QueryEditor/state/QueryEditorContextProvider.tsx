@@ -64,6 +64,7 @@ export class QueryEditorContextProvider {
     }
 
     public setPageSize(pageSize: number) {
+        void this.reportEvent('setPageSize', { pageSize: pageSize.toString() });
         this.dispatch({ type: 'setPageSize', pageSize });
     }
 
@@ -150,7 +151,7 @@ export class QueryEditorContextProvider {
                     >
                         Query error
                     </ToastTitle>
-                    <ToastBody>{error}</ToastBody>
+                    <ToastBody style={{ whiteSpace: 'pre-wrap' }}>{error}</ToastBody>
                 </Toast>,
                 {
                     intent: 'error',

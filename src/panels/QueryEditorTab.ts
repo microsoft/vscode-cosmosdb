@@ -30,14 +30,13 @@ export class QueryEditorTab {
     public static readonly viewType = 'cosmosDbQuery';
     public static readonly openTabs: Set<QueryEditorTab> = new Set<QueryEditorTab>();
 
-    private static telemetryContext: TelemetryContext;
-
     public readonly channel: Channel;
     public readonly panel: vscode.WebviewPanel;
     public readonly sessions = new Map<string, CosmosDBSession>();
 
     private readonly id: string;
     private readonly start: number;
+    private readonly telemetryContext: TelemetryContext;
 
     private connection: NoSqlQueryConnection | undefined;
     private disposables: vscode.Disposable[] = [];
@@ -47,6 +46,7 @@ export class QueryEditorTab {
 
         this.id = uuid();
         this.start = Date.now();
+        this.telemetryContext = new TelemetryContext(connection);
 
         this.channel = new VSCodeChannel(panel.webview);
         this.panel = panel;
@@ -58,17 +58,13 @@ export class QueryEditorTab {
 
         this.initController();
 
-        void QueryEditorTab.telemetryContext.reportEvent('webviewOpened', {
+        void this.telemetryContext.reportEvent('webviewOpened', {
             panelId: this.id,
             hasConnection: connection ? 'true' : 'false',
         });
     }
 
     public static render(connection?: NoSqlQueryConnection, viewColumn?: vscode.ViewColumn): QueryEditorTab {
-        if (!QueryEditorTab.telemetryContext) {
-            QueryEditorTab.telemetryContext = new TelemetryContext(connection);
-        }
-
         const column = viewColumn ?? vscode.ViewColumn.One;
         if (connection) {
             const openTab = [...QueryEditorTab.openTabs].find(
@@ -107,7 +103,7 @@ export class QueryEditorTab {
             }
         }
 
-        void QueryEditorTab.telemetryContext.reportEvent(
+        void this.telemetryContext.reportEvent(
             'webviewClosed',
             {
                 panelId: this.id,
@@ -240,13 +236,13 @@ export class QueryEditorTab {
             case 'firstPage':
                 return this.firstPage(payload.params[0] as string);
             case 'reportEvent':
-                return QueryEditorTab.telemetryContext.reportEvent(
+                return this.telemetryContext.reportEvent(
                     payload.params[0] as string,
                     payload.params[1] as Record<string, string>,
                     payload.params[2] as Record<string, number>,
                 );
             case 'reportError':
-                return QueryEditorTab.telemetryContext.reportError(
+                return this.telemetryContext.reportError(
                     payload.params[0] as string,
                     payload.params[1] as string,
                     payload.params[2] as string,
@@ -260,7 +256,9 @@ export class QueryEditorTab {
         this.connection = connection;
 
         if (this.connection) {
-            const { databaseId, containerId } = this.connection;
+            const { databaseId, containerId, endpoint, masterKey } = this.connection;
+
+            this.telemetryContext.addMaskedValue([databaseId, containerId, endpoint, masterKey ?? '']);
 
             await this.channel.postMessage({
                 type: 'event',
@@ -268,6 +266,8 @@ export class QueryEditorTab {
                 params: [databaseId, containerId],
             });
         } else {
+            // We will not remove the connection details from the telemetry context
+            // to prevent accidental logging of sensitive information
             await this.channel.postMessage({
                 type: 'event',
                 name: 'databaseDisconnected',
@@ -333,8 +333,15 @@ export class QueryEditorTab {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.connectToDatabase', async (context) => {
             await getNoSqlQueryConnection().then(async (connection) => {
                 if (connection) {
-                    context.telemetry.properties.databaseId = connection.databaseId;
-                    context.telemetry.properties.containerId = connection.containerId;
+                    const { databaseId, containerId } = connection;
+                    context.telemetry.properties.databaseId = crypto
+                        .createHash('sha256')
+                        .update(databaseId)
+                        .digest('hex');
+                    context.telemetry.properties.containerId = crypto
+                        .createHash('sha256')
+                        .update(containerId)
+                        .digest('hex');
                     context.telemetry.properties.isEmulator = connection.isEmulator.toString();
 
                     await this.updateConnection(connection);

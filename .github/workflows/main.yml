@@ -1,14 +1,14 @@
 name: Node PR Lint, Build and Test
 
 on:
-  # Trigger when manually run
-  workflow_dispatch:
+    # Trigger when manually run
+    workflow_dispatch:
 
-  # Trigger on pushes to `main` or `rel/*`
-  push:
-    branches:
-      - main
-      - rel/*
+    # Trigger on pushes to `main` or `rel/*`
+    push:
+        branches:
+            - main
+            - rel/*
 
   # Trigger on pull requests to `main` or `rel/*`
   pull_request:

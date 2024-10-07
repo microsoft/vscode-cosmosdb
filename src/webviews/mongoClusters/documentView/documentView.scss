@@ -1,0 +1,17 @@
+
+@import '../mongoClustersStyles.scss';
+
+
+.documentView {
+    display: flex;
+    flex-direction: column;
+    row-gap: 10px;
+
+    padding-top: 8px;
+
+    height: 100vh;
+}
+
+.privatePreview {
+    opacity: 0.6;
+}

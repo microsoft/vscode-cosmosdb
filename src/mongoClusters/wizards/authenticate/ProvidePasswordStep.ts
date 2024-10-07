@@ -14,7 +14,7 @@ export class ProvidePasswordStep extends AzureWizardPromptStep<IAuthenticateWiza
             //title: 'Authenticate to your Mongo Cluster',
             prompt: `You need to provide the password for '${context.selectedUserName}' in order to continue. Your password will not be stored.`,
             placeHolder: `Password for ${context.selectedUserName}@${context.resourceName}`,
-            title: localize('mongoClustersAuthenticateCluster', 'Authenticate to your Mongo Cluster'),
+            title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB (vCore) cluster'),
             password: true,
         });
 

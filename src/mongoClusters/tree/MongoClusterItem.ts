@@ -120,7 +120,7 @@ export class MongoClusterItem implements MongoClusterItemBase {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 const wizard = new AzureWizard(wizardContext, {
                     promptSteps: [new SelectUserNameStep(), new ProvidePasswordStep()],
-                    title: localize('mongoClustersAuthenticateCluster', 'Authenticate to your Mongo Cluster'),
+                    title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB (vCore) cluster'),
                 });
 
                 await callWithTelemetryAndErrorHandling(

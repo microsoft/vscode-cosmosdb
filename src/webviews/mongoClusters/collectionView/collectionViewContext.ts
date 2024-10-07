@@ -19,6 +19,18 @@ export type CollectionViewContextType = {
         pageNumber: number;
         pageSize: number;
     };
+    commands: {
+        disableAddDocument: boolean;
+        disableViewDocument: boolean;
+        disableEditDocument: boolean;
+        disableDeleteDocument: boolean;
+    };
+    dataSelection: {
+        // real document _id values, for easier lookup
+        selectedDocumentObjectIds: string[];
+        // actual index in the current snapshot of the data, for easier lookup
+        selectedDocumentIndexes: number[];
+    };
 };
 
 export const DefaultCollectionViewContext: CollectionViewContextType = {
@@ -29,9 +41,19 @@ export const DefaultCollectionViewContext: CollectionViewContextType = {
         pageNumber: 1,
         pageSize: 10,
     },
+    commands: {
+        disableAddDocument: false,
+        disableViewDocument: true,
+        disableEditDocument: true,
+        disableDeleteDocument: true,
+    },
+    dataSelection: {
+        selectedDocumentObjectIds: [],
+        selectedDocumentIndexes: [],
+    },
 };
 
-export const CollectionViewContext = createContext([
+export const CollectionViewContext = createContext<[CollectionViewContextType, React.Dispatch<React.SetStateAction<CollectionViewContextType>>]>([
     DefaultCollectionViewContext,
     (_param: CollectionViewContextType): void => {
         // just a dummy placeholder for scenarios where the context is not set

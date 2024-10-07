@@ -39,16 +39,17 @@ export function getDataTopLevel(documents: WithId<Document>[]): object[] {
 
         for (const key of Object.keys(doc)) {
             if (key === '_id') {
-                row[key] = doc[key].toString();
+                row[key] = { value: valueToDisplayString(doc[key], MongoBSONTypes.ObjectId), type: MongoBSONTypes.ObjectId };
+                row['x-objectid'] = doc[key].toString();
             } else {
                 const value: unknown = doc[key];
                 const type: MongoBSONTypes = MongoBSONTypes.inferType(value);
 
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 if (value instanceof Array) {
-                    row[key] = `(elements: ${value.length})`;
+                    row[key] = { value: `(elements: ${value.length})`, type: MongoBSONTypes.Array };
                 } else {
-                    row[key] = valueToDisplayString(value, type);
+                    row[key] = { value: valueToDisplayString(value, type), type: type };
                 }
             }
         }

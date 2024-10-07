@@ -7,7 +7,7 @@ import * as React from 'react';
 import { MonacoEditor } from '../../../MonacoEditor';
 
 interface Props {
-    value: string;
+    value: string[];
 }
 
 const monacoOptions = {
@@ -33,5 +33,5 @@ const monacoOptions = {
 };
 
 export const DataViewPanelJSON = ({ value }: Props): React.JSX.Element => {
-    return <MonacoEditor height={'100%'} width={'100%'} language="json" options={monacoOptions} value={value} />;
+    return <MonacoEditor height={'100%'} width={'100%'} language="json" options={monacoOptions} value={value.join('\n\n')} />;
 };

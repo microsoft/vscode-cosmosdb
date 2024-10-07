@@ -58,7 +58,7 @@ export class QueryEditorTab {
 
         this.initController();
 
-        void this.telemetryContext.reportEvent('webviewOpened', {
+        void this.telemetryContext.reportWebviewEvent('webviewOpened', {
             panelId: this.id,
             hasConnection: connection ? 'true' : 'false',
         });

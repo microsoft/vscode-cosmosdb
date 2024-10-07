@@ -138,6 +138,7 @@ declare global {
     interface Window {
         config?: {
             __id?: string;
+            __initialData?: string;
             __liveConnectionId?: string;
             __mode?: string;
             __databaseName: string;

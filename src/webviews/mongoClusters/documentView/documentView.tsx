@@ -1,5 +1,5 @@
 // eslint-disable-next-line import/no-internal-modules
-import { useEffect, useRef, useState, type JSX, useContext } from 'react';
+import { useContext, useEffect, useRef, useState, type JSX } from 'react';
 
 import { Label, Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, SaveRegular, TextGrammarCheckmarkRegular } from '@fluentui/react-icons';
@@ -9,8 +9,9 @@ import { ToolbarDividerTransparent } from '../collectionView/components/ToolbarD
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
-import './documentView.scss';
+import { type DocumentsViewWebviewConfigurationType } from '../../api/configuration/mongoClusters/documentsView';
 import { WebviewContext } from '../../WebviewContext';
+import './documentView.scss';
 
 loader.config({ monaco: monacoEditor });
 
@@ -40,6 +41,7 @@ declare global {
     interface Window {
         config?: {
             __id?: string;
+            __initialData?: string;
             __liveConnectionId?: string;
             __mode?: string;
             __databaseName: string;
@@ -53,12 +55,14 @@ declare global {
 }
 
 interface DocumentToolbarProps {
+    viewerMode: string;
     onValidateRequest: () => void;
     onRefreshRequest: () => void;
     onSaveRequest: () => void;
 }
 
 export const DocumentToolbar = ({
+    viewerMode,
     onValidateRequest,
     onRefreshRequest,
     onSaveRequest,
@@ -71,7 +75,7 @@ export const DocumentToolbar = ({
                     aria-label="Save to the database"
                     icon={<SaveRegular />}
                     appearance={'primary'}
-                    disabled={window.config?.__mode !== 'add'}
+                    disabled={viewerMode !== 'add'}
                 >
                     Save
                 </ToolbarButton>
@@ -95,7 +99,7 @@ export const DocumentToolbar = ({
                     onClick={onRefreshRequest}
                     aria-label="Reload original document from the database"
                     icon={<ArrowClockwiseRegular />}
-                    disabled={window.config?.__mode !== 'add'}
+                    disabled={viewerMode !== 'add'}
                 >
                     Refresh
                 </ToolbarButton>
@@ -110,7 +114,10 @@ export const DocumentView = (): JSX.Element => {
 
 
     //TODO: this approach is temporary until we move to better base class and messaging
-    const staticContent: string = decodeURIComponent(window.config?.__documentContent ?? '{ }');
+    // const staticContent: string = decodeURIComponent(window.config?.__documentContent ?? '{ }');
+    const configuration: DocumentsViewWebviewConfigurationType = JSON.parse( decodeURIComponent(window.config?.__initialData ?? '{  }')) as DocumentsViewWebviewConfigurationType;
+
+    const staticContent: string = JSON.stringify(configuration.documentContent, null, 4);
     const [editorContent] = useState(staticContent);
 
     const editor = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
@@ -190,7 +197,8 @@ export const DocumentView = (): JSX.Element => {
     }
 
     function handleOnRefreshRequest(): void {
-        const documentId: string = window.config?.__documentId as string;
+        // const documentId: string = window.config?.__documentId as string;
+        const documentId: string = configuration.documentId;
 
         vscodeApi.postMessage({
             type: 'request.documentView.refreshDocument',
@@ -217,12 +225,13 @@ export const DocumentView = (): JSX.Element => {
     return (
         <div className="documentView">
             <DocumentToolbar
+                viewerMode={configuration.mode}
                 onSaveRequest={handleOnSaveRequest}
                 onValidateRequest={handleOnValidateRequest}
                 onRefreshRequest={handleOnRefreshRequest}
             />
 
-            {window.config?.__mode === 'add' && (
+            {configuration.mode === 'add' && (
                 <Label size="small" className="privatePreview">
                     <b>Private Preview:</b> Currently supports a subset of BSON datatypes that map easily to JSON, which
                     is why editing existing documents is disabled in this view. Full BSON support and editing

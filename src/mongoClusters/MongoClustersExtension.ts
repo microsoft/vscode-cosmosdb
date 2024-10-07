@@ -21,11 +21,11 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { getConfirmationWithWarning } from '../utils/dialogsConfirmations';
+import { DocumentsViewController } from '../webviews/mongoClusters/documentView/DocumentsViewController';
 import { createCollection } from './commands/createCollection';
 import { createDatabase } from './commands/createDatabase';
 import { dropCollection } from './commands/dropCollection';
 import { dropDatabase } from './commands/dropDatabase';
-import { DocumentsViewController } from '../webviews/mongoClusters/documentView/DocumentsViewController';
 import { MongoClustersClient } from './MongoClustersClient';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
 import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
@@ -61,7 +61,7 @@ export class MongoClustersExtension implements vscode.Disposable {
             // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
             // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
             registerCommand('mongoClusters.cmd.hello', this.commandSayHello);
-            registerCommand('mongoClusters.cmd.webview', this.commandShowWebview);
+            registerCommand('mongoClusters.cmd.webview', this.commandShowDocumentView);
             registerCommand('mongoClusters.internal.containerView.open', this.commandContainerViewOpen);
             registerCommand('mongoClusters.internal.documentView.open.view', this.commandShowDocumentView);
             registerCommand('mongoClusters.internal.documentView.open.add', this.commandShowDocumentView);
@@ -131,7 +131,7 @@ export class MongoClustersExtension implements vscode.Disposable {
             documentId: string;
             documentContent: string;
             mode?: string;
-        },
+        } = {id: 'for-hacking-12', liveConnectionId: '123', viewTitle: 'title', databaseName: 'db', collectionName: 'coll', documentId: 'doc', documentContent: '{ fake content }', mode: 'view'}
     ): void {
 
         const view = new DocumentsViewController(

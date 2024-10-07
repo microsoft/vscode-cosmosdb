@@ -10,11 +10,11 @@ import { ReactWebviewBaseController } from './ReactWebviewBaseController';
  * ReactWebviewPanelController is a class that manages a vscode.WebviewPanel and provides
  * a way to communicate with it. It provides a way to register request handlers and reducers
  * that can be called from the webview. It also provides a way to post notifications to the webview.
- * @template SharedState The type of the state object that the webview and the extension will share
+ * @template Configuration The type of the configuration object that the webview will receive
  * @template Reducers The type of the reducers that the webview will use
  */
-export class ReactWebviewPanelController<SharedState, Reducers> extends ReactWebviewBaseController<
-    SharedState,
+export class ReactWebviewPanelController<Configuration, Reducers> extends ReactWebviewBaseController<
+    Configuration,
     Reducers
 > {
     private _panel: vscode.WebviewPanel;
@@ -32,7 +32,7 @@ export class ReactWebviewPanelController<SharedState, Reducers> extends ReactWeb
         _context: vscode.ExtensionContext,
         title: string,
         webviewName: string,
-        initialState: SharedState,
+        initialState: Configuration,
         viewColumn: vscode.ViewColumn = vscode.ViewColumn.One,
         private _iconPath?:
             | vscode.Uri
@@ -51,18 +51,11 @@ export class ReactWebviewPanelController<SharedState, Reducers> extends ReactWeb
 
         // this._panel.webview.html = this._getHtmlTemplate();
         this._panel.webview.html = this.getDocumentTemplate(
-            this._panel.webview,
-            webviewName,
-            'asdf',
-            'dbname',
-            'collname',
-            'docid',
-            'just testing',
-            'view',
+            this._panel.webview
         );
 
         this._panel.iconPath = this._iconPath;
-        this.registerDisposable(this._panel.webview.onDidReceiveMessage(this._webviewMessageHandler));
+       // this.registerDisposable(this._panel.webview.onDidReceiveMessage(this._webviewMessageHandler));
         this.registerDisposable(
             this._panel.onDidDispose(() => {
                 this.dispose();

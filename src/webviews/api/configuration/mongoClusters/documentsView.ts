@@ -1,5 +1,5 @@
 
-export type DocumentsViewWebviewSharedStateType = {
+export type DocumentsViewWebviewConfigurationType = {
     id: string; // move to base type
 
     liveConnectionId: string;

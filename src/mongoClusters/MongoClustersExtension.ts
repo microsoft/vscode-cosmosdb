@@ -9,12 +9,22 @@
  * We'll try to have everything related to mongoClusters-support managed from here.
  * In case of a failure with this plan, this comment section will be updated.
  */
-import { callWithTelemetryAndErrorHandling, registerCommand, type IActionContext } from '@microsoft/vscode-azext-utils';
+import {
+    callWithTelemetryAndErrorHandling,
+    type IActionContext,
+    registerCommand,
+    registerCommandWithTreeNodeUnwrapping,
+} from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { randomBytes } from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import { getConfirmationWithWarning } from '../utils/dialogsConfirmations';
+import { createCollection } from './commands/createCollection';
+import { createDatabase } from './commands/createDatabase';
+import { dropCollection } from './commands/dropCollection';
+import { dropDatabase } from './commands/dropDatabase';
 import { DocumentsViewController } from '../webviews/mongoClusters/documentView/DocumentsViewController';
 import { MongoClustersClient } from './MongoClustersClient';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
@@ -40,6 +50,8 @@ export class MongoClustersExtension implements vscode.Disposable {
                 return;
             }
 
+            // // // MongoClusters / MongoDB (vCore) support is enabled // // //
+
             ext.mongoClustersBranchDataProvider = new MongoClustersBranchDataProvider();
             ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
                 AzExtResourceType.MongoClusters,
@@ -53,6 +65,12 @@ export class MongoClustersExtension implements vscode.Disposable {
             registerCommand('mongoClusters.internal.containerView.open', this.commandContainerViewOpen);
             registerCommand('mongoClusters.internal.documentView.open.view', this.commandShowDocumentView);
             registerCommand('mongoClusters.internal.documentView.open.add', this.commandShowDocumentView);
+
+            registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.dropCollection', dropCollection);
+            registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.dropDatabase', dropDatabase);
+
+            registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.createCollection', createCollection);
+            registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.createDatabase', createDatabase);
 
             ext.outputChannel.appendLine(`mongoClusters: activated.`);
         });
@@ -241,17 +259,6 @@ export class MongoClustersExtension implements vscode.Disposable {
         // });
     }
 
-    getRandomArrayAndIndex(length: number): { numbers: number[]; index: number } {
-        // Generate an array of three random numbers between 0 and 100 (can adjust range)
-        const randomNumbers: number[] = Array.from({ length: length }, () => Math.floor(Math.random() * 101));
-
-        // Get a random index between 0 and 2
-        const randomIndex: number = Math.floor(Math.random() * randomNumbers.length);
-
-        // Return the object with fields "numbers" and "index"
-        return { numbers: randomNumbers, index: randomIndex };
-    }
-
     commandContainerViewOpen(
         _context: IActionContext,
         _props: {
@@ -282,17 +289,6 @@ export class MongoClustersExtension implements vscode.Disposable {
             _props.collectionName,
         );
         panel.webview.onDidReceiveMessage(async (message) => {
-            function getRandomArrayAndIndex(length: number): { numbers: number[]; index: number } {
-                // Generate an array of three random numbers between 0 and 100 (can adjust range)
-                const randomNumbers: number[] = Array.from({ length: length }, () => Math.floor(Math.random() * 101));
-
-                // Get a random index between 0 and 2
-                const randomIndex: number = Math.floor(Math.random() * randomNumbers.length);
-
-                // Return the object with fields "numbers" and "index"
-                return { numbers: randomNumbers, index: randomIndex };
-            }
-
             console.log('Webview->Ext:', JSON.stringify(message, null, 2));
 
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -330,24 +326,12 @@ export class MongoClustersExtension implements vscode.Disposable {
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                     const selectedDocumentObjectIds = message?.payload as string[];
 
-                    const randomInput: { numbers: number[]; index: number } = getRandomArrayAndIndex(3);
-
-                    const confirmation = await vscode.window.showWarningMessage(
-                        `Are you sure?`,
-                        {
-                            modal: true,
-                            detail:
-                            `Delete ${selectedDocumentObjectIds.length} documents?\n\n`
-                            + `This can't be undone.\n`
-                            + `Choose '${randomInput.numbers[randomInput.index]}' to confirm.\n\n`
-                            + `(Planned: Adjust this safety check in the settings.)`,
-                        },
-                        randomInput.numbers[0].toString(),
-                        randomInput.numbers[1].toString(),
-                        randomInput.numbers[2].toString(),
+                    const confirmed = await getConfirmationWithWarning(
+                        'Are you sure?',
+                        `Delete ${selectedDocumentObjectIds.length} documents?\n\nThis can't be undone.`,
                     );
 
-                    if (confirmation !== randomInput.numbers[randomInput.index].toString()) {
+                    if (!confirmed) {
                         break;
                     }
 

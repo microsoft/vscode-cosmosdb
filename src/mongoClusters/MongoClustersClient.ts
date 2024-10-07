@@ -18,7 +18,7 @@ import {
     type FindOptions,
     type ListDatabasesResult,
     type UpdateResult,
-    type WithId
+    type WithId,
 } from 'mongodb';
 import { getDataTopLevel, getFieldsTopLevel } from '../utils/slickgrid/mongo/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
@@ -183,7 +183,7 @@ export class MongoClustersClient {
         databaseName: string,
         collectionName: string,
         documentId: string,
-        documentContent: string
+        documentContent: string,
     ): Promise<{ updateResult: UpdateResult; documentContent: WithId<Document> | null }> {
         const objectId = documentId !== '' ? new ObjectId(documentId) : new ObjectId();
 
@@ -195,7 +195,6 @@ export class MongoClustersClient {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         delete documentObj._id;
 
-
         const updateResult = await collection.updateOne(
             { _id: objectId },
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -206,5 +205,38 @@ export class MongoClustersClient {
         const newDocument = await collection.findOne({ _id: updateResult.upsertedId ?? objectId });
 
         return { updateResult: updateResult, documentContent: newDocument };
+    }
+
+    async dropCollection(databaseName: string, collectionName: string): Promise<boolean> {
+        return this._mongoClient.db(databaseName).collection(collectionName).drop();
+    }
+
+    async dropDatabase(databaseName: string): Promise<boolean> {
+        return this._mongoClient.db(databaseName).dropDatabase();
+    }
+
+    async createCollection(databaseName: string, collectionName: string): Promise<boolean> {
+        try {
+            await this._mongoClient.db(databaseName).createCollection(collectionName);
+        } catch (_e) {
+            console.log(_e); //todo: add to telemetry
+            return false;
+        }
+
+        return true;
+    }
+
+    async createDatabase(databaseName: string): Promise<boolean> {
+        try {
+            const newCollection = await this._mongoClient
+                .db(databaseName)
+                .createCollection('_dummy_collection_creation_forces_db_creation');
+            await newCollection.drop();
+        } catch (_e) {
+            console.log(_e); //todo: add to telemetry
+            return false;
+        }
+
+        return true;
     }
 }

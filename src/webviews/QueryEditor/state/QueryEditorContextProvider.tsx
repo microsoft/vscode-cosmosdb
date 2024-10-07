@@ -64,14 +64,37 @@ export class QueryEditorContextProvider {
     }
 
     public setPageSize(pageSize: number) {
+        void this.reportWebviewEvent('setPageSize', { pageSize: pageSize.toString() });
         this.dispatch({ type: 'setPageSize', pageSize });
     }
 
     public setTableViewMode(mode: TableViewMode) {
+        void this.reportWebviewEvent('setTableViewMode', { mode });
         this.dispatch({ type: 'setTableViewMode', mode });
     }
     public setEditMode(mode: EditMode) {
+        void this.reportWebviewEvent('setEditMode', { mode });
         this.dispatch({ type: 'setEditMode', mode });
+    }
+
+    public async reportWebviewEvent(
+        eventName: string,
+        properties: Record<string, string> = {},
+        measurements: Record<string, number> = {},
+    ) {
+        await this.sendCommand('reportWebviewEvent', eventName, properties, measurements);
+    }
+    public async reportWebviewError(
+        message: string,
+        stack: string | undefined,
+        componentStack: string | null | undefined,
+    ) {
+        // Error is not JSON serializable, so the original Error object cannot be sent to the webview host.
+        // Send only the relevant fields
+        await this.sendCommand('reportWebviewError', message, stack, componentStack);
+    }
+    public async executeReportIssueCommand() {
+        await this.sendCommand('executeReportIssueCommand');
     }
 
     private async sendCommand(command: string, ...args: unknown[]): Promise<void> {
@@ -135,7 +158,7 @@ export class QueryEditorContextProvider {
                     >
                         Query error
                     </ToastTitle>
-                    <ToastBody>{error}</ToastBody>
+                    <ToastBody style={{ whiteSpace: 'pre-wrap' }}>{error}</ToastBody>
                 </Toast>,
                 {
                     intent: 'error',

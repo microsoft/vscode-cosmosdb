@@ -123,8 +123,6 @@ export const DocumentView = (): JSX.Element => {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 const documentContent = (event.data?.payload.documentContent as string) ?? '{  }';
 
-                // TODO: update later to useRef. we're not using useRef to secure the content on purpose for now.
-                //setEditorContent(documentContent);
                 editor.current?.setValue(documentContent);
 
                 break;
@@ -158,11 +156,18 @@ export const DocumentView = (): JSX.Element => {
 
     function onMount(_editor: monacoEditor.editor.IStandaloneCodeEditor, _monaco: typeof monacoEditor) {
         editor.current = _editor;
+
+        /**
+         * The code below is an experimetnal code to show how to use monaco editor with JSON schema validation.
+         * We'll be using something along this line in the future to validate documents.
+         */
+
         // const modelUri = 'foo://myapp/custom.json1';
-        // const model = monaco.editor.createModel(`{ "type":  }`, 'json', monaco.Uri.parse(modelUri));
-        // editor.setModel(model);
-        // monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-        //     ...monaco.languages.json.jsonDefaults.diagnosticsOptions,
+        // const model = _monaco.editor.createModel(`{ "type":  }`, 'json', _monaco.Uri.parse(modelUri));
+        // // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        // editor.current.setModel(model);
+        // _monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+        //     ..._monaco.languages.json.jsonDefaults.diagnosticsOptions,
         //     allowComments: true,
         //     schemas: [
         //         {

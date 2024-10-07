@@ -7,10 +7,10 @@
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { QuickPickItemKind, ThemeIcon } from 'vscode';
 import { localize } from '../../../utils/localize';
-import { type IAuthenticateWizardContext } from './IAuthenticateWizardContext';
+import { type AuthenticateWizardContext } from './AuthenticateWizardContext';
 
-export class SelectUserNameStep extends AzureWizardPromptStep<IAuthenticateWizardContext> {
-    public async prompt(context: IAuthenticateWizardContext): Promise<void> {
+export class SelectUserNameStep extends AzureWizardPromptStep<AuthenticateWizardContext> {
+    public async prompt(context: AuthenticateWizardContext): Promise<void> {
         const res = await context.ui.showQuickPick(
             [
                 { label: 'Administrator', kind: QuickPickItemKind.Separator },
@@ -36,7 +36,7 @@ export class SelectUserNameStep extends AzureWizardPromptStep<IAuthenticateWizar
         context.selectedUserName = res.label;
     }
 
-    public async configureBeforePrompt(wizardContext: IAuthenticateWizardContext): Promise<void> {
+    public async configureBeforePrompt(wizardContext: AuthenticateWizardContext): Promise<void> {
         // in case there is actually only the admin user name specified,
         // we can skip the prompt and just select the admin user name.
         if (wizardContext.otherUserNames.length === 0) {
@@ -44,7 +44,7 @@ export class SelectUserNameStep extends AzureWizardPromptStep<IAuthenticateWizar
         }
     }
 
-    public shouldPrompt(context: IAuthenticateWizardContext): boolean {
+    public shouldPrompt(context: AuthenticateWizardContext): boolean {
         return !context.selectedUserName;
     }
 }

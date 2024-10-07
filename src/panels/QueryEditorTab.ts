@@ -227,6 +227,9 @@ export class QueryEditorTab {
                     payload.params[1] as string, // stack
                     payload.params[2] as string, // componentStack
                 );
+            case 'executeReportIssueCommand':
+                // Use an async anonymous function to convert Thenable to Promise
+                return (async () => await vscode.commands.executeCommand('azureDatabases.reportIssue'))();
             default:
                 throw new Error(`Unknown command: ${commandName}`);
         }

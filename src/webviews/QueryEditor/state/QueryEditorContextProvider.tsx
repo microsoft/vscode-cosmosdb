@@ -80,6 +80,10 @@ export class QueryEditorContextProvider {
         await this.sendCommand('reportWebviewError', message, stack, componentStack);
     }
 
+    public async executeReportIssueCommand() {
+        await this.sendCommand('executeReportIssueCommand');
+    }
+
     private async sendCommand(command: string, ...args: unknown[]): Promise<void> {
         try {
             // Don't remove await here, we need to catch the error

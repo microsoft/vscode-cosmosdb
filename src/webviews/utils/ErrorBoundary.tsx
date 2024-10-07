@@ -28,10 +28,11 @@ const useStyles = makeStyles({
 });
 
 const ErrorDisplay: React.FC<{ message: string | undefined, details: string | null | undefined }> = ({ message, details }) => {
+    const dispatcher = useQueryEditorDispatcher();
     const styles = useStyles();
     return <div className={styles.container}>
         <h1>An unexpected error occurred</h1>
-        <p>Please try again. If the error persists, please <Link href="https://github.com/microsoft/vscode-cosmosdb/issues/new/choose">report the issue</Link></p>
+        <p>Please try again. If the error persists, please <Link onClick={() => void dispatcher.executeReportIssueCommand()}>report the issue</Link></p>
         <div className={styles.details}>
             <pre>{message}</pre>
             <pre>{details}</pre>

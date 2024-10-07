@@ -19,7 +19,7 @@ export class TelemetryContext {
         }
     }
 
-    public reportEvent = (
+    public reportWebviewEvent = (
         eventName: string,
         properties?: Record<string, string>,
         measurements?: Record<string, number>,
@@ -31,8 +31,15 @@ export class TelemetryContext {
             Object.assign(context.telemetry.measurements, measurements ?? {});
         });
 
-    public reportError = (message: string, stack: string, componentStack: string | undefined): Promise<void> =>
-        callWithTelemetryAndErrorHandling<void>('cosmosDB.nosql.queryEditor.webviewError', (actionContext) => {
+    /**
+     * Report error from webview to telemetry
+     * @param message
+     * @param stack
+     * @param componentStack
+     * @returns
+     */
+    public reportWebviewError = (message: string, stack: string, componentStack: string | undefined): Promise<void> =>
+        callWithTelemetryAndErrorHandling<void>('cosmosdb.common.query-tab.webview-error', (actionContext) => {
             actionContext.errorHandling.suppressDisplay = true;
             actionContext.valuesToMask = Array.from(this.valuesToMask);
 

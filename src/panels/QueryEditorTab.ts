@@ -103,7 +103,7 @@ export class QueryEditorTab {
             }
         }
 
-        void this.telemetryContext.reportEvent(
+        void this.telemetryContext.reportWebviewEvent(
             'webviewClosed',
             {
                 panelId: this.id,
@@ -236,17 +236,20 @@ export class QueryEditorTab {
             case 'firstPage':
                 return this.firstPage(payload.params[0] as string);
             case 'reportEvent':
-                return this.telemetryContext.reportEvent(
+                return this.telemetryContext.reportWebviewEvent(
                     payload.params[0] as string,
                     payload.params[1] as Record<string, string>,
                     payload.params[2] as Record<string, number>,
                 );
-            case 'reportError':
-                return this.telemetryContext.reportError(
-                    payload.params[0] as string,
-                    payload.params[1] as string,
-                    payload.params[2] as string,
+            case 'reportWebviewError':
+                return this.telemetryContext.reportWebviewError(
+                    payload.params[0] as string, // message
+                    payload.params[1] as string, // stack
+                    payload.params[2] as string, // componentStack
                 );
+            case 'executeReportIssueCommand':
+                // Use an async anonymous function to convert Thenable to Promise
+                return (async () => await vscode.commands.executeCommand('azureDatabases.reportIssue'))();
             default:
                 throw new Error(`Unknown command: ${commandName}`);
         }

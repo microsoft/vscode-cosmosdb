@@ -221,11 +221,11 @@ export class QueryEditorTab {
                 return this.prevPage(payload.params[0] as string);
             case 'firstPage':
                 return this.firstPage(payload.params[0] as string);
-            case 'reportError':
-                return QueryEditorTab.telemetryContext.reportError(
-                    payload.params[0] as string,
-                    payload.params[1] as string,
-                    payload.params[2] as string,
+            case 'reportWebviewError':
+                return QueryEditorTab.telemetryContext.reportWebviewError(
+                    payload.params[0] as string, // message
+                    payload.params[1] as string, // stack
+                    payload.params[2] as string, // componentStack
                 );
             default:
                 throw new Error(`Unknown command: ${commandName}`);

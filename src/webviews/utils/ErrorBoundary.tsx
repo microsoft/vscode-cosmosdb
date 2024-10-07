@@ -14,7 +14,7 @@ export const ErrorBoundary: React.FC<{ style?: React.CSSProperties, children?: R
     const dispatcher = useQueryEditorDispatcher();
     return <ErrorBoundaryComponent style={style} onError={(message, stack, componentStack) =>
         // If rendering throws right away, dispatcher.reportError might not be initialized, yet, so check first.
-        dispatcher.reportError && void dispatcher.reportError(message, stack, componentStack)} children={children} />;
+        dispatcher.reportWebviewError && void dispatcher.reportWebviewError(message, stack, componentStack)} children={children} />;
 }
 
 const useStyles = makeStyles({

@@ -19,8 +19,15 @@ export class TelemetryContext {
         }
     }
 
-    public reportError = (message: string, stack: string, componentStack: string | undefined): Promise<void> =>
-        callWithTelemetryAndErrorHandling<void>('queryTab.webviewError', (actionContext) => {
+    /**
+     * Report error from webview to telemetry
+     * @param message
+     * @param stack
+     * @param componentStack
+     * @returns
+     */
+    public reportWebviewError = (message: string, stack: string, componentStack: string | undefined): Promise<void> =>
+        callWithTelemetryAndErrorHandling<void>('cosmosdb.common.query-editor.webview-error', (actionContext) => {
             actionContext.errorHandling.suppressDisplay = true;
             actionContext.valuesToMask = Array.from(this.valuesToMask);
 

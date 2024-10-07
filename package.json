@@ -497,16 +497,6 @@
                 "title": "Open Query Scrapbook"
             },
             {
-                "category": "mongoClusters",
-                "command": "mongoClusters.cmd.hello",
-                "title": "Say Hello!"
-            },
-            {
-                "category": "mongoClusters",
-                "command": "mongoClusters.cmd.webview",
-                "title": "Show WebView"
-            },
-            {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.configureFirewall",
                 "title": "Configure Firewall"
@@ -586,6 +576,36 @@
                 "command": "postgreSQL.showPasswordlessWiki",
                 "title": "Learn more about authenticating with Azure Active Directory",
                 "icon": "$(warning)"
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.hello",
+                "title": "Dev: Say Hello!"
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.webview",
+                "title": "Dev: Show WebView"
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.dropCollection",
+                "title": "Drop Collection..."
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.dropDatabase",
+                "title": "Drop Database..."
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.createCollection",
+                "title": "Create Collection..."
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.createDatabase",
+                "title": "Create Database..."
             }
         ],
         "submenus": [
@@ -1083,7 +1103,25 @@
                     "command": "postgreSQL.createStoredProcedureQuery",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresStoredProcedures",
                     "group": "1@1"
+                },
+                {
+                    "command": "mongoClusters.cmd.dropCollection",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.collection"
+                },
+                {
+                    "command": "mongoClusters.cmd.dropDatabase",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.database"
+                },
+                {
+                    "command": "mongoClusters.cmd.createCollection",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.database"
+                },
+                {
+                    "command": "mongoClusters.cmd.createDatabase",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /mongoClusters.item.mongoCluster/i",
+                    "group": "1@1"
                 }
+
             ],
             "explorer/context": [
                 {
@@ -1125,16 +1163,16 @@
                     "when": "editorLangId == 'nosql'"
                 },
                 {
+                    "command": "postgreSQL.executeQuery",
+                    "when": "editorLangId == 'postgres'"
+                },
+                {
                     "command": "mongoClusters.cmd.hello",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled"
                 },
                 {
                     "command": "mongoClusters.cmd.webview",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled"
-                },
-                {
-                    "command": "postgreSQL.executeQuery",
-                    "when": "editorLangId == 'postgres'"
                 }
             ]
         },

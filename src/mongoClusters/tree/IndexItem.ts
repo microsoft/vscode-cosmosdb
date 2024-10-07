@@ -26,9 +26,9 @@ export class IndexItem implements MongoClusterItemBase {
                 id: `${this.id}/${key}`,
                 label: key,
                 // TODO: add a custom icons, and more options here
-                description: value === -1 ? 'desc' : (value === 1 ? 'asc' : value.toString()),
+                description: value === -1 ? 'desc' : value === 1 ? 'asc' : value.toString(),
                 iconPath: new ThemeIcon('combine'),
-            })
+            });
         });
     }
 

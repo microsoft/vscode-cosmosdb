@@ -6,15 +6,18 @@
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../../utils/localize';
-import { type IAuthenticateWizardContext } from './IAuthenticateWizardContext';
+import { type AuthenticateWizardContext } from './AuthenticateWizardContext';
 
-export class ProvidePasswordStep extends AzureWizardPromptStep<IAuthenticateWizardContext> {
-    public async prompt(context: IAuthenticateWizardContext): Promise<void> {
+export class ProvidePasswordStep extends AzureWizardPromptStep<AuthenticateWizardContext> {
+    public async prompt(context: AuthenticateWizardContext): Promise<void> {
         const passwordTemp = await context.ui.showInputBox({
             //title: 'Authenticate to your Mongo Cluster',
             prompt: `You need to provide the password for '${context.selectedUserName}' in order to continue. Your password will not be stored.`,
             placeHolder: `Password for ${context.selectedUserName}@${context.resourceName}`,
-            title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB (vCore) cluster'),
+            title: localize(
+                'mongoClustersAuthenticateCluster',
+                'Authenticate to connect with your MongoDB (vCore) cluster',
+            ),
             password: true,
         });
 

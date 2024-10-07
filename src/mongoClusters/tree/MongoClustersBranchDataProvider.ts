@@ -9,6 +9,7 @@ import { callWithTelemetryAndErrorHandling, nonNullProp, type IActionContext } f
 import {
     type AzureResource,
     type AzureResourceBranchDataProvider,
+    type AzureSubscription,
     type ResourceModelBase,
     type ViewPropertiesModel,
 } from '@microsoft/vscode-azureresources-api';
@@ -16,21 +17,6 @@ import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { createMongoClustersClient } from '../../utils/azureClients';
 import { MongoClusterItem, type MongoClusterModel } from './MongoClusterItem';
-
-class AsyncLock {
-    disable: () => void;
-    promise: Promise<void>;
-    constructor() {
-        this.disable = () => {
-            return;
-        };
-        this.promise = Promise.resolve();
-    }
-
-    enable() {
-        this.promise = new Promise((resolve) => (this.disable = resolve));
-    }
-}
 
 export interface TreeElementBase extends ResourceModelBase {
     getChildren?(): vscode.ProviderResult<TreeElementBase[]>;
@@ -45,9 +31,7 @@ export class MongoClustersBranchDataProvider
 {
     private detailsCacheUpdateRequested = true;
     private detailsCache: Map<string, MongoClusterModel> = new Map<string, MongoClusterModel>();
-
-    // Create a new lock
-    lock = new AsyncLock();
+    private itemsToUpdateInfo: Map<string, MongoClusterItem> = new Map<string, MongoClusterItem>();
 
     private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<TreeElementBase | undefined>();
 
@@ -55,6 +39,10 @@ export class MongoClustersBranchDataProvider
         super(() => {
             this.onDidChangeTreeDataEmitter.dispose();
         });
+    }
+
+    get onDidChangeTreeData(): vscode.Event<TreeElementBase | undefined> {
+        return this.onDidChangeTreeDataEmitter.event;
     }
 
     async getChildren(element: TreeElementBase): Promise<TreeElementBase[] | null | undefined> {
@@ -73,89 +61,37 @@ export class MongoClustersBranchDataProvider
 
     async getResourceItem(element: AzureResource): Promise<TreeElementBase> {
         /**
-         * This function is being called when the tree is being built, it is called for every element in the tree.
-         *
-         * It executes in a way that the caller doesn't wait for the first result to come back before
-         * issuing another reqeust.
-         * This is the reason why a 'lock' implementation is in place to load more details about mongoClusters.
+         * This function is being called when the resource tree is being built, it is called for every resource element in the tree.
          */
 
         const resourceItem = await callWithTelemetryAndErrorHandling(
             'mongoCluster.getResourceItem',
+            // disabling require-await, the async aspect is in there, but uses the .then pattern
+            // eslint-disable-next-line @typescript-eslint/require-await
             async (_context: IActionContext) => {
-                /**
-                 * todo: discuss:
-                 * this looks nice, we pull all the mongoClusters accounts and cache them when needed,
-                 * and cache them for 10 seconds. Then we clear the cache to conserve memory.
-                 * However, the 'resolveResource' functions is declared as async, so can it be called in parallel?
-                 * If so, there is a problem here. JS/TS and race conditions? Is this a thing?
-                 */
-                // eslint-disable-next-line no-constant-condition
                 if (this.detailsCacheUpdateRequested) {
-                    void (await callWithTelemetryAndErrorHandling(
-                        'mongoClusters.getResourceItem.cacheUpdate',
-                        async (context: IActionContext) => {
-                            try {
-                                this.lock.enable();
+                    void this.updateResourceCache(_context, element.subscription, 1000 * 60 * 5).then(() => {
+                        /**
+                         * Instances of MongoClusterItem were  stored in the itemsToUpdateInfo map,
+                         * so that when the cache is updated, the items can be refreshed.
+                         * I had to keep all of them in the map becasuse refresh requires the actual MongoClusterItem instance.
+                         */
+                        this.itemsToUpdateInfo.forEach((value : MongoClusterItem) => {
+                            value.mongoCluster = {
+                                ...value.mongoCluster,
+                                ...this.detailsCache.get(value.mongoCluster.id),
+                            };
+                            this.refresh(value);
+                        });
 
-                                this.detailsCacheUpdateRequested = false;
-
-                                setTimeout(() => {
-                                    this.detailsCache.clear();
-                                    this.detailsCacheUpdateRequested = true;
-                                }, 1000 * 10); // clear cache after 10 seconds == keep cache for 10 seconds
-
-                                const client = await createMongoClustersClient(_context, element.subscription);
-                                const accounts = await uiUtils.listAllIterator(client.mongoClusters.list());
-
-                                accounts.map((MongoClustersAccount) => {
-                                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                                    this.detailsCache.set(nonNullProp(MongoClustersAccount, 'id'), {
-                                        id: MongoClustersAccount.id as string,
-                                        name: MongoClustersAccount.name as string,
-                                        resourceGroup: getResourceGroupFromId(MongoClustersAccount.id as string),
-
-                                        location: MongoClustersAccount.location as string,
-                                        serverVersion: MongoClustersAccount.serverVersion as string,
-
-                                        systemData: {
-                                            createdAt: MongoClustersAccount.systemData?.createdAt,
-                                        },
-
-                                        sku:
-                                            MongoClustersAccount.nodeGroupSpecs !== undefined
-                                                ? (MongoClustersAccount.nodeGroupSpecs[0]?.sku as string)
-                                                : undefined,
-                                        diskSize:
-                                            MongoClustersAccount.nodeGroupSpecs !== undefined
-                                                ? (MongoClustersAccount.nodeGroupSpecs[0]?.diskSizeGB as number)
-                                                : undefined,
-                                        nodeCount:
-                                            MongoClustersAccount.nodeGroupSpecs !== undefined
-                                                ? (MongoClustersAccount.nodeGroupSpecs[0]?.nodeCount as number)
-                                                : undefined,
-                                        enableHa:
-                                            MongoClustersAccount.nodeGroupSpecs !== undefined
-                                                ? (MongoClustersAccount.nodeGroupSpecs[0]?.enableHa as boolean)
-                                                : undefined,
-                                    });
-                                });
-                            } catch (e) {
-                                console.error({ ...context, ...element.subscription });
-                                this.lock.disable();
-                                throw e;
-                            }
-
-                            this.lock.disable();
-                        },
-                    ));
+                        this.itemsToUpdateInfo.clear();
+                    });
                 }
 
-                // make sure we've waited for the cache to be updated
-                await this.lock.promise;
-
+                // 1. extract the basic info from the element (subscription, resource group, etc., provided by Azure Resources)
                 let clusterInfo: MongoClusterModel = element as MongoClusterModel;
 
+                // 2. lookup the details in the cache, on subsequent refreshes, the details will be available in the cache
                 if (this.detailsCache.has(clusterInfo.id)) {
                     clusterInfo = {
                         ...clusterInfo,
@@ -163,15 +99,78 @@ export class MongoClustersBranchDataProvider
                     };
                 }
 
-                const cItem = new MongoClusterItem(element.subscription, clusterInfo);
+                const clusterItem = new MongoClusterItem(element.subscription, clusterInfo);
 
-                return cItem;
+                // 3. store the item in the update queue, so that when the cache is updated, the item can be refreshed
+                this.itemsToUpdateInfo.set(clusterItem.id, clusterItem);
+
+                return clusterItem;
             },
         );
 
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         return ext.state.wrapItemInStateHandling(resourceItem!, () => this.refresh(resourceItem));
     }
+
+    async updateResourceCache(
+        _context: IActionContext,
+        subscription: AzureSubscription,
+        cacheDuration: number,
+    ): Promise<void> {
+        return callWithTelemetryAndErrorHandling(
+            'mongoClusters.getResourceItem.cacheUpdate',
+            async (context: IActionContext) => {
+                try {
+                    this.detailsCacheUpdateRequested = false;
+
+                    setTimeout(() => {
+                        this.detailsCache.clear();
+                        this.detailsCacheUpdateRequested = true;
+                    }, cacheDuration); // clear cache after 5 minutes == keep cache for 5 minutes 1000 * 60 * 5
+
+                    const client = await createMongoClustersClient(_context, subscription);
+                    const accounts = await uiUtils.listAllIterator(client.mongoClusters.list());
+
+                    accounts.map((MongoClustersAccount) => {
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                        this.detailsCache.set(nonNullProp(MongoClustersAccount, 'id'), {
+                            id: MongoClustersAccount.id as string,
+                            name: MongoClustersAccount.name as string,
+                            resourceGroup: getResourceGroupFromId(MongoClustersAccount.id as string),
+
+                            location: MongoClustersAccount.location as string,
+                            serverVersion: MongoClustersAccount.serverVersion as string,
+
+                            systemData: {
+                                createdAt: MongoClustersAccount.systemData?.createdAt,
+                            },
+
+                            sku:
+                                MongoClustersAccount.nodeGroupSpecs !== undefined
+                                    ? (MongoClustersAccount.nodeGroupSpecs[0]?.sku as string)
+                                    : undefined,
+                            diskSize:
+                                MongoClustersAccount.nodeGroupSpecs !== undefined
+                                    ? (MongoClustersAccount.nodeGroupSpecs[0]?.diskSizeGB as number)
+                                    : undefined,
+                            nodeCount:
+                                MongoClustersAccount.nodeGroupSpecs !== undefined
+                                    ? (MongoClustersAccount.nodeGroupSpecs[0]?.nodeCount as number)
+                                    : undefined,
+                            enableHa:
+                                MongoClustersAccount.nodeGroupSpecs !== undefined
+                                    ? (MongoClustersAccount.nodeGroupSpecs[0]?.enableHa as boolean)
+                                    : undefined,
+                        });
+                    });
+                } catch (e) {
+                    console.error({ ...context, ...subscription });
+                    throw e;
+                }
+            },
+        );
+    }
+
     // onDidChangeTreeData?: vscode.Event<void | TreeElementBase | TreeElementBase[] | null | undefined> | undefined;
 
     async getTreeItem(element: TreeElementBase): Promise<vscode.TreeItem> {
@@ -179,8 +178,7 @@ export class MongoClustersBranchDataProvider
         return ti;
     }
 
-    refresh(_element?: TreeElementBase): void {
-        // this.onDidChangeTreeDataEmitter.fire(element);
-        console.log('wrapItemInStateHandling');
+    refresh(element?: TreeElementBase): void {
+        this.onDidChangeTreeDataEmitter.fire(element);
     }
 }

@@ -64,27 +64,31 @@ export class QueryEditorContextProvider {
     }
 
     public setPageSize(pageSize: number) {
-        void this.reportEvent('setPageSize', { pageSize: pageSize.toString() });
+        void this.reportWebviewEvent('setPageSize', { pageSize: pageSize.toString() });
         this.dispatch({ type: 'setPageSize', pageSize });
     }
 
     public setTableViewMode(mode: TableViewMode) {
-        void this.reportEvent('setTableViewMode', { mode });
+        void this.reportWebviewEvent('setTableViewMode', { mode });
         this.dispatch({ type: 'setTableViewMode', mode });
     }
     public setEditMode(mode: EditMode) {
-        void this.reportEvent('setEditMode', { mode });
+        void this.reportWebviewEvent('setEditMode', { mode });
         this.dispatch({ type: 'setEditMode', mode });
     }
 
-    public async reportEvent(
+    public async reportWebviewEvent(
         eventName: string,
         properties: Record<string, string> = {},
         measurements: Record<string, number> = {},
     ) {
         await this.sendCommand('reportEvent', eventName, properties, measurements);
     }
-    public async reportWebviewError(message: string, stack: string | undefined, componentStack: string | null | undefined) {
+    public async reportWebviewError(
+        message: string,
+        stack: string | undefined,
+        componentStack: string | null | undefined,
+    ) {
         // Error is not JSON serializable, so the original Error object cannot be sent to the webview host.
         // Send only the relevant fields
         await this.sendCommand('reportWebviewError', message, stack, componentStack);

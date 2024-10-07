@@ -82,7 +82,7 @@ export class QueryEditorContextProvider {
         properties: Record<string, string> = {},
         measurements: Record<string, number> = {},
     ) {
-        await this.sendCommand('reportEvent', eventName, properties, measurements);
+        await this.sendCommand('reportWebviewEvent', eventName, properties, measurements);
     }
     public async reportWebviewError(
         message: string,

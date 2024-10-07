@@ -235,7 +235,7 @@ export class QueryEditorTab {
                 return this.prevPage(payload.params[0] as string);
             case 'firstPage':
                 return this.firstPage(payload.params[0] as string);
-            case 'reportEvent':
+            case 'reportWebviewEvent':
                 return this.telemetryContext.reportWebviewEvent(
                     payload.params[0] as string,
                     payload.params[1] as Record<string, string>,

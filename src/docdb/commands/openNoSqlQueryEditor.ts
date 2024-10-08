@@ -11,5 +11,12 @@ import { createNoSqlQueryConnection } from './connectNoSqlContainer';
 export const openNoSqlQueryEditor = (_context: IActionContext, node?: DocDBCollectionTreeItem) => {
     const connection = node ? createNoSqlQueryConnection(node) : undefined;
 
-    QueryEditorTab.render(connection);
+    QueryEditorTab.render<QueryEditorTab>(
+        {
+            c: QueryEditorTab,
+            title: 'Query Editor',
+            viewType: 'cosmosDbQuery',
+        },
+        connection,
+    );
 };

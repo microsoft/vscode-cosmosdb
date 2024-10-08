@@ -1,6 +1,11 @@
-import type { IActionContext } from '@microsoft/vscode-azext-utils';
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { getConfirmationWithWarning } from '../../utils/dialogsConfirmations';
-import type { CollectionItem } from '../tree/CollectionItem';
+import { type CollectionItem } from '../tree/CollectionItem';
 
 export async function dropCollection(context: IActionContext, node?: CollectionItem): Promise<void> {
     // node ??= ... pick a node if not provided

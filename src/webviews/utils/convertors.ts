@@ -13,6 +13,13 @@ export type StatsItem = {
     tooltip: string;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type TableRecord = Record<string, any> & { id: string };
+export type TableData = {
+    headers: string[];
+    dataset: TableRecord[];
+};
+
 export const queryResultToJSON = (queryResult: SerializedQueryResult | null) => {
     if (!queryResult) {
         return '';
@@ -138,7 +145,7 @@ const documentToSlickGridTree = (document: object, index: number, idPrefix?: str
     return tree;
 };
 
-export const queryResultToTable = (queryResult: SerializedQueryResult | null) => {
+export const queryResultToTable = (queryResult: SerializedQueryResult | null): TableData => {
     // TODO: I don't think that it is good idea to generate new dataset
     //  since it causes performance issues and doubling the memory usage
 
@@ -163,8 +170,8 @@ export const queryResultToTable = (queryResult: SerializedQueryResult | null) =>
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function getDataTopLevel(documents: any[]): object[] {
-        const result = new Array<object>();
+    function getDataTopLevel(documents: any[]): TableRecord[] {
+        const result = new Array<TableRecord>();
         documents.forEach((doc, i) => {
             const row = { id: `${i + 1}` };
 

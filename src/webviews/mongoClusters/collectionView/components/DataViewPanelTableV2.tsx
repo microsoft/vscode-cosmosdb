@@ -5,7 +5,13 @@
 
 import * as React from 'react';
 import { useContext } from 'react';
-import { SlickgridReact, type Formatter, type GridOption, type OnSelectedRowsChangedEventArgs, type SlickgridReactInstance } from 'slickgrid-react';
+import {
+    SlickgridReact,
+    type Formatter,
+    type GridOption,
+    type OnSelectedRowsChangedEventArgs,
+    type SlickgridReactInstance,
+} from 'slickgrid-react';
 import { type CellValue } from '../../../../webviews-extension-shared/gridSupport';
 import { LoadingAnimationTable } from './LoadingAnimationTable';
 
@@ -24,7 +30,7 @@ const cellFormatter: Formatter<object> = (_row: number, _cell: number, value: Ce
         return {
             text: '',
             toolTip: 'This field is not set',
-        }
+        };
     }
     return {
         text: value.value,
@@ -34,7 +40,7 @@ const cellFormatter: Formatter<object> = (_row: number, _cell: number, value: Ce
 };
 
 export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JSX.Element {
-    const [currentContext, setCurrentContext] =  useContext(CollectionViewContext);
+    const [currentContext, setCurrentContext] = useContext(CollectionViewContext);
 
     type GridColumn = { id: string; name: string; field: string; minWidth: number };
 
@@ -104,7 +110,6 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
 
     let slickGrid: SlickgridReactInstance | null = null;
 
-
     React.useEffect(() => {
         console.log('Grid View has mounted');
 
@@ -113,7 +118,6 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
             slickGrid?.gridService.setSelectedRows([]);
         };
     }, []);
-
 
     function reactGridReady(grid: SlickgridReactInstance) {
         console.log('Grid Ready');

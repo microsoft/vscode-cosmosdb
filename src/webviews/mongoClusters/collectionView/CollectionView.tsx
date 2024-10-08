@@ -240,7 +240,9 @@ export const CollectionView = (): JSX.Element => {
                     console.log(
                         JSON.stringify(
                             currentQueryResults?.tableData?.filter((row) =>
-                                currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(row['x-objectid']),
+                                currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(
+                                    row['x-objectid'],
+                                ),
                             ),
                             null,
                             2,
@@ -252,7 +254,9 @@ export const CollectionView = (): JSX.Element => {
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
                         tableData: prev?.tableData?.filter(
                             (row) =>
-                                !currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(row['x-objectid']),
+                                !currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(
+                                    row['x-objectid'],
+                                ),
                         ),
                     }));
 
@@ -330,14 +334,17 @@ export const CollectionView = (): JSX.Element => {
             payload: {
                 objectId: currentContext.dataSelection.selectedDocumentObjectIds[0],
                 index: currentContext.dataSelection.selectedDocumentIndexes[0],
-                documentContent: currentQueryResultsRef.current?.jsonDocuments?.[currentContext.dataSelection.selectedDocumentIndexes[0]],
+                documentContent:
+                    currentQueryResultsRef.current?.jsonDocuments?.[
+                        currentContext.dataSelection.selectedDocumentIndexes[0]
+                    ],
             },
         });
     }
 
     function handleAddRequest(): void {
         window.config?.__vsCodeApi.postMessage({
-            type: 'request.collectionView.addDocument'
+            type: 'request.collectionView.addDocument',
         });
     }
 

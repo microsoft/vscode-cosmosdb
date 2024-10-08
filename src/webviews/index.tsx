@@ -16,7 +16,7 @@ import { WithWebviewContext, type WebviewState } from './WebviewContext';
 export const Views = {
     cosmosDbQuery: QueryEditor,
     mongoClustersCollectionView: CollectionView,
-    mongoClustersDocumentView: DocumentView
+    mongoClustersDocumentView: DocumentView,
 } as const;
 
 export type ViewKey = keyof typeof Views;

@@ -54,6 +54,10 @@ export type DispatchAction =
     | {
           type: 'setEditMode';
           mode: EditMode;
+      }
+    | {
+          type: 'setSelectedDocumentIds';
+          documentIds: string[];
       };
 
 export type QueryEditorState = {
@@ -70,6 +74,7 @@ export type QueryEditorState = {
     pageSize: number;
 
     currentQueryResult: SerializedQueryResult | null;
+    selectedDocumentIds: string[];
 
     tableViewMode: TableViewMode;
     editMode: EditMode;
@@ -89,6 +94,7 @@ export const defaultState: QueryEditorState = {
     pageSize: DEFAULT_PAGE_SIZE,
 
     currentQueryResult: null,
+    selectedDocumentIds: [],
 
     tableViewMode: 'Tree',
     editMode: 'View',
@@ -134,5 +140,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, tableViewMode: action.mode };
         case 'setEditMode':
             return { ...state, editMode: action.mode };
+        case 'setSelectedDocumentIds':
+            return { ...state, selectedDocumentIds: action.documentIds };
     }
 }

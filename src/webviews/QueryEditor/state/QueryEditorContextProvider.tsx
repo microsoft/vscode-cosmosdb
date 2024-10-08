@@ -3,20 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Link, Toast, ToastBody, ToastTitle, ToastTrigger } from '@fluentui/react-components';
-import * as React from 'react';
 import { type ResultViewMetadata, type SerializedQueryResult } from '../../../docdb/types/queryResult';
 import { type Channel } from '../../../panels/Communication/Channel/Channel';
+import { BaseContextProvider } from '../../utils/context/BaseContextProvider';
 import { type DispatchAction, type EditMode, type TableViewMode } from './QueryEditorState';
 
-export class QueryEditorContextProvider {
+export class QueryEditorContextProvider extends BaseContextProvider {
     constructor(
-        private readonly channel: Channel,
+        channel: Channel,
         private readonly dispatch: (action: DispatchAction) => void,
-        private readonly dispatchToast: (content: React.ReactNode, options?: unknown) => void,
+        dispatchToast: (content: React.ReactNode, options?: unknown) => void,
     ) {
-        this.initEventListeners();
-        void this.channel.postMessage({ type: 'event', name: 'ready', params: [] });
+        super(channel, dispatchToast);
     }
 
     public async runQuery(query: string, options: ResultViewMetadata): Promise<void> {
@@ -56,13 +54,6 @@ export class QueryEditorContextProvider {
         await this.sendCommand('disconnectFromDatabase');
     }
 
-    public async showInformationMessage(message: string) {
-        await this.sendCommand('showInformationMessage', message);
-    }
-    public async showErrorMessage(message: string) {
-        await this.sendCommand('showErrorMessage', message);
-    }
-
     public setPageSize(pageSize: number) {
         void this.reportWebviewEvent('setPageSize', { pageSize: pageSize.toString() });
         this.dispatch({ type: 'setPageSize', pageSize });
@@ -71,55 +62,25 @@ export class QueryEditorContextProvider {
     public setTableViewMode(mode: TableViewMode) {
         void this.reportWebviewEvent('setTableViewMode', { mode });
         this.dispatch({ type: 'setTableViewMode', mode });
+        this.dispatch({ type: 'setEditMode', mode: 'View' });
     }
     public setEditMode(mode: EditMode) {
         void this.reportWebviewEvent('setEditMode', { mode });
         this.dispatch({ type: 'setEditMode', mode });
-    }
 
-    public async reportWebviewEvent(
-        eventName: string,
-        properties: Record<string, string> = {},
-        measurements: Record<string, number> = {},
-    ) {
-        await this.sendCommand('reportWebviewEvent', eventName, properties, measurements);
-    }
-    public async reportWebviewError(
-        message: string,
-        stack: string | undefined,
-        componentStack: string | null | undefined,
-    ) {
-        // Error is not JSON serializable, so the original Error object cannot be sent to the webview host.
-        // Send only the relevant fields
-        await this.sendCommand('reportWebviewError', message, stack, componentStack);
-    }
-    public async executeReportIssueCommand() {
-        await this.sendCommand('executeReportIssueCommand');
-    }
-
-    private async sendCommand(command: string, ...args: unknown[]): Promise<void> {
-        try {
-            // Don't remove await here, we need to catch the error
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'command',
-                params: [
-                    {
-                        commandName: command,
-                        params: args,
-                    },
-                ],
-            });
-        } catch (error) {
-            try {
-                await this.showErrorMessage(`Failed to execute command ${command}: ${error}`);
-            } catch {
-                // Ignore
-            }
+        if (mode === 'Edit') {
+            // While in edit mode, switch to table view
+            this.dispatch({ type: 'setTableViewMode', mode: 'Table' });
         }
     }
+    public setSelectedDocumentIds(documentIds: string[]) {
+        void this.reportWebviewEvent('setSelectedDocumentIds', { count: documentIds.length.toString() });
+        this.dispatch({ type: 'setSelectedDocumentIds', documentIds });
+    }
 
-    private initEventListeners() {
+    protected initEventListeners() {
+        super.initEventListeners();
+
         this.channel.on('fileOpened', (query: string) => {
             this.insertText(query);
         });
@@ -147,30 +108,7 @@ export class QueryEditorContextProvider {
 
         this.channel.on('queryError', (executionId: string, error: string) => {
             this.dispatch({ type: 'executionStopped', executionId });
-            this.dispatchToast(
-                <Toast>
-                    <ToastTitle
-                        action={
-                            <ToastTrigger>
-                                <Link>Dismiss</Link>
-                            </ToastTrigger>
-                        }
-                    >
-                        Query error
-                    </ToastTitle>
-                    <ToastBody style={{ whiteSpace: 'pre-wrap' }}>{error}</ToastBody>
-                </Toast>,
-                {
-                    intent: 'error',
-                    pauseOnHover: true,
-                    pauseOnWindowBlur: true,
-                    timeout: 5000,
-                },
-            );
+            this.showToast('Query error', error, 'error');
         });
-    }
-
-    public dispose() {
-        this.channel.removeAllListeners();
     }
 }

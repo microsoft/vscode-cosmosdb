@@ -3,8 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { makeStyles, Toolbar, ToolbarDivider, ToolbarRadioButton, type ToolbarProps } from '@fluentui/react-components';
-import { EditRegular, EyeRegular } from '@fluentui/react-icons';
+import {
+    makeStyles,
+    Toolbar,
+    ToolbarButton,
+    ToolbarDivider,
+    ToolbarRadioButton,
+    Tooltip,
+    type ToolbarProps,
+} from '@fluentui/react-components';
+import {
+    DocumentAddRegular,
+    DocumentArrowDownRegular,
+    DocumentDismissRegular,
+    DocumentEditRegular,
+    EditRegular,
+    EyeRegular,
+} from '@fluentui/react-icons';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 import { type EditMode, type TableViewMode } from '../state/QueryEditorState';
 
@@ -26,11 +41,14 @@ const ToolbarDividerTransparent = () => {
     return <div style={{ padding: '18px' }} />;
 };
 
-export const ResultTableViewToolbar = () => {
+export const ResultTabToolbar = () => {
     const styles = useStyles();
 
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
+
+    const isEditMode = state.editMode === 'Edit';
+    const isTableViewMode = state.tableViewMode === 'Table';
 
     const checkedValues = {
         tableViewMode: [state.tableViewMode],
@@ -43,6 +61,23 @@ export const ResultTableViewToolbar = () => {
         } else if (name === 'editMode') {
             dispatcher.setEditMode(checkedItems[0] as EditMode);
         }
+    };
+
+    const onNewDocumentClick = () => {
+        // eslint-disable-next-line no-console
+        console.log('New document clicked');
+    };
+    const onViewDocumentClick = () => {
+        // eslint-disable-next-line no-console
+        console.log('View document clicked');
+    };
+    const onEditDocumentClick = () => {
+        // eslint-disable-next-line no-console
+        console.log('Edit document clicked');
+    };
+    const onDeleteDocumentClick = () => {
+        // eslint-disable-next-line no-console
+        console.log('Delete document clicked');
     };
 
     return (
@@ -62,9 +97,7 @@ export const ResultTableViewToolbar = () => {
             >
                 Tree
             </ToolbarRadioButton>
-
             <ToolbarDivider />
-
             <ToolbarRadioButton
                 aria-label="JSON view"
                 name={'tableViewMode'}
@@ -74,9 +107,7 @@ export const ResultTableViewToolbar = () => {
             >
                 JSON
             </ToolbarRadioButton>
-
             <ToolbarDivider />
-
             <ToolbarRadioButton
                 aria-label="Table view"
                 name={'tableViewMode'}
@@ -86,9 +117,7 @@ export const ResultTableViewToolbar = () => {
             >
                 Table
             </ToolbarRadioButton>
-
             <ToolbarDividerTransparent />
-
             <ToolbarRadioButton
                 aria-label="View mode"
                 icon={<EyeRegular />}
@@ -99,9 +128,7 @@ export const ResultTableViewToolbar = () => {
             >
                 View
             </ToolbarRadioButton>
-
             <ToolbarDivider />
-
             <ToolbarRadioButton
                 aria-label="Edit mode"
                 icon={<EditRegular />}
@@ -109,10 +136,45 @@ export const ResultTableViewToolbar = () => {
                 value={'Edit'}
                 appearance={'transparent'}
                 className={styles.editModeButton}
-                disabled={true}
             >
                 Edit
             </ToolbarRadioButton>
+            {isTableViewMode && (
+                <>
+                    <ToolbarDividerTransparent />
+                    <Tooltip content="View selected document in separate tab" relationship="description" withArrow>
+                        <ToolbarButton
+                            aria-label={'View selected document'}
+                            icon={<DocumentArrowDownRegular />}
+                            onClick={onViewDocumentClick}
+                        />
+                    </Tooltip>
+                    <Tooltip content="Add new document in separate tab" relationship="description" withArrow>
+                        <ToolbarButton
+                            aria-label={'Add new document'}
+                            icon={<DocumentAddRegular />}
+                            onClick={onNewDocumentClick}
+                            disabled={!isEditMode}
+                        />
+                    </Tooltip>
+                    <Tooltip content="Edit selected document in separate tab" relationship="description" withArrow>
+                        <ToolbarButton
+                            aria-label={'Edit selected document'}
+                            icon={<DocumentEditRegular />}
+                            onClick={onEditDocumentClick}
+                            disabled={!isEditMode}
+                        />
+                    </Tooltip>
+                    <Tooltip content="Delete selected document" relationship="description" withArrow>
+                        <ToolbarButton
+                            aria-label={'Delete selected document'}
+                            icon={<DocumentDismissRegular />}
+                            onClick={onDeleteDocumentClick}
+                            disabled={!isEditMode}
+                        />
+                    </Tooltip>
+                </>
+            )}
         </Toolbar>
     );
 };

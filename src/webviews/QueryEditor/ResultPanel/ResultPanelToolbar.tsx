@@ -165,7 +165,7 @@ const AlertDialog = ({ open, setOpen, doAction }: AlertDialogProps) => {
     );
 };
 
-export const ResultToolbar = ({ selectedTab }: ResultToolbarProps) => {
+export const ResultPanelToolbar = ({ selectedTab }: ResultToolbarProps) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const restoreFocusTargetAttribute = useRestoreFocusTarget();

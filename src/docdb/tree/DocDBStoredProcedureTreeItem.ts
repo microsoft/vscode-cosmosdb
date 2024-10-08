@@ -35,6 +35,7 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
         public procedure: StoredProcedureDefinition & Resource,
     ) {
         super(parent);
+        this.parent = parent;
         ext.fileSystem.fireChangedEvent(this);
         this.commandId = 'cosmosDB.openStoredProcedure';
     }

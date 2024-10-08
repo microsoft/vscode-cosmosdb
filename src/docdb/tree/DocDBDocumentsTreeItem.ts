@@ -34,6 +34,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
 
     constructor(parent: DocDBCollectionTreeItem) {
         super(parent);
+        this.parent = parent;
         this.root = this.parent.root;
     }
 

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { TestOutputChannel, TestUserInput } from '@microsoft/vscode-azext-dev';
+import { type IAzureUserInput } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext, registerOnActionStartHandler } from '../extension.bundle';
 
@@ -24,6 +25,6 @@ suiteSetup(async function (this: Mocha.Context): Promise<void> {
 
     registerOnActionStartHandler((context) => {
         // Use `TestUserInput` by default so we get an error if an unexpected call to `context.ui` occurs, rather than timing out
-        context.ui = new TestUserInput(vscode);
+        context.ui = new TestUserInput(vscode) as IAzureUserInput;
     });
 });

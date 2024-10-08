@@ -4,14 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { parseError } from '@microsoft/vscode-azext-utils';
-import * as assert from 'assert';
+import assert from 'assert';
 import { Position } from 'vscode';
 import {
     findCommandAtPosition,
     getAllCommandsFromText,
-    MongoCommand,
     nonNullProp,
     ObjectId,
+    type MongoCommand,
 } from '../extension.bundle';
 
 function expectSingleCommand(text: string): MongoCommand {

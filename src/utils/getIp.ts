@@ -17,7 +17,7 @@ export function isIpInRanges(ip: string, ranges: { startIpAddress: string; endIp
     });
 }
 
-export async function getPublicIpv4(context: IActionContext): Promise<string> {
+export async function getPublicIpv4(context: IActionContext): Promise<string> | never {
     const methods: (() => Promise<string>)[] = [
         () => getPublicIpv4Https(context, 'https://api.ipify.org/'),
         () => getPublicIpv4Https(context, 'https://ipv4.icanhazip.com/'),

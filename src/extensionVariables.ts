@@ -7,14 +7,17 @@ import {
     type AzExtTreeDataProvider,
     type AzExtTreeItem,
     type IAzExtLogOutputChannel,
+    type TreeElementStateManager,
 } from '@microsoft/vscode-azext-utils';
 import { type AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostapi';
+import { type AzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import { type ExtensionContext, type SecretStorage, type TreeView } from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
 import { type MongoDBLanguageClient } from './mongo/languageClient';
 import { type MongoCodeLensProvider } from './mongo/services/MongoCodeLensProvider';
 import { type MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
+import { type MongoClustersBranchDataProvider } from './mongoClusters/tree/MongoClustersBranchDataProvider';
 import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
 import { type AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
@@ -31,7 +34,7 @@ export namespace ext {
     export let tree: AzExtTreeDataProvider;
     export let treeView: TreeView<AzExtTreeItem>;
     export let attachedAccountsNode: AttachedAccountsTreeItem;
-    export let ignoreBundle: boolean | undefined;
+    export let isBundle: boolean | undefined;
     export let azureAccountTreeItem: AzureAccountTreeItemWithAttached;
     export let secretStorage: SecretStorage;
     export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;
@@ -41,6 +44,11 @@ export namespace ext {
     export let noSqlCodeLensProvider: NoSqlCodeLensProvider;
     export let mongoLanguageClient: MongoDBLanguageClient;
     export let rgApi: AzureHostExtensionApi;
+    export let rgApiV2: AzureResourcesExtensionApi;
+
+    export let state: TreeElementStateManager;
+
+    export let mongoClustersBranchDataProvider: MongoClustersBranchDataProvider;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

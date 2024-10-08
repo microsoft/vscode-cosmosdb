@@ -1,0 +1,11 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+@import '@slickgrid-universal/common/dist/styles/sass/variables';
+
+@import 'vscode-to-slickgrid2.scss';
+
+/* make sure to add the @import the SlickGrid Bootstrap Theme AFTER the variables changes */
+@import '@slickgrid-universal/common/dist/styles/sass/slickgrid-theme-salesforce.scss';

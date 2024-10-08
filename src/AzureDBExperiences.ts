@@ -1,5 +1,5 @@
-/* ------------------------------------------------------------------------------------------
- *   Copyright (c) Microsoft Corporation. All rights reserved.
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
@@ -11,7 +11,7 @@ export enum API {
     MongoDB = 'MongoDB',
     Graph = 'Graph',
     Table = 'Table',
-    Core = 'Core',
+    Core = 'Core', // Now called NoSQL
     PostgresSingle = 'PostgresSingle',
     PostgresFlexible = 'PostgresFlexible',
 }
@@ -108,11 +108,10 @@ export function getExperienceQuickPickForAttached(api: API): IAzureQuickPickItem
 // Table and Gremlin are distinguished from SQL by their capabilities
 export const CoreExperience: Experience = {
     api: API.Core,
-    longName: 'Core',
-    description: '(SQL)',
-    shortName: 'SQL',
+    longName: 'Azure Cosmos DB NoSQL',
+    shortName: 'NoSQL',
     kind: DBAccountKind.GlobalDocumentDB,
-    tag: 'Core (SQL)',
+    tag: 'Azure Cosmos DB NoSQL',
 } as const;
 export const MongoExperience: Experience = {
     api: API.MongoDB,

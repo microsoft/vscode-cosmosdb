@@ -13,7 +13,7 @@ import * as vscodeUtil from '../utils/vscodeUtils';
 import { TabBase, type CommandPayload } from './TabBase';
 
 export class QueryEditorTab extends TabBase {
-    protected getCommand(payload: CommandPayload): Promise<void> {
+    protected processCommand(payload: CommandPayload): Promise<void> {
         const commandName = payload.commandName;
         switch (commandName) {
             case 'openFile':

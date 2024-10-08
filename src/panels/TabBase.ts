@@ -217,7 +217,7 @@ export abstract class TabBase {
             // TODO: Telemetry
             console.log('command', payload);
 
-            await this.getCommand(payload);
+            await this.processCommand(payload);
         });
 
         this.channel.on<void>('ready', async () => {
@@ -225,7 +225,7 @@ export abstract class TabBase {
         });
     }
 
-    protected abstract getCommand(payload: CommandPayload): Promise<void>;
+    protected abstract processCommand(payload: CommandPayload): Promise<void>;
 
     protected async updateConnection(connection?: NoSqlQueryConnection): Promise<void> {
         this.connection = connection;

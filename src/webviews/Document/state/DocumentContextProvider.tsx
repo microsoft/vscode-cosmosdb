@@ -21,7 +21,12 @@ export class DocumentContextProvider extends BaseContextProvider {
     protected initEventListeners(): void {
         super.initEventListeners();
 
-        this.channel.on('setDocument', (documentContent: JSONObject) => {
+        this.channel.on('setDocument', (documentContent?: JSONObject) => {
+            if (documentContent === undefined) {
+                this.showToast('Error', 'Document content is undefined', 'error');
+                return;
+            }
+
             this.dispatch({ type: 'setDocument', documentContent: JSON.stringify(documentContent, null, 4) });
         });
 

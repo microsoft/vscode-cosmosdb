@@ -3,20 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type PartitionKey } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as crypto from 'crypto';
 import * as path from 'path';
 import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { getNoSqlQueryConnection } from '../docdb/commands/connectNoSqlContainer';
+import { getCosmosClientByConnection } from '../docdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
-import { CosmosDBSession } from '../docdb/session/CosmosDBSession';
+import { QuerySession } from '../docdb/session/QuerySession';
 import { type ResultViewMetadata } from '../docdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { TelemetryContext } from '../Telemetry';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { type Channel } from './Communication/Channel/Channel';
 import { VSCodeChannel } from './Communication/Channel/VSCodeChannel';
+import { DocumentTab } from './DocumentTab';
 
 const DEV_SERVER_HOST = 'http://localhost:18080';
 
@@ -32,7 +35,7 @@ export class QueryEditorTab {
 
     public readonly channel: Channel;
     public readonly panel: vscode.WebviewPanel;
-    public readonly sessions = new Map<string, CosmosDBSession>();
+    public readonly sessions = new Map<string, QuerySession>();
 
     private readonly id: string;
     private readonly start: number;
@@ -193,9 +196,6 @@ export class QueryEditorTab {
 
     private initController() {
         this.channel.on<void>('command', async (payload: CommandPayload) => {
-            // TODO: Telemetry
-            console.log('command', payload);
-
             await this.getCommand(payload);
         });
 
@@ -250,6 +250,12 @@ export class QueryEditorTab {
             case 'executeReportIssueCommand':
                 // Use an async anonymous function to convert Thenable to Promise
                 return (async () => await vscode.commands.executeCommand('azureDatabases.reportIssue'))();
+            case 'openDocument':
+                return this.openDocument(
+                    payload.params[0] as string,
+                    payload.params[1] as string,
+                    payload.params[2] as string,
+                );
             default:
                 throw new Error(`Unknown command: ${commandName}`);
         }
@@ -263,10 +269,21 @@ export class QueryEditorTab {
 
             this.telemetryContext.addMaskedValue([databaseId, containerId, endpoint, masterKey ?? '']);
 
+            const client = getCosmosClientByConnection(this.connection);
+            const container = await client.database(databaseId).container(containerId).read();
+
+            if (container.resource === undefined) {
+                // Should be impossible since here we have a connection from the extension
+                throw new Error(`Container ${containerId} not found`);
+            }
+
+            // Probably need to pass the entire container object to the webview
+            const containerDefinition = container.resource;
+
             await this.channel.postMessage({
                 type: 'event',
                 name: 'databaseConnected',
-                params: [databaseId, containerId],
+                params: [databaseId, containerId, containerDefinition.partitionKey],
             });
         } else {
             // We will not remove the connection details from the telemetry context
@@ -365,7 +382,7 @@ export class QueryEditorTab {
                 throw new Error('No connection');
             }
 
-            const session = new CosmosDBSession(this.connection, this.channel, query, options);
+            const session = new QuerySession(this.connection, this.channel, query, options);
 
             context.telemetry.properties.executionId = session.id;
 
@@ -437,6 +454,27 @@ export class QueryEditorTab {
             }
 
             await session.firstPage();
+        });
+    }
+
+    private async openDocument(mode: string, documentId: string, partitionKey: PartitionKey): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.openDocument', () => {
+            if (!this.connection) {
+                throw new Error('No connection');
+            }
+
+            if (mode !== 'add' && mode !== 'edit' && mode !== 'view') {
+                throw new Error(`Invalid mode: ${mode}`);
+            }
+
+            let viewColumn = this.panel.viewColumn ?? vscode.ViewColumn.One;
+            if (viewColumn === vscode.ViewColumn.Nine) {
+                viewColumn = vscode.ViewColumn.One;
+            } else {
+                viewColumn += 1;
+            }
+
+            DocumentTab.render(this.connection, mode, documentId, partitionKey, viewColumn);
         });
     }
 }

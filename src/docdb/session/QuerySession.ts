@@ -10,11 +10,11 @@ import { v4 as uuid } from 'uuid';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
+import { getCosmosClientByConnection } from '../getCosmosClient';
 import { type ResultViewMetadata } from '../types/queryResult';
-import { SessionResult } from './SessionResult';
+import { QuerySessionResult } from './QuerySessionResult';
 
-export class CosmosDBSession {
+export class QuerySession {
     public readonly id: string;
     private readonly channel: Channel;
     private readonly client: CosmosClient;
@@ -26,7 +26,7 @@ export class CosmosDBSession {
     private readonly endpoint: string;
     private readonly masterKey: string;
 
-    private readonly sessionResult: SessionResult;
+    private readonly sessionResult: QuerySessionResult;
 
     private abortController: AbortController | null = null;
     private iterator: QueryIterator<unknown> | null = null;
@@ -39,16 +39,10 @@ export class CosmosDBSession {
         query: string,
         resultViewMetadata: ResultViewMetadata,
     ) {
-        const { databaseId, containerId, endpoint, masterKey, isEmulator } = connection;
-        const credentials: CosmosDBCredential[] = [];
-        if (masterKey !== undefined) {
-            credentials.push({ type: 'key', key: masterKey });
-        }
-        credentials.push({ type: 'auth' });
+        const { databaseId, containerId, endpoint, masterKey } = connection;
 
         this.id = uuid();
         this.channel = channel;
-        this.client = getCosmosClient(endpoint, credentials, isEmulator);
         this.databaseId = databaseId;
         this.containerId = containerId;
         this.endpoint = endpoint;
@@ -56,7 +50,9 @@ export class CosmosDBSession {
         this.resultViewMetadata = resultViewMetadata;
         this.query = query;
 
-        this.sessionResult = new SessionResult(resultViewMetadata);
+        this.client = getCosmosClientByConnection(connection);
+
+        this.sessionResult = new QuerySessionResult(resultViewMetadata);
     }
 
     public async run(): Promise<void> {

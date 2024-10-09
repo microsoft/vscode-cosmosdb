@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { type SerializedQueryResult } from '../../../docdb/types/queryResult';
 
 export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
@@ -21,6 +22,7 @@ export type DispatchAction =
           type: 'databaseConnected';
           dbName: string;
           collectionName: string;
+          partitionKey?: PartitionKeyDefinition;
       }
     | {
           type: 'databaseDisconnected';
@@ -63,6 +65,7 @@ export type DispatchAction =
 export type QueryEditorState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
     collectionName: string; // Collection which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
+    partitionKey?: PartitionKeyDefinition; // Partition key of the collection (Readonly, only server can change it)
     currentExecutionId: string; // Execution ID of the current query (Value exists on both client and server)
     queryHistory: string[];
     queryValue: string;
@@ -83,6 +86,7 @@ export type QueryEditorState = {
 export const defaultState: QueryEditorState = {
     dbName: '',
     collectionName: '',
+    partitionKey: undefined,
     currentExecutionId: '',
     queryHistory: [],
     queryValue: DEFAULT_QUERY_VALUE,

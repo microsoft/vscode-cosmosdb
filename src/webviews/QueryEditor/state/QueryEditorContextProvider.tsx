@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { type ResultViewMetadata, type SerializedQueryResult } from '../../../docdb/types/queryResult';
 import { type Channel } from '../../../panels/Communication/Channel/Channel';
 import { BaseContextProvider } from '../../utils/context/BaseContextProvider';
@@ -85,9 +86,12 @@ export class QueryEditorContextProvider extends BaseContextProvider {
             this.insertText(query);
         });
 
-        this.channel.on('databaseConnected', (dbName: string, collectionName: string) => {
-            this.dispatch({ type: 'databaseConnected', dbName, collectionName });
-        });
+        this.channel.on(
+            'databaseConnected',
+            (dbName: string, collectionName: string, partitionKey?: PartitionKeyDefinition) => {
+                this.dispatch({ type: 'databaseConnected', dbName, collectionName, partitionKey });
+            },
+        );
 
         this.channel.on('databaseDisconnected', () => {
             this.dispatch({ type: 'databaseDisconnected' });

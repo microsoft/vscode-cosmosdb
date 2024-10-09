@@ -11,7 +11,7 @@ import {
     type SerializedQueryResult,
 } from '../types/queryResult';
 
-export class SessionResult {
+export class QuerySessionResult {
     private readonly queryResults = new Map<number, QueryResult>();
     private readonly isFetchedAll: boolean;
     private readonly metadata: ResultViewMetadata;

@@ -7,6 +7,7 @@ import * as React from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import { createRoot } from 'react-dom/client';
 import { type WebviewApi } from 'vscode-webview';
+import { Document } from './Document/Document';
 import { CollectionView } from './mongoClusters/collectionView/CollectionView';
 import { DocumentView } from './mongoClusters/documentView/documentView';
 import { QueryEditor } from './QueryEditor/QueryEditor';
@@ -15,6 +16,7 @@ import { WithWebviewContext, type WebviewState } from './WebviewContext';
 
 export const Views = {
     cosmosDbQuery: QueryEditor,
+    cosmosDbDocument: Document,
     mongoClustersCollectionView: CollectionView,
     mongoClustersDocumentView: DocumentView,
 } as const;

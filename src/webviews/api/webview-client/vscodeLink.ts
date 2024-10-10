@@ -11,6 +11,7 @@ import { type AppRouter } from '../configuration/appRouter';
  */
 export interface VsCodeLinkRequestMessage {
     id: string;
+    method: string;
     op: Operation<unknown>;
 }
 
@@ -99,6 +100,7 @@ function vscodeLink(options: VSCodeLinkOptions): TRPCLink<AppRouter> {
                     if (message.result !== undefined) {
                         const successResponse = {
                             result: {
+                                type: 'data' as const, // TODO: revisit when tRPC reaches 11.0.0.. Ensures 'type' is the string literal 'data'
                                 data: message.result,
                             },
                         };
@@ -121,14 +123,16 @@ function vscodeLink(options: VSCodeLinkOptions): TRPCLink<AppRouter> {
                 const unsubscribe = onReceive(handleMessage);
 
                 // Send the operation to the server with a unique ID
-                send({ id: operationId, op });
+                // TODO: we have added 'method' and copy the op.type as there
+                // seems to be a missmatch two versions of tRPC. This should be revisited.
+                send({ id: operationId, method: op.type, op });
 
                 // Return a cleanup function that is called when the observable is unsubscribed
                 return () => {
                     // If it's a subscription, send a stop message to the server
                     if (op.type === 'subscription') {
                         console.log('🤯🤯🤯 here stop the subscription: ' + op.path);
-                        //send({ id: operationId, op: { ...op, type: 'subscription.stop' } });
+                        send({ id: operationId, method: 'subscription.stop', op: { ...op } });
                     }
                     // Cleanup the message handler
                     unsubscribe();

@@ -59,6 +59,9 @@ export class ReactWebviewPanelController<Configuration, Reducers> extends ReactW
 
         const callerFactory = createCallerFactory(appRouter);
 
+        // Keep track of active subscriptions
+        const subscriptions = new Map<string, () => void>();
+
         this.registerDisposable(
             this._panel.webview.onDidReceiveMessage(async (message: VsCodeLinkRequestMessage) => {
                 console.log('Received message from webview:', message);
@@ -67,8 +70,51 @@ export class ReactWebviewPanelController<Configuration, Reducers> extends ReactW
                 const caller = callerFactory({});
 
                 switch (message.op.type) {
-                    // case 'subscription':
-                    //     break;
+                    case 'subscription': {
+                        try {
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                            const procedure = caller[message.op.path];
+
+                            if (typeof procedure !== 'function') {
+                                throw new Error(`Procedure not found: ${message.op.path}`);
+                            }
+
+                            // Call the subscription procedure to get an observable
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+                            const observableProc = procedure(message.op.input);
+
+                            // Subscribe to the observable
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+                            const subscription = observableProc.subscribe({
+                                next: (data) => {
+                                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                                    const response = { id: message.id, result: data };
+                                    console.log('Sending subscription data:', response);
+                                    this._panel.webview.postMessage(response);
+                                },
+                                error: (error) => {
+                                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+                                    const response = { id: message.id, error: { message: error.message } };
+                                    console.log('Subscription error:', response);
+                                    this._panel.webview.postMessage(response);
+                                },
+                                complete: () => {
+                                    const response = { id: message.id, complete: true };
+                                    console.log('Subscription complete:', response);
+                                    this._panel.webview.postMessage(response);
+                                },
+                            });
+
+                            // Store the unsubscribe function to manage the subscription later
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+                            subscriptions.set(message.id, () => subscription.unsubscribe());
+                        } catch (error) {
+                            console.log('Error handling subscription:', error);
+                            const response = { id: message.id, error: { message: (error as Error).message } };
+                            this._panel.webview.postMessage(response);
+                        }
+                        break;
+                    }
                     // case 'subscription.stop':
                     //     break;
                     default:
@@ -113,7 +159,10 @@ export class ReactWebviewPanelController<Configuration, Reducers> extends ReactW
         let obj = caller;
 
         for (const key of keys) {
-            if (obj !== null && (typeof obj === 'object' || typeof obj === 'function') && Object.prototype.hasOwnProperty.call(obj, key)
+            if (
+                obj !== null &&
+                (typeof obj === 'object' || typeof obj === 'function') &&
+                Object.prototype.hasOwnProperty.call(obj, key)
             ) {
                 obj = obj[key];
             } else {

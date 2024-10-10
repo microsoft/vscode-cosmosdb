@@ -273,6 +273,18 @@ export const DocumentView = (): JSX.Element => {
             console.log(result.text);
         });
 
+        void clientTrpc.time.subscribe(undefined, {
+            onData(data) {
+              console.log('Current time:', data.time);
+            },
+            onError(err) {
+              console.error('Subscription error:', err);
+            },
+            onComplete() {
+              console.log('Subscription completed');
+            },
+          });
+
         // void clientTrpc.common.hello.query().then((result) => {
         //     console.log(result.text);
         // });

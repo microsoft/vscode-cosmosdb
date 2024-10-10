@@ -33,5 +33,13 @@ const monacoOptions = {
 };
 
 export const DataViewPanelJSON = ({ value }: Props): React.JSX.Element => {
-    return <MonacoEditor height={'100%'} width={'100%'} language="json" options={monacoOptions} value={value.join('\n\n')} />;
+    return (
+        <MonacoEditor
+            height={'100%'}
+            width={'100%'}
+            language="json"
+            options={monacoOptions}
+            value={value.join('\n\n')}
+        />
+    );
 };

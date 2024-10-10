@@ -5,18 +5,18 @@
 
 import { makeStyles } from '@fluentui/react-components';
 import { Suspense, useMemo } from 'react';
-import { MonacoEditor } from '../../MonacoEditor';
-import { DataViewPanelTable } from '../../mongoClusters/collectionView/components/DataViewPanelTable';
-import { DataViewPanelTree } from '../../mongoClusters/collectionView/components/DataViewPanelTree';
 import { queryResultToJSON, queryResultToTable, queryResultToTree } from '../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
-import { ResultTableViewToolbar } from './ResultTableViewToolbar';
+import { ResultTabToolbar } from './ResultTabToolbar';
+import { ResultTabViewJson } from './ResultTabViewJson';
+import { ResultTabViewTable } from './ResultTabViewTable';
+import { ResultTabViewTree } from './ResultTabViewTree';
 
 const useClasses = makeStyles({
     toolbarContainer: {
         marginBottom: '10px',
     },
-    monacoContainer: {
+    resultDisplay: {
         marginTop: '10px',
         width: '100%',
         height: 'calc(100% - 50px)',
@@ -29,34 +29,26 @@ const useClasses = makeStyles({
 export const ResultTab = () => {
     const classes = useClasses();
 
-    const { tableViewMode, currentQueryResult } = useQueryEditorState();
+    const { tableViewMode, currentQueryResult, partitionKey } = useQueryEditorState();
 
     const jsonViewData = useMemo(() => queryResultToJSON(currentQueryResult), [currentQueryResult]);
-    const tableViewData = useMemo(() => queryResultToTable(currentQueryResult), [currentQueryResult]);
-    const treeViewData = useMemo(() => queryResultToTree(currentQueryResult), [currentQueryResult]);
+    const tableViewData = useMemo(
+        () => queryResultToTable(currentQueryResult, partitionKey),
+        [currentQueryResult, partitionKey],
+    );
+    const treeViewData = useMemo(
+        () => queryResultToTree(currentQueryResult, partitionKey),
+        [currentQueryResult, partitionKey],
+    );
 
     return (
         <section className={classes.container}>
-            <ResultTableViewToolbar></ResultTableViewToolbar>
-            <div className={[classes.monacoContainer, 'resultsDisplayArea'].join(' ')}>
+            <ResultTabToolbar></ResultTabToolbar>
+            <div className={[classes.resultDisplay, 'resultsDisplayArea'].join(' ')}>
                 <Suspense fallback={<div>Loading...</div>}>
-                    {tableViewMode === 'Table' && (
-                        <DataViewPanelTable liveData={tableViewData!.dataset} liveHeaders={tableViewData!.headers} />
-                    )}
-                    {tableViewMode === 'Tree' && (
-                        <DataViewPanelTree
-                            liveData={(treeViewData ?? []) as unknown as { [key: string]: undefined }[]}
-                        />
-                    )}
-                    {tableViewMode === 'JSON' && (
-                        <MonacoEditor
-                            height={'100%'}
-                            width={'100%'}
-                            defaultLanguage={'json'}
-                            value={jsonViewData || 'No result'}
-                            options={{ domReadOnly: true, readOnly: true }}
-                        />
-                    )}
+                    {tableViewMode === 'Table' && <ResultTabViewTable {...tableViewData} />}
+                    {tableViewMode === 'Tree' && <ResultTabViewTree data={treeViewData ?? []} />}
+                    {tableViewMode === 'JSON' && <ResultTabViewJson data={jsonViewData} />}
                 </Suspense>
             </div>
         </section>

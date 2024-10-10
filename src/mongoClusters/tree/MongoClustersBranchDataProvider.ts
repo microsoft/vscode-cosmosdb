@@ -76,7 +76,7 @@ export class MongoClustersBranchDataProvider
                          * so that when the cache is updated, the items can be refreshed.
                          * I had to keep all of them in the map becasuse refresh requires the actual MongoClusterItem instance.
                          */
-                        this.itemsToUpdateInfo.forEach((value : MongoClusterItem) => {
+                        this.itemsToUpdateInfo.forEach((value: MongoClusterItem) => {
                             value.mongoCluster = {
                                 ...value.mongoCluster,
                                 ...this.detailsCache.get(value.mongoCluster.id),

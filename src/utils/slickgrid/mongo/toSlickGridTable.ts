@@ -39,7 +39,10 @@ export function getDataTopLevel(documents: WithId<Document>[]): object[] {
 
         for (const key of Object.keys(doc)) {
             if (key === '_id') {
-                row[key] = { value: valueToDisplayString(doc[key], MongoBSONTypes.ObjectId), type: MongoBSONTypes.ObjectId };
+                row[key] = {
+                    value: valueToDisplayString(doc[key], MongoBSONTypes.ObjectId),
+                    type: MongoBSONTypes.ObjectId,
+                };
                 row['x-objectid'] = doc[key].toString();
             } else {
                 const value: unknown = doc[key];

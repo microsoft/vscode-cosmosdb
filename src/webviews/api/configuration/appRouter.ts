@@ -34,6 +34,16 @@ export const appRouter = router({
         });
     }),
     common: {
+        sthUndefined: publicProcedure
+            .query(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+
+                const msg = { text: 'hoho', undefinedField: undefined };
+
+                console.log(msg);
+
+                return msg;
+            }),
         hello: publicProcedure
             // This is the input schema of your procedure, no parameters
             .query(async () => {

@@ -89,6 +89,8 @@ function vscodeLink(options: VSCodeLinkOptions): TRPCLink<AppRouter> {
                     // Ignore messages not related to this operation
                     if (message.id !== operationId) return;
 
+                    console.log('>>>Received message from server:', message);
+
                     // Handle error messages --> this codepath hasn't been explored yet
                     if (message.error) {
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument

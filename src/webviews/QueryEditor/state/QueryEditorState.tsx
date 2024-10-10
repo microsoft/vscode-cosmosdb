@@ -58,8 +58,8 @@ export type DispatchAction =
           mode: EditMode;
       }
     | {
-          type: 'setSelectedDocumentIds';
-          documentIds: string[];
+          type: 'setSelectedRows';
+          selectedRows: number[];
       };
 
 export type QueryEditorState = {
@@ -77,7 +77,7 @@ export type QueryEditorState = {
     pageSize: number;
 
     currentQueryResult: SerializedQueryResult | null;
-    selectedDocumentIds: string[];
+    selectedRows: number[];
 
     tableViewMode: TableViewMode;
     editMode: EditMode;
@@ -98,7 +98,7 @@ export const defaultState: QueryEditorState = {
     pageSize: DEFAULT_PAGE_SIZE,
 
     currentQueryResult: null,
-    selectedDocumentIds: [],
+    selectedRows: [],
 
     tableViewMode: 'Tree',
     editMode: 'View',
@@ -109,7 +109,13 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
         case 'insertText':
             return { ...state, queryValue: action.queryValue };
         case 'databaseConnected':
-            return { ...state, isConnected: true, dbName: action.dbName, collectionName: action.collectionName };
+            return {
+                ...state,
+                isConnected: true,
+                dbName: action.dbName,
+                collectionName: action.collectionName,
+                partitionKey: action.partitionKey,
+            };
         case 'databaseDisconnected':
             return { ...state, isConnected: false, dbName: '', collectionName: '' };
         case 'executionStarted':
@@ -144,7 +150,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, tableViewMode: action.mode };
         case 'setEditMode':
             return { ...state, editMode: action.mode };
-        case 'setSelectedDocumentIds':
-            return { ...state, selectedDocumentIds: action.documentIds };
+        case 'setSelectedRows':
+            return { ...state, selectedRows: action.selectedRows };
     }
 }

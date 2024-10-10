@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AbortError, ErrorResponse, TimeoutError, type CosmosClient, type PartitionKey } from '@azure/cosmos';
+import { AbortError, ErrorResponse, TimeoutError, type CosmosClient } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
@@ -11,6 +11,7 @@ import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
+import { type CosmosDbRecord, type CosmosDbRecordIdentifier } from '../types/queryResult';
 
 export class DocumentSession {
     public readonly id: string;
@@ -42,7 +43,7 @@ export class DocumentSession {
         this.masterKey = masterKey ?? '';
     }
 
-    public async read(documentId: string, partitionKey?: PartitionKey): Promise<void> {
+    public async read(documentId: CosmosDbRecordIdentifier): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.read', async (context) => {
             this.setTelemetryProperties(context);
 
@@ -50,21 +51,74 @@ export class DocumentSession {
                 throw new Error('Session is disposed');
             }
 
+            if (documentId.id === undefined || documentId._rid === undefined) {
+                throw new Error('Document id or _rid is required');
+            }
+
             try {
                 this.abortController = new AbortController();
-                const result = await this.client
-                    .database(this.databaseId)
-                    .container(this.containerId)
-                    .item(documentId, partitionKey)
-                    .read({
-                        abortSignal: this.abortController.signal,
-                    });
 
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'queryResults',
-                    params: [this.id, result.resource],
-                });
+                let result: CosmosDbRecord | null = null;
+
+                if (documentId.partitionKey !== undefined) {
+                    const response = await this.client
+                        .database(this.databaseId)
+                        .container(this.containerId)
+                        .item(documentId.id, documentId.partitionKey)
+                        .read<CosmosDbRecord>({
+                            abortSignal: this.abortController.signal,
+                        });
+
+                    if (response?.resource) {
+                        result = response.resource;
+                    }
+                }
+
+                // TODO: Should we also try to read the document if the above fails and partition key exists?
+                if (!result) {
+                    // let's try to read the document without the partition key
+                    const response = await this.client
+                        .database(this.databaseId)
+                        .container(this.containerId)
+                        .item(documentId.id)
+                        .read<CosmosDbRecord>({
+                            abortSignal: this.abortController.signal,
+                        });
+
+                    if (response?.resource) {
+                        result = response.resource;
+                    }
+                }
+
+                // TODO: Should we also try to read the document by _rid if the above fails?
+                if (!result) {
+                    const queryResult = await this.client
+                        .database(this.databaseId)
+                        .container(this.containerId)
+                        .items.query<CosmosDbRecord>(`SELECT * FROM c WHERE c._rid = "${documentId._rid}"`, {
+                            abortSignal: this.abortController.signal,
+                            bufferItems: true,
+                        })
+                        .fetchAll();
+
+                    if (queryResult.resources?.length === 1) {
+                        result = queryResult.resources[0];
+                    }
+                }
+
+                if (result) {
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'setDocument',
+                        params: [this.id, result],
+                    });
+                } else {
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'documentError',
+                        params: [this.id, 'Document not found'],
+                    });
+                }
             } catch (error) {
                 await this.errorHandling(error);
             }

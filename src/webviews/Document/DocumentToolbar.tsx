@@ -5,7 +5,7 @@
 
 import { Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, SaveRegular, TextGrammarCheckmarkRegular } from '@fluentui/react-icons';
-import { useDocumentState } from './state/DocumentContext';
+import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
 
 const ToolbarDividerTransparent = () => {
     return <div style={{ padding: '4px' }} />;
@@ -13,6 +13,7 @@ const ToolbarDividerTransparent = () => {
 
 export const DocumentToolbar = () => {
     const state = useDocumentState();
+    const dispatcher = useDocumentDispatcher();
 
     const isReadOnly = state.mode === 'view';
 
@@ -26,6 +27,7 @@ export const DocumentToolbar = () => {
 
     const onRefreshRequest = () => {
         // Reload original document from the database
+        void dispatcher.refreshDocument();
     };
 
     return (

@@ -20,22 +20,20 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
         return {
             id: header + '_id',
             name: header,
-            field: header,
+            field: header.startsWith('/') ? header.slice(1) : header,
             minWidth: 100,
         };
     });
 
     // SlickGrid emits the event twice. First time for selecting 1 row, second time for selecting this row + all rows what were selected before.
     const onSelectedRowsChanged = debounce((args: OnSelectedRowsChangedEventArgs) => {
-        const selectedRows = args.rows;
-        const documentIds: string[] = selectedRows.map((row) => dataset[row]['id']);
-        dispatcher.setSelectedDocumentIds(documentIds);
+        dispatcher.setSelectedRows(args.rows);
     }, 100);
 
     useEffect(() => {
         return () => {
             // Clean selected document ids when the component is unmounted
-            dispatcher.setSelectedDocumentIds([]);
+            dispatcher.setSelectedRows([]);
         };
     }, []);
 
@@ -45,9 +43,12 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             container: '.resultsDisplayArea', // this is a selector of the parent container, in this case it's the collectionView.tsx and the class is "resultsDisplayArea"
             delay: 100,
         },
-        enableAutoResize: true,
-        enableAutoSizeColumns: true, // true by default, we disabled it under the assumption that there are a lot of columns in users' data in general
-
+        enableAutoResize: false,
+        autoFitColumnsOnFirstLoad: true, // This
+        enableAutoSizeColumns: true, // + this
+        // disabling features that with them the grid has side effects (columns resize incorrectly after second render)
+        autosizeColumnsByCellContentOnFirstLoad: false, // or this (but not both)
+        enableAutoResizeColumnsByCellContent: false, // + this
         enableCellNavigation: true,
         enableCheckboxSelector: false,
         enableRowSelection: true,
@@ -59,6 +60,8 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
         enableGridMenu: false,
         enableHeaderButton: false,
         enableHeaderMenu: false,
+        datasetIdPropertyName: '__id',
+        cellValueCouldBeUndefined: true,
     };
 
     return (

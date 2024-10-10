@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PartitionKey } from '@azure/cosmos';
 import crypto from 'crypto';
 import path from 'path';
 import { v4 as uuid } from 'uuid';
 import vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../docdb/session/DocumentSession';
+import { type CosmosDbRecordIdentifier } from '../docdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { TelemetryContext } from '../Telemetry';
 import { type Channel } from './Communication/Channel/Channel';
@@ -36,18 +36,16 @@ export class DocumentTab {
     private readonly start: number;
     private readonly telemetryContext: TelemetryContext;
 
-    private connection: NoSqlQueryConnection | undefined;
+    private connection: NoSqlQueryConnection;
     private disposables: vscode.Disposable[] = [];
-    private documentId: string | undefined;
-    private partitionKey: PartitionKey | undefined;
+    private documentId: CosmosDbRecordIdentifier | undefined;
     private mode: DocumentTabMode = 'view';
 
     private constructor(
         panel: vscode.WebviewPanel,
         connection: NoSqlQueryConnection,
         mode: DocumentTabMode,
-        documentId?: string,
-        partitionKey?: PartitionKey,
+        documentId?: CosmosDbRecordIdentifier,
     ) {
         DocumentTab.openTabs.add(this);
 
@@ -59,7 +57,6 @@ export class DocumentTab {
         this.panel = panel;
         this.connection = connection;
         this.documentId = documentId;
-        this.partitionKey = partitionKey;
         this.mode = mode;
 
         this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
@@ -79,26 +76,45 @@ export class DocumentTab {
     public static render(
         connection: NoSqlQueryConnection,
         mode: DocumentTabMode,
-        documentId?: string,
-        partitionKey?: PartitionKey,
+        documentId?: CosmosDbRecordIdentifier,
         viewColumn?: vscode.ViewColumn,
     ): DocumentTab {
         const column = viewColumn ?? vscode.ViewColumn.One;
         if (documentId) {
-            const openTab = [...DocumentTab.openTabs].find((openTab) => openTab.documentId === documentId);
+            const openTab = [...DocumentTab.openTabs].find((openTab) => {
+                if (!openTab.documentId) {
+                    return false;
+                }
+                if (documentId._rid && openTab.documentId._rid && openTab.documentId._rid === documentId._rid) {
+                    return true;
+                }
+
+                if (documentId.partitionKey !== undefined && openTab.documentId.partitionKey !== undefined) {
+                    const openTabPK = Array.isArray(openTab.documentId.partitionKey)
+                        ? openTab.documentId.partitionKey.join(',')
+                        : openTab.documentId.partitionKey?.toString();
+                    const pk = Array.isArray(documentId.partitionKey)
+                        ? documentId.partitionKey.join(',')
+                        : documentId.partitionKey?.toString();
+
+                    return documentId.id === openTab.documentId.id && openTabPK === pk;
+                }
+
+                return documentId.id === openTab.documentId.id;
+            });
             if (openTab) {
                 openTab.panel.reveal(column);
                 return openTab;
             }
         }
 
-        const title = `${documentId ? documentId : 'New Document'}.json`;
+        const title = `${documentId?.id ? documentId.id : 'New Document'}.json`;
         const panel = vscode.window.createWebviewPanel(DocumentTab.viewType, title, column, {
             enableScripts: true,
             retainContextWhenHidden: true,
         });
 
-        return new DocumentTab(panel, connection, mode, documentId, partitionKey);
+        return new DocumentTab(panel, connection, mode, documentId);
     }
 
     public dispose(): void {
@@ -212,10 +228,10 @@ export class DocumentTab {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'initState',
-                params: [this.mode, this.documentId, this.connection?.databaseId, this.connection?.containerId],
+                params: [this.mode, this.connection.databaseId, this.connection.containerId, this.documentId],
             });
             if (this.documentId) {
-                await this.session.read(this.documentId, this.partitionKey);
+                await this.session.read(this.documentId);
             }
         });
     }
@@ -223,6 +239,8 @@ export class DocumentTab {
     private getCommand(payload: CommandPayload): Promise<void> {
         const commandName = payload.commandName;
         switch (commandName) {
+            case 'refreshDocument':
+                return this.refreshDocument();
             case 'showInformationMessage':
                 return this.showInformationMessage(payload.params[0] as string);
             case 'showErrorMessage':
@@ -253,5 +271,11 @@ export class DocumentTab {
 
     private async showErrorMessage(message: string) {
         await vscode.window.showErrorMessage(message);
+    }
+
+    private async refreshDocument(): Promise<void> {
+        if (this.documentId) {
+            await this.session.read(this.documentId);
+        }
     }
 }

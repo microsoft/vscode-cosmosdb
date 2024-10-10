@@ -4,8 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
-import { type ResultViewMetadata, type SerializedQueryResult } from '../../../docdb/types/queryResult';
+import {
+    type CosmosDbRecordIdentifier,
+    type ResultViewMetadata,
+    type SerializedQueryResult,
+} from '../../../docdb/types/queryResult';
 import { type Channel } from '../../../panels/Communication/Channel/Channel';
+import { type OpenDocumentMode } from '../../Document/state/DocumentState';
 import { BaseContextProvider } from '../../utils/context/BaseContextProvider';
 import { type DispatchAction, type EditMode, type TableViewMode } from './QueryEditorState';
 
@@ -74,9 +79,18 @@ export class QueryEditorContextProvider extends BaseContextProvider {
             this.dispatch({ type: 'setTableViewMode', mode: 'Table' });
         }
     }
-    public setSelectedDocumentIds(documentIds: string[]) {
-        void this.reportWebviewEvent('setSelectedDocumentIds', { count: documentIds.length.toString() });
-        this.dispatch({ type: 'setSelectedDocumentIds', documentIds });
+    public setSelectedRows(selectedRows: number[]) {
+        void this.reportWebviewEvent('setSelectedDocumentIds', { count: selectedRows.length.toString() });
+        this.dispatch({ type: 'setSelectedRows', selectedRows });
+    }
+
+    public async openDocument(mode: OpenDocumentMode, document: CosmosDbRecordIdentifier): Promise<void> {
+        await this.sendCommand('openDocument', mode, document);
+    }
+    public async openDocuments(mode: OpenDocumentMode, documents: CosmosDbRecordIdentifier[]): Promise<void> {
+        for (const document of documents) {
+            await this.openDocument(mode, document);
+        }
     }
 
     protected initEventListeners() {

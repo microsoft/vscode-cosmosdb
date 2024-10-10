@@ -11,7 +11,7 @@ import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClientByConnection } from '../getCosmosClient';
-import { type ResultViewMetadata } from '../types/queryResult';
+import { type CosmosDbRecord, type ResultViewMetadata } from '../types/queryResult';
 import { QuerySessionResult } from './QuerySessionResult';
 
 export class QuerySession {
@@ -29,7 +29,7 @@ export class QuerySession {
     private readonly sessionResult: QuerySessionResult;
 
     private abortController: AbortController | null = null;
-    private iterator: QueryIterator<unknown> | null = null;
+    private iterator: QueryIterator<CosmosDbRecord> | null = null;
     private currentIteration = 0;
     private isDisposed = false;
 
@@ -72,7 +72,7 @@ export class QuerySession {
                 this.iterator = this.client
                     .database(this.databaseId)
                     .container(this.containerId)
-                    .items.query(this.query, {
+                    .items.query<CosmosDbRecord>(this.query, {
                         abortSignal: this.abortController.signal,
                         populateQueryMetrics: true,
                         maxItemCount: this.resultViewMetadata?.countPerPage ?? 100,

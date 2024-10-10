@@ -16,7 +16,7 @@ const useClasses = makeStyles({
     toolbarContainer: {
         marginBottom: '10px',
     },
-    monacoContainer: {
+    resultDisplay: {
         marginTop: '10px',
         width: '100%',
         height: 'calc(100% - 50px)',
@@ -29,16 +29,22 @@ const useClasses = makeStyles({
 export const ResultTab = () => {
     const classes = useClasses();
 
-    const { tableViewMode, currentQueryResult } = useQueryEditorState();
+    const { tableViewMode, currentQueryResult, partitionKey } = useQueryEditorState();
 
     const jsonViewData = useMemo(() => queryResultToJSON(currentQueryResult), [currentQueryResult]);
-    const tableViewData = useMemo(() => queryResultToTable(currentQueryResult), [currentQueryResult]);
-    const treeViewData = useMemo(() => queryResultToTree(currentQueryResult), [currentQueryResult]);
+    const tableViewData = useMemo(
+        () => queryResultToTable(currentQueryResult, partitionKey),
+        [currentQueryResult, partitionKey],
+    );
+    const treeViewData = useMemo(
+        () => queryResultToTree(currentQueryResult, partitionKey),
+        [currentQueryResult, partitionKey],
+    );
 
     return (
         <section className={classes.container}>
             <ResultTabToolbar></ResultTabToolbar>
-            <div className={[classes.monacoContainer, 'resultsDisplayArea'].join(' ')}>
+            <div className={[classes.resultDisplay, 'resultsDisplayArea'].join(' ')}>
                 <Suspense fallback={<div>Loading...</div>}>
                     {tableViewMode === 'Table' && <ResultTabViewTable {...tableViewData} />}
                     {tableViewMode === 'Tree' && <ResultTabViewTree data={treeViewData ?? []} />}

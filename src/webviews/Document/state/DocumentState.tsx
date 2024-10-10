@@ -3,7 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type PartitionKey } from '@azure/cosmos';
+
+export type OpenDocumentMode = 'add' | 'edit' | 'view';
+
 export type DispatchAction =
+    | {
+          type: 'initState';
+          mode: OpenDocumentMode;
+          documentId: string;
+          partitionKey: PartitionKey | undefined;
+          databaseId: string;
+          containerId: string;
+      }
     | {
           type: 'setDirty';
           isDirty: boolean;
@@ -22,7 +34,7 @@ export type DispatchAction =
       }
     | {
           type: 'setError';
-          error: string;
+          error: string | undefined;
       };
 
 export type DocumentState = {
@@ -32,7 +44,7 @@ export type DocumentState = {
     documentId: string;
     documentContent: string;
 
-    mode: 'add' | 'edit' | 'view'; // Mode of the document (add, edit, view)
+    mode: OpenDocumentMode; // Mode of the document (add, edit, view)
 
     isDirty: boolean; // Document has been modified
     isSaving: boolean; // Document is being saved
@@ -49,15 +61,24 @@ export const defaultState: DocumentState = {
     mode: 'view',
     isDirty: false,
     isSaving: false,
-    isRefreshing: false,
+    isRefreshing: true,
     error: undefined,
 };
 
 export function dispatch(state: DocumentState, action: DispatchAction): DocumentState {
     switch (action.type) {
+        case 'initState':
+            return {
+                ...state,
+                mode: action.mode,
+                documentId: action.documentId,
+                dbName: action.databaseId,
+                collectionName: action.containerId,
+            };
         case 'setDocument':
             return {
                 ...state,
+                documentContent: action.documentContent,
             };
         case 'setDirty':
             return { ...state, isDirty: action.isDirty };

@@ -20,6 +20,7 @@ import {
     EditRegular,
     EyeRegular,
 } from '@fluentui/react-icons';
+import { extractPartitionKey } from '../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 import { type EditMode, type TableViewMode } from '../state/QueryEditorState';
 
@@ -68,8 +69,22 @@ export const ResultTabToolbar = () => {
         console.log('New document clicked');
     };
     const onViewDocumentClick = () => {
-        // eslint-disable-next-line no-console
-        console.log('View document clicked');
+        const selectedDocuments = state.selectedRows
+            .map((rowIndex) => {
+                const document = state.currentQueryResult?.documents[rowIndex];
+                return document
+                    ? {
+                          id: document.id,
+                          partitionKey: state.partitionKey
+                              ? extractPartitionKey(document, state.partitionKey)
+                              : undefined,
+                          _rid: document._rid,
+                      }
+                    : undefined;
+            })
+            .filter((document) => document !== undefined);
+
+        void dispatcher.openDocuments('view', selectedDocuments);
     };
     const onEditDocumentClick = () => {
         // eslint-disable-next-line no-console

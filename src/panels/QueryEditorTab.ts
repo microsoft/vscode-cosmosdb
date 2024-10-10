@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PartitionKey } from '@azure/cosmos';
+import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as crypto from 'crypto';
 import * as path from 'path';
@@ -13,7 +13,7 @@ import { getNoSqlQueryConnection } from '../docdb/commands/connectNoSqlContainer
 import { getCosmosClientByConnection } from '../docdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { QuerySession } from '../docdb/session/QuerySession';
-import { type ResultViewMetadata } from '../docdb/types/queryResult';
+import { type CosmosDbRecordIdentifier, type ResultViewMetadata } from '../docdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { TelemetryContext } from '../Telemetry';
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -251,11 +251,7 @@ export class QueryEditorTab {
                 // Use an async anonymous function to convert Thenable to Promise
                 return (async () => await vscode.commands.executeCommand('azureDatabases.reportIssue'))();
             case 'openDocument':
-                return this.openDocument(
-                    payload.params[0] as string,
-                    payload.params[1] as string,
-                    payload.params[2] as string,
-                );
+                return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDbRecordIdentifier);
             default:
                 throw new Error(`Unknown command: ${commandName}`);
         }
@@ -279,11 +275,17 @@ export class QueryEditorTab {
 
             // Probably need to pass the entire container object to the webview
             const containerDefinition = container.resource;
+            const params: (PartitionKeyDefinition | string)[] = [databaseId, containerId];
+
+            // If container is old and doesn't have partitionKey, we should pass an undefined
+            if (containerDefinition.partitionKey) {
+                params.push(containerDefinition.partitionKey);
+            }
 
             await this.channel.postMessage({
                 type: 'event',
                 name: 'databaseConnected',
-                params: [databaseId, containerId, containerDefinition.partitionKey],
+                params,
             });
         } else {
             // We will not remove the connection details from the telemetry context
@@ -457,7 +459,7 @@ export class QueryEditorTab {
         });
     }
 
-    private async openDocument(mode: string, documentId: string, partitionKey: PartitionKey): Promise<void> {
+    private async openDocument(mode: string, documentId: CosmosDbRecordIdentifier): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.openDocument', () => {
             if (!this.connection) {
                 throw new Error('No connection');
@@ -474,7 +476,7 @@ export class QueryEditorTab {
                 viewColumn += 1;
             }
 
-            DocumentTab.render(this.connection, mode, documentId, partitionKey, viewColumn);
+            DocumentTab.render(this.connection, mode, documentId, viewColumn);
         });
     }
 }

@@ -64,14 +64,14 @@ export abstract class ReactWebviewBaseController<Configuration, Reducers> implem
 
     /**
      * Creates a new ReactWebviewPanelController
-     * @param _context The context of the extension
+     * @param extensionContext The context of the extension-server
      * @param _webviewName The source file that the webview will use
      * @param configuration The initial state object that the webview will use
      */
     constructor(
-        protected _context: vscode.ExtensionContext,
+        protected extensionContext: vscode.ExtensionContext,
         private _webviewName: string,
-        private configuration: Configuration,
+        protected configuration: Configuration,
     ) { }
 
     protected initializeBase() {
@@ -174,7 +174,7 @@ export abstract class ReactWebviewBaseController<Configuration, Reducers> implem
 	// 			<body>
 	// 				<link rel="stylesheet" href="${this._webviewName}.css">
 	// 				<div id="root"></div>
-	// 			  	<script type="module" nonce="${nonce}" src="${this._webviewName}.js"></script> <!-- since our bundles are in esm format we need to use type="module" -->
+	// 			  	<script type="module" nonce="${nonce}" src="${this._webviewName}.js"></script>
 	// 			</body>
 	// 		</html>
 	// 	`;
@@ -293,13 +293,6 @@ export abstract class ReactWebviewBaseController<Configuration, Reducers> implem
         reducer: (state: Configuration, payload: Reducers[Method]) => ReducerResponse<Configuration>,
     ) {
         this._reducers[method] = reducer;
-    }
-
-    /**
-     * Gets the state object that the webview is using
-     */
-    public get configuration(): Configuration {
-        return this.configuration;
     }
 
     /**

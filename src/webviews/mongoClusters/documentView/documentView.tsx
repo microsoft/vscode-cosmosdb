@@ -2,7 +2,7 @@
 import { useContext, useEffect, useRef, useState, type JSX } from 'react';
 
 import { Label, Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
-import { ArrowClockwiseRegular, SaveRegular, TextGrammarCheckmarkRegular } from '@fluentui/react-icons';
+import { ArrowClockwiseRegular, SaveRegular, Star20Regular, TextGrammarCheckmarkRegular } from '@fluentui/react-icons';
 import { Editor, loader } from '@monaco-editor/react';
 import { type WebviewApi } from 'vscode-webview';
 import { ToolbarDividerTransparent } from '../collectionView/components/ToolbarDividerTransparent';
@@ -54,11 +54,19 @@ declare global {
     }
 }
 
+/**
+ * We only import the `AppRouter` type from the server - this is not available at runtime
+ */
+import { createTRPCClient, loggerLink } from '@trpc/client';
+import { type AppRouter } from '../../api/configuration/appRouter';
+import { vscodeLink, type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from '../../api/webview-client/vscodeLink';
+
 interface DocumentToolbarProps {
     viewerMode: string;
     onValidateRequest: () => void;
     onRefreshRequest: () => void;
     onSaveRequest: () => void;
+    onExpRequest: () => void;
 }
 
 export const DocumentToolbar = ({
@@ -66,6 +74,7 @@ export const DocumentToolbar = ({
     onValidateRequest,
     onRefreshRequest,
     onSaveRequest,
+    onExpRequest,
 }: DocumentToolbarProps): JSX.Element => {
     return (
         <Toolbar size="small">
@@ -104,23 +113,47 @@ export const DocumentToolbar = ({
                     Refresh
                 </ToolbarButton>
             </Tooltip>
+
+            <ToolbarButton onClick={onExpRequest} icon={<Star20Regular />}>
+                Experiment
+            </ToolbarButton>
         </Toolbar>
     );
 };
 
 export const DocumentView = (): JSX.Element => {
-
     const { vscodeApi } = useContext(WebviewContext);
-
 
     //TODO: this approach is temporary until we move to better base class and messaging
     // const staticContent: string = decodeURIComponent(window.config?.__documentContent ?? '{ }');
-    const configuration: DocumentsViewWebviewConfigurationType = JSON.parse( decodeURIComponent(window.config?.__initialData ?? '{  }')) as DocumentsViewWebviewConfigurationType;
+    const configuration: DocumentsViewWebviewConfigurationType = JSON.parse(
+        decodeURIComponent(window.config?.__initialData ?? '{  }'),
+    ) as DocumentsViewWebviewConfigurationType;
 
     const staticContent: string = JSON.stringify(configuration.documentContent, null, 4);
     const [editorContent] = useState(staticContent);
 
     const editor = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
+
+    function send(message: VsCodeLinkRequestMessage) {
+        vscodeApi.postMessage(message);
+    }
+
+    function onReceive(callback: (message: VsCodeLinkResponseMessage) => void): () => void {
+        const handler = (event: MessageEvent) => {
+            const message = (event.data as VsCodeLinkResponseMessage);
+            callback(message);
+        };
+        window.addEventListener('message', handler);
+        return () => {
+            window.removeEventListener('message', handler);
+        };
+    }
+
+    // Initialize the tRPC client
+    const clientTrpc = createTRPCClient<AppRouter>({
+        links: [ loggerLink(), vscodeLink({ send, onReceive })],
+    });//loggerLink(),
 
     // quick/temp solution
     function handleMessage(event): void {
@@ -220,6 +253,31 @@ export const DocumentView = (): JSX.Element => {
         });
     }
 
+    function handleOnExpRequest(): void {
+        console.log('Experiment button clicked');
+
+        // void clientTrpc.common.doSomething
+        //     .mutate()
+        //     .then((result) => {
+        //         console.log(result);
+        //     })
+        //     .catch((error) => {
+        //         console.error(error);
+        //     });
+
+        // void clientTrpc.bighello.query().then((result) => {
+        //     console.log(result.text);
+        // });
+
+        void clientTrpc.common.sayMyName.query('asdf').then((result) => {
+            console.log(result.text);
+        });
+
+        // void clientTrpc.common.hello.query().then((result) => {
+        //     console.log(result.text);
+        // });
+    }
+
     function handleOnValidateRequest(): void {}
 
     return (
@@ -229,6 +287,7 @@ export const DocumentView = (): JSX.Element => {
                 onSaveRequest={handleOnSaveRequest}
                 onValidateRequest={handleOnValidateRequest}
                 onRefreshRequest={handleOnRefreshRequest}
+                onExpRequest={handleOnExpRequest}
             />
 
             {configuration.mode === 'add' && (

@@ -4,7 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
+import { appRouter } from '../configuration/appRouter';
+import { type VsCodeLinkRequestMessage } from '../webview-client/vscodeLink';
 import { ReactWebviewBaseController } from './ReactWebviewBaseController';
+import { createCallerFactory } from './trpc';
 
 /**
  * ReactWebviewPanelController is a class that manages a vscode.WebviewPanel and provides
@@ -21,7 +24,7 @@ export class ReactWebviewPanelController<Configuration, Reducers> extends ReactW
 
     /**
      * Creates a new ReactWebviewPanelController
-     * @param _context The context of the extension
+     * @param _context The context of the extension-server
      * @param title The title of the webview panel
      * @param webviewName The source file that the webview will use
      * @param initialState The initial state object that the webview will use
@@ -46,16 +49,55 @@ export class ReactWebviewPanelController<Configuration, Reducers> extends ReactW
         this._panel = vscode.window.createWebviewPanel('react-webview-' + webviewName, title, viewColumn, {
             enableScripts: true,
             retainContextWhenHidden: true,
-            localResourceRoots: [vscode.Uri.file(this._context.extensionPath)],
+            localResourceRoots: [vscode.Uri.file(this.extensionContext.extensionPath)],
         });
 
         // this._panel.webview.html = this._getHtmlTemplate();
-        this._panel.webview.html = this.getDocumentTemplate(
-            this._panel.webview
-        );
+        this._panel.webview.html = this.getDocumentTemplate(this._panel.webview);
 
         this._panel.iconPath = this._iconPath;
-       // this.registerDisposable(this._panel.webview.onDidReceiveMessage(this._webviewMessageHandler));
+
+        const callerFactory = createCallerFactory(appRouter);
+
+        this.registerDisposable(
+            this._panel.webview.onDidReceiveMessage(async (message: VsCodeLinkRequestMessage) => {
+                console.log('Received message from webview:', message);
+
+                // Create a caller with the necessary context
+                const caller = callerFactory({});
+
+                switch (message.op.type) {
+                    // case 'subscription':
+                    //     break;
+                    // case 'subscription.stop':
+                    //     break;
+                    default:
+                        try {
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                            const procedure = caller[message.op.path];
+
+                            if (typeof procedure !== 'function') {
+                                throw new Error(`Procedure not found: ${message.op.path}`);
+                            }
+
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+                            const result = await procedure(message.op.input);
+
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                            const response = { id: message.id, result };
+
+                            console.log('Responding with:', response);
+
+                            this._panel.webview.postMessage(response);
+                        } catch (error) {
+                            console.log(error);
+                        }
+
+                        break;
+                }
+            }),
+        );
+
         this.registerDisposable(
             this._panel.onDidDispose(() => {
                 this.dispose();
@@ -64,6 +106,26 @@ export class ReactWebviewPanelController<Configuration, Reducers> extends ReactW
 
         // This call sends messages to the Webview so it's called after the Webview creation.
         this.initializeBase();
+    }
+
+    getProcedureFromPath(caller: unknown, path: string): unknown {
+        const keys = path.split('.');
+        let obj = caller;
+
+        for (const key of keys) {
+            if (obj !== null && (typeof obj === 'object' || typeof obj === 'function') && Object.prototype.hasOwnProperty.call(obj, key)
+            ) {
+                obj = obj[key];
+            } else {
+                throw new Error(`Procedure not found at path: ${path}`);
+            }
+        }
+
+        if (typeof obj !== 'function') {
+            throw new Error(`Procedure is not a function at path: ${path}`);
+        }
+
+        return obj;
     }
 
     protected _getWebview(): vscode.Webview {

@@ -1,7 +1,7 @@
 import { ViewColumn } from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { type DocumentsViewWebviewConfigurationType } from '../../api/configuration/mongoClusters/documentsView';
-import { ReactWebviewPanelController } from '../../api/extension/ReactWebviewController';
+import { ReactWebviewPanelController } from '../../api/extension-server/ReactWebviewController';
 
 export class DocumentsViewController extends  ReactWebviewPanelController<DocumentsViewWebviewConfigurationType, unknown> {
     constructor(initialData: DocumentsViewWebviewConfigurationType) {

@@ -12,8 +12,6 @@ export type DocumentsViewWebviewConfigurationType = {
     documentId: string;
 
     mode: string; // 'add', 'view', 'edit'
-
-    documentContent: string;
 };
 
 export class DocumentsViewController extends ReactWebviewPanelController<DocumentsViewWebviewConfigurationType> {
@@ -21,14 +19,27 @@ export class DocumentsViewController extends ReactWebviewPanelController<Documen
         // ext.context here is the vscode.ExtensionContext required by the ReactWebviewPanelController's original implementation
         // we're not modifying it here in order to be ready for future updates of the webview API.
 
-        super(ext.context, 'Document View Title', 'mongoClustersDocumentView', initialData, ViewColumn.Beside);
+        let title: string = `${initialData.databaseName}/${initialData.collectionName}/*new*`;
+        switch (initialData.mode) {
+            case 'view':
+            case 'edit': {
+                title = `${initialData.databaseName}/${initialData.collectionName}/${initialData.documentId}`;
+                break;
+            }
+        }
+
+        super(ext.context, title, 'mongoClustersDocumentView', initialData, ViewColumn.Beside);
 
         const trpcContext: RouterContext = {
-            liveConnectionId: 'shared context works!',
+            liveConnectionId: initialData.liveConnectionId,
             databaseName: initialData.databaseName,
             collectionName: initialData.collectionName,
+            documentId: initialData.documentId,
+            viewPanelTitleSetter: (title: string) => {
+                this.panel.title = title;
+            },
         };
 
-        this.setupTrpc(trpcContext)
+        this.setupTrpc(trpcContext);
     }
 }

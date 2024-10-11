@@ -1,14 +1,9 @@
 // hooks/useTrpcClient.ts
 import { createTRPCClient, loggerLink } from '@trpc/client';
-import { useContext, useMemo } from 'react';
+import { useContext, useEffect, useMemo } from 'react';
 import { WebviewContext } from '../../WebviewContext';
 import { type AppRouter } from '../configuration/appRouter';
-import {
-    vscodeLink,
-    type VsCodeLinkNotification,
-    type VsCodeLinkRequestMessage,
-    type VsCodeLinkResponseMessage,
-} from './vscodeLink';
+import { vscodeLink, type VsCodeLinkNotification, type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from './vscodeLink';
 
 export function useTrpcClient() {
     const { vscodeApi } = useContext(WebviewContext);
@@ -22,20 +17,11 @@ export function useTrpcClient() {
 
     function onReceive(callback: (message: VsCodeLinkResponseMessage) => void): () => void {
         const handler = (event: MessageEvent) => {
-            if ((event.data as VsCodeLinkNotification).notification) {
-                // 1. Catch our VsCodeLinkNotification messages and pipe them to the webview directly
-                const customEvent = new CustomEvent('VsCodeLinkNotification', {
-                    detail: event.data as VsCodeLinkNotification,
-                });
-                vscodeEventTarget.dispatchEvent(customEvent);
-
-                return;
+            // a basic type guard here
+            if ((event.data as VsCodeLinkResponseMessage).id) {
+                const message = event.data as VsCodeLinkResponseMessage;
+                callback(message);
             }
-
-            // 2. It's not a VsCodeLinkNotification, so it must be a VsCodeLinkResponseMessage
-            //    ==> continue with tRPC message handling
-            const message = event.data as VsCodeLinkResponseMessage;
-            callback(message);
         };
 
         window.addEventListener('message', handler);
@@ -54,6 +40,26 @@ export function useTrpcClient() {
             }),
         [vscodeApi],
     );
+
+    // Set up a persistent notification handler
+    useEffect(() => {
+        const handler = (event: MessageEvent) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            if (event.data && typeof event.data === 'object' && event.data.type === 'VSLinkNotification') {
+                // Dispatch the notification to the EventTarget
+                const customEvent = new CustomEvent('VsCodeLinkNotification', {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    detail: event.data.payload as VsCodeLinkNotification,
+                });
+                vscodeEventTarget.dispatchEvent(customEvent);
+            }
+        };
+
+        window.addEventListener('message', handler);
+        return () => {
+            window.removeEventListener('message', handler);
+        };
+    }, [vscodeEventTarget]);
 
     return { clientTrpc, vscodeEventTarget };
 }

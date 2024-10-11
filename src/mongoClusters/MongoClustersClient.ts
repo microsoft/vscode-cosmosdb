@@ -17,8 +17,8 @@ import {
     type Filter,
     type FindOptions,
     type ListDatabasesResult,
-    type UpdateResult,
     type WithId,
+    type WithoutId
 } from 'mongodb';
 import { getDataTopLevel, getFieldsTopLevel } from '../utils/slickgrid/mongo/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
@@ -184,7 +184,7 @@ export class MongoClustersClient {
         collectionName: string,
         documentId: string,
         documentContent: string,
-    ): Promise<{ updateResult: UpdateResult; documentContent: WithId<Document> | null }> {
+    ): Promise<{ documentId: ObjectId; documentContent: WithId<Document> | null }> {
         const objectId = documentId !== '' ? new ObjectId(documentId) : new ObjectId();
 
         // connect and execute
@@ -195,16 +195,18 @@ export class MongoClustersClient {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         delete documentObj._id;
 
-        const updateResult = await collection.updateOne(
+        const replaceResult = await collection.replaceOne(
             { _id: objectId },
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            { $set: documentObj, $setOnInsert: { _id: objectId } },
+            documentObj as WithoutId<Document>,
             { upsert: true },
         );
 
-        const newDocument = await collection.findOne({ _id: updateResult.upsertedId ?? objectId });
+        const newDocumentId = (replaceResult.upsertedId as ObjectId) ?? objectId;
 
-        return { updateResult: updateResult, documentContent: newDocument };
+        const newDocument = await collection.findOne({ _id: newDocumentId });
+
+        return { documentId: newDocumentId, documentContent: newDocument };
     }
 
     async dropCollection(databaseName: string, collectionName: string): Promise<boolean> {

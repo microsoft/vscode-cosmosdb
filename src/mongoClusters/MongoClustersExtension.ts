@@ -129,9 +129,8 @@ export class MongoClustersExtension implements vscode.Disposable {
             databaseName: string;
             collectionName: string;
             documentId: string;
-            documentContent: string;
             mode?: string;
-        } = {id: 'for-hacking-12', liveConnectionId: '123', viewTitle: 'title', databaseName: 'db', collectionName: 'coll', documentId: 'doc', documentContent: '{ fake content }', mode: 'view'}
+        }
     ): void {
 
         const view = new DocumentsViewController(
@@ -143,7 +142,6 @@ export class MongoClustersExtension implements vscode.Disposable {
                 collectionName: _props.collectionName,
                 documentId: _props.documentId,
 
-                documentContent: _props.documentContent,
                 mode: _props.mode ?? 'view',
             })
 
@@ -361,13 +359,9 @@ export class MongoClustersExtension implements vscode.Disposable {
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                     //const index = message?.payload?.index as number;
 
-                    // TODO: introduce response cache to the client to avoid sending the document content back and forth
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                    let documentContent = (message?.payload?.documentContent as string) ?? '{  }';
 
-                    //TODO: this is curcial to avoid breaking the webview, and make sure it's in the future API
-                    // for all the data to be sent in a safe way
-                    documentContent = encodeURIComponent(documentContent);
+
+
 
                     vscode.commands.executeCommand('mongoClusters.internal.documentView.open.view', {
                         id: _props.id,
@@ -376,7 +370,6 @@ export class MongoClustersExtension implements vscode.Disposable {
                         databaseName: _props.databaseName,
                         collectionName: _props.collectionName,
                         documentId: objectId,
-                        documentContent: documentContent,
                     });
                     break;
                 }

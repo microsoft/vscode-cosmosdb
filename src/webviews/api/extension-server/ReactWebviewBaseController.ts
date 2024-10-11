@@ -61,7 +61,7 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
         protected extensionContext: vscode.ExtensionContext,
         private _webviewName: string,
         protected configuration: Configuration,
-    ) { }
+    ) {}
 
     protected initializeBase() {
         this._registerDefaultRequestHandlers();
@@ -72,9 +72,7 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
         this._disposables.push(disposable);
     }
 
-    protected getDocumentTemplate(
-        webview?: vscode.Webview
-    ) {
+    protected getDocumentTemplate(webview?: vscode.Webview) {
         const devServer = !!process.env.DEVSERVER;
         const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
         const nonce = randomBytes(16).toString('base64');
@@ -111,6 +109,12 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
                   ]
         ).join(' ');
 
+        /**
+         * Note to code maintainers:
+         * encodeURIComponent(JSON.stringify(this.configuration)) below is crucial
+         * We want to avoid the webview from crashing when the configuration object contains 'unsupported' bytes
+         */
+
         return `<!DOCTYPE html>
                 <html lang="en">
                 <head>
@@ -125,7 +129,7 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
                             <script type="module" nonce="${nonce}">
                                 window.config = {
                                     ...window.config,
-                                    __initialData: '${JSON.stringify(this.configuration)}'
+                                    __initialData: '${encodeURIComponent(JSON.stringify(this.configuration))}'
                             };
 
                                 import { render } from "${srcUri}";
@@ -135,8 +139,6 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
                     </body>
                 </html>`;
     }
-
-
 
     //protected abstract _getWebview(): vscode.Webview;
 
@@ -164,7 +166,6 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
          * since it's still a work in progress, we'll leave it commented out for now
          * as future reference
          */
-
         // this._webviewRequestHandlers['getState'] = () => {
         //     return this.configuration;
         // };
@@ -182,7 +183,6 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
         // this._webviewRequestHandlers['getTheme'] = () => {
         //     return vscode.window.activeColorTheme.kind;
         // };
-
         // this._webviewRequestHandlers['loadStats'] = (message) => {
         //     const timeStamp = message.loadCompleteTimeStamp;
         //     const timeToLoad = timeStamp - this._loadStartTime;
@@ -201,7 +201,6 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
         //         this._isFirstLoad = false;
         //     }
         // };
-
         // this._webviewRequestHandlers["sendActionEvent"] = (
         //     message: WebviewTelemetryActionEvent,
         // ) => {
@@ -227,7 +226,6 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
         //         message.additionalMeasurements,
         //     );
         // };
-
         // this._webviewRequestHandlers['getLocalization'] = async () => {
         //     if (vscode.l10n.uri?.fsPath) {
         //         const file = await vscode.workspace.fs.readFile(vscode.l10n.uri);

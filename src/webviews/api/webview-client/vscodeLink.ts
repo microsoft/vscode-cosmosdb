@@ -24,13 +24,18 @@ export interface VsCodeLinkResponseMessage {
     id: string;
     result?: unknown;
     error?: {
-      code?: number;
-      message: string;
-      data?: unknown;
-      name: string;
+        code?: number;
+        message: string;
+        data?: unknown;
+        name: string;
     };
     complete?: boolean;
-  }
+}
+
+export interface VsCodeLinkNotification {
+    notification: string;
+    parameters: unknown;
+}
 
 interface VSCodeLinkOptions {
     //   Function to send a message to the server / extension
@@ -111,7 +116,7 @@ function vscodeLink(options: VSCodeLinkOptions): TRPCLink<AppRouter> {
                         }
                     }
 
-                    // Handle completion signals for subscriptions
+                    // TODO: Handle completion signals for subscriptions
                     if (message.complete) {
                         observer.complete();
                     }
@@ -127,7 +132,8 @@ function vscodeLink(options: VSCodeLinkOptions): TRPCLink<AppRouter> {
                 return () => {
                     // If it's a subscription, send a stop message to the server
                     if (op.type === 'subscription') {
-                        console.log('🤯🤯🤯 here stop the subscription: ' + op.path);
+                        // TODO: subscriptions support
+                        //console.log('🤯🤯🤯 here stop the subscription: ' + op.path);
                         //send({ id: operationId, op: { ...op, type: 'subscription.stop' } });
                     }
                     // Cleanup the message handler
@@ -139,3 +145,4 @@ function vscodeLink(options: VSCodeLinkOptions): TRPCLink<AppRouter> {
 }
 
 export { vscodeLink, VSCodeLinkOptions };
+

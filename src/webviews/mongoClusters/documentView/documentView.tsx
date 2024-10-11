@@ -9,8 +9,10 @@ import { ToolbarDividerTransparent } from '../collectionView/components/ToolbarD
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
-import { type DocumentsViewWebviewConfigurationType } from '../../api/configuration/mongoClusters/documentsView';
+import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
+import { type VsCodeLinkNotification } from '../../api/webview-client/vscodeLink';
 import { WebviewContext } from '../../WebviewContext';
+import { type DocumentsViewWebviewConfigurationType } from './DocumentsViewController';
 import './documentView.scss';
 
 loader.config({ monaco: monacoEditor });
@@ -57,9 +59,6 @@ declare global {
 /**
  * We only import the `AppRouter` type from the server - this is not available at runtime
  */
-import { createTRPCClient, loggerLink } from '@trpc/client';
-import { type AppRouter } from '../../api/configuration/appRouter';
-import { vscodeLink, type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from '../../api/webview-client/vscodeLink';
 
 interface DocumentToolbarProps {
     viewerMode: string;
@@ -135,25 +134,54 @@ export const DocumentView = (): JSX.Element => {
 
     const editor = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
 
-    function send(message: VsCodeLinkRequestMessage) {
-        vscodeApi.postMessage(message);
-    }
 
-    function onReceive(callback: (message: VsCodeLinkResponseMessage) => void): () => void {
-        const handler = (event: MessageEvent) => {
-            const message = (event.data as VsCodeLinkResponseMessage);
-            callback(message);
-        };
-        window.addEventListener('message', handler);
-        return () => {
-            window.removeEventListener('message', handler);
-        };
-    }
+    const { clientTrpc, vscodeEventTarget } = useTrpcClient();
 
-    // Initialize the tRPC client
-    const clientTrpc = createTRPCClient<AppRouter>({
-        links: [ loggerLink(), vscodeLink({ send, onReceive })],
-    });//loggerLink(),
+    useEffect(() => {
+      const handleNotification = (event: Event) => {
+        const customEvent = event as CustomEvent<VsCodeLinkNotification>;
+        const notification = customEvent.detail;
+        // Handle the notification data
+        console.log('Handling notification:', notification);
+      };
+
+      vscodeEventTarget.addEventListener('VsCodeLinkNotification', handleNotification);
+
+      return () => {
+        vscodeEventTarget.removeEventListener('VsCodeLinkNotification', handleNotification);
+      };
+    }, [vscodeEventTarget]);
+
+
+
+    // function send(message: VsCodeLinkRequestMessage) {
+    //     vscodeApi.postMessage(message);
+    // }
+
+    // function onReceive(callback: (message: VsCodeLinkResponseMessage) => void): () => void {
+    //     const handler = (event: MessageEvent) => {
+    //         // 1. Catch our VsCodeLinkNotification messages and pipe them to the webview directly
+    //         if ((event.data as VsCodeLinkNotification).notification) {
+    //             console.log('Received notification', event.data);
+    //             return;
+    //         }
+
+    //         // 2. It's not a VsCodeLinkNotification, so it must be a VsCodeLinkResponseMessage
+    //         //    ==> continue with tRPC message handling
+
+    //         const message = (event.data as VsCodeLinkResponseMessage);
+    //         callback(message);
+    //     };
+    //     window.addEventListener('message', handler);
+    //     return () => {
+    //         window.removeEventListener('message', handler);
+    //     };
+    // }
+
+    // // Initialize the tRPC client
+    // const clientTrpc = createTRPCClient<AppRouter>({
+    //     links: [ loggerLink(), vscodeLink({ send, onReceive })],
+    // });//loggerLink(),
 
     // quick/temp solution
     function handleMessage(event): void {
@@ -271,6 +299,10 @@ export const DocumentView = (): JSX.Element => {
 
         void clientTrpc.common.sayMyName.query('asdf').then((result) => {
             console.log(result.text);
+        });
+
+        void clientTrpc.documentsView.getInfo.query().then((result) => {
+            console.log(result);
         });
 
         // void clientTrpc.common.hello.query().then((result) => {

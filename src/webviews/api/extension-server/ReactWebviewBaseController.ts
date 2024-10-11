@@ -11,21 +11,10 @@ const DEV_SERVER_HOST = 'http://localhost:18080';
  * a way to communicate with it. It provides a way to register request handlers and reducers
  * that can be called from the webview. It also provides a way to post notifications to the webview.
  * @template Configuration The type of the configuration object that the webview will receive
- * @template Reducers The type of the reducers that the webview will use
  */
-export abstract class ReactWebviewBaseController<Configuration, Reducers> implements vscode.Disposable {
+export abstract class ReactWebviewBaseController<Configuration> implements vscode.Disposable {
     private _disposables: vscode.Disposable[] = [];
     private _isDisposed: boolean = false;
-
-    private _webviewRequestHandlers: { [key: string]: (params: unknown) => unknown } = {};
-
-    private _reducers: Record<
-        keyof Reducers,
-        (state: Configuration, payload: Reducers[keyof Reducers]) => ReducerResponse<Configuration>
-    > = {} as Record<
-        keyof Reducers,
-        (state: Configuration, payload: Reducers[keyof Reducers]) => ReducerResponse<Configuration>
-    >;
 
     // private _isFirstLoad: boolean = true;
     // private _loadStartTime: number = Date.now();
@@ -147,42 +136,15 @@ export abstract class ReactWebviewBaseController<Configuration, Reducers> implem
                 </html>`;
     }
 
-    // protected _remove_getHtmlTemplate() {
-    //     const nonce = randomBytes(16).toString('base64'); // getNonce();
-    //     const baseUrl =
-    //         this._getWebview()
-    //             .asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'out', 'src', 'reactviews', 'assets'))
-    //             .toString() + '/';
 
-    //     return `
-	// 	<!DOCTYPE html>
-	// 		<html lang="en">
-	// 			<head>
-	// 				<meta charset="UTF-8">
-	// 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	// 				<title>mssqlwebview</title>
-	// 				<base href="${baseUrl}"> <!-- Required for loading relative resources in the webview -->
-	// 			<style>
-	// 				html, body {
-	// 					margin: 0;
-	// 					padding: 0px;
-    // 					width: 100%;
-    // 					height: 100%;
-	// 				}
-	// 			</style>
-	// 			</head>
-	// 			<body>
-	// 				<link rel="stylesheet" href="${this._webviewName}.css">
-	// 				<div id="root"></div>
-	// 			  	<script type="module" nonce="${nonce}" src="${this._webviewName}.js"></script>
-	// 			</body>
-	// 		</html>
-	// 	`;
-    // }
 
     //protected abstract _getWebview(): vscode.Webview;
 
     protected setupTheming() {
+        /**
+         * since it's still a work in progress, we'll leave it commented out for now.
+         * It's here where we'd put Dmitrii's work on theming (?)
+         */
         // this._disposables.push(
         //     vscode.window.onDidChangeActiveColorTheme((theme) => {
         //         this.postNotification(
@@ -198,6 +160,11 @@ export abstract class ReactWebviewBaseController<Configuration, Reducers> implem
     }
 
     private _registerDefaultRequestHandlers() {
+        /**
+         * since it's still a work in progress, we'll leave it commented out for now
+         * as future reference
+         */
+
         // this._webviewRequestHandlers['getState'] = () => {
         //     return this.configuration;
         // };
@@ -277,9 +244,9 @@ export abstract class ReactWebviewBaseController<Configuration, Reducers> implem
      * @param method The method name that the webview will use to call the handler
      * @param handler The handler that will be called when the method is called
      */
-    public registerRequestHandler(method: string, handler: (params: unknown) => unknown) {
-        this._webviewRequestHandlers[method] = handler;
-    }
+    // public registerRequestHandler(method: string, handler: (params: unknown) => unknown) {
+    //     this._webviewRequestHandlers[method] = handler;
+    // }
 
     /**
      * Reducers are methods that can be called from the webview to modify the state of the webview.
@@ -288,12 +255,12 @@ export abstract class ReactWebviewBaseController<Configuration, Reducers> implem
      * @param reducer The reducer that will be called when the method is called
      * @template Method The key of the reducer that is being registered
      */
-    public registerReducer<Method extends keyof Reducers>(
-        method: Method,
-        reducer: (state: Configuration, payload: Reducers[Method]) => ReducerResponse<Configuration>,
-    ) {
-        this._reducers[method] = reducer;
-    }
+    // public registerReducer<Method extends keyof Reducers>(
+    //     method: Method,
+    //     reducer: (state: Configuration, payload: Reducers[Method]) => ReducerResponse<Configuration>,
+    // ) {
+    //     this._reducers[method] = reducer;
+    // }
 
     /**
      * Gets whether the controller has been disposed
@@ -301,15 +268,6 @@ export abstract class ReactWebviewBaseController<Configuration, Reducers> implem
     public get isDisposed(): boolean {
         return this._isDisposed;
     }
-
-    /**
-     * Posts a notification to the webview
-     * @param method The method name that the webview will use to handle the notification
-     * @param params The parameters that will be passed to the method
-     */
-    // public postNotification(method: string, params: unknown) {
-    //     this.postMessage({ type: 'notification', method, params });
-    // }
 
     /**
      * Posts a message to the webview
@@ -332,9 +290,4 @@ export abstract class ReactWebviewBaseController<Configuration, Reducers> implem
     }
 }
 
-export enum DefaultWebviewNotifications {
-    updateState = 'updateState',
-    onDidChangeTheme = 'onDidChangeTheme',
-}
-
-export type ReducerResponse<T> = T | Promise<T>;
+//export type ReducerResponse<T> = T | Promise<T>;

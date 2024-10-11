@@ -5,7 +5,7 @@
 
 import * as vscode from 'vscode';
 import { appRouter } from '../configuration/appRouter';
-import { type VsCodeLinkRequestMessage } from '../webview-client/vscodeLink';
+import { type VsCodeLinkNotification, type VsCodeLinkRequestMessage } from '../webview-client/vscodeLink';
 import { ReactWebviewBaseController } from './ReactWebviewBaseController';
 import { createCallerFactory } from './trpc';
 
@@ -16,9 +16,8 @@ import { createCallerFactory } from './trpc';
  * @template Configuration The type of the configuration object that the webview will receive
  * @template Reducers The type of the reducers that the webview will use
  */
-export class ReactWebviewPanelController<Configuration, Reducers> extends ReactWebviewBaseController<
-    Configuration,
-    Reducers
+export class ReactWebviewPanelController<Configuration> extends ReactWebviewBaseController<
+    Configuration
 > {
     private _panel: vscode.WebviewPanel;
 
@@ -57,14 +56,24 @@ export class ReactWebviewPanelController<Configuration, Reducers> extends ReactW
 
         this._panel.iconPath = this._iconPath;
 
+
+        this.registerDisposable(
+            this._panel.onDidDispose(() => {
+                this.dispose();
+            }),
+        );
+
+        // This call sends messages to the Webview so it's called after the Webview creation.
+        this.initializeBase();
+    }
+
+    protected setupTrpc(context: object): void {
         const callerFactory = createCallerFactory(appRouter);
 
         this.registerDisposable(
             this._panel.webview.onDidReceiveMessage(async (message: VsCodeLinkRequestMessage) => {
-                console.log('Received message from webview:', message);
-
-                // Create a caller with the necessary context
-                const caller = callerFactory({});
+                // Create a caller with the necessary context (currrently none, but maybe a telemetry hook later?)
+                const caller = callerFactory(context);
 
                 switch (message.op.type) {
                     // case 'subscription':
@@ -86,8 +95,6 @@ export class ReactWebviewPanelController<Configuration, Reducers> extends ReactW
                             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                             const response = { id: message.id, result };
 
-                            console.log('Responding with:', response);
-
                             this._panel.webview.postMessage(response);
                         } catch (error) {
                             console.log(error);
@@ -97,35 +104,6 @@ export class ReactWebviewPanelController<Configuration, Reducers> extends ReactW
                 }
             }),
         );
-
-        this.registerDisposable(
-            this._panel.onDidDispose(() => {
-                this.dispose();
-            }),
-        );
-
-        // This call sends messages to the Webview so it's called after the Webview creation.
-        this.initializeBase();
-    }
-
-    getProcedureFromPath(caller: unknown, path: string): unknown {
-        const keys = path.split('.');
-        let obj = caller;
-
-        for (const key of keys) {
-            if (obj !== null && (typeof obj === 'object' || typeof obj === 'function') && Object.prototype.hasOwnProperty.call(obj, key)
-            ) {
-                obj = obj[key];
-            } else {
-                throw new Error(`Procedure not found at path: ${path}`);
-            }
-        }
-
-        if (typeof obj !== 'function') {
-            throw new Error(`Procedure is not a function at path: ${path}`);
-        }
-
-        return obj;
     }
 
     protected _getWebview(): vscode.Webview {
@@ -145,5 +123,15 @@ export class ReactWebviewPanelController<Configuration, Reducers> extends ReactW
      */
     public revealToForeground(viewColumn: vscode.ViewColumn = vscode.ViewColumn.One): void {
         this._panel.reveal(viewColumn, true);
+    }
+
+    /**
+     * Posts a notification to the webview
+     * @param notification The notification name that the webview will use to handle the notification
+     * @param parameters The parameters that will be passed to the notification
+     */
+    public postNotification(notification: string, parameters: unknown) {
+        const message: VsCodeLinkNotification = { notification: notification, parameters: parameters };
+        this._panel.webview.postMessage({ type: 'VSLinkNotification', payload: message });
     }
 }

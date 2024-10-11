@@ -81,11 +81,11 @@ export class ReactWebviewPanelController<Configuration, Reducers> extends ReactW
 
                             // Call the subscription procedure to get an observable
                             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-                            const observableProc = procedure(message.op.input);
+                            // const observable$ = procedure(message.op.input);
 
                             // Subscribe to the observable
                             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-                            const subscription = observableProc.subscribe({
+                            const subscription = procedure.subscribe({
                                 next: (data) => {
                                     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                                     const response = { id: message.id, result: data };

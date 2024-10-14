@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useContext } from 'react';
 import { SlickgridReact, type Formatter, type GridOption, type OnSelectedRowsChangedEventArgs, type SlickgridReactInstance } from 'slickgrid-react';
-import { type CellValue } from '../../../../webviews-extension-shared/gridSupport';
+import { type CellValue } from '../../../../utils/slickgrid/CellValue';
 import { LoadingAnimationTable } from './LoadingAnimationTable';
 
 import debounce from 'lodash.debounce';

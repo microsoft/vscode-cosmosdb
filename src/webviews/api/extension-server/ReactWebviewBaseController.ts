@@ -22,6 +22,7 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
 
     public readonly onDisposed: vscode.Event<void> = this._onDisposed.event;
 
+    // these are kept for reference (for the telemetry work that's scheduled soon)
     // protected _webviewMessageHandler = async (message) => {
     //     if (message.type === 'request') {
     //         const handler = this._webviewRequestHandlers[message.method];
@@ -65,7 +66,8 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
 
     protected initializeBase() {
         this._registerDefaultRequestHandlers();
-        this.setupTheming();
+        // these are kept for reference
+        //this.setupTheming();
     }
 
     protected registerDisposable(disposable: vscode.Disposable) {
@@ -164,7 +166,7 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
     private _registerDefaultRequestHandlers() {
         /**
          * since it's still a work in progress, we'll leave it commented out for now
-         * as future reference
+         * as future reference (TELEMETRY)
          */
         // this._webviewRequestHandlers['getState'] = () => {
         //     return this.configuration;
@@ -238,44 +240,11 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
     }
 
     /**
-     * Register a request handler that the webview can call and get a response from.
-     * @param method The method name that the webview will use to call the handler
-     * @param handler The handler that will be called when the method is called
-     */
-    // public registerRequestHandler(method: string, handler: (params: unknown) => unknown) {
-    //     this._webviewRequestHandlers[method] = handler;
-    // }
-
-    /**
-     * Reducers are methods that can be called from the webview to modify the state of the webview.
-     * This method registers a reducer that can be called from the webview.
-     * @param method The method name that the webview will use to call the reducer
-     * @param reducer The reducer that will be called when the method is called
-     * @template Method The key of the reducer that is being registered
-     */
-    // public registerReducer<Method extends keyof Reducers>(
-    //     method: Method,
-    //     reducer: (state: Configuration, payload: Reducers[Method]) => ReducerResponse<Configuration>,
-    // ) {
-    //     this._reducers[method] = reducer;
-    // }
-
-    /**
      * Gets whether the controller has been disposed
      */
     public get isDisposed(): boolean {
         return this._isDisposed;
     }
-
-    /**
-     * Posts a message to the webview
-     * @param message The message to post to the webview
-     */
-    // public postMessage(message: unknown) {
-    //     if (!this._isDisposed) {
-    //         this._getWebview().postMessage(message);
-    //     }
-    // }
 
     /**
      * Disposes the controller
@@ -287,5 +256,3 @@ export abstract class ReactWebviewBaseController<Configuration> implements vscod
         this._isDisposed = true;
     }
 }
-
-//export type ReducerResponse<T> = T | Promise<T>;

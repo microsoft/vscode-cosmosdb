@@ -6,6 +6,18 @@ import { collectionsViewRouter as collectionViewRouter } from '../../mongoCluste
 import { documentsViewRouter as documentViewRouter } from '../../mongoClusters/documentView/documentsViewRouter';
 import { publicProcedure, router } from '../extension-server/trpc';
 
+/**
+ * You can read more about tRPC here:
+ * https://trpc.io/docs/quickstart
+ *
+ * This should be enough for you to catch up with this file.
+ *
+ * We're bundling routers here; each webview maintains its own router.
+ * Here is where we bundle them all together.
+ *
+ * There is one router called 'commonRouter'. It has procedures that are shared across all webviews.
+ */
+
 const commonRouter = router({
     hello: publicProcedure
         // This is the input schema of your procedure, no parameters
@@ -18,6 +30,7 @@ const commonRouter = router({
     sayMyName: publicProcedure
         // This is the input schema of your procedure, one parameter, a string
         .input(z.string())
+        // Here the procedure (query or mutation)
         .query(async ({ input }) => {
             await new Promise((resolve) => setTimeout(resolve, 3000));
 

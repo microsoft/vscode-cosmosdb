@@ -92,26 +92,33 @@ export const DocumentToolbar = ({
 };
 
 export const DocumentView = (): JSX.Element => {
+    /**
+     * Use the configuration object to access the data passed to the webview at its creation.
+     * Feel free to update the content of the object. It won't be synced back to the extension though.
+     */
     const configuration = useConfiguration<DocumentsViewWebviewConfigurationType>();
+
+    /**
+     * Use the `useTrpcClient` hook to get the tRPC client and an event target
+     * for handling notifications from the extension.
+     */
     const { clientTrpc, vscodeEventTarget } = useTrpcClient();
 
-    const [firstLoad, setFirstLoad] = useState(true);
 
-    const [editorContent] = useState('{ "loading...": true }');
 
+
+    const [editorContent] = configuration.mode === 'add' ? useState('{  }') : useState('{ "loading...": true }');
+
+    // a useEffect without a dependency runs only once after the first render only
     useEffect(() => {
-        if (firstLoad) {
-            if (configuration.mode !== 'add') {
-                const documentId: string = configuration.documentId;
+        if (configuration.mode !== 'add') {
+            const documentId: string = configuration.documentId;
 
-                void clientTrpc.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
-                    editor.current?.setValue(response);
-                });
-            }
-
-            setFirstLoad(false);
+            void clientTrpc.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
+                editor.current?.setValue(response);
+            });
         }
-    }, [firstLoad]);
+    }, []);
 
     const editor = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
 
@@ -131,7 +138,7 @@ export const DocumentView = (): JSX.Element => {
         };
     }, [vscodeEventTarget]);
 
-    function onMount(_editor: monacoEditor.editor.IStandaloneCodeEditor, _monaco: typeof monacoEditor) {
+    function onMonacoMount(_editor: monacoEditor.editor.IStandaloneCodeEditor, _monaco: typeof monacoEditor) {
         editor.current = _editor;
 
         /**
@@ -182,11 +189,13 @@ export const DocumentView = (): JSX.Element => {
         }
 
         // we're not sending the ID over becasue it has to be extracted from the document being sent over
-        void clientTrpc.mongoClusters.documentView.saveDocument.mutate({ documentContent: editorContent }).then((response) => {
-            // update the configuration for potential refreshes of the document
-            configuration.documentId = response.documentId;
-            editor.current?.setValue(response.documentContent);
-        });
+        void clientTrpc.mongoClusters.documentView.saveDocument
+            .mutate({ documentContent: editorContent })
+            .then((response) => {
+                // update the configuration for potential refreshes of the document
+                configuration.documentId = response.documentId;
+                editor.current?.setValue(response.documentContent);
+            });
     }
 
     function handleOnValidateRequest(): void {}
@@ -214,7 +223,7 @@ export const DocumentView = (): JSX.Element => {
                 language="json"
                 options={monacoOptions}
                 value={editorContent}
-                onMount={onMount}
+                onMount={onMonacoMount}
             />
         </div>
     );

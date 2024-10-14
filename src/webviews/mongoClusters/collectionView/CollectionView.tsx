@@ -16,7 +16,6 @@ import {
     PlayRegular,
     SearchFilled,
 } from '@fluentui/react-icons';
-import { type WebviewApi } from 'vscode-webview';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import {
     CollectionViewContext,
@@ -135,22 +134,6 @@ function ViewSwitch({ onViewChanged }): JSX.Element {
     );
 }
 
-declare global {
-    interface Window {
-        config?: {
-            __id?: string;
-            __initialData?: string;
-            __liveConnectionId?: string;
-            __mode?: string;
-            __databaseName: string;
-            __collectionName: string;
-            __documentId: string;
-            __documentContent: string;
-            __vsCodeApi: WebviewApi<unknown>;
-            [key: string]: unknown; // Optional: Allows any other properties in config
-        };
-    }
-}
 
 interface QueryResults {
     tableHeaders?: string[];
@@ -162,8 +145,18 @@ interface QueryResults {
 }
 
 export const CollectionView = (): JSX.Element => {
-    //const configuration = useConfiguration<CollectionViewWebviewConfigurationType>();
-    const { clientTrpc } = useTrpcClient();
+    /**
+     * Use the configuration object to access the data passed to the webview at its creation.
+     * Feel free to update the content of the object. It won't be synced back to the extension though.
+     */
+    //const configuration = useConfiguration<DocumentsViewWebviewConfigurationType>();
+
+    /**
+     * Use the `useTrpcClient` hook to get the tRPC client and an event target
+     * for handling notifications from the extension.
+     */
+    const { clientTrpc /** , vscodeEventTarget */ } = useTrpcClient();
+
 
     /**
      * Please note: using the context and states inside of closures can lead to stale data.

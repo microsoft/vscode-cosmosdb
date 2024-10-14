@@ -51,11 +51,9 @@ export class ReactWebviewPanelController<Configuration> extends ReactWebviewBase
             localResourceRoots: [vscode.Uri.file(this.extensionContext.extensionPath)],
         });
 
-        // this._panel.webview.html = this._getHtmlTemplate();
         this._panel.webview.html = this.getDocumentTemplate(this._panel.webview);
 
         this._panel.iconPath = this._iconPath;
-
 
         this.registerDisposable(
             this._panel.onDidDispose(() => {

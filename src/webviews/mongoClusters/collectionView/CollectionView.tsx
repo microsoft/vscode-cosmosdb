@@ -17,6 +17,7 @@ import {
     SearchFilled,
 } from '@fluentui/react-icons';
 import { type WebviewApi } from 'vscode-webview';
+import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import {
     CollectionViewContext,
     DefaultCollectionViewContext,
@@ -153,7 +154,7 @@ declare global {
 
 interface QueryResults {
     tableHeaders?: string[];
-    tableData?: { 'x-objectid': string; [key: string]: unknown }[];
+    tableData?: { 'x-objectid': string; [key: string]: unknown }[]; // 'x-objectid': string;
 
     treeData?: { [key: string]: unknown }[];
 
@@ -161,6 +162,9 @@ interface QueryResults {
 }
 
 export const CollectionView = (): JSX.Element => {
+    //const configuration = useConfiguration<CollectionViewWebviewConfigurationType>();
+    const { clientTrpc } = useTrpcClient();
+
     /**
      * Please note: using the context and states inside of closures can lead to stale data.
      *
@@ -193,108 +197,36 @@ export const CollectionView = (): JSX.Element => {
         currentContextRef.current = currentContext;
     }, [currentQueryResults, currentContext]);
 
-    // quick/temp solution
-    function handleMessage(event): void {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        switch (event.data?.type) {
-            case 'queryResults': {
-                setCurrentContext((prev) => ({ ...prev, isLoading: false }));
-
-                console.log(
-                    JSON.stringify(
-                        currentQueryResultsRef.current?.tableData
-                            ? currentQueryResultsRef.current?.tableData.length
-                            : { undefined: true },
-                        null,
-                        2,
-                    ),
-                );
-
-                setCurrentQueryResults((prev) => ({
-                    ...prev,
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-                    tableHeaders: event.data?.tableHeaders,
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-                    tableData: event.data?.tableData,
-
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-                    treeData: event.data?.treeData,
-
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-                    jsonDocuments: event.data?.json,
-                }));
-                break;
-            }
-            case 'deleteDocumentsResponse': {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                if (event.data.payload) {
-                    console.log(
-                        JSON.stringify(
-                            currentQueryResultsRef.current?.tableData
-                                ? currentQueryResultsRef.current?.tableData.length
-                                : { undefined: true },
-                            null,
-                            2,
-                        ),
-                    );
-
-                    console.log(
-                        JSON.stringify(
-                            currentQueryResults?.tableData?.filter((row) =>
-                                currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(row['x-objectid']),
-                            ),
-                            null,
-                            2,
-                        ),
-                    );
-
-                    setCurrentQueryResults((prev) => ({
-                        ...prev,
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-                        tableData: prev?.tableData?.filter(
-                            (row) =>
-                                !currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(row['x-objectid']),
-                        ),
-                    }));
-
-                    console.log(
-                        JSON.stringify(
-                            currentQueryResultsRef.current?.tableData
-                                ? currentQueryResultsRef.current?.tableData.length
-                                : { undefined: true },
-                            null,
-                            2,
-                        ),
-                    );
-
-                    setCurrentContext((prev) => ({
-                        ...prev,
-                        dataSelection: {
-                            selectedDocumentIndexes: [],
-                            selectedDocumentObjectIds: [],
-                        },
-                    }));
-                }
-                break;
-            }
-            default:
-                return;
-        }
-    }
-
-    useEffect(() => {
-        window.addEventListener('message', handleMessage);
-
-        return () => {
-            window.removeEventListener('message', handleMessage);
-        };
-    }, []);
-
+    /**
+     * This is used to run the query. We control it by setting the query configuration
+     * in the currentContext state. Whenever the query configuration changes,
+     * we run the query.
+     *
+     * It helps us manage the query runs as the configuration changes from
+     * within various controls (query panel, paging, etc.).
+     */
     useEffect(() => {
         setCurrentContext((prev) => ({ ...prev, isLoading: true }));
-        console.log('Query:', currentContext.queryConfig);
-        window.config?.__vsCodeApi.postMessage({ type: 'queryConfig', payload: currentContext.queryConfig });
-    }, [currentContext.queryConfig]);
+
+        clientTrpc.mongoClusters.collectionView.runQuery
+            .query({
+                findQuery: currentContext.currrentQueryDefinition.queryText,
+                pageNumber: currentContext.currrentQueryDefinition.pageNumber,
+                pageSize: currentContext.currrentQueryDefinition.pageSize,
+            })
+            .then((response) => {
+                setCurrentContext((prev) => ({ ...prev, isLoading: false }));
+                setCurrentQueryResults({
+                    jsonDocuments: response.jsonDocuments ?? [],
+                    tableHeaders: response.tableHeaders ?? [],
+                    tableData: response.tableData ?? [],
+                    treeData: response.treeData ?? [],
+                });
+            })
+            .catch((_error) => {
+                setCurrentContext((prev) => ({ ...prev, isLoading: false }));
+            });
+    }, [currentContext.currrentQueryDefinition]);
 
     const handleViewChanged = (_optionValue: string) => {
         let selection: Views;
@@ -314,31 +246,64 @@ export const CollectionView = (): JSX.Element => {
                 break;
         }
 
-        console.log('View changed to:', selection);
         setCurrentContext((prev) => ({ ...prev, currentView: selection }));
     };
 
     function handleDeleteRequest(): void {
-        window.config?.__vsCodeApi.postMessage({
-            type: 'deleteDocumentsRequest',
-            payload: currentContext.dataSelection.selectedDocumentObjectIds,
-        });
+        clientTrpc.mongoClusters.collectionView.deleteDocumentsById
+            .mutate(currentContext.dataSelection.selectedDocumentObjectIds)
+            .then((acknowledged) => {
+                if (!acknowledged) {
+                    return;
+                }
+
+                setCurrentQueryResults((prev) => ({
+                    ...prev,
+                    tableData: prev?.tableData?.filter(
+                        (row) =>
+                            !currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(
+                                row['x-objectid'],
+                            ),
+                    ),
+                    // TODO: update Tree data, update JSON data!
+                }));
+
+                setCurrentContext((prev) => ({
+                    ...prev,
+                    dataSelection: {
+                        selectedDocumentIndexes: [],
+                        selectedDocumentObjectIds: [],
+                    },
+                }));
+            })
+            .catch((error: unknown) => {
+                if (error instanceof Error) {
+                    console.error('Error adding document:', error.message);
+                } else {
+                    console.error('Unexpected error adding document:', error);
+                }
+            });
     }
 
     function handleViewRequest(): void {
-        window.config?.__vsCodeApi.postMessage({
-            type: 'viewDocumentRequest',
-            payload: {
-                objectId: currentContext.dataSelection.selectedDocumentObjectIds[0],
-                index: currentContext.dataSelection.selectedDocumentIndexes[0],
-                documentContent: currentQueryResultsRef.current?.jsonDocuments?.[currentContext.dataSelection.selectedDocumentIndexes[0]],
-            },
-        });
+        clientTrpc.mongoClusters.collectionView.viewDocumentById
+            .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
+            .catch((error: unknown) => {
+                if (error instanceof Error) {
+                    console.error('Error opening document:', error.message);
+                } else {
+                    console.error('Unexpected error opening document:', error);
+                }
+            });
     }
 
     function handleAddRequest(): void {
-        window.config?.__vsCodeApi.postMessage({
-            type: 'request.collectionView.addDocument'
+        clientTrpc.mongoClusters.collectionView.addDocument.mutate().catch((error: unknown) => {
+            if (error instanceof Error) {
+                console.error('Error adding document:', error.message);
+            } else {
+                console.error('Unexpected error adding document:', error);
+            }
         });
     }
 
@@ -350,7 +315,7 @@ export const CollectionView = (): JSX.Element => {
                         onQueryUpdate={(q: string) =>
                             setCurrentContext((prev) => ({
                                 ...prev,
-                                queryConfig: { ...prev.queryConfig, queryText: q },
+                                currrentQueryDefinition: { ...prev.currrentQueryDefinition, queryText: q },
                             }))
                         }
                     />

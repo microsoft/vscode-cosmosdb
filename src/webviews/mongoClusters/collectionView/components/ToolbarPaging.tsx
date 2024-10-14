@@ -19,16 +19,16 @@ export const ToolbarPaging = (): JSX.Element => {
     function goToNextPage() {
         setCurrentContext({
             ...currentContext,
-            queryConfig: { ...currentContext.queryConfig, pageNumber: currentContext.queryConfig.pageNumber + 1 },
+            currrentQueryDefinition: { ...currentContext.currrentQueryDefinition, pageNumber: currentContext.currrentQueryDefinition.pageNumber + 1 },
         });
     }
 
     function goToPreviousPage() {
         setCurrentContext({
             ...currentContext,
-            queryConfig: {
-                ...currentContext.queryConfig,
-                pageNumber: Math.max(1, currentContext.queryConfig.pageNumber - 1),
+            currrentQueryDefinition: {
+                ...currentContext.currrentQueryDefinition,
+                pageNumber: Math.max(1, currentContext.currrentQueryDefinition.pageNumber - 1),
             },
         });
     }
@@ -36,15 +36,15 @@ export const ToolbarPaging = (): JSX.Element => {
     function goToFirstPage() {
         setCurrentContext({
             ...currentContext,
-            queryConfig: { ...currentContext.queryConfig, pageNumber: 1 },
+            currrentQueryDefinition: { ...currentContext.currrentQueryDefinition, pageNumber: 1 },
         });
     }
 
     function setPageSize(pageSize: number) {
         setCurrentContext({
             ...currentContext,
-            queryConfig: {
-                ...currentContext.queryConfig,
+            currrentQueryDefinition: {
+                ...currentContext.currrentQueryDefinition,
                 pageSize: pageSize,
                 pageNumber: 1,
             },
@@ -119,7 +119,7 @@ export const ToolbarPaging = (): JSX.Element => {
             <ToolbarDividerTransparent />
 
             <Label weight="semibold" className="lblPageNumber">
-                <pre>Page {currentContext.queryConfig.pageNumber}</pre>
+                <pre>Page {currentContext.currrentQueryDefinition.pageNumber}</pre>
             </Label>
         </Toolbar>
     );

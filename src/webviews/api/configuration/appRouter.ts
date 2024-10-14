@@ -2,7 +2,8 @@
  * This a minimal tRPC server
  */
 import { z } from 'zod';
-import { documentsViewRouter } from '../../mongoClusters/documentView/documentsViewRouter';
+import { collectionsViewRouter as collectionViewRouter } from '../../mongoClusters/collectionView/collectionViewRouter';
+import { documentsViewRouter as documentViewRouter } from '../../mongoClusters/documentView/documentsViewRouter';
 import { publicProcedure, router } from '../extension-server/trpc';
 
 const commonRouter = router({
@@ -28,7 +29,10 @@ const commonRouter = router({
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const appRouter = router({
     common: commonRouter,
-    documentsView: documentsViewRouter,
+    mongoClusters: {
+        documentView: documentViewRouter,
+        collectionView: collectionViewRouter,
+    },
 });
 
 // Export type router type signature, this is used by the client.

@@ -15,7 +15,7 @@ export const documentsViewRouter = router({
     getInfo: publicProcedure.query(({ ctx }) => {
         const myCtx = ctx as RouterContext;
 
-        return 'Info from webview B + ' + myCtx.liveConnectionId;
+        return 'Info from the webview: ' + JSON.stringify(myCtx);
     }),
     getDocumentById: publicProcedure
         // parameters

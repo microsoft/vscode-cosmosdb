@@ -104,7 +104,7 @@ export const DocumentView = (): JSX.Element => {
             if (configuration.mode !== 'add') {
                 const documentId: string = configuration.documentId;
 
-                void clientTrpc.documentsView.getDocumentById.query(documentId).then((response) => {
+                void clientTrpc.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
                     editor.current?.setValue(response);
                 });
             }
@@ -169,7 +169,7 @@ export const DocumentView = (): JSX.Element => {
     function handleOnRefreshRequest(): void {
         const documentId: string = configuration.documentId;
 
-        void clientTrpc.documentsView.getDocumentById.query(documentId).then((response) => {
+        void clientTrpc.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
             editor.current?.setValue(response);
         });
     }
@@ -182,7 +182,7 @@ export const DocumentView = (): JSX.Element => {
         }
 
         // we're not sending the ID over becasue it has to be extracted from the document being sent over
-        void clientTrpc.documentsView.saveDocument.mutate({ documentContent: editorContent }).then((response) => {
+        void clientTrpc.mongoClusters.documentView.saveDocument.mutate({ documentContent: editorContent }).then((response) => {
             // update the configuration for potential refreshes of the document
             configuration.documentId = response.documentId;
             editor.current?.setValue(response.documentContent);

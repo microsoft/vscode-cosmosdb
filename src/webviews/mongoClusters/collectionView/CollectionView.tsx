@@ -4,135 +4,22 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
-import { useContext, useEffect, useRef, useState, type JSX } from 'react';
+import { type JSX, useEffect, useRef, useState } from 'react';
 import './collectionView.scss';
-
-import { Button, Dropdown, Input, Option, Toolbar, ToolbarButton } from '@fluentui/react-components';
-import {
-    DocumentAddRegular,
-    DocumentArrowDownRegular,
-    DocumentDismissRegular,
-    DocumentEditRegular,
-    PlayRegular,
-    SearchFilled,
-} from '@fluentui/react-icons';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import {
     CollectionViewContext,
+    type CollectionViewContextType,
     DefaultCollectionViewContext,
     Views,
-    type CollectionViewContextType,
 } from './collectionViewContext';
 import { DataViewPanelJSON } from './components/DataViewPanelJSON';
 import { DataViewPanelTableV2 } from './components/DataViewPanelTableV2';
 import { DataViewPanelTree } from './components/DataViewPanelTree';
-import { ToolbarPaging } from './components/ToolbarPaging';
-
-const defaultView: string = 'Table View';
-
-export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {
-    const [currentContext] = useContext(CollectionViewContext);
-
-    const inputField = useRef<HTMLInputElement>(null);
-
-    function runQuery() {
-        const queryText = inputField.current?.value ?? '{}';
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        onQueryUpdate(queryText);
-    }
-
-    return (
-        <div className="findQueryComponent">
-            <Input
-                readOnly={currentContext.isLoading}
-                ref={inputField}
-                contentBefore={<SearchFilled />}
-                style={{ flexGrow: 1 }}
-                defaultValue="{  }"
-                onKeyUp={(e) => {
-                    if (e.key === 'Enter') {
-                        runQuery();
-                    }
-                }}
-            />
-            <Button
-                onClick={runQuery}
-                disabled={currentContext.isLoading}
-                icon={<PlayRegular />}
-                appearance="primary"
-                style={{ flexShrink: 0 }}
-            >
-                Find Query
-            </Button>
-        </div>
-    );
-};
-
-interface ToolbarDocumentsProps {
-    onDeleteClick: () => void;
-    onEditClick: () => void;
-    onViewClick: () => void;
-    onAddClick: () => void;
-}
-
-export const ToolbarDocuments = ({
-    onDeleteClick,
-    onEditClick,
-    onViewClick,
-    onAddClick,
-}: ToolbarDocumentsProps): JSX.Element => {
-    const [currentContext] = useContext(CollectionViewContext);
-
-    return (
-        <Toolbar aria-label="with Popover" size="small">
-            <ToolbarButton
-                aria-label="Add new document"
-                icon={<DocumentAddRegular />}
-                disabled={currentContext.commands.disableAddDocument}
-                onClick={onAddClick}
-            />
-
-            <ToolbarButton
-                aria-label="View selected document"
-                icon={<DocumentArrowDownRegular />}
-                disabled={currentContext.commands.disableViewDocument}
-                onClick={onViewClick}
-            />
-
-            <ToolbarButton
-                aria-label="Edit selected document"
-                icon={<DocumentEditRegular />}
-                disabled={currentContext.commands.disableEditDocument}
-                onClick={onEditClick}
-            />
-
-            <ToolbarButton
-                aria-label="Delete selected document"
-                icon={<DocumentDismissRegular />}
-                disabled={currentContext.commands.disableDeleteDocument}
-                onClick={onDeleteClick}
-            />
-        </Toolbar>
-    );
-};
-
-function ViewSwitch({ onViewChanged }): JSX.Element {
-    const [currentContext] = useContext(CollectionViewContext);
-
-    return (
-        <Dropdown
-            disabled={currentContext.isLoading}
-            style={{ minWidth: '120px', maxWidth: '120px' }}
-            defaultValue={defaultView}
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
-            onOptionSelect={(_, data) => onViewChanged(data.optionValue)}
-        >
-            <Option key="table">Table View</Option>
-            <Option key="tree">Tree View</Option>
-            <Option key="json">JSON View</Option>
-        </Dropdown>
-    );
-}
+import { ToolbarPaging } from './components/toolbar/ToolbarPaging';
+import { FindQueryComponent } from './components/FindQueryComponent';
+import { ToolbarDocuments } from './components/toolbar/ToolbarDocuments';
+import { ViewSwitcher } from './components/toolbar/ViewSwitcher';
 
 
 interface QueryResults {
@@ -321,7 +208,7 @@ export const CollectionView = (): JSX.Element => {
                             onViewClick={handleViewRequest}
                             onAddClick={handleAddRequest}
                         />
-                        <ViewSwitch onViewChanged={handleViewChanged} />
+                        <ViewSwitcher onViewChanged={handleViewChanged} />
                     </div>
                 </div>
 

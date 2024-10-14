@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, type JSX } from 'react';
 import { Label, Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, SaveRegular, TextGrammarCheckmarkRegular } from '@fluentui/react-icons';
 import { Editor, loader } from '@monaco-editor/react';
-import { ToolbarDividerTransparent } from '../collectionView/components/ToolbarDividerTransparent';
+import { ToolbarDividerTransparent } from '../collectionView/components/toolbar/ToolbarDividerTransparent';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 

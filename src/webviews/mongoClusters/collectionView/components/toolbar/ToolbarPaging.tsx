@@ -6,7 +6,7 @@
 import { Dropdown, Label, Option, Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { ArrowLeftFilled, ArrowPreviousFilled, ArrowRightFilled } from '@fluentui/react-icons';
 import { useContext } from 'react';
-import { CollectionViewContext } from '../collectionViewContext';
+import { CollectionViewContext } from '../../collectionViewContext';
 import { ToolbarDividerTransparent } from './ToolbarDividerTransparent';
 
 export interface ToolbarPagingProps {
@@ -19,7 +19,10 @@ export const ToolbarPaging = (): JSX.Element => {
     function goToNextPage() {
         setCurrentContext({
             ...currentContext,
-            currrentQueryDefinition: { ...currentContext.currrentQueryDefinition, pageNumber: currentContext.currrentQueryDefinition.pageNumber + 1 },
+            currrentQueryDefinition: {
+                ...currentContext.currrentQueryDefinition,
+                pageNumber: currentContext.currrentQueryDefinition.pageNumber + 1,
+            },
         });
     }
 

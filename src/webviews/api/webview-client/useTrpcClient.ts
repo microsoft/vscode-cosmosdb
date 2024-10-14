@@ -1,4 +1,8 @@
-// hooks/useTrpcClient.ts
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import { createTRPCClient, loggerLink } from '@trpc/client';
 import { useContext, useEffect, useMemo } from 'react';
 import { WebviewContext } from '../../WebviewContext';

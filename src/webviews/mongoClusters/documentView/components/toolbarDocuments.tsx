@@ -1,6 +1,6 @@
-import type { JSX } from 'react';
 import { Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, SaveRegular, TextGrammarCheckmarkRegular } from '@fluentui/react-icons';
+import { type JSX } from 'react';
 import { ToolbarDividerTransparent } from '../../collectionView/components/toolbar/ToolbarDividerTransparent';
 
 interface ToolbarDocumentsProps {
@@ -24,7 +24,7 @@ export const ToolbarDocuments = ({
                     aria-label="Save to the database"
                     icon={<SaveRegular />}
                     appearance={'primary'}
-                    disabled={viewerMode !== 'add'}
+                    disabled={viewerMode === 'view'}
                 >
                     Save
                 </ToolbarButton>

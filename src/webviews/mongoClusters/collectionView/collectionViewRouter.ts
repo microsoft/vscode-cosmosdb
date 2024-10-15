@@ -80,6 +80,21 @@ export const collectionsViewRouter = router({
                 mode: 'view',
             });
         }),
+    editDocumentById: publicProcedure
+        // parameters
+        .input(z.string())
+        // procedure type
+        .mutation(({ input, ctx }) => {
+            const myCtx = ctx as RouterContext;
+
+            vscode.commands.executeCommand('mongoClusters.internal.documentView.open', {
+                liveConnectionId: myCtx.liveConnectionId,
+                databaseName: myCtx.databaseName,
+                collectionName: myCtx.collectionName,
+                documentId: input,
+                mode: 'edit',
+            });
+        }),
     deleteDocumentsById: publicProcedure
         // parameteres
         .input(z.array(z.string())) // stands for string[]

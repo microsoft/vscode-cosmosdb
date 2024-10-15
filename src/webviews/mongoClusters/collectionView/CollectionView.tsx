@@ -5,8 +5,8 @@
 
 // eslint-disable-next-line import/no-internal-modules
 import { type JSX, useEffect, useRef, useState } from 'react';
-import './collectionView.scss';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
+import './collectionView.scss';
 import {
     CollectionViewContext,
     type CollectionViewContextType,
@@ -16,9 +16,9 @@ import {
 import { DataViewPanelJSON } from './components/DataViewPanelJSON';
 import { DataViewPanelTableV2 } from './components/DataViewPanelTableV2';
 import { DataViewPanelTree } from './components/DataViewPanelTree';
-import { ToolbarPaging } from './components/toolbar/toolbarPaging';
 import { FindQueryComponent } from './components/FindQueryComponent';
 import { ToolbarDocuments } from './components/toolbar/toolbarDocuments';
+import { ToolbarPaging } from './components/toolbar/toolbarPaging';
 import { ViewSwitcher } from './components/toolbar/viewSwitcher';
 
 
@@ -177,6 +177,18 @@ export const CollectionView = (): JSX.Element => {
             });
     }
 
+    function handleEditRequest(): void {
+        trpcClient.mongoClusters.collectionView.editDocumentById
+            .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
+            .catch((error: unknown) => {
+                if (error instanceof Error) {
+                    console.error('Error opening document:', error.message);
+                } else {
+                    console.error('Unexpected error opening document:', error);
+                }
+            });
+    }
+
     function handleAddRequest(): void {
         trpcClient.mongoClusters.collectionView.addDocument.mutate().catch((error: unknown) => {
             if (error instanceof Error) {
@@ -204,7 +216,7 @@ export const CollectionView = (): JSX.Element => {
                         <ToolbarPaging />
                         <ToolbarDocuments
                             onDeleteClick={handleDeleteRequest}
-                            onEditClick={() => console.log('Edit clicked')}
+                            onEditClick={handleEditRequest}
                             onViewClick={handleViewRequest}
                             onAddClick={handleAddRequest}
                         />

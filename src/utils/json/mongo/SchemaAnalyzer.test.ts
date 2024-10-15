@@ -4,11 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type JSONSchema, type JSONSchemaRef } from '../JSONSchema';
-import { updateSchemaWithDocument } from './SchemaAnalyzer';
+import { getPropertyNamesAtLevel, updateSchemaWithDocument } from './SchemaAnalyzer';
 import {
     arraysWithDifferentDataTypes,
     complexDocument,
     complexDocumentsArray,
+    complexDocumentWithOddTypes,
     embeddedDocumentOnly,
     flatDocument,
     sparseDocumentsArray,
@@ -200,5 +201,53 @@ describe('Mongo Schema Analyzer', () => {
         const priceField = orderItems?.anyOf?.[0]?.items?.anyOf?.[0]?.properties?.['price'];
         const priceFieldType = priceField?.anyOf?.[0];
         expect(priceFieldType?.['x-bsonType']).toBe('decimal128');
+    });
+
+    describe('traverses schema', () => {
+        it('with valid paths', () => {
+            const schema: JSONSchema = {};
+            updateSchemaWithDocument(schema, complexDocument);
+
+            let propertiesAtRoot = getPropertyNamesAtLevel(schema, []);
+            expect(propertiesAtRoot).toHaveLength(4);
+
+            propertiesAtRoot = getPropertyNamesAtLevel(schema, ['user']);
+            expect(propertiesAtRoot).toHaveLength(3);
+
+            propertiesAtRoot = getPropertyNamesAtLevel(schema, ['user', 'profile']);
+            expect(propertiesAtRoot).toHaveLength(4);
+        });
+
+        it('with broken paths', () => {
+            const schema: JSONSchema = {};
+            updateSchemaWithDocument(schema, complexDocument);
+
+            const propertiesAtRoot = getPropertyNamesAtLevel(schema, []);
+            expect(propertiesAtRoot).toHaveLength(4);
+
+            expect(() => getPropertyNamesAtLevel(schema, ['no-entry'])).toThrow();
+
+            expect(() => getPropertyNamesAtLevel(schema, ['user', 'no-entry'])).toThrow();
+        });
+
+        it('with sparse docs and mixed types', () => {
+            const schema: JSONSchema = {};
+            updateSchemaWithDocument(schema, complexDocument);
+            updateSchemaWithDocument(schema, complexDocumentWithOddTypes);
+
+            let propertiesAtRoot = getPropertyNamesAtLevel(schema, []);
+            expect(propertiesAtRoot).toHaveLength(4);
+
+            propertiesAtRoot = getPropertyNamesAtLevel(schema, ['user']);
+            expect(propertiesAtRoot).toHaveLength(3);
+            expect(propertiesAtRoot).toEqual(['username', 'email', 'profile']);
+
+            propertiesAtRoot = getPropertyNamesAtLevel(schema, ['user', 'profile']);
+            expect(propertiesAtRoot).toHaveLength(4);
+            expect(propertiesAtRoot).toEqual(['firstName', 'lastName', 'hobbies', 'addresses']);
+
+            propertiesAtRoot = getPropertyNamesAtLevel(schema, ['history']);
+            expect(propertiesAtRoot).toHaveLength(6);
+        });
     });
 });

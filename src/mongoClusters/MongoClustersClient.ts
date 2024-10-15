@@ -122,7 +122,7 @@ export class MongoClustersClient {
     }
 
     //todo: this is just a to see how it could work, we need to use a cursor here for paging
-    async queryDocuments(
+    async runQuery(
         databaseName: string,
         collectionName: string,
         findQuery: string,

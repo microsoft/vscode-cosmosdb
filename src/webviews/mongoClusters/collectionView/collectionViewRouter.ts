@@ -36,7 +36,7 @@ export const collectionsViewRouter = router({
 
             // run query
             const client: MongoClustersClient = await MongoClustersClient.getClient(myCtx.liveConnectionId);
-            const responsePack = await client.queryDocuments(
+            const responsePack = await client.runQuery(
                 myCtx.databaseName,
                 myCtx.collectionName,
                 input.findQuery,

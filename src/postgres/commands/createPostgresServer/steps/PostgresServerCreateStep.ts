@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+
 import * as SingleModels from '@azure/arm-postgresql';
 import * as FlexibleModels from '@azure/arm-postgresql-flexible';
 import { LocationListStep } from '@microsoft/vscode-azext-azureutils';

@@ -1,15 +1,20 @@
-// eslint-disable-next-line import/no-internal-modules
-import { useEffect, useRef, useState, type JSX } from 'react';
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
 
-import { Label, Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
-import { ArrowClockwiseRegular, SaveRegular, TextGrammarCheckmarkRegular } from '@fluentui/react-icons';
+// eslint-disable-next-line import/no-internal-modules
+import { type JSX, useEffect, useRef, useState } from 'react';
 import { Editor, loader } from '@monaco-editor/react';
-import { type WebviewApi } from 'vscode-webview';
-import { ToolbarDividerTransparent } from '../collectionView/components/ToolbarDividerTransparent';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
+import { useConfiguration } from '../../api/webview-client/useConfiguration';
+import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
+import { type VsCodeLinkNotification } from '../../api/webview-client/vscodeLink';
+import { type DocumentsViewWebviewConfigurationType } from './documentsViewController';
 import './documentView.scss';
+import { ToolbarDocuments } from './components/toolbarDocuments';
 
 loader.config({ monaco: monacoEditor });
 
@@ -35,121 +40,51 @@ const monacoOptions = {
     // automaticLayout: true,
 };
 
-declare global {
-    interface Window {
-        config?: {
-            __id?: string;
-            __liveConnectionId?: string;
-            __mode?: string;
-            __databaseName: string;
-            __collectionName: string;
-            __documentId: string;
-            __documentContent: string;
-            __vsCodeApi: WebviewApi<unknown>;
-            [key: string]: unknown; // Optional: Allows any other properties in config
-        };
-    }
-}
-
-interface DocumentToolbarProps {
-    onValidateRequest: () => void;
-    onRefreshRequest: () => void;
-    onSaveRequest: () => void;
-}
-
-export const DocumentToolbar = ({
-    onValidateRequest,
-    onRefreshRequest,
-    onSaveRequest,
-}: DocumentToolbarProps): JSX.Element => {
-    return (
-        <Toolbar size="small">
-            <Tooltip content="Save document to the database" relationship="description" withArrow>
-                <ToolbarButton
-                    onClick={onSaveRequest}
-                    aria-label="Save to the database"
-                    icon={<SaveRegular />}
-                    appearance={'primary'}
-                    disabled={window.config?.__mode !== 'add'}
-                >
-                    Save
-                </ToolbarButton>
-            </Tooltip>
-
-            <ToolbarDividerTransparent />
-
-            <Tooltip content="Check document syntax" relationship="description" withArrow>
-                <ToolbarButton
-                    onClick={onValidateRequest}
-                    aria-label="Check document syntax"
-                    icon={<TextGrammarCheckmarkRegular />}
-                    disabled={true}
-                >
-                    Validate
-                </ToolbarButton>
-            </Tooltip>
-
-            <Tooltip content="Reload original document from the database" relationship="description" withArrow>
-                <ToolbarButton
-                    onClick={onRefreshRequest}
-                    aria-label="Reload original document from the database"
-                    icon={<ArrowClockwiseRegular />}
-                    disabled={window.config?.__mode !== 'add'}
-                >
-                    Refresh
-                </ToolbarButton>
-            </Tooltip>
-        </Toolbar>
-    );
-};
-
 export const DocumentView = (): JSX.Element => {
-    //TODO: this approach is temporary until we move to better base class and messaging
-    const staticContent: string = decodeURIComponent(window.config?.__documentContent ?? '{ }');
-    const [editorContent] = useState(staticContent);
+    /**
+     * Use the configuration object to access the data passed to the webview at its creation.
+     * Feel free to update the content of the object. It won't be synced back to the extension though.
+     */
+    const configuration = useConfiguration<DocumentsViewWebviewConfigurationType>();
+
+    /**
+     * Use the `useTrpcClient` hook to get the tRPC client and an event target
+     * for handling notifications from the extension.
+     */
+    const { trpcClient, vscodeEventTarget } = useTrpcClient();
+
+    const [editorContent] = configuration.mode === 'add' ? useState('{  }') : useState('{ "loading...": true }');
+
+    // a useEffect without a dependency runs only once after the first render only
+    useEffect(() => {
+        if (configuration.mode !== 'add') {
+            const documentId: string = configuration.documentId;
+
+            void trpcClient.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
+                editor.current?.setValue(response);
+            });
+        }
+    }, []);
 
     const editor = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
 
-    // quick/temp solution
-    function handleMessage(event): void {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        switch (event.data?.type) {
-            case 'response.documentView.refreshDocument': {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                const documentContent = (event.data?.payload.documentContent as string) ?? '{  }';
-
-                editor.current?.setValue(documentContent);
-
-                break;
-            }
-            case 'response.documentView.saveDocument': {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                const documentContent = (event.data?.payload.documentContent as string) ?? '{  }';
-
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                const newDocumentId = (event.data?.payload.documentId as string) ?? '';
-
-                if (window.config) {
-                    window.config.__documentId = newDocumentId;
-                }
-
-                editor.current?.setValue(documentContent);
-                break;
-            }
-            default:
-                return;
-        }
-    }
-
     useEffect(() => {
-        window.addEventListener('message', handleMessage);
+        const handleNotification = (event: Event) => {
+            const customEvent = event as CustomEvent<VsCodeLinkNotification>;
+            const notification = customEvent.detail;
+
+            // Handle the notification data, just playing with it
+            console.log('Handling notification:', notification);
+        };
+
+        vscodeEventTarget.addEventListener('VsCodeLinkNotification', handleNotification);
 
         return () => {
-            window.removeEventListener('message', handleMessage);
+            vscodeEventTarget.removeEventListener('VsCodeLinkNotification', handleNotification);
         };
-    }, []);
+    }, [vscodeEventTarget]);
 
-    function onMount(_editor: monacoEditor.editor.IStandaloneCodeEditor, _monaco: typeof monacoEditor) {
+    function onMonacoMount(_editor: monacoEditor.editor.IStandaloneCodeEditor, _monaco: typeof monacoEditor) {
         editor.current = _editor;
 
         /**
@@ -185,45 +120,40 @@ export const DocumentView = (): JSX.Element => {
     }
 
     function handleOnRefreshRequest(): void {
-        const documentId: string = window.config?.__documentId as string;
+        const documentId: string = configuration.documentId;
 
-        window.config?.__vsCodeApi.postMessage({
-            type: 'request.documentView.refreshDocument',
-            payload: {
-                documentId: documentId,
-            },
+        void trpcClient.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
+            editor.current?.setValue(response);
         });
     }
 
     function handleOnSaveRequest(): void {
         const editorContent = editor.current?.getValue();
 
-        window.config?.__vsCodeApi.postMessage({
-            type: 'request.documentView.saveDocument',
-            payload: {
-                // we're not setting the ID here becasue it has to be extracted from the document being sent over
-                documentContent: editorContent,
-            },
-        });
+        if (editorContent === undefined) {
+            return;
+        }
+
+        // we're not sending the ID over becasue it has to be extracted from the document being sent over
+        void trpcClient.mongoClusters.documentView.saveDocument
+            .mutate({ documentContent: editorContent })
+            .then((response) => {
+                // update the configuration for potential refreshes of the document
+                configuration.documentId = response.documentId;
+                editor.current?.setValue(response.documentStringified);
+            });
     }
 
     function handleOnValidateRequest(): void {}
 
     return (
         <div className="documentView">
-            <DocumentToolbar
+            <ToolbarDocuments
+                viewerMode={configuration.mode}
                 onSaveRequest={handleOnSaveRequest}
                 onValidateRequest={handleOnValidateRequest}
                 onRefreshRequest={handleOnRefreshRequest}
             />
-
-            {window.config?.__mode === 'add' && (
-                <Label size="small" className="privatePreview">
-                    <b>Private Preview:</b> Currently supports a subset of BSON datatypes that map easily to JSON, which
-                    is why editing existing documents is disabled in this view. Full BSON support and editing
-                    capabilities will be available in future updates!
-                </Label>
-            )}
 
             <Editor
                 height={'100%'}
@@ -231,7 +161,7 @@ export const DocumentView = (): JSX.Element => {
                 language="json"
                 options={monacoOptions}
                 value={editorContent}
-                onMount={onMount}
+                onMount={onMonacoMount}
             />
         </div>
     );

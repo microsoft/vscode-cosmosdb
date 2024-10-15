@@ -8,7 +8,7 @@ module.exports = {
         project: 'tsconfig.json',
         sourceType: 'module',
     },
-    plugins: ['@typescript-eslint', 'import'],
+    plugins: ['@typescript-eslint', 'import', 'license-header'],
     extends: [
         'eslint:recommended',
         'plugin:@typescript-eslint/recommended',
@@ -39,6 +39,15 @@ module.exports = {
         'no-restricted-imports': ['error', { patterns: ['**/*/extension.bundle'] }],
         'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
         'no-useless-escape': 'error',
+        'license-header/header': [
+            'error',
+            [
+                '/*---------------------------------------------------------------------------------------------',
+                ' *  Copyright (c) Microsoft Corporation. All rights reserved.',
+                ' *  Licensed under the MIT License. See License.txt in the project root for license information.',
+                ' *--------------------------------------------------------------------------------------------*/',
+            ],
+        ],
     },
 
     overrides: [

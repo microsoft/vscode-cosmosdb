@@ -3,19 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-@import '../mongoClustersStyles.scss';
-
-
-.documentView {
-    display: flex;
-    flex-direction: column;
-    row-gap: 10px;
-
-    padding-top: 8px;
-
-    height: 100vh;
-}
-
-.privatePreview {
-    opacity: 0.6;
+export interface CellValue {
+    value: string;
+    type: string;
 }

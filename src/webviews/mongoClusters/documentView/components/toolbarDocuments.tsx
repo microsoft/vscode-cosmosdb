@@ -11,11 +11,11 @@ interface ToolbarDocumentsProps {
 }
 
 export const ToolbarDocuments = ({
-                                    viewerMode,
-                                    onValidateRequest,
-                                    onRefreshRequest,
-                                    onSaveRequest,
-                                }: ToolbarDocumentsProps): JSX.Element => {
+    viewerMode,
+    onValidateRequest,
+    onRefreshRequest,
+    onSaveRequest,
+}: ToolbarDocumentsProps): JSX.Element => {
     return (
         <Toolbar size="small">
             <Tooltip content="Save document to the database" relationship="description" withArrow>

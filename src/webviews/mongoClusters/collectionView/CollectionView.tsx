@@ -21,7 +21,6 @@ import { ToolbarDocuments } from './components/toolbar/toolbarDocuments';
 import { ToolbarPaging } from './components/toolbar/toolbarPaging';
 import { ViewSwitcher } from './components/toolbar/viewSwitcher';
 
-
 interface QueryResults {
     tableHeaders?: string[];
     tableData?: { 'x-objectid': string; [key: string]: unknown }[]; // 'x-objectid': string;
@@ -43,7 +42,6 @@ export const CollectionView = (): JSX.Element => {
      * for handling notifications from the extension.
      */
     const { trpcClient /** , vscodeEventTarget */ } = useTrpcClient();
-
 
     /**
      * Please note: using the context and states inside of closures can lead to stale data.

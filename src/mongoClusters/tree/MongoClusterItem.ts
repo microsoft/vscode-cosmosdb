@@ -185,7 +185,8 @@ export class MongoClusterItem implements MongoClusterItemBase {
                 } else {
                     ext.outputChannel.appendLine('MongoDB (vCore): Reusing active session');
                     mongoClustersClient = await MongoClustersClient.getClient(
-                        nonNullValue(this.mongoCluster.session?.credentialId))
+                        nonNullValue(this.mongoCluster.session?.credentialId),
+                    );
                 }
 
                 return mongoClustersClient.listDatabases().then((databases: DatabaseItemModel[]) => {

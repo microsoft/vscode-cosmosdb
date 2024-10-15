@@ -4,17 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
-import { type JSX, useEffect, useRef, useState } from 'react';
 import { Editor, loader } from '@monaco-editor/react';
+import { type JSX, useEffect, useRef, useState } from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
 import { useConfiguration } from '../../api/webview-client/useConfiguration';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import { type VsCodeLinkNotification } from '../../api/webview-client/vscodeLink';
+import { ToolbarDocuments } from './components/toolbarDocuments';
 import { type DocumentsViewWebviewConfigurationType } from './documentsViewController';
 import './documentView.scss';
-import { ToolbarDocuments } from './components/toolbarDocuments';
 
 loader.config({ monaco: monacoEditor });
 

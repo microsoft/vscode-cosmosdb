@@ -18,7 +18,7 @@ import {
     type FindOptions,
     type ListDatabasesResult,
     type WithId,
-    type WithoutId
+    type WithoutId,
 } from 'mongodb';
 import { getDataTopLevel, getFieldsTopLevel } from '../utils/slickgrid/mongo/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';

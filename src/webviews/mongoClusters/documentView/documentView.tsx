@@ -4,20 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
-import { useEffect, useRef, useState, type JSX } from 'react';
-
-import { Label, Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
-import { ArrowClockwiseRegular, SaveRegular, TextGrammarCheckmarkRegular } from '@fluentui/react-icons';
+import { type JSX, useEffect, useRef, useState } from 'react';
 import { Editor, loader } from '@monaco-editor/react';
-import { ToolbarDividerTransparent } from '../collectionView/components/toolbar/ToolbarDividerTransparent';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
 import { useConfiguration } from '../../api/webview-client/useConfiguration';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import { type VsCodeLinkNotification } from '../../api/webview-client/vscodeLink';
-import { type DocumentsViewWebviewConfigurationType } from './DocumentsViewController';
+import { type DocumentsViewWebviewConfigurationType } from './documentsViewController';
 import './documentView.scss';
+import { ToolbarDocuments } from './components/toolbarDocuments';
 
 loader.config({ monaco: monacoEditor });
 
@@ -43,59 +40,6 @@ const monacoOptions = {
     // automaticLayout: true,
 };
 
-interface DocumentToolbarProps {
-    viewerMode: string;
-    onValidateRequest: () => void;
-    onRefreshRequest: () => void;
-    onSaveRequest: () => void;
-}
-
-export const DocumentToolbar = ({
-    viewerMode,
-    onValidateRequest,
-    onRefreshRequest,
-    onSaveRequest,
-}: DocumentToolbarProps): JSX.Element => {
-    return (
-        <Toolbar size="small">
-            <Tooltip content="Save document to the database" relationship="description" withArrow>
-                <ToolbarButton
-                    onClick={onSaveRequest}
-                    aria-label="Save to the database"
-                    icon={<SaveRegular />}
-                    appearance={'primary'}
-                    disabled={viewerMode !== 'add'}
-                >
-                    Save
-                </ToolbarButton>
-            </Tooltip>
-
-            <ToolbarDividerTransparent />
-
-            <Tooltip content="Check document syntax" relationship="description" withArrow>
-                <ToolbarButton
-                    onClick={onValidateRequest}
-                    aria-label="Check document syntax"
-                    icon={<TextGrammarCheckmarkRegular />}
-                    disabled={true}
-                >
-                    Validate
-                </ToolbarButton>
-            </Tooltip>
-
-            <Tooltip content="Reload original document from the database" relationship="description" withArrow>
-                <ToolbarButton
-                    onClick={onRefreshRequest}
-                    aria-label="Reload original document from the database"
-                    icon={<ArrowClockwiseRegular />}
-                >
-                    Refresh
-                </ToolbarButton>
-            </Tooltip>
-        </Toolbar>
-    );
-};
-
 export const DocumentView = (): JSX.Element => {
     /**
      * Use the configuration object to access the data passed to the webview at its creation.
@@ -107,10 +51,7 @@ export const DocumentView = (): JSX.Element => {
      * Use the `useTrpcClient` hook to get the tRPC client and an event target
      * for handling notifications from the extension.
      */
-    const { clientTrpc, vscodeEventTarget } = useTrpcClient();
-
-
-
+    const { trpcClient, vscodeEventTarget } = useTrpcClient();
 
     const [editorContent] = configuration.mode === 'add' ? useState('{  }') : useState('{ "loading...": true }');
 
@@ -119,7 +60,7 @@ export const DocumentView = (): JSX.Element => {
         if (configuration.mode !== 'add') {
             const documentId: string = configuration.documentId;
 
-            void clientTrpc.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
+            void trpcClient.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
                 editor.current?.setValue(response);
             });
         }
@@ -181,7 +122,7 @@ export const DocumentView = (): JSX.Element => {
     function handleOnRefreshRequest(): void {
         const documentId: string = configuration.documentId;
 
-        void clientTrpc.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
+        void trpcClient.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
             editor.current?.setValue(response);
         });
     }
@@ -194,12 +135,12 @@ export const DocumentView = (): JSX.Element => {
         }
 
         // we're not sending the ID over becasue it has to be extracted from the document being sent over
-        void clientTrpc.mongoClusters.documentView.saveDocument
+        void trpcClient.mongoClusters.documentView.saveDocument
             .mutate({ documentContent: editorContent })
             .then((response) => {
                 // update the configuration for potential refreshes of the document
                 configuration.documentId = response.documentId;
-                editor.current?.setValue(response.documentContent);
+                editor.current?.setValue(response.documentStringified);
             });
     }
 
@@ -207,20 +148,12 @@ export const DocumentView = (): JSX.Element => {
 
     return (
         <div className="documentView">
-            <DocumentToolbar
+            <ToolbarDocuments
                 viewerMode={configuration.mode}
                 onSaveRequest={handleOnSaveRequest}
                 onValidateRequest={handleOnValidateRequest}
                 onRefreshRequest={handleOnRefreshRequest}
             />
-
-            {configuration.mode === 'add' && (
-                <Label size="small" className="privatePreview">
-                    <b>Private Preview:</b> Currently supports a subset of BSON datatypes that map easily to JSON, which
-                    is why editing existing documents is disabled in this view. Full BSON support and editing
-                    capabilities will be available in future updates!
-                </Label>
-            )}
 
             <Editor
                 height={'100%'}

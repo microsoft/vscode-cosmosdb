@@ -12,12 +12,12 @@ import { ext } from '../../../extensionVariables';
 const DEV_SERVER_HOST = 'http://localhost:18080';
 
 /**
- * ReactWebviewBaseController is a class that manages a vscode.Webview and provides
+ * WebviewBaseController is a class that manages a vscode.Webview and provides
  * a way to communicate with it. It provides a way to register request handlers and reducers
  * that can be called from the webview. It also provides a way to post notifications to the webview.
  * @template Configuration The type of the configuration object that the webview will receive
  */
-export abstract class ReactWebviewBaseController<Configuration> implements vscode.Disposable {
+export abstract class WebviewBaseController<Configuration> implements vscode.Disposable {
     private _disposables: vscode.Disposable[] = [];
     private _isDisposed: boolean = false;
 

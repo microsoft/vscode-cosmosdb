@@ -183,22 +183,20 @@ export class MongoClustersClient {
         databaseName: string,
         collectionName: string,
         documentId: string,
-        documentContent: string,
-    ): Promise<{ documentId: ObjectId; documentContent: WithId<Document> | null }> {
+        document: Document,
+    ): Promise<{ documentId: ObjectId; document: WithId<Document> | null }> {
         const objectId = documentId !== '' ? new ObjectId(documentId) : new ObjectId();
 
         // connect and execute
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const documentObj = JSON.parse(documentContent);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        delete documentObj._id;
+        delete document._id;
 
         const replaceResult = await collection.replaceOne(
             { _id: objectId },
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            documentObj as WithoutId<Document>,
+            document as WithoutId<Document>,
             { upsert: true },
         );
 
@@ -206,7 +204,7 @@ export class MongoClustersClient {
 
         const newDocument = await collection.findOne({ _id: newDocumentId });
 
-        return { documentId: newDocumentId, documentContent: newDocument };
+        return { documentId: newDocumentId, document: newDocument };
     }
 
     async dropCollection(databaseName: string, collectionName: string): Promise<boolean> {

@@ -16,10 +16,10 @@ import {
 import { DataViewPanelJSON } from './components/DataViewPanelJSON';
 import { DataViewPanelTableV2 } from './components/DataViewPanelTableV2';
 import { DataViewPanelTree } from './components/DataViewPanelTree';
-import { ToolbarPaging } from './components/toolbar/ToolbarPaging';
+import { ToolbarPaging } from './components/toolbar/toolbarPaging';
 import { FindQueryComponent } from './components/FindQueryComponent';
-import { ToolbarDocuments } from './components/toolbar/ToolbarDocuments';
-import { ViewSwitcher } from './components/toolbar/ViewSwitcher';
+import { ToolbarDocuments } from './components/toolbar/toolbarDocuments';
+import { ViewSwitcher } from './components/toolbar/viewSwitcher';
 
 
 interface QueryResults {
@@ -42,7 +42,7 @@ export const CollectionView = (): JSX.Element => {
      * Use the `useTrpcClient` hook to get the tRPC client and an event target
      * for handling notifications from the extension.
      */
-    const { clientTrpc /** , vscodeEventTarget */ } = useTrpcClient();
+    const { trpcClient /** , vscodeEventTarget */ } = useTrpcClient();
 
 
     /**
@@ -88,7 +88,7 @@ export const CollectionView = (): JSX.Element => {
     useEffect(() => {
         setCurrentContext((prev) => ({ ...prev, isLoading: true }));
 
-        clientTrpc.mongoClusters.collectionView.runQuery
+        trpcClient.mongoClusters.collectionView.runQuery
             .query({
                 findQuery: currentContext.currrentQueryDefinition.queryText,
                 pageNumber: currentContext.currrentQueryDefinition.pageNumber,
@@ -130,7 +130,7 @@ export const CollectionView = (): JSX.Element => {
     };
 
     function handleDeleteRequest(): void {
-        clientTrpc.mongoClusters.collectionView.deleteDocumentsById
+        trpcClient.mongoClusters.collectionView.deleteDocumentsById
             .mutate(currentContext.dataSelection.selectedDocumentObjectIds)
             .then((acknowledged) => {
                 if (!acknowledged) {
@@ -166,7 +166,7 @@ export const CollectionView = (): JSX.Element => {
     }
 
     function handleViewRequest(): void {
-        clientTrpc.mongoClusters.collectionView.viewDocumentById
+        trpcClient.mongoClusters.collectionView.viewDocumentById
             .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
             .catch((error: unknown) => {
                 if (error instanceof Error) {
@@ -178,7 +178,7 @@ export const CollectionView = (): JSX.Element => {
     }
 
     function handleAddRequest(): void {
-        clientTrpc.mongoClusters.collectionView.addDocument.mutate().catch((error: unknown) => {
+        trpcClient.mongoClusters.collectionView.addDocument.mutate().catch((error: unknown) => {
             if (error instanceof Error) {
                 console.error('Error adding document:', error.message);
             } else {

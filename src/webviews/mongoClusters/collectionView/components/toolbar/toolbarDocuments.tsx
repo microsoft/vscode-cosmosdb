@@ -5,10 +5,10 @@
 
 import { Toolbar, ToolbarButton } from '@fluentui/react-components';
 import {
-    DocumentAddRegular,
-    DocumentArrowDownRegular,
-    DocumentDismissRegular,
-    DocumentEditRegular,
+    AddFilled,
+    DeleteRegular,
+    EditRegular,
+    EyeRegular
 } from '@fluentui/react-icons';
 import { useContext, type JSX } from 'react';
 import { CollectionViewContext } from '../../collectionViewContext';
@@ -32,28 +32,28 @@ export const ToolbarDocuments = ({
         <Toolbar aria-label="with Popover" size="small">
             <ToolbarButton
                 aria-label="Add new document"
-                icon={<DocumentAddRegular />}
+                icon={<AddFilled />}
                 disabled={currentContext.commands.disableAddDocument}
                 onClick={onAddClick}
             />
 
             <ToolbarButton
                 aria-label="View selected document"
-                icon={<DocumentArrowDownRegular />}
+                icon={<EyeRegular />}
                 disabled={currentContext.commands.disableViewDocument}
                 onClick={onViewClick}
             />
 
             <ToolbarButton
                 aria-label="Edit selected document"
-                icon={<DocumentEditRegular />}
+                icon={<EditRegular />}
                 disabled={currentContext.commands.disableEditDocument}
                 onClick={onEditClick}
             />
 
             <ToolbarButton
                 aria-label="Delete selected document"
-                icon={<DocumentDismissRegular />}
+                icon={<DeleteRegular />}
                 disabled={currentContext.commands.disableDeleteDocument}
                 onClick={onDeleteClick}
             />

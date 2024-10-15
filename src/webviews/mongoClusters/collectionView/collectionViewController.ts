@@ -5,7 +5,7 @@
 
 import { ViewColumn } from 'vscode';
 import { ext } from '../../../extensionVariables';
-import { ReactWebviewPanelController } from '../../api/extension-server/ReactWebviewController';
+import { WebviewController } from '../../api/extension-server/WebviewController';
 import { type RouterContext } from './collectionViewRouter';
 
 export type CollectionViewWebviewConfigurationType = {
@@ -16,7 +16,7 @@ export type CollectionViewWebviewConfigurationType = {
     collectionName: string;
 };
 
-export class CollectionViewController extends ReactWebviewPanelController<CollectionViewWebviewConfigurationType> {
+export class CollectionViewController extends WebviewController<CollectionViewWebviewConfigurationType> {
     constructor(initialData: CollectionViewWebviewConfigurationType) {
         // ext.context here is the vscode.ExtensionContext required by the ReactWebviewPanelController's original implementation
         // we're not modifying it here in order to be ready for future updates of the webview API.

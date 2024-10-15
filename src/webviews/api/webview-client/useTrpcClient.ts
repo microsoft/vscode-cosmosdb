@@ -18,7 +18,7 @@ import {
  * Custom React hook that provides a tRPC client for communication between the webview and VSCode extension,
  * along with an event target for handling notifications from the extension.
  *
- * @returns An object containing the tRPC client (`clientTrpc`) and an `EventTarget` (`vscodeEventTarget`)
+ * @returns An object containing the tRPC client (`trpcClient`) and an `EventTarget` (`vscodeEventTarget`)
  *          for listening to extension notifications.
  *
  * @example
@@ -26,7 +26,7 @@ import {
  * import { useTrpcClient } from 'useTrpcClient';
  *
  * export const MyComponent = () => {
- *   const { clientTrpc, vscodeEventTarget } = useTrpcClient();
+ *   const { trpcClient, vscodeEventTarget } = useTrpcClient();
  *
  *   // Listen for notifications from the extension
  *   useEffect(() => {
@@ -46,10 +46,10 @@ import {
  *
  *   // Use the tRPC client to make queries and mutations
  *   useEffect(() => {
- *     clientTrpc.myProcedure.query().then((result) => {
+ *     trpcClient.myProcedure.query().then((result) => {
  *       console.log('Procedure result:', result);
  *     });
- *   }, [clientTrpc]);
+ *   }, [trpcClient]);
  *
  *   return (
  *     <>
@@ -105,7 +105,7 @@ export function useTrpcClient() {
     // Use useMemo to avoid recreating the client on every render
     // At the moment I'm not sure about the details of WebviewContext implementation,
     // so it's easier that way..
-    const clientTrpc = useMemo(
+    const trpcClient = useMemo(
         () =>
             createTRPCClient<AppRouter>({
                 links: [loggerLink(), vscodeLink({ send, onReceive })],
@@ -145,5 +145,5 @@ export function useTrpcClient() {
 
 
     // Return the tRPC client and the event target for notifications
-    return { clientTrpc, vscodeEventTarget };
+    return { trpcClient: trpcClient, vscodeEventTarget };
 }

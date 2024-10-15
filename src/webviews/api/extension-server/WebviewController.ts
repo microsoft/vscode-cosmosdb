@@ -6,23 +6,23 @@
 import * as vscode from 'vscode';
 import { appRouter } from '../configuration/appRouter';
 import { type VsCodeLinkNotification, type VsCodeLinkRequestMessage } from '../webview-client/vscodeLink';
-import { ReactWebviewBaseController } from './ReactWebviewBaseController';
+import { WebviewBaseController } from './WebviewBaseController';
 import { createCallerFactory } from './trpc';
 
 /**
- * ReactWebviewPanelController is a class that manages a vscode.WebviewPanel and provides
+ * WebviewController is a class that manages a vscode.WebviewPanel and provides
  * a way to communicate with it. It provides a way to register request handlers and reducers
  * that can be called from the webview. It also provides a way to post notifications to the webview.
  * @template Configuration The type of the configuration object that the webview will receive
  * @template Reducers The type of the reducers that the webview will use
  */
-export class ReactWebviewPanelController<Configuration> extends ReactWebviewBaseController<
+export class WebviewController<Configuration> extends WebviewBaseController<
     Configuration
 > {
     private _panel: vscode.WebviewPanel;
 
     /**
-     * Creates a new ReactWebviewPanelController
+     * Creates a new WebviewController
      * @param _context The context of the extension-server
      * @param title The title of the webview panel
      * @param webviewName The source file that the webview will use

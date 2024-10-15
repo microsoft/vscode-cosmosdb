@@ -14,7 +14,8 @@ export enum Views {
 export type CollectionViewContextType = {
     isLoading: boolean; // this is a concious decision to use 'isLoading' instead of <Suspense> tags. It's not only the data display component that is supposed to react to the lading state but also some input fields, buttons, etc.
     currentView: Views;
-    queryConfig: {
+    currrentQueryDefinition: {
+        // holds the current query, we run a new database query when this changes
         queryText: string;
         pageNumber: number;
         pageSize: number;
@@ -36,7 +37,7 @@ export type CollectionViewContextType = {
 export const DefaultCollectionViewContext: CollectionViewContextType = {
     isLoading: false,
     currentView: Views.TABLE,
-    queryConfig: {
+    currrentQueryDefinition: {
         queryText: '{  }',
         pageNumber: 1,
         pageSize: 10,

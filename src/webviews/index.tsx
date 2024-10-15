@@ -7,21 +7,11 @@ import * as React from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import { createRoot } from 'react-dom/client';
 import { type WebviewApi } from 'vscode-webview';
-import { Document } from './Document/Document';
-import { CollectionView } from './mongoClusters/collectionView/CollectionView';
-import { DocumentView } from './mongoClusters/documentView/documentView';
-import { QueryEditor } from './QueryEditor/QueryEditor';
+import { WebviewRegistry } from './api/configuration/WebviewRegistry';
 import { DynamicThemeProvider } from './theme/DynamicThemeProvider';
-import { WithWebviewContext, type WebviewState } from './WebviewContext';
+import { type WebviewState, WithWebviewContext } from './WebviewContext';
 
-export const Views = {
-    cosmosDbQuery: QueryEditor,
-    cosmosDbDocument: Document,
-    mongoClustersCollectionView: CollectionView,
-    mongoClustersDocumentView: DocumentView,
-} as const;
-
-export type ViewKey = keyof typeof Views;
+export type ViewKey = keyof typeof WebviewRegistry;
 
 export function render<V extends ViewKey>(
     key: V,
@@ -39,7 +29,7 @@ export function render<V extends ViewKey>(
     // @ts-ignore
     __webpack_public_path__ = publicPath;
 
-    const Component: React.ComponentType = Views[key];
+    const Component: React.ComponentType = WebviewRegistry[key];
 
     const root = createRoot(container);
 

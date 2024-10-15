@@ -4,155 +4,26 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
-import { useContext, useEffect, useRef, useState, type JSX } from 'react';
+import { type JSX, useEffect, useRef, useState } from 'react';
+import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import './collectionView.scss';
-
-import { Button, Dropdown, Input, Option, Toolbar, ToolbarButton } from '@fluentui/react-components';
-import {
-    DocumentAddRegular,
-    DocumentArrowDownRegular,
-    DocumentDismissRegular,
-    DocumentEditRegular,
-    PlayRegular,
-    SearchFilled,
-} from '@fluentui/react-icons';
-import { type WebviewApi } from 'vscode-webview';
 import {
     CollectionViewContext,
+    type CollectionViewContextType,
     DefaultCollectionViewContext,
     Views,
-    type CollectionViewContextType,
 } from './collectionViewContext';
 import { DataViewPanelJSON } from './components/DataViewPanelJSON';
 import { DataViewPanelTableV2 } from './components/DataViewPanelTableV2';
 import { DataViewPanelTree } from './components/DataViewPanelTree';
-import { ToolbarPaging } from './components/ToolbarPaging';
-
-const defaultView: string = 'Table View';
-
-export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {
-    const [currentContext] = useContext(CollectionViewContext);
-
-    const inputField = useRef<HTMLInputElement>(null);
-
-    function runQuery() {
-        const queryText = inputField.current?.value ?? '{}';
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        onQueryUpdate(queryText);
-    }
-
-    return (
-        <div className="findQueryComponent">
-            <Input
-                readOnly={currentContext.isLoading}
-                ref={inputField}
-                contentBefore={<SearchFilled />}
-                style={{ flexGrow: 1 }}
-                defaultValue="{  }"
-                onKeyUp={(e) => {
-                    if (e.key === 'Enter') {
-                        runQuery();
-                    }
-                }}
-            />
-            <Button
-                onClick={runQuery}
-                disabled={currentContext.isLoading}
-                icon={<PlayRegular />}
-                appearance="primary"
-                style={{ flexShrink: 0 }}
-            >
-                Find Query
-            </Button>
-        </div>
-    );
-};
-
-interface ToolbarDocumentsProps {
-    onDeleteClick: () => void;
-    onEditClick: () => void;
-    onViewClick: () => void;
-    onAddClick: () => void;
-}
-
-export const ToolbarDocuments = ({
-    onDeleteClick,
-    onEditClick,
-    onViewClick,
-    onAddClick,
-}: ToolbarDocumentsProps): JSX.Element => {
-    const [currentContext] = useContext(CollectionViewContext);
-
-    return (
-        <Toolbar aria-label="with Popover" size="small">
-            <ToolbarButton
-                aria-label="Add new document"
-                icon={<DocumentAddRegular />}
-                disabled={currentContext.commands.disableAddDocument}
-                onClick={onAddClick}
-            />
-
-            <ToolbarButton
-                aria-label="View selected document"
-                icon={<DocumentArrowDownRegular />}
-                disabled={currentContext.commands.disableViewDocument}
-                onClick={onViewClick}
-            />
-
-            <ToolbarButton
-                aria-label="Edit selected document"
-                icon={<DocumentEditRegular />}
-                disabled={currentContext.commands.disableEditDocument}
-                onClick={onEditClick}
-            />
-
-            <ToolbarButton
-                aria-label="Delete selected document"
-                icon={<DocumentDismissRegular />}
-                disabled={currentContext.commands.disableDeleteDocument}
-                onClick={onDeleteClick}
-            />
-        </Toolbar>
-    );
-};
-
-function ViewSwitch({ onViewChanged }): JSX.Element {
-    const [currentContext] = useContext(CollectionViewContext);
-
-    return (
-        <Dropdown
-            disabled={currentContext.isLoading}
-            style={{ minWidth: '120px', maxWidth: '120px' }}
-            defaultValue={defaultView}
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
-            onOptionSelect={(_, data) => onViewChanged(data.optionValue)}
-        >
-            <Option key="table">Table View</Option>
-            <Option key="tree">Tree View</Option>
-            <Option key="json">JSON View</Option>
-        </Dropdown>
-    );
-}
-
-declare global {
-    interface Window {
-        config?: {
-            __id?: string;
-            __liveConnectionId?: string;
-            __mode?: string;
-            __databaseName: string;
-            __collectionName: string;
-            __documentId: string;
-            __documentContent: string;
-            __vsCodeApi: WebviewApi<unknown>;
-            [key: string]: unknown; // Optional: Allows any other properties in config
-        };
-    }
-}
+import { FindQueryComponent } from './components/FindQueryComponent';
+import { ToolbarDocuments } from './components/toolbar/toolbarDocuments';
+import { ToolbarPaging } from './components/toolbar/toolbarPaging';
+import { ViewSwitcher } from './components/toolbar/viewSwitcher';
 
 interface QueryResults {
     tableHeaders?: string[];
-    tableData?: { 'x-objectid': string; [key: string]: unknown }[];
+    tableData?: { 'x-objectid': string; [key: string]: unknown }[]; // 'x-objectid': string;
 
     treeData?: { [key: string]: unknown }[];
 
@@ -160,6 +31,18 @@ interface QueryResults {
 }
 
 export const CollectionView = (): JSX.Element => {
+    /**
+     * Use the configuration object to access the data passed to the webview at its creation.
+     * Feel free to update the content of the object. It won't be synced back to the extension though.
+     */
+    //const configuration = useConfiguration<DocumentsViewWebviewConfigurationType>();
+
+    /**
+     * Use the `useTrpcClient` hook to get the tRPC client and an event target
+     * for handling notifications from the extension.
+     */
+    const { trpcClient /** , vscodeEventTarget */ } = useTrpcClient();
+
     /**
      * Please note: using the context and states inside of closures can lead to stale data.
      *
@@ -192,112 +75,36 @@ export const CollectionView = (): JSX.Element => {
         currentContextRef.current = currentContext;
     }, [currentQueryResults, currentContext]);
 
-    // quick/temp solution
-    function handleMessage(event): void {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        switch (event.data?.type) {
-            case 'queryResults': {
-                setCurrentContext((prev) => ({ ...prev, isLoading: false }));
-
-                console.log(
-                    JSON.stringify(
-                        currentQueryResultsRef.current?.tableData
-                            ? currentQueryResultsRef.current?.tableData.length
-                            : { undefined: true },
-                        null,
-                        2,
-                    ),
-                );
-
-                setCurrentQueryResults((prev) => ({
-                    ...prev,
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-                    tableHeaders: event.data?.tableHeaders,
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-                    tableData: event.data?.tableData,
-
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-                    treeData: event.data?.treeData,
-
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-                    jsonDocuments: event.data?.json,
-                }));
-                break;
-            }
-            case 'deleteDocumentsResponse': {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                if (event.data.payload) {
-                    console.log(
-                        JSON.stringify(
-                            currentQueryResultsRef.current?.tableData
-                                ? currentQueryResultsRef.current?.tableData.length
-                                : { undefined: true },
-                            null,
-                            2,
-                        ),
-                    );
-
-                    console.log(
-                        JSON.stringify(
-                            currentQueryResults?.tableData?.filter((row) =>
-                                currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(
-                                    row['x-objectid'],
-                                ),
-                            ),
-                            null,
-                            2,
-                        ),
-                    );
-
-                    setCurrentQueryResults((prev) => ({
-                        ...prev,
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-                        tableData: prev?.tableData?.filter(
-                            (row) =>
-                                !currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(
-                                    row['x-objectid'],
-                                ),
-                        ),
-                    }));
-
-                    console.log(
-                        JSON.stringify(
-                            currentQueryResultsRef.current?.tableData
-                                ? currentQueryResultsRef.current?.tableData.length
-                                : { undefined: true },
-                            null,
-                            2,
-                        ),
-                    );
-
-                    setCurrentContext((prev) => ({
-                        ...prev,
-                        dataSelection: {
-                            selectedDocumentIndexes: [],
-                            selectedDocumentObjectIds: [],
-                        },
-                    }));
-                }
-                break;
-            }
-            default:
-                return;
-        }
-    }
-
-    useEffect(() => {
-        window.addEventListener('message', handleMessage);
-
-        return () => {
-            window.removeEventListener('message', handleMessage);
-        };
-    }, []);
-
+    /**
+     * This is used to run the query. We control it by setting the query configuration
+     * in the currentContext state. Whenever the query configuration changes,
+     * we run the query.
+     *
+     * It helps us manage the query runs as the configuration changes from
+     * within various controls (query panel, paging, etc.).
+     */
     useEffect(() => {
         setCurrentContext((prev) => ({ ...prev, isLoading: true }));
-        console.log('Query:', currentContext.queryConfig);
-        window.config?.__vsCodeApi.postMessage({ type: 'queryConfig', payload: currentContext.queryConfig });
-    }, [currentContext.queryConfig]);
+
+        trpcClient.mongoClusters.collectionView.runQuery
+            .query({
+                findQuery: currentContext.currrentQueryDefinition.queryText,
+                pageNumber: currentContext.currrentQueryDefinition.pageNumber,
+                pageSize: currentContext.currrentQueryDefinition.pageSize,
+            })
+            .then((response) => {
+                setCurrentContext((prev) => ({ ...prev, isLoading: false }));
+                setCurrentQueryResults({
+                    jsonDocuments: response.jsonDocuments ?? [],
+                    tableHeaders: response.tableHeaders ?? [],
+                    tableData: response.tableData ?? [],
+                    treeData: response.treeData ?? [],
+                });
+            })
+            .catch((_error) => {
+                setCurrentContext((prev) => ({ ...prev, isLoading: false }));
+            });
+    }, [currentContext.currrentQueryDefinition]);
 
     const handleViewChanged = (_optionValue: string) => {
         let selection: Views;
@@ -317,34 +124,76 @@ export const CollectionView = (): JSX.Element => {
                 break;
         }
 
-        console.log('View changed to:', selection);
         setCurrentContext((prev) => ({ ...prev, currentView: selection }));
     };
 
     function handleDeleteRequest(): void {
-        window.config?.__vsCodeApi.postMessage({
-            type: 'deleteDocumentsRequest',
-            payload: currentContext.dataSelection.selectedDocumentObjectIds,
-        });
+        trpcClient.mongoClusters.collectionView.deleteDocumentsById
+            .mutate(currentContext.dataSelection.selectedDocumentObjectIds)
+            .then((acknowledged) => {
+                if (!acknowledged) {
+                    return;
+                }
+
+                setCurrentQueryResults((prev) => ({
+                    ...prev,
+                    tableData: prev?.tableData?.filter(
+                        (row) =>
+                            !currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(
+                                row['x-objectid'],
+                            ),
+                    ),
+                    // TODO: update Tree data, update JSON data!
+                }));
+
+                setCurrentContext((prev) => ({
+                    ...prev,
+                    dataSelection: {
+                        selectedDocumentIndexes: [],
+                        selectedDocumentObjectIds: [],
+                    },
+                }));
+            })
+            .catch((error: unknown) => {
+                if (error instanceof Error) {
+                    console.error('Error adding document:', error.message);
+                } else {
+                    console.error('Unexpected error adding document:', error);
+                }
+            });
     }
 
     function handleViewRequest(): void {
-        window.config?.__vsCodeApi.postMessage({
-            type: 'viewDocumentRequest',
-            payload: {
-                objectId: currentContext.dataSelection.selectedDocumentObjectIds[0],
-                index: currentContext.dataSelection.selectedDocumentIndexes[0],
-                documentContent:
-                    currentQueryResultsRef.current?.jsonDocuments?.[
-                        currentContext.dataSelection.selectedDocumentIndexes[0]
-                    ],
-            },
-        });
+        trpcClient.mongoClusters.collectionView.viewDocumentById
+            .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
+            .catch((error: unknown) => {
+                if (error instanceof Error) {
+                    console.error('Error opening document:', error.message);
+                } else {
+                    console.error('Unexpected error opening document:', error);
+                }
+            });
+    }
+
+    function handleEditRequest(): void {
+        trpcClient.mongoClusters.collectionView.editDocumentById
+            .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
+            .catch((error: unknown) => {
+                if (error instanceof Error) {
+                    console.error('Error opening document:', error.message);
+                } else {
+                    console.error('Unexpected error opening document:', error);
+                }
+            });
     }
 
     function handleAddRequest(): void {
-        window.config?.__vsCodeApi.postMessage({
-            type: 'request.collectionView.addDocument',
+        trpcClient.mongoClusters.collectionView.addDocument.mutate().catch((error: unknown) => {
+            if (error instanceof Error) {
+                console.error('Error adding document:', error.message);
+            } else {
+                console.error('Unexpected error adding document:', error);
+            }
         });
     }
 
@@ -356,7 +205,7 @@ export const CollectionView = (): JSX.Element => {
                         onQueryUpdate={(q: string) =>
                             setCurrentContext((prev) => ({
                                 ...prev,
-                                queryConfig: { ...prev.queryConfig, queryText: q },
+                                currrentQueryDefinition: { ...prev.currrentQueryDefinition, queryText: q },
                             }))
                         }
                     />
@@ -365,11 +214,11 @@ export const CollectionView = (): JSX.Element => {
                         <ToolbarPaging />
                         <ToolbarDocuments
                             onDeleteClick={handleDeleteRequest}
-                            onEditClick={() => console.log('Edit clicked')}
+                            onEditClick={handleEditRequest}
                             onViewClick={handleViewRequest}
                             onAddClick={handleAddRequest}
                         />
-                        <ViewSwitch onViewChanged={handleViewChanged} />
+                        <ViewSwitcher onViewChanged={handleViewChanged} />
                     </div>
                 </div>
 

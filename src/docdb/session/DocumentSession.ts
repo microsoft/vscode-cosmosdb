@@ -239,7 +239,7 @@ export class DocumentSession {
                         abortSignal: this.abortController.signal,
                     });
 
-                if (result?.resource) {
+                if (result?.statusCode === 204) {
                     await this.channel.postMessage({
                         type: 'event',
                         name: 'documentDeleted',

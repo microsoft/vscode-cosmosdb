@@ -71,6 +71,13 @@ export class BaseContextProvider {
     }
 
     protected async sendCommand(command: string, ...args: unknown[]): Promise<void> {
+        const removeTrailingUndefined = (args: unknown[]) => {
+            while (args.length > 0 && args[args.length - 1] === undefined) {
+                args.pop();
+            }
+            return args;
+        };
+
         try {
             // Don't remove await here, we need to catch the error
             await this.channel.postMessage({
@@ -79,7 +86,7 @@ export class BaseContextProvider {
                 params: [
                     {
                         commandName: command,
-                        params: args,
+                        params: removeTrailingUndefined(args),
                     },
                 ],
             });

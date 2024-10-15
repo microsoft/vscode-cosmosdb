@@ -3,7 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PartitionKey } from '@azure/cosmos';
+import { type PartitionKey, type PartitionKeyDefinition } from '@azure/cosmos';
+import { parse as parseJson } from '@prantlf/jsonlint';
+import { isEqual } from 'lodash';
 
 export type OpenDocumentMode = 'add' | 'edit' | 'view';
 
@@ -23,6 +25,15 @@ export type DispatchAction =
     | {
           type: 'setDocument';
           documentContent: string;
+          partitionKey: PartitionKeyDefinition;
+      }
+    | {
+          type: 'setCurrentDocument';
+          documentContent: string;
+      }
+    | {
+          type: 'setValid';
+          isValid: boolean;
       }
     | {
           type: 'setSaving';
@@ -41,15 +52,18 @@ export type DocumentState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
     collectionName: string; // Collection which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
 
-    documentId: string;
-    documentContent: string;
+    documentId: string; // Id of the document (Readonly, only server can change it)
+    documentContent: string; // Content of the document (Readonly, only server can change it)
+    partitionKey: PartitionKeyDefinition; // Partition key of the document (Readonly, only server can change it)
 
-    mode: OpenDocumentMode; // Mode of the document (add, edit, view)
+    mode: OpenDocumentMode; // Mode of the document (add, edit, view) (Readonly, only server can change it)
 
+    isValid: boolean; // Document is valid
     isDirty: boolean; // Document has been modified
     isSaving: boolean; // Document is being saved
     isRefreshing: boolean; // Document is being refreshed
 
+    currentDocumentContent: string; // Current content of the document
     error: string | undefined; // Error message
 };
 
@@ -58,11 +72,25 @@ export const defaultState: DocumentState = {
     collectionName: '',
     documentId: '',
     documentContent: '',
+    partitionKey: { paths: [] },
     mode: 'view',
+    isValid: true,
     isDirty: false,
     isSaving: false,
     isRefreshing: true,
+    currentDocumentContent: '',
     error: undefined,
+};
+
+const isDirty = (content1: string, content2: string): boolean => {
+    try {
+        const obj1 = parseJson(content1);
+        const obj2 = parseJson(content2);
+
+        return !isEqual(obj1, obj2);
+    } catch {
+        return content1.replaceAll('\r', '') !== content2.replaceAll('\r', '');
+    }
 };
 
 export function dispatch(state: DocumentState, action: DispatchAction): DocumentState {
@@ -79,7 +107,12 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
             return {
                 ...state,
                 documentContent: action.documentContent,
+                currentDocumentContent: action.documentContent,
+                partitionKey: action.partitionKey,
+                isDirty: false,
             };
+        case 'setValid':
+            return { ...state, isValid: action.isValid };
         case 'setDirty':
             return { ...state, isDirty: action.isDirty };
         case 'setSaving':
@@ -88,6 +121,12 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
             return { ...state, isRefreshing: action.isRefreshing };
         case 'setError':
             return { ...state, error: action.error };
+        case 'setCurrentDocument':
+            return {
+                ...state,
+                currentDocumentContent: action.documentContent,
+                isDirty: isDirty(state.documentContent, action.documentContent),
+            };
         default:
             return state;
     }

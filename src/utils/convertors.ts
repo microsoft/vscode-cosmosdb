@@ -3,13 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    type JSONValue,
-    type PartitionKey,
-    type PartitionKeyDefinition,
-    type PrimitivePartitionKeyValue,
-} from '@azure/cosmos';
+import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { type CosmosDbRecord, type SerializedQueryResult } from '../docdb/types/queryResult';
+import { extractPartitionKey, getDocumentId } from './partitionKey';
 import { type TreeData } from './slickgrid/mongo/toSlickGridTree';
 
 export type StatsItem = {
@@ -23,50 +19,6 @@ export type TableRecord = Record<string, string> & { __id: string };
 export type TableData = {
     headers: string[];
     dataset: TableRecord[];
-};
-
-export const extractPartitionKey = (document: CosmosDbRecord, partitionKey: PartitionKeyDefinition): PartitionKey => {
-    return partitionKey.paths.map((path): PrimitivePartitionKeyValue => {
-        let interim: JSONValue = document;
-        const partitionKeyPath = path.split('/').filter((key) => key !== '');
-
-        for (const prop of partitionKeyPath) {
-            if (interim && typeof interim === 'object' && interim[prop]) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                interim = interim[prop];
-            } else {
-                return null; // It is not correct to return null, in other cases it should exception
-            }
-        }
-        if (
-            interim === null ||
-            typeof interim === 'string' ||
-            typeof interim === 'number' ||
-            typeof interim === 'boolean'
-        ) {
-            return interim;
-        }
-
-        return null; // It is not correct to return null, in other cases it should exception
-    });
-};
-
-export const getDocumentId = (document: CosmosDbRecord, partitionKey: PartitionKeyDefinition | undefined): string => {
-    // The real unique id of the document is stored in the '_rid' field
-    if (document['_rid']) {
-        return `${document['_rid']}`;
-    } else if (partitionKey) {
-        // Next unique id is the partition key + id
-        const partitionKeyValue = extractPartitionKey(document, partitionKey);
-        if (Array.isArray(partitionKeyValue)) {
-            return `${partitionKeyValue.join('-')}-${document.id}`;
-        }
-
-        return `${partitionKeyValue}-${document.id}`;
-    } else {
-        // Last resort is just the id
-        return `${document.id}`;
-    }
 };
 
 export const queryResultToJSON = (queryResult: SerializedQueryResult | null) => {
@@ -105,7 +57,7 @@ const documentToSlickGridTree = (
 
     let localEntryId = 0; // starts with 0 on each document
     if (idPrefix === undefined || idPrefix === null) {
-        idPrefix = getDocumentId(document as CosmosDbRecord, partitionKey);
+        idPrefix = getDocumentId(document, partitionKey);
     }
 
     const rootId = `${idPrefix}${localEntryId}`; // localEntryId is always a 0 here

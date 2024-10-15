@@ -3,10 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type JSONValue, type PartitionKey, type QueryMetrics } from '@azure/cosmos';
+import { type ItemDefinition, type JSONValue, type PartitionKey, type QueryMetrics } from '@azure/cosmos';
 
-export type CosmosDbRecord = {
+export interface CosmosDbRecord extends ItemDefinition {
     id: string; // This is the unique name that identifies the document, i.e. no two documents can share the same id in partition. The id must not exceed 255 characters.
+
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    ttl?: number; // Time to live in seconds for collections with TTL enabled
 
     _rid: string; // This is a system generated property. The resource ID (_rid) is a unique identifier that is also hierarchical per the resource stack on the resource model. It is used internally for placement and navigation of the document resource.
     _ts: number; // This is a system generated property. It specifies the last updated timestamp of the resource. The value is a timestamp.
@@ -15,7 +19,7 @@ export type CosmosDbRecord = {
     _attachments: string; // This is a system generated property that specifies the addressable path for the attachments resource.
 
     [key: string]: JSONValue;
-};
+}
 
 /**
  * Object that uniquely identifies a document in a Cosmos DB container.

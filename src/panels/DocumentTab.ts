@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type ItemDefinition, type JSONValue } from '@azure/cosmos';
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import crypto from 'crypto';
 import path from 'path';
 import { v4 as uuid } from 'uuid';
@@ -56,7 +58,7 @@ export class DocumentTab {
         this.channel = new VSCodeChannel(panel.webview);
         this.panel = panel;
         this.connection = connection;
-        this.documentId = documentId;
+        this.documentId = documentId ?? undefined;
         this.mode = mode;
 
         this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
@@ -232,6 +234,10 @@ export class DocumentTab {
             });
             if (this.documentId) {
                 await this.session.read(this.documentId);
+            } else if (this.mode === 'add') {
+                await this.session.setNewDocumentTemplate();
+            } else {
+                // TODO: Handle error
             }
         });
     }
@@ -241,6 +247,8 @@ export class DocumentTab {
         switch (commandName) {
             case 'refreshDocument':
                 return this.refreshDocument();
+            case 'saveDocument':
+                return this.saveDocument(payload.params[0] as string);
             case 'showInformationMessage':
                 return this.showInformationMessage(payload.params[0] as string);
             case 'showErrorMessage':
@@ -274,8 +282,46 @@ export class DocumentTab {
     }
 
     private async refreshDocument(): Promise<void> {
-        if (this.documentId) {
-            await this.session.read(this.documentId);
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.refreshDocument', async () => {
+            if (this.documentId) {
+                await this.session.read(this.documentId);
+            } else {
+                await this.session.setNewDocumentTemplate();
+            }
+        });
+    }
+
+    private async saveDocument(documentText: string): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.saveDocument', async () => {
+            const documentContent: JSONValue = JSON.parse(documentText) as JSONValue;
+
+            if (!this.isCosmosDbItemDefinition(documentContent)) {
+                throw new Error('Document is not a valid Cosmos DB item definition');
+            }
+
+            const result = this.documentId
+                ? await this.session.update(documentContent, this.documentId)
+                : await this.session.create(documentContent);
+
+            if (!result) {
+                throw new Error('Failed to create document');
+            }
+
+            this.documentId = result;
+
+            this.panel.title = `${this.documentId.id}.json`;
+        });
+    }
+
+    private isCosmosDbItemDefinition(documentContent: unknown): documentContent is ItemDefinition {
+        if (documentContent && typeof documentContent === 'object' && !Array.isArray(documentContent)) {
+            if ('id' in documentContent) {
+                return typeof documentContent.id === 'string';
+            } else {
+                return true;
+            }
         }
+
+        return false;
     }
 }

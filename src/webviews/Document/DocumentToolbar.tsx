@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
-import { ArrowClockwiseRegular, SaveRegular, TextGrammarCheckmarkRegular } from '@fluentui/react-icons';
+import { ArrowClockwiseRegular, SaveRegular } from '@fluentui/react-icons';
 import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
 
 const ToolbarDividerTransparent = () => {
@@ -15,14 +15,14 @@ export const DocumentToolbar = () => {
     const state = useDocumentState();
     const dispatcher = useDocumentDispatcher();
 
+    const inProgress = state.isSaving || state.isRefreshing;
+    const hasDocumentInDB = state.documentId !== undefined;
+    const isDirty = state.isDirty;
     const isReadOnly = state.mode === 'view';
 
     const onSaveRequest = () => {
         // Save document to the database
-    };
-
-    const onValidateRequest = () => {
-        // Check document syntax
+        void dispatcher.saveDocument(state.currentDocumentContent);
     };
 
     const onRefreshRequest = () => {
@@ -38,7 +38,7 @@ export const DocumentToolbar = () => {
                     aria-label="Save document to the database"
                     icon={<SaveRegular />}
                     appearance={'primary'}
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || inProgress || !isDirty || !state.isValid}
                 >
                     Save
                 </ToolbarButton>
@@ -46,22 +46,12 @@ export const DocumentToolbar = () => {
 
             <ToolbarDividerTransparent />
 
-            <Tooltip content="Check document syntax" relationship="description" withArrow>
-                <ToolbarButton
-                    onClick={onValidateRequest}
-                    aria-label="Check document syntax"
-                    icon={<TextGrammarCheckmarkRegular />}
-                    disabled={isReadOnly}
-                >
-                    Validate
-                </ToolbarButton>
-            </Tooltip>
-
             <Tooltip content="Reload original document from the database" relationship="description" withArrow>
                 <ToolbarButton
                     onClick={onRefreshRequest}
                     aria-label="Reload original document from the database"
                     icon={<ArrowClockwiseRegular />}
+                    disabled={inProgress || !hasDocumentInDB}
                 >
                     Refresh
                 </ToolbarButton>

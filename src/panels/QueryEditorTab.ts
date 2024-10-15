@@ -12,6 +12,7 @@ import * as vscode from 'vscode';
 import { getNoSqlQueryConnection } from '../docdb/commands/connectNoSqlContainer';
 import { getCosmosClientByConnection } from '../docdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
+import { DocumentSession } from '../docdb/session/DocumentSession';
 import { QuerySession } from '../docdb/session/QuerySession';
 import { type CosmosDbRecordIdentifier, type ResultViewMetadata } from '../docdb/types/queryResult';
 import { ext } from '../extensionVariables';
@@ -252,6 +253,8 @@ export class QueryEditorTab {
                 return (async () => await vscode.commands.executeCommand('azureDatabases.reportIssue'))();
             case 'openDocument':
                 return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDbRecordIdentifier);
+            case 'deleteDocument':
+                return this.deleteDocument(payload.params[0] as CosmosDbRecordIdentifier);
             default:
                 throw new Error(`Unknown command: ${commandName}`);
         }
@@ -459,24 +462,47 @@ export class QueryEditorTab {
         });
     }
 
-    private async openDocument(mode: string, documentId: CosmosDbRecordIdentifier): Promise<void> {
+    private async openDocument(mode: string, documentId?: CosmosDbRecordIdentifier): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.openDocument', () => {
             if (!this.connection) {
                 throw new Error('No connection');
             }
 
-            if (mode !== 'add' && mode !== 'edit' && mode !== 'view') {
+            if (!documentId && mode !== 'add') {
+                throw new Error('Impossible to open a document without an id');
+            }
+
+            if (mode !== 'edit' && mode !== 'view' && mode !== 'add') {
                 throw new Error(`Invalid mode: ${mode}`);
             }
 
-            let viewColumn = this.panel.viewColumn ?? vscode.ViewColumn.One;
-            if (viewColumn === vscode.ViewColumn.Nine) {
-                viewColumn = vscode.ViewColumn.One;
-            } else {
-                viewColumn += 1;
+            DocumentTab.render(this.connection, mode, documentId, this.getNextViewColumn());
+        });
+    }
+
+    private async deleteDocument(documentId: CosmosDbRecordIdentifier): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.deleteDocument', async () => {
+            if (!this.connection) {
+                throw new Error('No connection');
             }
 
-            DocumentTab.render(this.connection, mode, documentId, viewColumn);
+            if (!documentId) {
+                throw new Error('Impossible to open a document without an id');
+            }
+
+            const session = new DocumentSession(this.connection, this.channel);
+            void session.delete(documentId);
         });
+    }
+
+    private getNextViewColumn(): vscode.ViewColumn {
+        let viewColumn = this.panel.viewColumn ?? vscode.ViewColumn.One;
+        if (viewColumn === vscode.ViewColumn.Nine) {
+            viewColumn = vscode.ViewColumn.One;
+        } else {
+            viewColumn += 1;
+        }
+
+        return viewColumn;
     }
 }

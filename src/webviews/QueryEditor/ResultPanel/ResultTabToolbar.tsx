@@ -56,20 +56,8 @@ export const ResultTabToolbar = () => {
         editMode: [state.editMode],
     };
 
-    const onCheckedValueChange: ToolbarProps['onCheckedValueChange'] = (_event, { name, checkedItems }) => {
-        if (name === 'tableViewMode') {
-            dispatcher.setTableViewMode(checkedItems[0] as TableViewMode);
-        } else if (name === 'editMode') {
-            dispatcher.setEditMode(checkedItems[0] as EditMode);
-        }
-    };
-
-    const onNewDocumentClick = () => {
-        // eslint-disable-next-line no-console
-        console.log('New document clicked');
-    };
-    const onViewDocumentClick = () => {
-        const selectedDocuments = state.selectedRows
+    const getSelectedDocuments = () => {
+        return state.selectedRows
             .map((rowIndex) => {
                 const document = state.currentQueryResult?.documents[rowIndex];
                 return document
@@ -83,16 +71,33 @@ export const ResultTabToolbar = () => {
                     : undefined;
             })
             .filter((document) => document !== undefined);
+    };
+
+    const onCheckedValueChange: ToolbarProps['onCheckedValueChange'] = (_event, { name, checkedItems }) => {
+        if (name === 'tableViewMode') {
+            dispatcher.setTableViewMode(checkedItems[0] as TableViewMode);
+        } else if (name === 'editMode') {
+            dispatcher.setEditMode(checkedItems[0] as EditMode);
+        }
+    };
+
+    const onNewDocumentClick = () => {
+        void dispatcher.openDocument('add');
+    };
+    const onViewDocumentClick = () => {
+        const selectedDocuments = getSelectedDocuments();
 
         void dispatcher.openDocuments('view', selectedDocuments);
     };
     const onEditDocumentClick = () => {
-        // eslint-disable-next-line no-console
-        console.log('Edit document clicked');
+        const selectedDocuments = getSelectedDocuments();
+
+        void dispatcher.openDocuments('edit', selectedDocuments);
     };
     const onDeleteDocumentClick = () => {
-        // eslint-disable-next-line no-console
-        console.log('Delete document clicked');
+        const selectedDocuments = getSelectedDocuments();
+
+        void dispatcher.deleteDocuments(selectedDocuments);
     };
 
     return (

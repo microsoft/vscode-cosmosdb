@@ -5,12 +5,13 @@
 
 import * as vscode from 'vscode';
 import { z } from 'zod';
-import { MongoClustersClient } from '../../../mongoClusters/MongoClustersClient';
+import { type MongoClustersClient } from '../../../mongoClusters/MongoClustersClient';
+import { MongoClustersSession } from '../../../mongoClusters/MongoClusterSession';
 import { getConfirmationWithWarning } from '../../../utils/dialogsConfirmations';
 import { publicProcedure, router } from '../../api/extension-server/trpc';
 
 export type RouterContext = {
-    liveConnectionId: string;
+    sessionId: string;
     databaseName: string;
     collectionName: string;
 };
@@ -35,7 +36,7 @@ export const collectionsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             // run query
-            const client: MongoClustersClient = await MongoClustersClient.getClient(myCtx.liveConnectionId);
+            const client: MongoClustersClient = MongoClustersSession.getSession(myCtx.sessionId).getClient();
             const responsePack = await client.runQuery(
                 myCtx.databaseName,
                 myCtx.collectionName,
@@ -59,7 +60,7 @@ export const collectionsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             vscode.commands.executeCommand('mongoClusters.internal.documentView.open', {
-                liveConnectionId: myCtx.liveConnectionId,
+                sessionId: myCtx.sessionId,
                 databaseName: myCtx.databaseName,
                 collectionName: myCtx.collectionName,
                 mode: 'add',
@@ -73,7 +74,7 @@ export const collectionsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             vscode.commands.executeCommand('mongoClusters.internal.documentView.open', {
-                liveConnectionId: myCtx.liveConnectionId,
+                sessionId: myCtx.sessionId,
                 databaseName: myCtx.databaseName,
                 collectionName: myCtx.collectionName,
                 documentId: input,
@@ -88,7 +89,7 @@ export const collectionsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             vscode.commands.executeCommand('mongoClusters.internal.documentView.open', {
-                liveConnectionId: myCtx.liveConnectionId,
+                sessionId: myCtx.sessionId,
                 databaseName: myCtx.databaseName,
                 collectionName: myCtx.collectionName,
                 documentId: input,
@@ -111,7 +112,7 @@ export const collectionsViewRouter = router({
                 return false;
             }
 
-            const client: MongoClustersClient = await MongoClustersClient.getClient(myCtx.liveConnectionId);
+            const client: MongoClustersClient = MongoClustersSession.getSession(myCtx.sessionId).getClient();
 
             const acknowledged = await client.deleteDocuments(myCtx.databaseName, myCtx.collectionName, input);
 

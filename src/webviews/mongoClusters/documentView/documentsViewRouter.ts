@@ -6,11 +6,12 @@
 import { EJSON } from 'bson';
 import { type Document } from 'mongodb';
 import { z } from 'zod';
-import { MongoClustersClient } from '../../../mongoClusters/MongoClustersClient';
+import { type MongoClustersClient } from '../../../mongoClusters/MongoClustersClient';
+import { MongoClustersSession } from '../../../mongoClusters/MongoClusterSession';
 import { publicProcedure, router } from '../../api/extension-server/trpc';
 
 export type RouterContext = {
-    liveConnectionId: string;
+    sessionId: string;
     databaseName: string;
     collectionName: string;
     documentId: string;
@@ -32,7 +33,7 @@ export const documentsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             // run query
-            const client: MongoClustersClient = await MongoClustersClient.getClient(myCtx.liveConnectionId);
+            const client: MongoClustersClient = MongoClustersSession.getSession(myCtx.sessionId).getClient();
             const documentContent = await client.pointRead(myCtx.databaseName, myCtx.collectionName, input);
 
             /**
@@ -66,7 +67,7 @@ export const documentsViewRouter = router({
             }
 
             // run query
-            const client: MongoClustersClient = await MongoClustersClient.getClient(myCtx.liveConnectionId);
+            const client: MongoClustersClient = MongoClustersSession.getSession(myCtx.sessionId).getClient();
 
             // when a document is saved and is missing an _id field, the _id field is added on the server
             // or by the mongodb driver.

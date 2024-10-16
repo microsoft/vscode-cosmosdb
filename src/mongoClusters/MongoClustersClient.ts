@@ -20,7 +20,9 @@ import {
     type WithId,
     type WithoutId
 } from 'mongodb';
-import { getDataTopLevel, getFieldsTopLevel } from '../utils/slickgrid/mongo/toSlickGridTable';
+import { type JSONSchema } from '../utils/json/JSONSchema';
+import { getPropertyNamesAtLevel, updateSchemaWithDocument } from '../utils/json/mongo/SchemaAnalyzer';
+import { getDataAtPath } from '../utils/slickgrid/mongo/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
 import { CredentialCache } from './CredentialCache';
 import { toFilterQueryObj } from './utils/toFilterQuery';
@@ -144,14 +146,20 @@ export class MongoClustersClient {
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
         const documents = await collection.find(findQueryObj, options).toArray();
 
-        // json
+        // JSON Schema
+        const schema: JSONSchema = {};
+        documents.map((doc) => updateSchemaWithDocument(schema, doc));
+
+        // JSON documents
         const responsePack: QueryReponsePack = {
             jsonDocuments: documents.map((doc) => JSON.stringify(doc, null, 4)),
         };
 
+
+
         // table
-        responsePack.tableHeaders = getFieldsTopLevel(documents);
-        responsePack.tableData = getDataTopLevel(documents);
+        responsePack.tableHeaders = getPropertyNamesAtLevel(schema, []);
+        responsePack.tableData = getDataAtPath(documents, []);
 
         responsePack.treeData = toSlickGridTree(documents);
 

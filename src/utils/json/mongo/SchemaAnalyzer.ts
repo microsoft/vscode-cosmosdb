@@ -663,3 +663,7 @@ export function getPropertyNamesAtLevel(jsonSchema: JSONSchema, path: string[]):
 
     return Array.from(headers);
 }
+
+export function buildFullPaths(path: string[], propertyNames: string[]): string[] {
+    return propertyNames.map((name) => path.concat(name).join('.'));
+}

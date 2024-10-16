@@ -11,7 +11,7 @@ import { type RouterContext } from './documentsViewRouter';
 export type DocumentsViewWebviewConfigurationType = {
     id: string; // move to base type
 
-    liveConnectionId: string;
+    sessionId: string;
     databaseName: string;
     collectionName: string;
     documentId: string;
@@ -36,7 +36,7 @@ export class DocumentsViewController extends WebviewController<DocumentsViewWebv
         super(ext.context, title, 'mongoClustersDocumentView', initialData, ViewColumn.Beside);
 
         const trpcContext: RouterContext = {
-            liveConnectionId: initialData.liveConnectionId,
+            sessionId: initialData.sessionId,
             databaseName: initialData.databaseName,
             collectionName: initialData.collectionName,
             documentId: initialData.documentId,

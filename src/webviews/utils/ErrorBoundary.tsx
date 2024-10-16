@@ -4,27 +4,28 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Link, makeStyles } from '@fluentui/react-components';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useQueryEditorDispatcher } from '../QueryEditor/state/QueryEditorContext';
+import { type BaseContextProvider } from './context/BaseContextProvider';
 
 // Error boundary component must be a class component in order to catch errors (with componentDidCatch and
 // getDerivedStateFromError). Wrap this with a functional component to access the useQueryEditorDispatcher hook.
 
-export const ErrorBoundary: React.FC<{ style?: React.CSSProperties; children?: React.ReactNode }> = ({
-    style,
-    children,
-}) => {
-    const dispatcher = useQueryEditorDispatcher();
-    return (
-        <ErrorBoundaryComponent
-            style={style}
-            onError={(message, stack, componentStack) =>
-                // If rendering throws right away, dispatcher.reportError might not be initialized, yet, so check first.
-                dispatcher.reportWebviewError && void dispatcher.reportWebviewError(message, stack, componentStack)
-            }
-            children={children}
-        />
+export type ErrorBoundaryProps = {
+    style?: React.CSSProperties;
+    children?: React.ReactNode;
+    provider: BaseContextProvider;
+};
+
+export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({ style, children, provider }) => {
+    const errorHandler = useCallback(
+        (message: string, stack?: string, componentStack?: string | null) => {
+            // If rendering throws right away, provider.reportWebviewError might not be initialized, yet, so check first.
+            void provider.reportWebviewError(message, stack, componentStack);
+        },
+        [provider],
     );
+    return <ErrorBoundaryComponent style={style} onError={errorHandler} children={children} />;
 };
 
 const useStyles = makeStyles({
@@ -63,14 +64,14 @@ type ErrorBoundaryState = {
     errorInfo: React.ErrorInfo | undefined;
 };
 
-type ErrorBoundaryProps = {
+type ErrorBoundaryComponentProps = {
     children: React.ReactNode;
     style?: React.CSSProperties;
     onError?: (message: string, stack: string | undefined, componentStack: string | null | undefined) => void;
 };
 
-class ErrorBoundaryComponent extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-    constructor(props: ErrorBoundaryProps) {
+class ErrorBoundaryComponent extends React.Component<ErrorBoundaryComponentProps, ErrorBoundaryState> {
+    constructor(props: ErrorBoundaryComponentProps) {
         super(props);
         this.state = { hasError: false, error: undefined, errorInfo: undefined };
     }

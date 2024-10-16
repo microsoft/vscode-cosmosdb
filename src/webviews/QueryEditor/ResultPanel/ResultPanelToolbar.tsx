@@ -52,7 +52,7 @@ const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
 
     async function onSaveToClipboardAsCSV() {
         if (selectedTab === 'result__tab') {
-            await dispatcher.copyToClipboard(queryResultToCsv(state.currentQueryResult));
+            await dispatcher.copyToClipboard(queryResultToCsv(state.currentQueryResult, state.partitionKey));
         }
 
         if (selectedTab === 'stats__tab') {
@@ -73,7 +73,11 @@ const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
     async function onSaveAsCSV() {
         const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
         if (selectedTab === 'result__tab') {
-            await dispatcher.saveToFile(queryResultToCsv(state.currentQueryResult), `${filename}_result`, 'csv');
+            await dispatcher.saveToFile(
+                queryResultToCsv(state.currentQueryResult, state.partitionKey),
+                `${filename}_result`,
+                'csv',
+            );
         }
 
         if (selectedTab === 'stats__tab') {
@@ -165,7 +169,7 @@ const AlertDialog = ({ open, setOpen, doAction }: AlertDialogProps) => {
     );
 };
 
-export const ResultToolbar = ({ selectedTab }: ResultToolbarProps) => {
+export const ResultPanelToolbar = ({ selectedTab }: ResultToolbarProps) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const restoreFocusTargetAttribute = useRestoreFocusTarget();

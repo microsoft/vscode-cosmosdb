@@ -3,20 +3,24 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as crypto from 'crypto';
 import * as path from 'path';
 import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { getNoSqlQueryConnection } from '../docdb/commands/connectNoSqlContainer';
+import { getCosmosClientByConnection } from '../docdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
-import { CosmosDBSession } from '../docdb/session/CosmosDBSession';
-import { type ResultViewMetadata } from '../docdb/types/queryResult';
+import { DocumentSession } from '../docdb/session/DocumentSession';
+import { QuerySession } from '../docdb/session/QuerySession';
+import { type CosmosDbRecordIdentifier, type ResultViewMetadata } from '../docdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { TelemetryContext } from '../Telemetry';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { type Channel } from './Communication/Channel/Channel';
 import { VSCodeChannel } from './Communication/Channel/VSCodeChannel';
+import { DocumentTab } from './DocumentTab';
 
 const DEV_SERVER_HOST = 'http://localhost:18080';
 
@@ -32,7 +36,7 @@ export class QueryEditorTab {
 
     public readonly channel: Channel;
     public readonly panel: vscode.WebviewPanel;
-    public readonly sessions = new Map<string, CosmosDBSession>();
+    public readonly sessions = new Map<string, QuerySession>();
 
     private readonly id: string;
     private readonly start: number;
@@ -193,9 +197,6 @@ export class QueryEditorTab {
 
     private initController() {
         this.channel.on<void>('command', async (payload: CommandPayload) => {
-            // TODO: Telemetry
-            console.log('command', payload);
-
             await this.getCommand(payload);
         });
 
@@ -250,6 +251,10 @@ export class QueryEditorTab {
             case 'executeReportIssueCommand':
                 // Use an async anonymous function to convert Thenable to Promise
                 return (async () => await vscode.commands.executeCommand('azureDatabases.reportIssue'))();
+            case 'openDocument':
+                return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDbRecordIdentifier);
+            case 'deleteDocument':
+                return this.deleteDocument(payload.params[0] as CosmosDbRecordIdentifier);
             default:
                 throw new Error(`Unknown command: ${commandName}`);
         }
@@ -263,10 +268,27 @@ export class QueryEditorTab {
 
             this.telemetryContext.addMaskedValue([databaseId, containerId, endpoint, masterKey ?? '']);
 
+            const client = getCosmosClientByConnection(this.connection);
+            const container = await client.database(databaseId).container(containerId).read();
+
+            if (container.resource === undefined) {
+                // Should be impossible since here we have a connection from the extension
+                throw new Error(`Container ${containerId} not found`);
+            }
+
+            // Probably need to pass the entire container object to the webview
+            const containerDefinition = container.resource;
+            const params: (PartitionKeyDefinition | string)[] = [databaseId, containerId];
+
+            // If container is old and doesn't have partitionKey, we should pass an undefined
+            if (containerDefinition.partitionKey) {
+                params.push(containerDefinition.partitionKey);
+            }
+
             await this.channel.postMessage({
                 type: 'event',
                 name: 'databaseConnected',
-                params: [databaseId, containerId],
+                params,
             });
         } else {
             // We will not remove the connection details from the telemetry context
@@ -365,7 +387,7 @@ export class QueryEditorTab {
                 throw new Error('No connection');
             }
 
-            const session = new CosmosDBSession(this.connection, this.channel, query, options);
+            const session = new QuerySession(this.connection, this.channel, query, options);
 
             context.telemetry.properties.executionId = session.id;
 
@@ -438,5 +460,49 @@ export class QueryEditorTab {
 
             await session.firstPage();
         });
+    }
+
+    private async openDocument(mode: string, documentId?: CosmosDbRecordIdentifier): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.openDocument', () => {
+            if (!this.connection) {
+                throw new Error('No connection');
+            }
+
+            if (!documentId && mode !== 'add') {
+                throw new Error('Impossible to open a document without an id');
+            }
+
+            if (mode !== 'edit' && mode !== 'view' && mode !== 'add') {
+                throw new Error(`Invalid mode: ${mode}`);
+            }
+
+            DocumentTab.render(this.connection, mode, documentId, this.getNextViewColumn());
+        });
+    }
+
+    private async deleteDocument(documentId: CosmosDbRecordIdentifier): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.deleteDocument', async () => {
+            if (!this.connection) {
+                throw new Error('No connection');
+            }
+
+            if (!documentId) {
+                throw new Error('Impossible to open a document without an id');
+            }
+
+            const session = new DocumentSession(this.connection, this.channel);
+            void session.delete(documentId);
+        });
+    }
+
+    private getNextViewColumn(): vscode.ViewColumn {
+        let viewColumn = this.panel.viewColumn ?? vscode.ViewColumn.One;
+        if (viewColumn === vscode.ViewColumn.Nine) {
+            viewColumn = vscode.ViewColumn.One;
+        } else {
+            viewColumn += 1;
+        }
+
+        return viewColumn;
     }
 }

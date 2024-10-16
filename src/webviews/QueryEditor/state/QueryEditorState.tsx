@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { type SerializedQueryResult } from '../../../docdb/types/queryResult';
 
 export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
@@ -21,6 +22,7 @@ export type DispatchAction =
           type: 'databaseConnected';
           dbName: string;
           collectionName: string;
+          partitionKey?: PartitionKeyDefinition;
       }
     | {
           type: 'databaseDisconnected';
@@ -54,11 +56,16 @@ export type DispatchAction =
     | {
           type: 'setEditMode';
           mode: EditMode;
+      }
+    | {
+          type: 'setSelectedRows';
+          selectedRows: number[];
       };
 
 export type QueryEditorState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
     collectionName: string; // Collection which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
+    partitionKey?: PartitionKeyDefinition; // Partition key of the collection (Readonly, only server can change it)
     currentExecutionId: string; // Execution ID of the current query (Value exists on both client and server)
     queryHistory: string[];
     queryValue: string;
@@ -70,6 +77,7 @@ export type QueryEditorState = {
     pageSize: number;
 
     currentQueryResult: SerializedQueryResult | null;
+    selectedRows: number[];
 
     tableViewMode: TableViewMode;
     editMode: EditMode;
@@ -78,6 +86,7 @@ export type QueryEditorState = {
 export const defaultState: QueryEditorState = {
     dbName: '',
     collectionName: '',
+    partitionKey: undefined,
     currentExecutionId: '',
     queryHistory: [],
     queryValue: DEFAULT_QUERY_VALUE,
@@ -89,6 +98,7 @@ export const defaultState: QueryEditorState = {
     pageSize: DEFAULT_PAGE_SIZE,
 
     currentQueryResult: null,
+    selectedRows: [],
 
     tableViewMode: 'Tree',
     editMode: 'View',
@@ -99,7 +109,13 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
         case 'insertText':
             return { ...state, queryValue: action.queryValue };
         case 'databaseConnected':
-            return { ...state, isConnected: true, dbName: action.dbName, collectionName: action.collectionName };
+            return {
+                ...state,
+                isConnected: true,
+                dbName: action.dbName,
+                collectionName: action.collectionName,
+                partitionKey: action.partitionKey,
+            };
         case 'databaseDisconnected':
             return { ...state, isConnected: false, dbName: '', collectionName: '' };
         case 'executionStarted':
@@ -134,5 +150,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, tableViewMode: action.mode };
         case 'setEditMode':
             return { ...state, editMode: action.mode };
+        case 'setSelectedRows':
+            return { ...state, selectedRows: action.selectedRows };
     }
 }

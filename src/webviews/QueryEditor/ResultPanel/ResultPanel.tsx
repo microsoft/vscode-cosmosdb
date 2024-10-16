@@ -5,8 +5,8 @@
 
 import { makeStyles, Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { useState, type PropsWithChildren } from 'react';
+import { ResultPanelToolbar } from './ResultPanelToolbar';
 import { ResultTab } from './ResultTab';
-import { ResultToolbar } from './ResultToolbar';
 import { StatsTab } from './StatsTab';
 
 const useStyles = makeStyles({
@@ -65,7 +65,7 @@ export const ResultPanel = () => {
                         </Tab>
                     </TabList>
                 </div>
-                <ResultToolbar selectedTab={selectedTab} />
+                <ResultPanelToolbar selectedTab={selectedTab} />
             </ActionBar>
             <div className={styles.tabContainer}>
                 {selectedTab === 'result__tab' && <ResultTab />}

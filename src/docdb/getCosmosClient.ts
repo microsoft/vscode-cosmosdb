@@ -8,7 +8,7 @@ import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
 import * as https from 'https';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
-
+import { type NoSqlQueryConnection } from './NoSqlCodeLensProvider';
 // eslint-disable-next-line import/no-internal-modules
 import { getSessionFromVSCode } from '@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode';
 
@@ -29,6 +29,46 @@ export function getCosmosKeyCredential(credentials: CosmosDBCredential[]): Cosmo
 
 export function getCosmosAuthCredential(credentials: CosmosDBCredential[]): CosmosDBAuthCredential | undefined {
     return credentials.filter((cred): cred is CosmosDBAuthCredential => cred.type === 'auth')[0];
+}
+
+export function getCosmosClientByConnection(connection: NoSqlQueryConnection): CosmosClient {
+    const { endpoint, masterKey, isEmulator } = connection;
+
+    const vscodeStrictSSL: boolean | undefined = vscode.workspace
+        .getConfiguration()
+        .get<boolean>(ext.settingsKeys.vsCode.proxyStrictSSL);
+    const enableEndpointDiscovery: boolean | undefined = vscode.workspace
+        .getConfiguration()
+        .get<boolean>(ext.settingsKeys.enableEndpointDiscovery);
+    const connectionPolicy = {
+        enableEndpointDiscovery: enableEndpointDiscovery === undefined ? true : enableEndpointDiscovery,
+    };
+    const commonProperties = {
+        endpoint,
+        userAgentSuffix: appendExtensionUserAgent(),
+        agent: new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL }),
+        connectionPolicy,
+    };
+
+    if (masterKey !== undefined) {
+        return new CosmosClient({
+            ...commonProperties,
+            key: masterKey,
+        });
+    } else {
+        return new CosmosClient({
+            ...commonProperties,
+            aadCredentials: {
+                getToken: async (scopes, _options) => {
+                    const session = await getSessionFromVSCode(scopes, undefined, { createIfNone: true });
+                    return {
+                        token: session?.accessToken ?? '',
+                        expiresOnTimestamp: 0,
+                    };
+                },
+            },
+        });
+    }
 }
 
 export function getCosmosClient(

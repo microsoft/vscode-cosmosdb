@@ -53,7 +53,7 @@ export class DocumentTab {
 
         this.id = uuid();
         this.start = Date.now();
-        this.telemetryContext = new TelemetryContext(connection);
+        this.telemetryContext = new TelemetryContext(DocumentTab.viewType);
 
         this.channel = new VSCodeChannel(panel.webview);
         this.panel = panel;
@@ -73,6 +73,15 @@ export class DocumentTab {
         });
 
         this.session = new DocumentSession(connection, this.channel);
+
+        if (connection) {
+            if (connection.masterKey) {
+                this.telemetryContext.addMaskedValue(connection.masterKey);
+            }
+
+            this.telemetryContext.addMaskedValue(connection.databaseId);
+            this.telemetryContext.addMaskedValue(connection.containerId);
+        }
     }
 
     public static render(

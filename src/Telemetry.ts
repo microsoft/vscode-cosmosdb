@@ -4,32 +4,31 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
-import { type NoSqlQueryConnection } from './docdb/NoSqlCodeLensProvider';
 
 export class TelemetryContext {
+    private readonly eventPrefix: string;
     private valuesToMask = new Set<string>();
 
-    constructor(connection: NoSqlQueryConnection | undefined) {
-        if (connection) {
-            if (connection.masterKey) {
-                this.addMaskedValue(connection.masterKey);
-            }
-            this.addMaskedValue(connection.databaseId);
-            this.addMaskedValue(connection.containerId);
-        }
+    constructor(eventPrefix: string) {
+        this.eventPrefix = eventPrefix;
     }
 
     public reportWebviewEvent = (
         eventName: string,
         properties?: Record<string, string>,
         measurements?: Record<string, number>,
-    ): Promise<void> =>
-        callWithTelemetryAndErrorHandling<void>(`cosmosDB.nosql.queryEditor.${eventName}`, (context) => {
-            context.errorHandling.suppressDisplay = true;
-            context.valuesToMask = Array.from(this.valuesToMask);
-            Object.assign(context.telemetry.properties, properties ?? {});
-            Object.assign(context.telemetry.measurements, measurements ?? {});
-        });
+    ): Promise<void> => {
+        const eventNameWithCapital = eventName.charAt(0).toUpperCase() + eventName.slice(1);
+        return callWithTelemetryAndErrorHandling<void>(
+            `cosmosDB.nosql.${this.eventPrefix}.webview${eventNameWithCapital}`,
+            (context) => {
+                context.errorHandling.suppressDisplay = true;
+                context.valuesToMask = Array.from(this.valuesToMask);
+                Object.assign(context.telemetry.properties, properties ?? {});
+                Object.assign(context.telemetry.measurements, measurements ?? {});
+            },
+        );
+    };
 
     /**
      * Report error from webview to telemetry
@@ -39,7 +38,7 @@ export class TelemetryContext {
      * @returns
      */
     public reportWebviewError = (message: string, stack: string, componentStack: string | undefined): Promise<void> =>
-        callWithTelemetryAndErrorHandling<void>('cosmosdb.common.query-tab.webview-error', (actionContext) => {
+        callWithTelemetryAndErrorHandling<void>(`cosmosdb.common.${this.eventPrefix}.webviewError`, (actionContext) => {
             actionContext.errorHandling.suppressDisplay = true;
             actionContext.valuesToMask = Array.from(this.valuesToMask);
 

@@ -43,7 +43,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             container: '.resultsDisplayArea', // this is a selector of the parent container, in this case it's the collectionView.tsx and the class is "resultsDisplayArea"
             delay: 100,
         },
-        enableAutoResize: false,
+        enableAutoResize: true,
         autoFitColumnsOnFirstLoad: true, // This
         enableAutoSizeColumns: true, // + this
         // disabling features that with them the grid has side effects (columns resize incorrectly after second render)

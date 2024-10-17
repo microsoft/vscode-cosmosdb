@@ -6,8 +6,6 @@
 import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as crypto from 'crypto';
-import * as path from 'path';
-import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { getNoSqlQueryConnection } from '../docdb/commands/connectNoSqlContainer';
 import { getCosmosClientByConnection } from '../docdb/getCosmosClient';
@@ -15,57 +13,33 @@ import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../docdb/session/DocumentSession';
 import { QuerySession } from '../docdb/session/QuerySession';
 import { type CosmosDbRecordIdentifier, type ResultViewMetadata } from '../docdb/types/queryResult';
-import { ext } from '../extensionVariables';
-import { TelemetryContext } from '../Telemetry';
 import * as vscodeUtil from '../utils/vscodeUtils';
-import { type Channel } from './Communication/Channel/Channel';
-import { VSCodeChannel } from './Communication/Channel/VSCodeChannel';
+import { BaseTab, type CommandPayload } from './BaseTab';
 import { DocumentTab } from './DocumentTab';
 
-const DEV_SERVER_HOST = 'http://localhost:18080';
-
-type CommandPayload = {
-    commandName: string;
-    params: unknown[];
-};
-
-export class QueryEditorTab {
-    public static readonly title = 'Query Editor';
+export class QueryEditorTab extends BaseTab {
     public static readonly viewType = 'cosmosDbQuery';
     public static readonly openTabs: Set<QueryEditorTab> = new Set<QueryEditorTab>();
 
-    public readonly channel: Channel;
-    public readonly panel: vscode.WebviewPanel;
-    public readonly sessions = new Map<string, QuerySession>();
-
-    private readonly id: string;
-    private readonly start: number;
-    private readonly telemetryContext: TelemetryContext;
+    private readonly sessions = new Map<string, QuerySession>();
 
     private connection: NoSqlQueryConnection | undefined;
-    private disposables: vscode.Disposable[] = [];
 
-    private constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection) {
+    protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection) {
+        super(panel, QueryEditorTab.viewType, { hasConnection: connection ? 'true' : 'false' });
+
         QueryEditorTab.openTabs.add(this);
 
-        this.id = uuid();
-        this.start = Date.now();
-        this.telemetryContext = new TelemetryContext(connection);
-
-        this.channel = new VSCodeChannel(panel.webview);
-        this.panel = panel;
         this.connection = connection;
 
-        this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
+        if (connection) {
+            if (connection.masterKey) {
+                this.telemetryContext.addMaskedValue(connection.masterKey);
+            }
 
-        this.panel.webview.html = this.getWebviewContent();
-
-        this.initController();
-
-        void this.telemetryContext.reportWebviewEvent('webviewOpened', {
-            panelId: this.id,
-            hasConnection: connection ? 'true' : 'false',
-        });
+            this.telemetryContext.addMaskedValue(connection.databaseId);
+            this.telemetryContext.addMaskedValue(connection.containerId);
+        }
     }
 
     public static render(connection?: NoSqlQueryConnection, viewColumn?: vscode.ViewColumn): QueryEditorTab {
@@ -83,7 +57,7 @@ export class QueryEditorTab {
             }
         }
 
-        const panel = vscode.window.createWebviewPanel(QueryEditorTab.viewType, QueryEditorTab.title, column, {
+        const panel = vscode.window.createWebviewPanel(QueryEditorTab.viewType, 'Query Editor', column, {
             enableScripts: true,
             retainContextWhenHidden: true,
         });
@@ -94,118 +68,21 @@ export class QueryEditorTab {
     public dispose(): void {
         QueryEditorTab.openTabs.delete(this);
 
-        this.channel.dispose();
-        this.panel.dispose();
-
         this.sessions.forEach((session) => session.dispose());
         this.sessions.clear();
 
-        while (this.disposables.length) {
-            const disposable = this.disposables.pop();
-            if (disposable) {
-                disposable.dispose();
-            }
-        }
-
-        void this.telemetryContext.reportWebviewEvent(
-            'webviewClosed',
-            {
-                panelId: this.id,
-            },
-            { openedTime: (Date.now() - this.start) / 1000 },
-        );
+        super.dispose();
     }
 
-    private getWebviewContent(): string {
-        const ctx = ext.context;
-        const cspSource = this.panel.webview.cspSource;
-        const devServer = !!process.env.DEVSERVER;
-        const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
-        const nonce = crypto.randomBytes(16).toString('base64');
-
-        const dir = ext.isBundle ? '' : 'out/src/webviews';
-        const filename = ext.isBundle ? 'views.js' : 'index.js';
-        const uri = (...parts: string[]) =>
-            this.panel.webview
-                .asWebviewUri(vscode.Uri.file(path.join(ctx.extensionPath, dir, ...parts)))
-                .toString(true);
-
-        const publicPath = isProduction || !devServer ? uri() : `${DEV_SERVER_HOST}/`;
-        const srcUri = isProduction || !devServer ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
-
-        const csp = (
-            isProduction
-                ? [
-                      `form-action 'none';`,
-                      `default-src ${cspSource};`,
-                      `script-src ${cspSource} 'nonce-${nonce}';`,
-                      `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
-                      `font-src ${cspSource} ${DEV_SERVER_HOST};`,
-                      `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
-                      `img-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
-                  ]
-                : [
-                      `form-action 'none';`,
-                      `default-src ${cspSource} ${DEV_SERVER_HOST};`,
-                      `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
-                      `script-src ${cspSource} ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
-                      `connect-src ${cspSource} ${DEV_SERVER_HOST} ws:;`,
-                      `font-src ${cspSource} ${DEV_SERVER_HOST};`,
-                      `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
-                      `img-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
-                  ]
-        ).join(' ');
-
-        return this.template({
-            title: QueryEditorTab.title,
-            csp,
-            srcUri,
-            publicPath,
-            viewType: QueryEditorTab.viewType,
-            nonce,
-        });
-    }
-
-    private template(params: {
-        csp: string;
-        viewType: string;
-        srcUri: string;
-        publicPath: string;
-        title: string;
-        nonce: string;
-    }) {
-        return `
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${params.title}</title>
-    <meta http-equiv="Content-Security-Policy" content="${params.csp}" />
-  </head>
-
-  <body>
-    <div id="root"></div>
-    <script type="module" nonce="${params.nonce}">
-      import { render } from "${params.srcUri}";
-      render("${params.viewType}", acquireVsCodeApi(), "${params.publicPath}");
-    </script>
-  </body>
-</html>
-`;
-    }
-
-    private initController() {
-        this.channel.on<void>('command', async (payload: CommandPayload) => {
-            await this.getCommand(payload);
-        });
+    protected initController() {
+        super.initController();
 
         this.channel.on<void>('ready', async () => {
             await this.updateConnection(this.connection);
         });
     }
 
-    private getCommand(payload: CommandPayload): Promise<void> {
+    protected getCommand(payload: CommandPayload): Promise<void> {
         const commandName = payload.commandName;
         switch (commandName) {
             case 'openFile':
@@ -218,10 +95,6 @@ export class QueryEditorTab {
                 );
             case 'copyToClipboard':
                 return this.copyToClipboard(payload.params[0] as string);
-            case 'showInformationMessage':
-                return this.showInformationMessage(payload.params[0] as string);
-            case 'showErrorMessage':
-                return this.showErrorMessage(payload.params[0] as string);
             case 'connectToDatabase':
                 return this.connectToDatabase();
             case 'disconnectFromDatabase':
@@ -236,28 +109,13 @@ export class QueryEditorTab {
                 return this.prevPage(payload.params[0] as string);
             case 'firstPage':
                 return this.firstPage(payload.params[0] as string);
-            case 'reportWebviewEvent':
-                return this.telemetryContext.reportWebviewEvent(
-                    payload.params[0] as string,
-                    payload.params[1] as Record<string, string>,
-                    payload.params[2] as Record<string, number>,
-                );
-            case 'reportWebviewError':
-                return this.telemetryContext.reportWebviewError(
-                    payload.params[0] as string, // message
-                    payload.params[1] as string, // stack
-                    payload.params[2] as string, // componentStack
-                );
-            case 'executeReportIssueCommand':
-                // Use an async anonymous function to convert Thenable to Promise
-                return (async () => await vscode.commands.executeCommand('azureDatabases.reportIssue'))();
             case 'openDocument':
                 return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDbRecordIdentifier);
             case 'deleteDocument':
                 return this.deleteDocument(payload.params[0] as CosmosDbRecordIdentifier);
-            default:
-                throw new Error(`Unknown command: ${commandName}`);
         }
+
+        return super.getCommand(payload);
     }
 
     private async updateConnection(connection?: NoSqlQueryConnection): Promise<void> {
@@ -344,14 +202,6 @@ export class QueryEditorTab {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.copyToClipboard', async () => {
             await vscode.env.clipboard.writeText(text);
         });
-    }
-
-    private async showInformationMessage(message: string) {
-        await vscode.window.showInformationMessage(message);
-    }
-
-    private async showErrorMessage(message: string) {
-        await vscode.window.showErrorMessage(message);
     }
 
     private async connectToDatabase(): Promise<void> {
@@ -491,7 +341,7 @@ export class QueryEditorTab {
             }
 
             const session = new DocumentSession(this.connection, this.channel);
-            void session.delete(documentId);
+            await session.delete(documentId);
         });
     }
 

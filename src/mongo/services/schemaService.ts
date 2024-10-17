@@ -6,9 +6,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unsafe-member-access */
 
 import { type Db, type FindCursor } from 'mongodb';
-import { type SchemaConfiguration } from 'vscode-json-languageservice';
-// eslint-disable-next-line import/no-internal-modules
-import { type JSONSchema } from 'vscode-json-languageservice/lib/umd/jsonSchema';
+import { type JSONSchema, type SchemaConfiguration } from 'vscode-json-languageservice';
 
 export class SchemaService {
     private _db: Db;

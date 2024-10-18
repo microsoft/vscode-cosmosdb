@@ -96,44 +96,7 @@ export const CollectionView = (): JSX.Element => {
             .then((_response) => {
                 setCurrentContext((prev) => ({ ...prev, isLoading: false }));
 
-                switch (currentContext.currentView) {
-                    case Views.TABLE:
-                        trpcClient.mongoClusters.collectionView.getCurrentPageAsTable
-                            .query([])
-                            .then((result) => {
-                                setCurrentQueryResults((prev) => ({
-                                    ...prev,
-                                    tableHeaders: result.headers ?? [],
-                                    tableData: result.data as TableDataEntry[] ?? [],
-                                }));
-                            })
-                            .catch((_error) => {console.log('error')});
-                        break;
-                    case Views.TREE:
-                        trpcClient.mongoClusters.collectionView.getCurrentPageAsTree
-                            .query()
-                            .then((result) => {
-                                setCurrentQueryResults((prev) => ({
-                                    ...prev,
-                                    treeData: result
-                                }));
-                            })
-                            .catch((_error) => {console.log('error')});
-                        break;
-                    case Views.JSON:
-                        trpcClient.mongoClusters.collectionView.getCurrentPageAsJson
-                            .query()
-                            .then((result) => {
-                                setCurrentQueryResults((prev) => ({
-                                    ...prev,
-                                    jsonDocuments: result
-                                }));
-                            })
-                            .catch((_error) => {console.log('error')});
-                        break;
-                    default:
-                        break;
-                }
+                getDataForView(currentContext.currentView);
             })
             .catch((_error) => {
                 setCurrentContext((prev) => ({ ...prev, isLoading: false }));
@@ -158,8 +121,56 @@ export const CollectionView = (): JSX.Element => {
                 break;
         }
 
+        getDataForView(selection);
         setCurrentContext((prev) => ({ ...prev, currentView: selection }));
     };
+
+    function getDataForView(selectedView: Views): void {
+        switch (selectedView) {
+            case Views.TABLE:
+                trpcClient.mongoClusters.collectionView.getCurrentPageAsTable
+                    .query([])
+                    .then((result) => {
+                        setCurrentQueryResults((prev) => ({
+                            ...prev,
+                            tableHeaders: result.headers ?? [],
+                            tableData: (result.data as TableDataEntry[]) ?? [],
+                        }));
+                    })
+                    .catch((_error) => {
+                        console.log('error');
+                    });
+                break;
+            case Views.TREE:
+                trpcClient.mongoClusters.collectionView.getCurrentPageAsTree
+                    .query()
+                    .then((result) => {
+                        setCurrentQueryResults((prev) => ({
+                            ...prev,
+                            treeData: result,
+                        }));
+                    })
+                    .catch((_error) => {
+                        console.log('error');
+                    });
+                break;
+            case Views.JSON:
+                trpcClient.mongoClusters.collectionView.getCurrentPageAsJson
+                    .query()
+                    .then((result) => {
+                        setCurrentQueryResults((prev) => ({
+                            ...prev,
+                            jsonDocuments: result,
+                        }));
+                    })
+                    .catch((_error) => {
+                        console.log('error');
+                    });
+                break;
+            default:
+                break;
+        }
+    }
 
     function handleDeleteRequest(): void {
         trpcClient.mongoClusters.collectionView.deleteDocumentsById
@@ -169,6 +180,10 @@ export const CollectionView = (): JSX.Element => {
                     return;
                 }
 
+                // TODO: update cached data in the controller
+
+                // TODO: update the current view, not all views.
+
                 setCurrentQueryResults((prev) => ({
                     ...prev,
                     tableData: prev?.tableData?.filter(
@@ -177,7 +192,6 @@ export const CollectionView = (): JSX.Element => {
                                 row['x-objectid'] ?? '',
                             ),
                     ),
-                    // TODO: update Tree data, update JSON data!
                 }));
 
                 setCurrentContext((prev) => ({

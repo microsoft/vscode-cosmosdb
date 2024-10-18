@@ -5,8 +5,7 @@
 
 import { Button, Input } from '@fluentui/react-components';
 import { PlayRegular, SearchFilled } from '@fluentui/react-icons';
-import  { type JSX } from 'react';
-import { useContext, useRef } from 'react';
+import { useContext, useRef, type JSX } from 'react';
 import { CollectionViewContext } from '../collectionViewContext';
 
 export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {

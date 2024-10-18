@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Dropdown, Label, Option, Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
-import { ArrowLeftFilled, ArrowPreviousFilled, ArrowRightFilled } from '@fluentui/react-icons';
+import { Dropdown, Label, Option, Toolbar, ToolbarButton, ToolbarDivider, Tooltip } from '@fluentui/react-components';
+import { ArrowClockwiseFilled, ArrowLeftFilled, ArrowPreviousFilled, ArrowRightFilled } from '@fluentui/react-icons';
 import { useContext } from 'react';
 import { CollectionViewContext } from '../../collectionViewContext';
 import { ToolbarDividerTransparent } from './ToolbarDividerTransparent';
@@ -62,16 +62,15 @@ export const ToolbarPaging = (): JSX.Element => {
 
     return (
         <Toolbar aria-label="with Popover" size="small">
-            {/* <Tooltip content="Reload query results" relationship="description" withArrow>
+            <Tooltip content="Reload query results" relationship="description" withArrow>
                 <ToolbarButton
-                    onClick={refresh}
                     aria-label="Refresh"
                     icon={<ArrowClockwiseFilled />}
                     disabled={currentContext.isLoading}
                 />
             </Tooltip>
 
-            <ToolbarDivider /> */}
+            <ToolbarDivider />
 
             <Tooltip content="Go to first page" relationship="description" withArrow>
                 <ToolbarButton

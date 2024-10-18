@@ -17,13 +17,14 @@ import { type CellValue } from '../../../../utils/slickgrid/CellValue';
 import { LoadingAnimationTable } from './LoadingAnimationTable';
 
 import debounce from 'lodash.debounce';
+import { type TableDataEntry } from '../../../../mongoClusters/MongoClusterSession';
 import { bsonStringToDisplayString } from '../../../utils/slickgrid/typeToDisplayString';
 import { CollectionViewContext } from '../collectionViewContext';
 import './dataViewPanelTableV2.scss';
 
 interface Props {
     liveHeaders: string[];
-    liveData: { 'x-objectid': string; [key: string]: unknown }[];
+    liveData: TableDataEntry[];
 }
 
 const cellFormatter: Formatter<object> = (_row: number, _cell: number, value: CellValue) => {
@@ -67,7 +68,7 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
             },
             dataSelection: {
                 selectedDocumentIndexes: _args.rows,
-                selectedDocumentObjectIds: _args.rows.map((row) => liveData[row]['x-objectid']),
+                selectedDocumentObjectIds: _args.rows.map((row) => liveData[row]['x-objectid'] ?? ''),
             },
         }));
     }

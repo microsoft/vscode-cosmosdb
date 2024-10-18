@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type Document, type WithId } from 'mongodb';
+import { type TableDataEntry } from '../../../mongoClusters/MongoClusterSession';
 import { MongoBSONTypes } from '../../json/mongo/MongoBSONTypes';
 import { valueToDisplayString } from '../../json/mongo/MongoValueFormatters';
 
@@ -21,8 +22,8 @@ import { valueToDisplayString } from '../../json/mongo/MongoValueFormatters';
  *
  * @todo Address the issue where the approach solves problems with the tree view but not with the table view.
  */
-export function getDataAtPath(documents: WithId<Document>[], path: string[]): object[] {
-    const result = new Array<object>();
+export function getDataAtPath(documents: WithId<Document>[], path: string[]): TableDataEntry[] {
+    const result = new Array<TableDataEntry>();
 
     /**
      * adding a random element to the idPrefix to make sure that the IDs are unique
@@ -37,7 +38,7 @@ export function getDataAtPath(documents: WithId<Document>[], path: string[]): ob
     let i = 0;
     for (const doc of documents) {
         i++;
-        const row = { id: `${i}/${randomId}` }; // inject the randomId to make sure the IDs are unique
+        const row: TableDataEntry = { id: `${i}/${randomId}` }; // inject the randomId to make sure the IDs are unique
 
         // at the root level, extract the objectId for further data edits
         // we also make sure that the '_id' field is always included in the data

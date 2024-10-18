@@ -36,8 +36,8 @@ export const collectionsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             // run query
-            const client: MongoClustersClient = MongoClustersSession.getSession(myCtx.sessionId).getClient();
-            const responsePack = await client.runQuery(
+            const session: MongoClustersSession = MongoClustersSession.getSession(myCtx.sessionId);
+            const size = await session.runQueryWithCache(
                 myCtx.databaseName,
                 myCtx.collectionName,
                 input.findQuery,
@@ -45,14 +45,46 @@ export const collectionsViewRouter = router({
                 input.pageSize,
             );
 
-            const result = {
-                jsonDocuments: responsePack.jsonDocuments ?? [],
-                tableHeaders: responsePack.tableHeaders ?? [],
-                tableData: (responsePack.tableData as { 'x-objectid': string; [key: string]: unknown }[]) ?? [],
-                treeData: responsePack.treeData ?? [],
-            };
+            // const result = {
+            // jsonDocuments: responsePack.jsonDocuments ?? [],
+            // tableHeaders: responsePack.tableHeaders ?? [],
+            // tableData: (responsePack.tableData as { 'x-objectid': string; [key: string]: unknown }[]) ?? [],
+            // treeData: responsePack.treeData ?? [],
+            // };
 
-            return result;
+            return { documentCount: size };
+        }),
+    getCurrentPageAsTable: publicProcedure
+        //parameters
+        .input(z.array(z.string()))
+        // procedure type
+        .query(({ input, ctx }) => {
+            const myCtx = ctx as RouterContext;
+
+            const session: MongoClustersSession = MongoClustersSession.getSession(myCtx.sessionId);
+            const tableData = session.getCurrentPageAsTable(input);
+
+            return tableData;
+        }),
+    getCurrentPageAsTree: publicProcedure
+        // procedure type
+        .query(({ ctx }) => {
+            const myCtx = ctx as RouterContext;
+
+            const session: MongoClustersSession = MongoClustersSession.getSession(myCtx.sessionId);
+            const treeData = session.getCurrentPageAsTree();
+
+            return treeData;
+        }),
+    getCurrentPageAsJson: publicProcedure
+        // procedure type
+        .query(({ ctx }) => {
+            const myCtx = ctx as RouterContext;
+
+            const session: MongoClustersSession = MongoClustersSession.getSession(myCtx.sessionId);
+            const jsonData = session.getCurrentPageAsJson();
+
+            return jsonData;
         }),
     addDocument: publicProcedure
         // procedure type

@@ -5,6 +5,7 @@
 
 // eslint-disable-next-line import/no-internal-modules
 import { type JSX, useEffect, useRef, useState } from 'react';
+import { type TableDataEntry } from '../../../mongoClusters/MongoClusterSession';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import './collectionView.scss';
 import {
@@ -21,10 +22,9 @@ import { ToolbarDocuments } from './components/toolbar/toolbarDocuments';
 import { ToolbarPaging } from './components/toolbar/toolbarPaging';
 import { ViewSwitcher } from './components/toolbar/viewSwitcher';
 
-
 interface QueryResults {
     tableHeaders?: string[];
-    tableData?: { 'x-objectid': string; [key: string]: unknown }[]; // 'x-objectid': string;
+    tableData?: TableDataEntry[]; // 'x-objectid': string;
 
     treeData?: { [key: string]: unknown }[];
 
@@ -43,7 +43,6 @@ export const CollectionView = (): JSX.Element => {
      * for handling notifications from the extension.
      */
     const { trpcClient /** , vscodeEventTarget */ } = useTrpcClient();
-
 
     /**
      * Please note: using the context and states inside of closures can lead to stale data.
@@ -94,14 +93,47 @@ export const CollectionView = (): JSX.Element => {
                 pageNumber: currentContext.currrentQueryDefinition.pageNumber,
                 pageSize: currentContext.currrentQueryDefinition.pageSize,
             })
-            .then((response) => {
+            .then((_response) => {
                 setCurrentContext((prev) => ({ ...prev, isLoading: false }));
-                setCurrentQueryResults({
-                    jsonDocuments: response.jsonDocuments ?? [],
-                    tableHeaders: response.tableHeaders ?? [],
-                    tableData: response.tableData ?? [],
-                    treeData: response.treeData ?? [],
-                });
+
+                switch (currentContext.currentView) {
+                    case Views.TABLE:
+                        trpcClient.mongoClusters.collectionView.getCurrentPageAsTable
+                            .query([])
+                            .then((result) => {
+                                setCurrentQueryResults((prev) => ({
+                                    ...prev,
+                                    tableHeaders: result.headers ?? [],
+                                    tableData: result.data as TableDataEntry[] ?? [],
+                                }));
+                            })
+                            .catch((_error) => {console.log('error')});
+                        break;
+                    case Views.TREE:
+                        trpcClient.mongoClusters.collectionView.getCurrentPageAsTree
+                            .query()
+                            .then((result) => {
+                                setCurrentQueryResults((prev) => ({
+                                    ...prev,
+                                    treeData: result
+                                }));
+                            })
+                            .catch((_error) => {console.log('error')});
+                        break;
+                    case Views.JSON:
+                        trpcClient.mongoClusters.collectionView.getCurrentPageAsJson
+                            .query()
+                            .then((result) => {
+                                setCurrentQueryResults((prev) => ({
+                                    ...prev,
+                                    jsonDocuments: result
+                                }));
+                            })
+                            .catch((_error) => {console.log('error')});
+                        break;
+                    default:
+                        break;
+                }
             })
             .catch((_error) => {
                 setCurrentContext((prev) => ({ ...prev, isLoading: false }));
@@ -142,7 +174,7 @@ export const CollectionView = (): JSX.Element => {
                     tableData: prev?.tableData?.filter(
                         (row) =>
                             !currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(
-                                row['x-objectid'],
+                                row['x-objectid'] ?? '',
                             ),
                     ),
                     // TODO: update Tree data, update JSON data!

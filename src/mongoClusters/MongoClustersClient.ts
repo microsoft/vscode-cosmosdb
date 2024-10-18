@@ -20,10 +20,6 @@ import {
     type WithId,
     type WithoutId
 } from 'mongodb';
-import { type JSONSchema } from '../utils/json/JSONSchema';
-import { getPropertyNamesAtLevel, updateSchemaWithDocument } from '../utils/json/mongo/SchemaAnalyzer';
-import { getDataAtPath } from '../utils/slickgrid/mongo/toSlickGridTable';
-import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
 import { CredentialCache } from './CredentialCache';
 import { toFilterQueryObj } from './utils/toFilterQuery';
 
@@ -51,14 +47,7 @@ export interface IndexItemModel {
 
 // type TableColumnDef = { id: string; name: string; field: string; minWidth: number };
 
-export interface QueryReponsePack {
-    tableHeaders?: string[];
-    tableData?: object[];
 
-    treeData?: TreeData[];
-
-    jsonDocuments?: string[];
-}
 
 export class MongoClustersClient {
     // cache of active/existing clients
@@ -130,7 +119,7 @@ export class MongoClustersClient {
         findQuery: string,
         skip: number,
         limit: number,
-    ): Promise<QueryReponsePack> {
+    ): Promise<WithId<Document>[]> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         if (findQuery === undefined || findQuery.trim().length === 0) {
             findQuery = '{}';
@@ -146,24 +135,9 @@ export class MongoClustersClient {
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
         const documents = await collection.find(findQueryObj, options).toArray();
 
-        // JSON Schema
-        const schema: JSONSchema = {};
-        documents.map((doc) => updateSchemaWithDocument(schema, doc));
+        //TODO: add the FindCursor to the return type for paging
 
-        // JSON documents
-        const responsePack: QueryReponsePack = {
-            jsonDocuments: documents.map((doc) => JSON.stringify(doc, null, 4)),
-        };
-
-
-
-        // table
-        responsePack.tableHeaders = getPropertyNamesAtLevel(schema, []);
-        responsePack.tableData = getDataAtPath(documents, []);
-
-        responsePack.treeData = toSlickGridTree(documents);
-
-        return responsePack;
+        return documents;
     }
 
     async deleteDocuments(databaseName: string, collectionName: string, documentObjectIds: string[]): Promise<boolean> {

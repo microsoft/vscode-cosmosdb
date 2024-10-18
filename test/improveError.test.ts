@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { parseError } from '@microsoft/vscode-azext-utils';
-import * as assert from 'assert';
+import assert from 'assert';
 import { improveError } from '../extension.bundle';
 
 suite('improveError', () => {

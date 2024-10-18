@@ -10,7 +10,7 @@ import { DocDBDatabaseTreeItemBase } from './DocDBDatabaseTreeItemBase';
 export class DocDBDatabaseTreeItem extends DocDBDatabaseTreeItemBase {
     public static contextValue: string = 'cosmosDBDocumentDatabase';
     public readonly contextValue: string = DocDBDatabaseTreeItem.contextValue;
-    public readonly childTypeLabel: string = 'Collection';
+    public readonly childTypeLabel: string = 'Container';
 
     public initChild(container: ContainerDefinition & Resource): DocDBCollectionTreeItem {
         return new DocDBCollectionTreeItem(this, container);

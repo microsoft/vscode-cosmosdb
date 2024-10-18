@@ -2,23 +2,23 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
 import * as path from 'path';
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from 'vscode-languageclient';
-import * as nls from 'vscode-nls';
 import { ext } from '../extensionVariables';
+import { localize } from '../utils/localize';
 import { type IConnectionParams } from './services/IConnectionParams';
-
-const localize = nls.loadMessageBundle();
 
 export class MongoDBLanguageClient {
     public client: LanguageClient;
 
     constructor() {
         // The server is implemented in node
-        const serverModule = ext.ignoreBundle
-            ? ext.context.asAbsolutePath(path.join('out', 'src', 'mongo', 'languageServer.js'))
-            : ext.context.asAbsolutePath(path.join('dist', 'mongo-languageServer.bundle.js'));
+        const serverPath = ext.isBundle
+            ? path.join('mongo-languageServer.bundle.js') // Run with webpack
+            : path.join('out', 'src', 'mongo', 'languageServer.js'); // Run without webpack
+        const serverModule = ext.context.asAbsolutePath(serverPath);
         // The debug options for the server
         const debugOptions = { execArgv: ['--nolazy', '--inspect=6005'] };
 

@@ -173,7 +173,7 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
         return this.jsonLanguageService
             .doComplete(document, position, this.jsonLanguageService.parseJSONDocument(document))
             .then((list) => {
-                return list!.items.map((item) => {
+                return list!.items.map((item: CompletionItem) => {
                     const startPositionOffset = document.offsetAt(item.textEdit!.range.start);
                     const endPositionOffset = document.offsetAt(item.textEdit!.range.end);
                     item.textEdit!.range = Range.create(

@@ -35,11 +35,12 @@ export class DocDBTriggersTreeItem extends DocDBTreeItemBase<TriggerDefinition> 
     public static contextValue: string = 'cosmosDBTriggersGroup';
     public readonly contextValue: string = DocDBTriggersTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Trigger';
-    public readonly parent: DocDBCollectionTreeItem;
+    public readonly parent: DocDBCollectionTreeItem | GraphCollectionTreeItem;
     public suppressMaskLabel = true;
 
     constructor(parent: DocDBCollectionTreeItem | GraphCollectionTreeItem) {
         super(parent);
+        this.parent = parent;
         this.root = this.parent.root;
     }
 

@@ -39,7 +39,7 @@ export class LanguageService {
         this.schemaService = new SchemaService();
 
         this.textDocuments.listen(connection);
-        // After the server has started the client sends an initilize request. The server receives
+        // After the server has started the client sends an initialize request. The server receives
         // in the passed params the rootPath of the workspace plus the client capabilities.
         connection.onInitialize((_params: InitializeParams): InitializeResult => {
             return {

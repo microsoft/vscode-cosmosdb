@@ -29,7 +29,11 @@ export class KeyValueStore {
         return this._items.get(key);
     }
 
-    public set(key: string, value: object): void {
-        this._items.set(key, value);
+    public set(key: string, value: object | null): void {
+        if (value === null) {
+            this._items.delete(key);
+        } else {
+            this._items.set(key, value);
+        }
     }
 }

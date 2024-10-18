@@ -1,5 +1,30 @@
 # Change Log
 
+## next
+
+### Added
+
+- New UI for executing queries in the NoSQL account. UI supports viewing results in a table, tree or a JSON view, showing the query stats and the RU cost.
+- New UI for executing search queries in the vCore account. UI supports viewing results in a table, tree or a JSON view.
+- New UI for creating, viewing and editing documents in the separated tab.
+- New UI supports themes from VS Code (except Monarch).
+
+- Jest for unit testing.
+- swc to compile TypeScript.
+
+### Changed
+
+- Bumped dependencies to latest versions. Extension still supports Node 18 and VS Code 1.82.0.
+- Updated eslint and prettier configurations.
+- Release pipeline jobs are implemented in the current repository instead of the microsoft/vscode-azuretools repository.
+- Switching to webpack for building the extension and webview. Using dev server for debugging the webview.
+- Build script does not modify any files in the repository. It only creates the `dir` directory with the compiled extension.
+
+### Removed
+
+- Gulp was removed from the project.
+- Husky was removed from the project.
+
 ## 0.23.0
 
 ### Changed

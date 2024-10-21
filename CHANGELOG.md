@@ -9,16 +9,10 @@
 - New UI for creating, viewing and editing documents in a separate tab.
 - New UI supports VS Code theming (except Monarch).
 
-- Jest for unit testing.
-- swc to compile TypeScript.
-
 ### Changed
 
 - Bumped dependencies to latest versions. Extension still supports Node 18 and VS Code 1.82.0.
 - Updated eslint and prettier configurations.
-- Release pipeline jobs are implemented in the current repository instead of the microsoft/vscode-azuretools repository.
-- Switching to webpack for building the extension and webview. Using dev server for debugging the webview.
-- Build script does not modify any files in the repository. It only creates the `dir` directory with the compiled extension.
 
 ### Removed
 

@@ -41,7 +41,7 @@ export function getDataAtPath(documents: WithId<Document>[], path: string[]): Ta
         const row: TableDataEntry = { id: `${i}/${randomId}` }; // inject the randomId to make sure the IDs are unique
 
         // at the root level, extract the objectId for further data edits
-        // we also make sure that the '_id' field is always included in the data
+        // we also make sure that the '_id' field is always included in the data!
         if (doc._id) {
             row['_id'] = {
                 value: valueToDisplayString(doc._id, MongoBSONTypes.ObjectId),
@@ -64,25 +64,23 @@ export function getDataAtPath(documents: WithId<Document>[], path: string[]): Ta
         }
 
         if (subdocument !== undefined) {
-            // now, we have the subdocument, we can add the keys to the row
+            // now, we have the subdocument, we can add all its keys to the row
             for (const key of Object.keys(subdocument)) {
                 if (key === '_id') {
                     // _id has been processed already
                     continue;
                 } else {
-                    const value: unknown = doc[key];
+                    const value: unknown = subdocument[key];
                     const type: MongoBSONTypes = MongoBSONTypes.inferType(value);
-
-                    const fullPathString = (path.concat(key)).join('.'); //TODO: no dots, slickgrid can break!
 
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                     if (value instanceof Array) {
-                        row[fullPathString] = {
-                            value: `(elements: ${value.length})`,
+                        row[key] = {
+                            value: `array[${value.length}]`,
                             type: MongoBSONTypes.Array,
                         };
                     } else {
-                        row[fullPathString] = { value: valueToDisplayString(value, type), type: type };
+                        row[key] = { value: valueToDisplayString(value, type), type: type };
                     }
                 }
             }

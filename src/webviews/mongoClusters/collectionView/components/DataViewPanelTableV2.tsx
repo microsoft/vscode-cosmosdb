@@ -25,6 +25,7 @@ import './dataViewPanelTableV2.scss';
 interface Props {
     liveHeaders: string[];
     liveData: TableDataEntry[];
+    handleStepIn: (row: number, cell: number) => void;
 }
 
 const cellFormatter: Formatter<object> = (_row: number, _cell: number, value: CellValue) => {
@@ -41,7 +42,7 @@ const cellFormatter: Formatter<object> = (_row: number, _cell: number, value: Ce
     };
 };
 
-export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JSX.Element {
+export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Props): React.JSX.Element {
     const [currentContext, setCurrentContext] = useContext(CollectionViewContext);
 
     type GridColumn = { id: string; name: string; field: string; minWidth: number };
@@ -89,7 +90,7 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
         );
 
         if (activeCell && activeCell.type === 'object') {
-            // handle "step-in" for object types
+            handleStepIn(event.detail.args.row, event.detail.args.cell);
         }
     }
 
@@ -103,7 +104,7 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
         enableAutoSizeColumns: true, // true by default, we disabled it under the assumption that there are a lot of columns in users' data in general
 
         enableCellNavigation: true,
-        enableTextSelectionOnCells: false,
+        enableTextSelectionOnCells: true,
 
         enableCheckboxSelector: false, // todo: [post MVP] this is failing, it looks like it happens when we're defining columns after the grid has been created.. we're deleting the 'checkbox' column. we  can work around it, but it needs a bit more attention to get it done right.
         enableRowSelection: true,
@@ -117,11 +118,11 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
         //     hideInColumnTitleRow: true,
         //     applySelectOnAllPages: true, // when clicking "Select All", should we apply it to all pages (defaults to true)
         // },
-        rowSelectionOptions: {
-            // todo: [post MVP] connected to the issue above.
-            // True (Single Selection), False (Multiple Selections)
-            selectActiveRow: false,
-        },
+        // rowSelectionOptions: {
+        //     // todo: [post MVP] connected to the issue above.
+        //     // True (Single Selection), False (Multiple Selections)
+        //     selectActiveRow: false,
+        // },
 
         // disalbing features that would require more polishing to make them production-ready
         enableColumnPicker: false,

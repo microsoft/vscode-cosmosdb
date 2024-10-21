@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Dropdown, Label, Option, Toolbar, ToolbarButton, ToolbarDivider, Tooltip } from '@fluentui/react-components';
-import { ArrowClockwiseFilled, ArrowLeftFilled, ArrowPreviousFilled, ArrowRightFilled } from '@fluentui/react-icons';
+import { ArrowLeftFilled, ArrowPreviousFilled, ArrowRightFilled, ArrowUp16Filled } from '@fluentui/react-icons';
 import { useContext } from 'react';
-import { CollectionViewContext } from '../../collectionViewContext';
+import { CollectionViewContext, Views } from '../../collectionViewContext';
 import { ToolbarDividerTransparent } from './ToolbarDividerTransparent';
 
 export interface ToolbarPagingProps {
@@ -54,6 +54,16 @@ export const ToolbarPaging = (): JSX.Element => {
         });
     }
 
+    function levelUp() {
+        setCurrentContext({
+            ...currentContext,
+            currentViewState: {
+                ...currentContext.currentViewState,
+                currentPath: currentContext.currentViewState?.currentPath.slice(0, -1) ?? [],
+            },
+        });
+    }
+
     // function refresh() {
     //     setCurrentContext({
     //         ...currentContext
@@ -62,7 +72,21 @@ export const ToolbarPaging = (): JSX.Element => {
 
     return (
         <Toolbar aria-label="with Popover" size="small">
-            <Tooltip content="Reload query results" relationship="description" withArrow>
+            <Tooltip content="Level up" relationship="description" withArrow>
+                <ToolbarButton
+                    onClick={levelUp}
+                    aria-label="Up"
+                    icon={<ArrowUp16Filled />}
+                    disabled={
+                        currentContext.currentView !== Views.TABLE ||
+                        currentContext.currentViewState?.currentPath.length === 0
+                    }
+                />
+            </Tooltip>
+
+            <ToolbarDivider />
+
+            {/* <Tooltip content="Reload query results" relationship="description" withArrow>
                 <ToolbarButton
                     aria-label="Refresh"
                     icon={<ArrowClockwiseFilled />}
@@ -70,7 +94,7 @@ export const ToolbarPaging = (): JSX.Element => {
                 />
             </Tooltip>
 
-            <ToolbarDivider />
+            <ToolbarDivider /> */}
 
             <Tooltip content="Go to first page" relationship="description" withArrow>
                 <ToolbarButton

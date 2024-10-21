@@ -7,7 +7,7 @@
 - New UI for executing queries in the NoSQL account. UI supports viewing results in a table, tree or a JSON view, showing the query stats and the RU cost.
 - New UI for executing search queries in the vCore account. UI supports viewing results in a table, tree or a JSON view.
 - New UI for creating, viewing and editing documents in a separate tab.
-- New UI supports themes from VS Code (except Monarch).
+- New UI supports VS Code theming (except Monarch).
 
 - Jest for unit testing.
 - swc to compile TypeScript.

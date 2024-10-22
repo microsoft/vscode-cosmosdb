@@ -4,11 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
-import { type SerializedQueryResult } from '../../../docdb/types/queryResult';
+import { DEFAULT_PAGE_SIZE, type SerializedQueryResult } from '../../../docdb/types/queryResult';
 
 export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
 export const QUERY_HISTORY_SIZE = 10;
-export const DEFAULT_PAGE_SIZE = 100;
 
 export type TableViewMode = 'Tree' | 'JSON' | 'Table';
 export type EditMode = 'View' | 'Edit';
@@ -30,10 +29,12 @@ export type DispatchAction =
     | {
           type: 'executionStarted';
           executionId: string;
+          startExecutionTime: number;
       }
     | {
           type: 'executionStopped';
           executionId: string;
+          endExecutionTime: number;
       }
     | {
           type: 'appendQueryHistory';
@@ -71,6 +72,8 @@ export type QueryEditorState = {
     queryValue: string;
     isConnected: boolean;
     isExecuting: boolean;
+    startExecutionTime: number; // Time when the query execution started
+    endExecutionTime: number; // Time when the query execution ended
 
     // Result state
     pageNumber: number; // Current page number (Readonly, only server can change it) (Value exists on both client and server)
@@ -92,6 +95,8 @@ export const defaultState: QueryEditorState = {
     queryValue: DEFAULT_QUERY_VALUE,
     isConnected: false,
     isExecuting: false,
+    startExecutionTime: 0,
+    endExecutionTime: 0,
 
     // Result state
     pageNumber: 1,
@@ -125,13 +130,14 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
                 currentExecutionId: action.executionId,
                 pageNumber: 1,
                 currentQueryResult: null,
+                startExecutionTime: action.startExecutionTime,
             };
         case 'executionStopped': {
             if (action.executionId !== state.currentExecutionId) {
                 // TODO: send telemetry. It should not happen
                 return state;
             }
-            return { ...state, isExecuting: false };
+            return { ...state, isExecuting: false, endExecutionTime: action.endExecutionTime };
         }
         case 'appendQueryHistory': {
             const queryHistory = [...state.queryHistory, action.queryValue].filter(

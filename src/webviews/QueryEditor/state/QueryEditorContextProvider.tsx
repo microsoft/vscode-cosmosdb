@@ -6,6 +6,8 @@
 import { type PartitionKeyDefinition } from '@azure/cosmos';
 import {
     type CosmosDbRecordIdentifier,
+    DEFAULT_EXECUTION_TIMEOUT,
+    DEFAULT_PAGE_SIZE,
     type ResultViewMetadata,
     type SerializedQueryResult,
 } from '../../../docdb/types/queryResult';
@@ -13,6 +15,11 @@ import { type Channel } from '../../../panels/Communication/Channel/Channel';
 import { type OpenDocumentMode } from '../../Document/state/DocumentState';
 import { BaseContextProvider } from '../../utils/context/BaseContextProvider';
 import { type DispatchAction, type EditMode, type TableViewMode } from './QueryEditorState';
+
+const DEFAULT_RESULT_VIEW_METADATA: ResultViewMetadata = {
+    countPerPage: DEFAULT_PAGE_SIZE,
+    timeout: DEFAULT_EXECUTION_TIMEOUT,
+};
 
 export class QueryEditorContextProvider extends BaseContextProvider {
     constructor(
@@ -25,7 +32,7 @@ export class QueryEditorContextProvider extends BaseContextProvider {
 
     public async runQuery(query: string, options: ResultViewMetadata): Promise<void> {
         this.dispatch({ type: 'appendQueryHistory', queryValue: query });
-        await this.sendCommand('runQuery', query, options);
+        await this.sendCommand('runQuery', query, { ...DEFAULT_RESULT_VIEW_METADATA, ...options });
     }
     public async stopQuery(executionId: string): Promise<void> {
         await this.sendCommand('stopQuery', executionId);
@@ -119,21 +126,19 @@ export class QueryEditorContextProvider extends BaseContextProvider {
             this.dispatch({ type: 'databaseDisconnected' });
         });
 
-        this.channel.on('executionStarted', (executionId: string) => {
-            this.dispatch({ type: 'executionStarted', executionId });
+        this.channel.on('executionStarted', (executionId: string, startExecutionTime: number) => {
+            this.dispatch({ type: 'executionStarted', executionId, startExecutionTime });
         });
 
-        this.channel.on('executionStopped', (executionId: string) => {
-            this.dispatch({ type: 'executionStopped', executionId });
+        this.channel.on('executionStopped', (executionId: string, endExecutionTime: number) => {
+            this.dispatch({ type: 'executionStopped', executionId, endExecutionTime });
         });
 
         this.channel.on('queryResults', (executionId: string, result: SerializedQueryResult, currentPage: number) => {
             this.dispatch({ type: 'updateQueryResult', executionId, result, currentPage });
-            this.dispatch({ type: 'executionStopped', executionId });
         });
 
-        this.channel.on('queryError', (executionId: string, error: string) => {
-            this.dispatch({ type: 'executionStopped', executionId });
+        this.channel.on('queryError', (_executionId: string, error: string) => {
             this.showToast('Query error', error, 'error');
         });
     }

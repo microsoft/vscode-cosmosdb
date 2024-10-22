@@ -11,11 +11,14 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { type Document } from 'bson';
+import type * as vscode from 'vscode';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { ext } from '../../extensionVariables';
+import { appendToFile } from '../../utils/fs/appendToFile';
 import { MongoClustersClient, type CollectionItemModel, type DatabaseItemModel, type InsertDocumentsResult } from '../MongoClustersClient';
 import { IndexesItem } from './IndexesItem';
 import { type MongoClusterItemBase, type MongoClusterModel } from './MongoClusterItem';
+
 
 export class CollectionItem implements MongoClusterItemBase {
     id: string;
@@ -75,6 +78,52 @@ export class CollectionItem implements MongoClusterItemBase {
         });
 
         return result;
+    }
+
+    async exportDocuments(_context: IActionContext, targetUri: vscode.Uri): Promise<void> {
+        const client = await MongoClustersClient.getClient(nonNullValue(this.mongoCluster.session?.credentialId));
+
+        const abortController = new AbortController();
+
+        const docsStream = client.streamDocuments(this.databaseInfo.name, this.collectionInfo.name, abortController.signal);
+
+        const filePath = targetUri.fsPath; // Convert `vscode.Uri` to a regular file path
+        ext.outputChannel.appendLog(`MongoDB (vCore): Initializing data export to: ${filePath}`);
+
+        let documentCount = 0;
+
+        try {
+            const bufferLimit = 4 * 1024 * 1024; // ~4 MB buffer limit
+            let buffer = '';
+
+            await appendToFile(filePath, '[\n'); // Start the JSON array
+
+            for await (const doc of docsStream) {
+                documentCount = documentCount + 1;
+                const docString = JSON.stringify(doc, null, 4);
+
+                buffer += buffer.length > 2 ? ',\n' : ''; // Add a comma and a newline if this isn't the first document
+                buffer += docString;
+
+                if (docString.length > bufferLimit) {
+                    await appendToFile(filePath, buffer);
+                    buffer = '';
+                }
+            }
+
+            // just in case, the last buffer is not empty
+            if (buffer.length > 0) {
+                await appendToFile(filePath, buffer);
+                buffer = '';
+            }
+
+            await appendToFile(filePath, '\n]'); // End the JSON array
+        } catch (error) {
+            ext.outputChannel.appendLog(`MongoDB (vCore): Error exporting documents: ${error}`);
+        } finally {
+            ext.outputChannel.appendLog(`MongoDB (vCore): Exported documents count: ${documentCount}`);
+            abortController.abort();
+        }
     }
 
     getTreeItem(): TreeItem {

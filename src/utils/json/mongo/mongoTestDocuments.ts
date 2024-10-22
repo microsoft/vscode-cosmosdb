@@ -112,6 +112,19 @@ export const complexDocument: WithId<Document> = {
     },
 };
 
+export const complexDocumentWithOddTypes: WithId<Document> = {
+    _id: new ObjectId(),
+    user: true, // this is here to catch potential schema traversal issues
+    history: {
+        lastLoginNew: new Date(),
+        lastOrderDateNew: new Date('2023-08-01'),
+        purchaseHistoryNew: [
+            { orderId: 1, totalAmount: Decimal128.fromString('1039.96') },
+            { orderId: 2, totalAmount: Decimal128.fromString('199.99') },
+        ],
+    },
+};
+
 export const complexDocumentsArray: WithId<Document>[] = [
     flatDocument,
     embeddedDocumentOnly,

@@ -19,6 +19,8 @@
     height: 100vh;
 
     .queryControlArea {
+        @extend .selectionDisabled;
+
         display: flex;
         gap: 10px;
 
@@ -39,6 +41,8 @@
     }
 
     .resultsDisplayArea {
+        @extend .selectionDisabled;
+
         height: 100%;
         //background-color: aqua; // used to invstigate layout issues
 

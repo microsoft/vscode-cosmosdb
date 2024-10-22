@@ -11,7 +11,7 @@ import { type RouterContext } from './collectionViewRouter';
 export type CollectionViewWebviewConfigurationType = {
     id: string; // move to base type
 
-    liveConnectionId: string;
+    sessionId: string;
     databaseName: string;
     collectionName: string;
 };
@@ -26,7 +26,7 @@ export class CollectionViewController extends WebviewController<CollectionViewWe
         super(ext.context, title, 'mongoClustersCollectionView', initialData, ViewColumn.Beside);
 
         const trpcContext: RouterContext = {
-            liveConnectionId: initialData.liveConnectionId,
+            sessionId: initialData.sessionId,
             databaseName: initialData.databaseName,
             collectionName: initialData.collectionName,
         };

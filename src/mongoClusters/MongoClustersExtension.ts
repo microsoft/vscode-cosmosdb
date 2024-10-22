@@ -18,12 +18,12 @@ import {
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
-import { CollectionViewController } from '../webviews/mongoClusters/collectionView/collectionViewController';
-import { DocumentsViewController } from '../webviews/mongoClusters/documentView/documentsViewController';
 import { createCollection } from './commands/createCollection';
 import { createDatabase } from './commands/createDatabase';
 import { dropCollection } from './commands/dropCollection';
 import { dropDatabase } from './commands/dropDatabase';
+import { openCollectionView } from './commands/openCollectionView';
+import { openDocumentView } from './commands/openDocumentView';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
 import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
 
@@ -63,8 +63,8 @@ export class MongoClustersExtension implements vscode.Disposable {
             // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
             registerCommand('mongoClusters.cmd.hello', this.commandSayHello);
 
-            registerCommand('mongoClusters.internal.containerView.open', this.commandCollectionViewOpen);
-            registerCommand('mongoClusters.internal.documentView.open', this.commandDocumentViewOpen);
+            registerCommand('mongoClusters.internal.containerView.open', openCollectionView);
+            registerCommand('mongoClusters.internal.documentView.open', openDocumentView);
 
             registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.dropCollection', dropCollection);
             registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.dropDatabase', dropDatabase);
@@ -87,52 +87,5 @@ export class MongoClustersExtension implements vscode.Disposable {
             { modal: true, detail: "You are about to:\n\ndelete 5 documents.\n\nThis action can't be undone." },
             'Delete',
         );
-    };
-
-    commandDocumentViewOpen = (
-        _context: IActionContext,
-        props: {
-            id: string;
-
-            liveConnectionId: string;
-            databaseName: string;
-            collectionName: string;
-            documentId: string;
-
-            mode: string;
-        },
-    ): void => {
-        const view = new DocumentsViewController({
-            id: props.id,
-
-            liveConnectionId: props.liveConnectionId,
-            databaseName: props.databaseName,
-            collectionName: props.collectionName,
-            documentId: props.documentId,
-
-            mode: props.mode,
-        });
-
-        view.revealToForeground();
-    };
-
-    commandCollectionViewOpen = (
-        _context: IActionContext,
-        props: {
-            id: string;
-            liveConnectionId: string;
-            databaseName: string;
-            collectionName: string;
-        },
-    ): void => {
-        const view = new CollectionViewController({
-            id: props.id,
-
-            liveConnectionId: props.liveConnectionId,
-            databaseName: props.databaseName,
-            collectionName: props.collectionName,
-        });
-
-        view.revealToForeground();
     };
 }

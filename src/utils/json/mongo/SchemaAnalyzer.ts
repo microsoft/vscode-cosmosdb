@@ -336,7 +336,7 @@ export function getSchemaFromDocument(document: WithId<Document>): JSONSchema {
             'x-typeOccurrence': 1,
         };
 
-        // please note (1/2): we're adding the type ntry to the schema here
+        // please note (1/2): we're adding the type entry to the schema here
         schema.properties[name] = { anyOf: [typeEntry], 'x-occurrence': 1 };
 
         fifoQueue.push({
@@ -614,4 +614,59 @@ function aggregateStatsForValue(value: unknown, mongoType: MongoBSONTypes, prope
             // No stats computation for other types
             break;
     }
+}
+
+function getSchemaAtPath(schema: JSONSchema, path: string[]): JSONSchema {
+    let currentNode = schema;
+
+    for (let i = 0; i < path.length; i++) {
+        const key = path[i];
+
+        // If the current node is an array, we should move to its `items`
+        // if (currentNode.type === 'array' && currentNode.items) {
+        //     currentNode = currentNode.items;
+        // }
+
+        // Move to the next property in the schema
+        if (currentNode && currentNode.properties && currentNode.properties[key]) {
+            const nextNode: JSONSchema = currentNode.properties[key] as JSONSchema;
+            /**
+             * Now, with our JSON Schema, there are "anyOf" entries that we need to consider.
+             * We're looking at the "Object"-one, because these have the properties we're interested in.
+             */
+            if (nextNode.anyOf && nextNode.anyOf.length > 0) {
+                currentNode = nextNode.anyOf.find((entry: JSONSchema) => entry.type === 'object') as JSONSchema;
+            } else {
+                // we can't continue, as we're missing the next node, we abort at the last node we managed to extract
+                return currentNode;
+            }
+        } else {
+            throw new Error(`No properties found in the schema at path "${path.slice(0, i + 1).join('/')}"`);
+        }
+    }
+
+    return currentNode; // Return the node at the path
+}
+
+export function getPropertyNamesAtLevel(jsonSchema: JSONSchema, path: string[]): string[] {
+    const headers = new Set<string>();
+
+    // Explore the schema and apply the callback to collect headers at the specified path
+    const selectedSchema: JSONSchema = getSchemaAtPath(jsonSchema, path);
+
+    if (selectedSchema && selectedSchema.properties) {
+        Object.keys(selectedSchema.properties).forEach((key) => {
+            headers.add(key);
+        });
+    }
+
+    return Array.from(headers).sort((a, b) => {
+        if (a === '_id') return -1; // _id should come before b
+        if (b === '_id') return 1; // _id should come after a
+        return a.localeCompare(b); // regular sorting
+    });
+}
+
+export function buildFullPaths(path: string[], propertyNames: string[]): string[] {
+    return propertyNames.map((name) => path.concat(name).join('.'));
 }

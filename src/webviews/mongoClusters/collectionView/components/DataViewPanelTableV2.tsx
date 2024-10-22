@@ -4,25 +4,27 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as React from 'react';
-import { useContext } from 'react';
+import { useContext, useRef } from 'react';
 import {
     SlickgridReact,
     type Formatter,
     type GridOption,
+    type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
-    type SlickgridReactInstance,
 } from 'slickgrid-react';
 import { type CellValue } from '../../../../utils/slickgrid/CellValue';
 import { LoadingAnimationTable } from './LoadingAnimationTable';
 
 import debounce from 'lodash.debounce';
+import { type TableDataEntry } from '../../../../mongoClusters/MongoClusterSession';
 import { bsonStringToDisplayString } from '../../../utils/slickgrid/typeToDisplayString';
 import { CollectionViewContext } from '../collectionViewContext';
 import './dataViewPanelTableV2.scss';
 
 interface Props {
     liveHeaders: string[];
-    liveData: { 'x-objectid': string; [key: string]: unknown }[];
+    liveData: TableDataEntry[];
+    handleStepIn: (row: number, cell: number) => void;
 }
 
 const cellFormatter: Formatter<object> = (_row: number, _cell: number, value: CellValue) => {
@@ -39,8 +41,10 @@ const cellFormatter: Formatter<object> = (_row: number, _cell: number, value: Ce
     };
 };
 
-export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JSX.Element {
+export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Props): React.JSX.Element {
     const [currentContext, setCurrentContext] = useContext(CollectionViewContext);
+
+    const gridRef = useRef<SlickgridReact>(null);
 
     type GridColumn = { id: string; name: string; field: string; minWidth: number };
 
@@ -55,8 +59,6 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
     });
 
     function onSelectedRowsChanged(_eventData: unknown, _args: OnSelectedRowsChangedEventArgs) {
-        console.log('Selected Rows Changed');
-
         setCurrentContext((prev) => ({
             ...prev,
             commands: {
@@ -68,9 +70,20 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
             },
             dataSelection: {
                 selectedDocumentIndexes: _args.rows,
-                selectedDocumentObjectIds: _args.rows.map((row) => liveData[row]['x-objectid']),
+                selectedDocumentObjectIds: _args.rows.map((row) => liveData[row]['x-objectid'] ?? ''),
             },
         }));
+    }
+
+    function onCellDblClick(event: CustomEvent<{ eventData: unknown; args: OnDblClickEventArgs }>) {
+        const activeDocument = liveData[event.detail.args.row];
+        const activeColumn = gridColumns[event.detail.args.cell].field;
+
+        const activeCell = activeDocument[activeColumn] as { type?: string };
+
+        if (activeCell && activeCell.type === 'object') {
+            handleStepIn(event.detail.args.row, event.detail.args.cell);
+        }
     }
 
     const gridOptions: GridOption = {
@@ -83,6 +96,8 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
         enableAutoSizeColumns: true, // true by default, we disabled it under the assumption that there are a lot of columns in users' data in general
 
         enableCellNavigation: true,
+        enableTextSelectionOnCells: true,
+
         enableCheckboxSelector: false, // todo: [post MVP] this is failing, it looks like it happens when we're defining columns after the grid has been created.. we're deleting the 'checkbox' column. we  can work around it, but it needs a bit more attention to get it done right.
         enableRowSelection: true,
         multiSelect: true,
@@ -95,10 +110,12 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
         //     hideInColumnTitleRow: true,
         //     applySelectOnAllPages: true, // when clicking "Select All", should we apply it to all pages (defaults to true)
         // },
-        // rowSelectionOptions: { todo: [post MVP] connected to the issue above.
+        // rowSelectionOptions: {
+        //     // todo: [post MVP] connected to the issue above.
         //     // True (Single Selection), False (Multiple Selections)
         //     selectActiveRow: false,
         // },
+
         // disalbing features that would require more polishing to make them production-ready
         enableColumnPicker: false,
         enableColumnReorder: false,
@@ -108,21 +125,24 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
         enableHeaderMenu: false,
     };
 
-    let slickGrid: SlickgridReactInstance | null = null;
-
     React.useEffect(() => {
         console.log('Grid View has mounted');
 
         return () => {
             console.log('Grid View will unmount');
-            slickGrid?.gridService.setSelectedRows([]);
+            gridRef.current?.gridService.setSelectedRows([]);
         };
     }, []);
 
-    function reactGridReady(grid: SlickgridReactInstance) {
-        console.log('Grid Ready');
-        slickGrid = grid;
-    }
+    /*
+     * Effect to manually trigger grid update on liveHeaders or liveData change.
+     * This is necessary because SlickGrid does not consistently re-render when data changes.
+     * This could be an implementation issue/details of the SlickGrid React wrapper
+     * or a mistake in the way we're using the grid.
+     */
+    React.useEffect(() => {
+        gridRef.current?.gridService.renderGrid();
+    }, [liveData, gridColumns]); // Re-run when headers or data change
 
     if (currentContext.isLoading) {
         return <LoadingAnimationTable />;
@@ -130,13 +150,14 @@ export function DataViewPanelTableV2({ liveHeaders, liveData }: Props): React.JS
         return (
             <SlickgridReact
                 gridId="myGrid"
+                ref={gridRef} // Attach the reference to SlickGrid
                 gridOptions={gridOptions}
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 columnDefinitions={gridColumns}
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 dataset={liveData}
+                onDblClick={(event) => onCellDblClick(event)}
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                onReactGridCreated={(event) => reactGridReady(event.detail)}
                 // debouncing here as multiple events are fired on multiselect
                 onSelectedRowsChanged={debounce(
                     (event: { detail: { eventData: unknown; args: OnSelectedRowsChangedEventArgs } }) =>

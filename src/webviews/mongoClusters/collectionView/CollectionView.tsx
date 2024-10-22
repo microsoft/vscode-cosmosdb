@@ -5,6 +5,7 @@
 
 // eslint-disable-next-line import/no-internal-modules
 import { type JSX, useEffect, useRef, useState } from 'react';
+import { type TableDataEntry } from '../../../mongoClusters/MongoClusterSession';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import './collectionView.scss';
 import {
@@ -23,7 +24,8 @@ import { ViewSwitcher } from './components/toolbar/viewSwitcher';
 
 interface QueryResults {
     tableHeaders?: string[];
-    tableData?: { 'x-objectid': string; [key: string]: unknown }[]; // 'x-objectid': string;
+    tableData?: TableDataEntry[]; // 'x-objectid': string;
+    tableCurrentPath?: string[];
 
     treeData?: { [key: string]: unknown }[];
 
@@ -92,14 +94,10 @@ export const CollectionView = (): JSX.Element => {
                 pageNumber: currentContext.currrentQueryDefinition.pageNumber,
                 pageSize: currentContext.currrentQueryDefinition.pageSize,
             })
-            .then((response) => {
+            .then((_response) => {
                 setCurrentContext((prev) => ({ ...prev, isLoading: false }));
-                setCurrentQueryResults({
-                    jsonDocuments: response.jsonDocuments ?? [],
-                    tableHeaders: response.tableHeaders ?? [],
-                    tableData: response.tableData ?? [],
-                    treeData: response.treeData ?? [],
-                });
+
+                getDataForView(currentContext.currentView);
             })
             .catch((_error) => {
                 setCurrentContext((prev) => ({ ...prev, isLoading: false }));
@@ -125,9 +123,73 @@ export const CollectionView = (): JSX.Element => {
         }
 
         setCurrentContext((prev) => ({ ...prev, currentView: selection }));
+        getDataForView(selection);
     };
 
-    function handleDeleteRequest(): void {
+    function getDataForView(selectedView: Views): void {
+        switch (selectedView) {
+            case Views.TABLE: {
+                const path = currentContext.currentViewState?.currentPath ?? [];
+
+                trpcClient.mongoClusters.collectionView.getCurrentPageAsTable
+                    .query(path)
+                    .then((result) => {
+                        let tableHeaders: string[];
+
+                        /*
+                         * If the _id is not in the headers, we add it as the first column.
+                         * This is a presentation detail, not a data detail, that's why it's done
+                         * here, in the view, not in the controller.
+                         */
+                        if (result.headers.find((header) => header === '_id') === undefined) {
+                            tableHeaders = ['_id', ...result.headers];
+                        } else {
+                            tableHeaders = result.headers ?? [];
+                        }
+
+                        setCurrentQueryResults((prev) => ({
+                            ...prev,
+                            tableHeaders: tableHeaders,
+                            tableData: (result.data as TableDataEntry[]) ?? [],
+                        }));
+                    })
+                    .catch((_error) => {
+                        console.log('error');
+                    });
+                break;
+            }
+            case Views.TREE:
+                trpcClient.mongoClusters.collectionView.getCurrentPageAsTree
+                    .query()
+                    .then((result) => {
+                        setCurrentQueryResults((prev) => ({
+                            ...prev,
+                            treeData: result,
+                        }));
+                    })
+                    .catch((_error) => {
+                        console.log('error');
+                    });
+                break;
+            case Views.JSON:
+                trpcClient.mongoClusters.collectionView.getCurrentPageAsJson
+                    .query()
+                    .then((result) => {
+                        setCurrentQueryResults((prev) => ({
+                            ...prev,
+                            jsonDocuments: result,
+                        }));
+                    })
+                    .catch((_error) => {
+                        console.log('error');
+                    });
+                break;
+            default:
+                break;
+        }
+    }
+
+    function handleDeleteDocumentRequest(): void {
         trpcClient.mongoClusters.collectionView.deleteDocumentsById
             .mutate(currentContext.dataSelection.selectedDocumentObjectIds)
             .then((acknowledged) => {
@@ -135,15 +197,18 @@ export const CollectionView = (): JSX.Element => {
                     return;
                 }
 
+                // TODO: update cached data in the controller
+
+                // TODO: update the current view, not all views.
+
                 setCurrentQueryResults((prev) => ({
                     ...prev,
                     tableData: prev?.tableData?.filter(
                         (row) =>
                             !currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(
-                                row['x-objectid'],
+                                row['x-objectid'] ?? '',
                             ),
                     ),
-                    // TODO: update Tree data, update JSON data!
                 }));
 
                 setCurrentContext((prev) => ({
@@ -163,7 +228,7 @@ export const CollectionView = (): JSX.Element => {
             });
     }
 
-    function handleViewRequest(): void {
+    function handleViewDocumentRequest(): void {
         trpcClient.mongoClusters.collectionView.viewDocumentById
             .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
             .catch((error: unknown) => {
@@ -175,7 +240,7 @@ export const CollectionView = (): JSX.Element => {
             });
     }
 
-    function handleEditRequest(): void {
+    function handleEditDocumentRequest(): void {
         trpcClient.mongoClusters.collectionView.editDocumentById
             .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
             .catch((error: unknown) => {
@@ -187,7 +252,7 @@ export const CollectionView = (): JSX.Element => {
             });
     }
 
-    function handleAddRequest(): void {
+    function handleAddDocumentRequest(): void {
         trpcClient.mongoClusters.collectionView.addDocument.mutate().catch((error: unknown) => {
             if (error instanceof Error) {
                 console.error('Error adding document:', error.message);
@@ -196,6 +261,31 @@ export const CollectionView = (): JSX.Element => {
             }
         });
     }
+
+    function handleStepInRequest(row: number, cell: number): void {
+        const activeDocument: TableDataEntry = currentQueryResults?.tableData?.[row] ?? {};
+        const activeColumn: string = currentQueryResults?.tableHeaders?.[cell] ?? '';
+
+        const activeCell = activeDocument[activeColumn] as { value?: string; type?: string };
+
+        console.log('Step-in requested on cell', activeCell, 'in row', row, 'column', cell);
+
+        // TODO: move the path from results to a better place
+        setCurrentContext((prev) => ({
+            ...prev,
+            currentViewState: {
+                currentPath: [...(currentContext.currentViewState?.currentPath ?? []), activeColumn],
+            },
+        }));
+    }
+
+    useEffect(() => {
+        if (currentContext.currentViewState?.currentPath === undefined) {
+            return;
+        }
+
+        getDataForView(currentContext.currentView);
+    }, [currentContext.currentViewState?.currentPath]);
 
     return (
         <CollectionViewContext.Provider value={[currentContext, setCurrentContext]}>
@@ -213,10 +303,10 @@ export const CollectionView = (): JSX.Element => {
                     <div className="actionBar">
                         <ToolbarPaging />
                         <ToolbarDocuments
-                            onDeleteClick={handleDeleteRequest}
-                            onEditClick={handleEditRequest}
-                            onViewClick={handleViewRequest}
-                            onAddClick={handleAddRequest}
+                            onDeleteClick={handleDeleteDocumentRequest}
+                            onEditClick={handleEditDocumentRequest}
+                            onViewClick={handleViewDocumentRequest}
+                            onAddClick={handleAddDocumentRequest}
                         />
                         <ViewSwitcher onViewChanged={handleViewChanged} />
                     </div>
@@ -229,6 +319,7 @@ export const CollectionView = (): JSX.Element => {
                                 <DataViewPanelTableV2
                                     liveHeaders={currentQueryResults?.tableHeaders ?? []}
                                     liveData={currentQueryResults?.tableData ?? []}
+                                    handleStepIn={handleStepInRequest}
                                 />
                             ),
                             'Tree View': <DataViewPanelTree liveData={currentQueryResults?.treeData ?? []} />,

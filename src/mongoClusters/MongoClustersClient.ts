@@ -20,8 +20,6 @@ import {
     type WithId,
     type WithoutId,
 } from 'mongodb';
-import { getDataTopLevel, getFieldsTopLevel } from '../utils/slickgrid/mongo/toSlickGridTable';
-import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
 import { CredentialCache } from './CredentialCache';
 import { toFilterQueryObj } from './utils/toFilterQuery';
 
@@ -48,15 +46,6 @@ export interface IndexItemModel {
 }
 
 // type TableColumnDef = { id: string; name: string; field: string; minWidth: number };
-
-export interface QueryReponsePack {
-    tableHeaders?: string[];
-    tableData?: object[];
-
-    treeData?: TreeData[];
-
-    jsonDocuments?: string[];
-}
 
 export class MongoClustersClient {
     // cache of active/existing clients
@@ -122,13 +111,13 @@ export class MongoClustersClient {
     }
 
     //todo: this is just a to see how it could work, we need to use a cursor here for paging
-    async queryDocuments(
+    async runQuery(
         databaseName: string,
         collectionName: string,
         findQuery: string,
         skip: number,
         limit: number,
-    ): Promise<QueryReponsePack> {
+    ): Promise<WithId<Document>[]> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         if (findQuery === undefined || findQuery.trim().length === 0) {
             findQuery = '{}';
@@ -144,18 +133,9 @@ export class MongoClustersClient {
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
         const documents = await collection.find(findQueryObj, options).toArray();
 
-        // json
-        const responsePack: QueryReponsePack = {
-            jsonDocuments: documents.map((doc) => JSON.stringify(doc, null, 4)),
-        };
+        //TODO: add the FindCursor to the return type for paging
 
-        // table
-        responsePack.tableHeaders = getFieldsTopLevel(documents);
-        responsePack.tableData = getDataTopLevel(documents);
-
-        responsePack.treeData = toSlickGridTree(documents);
-
-        return responsePack;
+        return documents;
     }
 
     async deleteDocuments(databaseName: string, collectionName: string, documentObjectIds: string[]): Promise<boolean> {

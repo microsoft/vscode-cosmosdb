@@ -33,7 +33,7 @@ Browse and query your Azure databases both locally and in the cloud using [_scra
 ## Mongo Scrapbooks
 ### Run Mongo Commands with Rich Intellisense
 
-- View your MongoDB database account by by clicking "Sign in to Azure..." in the Azure Resources explorer or using "Attach Database Account" to connect via a connection string
+- View your MongoDB database account by clicking "Sign in to Azure..." in the Azure Resources explorer or using "Attach Database Account" to connect via a connection string
 - Optionally configure the settings `mongo.shell.path` and `mongo.shell.args` if your mongo executable is not already on your system's PATH (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
 - Click on "New Mongo Scrapbook" in the tree title bar
 - Click on "Connect to a database" to indicate which database to run the commands against
@@ -53,11 +53,11 @@ Browse and query your Azure databases both locally and in the cloud using [_scra
 
 1. Sign in to your Azure Account by clicking "Sign in to Azure..." in the Azure Resources explorer
     >  If you don't already have an Azure Account, click "Create a Free Azure Account"
-1. Select the 'plus' button to open the "Create Resource" menu
+2. Select the 'plus' button to open the "Create Resource" menu
 
     ![Create resource](resources/readme/createResource.png)
 
-1. Choose "Create Database Server..."
+3. Choose "Create Database Server..."
 
     ![Create Database Server](resources/readme/createDatabaseServer.png)
 
@@ -80,7 +80,7 @@ Browse and query your Azure databases both locally and in the cloud using [_scra
 # Contributing
 There are several ways you can contribute to our [repo](https://github.com/Microsoft/vscode-cosmosdb):
 
-* **Ideas, feature requests and bugs**: We are open to all ideas and we want to get rid of bugs! Use the [Issues](https://github.com/Microsoft/vscode-cosmosdb/issues) section to report a new issue, provide your ideas or contribute to existing threads.
+* **Ideas, feature requests and bugs**: We are open to all ideas, and we want to get rid of bugs! Use the [Issues](https://github.com/Microsoft/vscode-cosmosdb/issues) section to report a new issue, provide your ideas or contribute to existing threads.
 * **Documentation**: Found a typo or strangely worded sentences? Submit a PR!
 * **Code**: Contribute bug fixes, features or design changes:
   * Clone the repository locally and open in VS Code.

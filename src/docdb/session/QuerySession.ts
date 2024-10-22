@@ -3,21 +3,26 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AbortError, ErrorResponse, TimeoutError, type CosmosClient, type QueryIterator } from '@azure/cosmos';
+import { AbortError, ErrorResponse, TimeoutError, type QueryIterator } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
-import { type ResultViewMetadata } from '../types/queryResult';
-import { SessionResult } from './SessionResult';
+import { getCosmosClientByConnection } from '../getCosmosClient';
+import {
+    DEFAULT_EXECUTION_TIMEOUT,
+    DEFAULT_PAGE_SIZE,
+    type CosmosDbRecord,
+    type ResultViewMetadata,
+} from '../types/queryResult';
+import { QuerySessionResult } from './QuerySessionResult';
 
-export class CosmosDBSession {
+export class QuerySession {
     public readonly id: string;
     private readonly channel: Channel;
-    private readonly client: CosmosClient;
+    private readonly connection: NoSqlQueryConnection;
     private readonly databaseId: string;
     private readonly containerId: string;
     private readonly resultViewMetadata: ResultViewMetadata = {};
@@ -26,10 +31,10 @@ export class CosmosDBSession {
     private readonly endpoint: string;
     private readonly masterKey: string;
 
-    private readonly sessionResult: SessionResult;
+    private readonly sessionResult: QuerySessionResult;
 
     private abortController: AbortController | null = null;
-    private iterator: QueryIterator<unknown> | null = null;
+    private iterator: QueryIterator<CosmosDbRecord> | null = null;
     private currentIteration = 0;
     private isDisposed = false;
 
@@ -39,16 +44,11 @@ export class CosmosDBSession {
         query: string,
         resultViewMetadata: ResultViewMetadata,
     ) {
-        const { databaseId, containerId, endpoint, masterKey, isEmulator } = connection;
-        const credentials: CosmosDBCredential[] = [];
-        if (masterKey !== undefined) {
-            credentials.push({ type: 'key', key: masterKey });
-        }
-        credentials.push({ type: 'auth' });
+        const { databaseId, containerId, endpoint, masterKey } = connection;
 
         this.id = uuid();
         this.channel = channel;
-        this.client = getCosmosClient(endpoint, credentials, isEmulator);
+        this.connection = connection;
         this.databaseId = databaseId;
         this.containerId = containerId;
         this.endpoint = endpoint;
@@ -56,7 +56,7 @@ export class CosmosDBSession {
         this.resultViewMetadata = resultViewMetadata;
         this.query = query;
 
-        this.sessionResult = new SessionResult(resultViewMetadata);
+        this.sessionResult = new QuerySessionResult(resultViewMetadata);
     }
 
     public async run(): Promise<void> {
@@ -71,15 +71,26 @@ export class CosmosDBSession {
                 throw new Error('Session is already running');
             }
 
+            const isFetchAll = this.resultViewMetadata.countPerPage === -1;
+
             try {
                 this.abortController = new AbortController();
-                this.iterator = this.client
+
+                const client = getCosmosClientByConnection(this.connection, {
+                    connectionPolicy: {
+                        requestTimeout: this.resultViewMetadata.timeout ?? DEFAULT_EXECUTION_TIMEOUT,
+                    },
+                });
+
+                this.iterator = client
                     .database(this.databaseId)
                     .container(this.containerId)
-                    .items.query(this.query, {
+                    .items.query<CosmosDbRecord>(this.query, {
                         abortSignal: this.abortController.signal,
                         populateQueryMetrics: true,
-                        maxItemCount: this.resultViewMetadata?.countPerPage ?? 100,
+                        maxItemCount: isFetchAll
+                            ? undefined
+                            : (this.resultViewMetadata?.countPerPage ?? DEFAULT_PAGE_SIZE),
                         maxDegreeOfParallelism: 1000,
                         bufferItems: true,
                     });
@@ -110,6 +121,7 @@ export class CosmosDBSession {
             await this.wrappedFetch(async () => {
                 const response = await this.iterator!.fetchAll();
                 this.sessionResult.push(response);
+                this.currentIteration++;
             });
         });
     }
@@ -157,7 +169,7 @@ export class CosmosDBSession {
                 throw new Error('Cannot fetch previous page if all records have been fetched before');
             }
 
-            if (this.currentIteration - 1 < 0) {
+            if (this.currentIteration - 1 <= 0) {
                 throw new Error('Cannot fetch previous page if current page is the first page');
             }
 
@@ -180,7 +192,7 @@ export class CosmosDBSession {
             }
 
             await this.wrappedFetch(async () => {
-                this.currentIteration = 0;
+                this.currentIteration = 1;
             });
         });
     }
@@ -202,7 +214,7 @@ export class CosmosDBSession {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'executionStopped',
-                params: [this.id],
+                params: [this.id, Date.now()],
             });
         });
     }
@@ -249,7 +261,7 @@ export class CosmosDBSession {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'executionStarted',
-                params: [this.id],
+                params: [this.id, Date.now()],
             });
 
             await action();
@@ -261,6 +273,12 @@ export class CosmosDBSession {
             });
         } catch (error) {
             await this.errorHandling(error);
+        } finally {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'executionStopped',
+                params: [this.id, Date.now()],
+            });
         }
     }
 

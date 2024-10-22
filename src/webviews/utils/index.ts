@@ -3,4 +3,5 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export * from './convertors';
+export * from '../../utils/convertors';
+export * from '../../utils/partitionKey';

@@ -1,7 +1,11 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import { Button, Input } from '@fluentui/react-components';
 import { PlayRegular, SearchFilled } from '@fluentui/react-icons';
-import type { JSX } from 'react';
-import { useContext, useRef } from 'react';
+import { useContext, useRef, type JSX } from 'react';
 import { CollectionViewContext } from '../collectionViewContext';
 
 export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {

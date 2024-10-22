@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { EJSON } from 'bson';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { appendToFile } from '../../utils/fs/appendToFile';
@@ -93,7 +94,7 @@ async function exportDocumentsToFile(
             }
 
             documentCount += 1;
-            const docString = JSON.stringify(doc, null, 4);
+            const docString = EJSON.stringify(doc, undefined, 4);
 
             // Progress reporting for every 100 documents
             if (documentCount % 100 === 0) {

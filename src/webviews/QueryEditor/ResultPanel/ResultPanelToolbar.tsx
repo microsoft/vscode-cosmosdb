@@ -166,6 +166,7 @@ const ToolbarStatusBar = () => {
                 setTime((time) => time + 10);
             }, 10);
         } else {
+            setTime(0);
             clearInterval(interval);
         }
         return () => clearInterval(interval);

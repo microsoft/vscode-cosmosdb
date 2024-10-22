@@ -262,7 +262,7 @@ export const CollectionView = (): JSX.Element => {
         setCurrentContext((prev) => ({
             ...prev,
             currentViewState: {
-                currentPath: [...(currentQueryResults?.tableCurrentPath ?? []), activeColumn],
+                currentPath: [...(currentContext.currentViewState?.currentPath ?? []), activeColumn],
             },
         }));
     }

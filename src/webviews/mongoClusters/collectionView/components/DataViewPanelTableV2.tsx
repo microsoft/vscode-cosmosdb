@@ -80,15 +80,6 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
 
         const activeCell = activeDocument[activeColumn] as { type?: string };
 
-        console.log(
-            'Double clicked on cell',
-            activeCell,
-            'in row',
-            event.detail.args.row,
-            'column',
-            event.detail.args.cell,
-        );
-
         if (activeCell && activeCell.type === 'object') {
             handleStepIn(event.detail.args.row, event.detail.args.cell);
         }

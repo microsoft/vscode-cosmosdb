@@ -67,6 +67,8 @@ export class QuerySession {
                 throw new Error('Session is already running');
             }
 
+            const isFetchAll = this.resultViewMetadata.countPerPage === -1;
+
             try {
                 this.abortController = new AbortController();
                 this.iterator = this.client
@@ -75,7 +77,7 @@ export class QuerySession {
                     .items.query<CosmosDbRecord>(this.query, {
                         abortSignal: this.abortController.signal,
                         populateQueryMetrics: true,
-                        maxItemCount: this.resultViewMetadata?.countPerPage ?? 100,
+                        maxItemCount: isFetchAll ? undefined : (this.resultViewMetadata?.countPerPage ?? 100),
                         maxDegreeOfParallelism: 1000,
                         bufferItems: true,
                     });
@@ -106,6 +108,7 @@ export class QuerySession {
             await this.wrappedFetch(async () => {
                 const response = await this.iterator!.fetchAll();
                 this.sessionResult.push(response);
+                this.currentIteration++;
             });
         });
     }
@@ -153,7 +156,7 @@ export class QuerySession {
                 throw new Error('Cannot fetch previous page if all records have been fetched before');
             }
 
-            if (this.currentIteration - 1 < 0) {
+            if (this.currentIteration - 1 <= 0) {
                 throw new Error('Cannot fetch previous page if current page is the first page');
             }
 
@@ -176,7 +179,7 @@ export class QuerySession {
             }
 
             await this.wrappedFetch(async () => {
-                this.currentIteration = 0;
+                this.currentIteration = 1;
             });
         });
     }

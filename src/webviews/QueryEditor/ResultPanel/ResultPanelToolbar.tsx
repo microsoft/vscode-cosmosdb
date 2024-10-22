@@ -174,6 +174,14 @@ export const ResultPanelToolbar = ({ selectedTab }: ResultToolbarProps) => {
     const dispatcher = useQueryEditorDispatcher();
     const restoreFocusTargetAttribute = useRestoreFocusTarget();
 
+    const recordRange = state.currentExecutionId
+        ? state.pageSize === -1
+            ? state.currentQueryResult?.documents?.length
+                ? `0 - ${state.currentQueryResult?.documents?.length}`
+                : 'All'
+            : `${(state.pageNumber - 1) * state.pageSize} - ${state.pageNumber * state.pageSize}`
+        : `0 - 0`;
+
     const [open, setOpen] = useState(false);
     const [doAction, setDoAction] = useState<() => Promise<void>>(() => async () => {});
 
@@ -200,7 +208,8 @@ export const ResultPanelToolbar = ({ selectedTab }: ResultToolbarProps) => {
     }
 
     function onOptionSelect(data: OptionOnSelectData) {
-        const countPerPage = parseInt(data.optionText ?? '', 10) ?? -1;
+        const parsedValue = parseInt(data.optionValue ?? '', 10);
+        const countPerPage = isFinite(parsedValue) ? parsedValue : -1;
         if (!state.currentExecutionId) {
             // The result is not loaded yet, just set the page size
             dispatcher.setPageSize(countPerPage);
@@ -283,20 +292,28 @@ export const ResultPanelToolbar = ({ selectedTab }: ResultToolbarProps) => {
                         defaultSelectedOptions={[DEFAULT_PAGE_SIZE.toString()]}
                         {...restoreFocusTargetAttribute}
                     >
-                        <Option key="10">10</Option>
-                        <Option key="50">50</Option>
-                        <Option key="100">100</Option>
-                        <Option key="500">500</Option>
-                        <Option key="All">All</Option>
+                        <Option key="10" value={'10'}>
+                            10
+                        </Option>
+                        <Option key="50" value={'50'}>
+                            50
+                        </Option>
+                        <Option key="100" value={'100'}>
+                            100
+                        </Option>
+                        <Option key="500" value={'500'}>
+                            500
+                        </Option>
+                        <Option key="All" value={'-1'}>
+                            All
+                        </Option>
                     </Dropdown>
                 </Tooltip>
 
                 <ToolbarDivider />
 
                 <Label weight="semibold" style={{ minWidth: '100px', maxWidth: '100px', textAlign: 'center' }}>
-                    {state.currentExecutionId
-                        ? `${(state.pageNumber - 1) * state.pageSize} - ${state.pageNumber * state.pageSize}`
-                        : `0 - 0`}
+                    {recordRange}
                 </Label>
 
                 <ToolbarDivider />

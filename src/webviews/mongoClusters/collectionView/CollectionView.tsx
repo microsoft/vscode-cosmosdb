@@ -104,7 +104,6 @@ export const CollectionView = (): JSX.Element => {
             });
     }, [currentContext.currrentQueryDefinition]);
 
-
     const handleViewChanged = (_optionValue: string) => {
         let selection: Views;
 
@@ -135,10 +134,23 @@ export const CollectionView = (): JSX.Element => {
                 trpcClient.mongoClusters.collectionView.getCurrentPageAsTable
                     .query(path)
                     .then((result) => {
+                        let tableHeaders: string[];
+
+                        /*
+                         * If the _id is not in the headers, we add it as the first column.
+                         * This is a presentation detail, not a data detail, that's why it's done
+                         * here, in the view, not in the controller.
+                         */
+                        if (result.headers.find((header) => header === '_id') === undefined) {
+                            tableHeaders = ['_id', ...result.headers];
+                        } else {
+                            tableHeaders = result.headers ?? [];
+                        }
+
                         setCurrentQueryResults((prev) => ({
                             ...prev,
-                            tableHeaders: result.headers ?? [],
-                            tableData: (result.data as TableDataEntry[]) ?? []
+                            tableHeaders: tableHeaders,
+                            tableData: (result.data as TableDataEntry[]) ?? [],
                         }));
                     })
                     .catch((_error) => {
@@ -273,7 +285,7 @@ export const CollectionView = (): JSX.Element => {
         }
 
         getDataForView(currentContext.currentView);
-    }, [currentContext.currentViewState?.currentPath])
+    }, [currentContext.currentViewState?.currentPath]);
 
     return (
         <CollectionViewContext.Provider value={[currentContext, setCurrentContext]}>

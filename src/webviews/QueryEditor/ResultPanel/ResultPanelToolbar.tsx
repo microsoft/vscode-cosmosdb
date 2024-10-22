@@ -35,12 +35,19 @@ import {
     ArrowRightFilled,
     DocumentCopyRegular,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { DEFAULT_PAGE_SIZE } from '../../../docdb/types/queryResult';
+import { Timer } from '../../Timer';
 import { queryMetricsToCsv, queryMetricsToJSON, queryResultToCsv, queryResultToJSON } from '../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
-import { DEFAULT_PAGE_SIZE } from '../state/QueryEditorState';
 
-type ResultToolbarProps = { selectedTab: string };
+export type ResultToolbarProps = { selectedTab: string };
+
+export type AlertDialogProps = {
+    open: boolean;
+    setOpen: (open: boolean) => void;
+    doAction: () => Promise<void>;
+};
 
 const ToolbarDividerTransparent = () => {
     return <div style={{ padding: '4px' }} />;
@@ -137,10 +144,39 @@ const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
     );
 };
 
-type AlertDialogProps = {
-    open: boolean;
-    setOpen: (open: boolean) => void;
-    doAction: () => Promise<void>;
+// Shows the execution time and the number of records displayed in the result panel
+const ToolbarStatusBar = () => {
+    const state = useQueryEditorState();
+
+    const [time, setTime] = useState(0);
+
+    const recordRange = state.currentExecutionId
+        ? state.pageSize === -1
+            ? state.currentQueryResult?.documents?.length
+                ? `0 - ${state.currentQueryResult?.documents?.length}`
+                : 'All'
+            : `${(state.pageNumber - 1) * state.pageSize} - ${state.pageNumber * state.pageSize}`
+        : `0 - 0`;
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout | undefined = undefined;
+
+        if (state.isExecuting) {
+            interval = setInterval(() => {
+                setTime((time) => time + 10);
+            }, 10);
+        } else {
+            clearInterval(interval);
+        }
+        return () => clearInterval(interval);
+    }, [state.isExecuting]);
+
+    return (
+        <div style={{ minWidth: '100px', maxWidth: '100px', textAlign: 'center' }}>
+            {state.isExecuting && <Timer time={time} />}
+            {!state.isExecuting && <Label weight="semibold">{recordRange}</Label>}
+        </div>
+    );
 };
 
 const AlertDialog = ({ open, setOpen, doAction }: AlertDialogProps) => {
@@ -173,14 +209,6 @@ export const ResultPanelToolbar = ({ selectedTab }: ResultToolbarProps) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const restoreFocusTargetAttribute = useRestoreFocusTarget();
-
-    const recordRange = state.currentExecutionId
-        ? state.pageSize === -1
-            ? state.currentQueryResult?.documents?.length
-                ? `0 - ${state.currentQueryResult?.documents?.length}`
-                : 'All'
-            : `${(state.pageNumber - 1) * state.pageSize} - ${state.pageNumber * state.pageSize}`
-        : `0 - 0`;
 
     const [open, setOpen] = useState(false);
     const [doAction, setDoAction] = useState<() => Promise<void>>(() => async () => {});
@@ -312,9 +340,7 @@ export const ResultPanelToolbar = ({ selectedTab }: ResultToolbarProps) => {
 
                 <ToolbarDivider />
 
-                <Label weight="semibold" style={{ minWidth: '100px', maxWidth: '100px', textAlign: 'center' }}>
-                    {recordRange}
-                </Label>
+                <ToolbarStatusBar />
 
                 <ToolbarDivider />
 

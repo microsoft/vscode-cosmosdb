@@ -3,14 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosClient } from '@azure/cosmos';
+import { CosmosClient, type CosmosClientOptions } from '@azure/cosmos';
+// eslint-disable-next-line import/no-internal-modules
+import { getSessionFromVSCode } from '@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode';
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
 import * as https from 'https';
+import { merge } from 'lodash';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { type NoSqlQueryConnection } from './NoSqlCodeLensProvider';
-// eslint-disable-next-line import/no-internal-modules
-import { getSessionFromVSCode } from '@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode';
 
 export type CosmosDBKeyCredential = {
     type: 'key';
@@ -31,7 +32,10 @@ export function getCosmosAuthCredential(credentials: CosmosDBCredential[]): Cosm
     return credentials.filter((cred): cred is CosmosDBAuthCredential => cred.type === 'auth')[0];
 }
 
-export function getCosmosClientByConnection(connection: NoSqlQueryConnection): CosmosClient {
+export function getCosmosClientByConnection(
+    connection: NoSqlQueryConnection,
+    options?: Partial<CosmosClientOptions>,
+): CosmosClient {
     const { endpoint, masterKey, isEmulator } = connection;
 
     const vscodeStrictSSL: boolean | undefined = vscode.workspace
@@ -43,7 +47,7 @@ export function getCosmosClientByConnection(connection: NoSqlQueryConnection): C
     const connectionPolicy = {
         enableEndpointDiscovery: enableEndpointDiscovery === undefined ? true : enableEndpointDiscovery,
     };
-    const commonProperties = {
+    const commonProperties: CosmosClientOptions = {
         endpoint,
         userAgentSuffix: appendExtensionUserAgent(),
         agent: new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL }),
@@ -51,24 +55,20 @@ export function getCosmosClientByConnection(connection: NoSqlQueryConnection): C
     };
 
     if (masterKey !== undefined) {
-        return new CosmosClient({
-            ...commonProperties,
-            key: masterKey,
-        });
+        commonProperties.key = masterKey;
     } else {
-        return new CosmosClient({
-            ...commonProperties,
-            aadCredentials: {
-                getToken: async (scopes, _options) => {
-                    const session = await getSessionFromVSCode(scopes, undefined, { createIfNone: true });
-                    return {
-                        token: session?.accessToken ?? '',
-                        expiresOnTimestamp: 0,
-                    };
-                },
+        commonProperties.aadCredentials = {
+            getToken: async (scopes, _options) => {
+                const session = await getSessionFromVSCode(scopes, undefined, { createIfNone: true });
+                return {
+                    token: session?.accessToken ?? '',
+                    expiresOnTimestamp: 0,
+                };
             },
-        });
+        };
     }
+
+    return new CosmosClient(merge(options ?? {}, commonProperties));
 }
 
 export function getCosmosClient(

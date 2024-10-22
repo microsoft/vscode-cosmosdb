@@ -5,6 +5,9 @@
 
 import { type ItemDefinition, type JSONValue, type PartitionKey, type QueryMetrics } from '@azure/cosmos';
 
+export const DEFAULT_PAGE_SIZE = 100 as const;
+export const DEFAULT_EXECUTION_TIMEOUT = 600_000 as const; // 10 minutes (600 seconds)
+
 export interface CosmosDbRecord extends ItemDefinition {
     id: string; // This is the unique name that identifies the document, i.e. no two documents can share the same id in partition. The id must not exceed 255 characters.
 
@@ -73,4 +76,5 @@ export type SerializedQueryResult = {
 
 export type ResultViewMetadata = {
     countPerPage?: number;
+    timeout?: number; // How long the query is allowed to run in seconds
 };

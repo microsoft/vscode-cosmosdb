@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AbortError, ErrorResponse, TimeoutError, type CosmosClient, type QueryIterator } from '@azure/cosmos';
+import { AbortError, ErrorResponse, TimeoutError, type QueryIterator } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
@@ -11,13 +11,18 @@ import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClientByConnection } from '../getCosmosClient';
-import { type CosmosDbRecord, type ResultViewMetadata } from '../types/queryResult';
+import {
+    DEFAULT_EXECUTION_TIMEOUT,
+    DEFAULT_PAGE_SIZE,
+    type CosmosDbRecord,
+    type ResultViewMetadata,
+} from '../types/queryResult';
 import { QuerySessionResult } from './QuerySessionResult';
 
 export class QuerySession {
     public readonly id: string;
     private readonly channel: Channel;
-    private readonly client: CosmosClient;
+    private readonly connection: NoSqlQueryConnection;
     private readonly databaseId: string;
     private readonly containerId: string;
     private readonly resultViewMetadata: ResultViewMetadata = {};
@@ -43,14 +48,13 @@ export class QuerySession {
 
         this.id = uuid();
         this.channel = channel;
+        this.connection = connection;
         this.databaseId = databaseId;
         this.containerId = containerId;
         this.endpoint = endpoint;
         this.masterKey = masterKey ?? '';
         this.resultViewMetadata = resultViewMetadata;
         this.query = query;
-
-        this.client = getCosmosClientByConnection(connection);
 
         this.sessionResult = new QuerySessionResult(resultViewMetadata);
     }
@@ -71,13 +75,22 @@ export class QuerySession {
 
             try {
                 this.abortController = new AbortController();
-                this.iterator = this.client
+
+                const client = getCosmosClientByConnection(this.connection, {
+                    connectionPolicy: {
+                        requestTimeout: this.resultViewMetadata.timeout ?? DEFAULT_EXECUTION_TIMEOUT,
+                    },
+                });
+
+                this.iterator = client
                     .database(this.databaseId)
                     .container(this.containerId)
                     .items.query<CosmosDbRecord>(this.query, {
                         abortSignal: this.abortController.signal,
                         populateQueryMetrics: true,
-                        maxItemCount: isFetchAll ? undefined : (this.resultViewMetadata?.countPerPage ?? 100),
+                        maxItemCount: isFetchAll
+                            ? undefined
+                            : (this.resultViewMetadata?.countPerPage ?? DEFAULT_PAGE_SIZE),
                         maxDegreeOfParallelism: 1000,
                         bufferItems: true,
                     });
@@ -201,7 +214,7 @@ export class QuerySession {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'executionStopped',
-                params: [this.id],
+                params: [this.id, Date.now()],
             });
         });
     }
@@ -248,7 +261,7 @@ export class QuerySession {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'executionStarted',
-                params: [this.id],
+                params: [this.id, Date.now()],
             });
 
             await action();
@@ -260,6 +273,12 @@ export class QuerySession {
             });
         } catch (error) {
             await this.errorHandling(error);
+        } finally {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'executionStopped',
+                params: [this.id, Date.now()],
+            });
         }
     }
 

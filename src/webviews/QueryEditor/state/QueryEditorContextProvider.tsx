@@ -14,7 +14,7 @@ import {
 import { type Channel } from '../../../panels/Communication/Channel/Channel';
 import { type OpenDocumentMode } from '../../Document/state/DocumentState';
 import { BaseContextProvider } from '../../utils/context/BaseContextProvider';
-import { type DispatchAction, type EditMode, type TableViewMode } from './QueryEditorState';
+import { type DispatchAction, type TableViewMode } from './QueryEditorState';
 
 const DEFAULT_RESULT_VIEW_METADATA: ResultViewMetadata = {
     countPerPage: DEFAULT_PAGE_SIZE,
@@ -75,16 +75,6 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     public setTableViewMode(mode: TableViewMode) {
         void this.reportWebviewEvent('setTableViewMode', { mode });
         this.dispatch({ type: 'setTableViewMode', mode });
-        this.dispatch({ type: 'setEditMode', mode: 'View' });
-    }
-    public setEditMode(mode: EditMode) {
-        void this.reportWebviewEvent('setEditMode', { mode });
-        this.dispatch({ type: 'setEditMode', mode });
-
-        if (mode === 'Edit') {
-            // While in edit mode, switch to table view
-            this.dispatch({ type: 'setTableViewMode', mode: 'Table' });
-        }
     }
     public setSelectedRows(selectedRows: number[]) {
         void this.reportWebviewEvent('setSelectedDocumentIds', { count: selectedRows.length.toString() });

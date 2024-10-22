@@ -51,8 +51,8 @@ $slick-cell-odd-active-background-color:                    var(--vscode-diffEdi
 /* row */
 $slick-row-mouse-hover-color:                               var(--vscode-diffEditor-insertedLineBackground);
 $slick-row-mouse-hover-box-shadow:                          none;
-$slick-row-selected-color:                                  var(--vscode-list-activeSelectionBackground);
-$slick-row-highlight-background-color:                      var(--vscode-list-activeSelectionBackground);
+$slick-row-selected-color:                                  var(--vscode-editor-findMatchBackground);
+$slick-row-highlight-background-color:                      var(--vscode-editor-selectionHighlightBackground);
 $slick-row-checkbox-selector-background:                    inherit;
 $slick-row-checkbox-selector-border:                        none;
 

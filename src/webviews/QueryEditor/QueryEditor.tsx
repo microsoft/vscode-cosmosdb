@@ -17,6 +17,7 @@ const useStyles = makeStyles({
     root: {
         display: 'grid',
         gridTemplateRows: '100vh',
+        minWidth: '900px',
     },
 });
 

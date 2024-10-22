@@ -10,7 +10,6 @@ export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
 export const QUERY_HISTORY_SIZE = 10;
 
 export type TableViewMode = 'Tree' | 'JSON' | 'Table';
-export type EditMode = 'View' | 'Edit';
 
 export type DispatchAction =
     | {
@@ -55,10 +54,6 @@ export type DispatchAction =
           mode: TableViewMode;
       }
     | {
-          type: 'setEditMode';
-          mode: EditMode;
-      }
-    | {
           type: 'setSelectedRows';
           selectedRows: number[];
       };
@@ -83,7 +78,6 @@ export type QueryEditorState = {
     selectedRows: number[];
 
     tableViewMode: TableViewMode;
-    editMode: EditMode;
 };
 
 export const defaultState: QueryEditorState = {
@@ -105,8 +99,7 @@ export const defaultState: QueryEditorState = {
     currentQueryResult: null,
     selectedRows: [],
 
-    tableViewMode: 'Tree',
-    editMode: 'View',
+    tableViewMode: 'Table',
 };
 
 export function dispatch(state: QueryEditorState, action: DispatchAction): QueryEditorState {
@@ -154,8 +147,6 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, currentQueryResult: action.result, pageNumber: action.currentPage };
         case 'setTableViewMode':
             return { ...state, tableViewMode: action.mode };
-        case 'setEditMode':
-            return { ...state, editMode: action.mode };
         case 'setSelectedRows':
             return { ...state, selectedRows: action.selectedRows };
     }

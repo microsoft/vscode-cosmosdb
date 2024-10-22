@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import debounce from 'lodash.debounce';
-import { useEffect } from 'react';
 import { SlickgridReact, type GridOption, type OnSelectedRowsChangedEventArgs } from 'slickgrid-react';
 import { type TableData } from '../../utils';
 import { useQueryEditorDispatcher } from '../state/QueryEditorContext';
@@ -29,13 +28,6 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     const onSelectedRowsChanged = debounce((args: OnSelectedRowsChangedEventArgs) => {
         dispatcher.setSelectedRows(args.rows);
     }, 100);
-
-    useEffect(() => {
-        return () => {
-            // Clean selected document ids when the component is unmounted
-            dispatcher.setSelectedRows([]);
-        };
-    }, []);
 
     const gridOptions: GridOption = {
         autoResize: {

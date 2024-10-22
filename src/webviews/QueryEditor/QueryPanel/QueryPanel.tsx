@@ -9,6 +9,7 @@ import { QueryToolbar } from './QueryToolbar';
 
 const useClasses = makeStyles({
     toolbarContainer: {
+        marginTop: '10px',
         marginBottom: '10px',
     },
     monacoContainer: {

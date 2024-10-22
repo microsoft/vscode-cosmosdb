@@ -96,7 +96,7 @@ export class MongoClustersSession {
     }
 
     public getCurrentPageAsTable(path: string[]): TableData {
-        const responsePack: TableData =     {
+        const responsePack: TableData = {
             path: path,
             headers: getPropertyNamesAtLevel(this._currentJsonSchema, path),
             data: getDataAtPath(this._currentRawDocuments, path),

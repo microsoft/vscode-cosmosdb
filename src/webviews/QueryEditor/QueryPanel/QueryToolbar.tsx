@@ -63,6 +63,7 @@ const BaseActionsSection = () => {
                             aria-label="Run"
                             icon={<PlayRegular className={classes.iconPlay} />}
                             disabled={state.isExecuting || !state.isConnected}
+                            appearance={'primary'}
                             menuButton={triggerProps}
                             primaryActionButton={{
                                 onClick: () =>

@@ -35,12 +35,19 @@ import {
     ArrowRightFilled,
     DocumentCopyRegular,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { DEFAULT_PAGE_SIZE } from '../../../docdb/types/queryResult';
+import { Timer } from '../../Timer';
 import { queryMetricsToCsv, queryMetricsToJSON, queryResultToCsv, queryResultToJSON } from '../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
-import { DEFAULT_PAGE_SIZE } from '../state/QueryEditorState';
 
-type ResultToolbarProps = { selectedTab: string };
+export type ResultToolbarProps = { selectedTab: string };
+
+export type AlertDialogProps = {
+    open: boolean;
+    setOpen: (open: boolean) => void;
+    doAction: () => Promise<void>;
+};
 
 const ToolbarDividerTransparent = () => {
     return <div style={{ padding: '4px' }} />;
@@ -52,7 +59,7 @@ const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
 
     async function onSaveToClipboardAsCSV() {
         if (selectedTab === 'result__tab') {
-            await dispatcher.copyToClipboard(queryResultToCsv(state.currentQueryResult));
+            await dispatcher.copyToClipboard(queryResultToCsv(state.currentQueryResult, state.partitionKey));
         }
 
         if (selectedTab === 'stats__tab') {
@@ -73,7 +80,11 @@ const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
     async function onSaveAsCSV() {
         const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
         if (selectedTab === 'result__tab') {
-            await dispatcher.saveToFile(queryResultToCsv(state.currentQueryResult), `${filename}_result`, 'csv');
+            await dispatcher.saveToFile(
+                queryResultToCsv(state.currentQueryResult, state.partitionKey),
+                `${filename}_result`,
+                'csv',
+            );
         }
 
         if (selectedTab === 'stats__tab') {
@@ -133,10 +144,40 @@ const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
     );
 };
 
-type AlertDialogProps = {
-    open: boolean;
-    setOpen: (open: boolean) => void;
-    doAction: () => Promise<void>;
+// Shows the execution time and the number of records displayed in the result panel
+const ToolbarStatusBar = () => {
+    const state = useQueryEditorState();
+
+    const [time, setTime] = useState(0);
+
+    const recordRange = state.currentExecutionId
+        ? state.pageSize === -1
+            ? state.currentQueryResult?.documents?.length
+                ? `0 - ${state.currentQueryResult?.documents?.length}`
+                : 'All'
+            : `${(state.pageNumber - 1) * state.pageSize} - ${state.pageNumber * state.pageSize}`
+        : `0 - 0`;
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout | undefined = undefined;
+
+        if (state.isExecuting) {
+            interval = setInterval(() => {
+                setTime((time) => time + 10);
+            }, 10);
+        } else {
+            setTime(0);
+            clearInterval(interval);
+        }
+        return () => clearInterval(interval);
+    }, [state.isExecuting]);
+
+    return (
+        <div style={{ minWidth: '100px', maxWidth: '100px', textAlign: 'center' }}>
+            {state.isExecuting && <Timer time={time} />}
+            {!state.isExecuting && <Label weight="semibold">{recordRange}</Label>}
+        </div>
+    );
 };
 
 const AlertDialog = ({ open, setOpen, doAction }: AlertDialogProps) => {
@@ -165,7 +206,7 @@ const AlertDialog = ({ open, setOpen, doAction }: AlertDialogProps) => {
     );
 };
 
-export const ResultToolbar = ({ selectedTab }: ResultToolbarProps) => {
+export const ResultPanelToolbar = ({ selectedTab }: ResultToolbarProps) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const restoreFocusTargetAttribute = useRestoreFocusTarget();
@@ -196,7 +237,8 @@ export const ResultToolbar = ({ selectedTab }: ResultToolbarProps) => {
     }
 
     function onOptionSelect(data: OptionOnSelectData) {
-        const countPerPage = parseInt(data.optionText ?? '', 10) ?? -1;
+        const parsedValue = parseInt(data.optionValue ?? '', 10);
+        const countPerPage = isFinite(parsedValue) ? parsedValue : -1;
         if (!state.currentExecutionId) {
             // The result is not loaded yet, just set the page size
             dispatcher.setPageSize(countPerPage);
@@ -279,21 +321,27 @@ export const ResultToolbar = ({ selectedTab }: ResultToolbarProps) => {
                         defaultSelectedOptions={[DEFAULT_PAGE_SIZE.toString()]}
                         {...restoreFocusTargetAttribute}
                     >
-                        <Option key="10">10</Option>
-                        <Option key="50">50</Option>
-                        <Option key="100">100</Option>
-                        <Option key="500">500</Option>
-                        <Option key="All">All</Option>
+                        <Option key="10" value={'10'}>
+                            10
+                        </Option>
+                        <Option key="50" value={'50'}>
+                            50
+                        </Option>
+                        <Option key="100" value={'100'}>
+                            100
+                        </Option>
+                        <Option key="500" value={'500'}>
+                            500
+                        </Option>
+                        <Option key="All" value={'-1'}>
+                            All
+                        </Option>
                     </Dropdown>
                 </Tooltip>
 
                 <ToolbarDivider />
 
-                <Label weight="semibold" style={{ minWidth: '100px', maxWidth: '100px', textAlign: 'center' }}>
-                    {state.currentExecutionId
-                        ? `${(state.pageNumber - 1) * state.pageSize} - ${state.pageNumber * state.pageSize}`
-                        : `0 - 0`}
-                </Label>
+                <ToolbarStatusBar />
 
                 <ToolbarDivider />
 

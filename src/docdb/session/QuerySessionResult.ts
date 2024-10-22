@@ -5,13 +5,14 @@
 
 import { type FeedResponse, type QueryMetrics } from '@azure/cosmos';
 import {
+    type CosmosDbRecord,
     type QueryResult,
     type ResultViewMetadata,
     type SerializedQueryMetrics,
     type SerializedQueryResult,
 } from '../types/queryResult';
 
-export class SessionResult {
+export class QuerySessionResult {
     private readonly queryResults = new Map<number, QueryResult>();
     private readonly isFetchedAll: boolean;
     private readonly metadata: ResultViewMetadata;
@@ -35,13 +36,11 @@ export class SessionResult {
         return this.queryResults.get(pageNumber)?.queryMetrics;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public getDocuments(pageNumber: number): any[] {
+    public getDocuments(pageNumber: number): CosmosDbRecord[] {
         return this.queryResults.get(pageNumber)?.documents ?? [];
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public push(response: FeedResponse<any>): void {
+    public push(response: FeedResponse<CosmosDbRecord>): void {
         if (this.iterationsCount > 0 && this.isFetchedAll) {
             throw new Error('Cannot add more results after fetching all');
         }

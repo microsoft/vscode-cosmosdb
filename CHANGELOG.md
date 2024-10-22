@@ -1,5 +1,24 @@
 # Change Log
 
+## next
+
+### Added
+
+- New UI for executing queries in the NoSQL account. UI supports viewing results in a table, tree or a JSON view, showing the query stats and the RU cost.
+- New UI for executing search queries in the vCore account. UI supports viewing results in a table, tree or a JSON view.
+- New UI for creating, viewing and editing documents in a separate tab.
+- New UI supports VS Code theming (except Monarch).
+
+### Changed
+
+- Bumped dependencies to latest versions. Extension still supports Node 18 and VS Code 1.82.0.
+- Updated eslint and prettier configurations.
+
+### Removed
+
+- Gulp was removed from the project.
+- Husky was removed from the project.
+
 ## 0.23.0
 
 ### Changed

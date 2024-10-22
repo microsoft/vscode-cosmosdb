@@ -4,14 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as React from 'react';
-import { useContext } from 'react';
+import { useContext, useRef } from 'react';
 import {
     SlickgridReact,
     type Formatter,
     type GridOption,
     type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
-    type SlickgridReactInstance,
 } from 'slickgrid-react';
 import { type CellValue } from '../../../../utils/slickgrid/CellValue';
 import { LoadingAnimationTable } from './LoadingAnimationTable';
@@ -44,6 +43,8 @@ const cellFormatter: Formatter<object> = (_row: number, _cell: number, value: Ce
 
 export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Props): React.JSX.Element {
     const [currentContext, setCurrentContext] = useContext(CollectionViewContext);
+
+    const gridRef = useRef<SlickgridReact>(null);
 
     type GridColumn = { id: string; name: string; field: string; minWidth: number };
 
@@ -79,15 +80,6 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
         const activeColumn = gridColumns[event.detail.args.cell].field;
 
         const activeCell = activeDocument[activeColumn] as { type?: string };
-
-        console.log(
-            'Double clicked on cell',
-            activeCell,
-            'in row',
-            event.detail.args.row,
-            'column',
-            event.detail.args.cell,
-        );
 
         if (activeCell && activeCell.type === 'object') {
             handleStepIn(event.detail.args.row, event.detail.args.cell);
@@ -133,21 +125,24 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
         enableHeaderMenu: false,
     };
 
-    let slickGrid: SlickgridReactInstance | null = null;
-
     React.useEffect(() => {
         console.log('Grid View has mounted');
 
         return () => {
             console.log('Grid View will unmount');
-            slickGrid?.gridService.setSelectedRows([]);
+            gridRef.current?.gridService.setSelectedRows([]);
         };
     }, []);
 
-    function reactGridReady(grid: SlickgridReactInstance) {
-        console.log('Grid Ready');
-        slickGrid = grid;
-    }
+    /*
+     * Effect to manually trigger grid update on liveHeaders or liveData change.
+     * This is necessary because SlickGrid does not consistently re-render when data changes.
+     * This could be an implementation issue/details of the SlickGrid React wrapper
+     * or a mistake in the way we're using the grid.
+     */
+    React.useEffect(() => {
+        gridRef.current?.gridService.renderGrid();
+    }, [liveData, gridColumns]); // Re-run when headers or data change
 
     if (currentContext.isLoading) {
         return <LoadingAnimationTable />;
@@ -155,6 +150,7 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
         return (
             <SlickgridReact
                 gridId="myGrid"
+                ref={gridRef} // Attach the reference to SlickGrid
                 gridOptions={gridOptions}
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 columnDefinitions={gridColumns}
@@ -162,7 +158,6 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
                 dataset={liveData}
                 onDblClick={(event) => onCellDblClick(event)}
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                onReactGridCreated={(event) => reactGridReady(event.detail)}
                 // debouncing here as multiple events are fired on multiselect
                 onSelectedRowsChanged={debounce(
                     (event: { detail: { eventData: unknown; args: OnSelectedRowsChangedEventArgs } }) =>

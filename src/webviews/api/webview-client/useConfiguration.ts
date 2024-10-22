@@ -20,10 +20,10 @@ declare global {
  * @returns The configuration object that was passed to the webview at its creation
  */
 export function useConfiguration<T>(): T {
-  const [configuration] = useState<T>(() => {
-    const configString = decodeURIComponent(window.config?.__initialData ?? '{}');
-    return JSON.parse(configString) as T;
-  });
+    const [configuration] = useState<T>(() => {
+        const configString = decodeURIComponent(window.config?.__initialData ?? '{}');
+        return JSON.parse(configString) as T;
+    });
 
-  return configuration;
+    return configuration;
 }

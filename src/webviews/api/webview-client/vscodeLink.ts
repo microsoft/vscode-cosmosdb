@@ -148,4 +148,3 @@ function vscodeLink(options: VSCodeLinkOptions): TRPCLink<AppRouter> {
 }
 
 export { vscodeLink, VSCodeLinkOptions };
-

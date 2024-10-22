@@ -16,9 +16,7 @@ import { createCallerFactory } from './trpc';
  * @template Configuration The type of the configuration object that the webview will receive
  * @template Reducers The type of the reducers that the webview will use
  */
-export class WebviewController<Configuration> extends WebviewBaseController<
-    Configuration
-> {
+export class WebviewController<Configuration> extends WebviewBaseController<Configuration> {
     private _panel: vscode.WebviewPanel;
 
     /**

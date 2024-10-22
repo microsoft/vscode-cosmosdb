@@ -240,11 +240,11 @@ describe('Mongo Schema Analyzer', () => {
 
             propertiesAtRoot = getPropertyNamesAtLevel(schema, ['user']);
             expect(propertiesAtRoot).toHaveLength(3);
-            expect(propertiesAtRoot).toEqual(['username', 'email', 'profile']);
+            expect(propertiesAtRoot).toEqual(['email', 'profile', 'username']);
 
             propertiesAtRoot = getPropertyNamesAtLevel(schema, ['user', 'profile']);
             expect(propertiesAtRoot).toHaveLength(4);
-            expect(propertiesAtRoot).toEqual(['firstName', 'lastName', 'hobbies', 'addresses']);
+            expect(propertiesAtRoot).toEqual(['addresses', 'firstName', 'hobbies', 'lastName']);
 
             propertiesAtRoot = getPropertyNamesAtLevel(schema, ['history']);
             expect(propertiesAtRoot).toHaveLength(6);

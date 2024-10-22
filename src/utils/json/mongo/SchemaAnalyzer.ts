@@ -616,7 +616,6 @@ function aggregateStatsForValue(value: unknown, mongoType: MongoBSONTypes, prope
     }
 }
 
-
 function getSchemaAtPath(schema: JSONSchema, path: string[]): JSONSchema {
     let currentNode = schema;
 
@@ -630,13 +629,13 @@ function getSchemaAtPath(schema: JSONSchema, path: string[]): JSONSchema {
 
         // Move to the next property in the schema
         if (currentNode && currentNode.properties && currentNode.properties[key]) {
-            const nextNode : JSONSchema = currentNode.properties[key] as JSONSchema;
+            const nextNode: JSONSchema = currentNode.properties[key] as JSONSchema;
             /**
              * Now, with our JSON Schema, there are "anyOf" entries that we need to consider.
              * We're looking at the "Object"-one, because these have the properties we're interested in.
              */
             if (nextNode.anyOf && nextNode.anyOf.length > 0) {
-                currentNode = nextNode.anyOf.find((entry : JSONSchema) => entry.type === 'object') as JSONSchema;
+                currentNode = nextNode.anyOf.find((entry: JSONSchema) => entry.type === 'object') as JSONSchema;
             } else {
                 // we can't continue, as we're missing the next node, we abort at the last node we managed to extract
                 return currentNode;
@@ -661,7 +660,11 @@ export function getPropertyNamesAtLevel(jsonSchema: JSONSchema, path: string[]):
         });
     }
 
-    return Array.from(headers);
+    return Array.from(headers).sort((a, b) => {
+        if (a === '_id') return -1; // _id should come before b
+        if (b === '_id') return 1; // _id should come after a
+        return a.localeCompare(b); // regular sorting
+    });
 }
 
 export function buildFullPaths(path: string[], propertyNames: string[]): string[] {

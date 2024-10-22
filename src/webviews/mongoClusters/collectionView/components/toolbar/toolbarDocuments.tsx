@@ -4,12 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Toolbar, ToolbarButton } from '@fluentui/react-components';
-import {
-    AddFilled,
-    DeleteRegular,
-    EditRegular,
-    EyeRegular
-} from '@fluentui/react-icons';
+import { AddFilled, DeleteRegular, EditRegular, EyeRegular } from '@fluentui/react-icons';
 import { useContext, type JSX } from 'react';
 import { CollectionViewContext } from '../../collectionViewContext';
 

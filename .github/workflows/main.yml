@@ -1,14 +1,14 @@
 name: Node PR Lint, Build and Test
 
 on:
-    # Trigger when manually run
-    workflow_dispatch:
+  # Trigger when manually run
+  workflow_dispatch:
 
-    # Trigger on pushes to `main` or `rel/*`
-    push:
-        branches:
-            - main
-            - rel/*
+  # Trigger on pushes to `main` or `rel/*`
+  push:
+    branches:
+      - main
+      - rel/*
 
   # Trigger on pull requests to `main` or `rel/*`
   pull_request:
@@ -27,9 +27,9 @@ jobs:
 
     steps:
       # Setup
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Using Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
       - run: npm ci
@@ -47,7 +47,7 @@ jobs:
         run: npm run package
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Artifacts
           path: |

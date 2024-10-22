@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type SerializedQueryResult } from '../../../docdb/types/queryResult';
+import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { DEFAULT_PAGE_SIZE, type SerializedQueryResult } from '../../../docdb/types/queryResult';
 
 export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
 export const QUERY_HISTORY_SIZE = 10;
-export const DEFAULT_PAGE_SIZE = 100;
 
 export type TableViewMode = 'Tree' | 'JSON' | 'Table';
 export type EditMode = 'View' | 'Edit';
@@ -21,6 +21,7 @@ export type DispatchAction =
           type: 'databaseConnected';
           dbName: string;
           collectionName: string;
+          partitionKey?: PartitionKeyDefinition;
       }
     | {
           type: 'databaseDisconnected';
@@ -28,10 +29,12 @@ export type DispatchAction =
     | {
           type: 'executionStarted';
           executionId: string;
+          startExecutionTime: number;
       }
     | {
           type: 'executionStopped';
           executionId: string;
+          endExecutionTime: number;
       }
     | {
           type: 'appendQueryHistory';
@@ -54,22 +57,30 @@ export type DispatchAction =
     | {
           type: 'setEditMode';
           mode: EditMode;
+      }
+    | {
+          type: 'setSelectedRows';
+          selectedRows: number[];
       };
 
 export type QueryEditorState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
     collectionName: string; // Collection which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
+    partitionKey?: PartitionKeyDefinition; // Partition key of the collection (Readonly, only server can change it)
     currentExecutionId: string; // Execution ID of the current query (Value exists on both client and server)
     queryHistory: string[];
     queryValue: string;
     isConnected: boolean;
     isExecuting: boolean;
+    startExecutionTime: number; // Time when the query execution started
+    endExecutionTime: number; // Time when the query execution ended
 
     // Result state
     pageNumber: number; // Current page number (Readonly, only server can change it) (Value exists on both client and server)
     pageSize: number;
 
     currentQueryResult: SerializedQueryResult | null;
+    selectedRows: number[];
 
     tableViewMode: TableViewMode;
     editMode: EditMode;
@@ -78,17 +89,21 @@ export type QueryEditorState = {
 export const defaultState: QueryEditorState = {
     dbName: '',
     collectionName: '',
+    partitionKey: undefined,
     currentExecutionId: '',
     queryHistory: [],
     queryValue: DEFAULT_QUERY_VALUE,
     isConnected: false,
     isExecuting: false,
+    startExecutionTime: 0,
+    endExecutionTime: 0,
 
     // Result state
     pageNumber: 1,
     pageSize: DEFAULT_PAGE_SIZE,
 
     currentQueryResult: null,
+    selectedRows: [],
 
     tableViewMode: 'Tree',
     editMode: 'View',
@@ -99,7 +114,13 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
         case 'insertText':
             return { ...state, queryValue: action.queryValue };
         case 'databaseConnected':
-            return { ...state, isConnected: true, dbName: action.dbName, collectionName: action.collectionName };
+            return {
+                ...state,
+                isConnected: true,
+                dbName: action.dbName,
+                collectionName: action.collectionName,
+                partitionKey: action.partitionKey,
+            };
         case 'databaseDisconnected':
             return { ...state, isConnected: false, dbName: '', collectionName: '' };
         case 'executionStarted':
@@ -109,13 +130,14 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
                 currentExecutionId: action.executionId,
                 pageNumber: 1,
                 currentQueryResult: null,
+                startExecutionTime: action.startExecutionTime,
             };
         case 'executionStopped': {
             if (action.executionId !== state.currentExecutionId) {
                 // TODO: send telemetry. It should not happen
                 return state;
             }
-            return { ...state, isExecuting: false };
+            return { ...state, isExecuting: false, endExecutionTime: action.endExecutionTime };
         }
         case 'appendQueryHistory': {
             const queryHistory = [...state.queryHistory, action.queryValue].filter(
@@ -134,5 +156,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, tableViewMode: action.mode };
         case 'setEditMode':
             return { ...state, editMode: action.mode };
+        case 'setSelectedRows':
+            return { ...state, selectedRows: action.selectedRows };
     }
 }

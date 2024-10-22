@@ -143,7 +143,6 @@ export function useTrpcClient() {
         };
     }, [vscodeEventTarget]);
 
-
     // Return the tRPC client and the event target for notifications
     return { trpcClient: trpcClient, vscodeEventTarget };
 }

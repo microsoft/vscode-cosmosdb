@@ -1,8 +1,8 @@
+import { Button, Input } from '@fluentui/react-components';
+import { PlayRegular, SearchFilled } from '@fluentui/react-icons';
 import type { JSX } from 'react';
 import { useContext, useRef } from 'react';
 import { CollectionViewContext } from '../collectionViewContext';
-import { Button, Input } from '@fluentui/react-components';
-import { PlayRegular, SearchFilled } from '@fluentui/react-icons';
 
 export const FindQueryComponent = ({ onQueryUpdate }): JSX.Element => {
     const [currentContext] = useContext(CollectionViewContext);

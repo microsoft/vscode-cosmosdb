@@ -89,5 +89,3 @@ export class MongoClustersExtension implements vscode.Disposable {
         );
     };
 }
-
-

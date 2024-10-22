@@ -17,7 +17,7 @@ export function openDocumentView(
         documentId: string;
 
         mode: string;
-    }
+    },
 ): void {
     const view = new DocumentsViewController({
         id: props.id,

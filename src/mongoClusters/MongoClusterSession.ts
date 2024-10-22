@@ -10,7 +10,7 @@ import { getDataAtPath } from '../utils/slickgrid/mongo/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
 import { MongoClustersClient } from './MongoClustersClient';
 
-export type TableDataEntry= { 'x-objectid'?: string; [key: string]: unknown };
+export type TableDataEntry = { 'x-objectid'?: string; [key: string]: unknown };
 
 export interface TableData {
     path: string[];
@@ -96,7 +96,7 @@ export class MongoClustersSession {
     }
 
     public getCurrentPageAsTable(path: string[]): TableData {
-        const responsePack: TableData =     {
+        const responsePack: TableData = {
             path: path,
             headers: getPropertyNamesAtLevel(this._currentJsonSchema, path),
             data: getDataAtPath(this._currentRawDocuments, path),

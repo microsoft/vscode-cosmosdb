@@ -123,7 +123,7 @@ export const complexDocumentWithOddTypes: WithId<Document> = {
             { orderId: 2, totalAmount: Decimal128.fromString('199.99') },
         ],
     },
-}
+};
 
 export const complexDocumentsArray: WithId<Document>[] = [
     flatDocument,

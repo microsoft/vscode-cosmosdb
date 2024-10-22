@@ -12,4 +12,3 @@ export const WebviewRegistry = {
     mongoClustersCollectionView: CollectionView,
     mongoClustersDocumentView: DocumentView,
 } as const;
-

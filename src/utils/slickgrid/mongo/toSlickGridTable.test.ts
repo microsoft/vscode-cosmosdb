@@ -26,7 +26,7 @@ const jsonDocuments = [
         nestedDocument: {
             key: 'value',
             subNestedDocument: {
-                a_key: false
+                a_key: false,
             },
         },
         array: [
@@ -80,16 +80,15 @@ describe('toSlickGridTable', () => {
 
         expect(tableData).toHaveLength(5);
         expect(tableData[0]['key']).toBeDefined();
-        expect(tableData[1]['key']).toEqual({ value: 'value', type: 'string' })
+        expect(tableData[1]['key']).toEqual({ value: 'value', type: 'string' });
         expect(tableData[0]['anotherKey']).toBeDefined();
         expect(tableData[1]['subNestedDocument']).toBeDefined();
-
     });
 
     it('at a 2nd nested level', () => {
         const tableData = getDataAtPath(mongoDocuments, ['nestedDocument', 'subNestedDocument']);
         expect(tableData).toHaveLength(5);
         expect(tableData[1]['a_key']).toBeDefined();
-        expect(tableData[1]['a_key']).toEqual({ value: 'false', type: 'boolean' })
+        expect(tableData[1]['a_key']).toEqual({ value: 'false', type: 'boolean' });
     });
 });

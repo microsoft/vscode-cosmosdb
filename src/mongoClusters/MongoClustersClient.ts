@@ -18,7 +18,7 @@ import {
     type FindOptions,
     type ListDatabasesResult,
     type WithId,
-    type WithoutId
+    type WithoutId,
 } from 'mongodb';
 import { CredentialCache } from './CredentialCache';
 import { toFilterQueryObj } from './utils/toFilterQuery';
@@ -46,8 +46,6 @@ export interface IndexItemModel {
 }
 
 // type TableColumnDef = { id: string; name: string; field: string; minWidth: number };
-
-
 
 export class MongoClustersClient {
     // cache of active/existing clients

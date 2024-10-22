@@ -36,7 +36,7 @@ export function render<V extends ViewKey>(
     root.render(
         <DynamicThemeProvider useAdaptive={true}>
             <WithWebviewContext vscodeApi={vscodeApi}>
-                    <Component />
+                <Component />
             </WithWebviewContext>
         </DynamicThemeProvider>,
     );

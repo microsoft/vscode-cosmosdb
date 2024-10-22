@@ -18,7 +18,7 @@ import {
     type FindOptions,
     type ListDatabasesResult,
     type WithId,
-    type WithoutId
+    type WithoutId,
 } from 'mongodb';
 import { CredentialCache } from './CredentialCache';
 import { toFilterQueryObj } from './utils/toFilterQuery';
@@ -45,9 +45,14 @@ export interface IndexItemModel {
     version?: number;
 }
 
+export type InsertDocumentsResult = {
+    /** Indicates whether this write result was acknowledged. If not, then all other members of this result will be undefined */
+    acknowledged: boolean;
+    /** The number of inserted documents for this operations */
+    insertedCount: number;
+};
+
 // type TableColumnDef = { id: string; name: string; field: string; minWidth: number };
-
-
 
 export class MongoClustersClient {
     // cache of active/existing clients
@@ -220,5 +225,20 @@ export class MongoClustersClient {
         }
 
         return true;
+    }
+
+    async insertDocuments(
+        databaseName: string,
+        collectionName: string,
+        documents: Document[],
+    ): Promise<InsertDocumentsResult> {
+        const collection = this._mongoClient.db(databaseName).collection(collectionName);
+
+        const insertManyResults = await collection.insertMany(documents, { forceServerObjectId: true });
+
+        return {
+            acknowledged: insertManyResults.acknowledged,
+            insertedCount: insertManyResults.insertedCount,
+        };
     }
 }

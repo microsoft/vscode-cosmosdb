@@ -11,13 +11,14 @@ import { cosmosMongoFilter, sqlFilter } from '../constants';
 import { DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
 import { MongoCollectionTreeItem } from '../mongo/tree/MongoCollectionTreeItem';
+import { CollectionItem } from '../mongoClusters/tree/CollectionItem';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { getRootPath } from '../utils/workspacUtils';
 
 export async function importDocuments(
     context: IActionContext,
     uris: vscode.Uri[] | undefined,
-    collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | undefined,
+    collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | CollectionItem | undefined,
 ): Promise<void> {
     if (!uris) {
         uris = await askForDocuments(context);
@@ -32,7 +33,7 @@ export async function importDocuments(
         }
     });
     if (ignoredUris.length) {
-        ext.outputChannel.appendLog(`Ignoring the following files which are not json:`);
+        ext.outputChannel.appendLog(`Ignoring the following files that do not match the "*.json" file name pattern:`);
         ignoredUris.forEach((uri) => ext.outputChannel.appendLog(`${uri.fsPath}`));
         ext.outputChannel.show();
     }
@@ -42,6 +43,12 @@ export async function importDocuments(
             expectedChildContextValue: [MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue],
         });
     }
+
+    // adding a precaution for the mongoClusters path
+    if (!collectionNode) {
+        throw new Error('No collection selected.');
+    }
+
     let result: string;
     result = await vscode.window.withProgress(
         {
@@ -52,11 +59,13 @@ export async function importDocuments(
             uris = nonNullValue(uris, 'uris');
             collectionNode = nonNullValue(collectionNode, 'collectionNode');
 
-            progress.report({ increment: 20, message: 'Parsing documents for errors' });
-            const documents = await parseDocuments(uris);
-            progress.report({ increment: 30, message: 'Parsed documents. Importing' });
+            progress.report({ increment: 20, message: 'Loading documents...' });
+            const documents: unknown[] = await parseDocuments(uris);
+            progress.report({ increment: 30, message: `Loaded ${documents.length} document(s). Importing...` });
             if (collectionNode instanceof MongoCollectionTreeItem) {
                 result = await insertDocumentsIntoMongo(collectionNode, documents);
+            } else if (collectionNode instanceof CollectionItem) {
+                result = await insertDocumentsIntoMongoCluster(context, collectionNode, documents);
             } else {
                 result = await insertDocumentsIntoDocdb(collectionNode, documents, uris);
             }
@@ -65,7 +74,10 @@ export async function importDocuments(
         },
     );
 
-    await collectionNode.refresh(context);
+    if (collectionNode instanceof CollectionItem === false) {
+        await collectionNode.refresh(context);
+    }
+
     await vscode.window.showInformationMessage(result);
 }
 
@@ -85,7 +97,7 @@ async function askForDocuments(context: IActionContext): Promise<vscode.Uri[]> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
+async function parseDocuments(uris: vscode.Uri[]): Promise<unknown[]> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let documents: any[] = [];
     let errorFoundFlag: boolean = false;
@@ -169,4 +181,22 @@ async function insertDocumentsIntoMongo(node: MongoCollectionTreeItem, documents
         }
     }
     return output;
+}
+
+async function insertDocumentsIntoMongoCluster(
+    context: IActionContext,
+    node: CollectionItem,
+    documents: unknown[],
+): Promise<string> {
+    const result = await node.insertDocuments(context, documents as Document[]);
+
+    let message: string;
+    if (result.acknowledged) {
+        message = `Import successful. Inserted ${result.insertedCount} document(s).`;
+    } else {
+        message = `Import failed. The operation was not acknowledged by the database.`;
+    }
+
+    ext.outputChannel.appendLog('MongoDB (vCore): ' + message);
+    return message;
 }

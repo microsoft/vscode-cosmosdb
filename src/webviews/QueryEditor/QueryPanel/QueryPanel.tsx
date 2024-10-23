@@ -8,19 +8,16 @@ import { QueryMonaco } from './QueryMonaco';
 import { QueryToolbar } from './QueryToolbar';
 
 const useClasses = makeStyles({
-    toolbarContainer: {
-        marginTop: '10px',
-        marginBottom: '10px',
-    },
     monacoContainer: {
         marginTop: '10px',
         width: '100%',
-        height: 'calc(100% - 50px)',
+        height: 'calc(100% - 50px)', // Toolbar height is 40px + 10px margin
     },
     container: {
         'background-color': 'var(--vscode-editor-background)',
+        marginTop: '10px',
         width: '100%',
-        height: '100%',
+        height: 'calc(100% - 10px)', // 10px margin
     },
 });
 
@@ -29,12 +26,10 @@ export const QueryPanel = () => {
 
     return (
         <section className={classes.container}>
-            <div className={classes.toolbarContainer}>
-                <QueryToolbar />
-            </div>
-            <div className={classes.monacoContainer}>
+            <QueryToolbar />
+            <section className={classes.monacoContainer}>
                 <QueryMonaco />
-            </div>
+            </section>
         </section>
     );
 };

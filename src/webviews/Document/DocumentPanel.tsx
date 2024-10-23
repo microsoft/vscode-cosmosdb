@@ -15,11 +15,11 @@ const useClasses = makeStyles({
     resultDisplay: {
         marginTop: '10px',
         width: '100%',
-        height: 'calc(100% - 50px)',
+        height: 'calc(100% - 50px)', // Toolbar height is 40px + 10px margin
     },
     container: {
         marginTop: '10px',
-        height: 'calc(100% - 10px)',
+        height: 'calc(100% - 10px)', // 10px margin
     },
 });
 
@@ -99,7 +99,7 @@ export const DocumentPanel = () => {
     };
 
     return (
-        <div className={classes.container}>
+        <section className={classes.container}>
             {state.error && (
                 <MessageBar key={'error'} intent={'error'} layout={'multiline'}>
                     <MessageBarBody>
@@ -120,6 +120,6 @@ export const DocumentPanel = () => {
                     onChange={onChange}
                 />
             </section>
-        </div>
+        </section>
     );
 };

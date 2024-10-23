@@ -160,7 +160,7 @@ const ConnectedActionsSection = () => {
                 Disconnect
             </ToolbarButton>
             <ToolbarDivider />
-            <span aria-label="Database">
+            <span aria-label="Database" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 Connected to {state.dbName}/{state.collectionName}
             </span>
         </>

@@ -89,7 +89,7 @@ export const DocumentToolbar = () => {
     return (
         <>
             <AlertDialog open={open} setOpen={setOpen} doAction={doAction} />
-            <Toolbar size="small">
+            <Toolbar>
                 <Tooltip content="Save document to the database" relationship="description" withArrow>
                     <ToolbarButton
                         onClick={onSaveRequest}

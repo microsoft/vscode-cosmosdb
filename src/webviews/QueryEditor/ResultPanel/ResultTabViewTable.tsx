@@ -4,16 +4,30 @@
  *--------------------------------------------------------------------------------------------*/
 
 import debounce from 'lodash.debounce';
+import { useEffect, useState } from 'react';
 import { SlickgridReact, type GridOption, type OnSelectedRowsChangedEventArgs } from 'slickgrid-react';
 import { type TableData } from '../../utils';
-import { useQueryEditorDispatcher } from '../state/QueryEditorContext';
+import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 type ResultTabViewTableProps = TableData & {};
 
 type GridColumn = { id: string; name: string; field: string; minWidth: number };
 
 export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps) => {
+    const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
+
+    const [reservedHeaders, setReservedHeaders] = useState<string[]>([]);
+
+    useEffect(() => {
+        setReservedHeaders(headers);
+    }, [headers]);
+
+    // If query is executing and headers are not available, use reserved headers (previous)
+    // It is fix for the message "No data to display" since without data grid folds by width
+    if ((!headers || headers.length === 0) && reservedHeaders.length !== 0 && state.isExecuting) {
+        headers = reservedHeaders;
+    }
 
     const gridColumns: GridColumn[] = headers.map((header) => {
         return {

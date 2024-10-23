@@ -10,7 +10,7 @@ import { getDataAtPath } from '../utils/slickgrid/mongo/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
 import { MongoClustersClient } from './MongoClustersClient';
 
-export type TableDataEntry= { 'x-objectid'?: string; [key: string]: unknown };
+export type TableDataEntry = { 'x-objectid'?: string; [key: string]: unknown };
 
 export interface TableData {
     path: string[];

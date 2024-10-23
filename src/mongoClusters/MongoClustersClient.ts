@@ -151,7 +151,7 @@ export class MongoClustersClient {
         abortSignal: AbortSignal,
         findQuery: string = '{}',
         skip: number = 0,
-        limit: number = 0
+        limit: number = 0,
     ): AsyncGenerator<Document, void, unknown> {
         /**
          * Configuration
@@ -166,7 +166,7 @@ export class MongoClustersClient {
 
         const options: FindOptions = {
             skip: skip > 0 ? skip : undefined,
-            limit: limit >0 ? limit : undefined,
+            limit: limit > 0 ? limit : undefined,
         };
 
         const collection = this._mongoClient.db(databaseName).collection(collectionName);

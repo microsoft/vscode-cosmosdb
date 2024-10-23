@@ -13,10 +13,14 @@ import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { type Document } from 'bson';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { ext } from '../../extensionVariables';
-import { MongoClustersClient, type CollectionItemModel, type DatabaseItemModel, type InsertDocumentsResult } from '../MongoClustersClient';
+import {
+    MongoClustersClient,
+    type CollectionItemModel,
+    type DatabaseItemModel,
+    type InsertDocumentsResult,
+} from '../MongoClustersClient';
 import { IndexesItem } from './IndexesItem';
 import { type MongoClusterItemBase, type MongoClusterModel } from './MongoClusterItem';
-
 
 export class CollectionItem implements MongoClusterItemBase {
     id: string;

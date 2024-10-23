@@ -27,7 +27,11 @@ export async function mongoClustersExportDocuments(_context: IActionContext, nod
     const client = await MongoClustersClient.getClient(nonNullValue(node.mongoCluster.session?.credentialId));
 
     const docStreamAbortController = new AbortController();
-    const docStream = client.streamDocuments(node.databaseInfo.name, node.collectionInfo.name, docStreamAbortController.signal);
+    const docStream = client.streamDocuments(
+        node.databaseInfo.name,
+        node.collectionInfo.name,
+        docStreamAbortController.signal,
+    );
 
     const filePath = targetUri.fsPath; // Convert `vscode.Uri` to a regular file path
     ext.outputChannel.appendLog(`MongoDB (vCore): Exporting data to: ${filePath}`);
@@ -36,7 +40,13 @@ export async function mongoClustersExportDocuments(_context: IActionContext, nod
 
     // Wrap the export process inside a progress reporting function
     await runExportWithProgressAndDescription(node.id, async (progress, cancellationToken) => {
-        documentCount = await exportDocumentsToFile(docStream, filePath, progress, cancellationToken, docStreamAbortController);
+        documentCount = await exportDocumentsToFile(
+            docStream,
+            filePath,
+            progress,
+            cancellationToken,
+            docStreamAbortController,
+        );
     });
 
     ext.outputChannel.appendLog(`MongoDB (vCore): Exported document count: ${documentCount}`);

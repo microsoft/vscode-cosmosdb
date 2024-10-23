@@ -104,7 +104,6 @@ export const CollectionView = (): JSX.Element => {
             });
     }, [currentContext.currrentQueryDefinition]);
 
-
     const handleViewChanged = (_optionValue: string) => {
         let selection: Views;
 

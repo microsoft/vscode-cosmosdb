@@ -110,7 +110,7 @@ async function askForDocuments(context: IActionContext): Promise<vscode.Uri[]> {
  *                       EJSON supports more datatypes and is specific to MongoDB. This is currently used for MongoDB clusters/vcore.
  * @returns A promise that resolves to an array of parsed documents as unknown objects.
  * @throws An error if any documents contain errors, prompting the user to fix them and try again.
-*/
+ */
 async function parseDocuments(uris: vscode.Uri[], supportEJSON: boolean = false): Promise<unknown[]> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let documents: any[] = [];

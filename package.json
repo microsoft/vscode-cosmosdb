@@ -622,6 +622,11 @@
                 "category": "MongoDB (vCore)",
                 "command": "mongoClusters.cmd.exportDocuments",
                 "title": "Export Documents from Collection..."
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.launchShell",
+                "title": "Launch Shell"
             }
         ],
         "submenus": [
@@ -1146,6 +1151,11 @@
                     "command": "mongoClusters.cmd.exportDocuments",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.collection",
                     "group": "1@2"
+                },
+                {
+                    "command": "mongoClusters.cmd.launchShell",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /mongoClusters.item.(mongoCluster|database|collection)/i",
+                    "group": "2@1"
                 }
             ],
             "explorer/context": [

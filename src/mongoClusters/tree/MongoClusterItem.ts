@@ -23,7 +23,6 @@ import { localize } from '../../utils/localize';
 import { regionToDisplayName } from '../../utils/regionToDisplayName';
 import { CredentialCache } from '../CredentialCache';
 import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersClient';
-import { addAuthenticationDataToConnectionString } from '../utils/connectionStringHelpers';
 import { listMongoClusterNonAdminUsers } from '../utils/listMongoClusterUsers';
 import { type AuthenticateWizardContext } from '../wizards/authenticate/AuthenticateWizardContext';
 import { ProvidePasswordStep } from '../wizards/authenticate/ProvidePasswordStep';
@@ -147,15 +146,13 @@ export class MongoClusterItem implements MongoClusterItemBase {
                         `MongoDB (vCore): Connecting to the cluster as '${wizardContext.selectedUserName}'... `,
                     );
 
-                    const connectionStringWithPassword = addAuthenticationDataToConnectionString(
+                    context.valuesToMask.push(nonNullProp(wizardContext, 'password'));
+
+                    const credentialId = CredentialCache.setCredentials(
                         nonNullValue(cluster.connectionString),
                         nonNullProp(wizardContext, 'selectedUserName'),
                         nonNullProp(wizardContext, 'password'),
                     );
-
-                    context.valuesToMask.push(connectionStringWithPassword);
-
-                    const credentialId = CredentialCache.setConnectionString(connectionStringWithPassword);
                     this.mongoCluster.session = { credentialId: credentialId };
 
                     try {

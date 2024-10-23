@@ -59,6 +59,7 @@ export class MongoClustersClient {
     static _clients: Map<string, MongoClustersClient> = new Map();
 
     private _mongoClient: MongoClient;
+    private _credentialId: string;
 
     /**
      * Use getClient instead of a constructor. Connections/Client are being cached and reused.
@@ -68,10 +69,12 @@ export class MongoClustersClient {
     }
 
     private async initClient(credentialId: string): Promise<void> {
-        if (!CredentialCache.hasConnectionString(credentialId)) {
+        if (!CredentialCache.hasCredentials(credentialId)) {
             throw new Error(`No credentials found for id ${credentialId}`);
         }
-        const cStringPassword = CredentialCache.getConnectionString(credentialId);
+
+        this._credentialId = credentialId;
+        const cStringPassword = CredentialCache.getConnectionStringWithPassword(credentialId);
 
         this._mongoClient = await MongoClient.connect(cStringPassword as string);
     }
@@ -91,6 +94,13 @@ export class MongoClustersClient {
         }
 
         return client;
+    }
+
+    getUserName() {
+        return CredentialCache.getCredentials(this._credentialId)?.connectionUser;
+    }
+    getConnectionString() {
+        return CredentialCache.getCredentials(this._credentialId)?.connectionString;
     }
 
     async listDatabases(): Promise<DatabaseItemModel[]> {

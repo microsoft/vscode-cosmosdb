@@ -9,7 +9,10 @@ import { MongoClustersClient } from '../MongoClustersClient';
 import { type CollectionItem } from '../tree/CollectionItem';
 import { type DatabaseItem } from '../tree/DatabaseItem';
 import { MongoClusterItem } from '../tree/MongoClusterItem';
-import { addAuthenticationDataToConnectionString, addDatabasePathToConnectionString } from '../utils/connectionStringHelpers';
+import {
+    addAuthenticationDataToConnectionString,
+    addDatabasePathToConnectionString,
+} from '../utils/connectionStringHelpers';
 
 export async function launchShell(
     _context: IActionContext,
@@ -36,8 +39,11 @@ export async function launchShell(
 
     if (node instanceof MongoClusterItem) {
         shellParameters = `"${connectionStringWithUserName}"`;
-    } else /*if (node instanceof DatabaseItem)*/ {
-        const connStringWithDb = addDatabasePathToConnectionString(connectionStringWithUserName, node.databaseInfo.name);
+    } /*if (node instanceof DatabaseItem)*/ else {
+        const connStringWithDb = addDatabasePathToConnectionString(
+            connectionStringWithUserName,
+            node.databaseInfo.name,
+        );
         shellParameters = `"${connStringWithDb}"`;
     }
     // } else if (node instanceof CollectionItem) { // --> --eval terminates, we'd have to launch with a script etc. let's look into it latter

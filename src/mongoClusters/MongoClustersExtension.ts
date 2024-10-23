@@ -24,6 +24,7 @@ import { dropCollection } from './commands/dropCollection';
 import { dropDatabase } from './commands/dropDatabase';
 import { mongoClustersExportDocuments } from './commands/exportDocuments';
 import { mongoClustersImportDocuments } from './commands/importDocuments';
+import { launchShell } from './commands/launchShell';
 import { openCollectionView } from './commands/openCollectionView';
 import { openDocumentView } from './commands/openDocumentView';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
@@ -67,6 +68,8 @@ export class MongoClustersExtension implements vscode.Disposable {
 
             registerCommand('mongoClusters.internal.containerView.open', openCollectionView);
             registerCommand('mongoClusters.internal.documentView.open', openDocumentView);
+
+            registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.launchShell', launchShell);
 
             registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.dropCollection', dropCollection);
             registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.dropDatabase', dropDatabase);

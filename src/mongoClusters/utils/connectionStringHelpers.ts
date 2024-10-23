@@ -14,10 +14,19 @@ export const removePasswordFromConnectionString = (connectionString: string): st
 export const addAuthenticationDataToConnectionString = (
     connectionString: string,
     username: string,
-    password: string,
+    password: string | undefined,
 ): string => {
     const connectionStringOb = new ConnectionString(connectionString);
     connectionStringOb.username = username;
-    connectionStringOb.password = password;
+    connectionStringOb.password = password ?? '';
+    return connectionStringOb.toString();
+};
+
+export const addDatabasePathToConnectionString = (
+    connectionString: string,
+    databaseName: string
+): string => {
+    const connectionStringOb = new ConnectionString(connectionString);
+    connectionStringOb.pathname = databaseName;
     return connectionStringOb.toString();
 };

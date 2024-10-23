@@ -36,14 +36,10 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
         },
         enableAutoResize: true,
         enableAutoSizeColumns: true, // true as when using a tree, there are only 3 columns to work with
-
         showHeaderRow: false, // this actually hides the filter-view, not the header: https://ghiscoding.gitbook.io/slickgrid-universal/grid-functionalities/tree-data-grid#parentchild-relation-dataset:~:text=If%20you%20don%27t,showHeaderRow%3A%20false
-
         enableFiltering: true, // required by slickgrid to render Tree Data
         enableSorting: false,
-
         enableTreeData: true,
-
         treeDataOptions: {
             columnId: 'id_field',
             parentPropName: 'parentId',
@@ -51,7 +47,6 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
             levelPropName: 'treeLevel',
             indentMarginLeft: 15,
             initiallyCollapsed: true,
-
             // we can also add a custom Formatter just for the title text portion
             titleFormatter: (_row, _cell, value, _def, _dataContext) => {
                 return `<span class="bold">${value}</span>`;

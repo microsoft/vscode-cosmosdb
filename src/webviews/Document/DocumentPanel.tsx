@@ -109,6 +109,7 @@ export const DocumentPanel = () => {
                 </MessageBar>
             )}
             <DocumentToolbar />
+            {isReadOnly && <MessageBar intent={'info'}>This document is read-only.</MessageBar>}
             {inProgress && <ProgressBar />}
             <section className={classes.resultDisplay}>
                 <MonacoEditor

@@ -5,7 +5,7 @@
     "publisher": "ms-azuretools",
     "displayName": "Azure Databases",
     "description": "Create, browse, and update globally distributed, multi-model databases in Azure.",
-    "enableMongoClusters": false,
+    "enableMongoClusters": true,
     "engines": {
         "vscode": "^1.82.0"
     },
@@ -89,6 +89,7 @@
         "@vscode/test-cli": "^0.0.10",
         "@vscode/test-electron": "^2.4.1",
         "@vscode/vsce": "~2.32.0",
+        "@fluentui/react": "^8.0.0",
         "antlr4ts-cli": "^0.5.0-alpha.4",
         "copy-webpack-plugin": "^12.0.2",
         "css-loader": "^7.1.2",

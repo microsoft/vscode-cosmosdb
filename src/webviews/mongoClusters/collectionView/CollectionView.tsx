@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
+import { Tab, TabList } from '@fluentui/react-components';
 import { type JSX, useEffect, useRef, useState } from 'react';
 import { type TableDataEntry } from '../../../mongoClusters/MongoClusterSession';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
@@ -17,7 +18,8 @@ import {
 import { DataViewPanelJSON } from './components/DataViewPanelJSON';
 import { DataViewPanelTableV2 } from './components/DataViewPanelTableV2';
 import { DataViewPanelTree } from './components/DataViewPanelTree';
-import { FindQueryComponent } from './components/FindQueryComponent';
+import { QueryEditor } from './components/QueryEditor';
+import { ToolbarMainView } from './components/toolbar/ToolbarMainView';
 import { ToolbarDocuments } from './components/toolbar/toolbarDocuments';
 import { ToolbarPaging } from './components/toolbar/toolbarPaging';
 import { ViewSwitcher } from './components/toolbar/viewSwitcher';
@@ -290,26 +292,35 @@ export const CollectionView = (): JSX.Element => {
     return (
         <CollectionViewContext.Provider value={[currentContext, setCurrentContext]}>
             <div className="collectionView">
-                <div className="queryControlArea">
-                    <FindQueryComponent
-                        onQueryUpdate={(q: string) =>
-                            setCurrentContext((prev) => ({
-                                ...prev,
-                                currrentQueryDefinition: { ...prev.currrentQueryDefinition, queryText: q },
-                            }))
-                        }
-                    />
+                <ToolbarMainView setting={''} />
 
-                    <div className="actionBar">
-                        <ToolbarPaging />
-                        <ToolbarDocuments
-                            onDeleteClick={handleDeleteDocumentRequest}
-                            onEditClick={handleEditDocumentRequest}
-                            onViewClick={handleViewDocumentRequest}
-                            onAddClick={handleAddDocumentRequest}
-                        />
-                        <ViewSwitcher onViewChanged={handleViewChanged} />
-                    </div>
+                <QueryEditor
+                    onQueryUpdate={(q: string) =>
+                        setCurrentContext((prev) => ({
+                            ...prev,
+                            currrentQueryDefinition: { ...prev.currrentQueryDefinition, queryText: q },
+                        }))
+                    }
+                />
+
+                <TabList selectedValue="tab_result">
+                    <Tab id="tab.results" value="tab_result">
+                        Result
+                    </Tab>
+                    <Tab id="tab.performance" value="tab_performance" disabled={true}>
+                        Performance
+                    </Tab>
+                </TabList>
+
+                <div className="resultsActionBar">
+                    <ToolbarPaging />
+                    <ToolbarDocuments
+                        onDeleteClick={handleDeleteDocumentRequest}
+                        onEditClick={handleEditDocumentRequest}
+                        onViewClick={handleViewDocumentRequest}
+                        onAddClick={handleAddDocumentRequest}
+                    />
+                    <ViewSwitcher onViewChanged={handleViewChanged} />
                 </div>
 
                 <div className="resultsDisplayArea" id="resultsDisplayAreaId">

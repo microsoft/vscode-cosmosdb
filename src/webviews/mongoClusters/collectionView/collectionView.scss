@@ -7,16 +7,41 @@
 
 @import '../mongoClustersStyles.scss';
 
+//@import '@fluentui/react/dist/sass/_References';
+
 .row-separator {
     padding: 10px;
 }
 
 .collectionView {
+    @extend .selectionDisabled;
+
     display: flex;
     flex-direction: column;
     row-gap: 10px;
 
+    padding-top: 10px;
+
     height: 100vh;
+
+    .monacoEditorContainer {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+
+        gap: 10px;
+        flex-grow: 1;
+        height: 100%;
+
+        padding-top: 6px;
+        padding-bottom: 6px;
+
+        border: 2px solid var(--textbox-border-color);  // Use CSS variable for border color
+        border-radius: 4px;
+
+        //box-shadow: $ms-depth-shadow-4;
+    }
 
     .queryControlArea {
         @extend .selectionDisabled;
@@ -28,15 +53,6 @@
 
         @media (min-width: $media-breakpoint-query-control-area) {
             flex-direction: row;
-        }
-
-        .findQueryComponent {
-            display: flex;
-            flex-direction: row;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            flex-grow: 1;
         }
     }
 
@@ -61,7 +77,7 @@
     }
 }
 
-.actionBar {
+.resultsActionBar {
     display: flex;
     flex-direction: row;
     justify-content: space-between;

@@ -612,6 +612,16 @@
                 "category": "MongoDB (vCore)",
                 "command": "mongoClusters.cmd.createDatabase",
                 "title": "Create Database..."
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.importDocuments",
+                "title": "Import Documents into Collection..."
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.exportDocuments",
+                "title": "Export Documents from Collection..."
             }
         ],
         "submenus": [
@@ -1126,6 +1136,16 @@
                     "command": "mongoClusters.cmd.createDatabase",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /mongoClusters.item.mongoCluster/i",
                     "group": "1@1"
+                },
+                {
+                    "command": "mongoClusters.cmd.importDocuments",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.collection",
+                    "group": "1@1"
+                },
+                {
+                    "command": "mongoClusters.cmd.exportDocuments",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.collection",
+                    "group": "1@2"
                 }
             ],
             "explorer/context": [

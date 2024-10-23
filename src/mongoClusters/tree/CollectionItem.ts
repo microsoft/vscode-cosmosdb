@@ -10,9 +10,15 @@ import {
     type TreeElementBase,
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
+import { type Document } from 'bson';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { ext } from '../../extensionVariables';
-import { MongoClustersClient, type CollectionItemModel, type DatabaseItemModel } from '../MongoClustersClient';
+import {
+    MongoClustersClient,
+    type CollectionItemModel,
+    type DatabaseItemModel,
+    type InsertDocumentsResult,
+} from '../MongoClustersClient';
 import { IndexesItem } from './IndexesItem';
 import { type MongoClusterItemBase, type MongoClusterModel } from './MongoClusterItem';
 
@@ -31,7 +37,7 @@ export class CollectionItem implements MongoClusterItemBase {
     async getChildren(): Promise<TreeElementBase[]> {
         return [
             createGenericElement({
-                contextValue: 'documents',
+                contextValue: 'mongoClusters.item.documents',
                 id: `${this.id}/documents`,
                 label: 'Documents',
                 commandId: 'mongoClusters.internal.containerView.open',
@@ -62,6 +68,18 @@ export class CollectionItem implements MongoClusterItemBase {
         ext.state.notifyChildrenChanged(`${this.mongoCluster.id}/${this.databaseInfo.name}`);
 
         return true;
+    }
+
+    async insertDocuments(_context: IActionContext, documents: Document[]): Promise<InsertDocumentsResult> {
+        const client = await MongoClustersClient.getClient(nonNullValue(this.mongoCluster.session?.credentialId));
+
+        let result: InsertDocumentsResult = { acknowledged: false, insertedCount: 0 };
+
+        await ext.state.runWithTemporaryDescription(this.id, 'Importing...', async () => {
+            result = await client.insertDocuments(this.databaseInfo.name, this.collectionInfo.name, documents);
+        });
+
+        return result;
     }
 
     getTreeItem(): TreeItem {

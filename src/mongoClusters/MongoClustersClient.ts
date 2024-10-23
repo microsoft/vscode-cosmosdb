@@ -45,6 +45,13 @@ export interface IndexItemModel {
     version?: number;
 }
 
+export type InsertDocumentsResult = {
+    /** Indicates whether this write result was acknowledged. If not, then all other members of this result will be undefined */
+    acknowledged: boolean;
+    /** The number of inserted documents for this operations */
+    insertedCount: number;
+};
+
 // type TableColumnDef = { id: string; name: string; field: string; minWidth: number };
 
 export class MongoClustersClient {
@@ -138,6 +145,57 @@ export class MongoClustersClient {
         return documents;
     }
 
+    async *streamDocuments(
+        databaseName: string,
+        collectionName: string,
+        abortSignal: AbortSignal,
+        findQuery: string = '{}',
+        skip: number = 0,
+        limit: number = 0,
+    ): AsyncGenerator<Document, void, unknown> {
+        /**
+         * Configuration
+         */
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        if (findQuery === undefined || findQuery.trim().length === 0) {
+            findQuery = '{}';
+        }
+
+        const findQueryObj: Filter<Document> = toFilterQueryObj(findQuery);
+
+        const options: FindOptions = {
+            skip: skip > 0 ? skip : undefined,
+            limit: limit > 0 ? limit : undefined,
+        };
+
+        const collection = this._mongoClient.db(databaseName).collection(collectionName);
+
+        /**
+         * Streaming
+         */
+
+        const cursor = collection.find(findQueryObj, options).batchSize(100);
+
+        try {
+            while (await cursor.hasNext()) {
+                if (abortSignal.aborted) {
+                    console.log('streamDocuments: Aborted by an abort signal.');
+                    return;
+                }
+
+                // Fetch the next document and yield it to the consumer
+                const doc = await cursor.next();
+                if (doc !== null) {
+                    yield doc;
+                }
+            }
+        } finally {
+            // Ensure the cursor is properly closed when done
+            await cursor.close();
+        }
+    }
+
     async deleteDocuments(databaseName: string, collectionName: string, documentObjectIds: string[]): Promise<boolean> {
         // convert input data
         const objectIds = documentObjectIds.map((id) => new ObjectId(id));
@@ -218,5 +276,20 @@ export class MongoClustersClient {
         }
 
         return true;
+    }
+
+    async insertDocuments(
+        databaseName: string,
+        collectionName: string,
+        documents: Document[],
+    ): Promise<InsertDocumentsResult> {
+        const collection = this._mongoClient.db(databaseName).collection(collectionName);
+
+        const insertManyResults = await collection.insertMany(documents, { forceServerObjectId: true });
+
+        return {
+            acknowledged: insertManyResults.acknowledged,
+            insertedCount: insertManyResults.insertedCount,
+        };
     }
 }

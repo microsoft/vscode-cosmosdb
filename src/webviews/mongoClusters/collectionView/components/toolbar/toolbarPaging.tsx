@@ -79,7 +79,6 @@ export const ToolbarPaging = (): JSX.Element => {
                     icon={<ArrowUp16Filled />}
                     disabled={
                         currentContext.currentView !== Views.TABLE ||
-                        currentContext.currentViewState?.currentPath === undefined ||
                         currentContext.currentViewState?.currentPath.length === 0
                     }
                 />

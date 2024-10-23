@@ -5,19 +5,21 @@
 
 import { type ItemDefinition } from '@azure/cosmos';
 import { parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { EJSON } from 'bson';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
 import { cosmosMongoFilter, sqlFilter } from '../constants';
 import { DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
 import { MongoCollectionTreeItem } from '../mongo/tree/MongoCollectionTreeItem';
+import { CollectionItem } from '../mongoClusters/tree/CollectionItem';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { getRootPath } from '../utils/workspacUtils';
 
 export async function importDocuments(
     context: IActionContext,
     uris: vscode.Uri[] | undefined,
-    collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | undefined,
+    collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | CollectionItem | undefined,
 ): Promise<void> {
     if (!uris) {
         uris = await askForDocuments(context);
@@ -32,7 +34,7 @@ export async function importDocuments(
         }
     });
     if (ignoredUris.length) {
-        ext.outputChannel.appendLog(`Ignoring the following files which are not json:`);
+        ext.outputChannel.appendLog(`Ignoring the following files that do not match the "*.json" file name pattern:`);
         ignoredUris.forEach((uri) => ext.outputChannel.appendLog(`${uri.fsPath}`));
         ext.outputChannel.show();
     }
@@ -42,6 +44,12 @@ export async function importDocuments(
             expectedChildContextValue: [MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue],
         });
     }
+
+    // adding a precaution for the mongoClusters path
+    if (!collectionNode) {
+        throw new Error('No collection selected.');
+    }
+
     let result: string;
     result = await vscode.window.withProgress(
         {
@@ -52,11 +60,16 @@ export async function importDocuments(
             uris = nonNullValue(uris, 'uris');
             collectionNode = nonNullValue(collectionNode, 'collectionNode');
 
-            progress.report({ increment: 20, message: 'Parsing documents for errors' });
-            const documents = await parseDocuments(uris);
-            progress.report({ increment: 30, message: 'Parsed documents. Importing' });
+            progress.report({ increment: 20, message: 'Loading documents...' });
+
+            const supportEJSON: boolean = collectionNode instanceof CollectionItem; // added this line for better readability
+            const documents: unknown[] = await parseDocuments(uris, supportEJSON);
+
+            progress.report({ increment: 30, message: `Loaded ${documents.length} document(s). Importing...` });
             if (collectionNode instanceof MongoCollectionTreeItem) {
                 result = await insertDocumentsIntoMongo(collectionNode, documents);
+            } else if (collectionNode instanceof CollectionItem) {
+                result = await insertDocumentsIntoMongoCluster(context, collectionNode, documents);
             } else {
                 result = await insertDocumentsIntoDocdb(collectionNode, documents, uris);
             }
@@ -65,7 +78,10 @@ export async function importDocuments(
         },
     );
 
-    await collectionNode.refresh(context);
+    if (collectionNode instanceof CollectionItem === false) {
+        await collectionNode.refresh(context);
+    }
+
     await vscode.window.showInformationMessage(result);
 }
 
@@ -84,16 +100,31 @@ async function askForDocuments(context: IActionContext): Promise<vscode.Uri[]> {
     return await context.ui.showOpenDialog(openDialogOptions);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function parseDocuments(uris: vscode.Uri[]): Promise<any[]> {
+/**
+ * Parses an array of URIs to read JSON documents and returns them as an array of unknown objects.
+ * If any errors are encountered while reading the documents, they are logged to the output channel.
+ *
+ * @param uris - An array of `vscode.Uri` objects representing the file paths to the JSON documents.
+ * @param supportEJSON - An optional boolean parameter that indicates whether to support extended JSON (EJSON).
+ *                       EJSON is used to read documents that are supposed to be converted into BSON.
+ *                       EJSON supports more datatypes and is specific to MongoDB. This is currently used for MongoDB clusters/vcore.
+ * @returns A promise that resolves to an array of parsed documents as unknown objects.
+ * @throws An error if any documents contain errors, prompting the user to fix them and try again.
+ */
+async function parseDocuments(uris: vscode.Uri[], supportEJSON: boolean = false): Promise<unknown[]> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let documents: any[] = [];
     let errorFoundFlag: boolean = false;
     for (const uri of uris) {
         let parsed;
         try {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            parsed = await fse.readJSON(uri.fsPath);
+            if (supportEJSON) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                parsed = EJSON.parse(await fse.readFile(uri.fsPath, 'utf8'));
+            } else {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                parsed = await fse.readJSON(uri.fsPath);
+            }
         } catch (e) {
             if (!errorFoundFlag) {
                 errorFoundFlag = true;
@@ -169,4 +200,22 @@ async function insertDocumentsIntoMongo(node: MongoCollectionTreeItem, documents
         }
     }
     return output;
+}
+
+async function insertDocumentsIntoMongoCluster(
+    context: IActionContext,
+    node: CollectionItem,
+    documents: unknown[],
+): Promise<string> {
+    const result = await node.insertDocuments(context, documents as Document[]);
+
+    let message: string;
+    if (result.acknowledged) {
+        message = `Import successful. Inserted ${result.insertedCount} document(s).`;
+    } else {
+        message = `Import failed. The operation was not acknowledged by the database.`;
+    }
+
+    ext.outputChannel.appendLog('MongoDB (vCore): ' + message);
+    return message;
 }

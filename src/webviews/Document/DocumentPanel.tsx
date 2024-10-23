@@ -18,7 +18,8 @@ const useClasses = makeStyles({
         height: 'calc(100% - 50px)',
     },
     container: {
-        height: '100%',
+        marginTop: '10px',
+        height: 'calc(100% - 10px)',
     },
 });
 

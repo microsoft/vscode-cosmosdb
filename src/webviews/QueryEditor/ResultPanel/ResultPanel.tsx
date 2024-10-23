@@ -7,6 +7,7 @@ import { makeStyles, Tab, TabList, type SelectTabData, type SelectTabEvent } fro
 import { useState, type PropsWithChildren } from 'react';
 import { ResultPanelToolbar } from './ResultPanelToolbar';
 import { ResultTab } from './ResultTab';
+import { ResultTabToolbar } from './ResultTabToolbar';
 import { StatsTab } from './StatsTab';
 
 const useStyles = makeStyles({
@@ -20,9 +21,7 @@ const useStyles = makeStyles({
         height: '100%',
     },
     tabs: {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        'flex-grow': 1,
+        flexGrow: 1,
     },
     tabContainer: {
         padding: '0 10px',
@@ -30,10 +29,10 @@ const useStyles = makeStyles({
     },
     actionBar: {
         display: 'flex',
-        'flex-direction': 'row',
-        'justify-content': 'space-between',
-        'align-items': 'center',
-        gap: '10px',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '20px',
     },
 });
 
@@ -65,6 +64,7 @@ export const ResultPanel = () => {
                         </Tab>
                     </TabList>
                 </div>
+                <ResultTabToolbar selectedTab={selectedTab} />
                 <ResultPanelToolbar selectedTab={selectedTab} />
             </ActionBar>
             <div className={styles.tabContainer}>

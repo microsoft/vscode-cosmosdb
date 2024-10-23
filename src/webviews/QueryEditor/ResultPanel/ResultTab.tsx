@@ -7,22 +7,15 @@ import { makeStyles } from '@fluentui/react-components';
 import { Suspense, useMemo } from 'react';
 import { queryResultToJSON, queryResultToTable, queryResultToTree } from '../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
-import { ResultTabToolbar } from './ResultTabToolbar';
 import { ResultTabViewJson } from './ResultTabViewJson';
 import { ResultTabViewTable } from './ResultTabViewTable';
 import { ResultTabViewTree } from './ResultTabViewTree';
 
 const useClasses = makeStyles({
-    toolbarContainer: {
-        marginBottom: '10px',
-    },
-    resultDisplay: {
-        marginTop: '10px',
-        width: '100%',
-        height: 'calc(100% - 50px)',
-    },
     container: {
-        height: '100%',
+        marginTop: '10px',
+        height: 'calc(100% - 10px)',
+        width: '100%',
     },
 });
 
@@ -42,15 +35,12 @@ export const ResultTab = () => {
     );
 
     return (
-        <section className={classes.container}>
-            <ResultTabToolbar></ResultTabToolbar>
-            <div className={[classes.resultDisplay, 'resultsDisplayArea'].join(' ')}>
-                <Suspense fallback={<div>Loading...</div>}>
-                    {tableViewMode === 'Table' && <ResultTabViewTable {...tableViewData} />}
-                    {tableViewMode === 'Tree' && <ResultTabViewTree data={treeViewData ?? []} />}
-                    {tableViewMode === 'JSON' && <ResultTabViewJson data={jsonViewData} />}
-                </Suspense>
-            </div>
-        </section>
+        <div className={[classes.container, 'resultsDisplayArea'].join(' ')}>
+            <Suspense fallback={<div>Loading...</div>}>
+                {tableViewMode === 'Table' && <ResultTabViewTable {...tableViewData} />}
+                {tableViewMode === 'Tree' && <ResultTabViewTree data={treeViewData ?? []} />}
+                {tableViewMode === 'JSON' && <ResultTabViewJson data={jsonViewData} />}
+            </Suspense>
+        </div>
     );
 };

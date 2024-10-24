@@ -25,6 +25,7 @@ loader.config({ monaco: monacoEditor });
  * @property {function} adaptiveHeight.onEditorContentHeightChange - Callback function when the editor content height changes.
  *
  * @property {function} [onEditorMount] - Handler for editor mount. Invoked when the editor is mounted.
+ *                                        You can use it to access editor instance and get a reference to a function you need (e.g. to get the editor content)
  * @property {function} [onExecuteRequest] - Optional: Invoked when the user presses Ctrl/Cmd + Enter in the editor.
  */
 export type MonacoEditorProps = EditorProps & {
@@ -48,7 +49,7 @@ export const MonacoEditor = (props: MonacoEditorProps) => {
 
     // Exclude adaptiveHeight prop and onExecuteRequest prop from being passed to the Monaco editor
     // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
-    const {onEditorMount, onExecuteRequest, adaptiveHeight, ...editorProps } = props;
+    const { onEditorMount, onExecuteRequest, adaptiveHeight, ...editorProps } = props;
 
     useEffect(() => {
         if (monaco) {

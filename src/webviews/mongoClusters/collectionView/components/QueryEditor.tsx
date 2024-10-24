@@ -21,7 +21,7 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
     const handleEditorDidMount = (editor: monacoEditor.editor.IStandaloneCodeEditor) => {
         const getCurrentContentFunction = () => editor.getValue();
         // adding the function to the context for use outside of the editor
-        setCurrentContext((prev) => ({ ...prev, queryEditor: { getCurrentContent: getCurrentContentFunction}})); // Save the editor instance in the context
+        setCurrentContext((prev) => ({ ...prev, queryEditor: { getCurrentContent: getCurrentContentFunction } })); // Save the editor instance in the context
     };
 
     const monacoOptions: editor.IStandaloneEditorConstructionOptions = {

@@ -35,7 +35,7 @@ export type CollectionViewContextType = {
     };
     queryEditor?: {
         getCurrentContent: () => string;
-    }
+    };
 };
 
 export type TableViewState = {

@@ -5,7 +5,7 @@
 
 import { Dropdown, Label, Option, Toolbar, ToolbarButton, ToolbarDivider, Tooltip } from '@fluentui/react-components';
 import { ArrowLeftFilled, ArrowPreviousFilled, ArrowRightFilled, ArrowUp16Filled } from '@fluentui/react-icons';
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 import { CollectionViewContext, Views } from '../../collectionViewContext';
 import { ToolbarDividerTransparent } from './ToolbarDividerTransparent';
 

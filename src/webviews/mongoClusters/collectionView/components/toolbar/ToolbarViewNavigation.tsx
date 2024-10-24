@@ -68,8 +68,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
 
     return (
         <Toolbar aria-label="with Popover" size="small">
-            {currentContext.currentView === Views.TABLE && // simple solution: show these buttons only in table view
-            (
+            {currentContext.currentView === Views.TABLE && ( // simple solution: show these buttons only in table view
                 <>
                     <Tooltip content="Level up" relationship="description" withArrow>
                         <ToolbarButton
@@ -78,6 +77,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
                             icon={<ArrowUp16Filled />}
                             disabled={
                                 currentContext.currentView !== Views.TABLE ||
+                                currentContext.currentViewState?.currentPath === undefined ||
                                 currentContext.currentViewState?.currentPath.length === 0
                             }
                         />

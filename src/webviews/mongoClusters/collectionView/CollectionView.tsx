@@ -303,12 +303,12 @@ export const CollectionView = (): JSX.Element => {
                     }
                 />
 
-                <TabList selectedValue="tab_result">
+                <TabList selectedValue="tab_result" style={{marginTop: '-10px'}}>
                     <Tab id="tab.results" value="tab_result">
-                        Result
+                        Results
                     </Tab>
                     <Tab id="tab.performance" value="tab_performance" disabled={true}>
-                        Performance
+                        Query Performance
                     </Tab>
                 </TabList>
 

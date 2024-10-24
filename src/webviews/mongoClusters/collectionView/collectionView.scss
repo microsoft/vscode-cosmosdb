@@ -37,7 +37,7 @@
         padding-top: 6px;
         padding-bottom: 6px;
 
-        border: 2px solid var(--textbox-border-color);  // Use CSS variable for border color
+        border: 2px solid var(--textbox-border-color); // Use CSS variable for border color
         border-radius: 4px;
 
         //box-shadow: $ms-depth-shadow-4;
@@ -56,11 +56,19 @@
         }
     }
 
+    .resultsActionBar {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+
     .resultsDisplayArea {
         @extend .selectionDisabled;
 
         height: 100%;
-        //background-color: aqua; // used to invstigate layout issues
+        background-color: aqua; // used to invstigate layout issues
 
         .loadingAnimationTable {
             .headerRow {
@@ -75,14 +83,6 @@
             }
         }
     }
-}
-
-.resultsActionBar {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
 }
 
 .toolbarDividerTransparent {

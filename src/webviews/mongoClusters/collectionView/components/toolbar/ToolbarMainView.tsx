@@ -13,34 +13,29 @@ interface ToolbarMainViewProps {
     setting: string;
 }
 
-export const ToolbarMainView = ({
-    setting: string
-}: ToolbarMainViewProps): JSX.Element => {
+export const ToolbarMainView = ({ setting: string }: ToolbarMainViewProps): JSX.Element => {
     const [currentContext] = useContext(CollectionViewContext);
 
     return (
         <Toolbar size="small">
-        <Tooltip content="Execute the current find query" relationship="description" withArrow>
-            <ToolbarButton
-                aria-label="Execute the find query"
-                disabled={currentContext.isLoading}
-                icon={<PlayRegular />}
-                appearance="primary"
-            >
-                Find Query
-            </ToolbarButton>
-        </Tooltip>
+            <Tooltip content="Execute the current find query" relationship="description" withArrow>
+                <ToolbarButton
+                    aria-label="Execute the find query"
+                    disabled={currentContext.isLoading}
+                    icon={<PlayRegular />}
+                    appearance="primary"
+                >
+                    Find Query
+                </ToolbarButton>
+            </Tooltip>
 
-        <ToolbarDividerTransparent />
+            <ToolbarDividerTransparent />
 
-        <Tooltip content="Refresh current view" relationship="description" withArrow>
-            <ToolbarButton
-                aria-label="Refresh current view"
-                icon={<ArrowClockwiseRegular />}
-            >
-                Refresh
-            </ToolbarButton>
-        </Tooltip>
-    </Toolbar>
+            <Tooltip content="Refresh current view" relationship="description" withArrow>
+                <ToolbarButton aria-label="Refresh current view" icon={<ArrowClockwiseRegular />}>
+                    Refresh
+                </ToolbarButton>
+            </Tooltip>
+        </Toolbar>
     );
 };

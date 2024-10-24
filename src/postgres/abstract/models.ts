@@ -29,7 +29,8 @@ export interface AbstractSku {
      * The tier of the particular SKU, e.g. Basic. Possible values include: 'Basic',
      * 'GeneralPurpose', 'MemoryOptimized'
      */
-    tier: SingleModels.SkuTier;
+    // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
+    tier: SingleModels.SkuTier | FlexibleModels.SkuTier;
     /**
      * The scale up/out capacity, representing server's compute units.
      */

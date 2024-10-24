@@ -7,7 +7,6 @@ import { registerCommand, registerCommandWithTreeNodeUnwrapping } from '@microso
 import { languages } from 'vscode';
 import { doubleClickDebounceDelay } from '../constants';
 import { ext } from '../extensionVariables';
-import { NoSqlCodeLensProvider } from './NoSqlCodeLensProvider';
 import { connectNoSqlContainer } from './commands/connectNoSqlContainer';
 import { createDocDBCollection } from './commands/createDocDBCollection';
 import { createDocDBDatabase } from './commands/createDocDBDatabase';
@@ -22,10 +21,12 @@ import { deleteDocDBTrigger } from './commands/deleteDocDBTrigger';
 import { executeDocDBStoredProcedure } from './commands/executeDocDBStoredProcedure';
 import { executeNoSqlQuery } from './commands/executeNoSqlQuery';
 import { getNoSqlQueryPlan } from './commands/getNoSqlQueryPlan';
+import { openNoSqlQueryEditor } from './commands/openNoSqlQueryEditor';
 import { openStoredProcedure } from './commands/openStoredProcedure';
 import { openTrigger } from './commands/openTrigger';
 import { viewDocDBCollectionOffer } from './commands/viewDocDBCollectionOffer';
 import { writeNoSqlQuery } from './commands/writeNoSqlQuery';
+import { NoSqlCodeLensProvider } from './NoSqlCodeLensProvider';
 
 const nosqlLanguageId = 'nosql';
 
@@ -53,6 +54,7 @@ export function registerDocDBCommands(): void {
     // #region Collection command
 
     registerCommandWithTreeNodeUnwrapping('cosmosDB.writeNoSqlQuery', writeNoSqlQuery);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openNoSqlQueryEditor', openNoSqlQueryEditor);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBCollection', deleteDocDBCollection);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBCollectionOffer', viewDocDBCollectionOffer);
 

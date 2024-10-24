@@ -4,9 +4,7 @@
     "scopeName.$comment": "** Changed **",
     "scopeName": "source.mongo.js",
     "fileTypes.$comment": "** Changed from .js/.jsx **",
-    "fileTypes": [
-        ".mongo"
-    ],
+    "fileTypes": [".mongo"],
     "uuid.$comment": "** Changed **",
     "uuid": "311c363f-7b1d-4dc4-b237-da46f717cca4",
     "patterns": [

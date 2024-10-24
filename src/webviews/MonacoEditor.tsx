@@ -6,20 +6,38 @@
 import Editor, { loader, useMonaco, type EditorProps } from '@monaco-editor/react';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
+
 import { useEffect, useState } from 'react';
 import { useThemeState } from './theme/state/ThemeContext';
 
 loader.config({ monaco: monacoEditor });
 
+/**
+ * Props for the MonacoEditor component.
+ *
+ * @typedef {Object} MonacoEditorProps
+ *
+ * @property {Object} adaptiveHeight - Configuration for adaptive height of the editor.
+ * @property {boolean} adaptiveHeight.enabled - Whether adaptive height is enabled.
+ * @property {number} adaptiveHeight.minLines - Minimum number of lines for the editor height.
+ * @property {number} adaptiveHeight.maxLines - Maximum number of lines for the editor height.
+ * @property {number} [adaptiveHeight.lineHeight] - Height of each line in pixels (optional).
+ * @property {function} adaptiveHeight.onEditorContentHeightChange - Callback function when the editor content height changes.
+ *
+ * @property {function} [onEditorMount] - Handler for editor mount. Invoked when the editor is mounted.
+ * @property {function} [onExecuteRequest] - Optional: Invoked when the user presses Ctrl/Cmd + Enter in the editor.
+ */
 export type MonacoEditorProps = EditorProps & {
-    adaptiveHeight?: { // Optional
+    adaptiveHeight?: {
+        // Optional
         enabled: boolean; // Whether adaptive height is enabled
         minLines: number; // Minimum number of lines for the editor height
         maxLines: number; // Maximum number of lines for the editor height
         lineHeight?: number; // Height of each line in pixels (optional)
         onEditorContentHeightChange: (height: number) => void; // Callback function when the editor content height changes
     };
-    onExecute?: (value: string) => void; // Optional: Invoked when the user presses Ctrl/Cmd + Enter in the editor
+    onEditorMount?: (editor: monacoEditor.editor.IStandaloneCodeEditor) => void; // Handler for editor mount
+    onExecuteRequest?: (editorContent: string) => void; // Optional: Invoked when the user presses Ctrl/Cmd + Enter in the editor
 };
 
 export const MonacoEditor = (props: MonacoEditorProps) => {
@@ -28,8 +46,9 @@ export const MonacoEditor = (props: MonacoEditorProps) => {
 
     const [lastLineCount, setLastLineCount] = useState<number>(0);
 
-    // Exclude adaptiveHeight prop from being passed to the Monaco editor
-    const { adaptiveHeight, ...editorProps } = props;
+    // Exclude adaptiveHeight prop and onExecuteRequest prop from being passed to the Monaco editor
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    const {onEditorMount, onExecuteRequest, adaptiveHeight, ...editorProps } = props;
 
     useEffect(() => {
         if (monaco) {
@@ -40,33 +59,30 @@ export const MonacoEditor = (props: MonacoEditorProps) => {
         }
     }, [monaco, themeState]);
 
-    // Handle editor mount and apply adaptive height if enabled
     const handleEditorDidMount = (editor: monacoEditor.editor.IStandaloneCodeEditor) => {
         if (adaptiveHeight?.enabled) {
-            console.log('adaptiveHeight enabled', adaptiveHeight);
-
             setupAdaptiveHeight(editor);
         }
 
         // Register a command for Ctrl + Enter / Cmd + Enter
-        if (props.onExecute) {
+        if (props.onExecuteRequest) {
             editor.addCommand(monacoEditor.KeyMod.CtrlCmd | monacoEditor.KeyCode.Enter, () => {
                 // This function will be triggered when Ctrl+Enter or Cmd+Enter is pressed
-                props.onExecute?.(editor.getValue());
+                props.onExecuteRequest?.(editor.getValue());
             });
+        }
+
+        // If the parent has provided the onEditorMount handler, call it now
+        if (onEditorMount) {
+            onEditorMount(editor); // Pass the editor instance to the parent
         }
     };
 
     // Helper function to set up adaptive height behavior
     const setupAdaptiveHeight = (editor: monacoEditor.editor.IStandaloneCodeEditor) => {
         // Update the height initially and on content changes
-        const updateHeight = () =>
-            // useCallback(
-            //     debounce((editor: monacoEditor.editor.IStandaloneCodeEditor) => {
-            updateEditorHeight(editor);
-        //     }, 500),
-        //     [],
-        // );
+        // const updateHeight = debounce(() => updateEditorHeight(editor), 300); // doesn't really look good, but let's revisit it later
+        const updateHeight = () => updateEditorHeight(editor);
 
         updateHeight();
 
@@ -83,15 +99,12 @@ export const MonacoEditor = (props: MonacoEditorProps) => {
 
         const lineCount = editor.getModel()?.getLineCount() || 1;
 
-        console.log('linecount internal: ' + lineCount);
-
         // Only update if the number of lines changes
         if (lineCount !== lastLineCount) {
             const lines = Math.min(lineCount, maxLines);
             const finalLines = Math.max(lines, minLines);
 
             const finalHeight = finalLines * lineHeight;
-            console.log('finalHeight internal: ' + finalHeight);
 
             // Call the callback if provided
             adaptiveHeight?.onEditorContentHeightChange?.(finalHeight);

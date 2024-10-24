@@ -3,38 +3,34 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useContext, useRef, useState, type JSX } from 'react';
-import { MonacoEditor } from '../../../MonacoEditor';
-import { CollectionViewContext } from '../collectionViewContext';
-
 import { getTheme } from '@fluentui/react';
+import { useContext, useState, type JSX } from 'react';
+import { MonacoEditor } from '../../../MonacoEditor';
+// eslint-disable-next-line import/no-internal-modules
+import type * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
 // eslint-disable-next-line import/no-internal-modules
 import { type editor } from 'monaco-editor/esm/vs/editor/editor.api';
+import { CollectionViewContext } from '../collectionViewContext';
 
 const theme = getTheme();
 
-export const QueryEditor = ({ onQueryUpdate }): JSX.Element => {
-    const [currentContext] = useContext(CollectionViewContext);
+export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
+    const [, setCurrentContext] = useContext(CollectionViewContext);
 
-    const inputField = useRef<HTMLInputElement>(null);
-
-    function runQuery() {
-        const queryText = inputField.current?.value ?? '{}';
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        onQueryUpdate(queryText);
-    }
+    const handleEditorDidMount = (editor: monacoEditor.editor.IStandaloneCodeEditor) => {
+        const getCurrentContentFunction = () => editor.getValue();
+        // adding the function to the context for use outside of the editor
+        setCurrentContext((prev) => ({ ...prev, queryEditor: { getCurrentContent: getCurrentContentFunction}})); // Save the editor instance in the context
+    };
 
     const monacoOptions: editor.IStandaloneEditorConstructionOptions = {
-        // autoIndent: 'full',
         contextmenu: false,
-        // fontFamily: 'monospace',
         fontSize: 14,
         lineHeight: 19,
         hideCursorInOverviewRuler: true,
         overviewRulerBorder: false,
         overviewRulerLanes: 0,
-        // matchBrackets: 'always',
         minimap: {
             enabled: false,
         },
@@ -44,15 +40,7 @@ export const QueryEditor = ({ onQueryUpdate }): JSX.Element => {
             horizontal: 'auto',
         },
         renderLineHighlight: 'none',
-        // scrollbar: {
-        //   horizontalSliderSize: 4,
-        //   verticalSliderSize: 18,
-        // },
-        // selectOnLineNumbers: true,
-        // roundedSelection: false,
         readOnly: false,
-        // cursorStyle: 'line',
-        // automaticLayout: true,
         scrollBeyondLastLine: false,
     };
 
@@ -81,9 +69,11 @@ export const QueryEditor = ({ onQueryUpdate }): JSX.Element => {
                         setEditorHeight(height); // Dynamically update the outer component's height
                     },
                 }}
-                onExecute={(input) => {
-                    console.log(input);
+                onExecuteRequest={(input) => {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+                    onExecuteRequest(input);
                 }}
+                onEditorMount={handleEditorDidMount}
                 options={monacoOptions}
             />
         </div>

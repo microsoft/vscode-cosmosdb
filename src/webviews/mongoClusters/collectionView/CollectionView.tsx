@@ -19,8 +19,8 @@ import { DataViewPanelJSON } from './components/DataViewPanelJSON';
 import { DataViewPanelTableV2 } from './components/DataViewPanelTableV2';
 import { DataViewPanelTree } from './components/DataViewPanelTree';
 import { QueryEditor } from './components/QueryEditor';
-import { ToolbarMainView } from './components/toolbar/ToolbarMainView';
 import { ToolbarDocumentManipulation } from './components/toolbar/ToolbarDocumentManipulation';
+import { ToolbarMainView } from './components/toolbar/ToolbarMainView';
 import { ToolbarViewNavigation } from './components/toolbar/ToolbarViewNavigation';
 import { ViewSwitcher } from './components/toolbar/ViewSwitcher';
 
@@ -293,14 +293,14 @@ export const CollectionView = (): JSX.Element => {
         <CollectionViewContext.Provider value={[currentContext, setCurrentContext]}>
             <div className="collectionView">
                 <div className="toolbarMainView">
-                    <ToolbarMainView setting={''} />
+                    <ToolbarMainView />
                 </div>
 
                 <QueryEditor
-                    onQueryUpdate={(q: string) =>
+                    onExecuteRequest={(q: string) =>
                         setCurrentContext((prev) => ({
                             ...prev,
-                            currrentQueryDefinition: { ...prev.currrentQueryDefinition, queryText: q },
+                            currrentQueryDefinition: { ...prev.currrentQueryDefinition, queryText: q, pageNumber: 1 },
                         }))
                     }
                 />

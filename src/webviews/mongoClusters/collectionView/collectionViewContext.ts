@@ -33,6 +33,9 @@ export type CollectionViewContextType = {
         // actual index in the current snapshot of the data, for easier lookup
         selectedDocumentIndexes: number[];
     };
+    queryEditor?: {
+        getCurrentContent: () => string;
+    };
 };
 
 export type TableViewState = {

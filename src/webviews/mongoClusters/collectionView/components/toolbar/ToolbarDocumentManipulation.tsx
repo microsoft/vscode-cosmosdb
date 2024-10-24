@@ -15,7 +15,7 @@ interface ToolbarDocumentsProps {
     onAddClick: () => void;
 }
 
-export const ToolbarDocuments = ({
+export const ToolbarDocumentManipulation = ({
     onDeleteClick,
     onEditClick,
     onViewClick,

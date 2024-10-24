@@ -21,6 +21,7 @@ const monacoOptions = {
     minimap: {
         enabled: true,
     },
+    scrollBeyondLastLine: false,
     // scrollbar: {
     //   horizontalSliderSize: 4,
     //   verticalSliderSize: 18,

@@ -20,9 +20,11 @@
     flex-direction: column;
     row-gap: 10px;
 
-    padding-top: 10px;
-
     height: 100vh;
+
+    .toolbarMainView {
+        padding-top: 10px;
+    }
 
     .monacoEditorContainer {
         display: flex;
@@ -68,7 +70,7 @@
         @extend .selectionDisabled;
 
         height: 100%;
-        background-color: aqua; // used to invstigate layout issues
+        //background-color: aqua; // used to invstigate layout issues
 
         .loadingAnimationTable {
             .headerRow {

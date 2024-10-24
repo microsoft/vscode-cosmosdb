@@ -20,9 +20,9 @@ import { DataViewPanelTableV2 } from './components/DataViewPanelTableV2';
 import { DataViewPanelTree } from './components/DataViewPanelTree';
 import { QueryEditor } from './components/QueryEditor';
 import { ToolbarMainView } from './components/toolbar/ToolbarMainView';
-import { ToolbarDocuments } from './components/toolbar/toolbarDocuments';
-import { ToolbarPaging } from './components/toolbar/toolbarPaging';
-import { ViewSwitcher } from './components/toolbar/viewSwitcher';
+import { ToolbarDocumentManipulation } from './components/toolbar/ToolbarDocumentManipulation';
+import { ToolbarViewNavigation } from './components/toolbar/ToolbarViewNavigation';
+import { ViewSwitcher } from './components/toolbar/ViewSwitcher';
 
 interface QueryResults {
     tableHeaders?: string[];
@@ -292,7 +292,9 @@ export const CollectionView = (): JSX.Element => {
     return (
         <CollectionViewContext.Provider value={[currentContext, setCurrentContext]}>
             <div className="collectionView">
-                <ToolbarMainView setting={''} />
+                <div className="toolbarMainView">
+                    <ToolbarMainView setting={''} />
+                </div>
 
                 <QueryEditor
                     onQueryUpdate={(q: string) =>
@@ -303,7 +305,7 @@ export const CollectionView = (): JSX.Element => {
                     }
                 />
 
-                <TabList selectedValue="tab_result" style={{marginTop: '-10px'}}>
+                <TabList selectedValue="tab_result" style={{ marginTop: '-10px' }}>
                     <Tab id="tab.results" value="tab_result">
                         Results
                     </Tab>
@@ -313,8 +315,8 @@ export const CollectionView = (): JSX.Element => {
                 </TabList>
 
                 <div className="resultsActionBar">
-                    <ToolbarPaging />
-                    <ToolbarDocuments
+                    <ToolbarViewNavigation />
+                    <ToolbarDocumentManipulation
                         onDeleteClick={handleDeleteDocumentRequest}
                         onEditClick={handleEditDocumentRequest}
                         onViewClick={handleViewDocumentRequest}

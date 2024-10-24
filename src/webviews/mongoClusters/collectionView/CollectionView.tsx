@@ -99,6 +99,8 @@ export const CollectionView = (): JSX.Element => {
             .then((_response) => {
                 setCurrentContext((prev) => ({ ...prev, isLoading: false }));
 
+                updateAutoCompletionData();
+
                 getDataForView(currentContext.currentView);
             })
             .catch((_error) => {
@@ -189,6 +191,17 @@ export const CollectionView = (): JSX.Element => {
             default:
                 break;
         }
+    }
+
+    function updateAutoCompletionData(): void {
+        trpcClient.mongoClusters.collectionView.getAutocompletionSchema
+            .query()
+            .then((schema) => {
+                currentContext.queryEditor?.setJsonSchema(schema);
+            })
+            .catch((_error) => {
+                console.log('error');
+            });
     }
 
     function handleDeleteDocumentRequest(): void {

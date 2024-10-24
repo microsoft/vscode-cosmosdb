@@ -105,6 +105,10 @@ export class MongoClustersSession {
         return responsePack;
     }
 
+    public getCurrentSchema(): JSONSchema {
+        return this._currentJsonSchema;
+    }
+
     /**
      * Initializes a new session for the MongoDB vCore cluster.
      *

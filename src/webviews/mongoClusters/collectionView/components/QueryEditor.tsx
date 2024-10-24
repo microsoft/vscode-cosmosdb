@@ -10,18 +10,67 @@ import { MonacoEditor } from '../../../MonacoEditor';
 import type * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
 // eslint-disable-next-line import/no-internal-modules
+import basicFindQuerySchema from '../../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';
+
+// eslint-disable-next-line import/no-internal-modules
 import { type editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { CollectionViewContext } from '../collectionViewContext';
+// eslint-disable-next-line import/no-internal-modules
+
+// eslint-disable-next-line import/no-internal-modules
+
+// eslint-disable-next-line import/no-internal-modules
 
 const theme = getTheme();
 
 export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
     const [, setCurrentContext] = useContext(CollectionViewContext);
 
-    const handleEditorDidMount = (editor: monacoEditor.editor.IStandaloneCodeEditor) => {
+    const handleEditorDidMount = (editor: monacoEditor.editor.IStandaloneCodeEditor, monaco: typeof monacoEditor) => {
         const getCurrentContentFunction = () => editor.getValue();
         // adding the function to the context for use outside of the editor
-        setCurrentContext((prev) => ({ ...prev, queryEditor: { getCurrentContent: getCurrentContentFunction } })); // Save the editor instance in the context
+        setCurrentContext((prev) => ({
+            ...prev,
+            queryEditor: {
+                getCurrentContent: getCurrentContentFunction,
+                setJsonSchema: (schema) => {
+                    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+                        validate: true,
+                        schemas: [
+                            {
+                                uri: 'mongodb-filter-query-schema.json', // Unique identifier
+                                fileMatch: ['*'], // Apply to all JSON files or specify as needed
+                                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                                schema: schema,
+                            },
+                        ],
+                    });
+                },
+            },
+        }));
+
+        // const fieldEntries : FieldEntry[]= [
+        //     { path: 'age', type: 'number' },
+        //     { path: 'name', type: 'string' },
+        //     { path: 'boo', type: 'boolean' },
+        //     { path: 'address.city', type: 'string' },
+        //     { path: 'address.country', type: 'string' },
+        // ];
+
+        // initialize the monaco editor with the schema that's basic
+        // as we don't know the schema of the collection available
+        monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+            validate: true,
+            schemas: [
+                {
+                    uri: 'mongodb-filter-query-schema.json', // Unique identifier
+                    fileMatch: ['*'], // Apply to all JSON files or specify as needed
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                    schema: basicFindQuerySchema,
+                    // schema: generateMongoFindJsonSchema(fieldEntries)
+                },
+            ],
+        });
     };
 
     const monacoOptions: editor.IStandaloneEditorConstructionOptions = {

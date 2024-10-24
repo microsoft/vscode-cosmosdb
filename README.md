@@ -30,6 +30,20 @@ Browse, manage and query your Azure databases both locally and in the cloud with
 
 ![Browse PostgreSQL, CosmosDB, and MongoDB databases](resources/readme/explorer.png)
 
+## Query Editor
+
+- Write Queries with Syntax Highlighting
+- Show Query history and save/open queries on disk
+- Execute Queries and see the results (currently NoSQL only)
+- Show results in a table, as JSON or in a hierarchical tree view
+- Copy results as JSON or CSV to the clipboard or store them in a file
+- Choose how many results to show at once with paging support
+- Show Query Statistics (consumed RUs, time, size and other metrics)
+- View, Edit and Update single documents from the result view
+- Create new documents with syntax highlighting and partition key validation
+
+![Query Editor with Results](resources/readme/queryEditor.png)
+
 ## Scrapbooks
 
 ### Run Mongo Commands with Rich Intellisense

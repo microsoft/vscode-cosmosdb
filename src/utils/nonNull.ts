@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { isNullOrUndefined } from 'util';
-
 /**
  * Retrieves a property by name from an object and checks that it's not null and not undefined.  It is strongly typed
  * for the property and will give a compile error if the given name is not a property of the source.
@@ -12,8 +10,12 @@ import { isNullOrUndefined } from 'util';
 export function nonNullProp<TSource, TKey extends keyof TSource>(
     source: TSource,
     name: TKey,
+    message?: string,
 ): NonNullable<TSource[TKey]> {
     const value: NonNullable<TSource[TKey]> = <NonNullable<TSource[TKey]>>source[name];
+    if (message) {
+        return nonNullValue(value, `${<string>name}, ${message}`);
+    }
     return nonNullValue(value, <string>name);
 }
 
@@ -21,7 +23,7 @@ export function nonNullProp<TSource, TKey extends keyof TSource>(
  * Validates that a given value is not null and not undefined.
  */
 export function nonNullValue<T>(value: T | undefined | null, propertyNameOrMessage?: string): T {
-    if (isNullOrUndefined(value)) {
+    if (value === undefined || value === null) {
         throw new Error(
             'Internal error: Expected value to be neither null nor undefined' +
                 (propertyNameOrMessage ? `: ${propertyNameOrMessage}` : ''),

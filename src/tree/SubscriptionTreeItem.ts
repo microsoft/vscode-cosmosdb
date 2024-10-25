@@ -164,7 +164,11 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         const experience = tryGetExperience(databaseAccount);
         const id: string = nonNullProp(databaseAccount, 'id');
         const name: string = nonNullProp(databaseAccount, 'name', `of the database account ${databaseAccount.id}`);
-        const documentEndpoint: string = nonNullProp(databaseAccount, 'documentEndpoint', `of the database account ${databaseAccount.id}`);
+        const documentEndpoint: string = nonNullProp(
+            databaseAccount,
+            'documentEndpoint',
+            `of the database account ${databaseAccount.id}`,
+        );
 
         const resourceGroup: string = getResourceGroupFromId(id);
         const accountKindLabel = getExperienceLabel(databaseAccount);

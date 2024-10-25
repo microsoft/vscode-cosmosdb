@@ -6,7 +6,7 @@
 import { type JSONObject, type PartitionKeyDefinition } from '@azure/cosmos';
 import { makeStyles, MessageBar, MessageBarBody, MessageBarTitle, ProgressBar } from '@fluentui/react-components';
 import { parse as parseJson } from '@prantlf/jsonlint';
-import { extractPartitionKey } from '../../utils/partitionKey';
+import { extractPartitionKey } from '../../utils/document';
 import { MonacoEditor } from '../MonacoEditor';
 import { DocumentToolbar } from './DocumentToolbar';
 import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';

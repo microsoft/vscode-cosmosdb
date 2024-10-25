@@ -4,4 +4,4 @@
  *--------------------------------------------------------------------------------------------*/
 
 export * from '../../utils/convertors';
-export * from '../../utils/partitionKey';
+export * from '../../utils/document';

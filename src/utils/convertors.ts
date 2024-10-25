@@ -3,9 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PartitionKeyDefinition } from '@azure/cosmos';
-import { type CosmosDbRecord, type SerializedQueryResult } from '../docdb/types/queryResult';
-import { extractPartitionKey, getDocumentId } from './partitionKey';
+import { type ItemDefinition, type PartitionKeyDefinition } from '@azure/cosmos';
+import { v4 as uuid } from 'uuid';
+import { type QueryResultRecord, type SerializedQueryResult } from '../docdb/types/queryResult';
+import { extractPartitionKey } from './document';
 import { type TreeData } from './slickgrid/mongo/toSlickGridTree';
 
 export type StatsItem = {
@@ -19,6 +20,24 @@ export type TableRecord = Record<string, string> & { __id: string };
 export type TableData = {
     headers: string[];
     dataset: TableRecord[];
+};
+
+/**
+ * We can retrieve the document id to open it in a separate tab only if record contains CosmosDbRecordIdentifier
+ * We can be 100% sure that all required fields for CosmosDbRecordIdentifier are present in the record
+ * if query has `SELECT *` clause. So we can enable editing only in this case.
+ * Based on documentation https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/select
+ * '*" is allowed only if the query doesn't have any subset or joins
+ * @param query
+ */
+export const isSelectStar = (query: string): boolean => {
+    const matches = query.match(/select([\S\s]*)from[\s\S]*$/im);
+    if (matches) {
+        const selectClause = matches[1].split(',').map((s) => s.trim());
+        return selectClause.find((s) => s.endsWith('*')) !== undefined;
+    }
+
+    return false;
 };
 
 export const queryResultToJSON = (queryResult: SerializedQueryResult | null) => {
@@ -48,8 +67,8 @@ export const queryResultToTree = (
 };
 
 const documentToSlickGridTree = (
-    document: CosmosDbRecord,
-    partitionKey: PartitionKeyDefinition | undefined,
+    document: QueryResultRecord,
+    _partitionKey: PartitionKeyDefinition | undefined, // TODO: To show id and partition key fields upper than the other fields
     index: number,
     idPrefix?: string,
 ): TreeData[] => {
@@ -57,7 +76,7 @@ const documentToSlickGridTree = (
 
     let localEntryId = 0; // starts with 0 on each document
     if (idPrefix === undefined || idPrefix === null) {
-        idPrefix = getDocumentId(document, partitionKey);
+        idPrefix = uuid();
     }
 
     const rootId = `${idPrefix}${localEntryId}`; // localEntryId is always a 0 here
@@ -157,12 +176,11 @@ const documentToSlickGridTree = (
  * then the partition key, when each column has / prefix,
  * then the user columns without _ prefix,
  * then the service columns with _ prefix
- * TODO: Need to take into account the order of columns what user used in the query
  * @param documents
  * @param partitionKey
  */
-export const getTableHeaders = (
-    documents: CosmosDbRecord[],
+export const getTableHeadersWithRecordIdentifyColumns = (
+    documents: ItemDefinition[],
     partitionKey: PartitionKeyDefinition | undefined,
 ): string[] => {
     const keys = new Set<string>();
@@ -170,9 +188,7 @@ export const getTableHeaders = (
 
     documents.forEach((doc) => {
         Object.keys(doc).forEach((key) => {
-            if (key === 'id') {
-                //skip id
-            } else if (key.startsWith('_')) {
+            if (key.startsWith('_')) {
                 serviceKeys.add(key);
             } else {
                 keys.add(key);
@@ -207,15 +223,15 @@ export const getTableHeaders = (
  * @param documents
  * @param partitionKey
  */
-export const getTableDataset = (
-    documents: CosmosDbRecord[],
+export const getTableDatasetWithRecordIdentifyColumns = (
+    documents: QueryResultRecord[],
     partitionKey: PartitionKeyDefinition | undefined,
 ): TableRecord[] => {
     const result = new Array<TableRecord>();
 
     documents.forEach((doc) => {
         // Emulate the unique id of the document
-        const row: TableRecord = { __id: getDocumentId(doc, partitionKey) };
+        const row: TableRecord = { __id: uuid() };
 
         if (partitionKey) {
             const partitionKeyPaths = (partitionKey?.paths ?? []).map((path) =>
@@ -243,21 +259,82 @@ export const getTableDataset = (
     return result;
 };
 
+export const getTableHeaders = (documents: QueryResultRecord[]): string[] => {
+    const keys = new Set<string>();
+
+    documents.forEach((doc) => {
+        Object.keys(doc).forEach((key) => {
+            keys.add(key);
+        });
+    });
+
+    return Array.from(keys);
+};
+
+export const getTableDataset = (documents: QueryResultRecord[]): TableRecord[] => {
+    const result = new Array<TableRecord>();
+
+    documents.forEach((doc) => {
+        const row: TableRecord = { __id: uuid() };
+
+        Object.entries(doc).forEach(([key, value]) => {
+            if (value !== null && typeof value === 'object') {
+                row[key] = JSON.stringify(value);
+            } else if (doc[key] instanceof Array) {
+                row[key] = `(elements: ${doc[key].length})`;
+            } else {
+                row[key] = `${doc[key]}`;
+            }
+        });
+
+        result.push(row);
+    });
+
+    return result;
+};
+
+/**
+ * Prepare the table data from the query result
+ * @param queryResult
+ * @param partitionKey
+ * @param reorderColumns If true, the columns will be reordered as the id + partitionKey + user columns + service columns
+ *                       If false, the columns will be in the order they are in the query result
+ * @param showServiceColumns If true, the service columns will be shown
+ */
 export const queryResultToTable = (
     queryResult: SerializedQueryResult | null,
     partitionKey: PartitionKeyDefinition | undefined,
+    reorderColumns?: boolean,
+    showServiceColumns?: boolean,
 ): TableData => {
+    let result: TableData = { headers: [], dataset: [] };
+
     if (!queryResult) {
-        return {
-            headers: [],
-            dataset: [],
+        return result;
+    }
+
+    if (isSelectStar(queryResult.query ?? '')) {
+        reorderColumns = true;
+        showServiceColumns = showServiceColumns ?? true;
+    }
+
+    if (reorderColumns) {
+        result = {
+            headers: getTableHeadersWithRecordIdentifyColumns(queryResult.documents, partitionKey),
+            dataset: getTableDatasetWithRecordIdentifyColumns(queryResult.documents, partitionKey),
+        };
+    } else {
+        result = {
+            headers: getTableHeaders(queryResult.documents),
+            dataset: getTableDataset(queryResult.documents),
         };
     }
 
-    return {
-        headers: getTableHeaders(queryResult.documents, partitionKey),
-        dataset: getTableDataset(queryResult.documents, partitionKey),
-    };
+    if (!showServiceColumns) {
+        result.headers = result.headers.filter((header) => !header.startsWith('_'));
+    }
+
+    return result;
 };
 
 export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): StatsItem[] => {

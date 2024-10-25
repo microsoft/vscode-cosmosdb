@@ -57,7 +57,7 @@ export namespace ext {
         export const enableEndpointDiscovery = 'cosmosDB.enableEndpointDiscovery';
         export const mongoShellTimeout = 'mongo.shell.timeout';
         export const batchSize = 'azureDatabases.batchSize';
-        export const requireAdditionalConfirmations = 'azureDatabases.requireAdditionalConfirmations'
+        export const requireAdditionalConfirmations = 'azureDatabases.requireAdditionalConfirmations';
 
         export namespace vsCode {
             export const proxyStrictSSL = 'http.proxyStrictSSL';

@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { getTheme } from '@fluentui/react';
 import { useContext, useState, type JSX } from 'react';
 import { MonacoEditor } from '../../../MonacoEditor';
 // eslint-disable-next-line import/no-internal-modules
@@ -20,8 +19,6 @@ import { CollectionViewContext } from '../collectionViewContext';
 // eslint-disable-next-line import/no-internal-modules
 
 // eslint-disable-next-line import/no-internal-modules
-
-const theme = getTheme();
 
 export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
     const [, setCurrentContext] = useContext(CollectionViewContext);
@@ -116,7 +113,7 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
             style={
                 {
                     height: editorHeight,
-                    '--textbox-border-color': theme.palette.neutralLight, // Pass Fluent UI color as CSS variable
+                    '--textbox-border-color': 'red', // theme.palette.neutralLight, // Pass Fluent UI color as CSS variable
                 } as React.CSSProperties
             }
         >

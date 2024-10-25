@@ -4,26 +4,44 @@
  *--------------------------------------------------------------------------------------------*/
 
 import vscode from 'vscode';
+import { ext } from '../extensionVariables';
 
 export async function getConfirmationWithWarning(title: string, message: string): Promise<boolean> {
-    const randomInput: { numbers: number[]; index: number } = getRandomArrayAndIndex(3);
+    const performQuiz: boolean | undefined = vscode.workspace
+        .getConfiguration()
+        .get<boolean>(ext.settingsKeys.requireAdditionalConfirmations);
 
-    const confirmation = await vscode.window.showWarningMessage(
-        title,
-        {
-            modal: true,
-            detail:
-                message +
-                `\n\n` +
-                `Choose '${randomInput.numbers[randomInput.index]}' to confirm.\n\n` +
-                `(Planned: Adjust this safety check in the settings.)`,
-        },
-        randomInput.numbers[0].toString(),
-        randomInput.numbers[1].toString(),
-        randomInput.numbers[2].toString(),
-    );
+    if (performQuiz) {
+        const randomInput: { numbers: number[]; index: number } = getRandomArrayAndIndex(3);
 
-    return confirmation === randomInput.numbers[randomInput.index].toString();
+        const confirmation = await vscode.window.showWarningMessage(
+            title,
+            {
+                modal: true,
+                detail:
+                    message +
+                    `\n\n` +
+                    `Choose '${randomInput.numbers[randomInput.index]}' to confirm.\n\n` +
+                    `(Planned: Adjust this safety check in the settings.)`,
+            },
+            randomInput.numbers[0].toString(),
+            randomInput.numbers[1].toString(),
+            randomInput.numbers[2].toString(),
+        );
+
+        return confirmation === randomInput.numbers[randomInput.index].toString();
+    } else {
+        const confirmation = await vscode.window.showWarningMessage(
+            title,
+            {
+                modal: true,
+                detail: message,
+            },
+            'Yes',
+        );
+
+        return confirmation === 'Yes';
+    }
 }
 
 function getRandomArrayAndIndex(length: number): { numbers: number[]; index: number } {

@@ -157,7 +157,26 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             placeHolder: 'Select a Database type...',
             stepName: 'attachNewAccount',
         });
+
+        const _edition = await context.ui.showQuickPick(
+            [
+                { label: 'New Experience', detail: 'Ideal for new MongoDB projects and users of MongoDB vCore.' },
+                { label: 'Legacy experience', detail: 'Select this option if you depend on functionality that is not yet available in the New Experience.' },
+            ],
+            {
+                placeHolder: 'Select the MongoDB Experience...',
+                stepName: 'attachNewAccountStep2',
+            },
+        );
+
+        // todo: we need a workspace branch data provider.. that integrates with current workspace provider
+        // and this provider doesn't support 'branches'.. so a new tree level to build..
+        // and then.. we need to add a new tree item for the mongoClusters..
+        // from then on, existing code base would be able to handle the mongoClusters tree items..
+        // also, menu items / commands need to be updated to support the new tree items in the workspace area
+
         const defaultExperience = defaultExperiencePick.data;
+
         let placeholder: string;
         let defaultValue: string | undefined;
         let validateInput: (value: string) => string | undefined | null;

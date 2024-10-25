@@ -90,6 +90,8 @@ export const CollectionView = (): JSX.Element => {
     useEffect(() => {
         setCurrentContext((prev) => ({ ...prev, isLoading: true }));
 
+        // 1. Run the query, this operation only acknowledges the request.
+        //    Next we need to load the ones we need.
         trpcClient.mongoClusters.collectionView.runQuery
             .query({
                 findQuery: currentContext.currrentQueryDefinition.queryText,
@@ -97,16 +99,27 @@ export const CollectionView = (): JSX.Element => {
                 pageSize: currentContext.currrentQueryDefinition.pageSize,
             })
             .then((_response) => {
-                setCurrentContext((prev) => ({ ...prev, isLoading: false }));
-
+                // 2. This is the time to update the auto-completion data
+                //    Since now we do know more about the data returned from the query
                 updateAutoCompletionData();
 
+                // 3. Load the data for the current view
                 getDataForView(currentContext.currentView);
+
+                setCurrentContext((prev) => ({ ...prev, isLoading: false }));
             })
             .catch((_error) => {
                 setCurrentContext((prev) => ({ ...prev, isLoading: false }));
             });
     }, [currentContext.currrentQueryDefinition]);
+
+
+    useEffect(() => {
+        if (currentContext.currentView === Views.TABLE && currentContext.currentViewState?.currentPath) {
+            getDataForView(currentContext.currentView);
+        }
+
+    }, [currentContext.currentViewState?.currentPath]);
 
     const handleViewChanged = (_optionValue: string) => {
         let selection: Views;
@@ -197,7 +210,9 @@ export const CollectionView = (): JSX.Element => {
         trpcClient.mongoClusters.collectionView.getAutocompletionSchema
             .query()
             .then((schema) => {
-                currentContext.queryEditor?.setJsonSchema(schema);
+                // we need to go via the Ref because we're mid an update on the first call here
+                // and the currentContext.queryEditor is not yet updated..
+                currentContextRef.current.queryEditor?.setJsonSchema(schema);
             })
             .catch((_error) => {
                 console.log('error');
@@ -294,13 +309,6 @@ export const CollectionView = (): JSX.Element => {
         }));
     }
 
-    useEffect(() => {
-        if (currentContext.currentViewState?.currentPath === undefined) {
-            return;
-        }
-
-        getDataForView(currentContext.currentView);
-    }, [currentContext.currentViewState?.currentPath]);
 
     return (
         <CollectionViewContext.Provider value={[currentContext, setCurrentContext]}>

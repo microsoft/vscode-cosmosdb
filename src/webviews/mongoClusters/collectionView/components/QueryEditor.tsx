@@ -49,16 +49,9 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
             },
         }));
 
-        // const fieldEntries : FieldEntry[]= [
-        //     { path: 'age', type: 'number' },
-        //     { path: 'name', type: 'string' },
-        //     { path: 'boo', type: 'boolean' },
-        //     { path: 'address.city', type: 'string' },
-        //     { path: 'address.country', type: 'string' },
-        // ];
-
         // initialize the monaco editor with the schema that's basic
         // as we don't know the schema of the collection available
+        // this is a fallback for the case when the autocompletion feature fails.
         monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
             validate: true,
             schemas: [

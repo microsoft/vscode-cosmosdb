@@ -33,7 +33,29 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
             ...prev,
             queryEditor: {
                 getCurrentContent: getCurrentContentFunction,
-                setJsonSchema: (schema) => {
+                setJsonSchema: async (schema) => {
+                    /**
+                     * allows me to set the schema for the monaco editor
+                     * at runtime.
+                     *
+                     * TODO: facing some errors when trying to set it using this callback
+                     * during the initialization phase of the editor. Currently a workaorund
+                     * is in place, but it'd be good to know how to avoid / catch
+                     * these Network Errors in general.
+                     *
+                     * Even though it works just fine when done below in the on mount handler.
+                     *
+                     * Added a delay to get it operational for feature completeness.
+                     * But we should find a way to confirm that the json worker is loaded/initialized
+                     * and only then update the diagnostics options.
+                     */
+
+                    void (await new Promise((resolve) => {
+                        // a delay of 2s to ensure the json worker is loaded
+                        // TODO: find a way to confirm that it's loaded
+                        setTimeout(resolve, 2000);
+                    }));
+
                     monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
                         validate: true,
                         schemas: [

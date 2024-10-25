@@ -46,6 +46,8 @@ export class DatabaseResolver implements AppResourceResolver {
             try {
                 const resourceGroupName = getResourceGroupFromId(nonNullProp(resource, 'id'));
                 const name = nonNullProp(resource, 'name');
+                context.valuesToMask.push(resource.id);
+                context.valuesToMask.push(resource.name);
                 let postgresServer: PostgresAbstractServer;
                 let dbChild: AzExtTreeItem;
 

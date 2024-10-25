@@ -218,7 +218,7 @@ export const CollectionView = (): JSX.Element => {
         trpcClient.mongoClusters.collectionView.getAutocompletionSchema
             .query()
             .then(async (schema) => {
-                void await currentContextRef.current.queryEditor?.setJsonSchema(schema);
+                void (await currentContextRef.current.queryEditor?.setJsonSchema(schema));
             })
             .catch((_error) => {
                 console.log('error');

@@ -6,7 +6,6 @@
 // eslint-disable-next-line import/no-internal-modules
 import { Tab, TabList } from '@fluentui/react-components';
 import { type JSX, useEffect, useRef, useState } from 'react';
-import { type JSONSchema } from 'vscode-json-languageservice';
 import { type TableDataEntry } from '../../../mongoClusters/MongoClusterSession';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import './collectionView.scss';
@@ -71,9 +70,6 @@ export const CollectionView = (): JSX.Element => {
     // TODO: it's a potential data duplication in the end, consider moving it into the global context of the view
     const [currentQueryResults, setCurrentQueryResults] = useState<QueryResults>();
 
-    // TODO: consider moving the following to a unified state object
-    const [currentAutocompletionData, setCurrentAutocompletionData] = useState<JSONSchema | null>(null);
-
     // keep Refs updated with the current state
     const currentQueryResultsRef = useRef(currentQueryResults);
     const currentContextRef = useRef(currentContext);
@@ -82,12 +78,6 @@ export const CollectionView = (): JSX.Element => {
         currentQueryResultsRef.current = currentQueryResults;
         currentContextRef.current = currentContext;
     }, [currentQueryResults, currentContext]);
-
-    useEffect(() => {
-        if (currentAutocompletionData !== null) {
-            currentContext.queryEditor?.setJsonSchema(currentAutocompletionData);
-        }
-    }, [currentAutocompletionData]);
 
     /**
      * This is used to run the query. We control it by setting the query configuration

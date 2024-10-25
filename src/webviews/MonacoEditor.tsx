@@ -37,7 +37,7 @@ export type MonacoEditorProps = EditorProps & {
         lineHeight?: number; // Height of each line in pixels (optional)
         onEditorContentHeightChange: (height: number) => void; // Callback function when the editor content height changes
     };
-    onEditorMount?: (editor: monacoEditor.editor.IStandaloneCodeEditor) => void; // Handler for editor mount
+    onEditorMount?: (editor: monacoEditor.editor.IStandaloneCodeEditor, monaco: typeof monacoEditor) => void; // Handler for editor mount
     onExecuteRequest?: (editorContent: string) => void; // Optional: Invoked when the user presses Ctrl/Cmd + Enter in the editor
 };
 
@@ -60,7 +60,7 @@ export const MonacoEditor = (props: MonacoEditorProps) => {
         }
     }, [monaco, themeState]);
 
-    const handleEditorDidMount = (editor: monacoEditor.editor.IStandaloneCodeEditor) => {
+    const handleEditorDidMount = (editor: monacoEditor.editor.IStandaloneCodeEditor, monaco: typeof monacoEditor) => {
         if (adaptiveHeight?.enabled) {
             setupAdaptiveHeight(editor);
         }
@@ -75,7 +75,7 @@ export const MonacoEditor = (props: MonacoEditorProps) => {
 
         // If the parent has provided the onEditorMount handler, call it now
         if (onEditorMount) {
-            onEditorMount(editor); // Pass the editor instance to the parent
+            onEditorMount(editor, monaco); // Pass the editor instance to the parent
         }
     };
 

@@ -4,11 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
+import { type JSONSchema } from 'vscode-json-languageservice';
 import { z } from 'zod';
 import { type MongoClustersClient } from '../../../mongoClusters/MongoClustersClient';
 import { MongoClustersSession } from '../../../mongoClusters/MongoClusterSession';
 import { getConfirmationWithWarning } from '../../../utils/dialogsConfirmations';
+import { getKnownFields, type FieldEntry } from '../../../utils/json/mongo/autocomplete/getKnownFields';
 import { publicProcedure, router } from '../../api/extension-server/trpc';
+
+// eslint-disable-next-line import/no-internal-modules
+import basicFindQuerySchema from '../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';
+import { generateMongoFindJsonSchema } from '../../../utils/json/mongo/autocomplete/generateMongoFindJsonSchema';
 
 export type RouterContext = {
     sessionId: string;
@@ -53,6 +59,27 @@ export const collectionsViewRouter = router({
             // };
 
             return { documentCount: size };
+        }),
+    getAutocompletionSchema: publicProcedure
+        // procedure type
+        .query(({ ctx }) => {
+            const myCtx = ctx as RouterContext;
+
+            const session: MongoClustersSession = MongoClustersSession.getSession(myCtx.sessionId);
+
+            const _currentJsonSchema = session.getCurrentSchema();
+            const autoCompletionData: FieldEntry[] = getKnownFields(_currentJsonSchema);
+
+            let querySchema: JSONSchema;
+
+            if (autoCompletionData.length > 0) {
+                querySchema = generateMongoFindJsonSchema(autoCompletionData);
+            } else {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                querySchema = basicFindQuerySchema;
+            }
+
+            return querySchema;
         }),
     getCurrentPageAsTable: publicProcedure
         //parameters

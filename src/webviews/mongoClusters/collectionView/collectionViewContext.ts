@@ -35,6 +35,7 @@ export type CollectionViewContextType = {
     };
     queryEditor?: {
         getCurrentContent: () => string;
+        setJsonSchema(schema: object): Promise<void>; //monacoEditor.languages.json.DiagnosticsOptions, but we don't want to import monacoEditor here
     };
 };
 

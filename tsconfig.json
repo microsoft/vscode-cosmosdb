@@ -15,6 +15,7 @@
         "noUnusedParameters": true,
         "rootDir": ".",
         "experimentalDecorators": true,
+        "resolveJsonModule": true,
         "baseUrl": "./",
         "alwaysStrict": true,
         "paths": {

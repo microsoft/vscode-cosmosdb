@@ -6,7 +6,9 @@
 import { type OptionOnSelectData } from '@fluentui/react-combobox';
 import { Dropdown, Option, Toolbar, ToolbarButton, Tooltip, useRestoreFocusTarget } from '@fluentui/react-components';
 import { AddFilled, DeleteRegular, EditRegular, EyeRegular } from '@fluentui/react-icons';
-import { extractPartitionKey } from '../../utils';
+import { useMemo } from 'react';
+import { type CosmosDbRecordIdentifier } from 'src/docdb/types/queryResult';
+import { getDocumentId, isSelectStar } from '../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 import { type TableViewMode } from '../state/QueryEditorState';
 
@@ -21,21 +23,18 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
     const dispatcher = useQueryEditorDispatcher();
     const restoreFocusTargetAttribute = useRestoreFocusTarget();
 
+    const isEditMode = useMemo<boolean>(
+        () => isSelectStar(state.currentQueryResult?.query ?? ''),
+        [state.currentQueryResult],
+    );
+
     const hasSelectedRows = state.selectedRows.length > 0;
 
     const getSelectedDocuments = () => {
         return state.selectedRows
-            .map((rowIndex) => {
+            .map((rowIndex): CosmosDbRecordIdentifier | undefined => {
                 const document = state.currentQueryResult?.documents[rowIndex];
-                return document
-                    ? {
-                          id: document.id,
-                          partitionKey: state.partitionKey
-                              ? extractPartitionKey(document, state.partitionKey)
-                              : undefined,
-                          _rid: document._rid,
-                      }
-                    : undefined;
+                return document ? getDocumentId(document, state.partitionKey) : undefined;
             })
             .filter((document) => document !== undefined);
     };
@@ -50,39 +49,43 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
 
     return (
         <Toolbar aria-label="Result view toolbar">
-            <Tooltip content="Add new document in separate tab" relationship="description" withArrow>
-                <ToolbarButton
-                    aria-label={'Add new document'}
-                    icon={<AddFilled />}
-                    onClick={() => void dispatcher.openDocument('add')}
-                />
-            </Tooltip>
-            <Tooltip content="View selected document in separate tab" relationship="description" withArrow>
-                <ToolbarButton
-                    aria-label={'View selected document'}
-                    icon={<EyeRegular />}
-                    onClick={() => void dispatcher.openDocuments('view', getSelectedDocuments())}
-                    disabled={!hasSelectedRows}
-                />
-            </Tooltip>
-            <Tooltip content="Edit selected document in separate tab" relationship="description" withArrow>
-                <ToolbarButton
-                    aria-label={'Edit selected document'}
-                    icon={<EditRegular />}
-                    onClick={() => void dispatcher.openDocuments('edit', getSelectedDocuments())}
-                    disabled={!hasSelectedRows}
-                />
-            </Tooltip>
-            <Tooltip content="Delete selected document" relationship="description" withArrow>
-                <ToolbarButton
-                    aria-label={'Delete selected document'}
-                    icon={<DeleteRegular />}
-                    onClick={() => void dispatcher.deleteDocuments(getSelectedDocuments())}
-                    disabled={!hasSelectedRows}
-                />
-            </Tooltip>
+            {isEditMode && (
+                <>
+                    <Tooltip content="Add new document in separate tab" relationship="description" withArrow>
+                        <ToolbarButton
+                            aria-label={'Add new document'}
+                            icon={<AddFilled />}
+                            onClick={() => void dispatcher.openDocument('add')}
+                        />
+                    </Tooltip>
+                    <Tooltip content="View selected document in separate tab" relationship="description" withArrow>
+                        <ToolbarButton
+                            aria-label={'View selected document'}
+                            icon={<EyeRegular />}
+                            onClick={() => void dispatcher.openDocuments('view', getSelectedDocuments())}
+                            disabled={!hasSelectedRows}
+                        />
+                    </Tooltip>
+                    <Tooltip content="Edit selected document in separate tab" relationship="description" withArrow>
+                        <ToolbarButton
+                            aria-label={'Edit selected document'}
+                            icon={<EditRegular />}
+                            onClick={() => void dispatcher.openDocuments('edit', getSelectedDocuments())}
+                            disabled={!hasSelectedRows}
+                        />
+                    </Tooltip>
+                    <Tooltip content="Delete selected document" relationship="description" withArrow>
+                        <ToolbarButton
+                            aria-label={'Delete selected document'}
+                            icon={<DeleteRegular />}
+                            onClick={() => void dispatcher.deleteDocuments(getSelectedDocuments())}
+                            disabled={!hasSelectedRows}
+                        />
+                    </Tooltip>
 
-            <ToolbarDividerTransparent />
+                    <ToolbarDividerTransparent />
+                </>
+            )}
 
             <Tooltip content="Change view mode" relationship="description" withArrow>
                 <Dropdown

@@ -14,7 +14,7 @@ import { getCosmosClientByConnection } from '../getCosmosClient';
 import {
     DEFAULT_EXECUTION_TIMEOUT,
     DEFAULT_PAGE_SIZE,
-    type CosmosDbRecord,
+    type QueryResultRecord,
     type ResultViewMetadata,
 } from '../types/queryResult';
 import { QuerySessionResult } from './QuerySessionResult';
@@ -34,7 +34,7 @@ export class QuerySession {
     private readonly sessionResult: QuerySessionResult;
 
     private abortController: AbortController | null = null;
-    private iterator: QueryIterator<CosmosDbRecord> | null = null;
+    private iterator: QueryIterator<QueryResultRecord> | null = null;
     private currentIteration = 0;
     private isDisposed = false;
 
@@ -56,7 +56,7 @@ export class QuerySession {
         this.resultViewMetadata = resultViewMetadata;
         this.query = query;
 
-        this.sessionResult = new QuerySessionResult(resultViewMetadata);
+        this.sessionResult = new QuerySessionResult(this.query, resultViewMetadata);
     }
 
     public async run(): Promise<void> {
@@ -85,7 +85,7 @@ export class QuerySession {
                 this.iterator = client
                     .database(this.databaseId)
                     .container(this.containerId)
-                    .items.query<CosmosDbRecord>(this.query, {
+                    .items.query<QueryResultRecord>(this.query, {
                         abortSignal: this.abortController.signal,
                         populateQueryMetrics: true,
                         maxItemCount: isFetchAll
@@ -93,6 +93,7 @@ export class QuerySession {
                             : (this.resultViewMetadata?.countPerPage ?? DEFAULT_PAGE_SIZE),
                         maxDegreeOfParallelism: 1000,
                         bufferItems: true,
+                        forceQueryPlan: true,
                     });
 
                 if (this.resultViewMetadata.countPerPage === -1) {

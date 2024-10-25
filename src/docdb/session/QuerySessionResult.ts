@@ -5,10 +5,9 @@
 
 import { type FeedResponse, type QueryMetrics } from '@azure/cosmos';
 import {
-    type CosmosDbRecord,
     type QueryResult,
+    type QueryResultRecord,
     type ResultViewMetadata,
-    type SerializedQueryMetrics,
     type SerializedQueryResult,
 } from '../types/queryResult';
 
@@ -16,11 +15,13 @@ export class QuerySessionResult {
     private readonly queryResults = new Map<number, QueryResult>();
     private readonly isFetchedAll: boolean;
     private readonly metadata: ResultViewMetadata;
+    private readonly query: string;
 
     private hasMoreResults = false;
 
-    constructor(metadata: ResultViewMetadata) {
+    constructor(query: string, metadata: ResultViewMetadata) {
         this.metadata = metadata;
+        this.query = query;
         this.isFetchedAll = metadata.countPerPage === -1;
     }
 
@@ -36,11 +37,11 @@ export class QuerySessionResult {
         return this.queryResults.get(pageNumber)?.queryMetrics;
     }
 
-    public getDocuments(pageNumber: number): CosmosDbRecord[] {
+    public getDocuments(pageNumber: number): QueryResultRecord[] {
         return this.queryResults.get(pageNumber)?.documents ?? [];
     }
 
-    public push(response: FeedResponse<CosmosDbRecord>): void {
+    public push(response: FeedResponse<QueryResultRecord>): void {
         if (this.iterationsCount > 0 && this.isFetchedAll) {
             throw new Error('Cannot add more results after fetching all');
         }
@@ -96,10 +97,12 @@ export class QuerySessionResult {
                             result.queryMetrics.runtimeExecutionTimes.userDefinedFunctionExecutionTime.totalMilliseconds(),
                     },
                     totalQueryExecutionTime: result.queryMetrics.totalQueryExecutionTime.totalMilliseconds(),
-                } as SerializedQueryMetrics,
+                },
                 requestCharge: result.requestCharge,
                 roundTrips: result.roundTrips,
-            } as SerializedQueryResult;
+
+                query: this.query,
+            };
         }
 
         return undefined;

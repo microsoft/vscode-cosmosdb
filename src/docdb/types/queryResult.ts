@@ -8,12 +8,17 @@ import { type ItemDefinition, type JSONValue, type PartitionKey, type QueryMetri
 export const DEFAULT_PAGE_SIZE = 100 as const;
 export const DEFAULT_EXECUTION_TIMEOUT = 600_000 as const; // 10 minutes (600 seconds)
 
-export interface CosmosDbRecord extends ItemDefinition {
-    id: string; // This is the unique name that identifies the document, i.e. no two documents can share the same id in partition. The id must not exceed 255 characters.
+// Record from the query result. Might have no fields if the query result is empty.
+// NOTE: I've created the interface here for two reasons:
+// 1. Avoid imports from the Cosmos DB SDK in the webview and other places.
+// 2. Avoid `any` type in the code.
+export interface QueryResultRecord extends ItemDefinition {
+    [key: string]: JSONValue | undefined;
+}
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-expect-error
-    ttl?: number; // Time to live in seconds for collections with TTL enabled
+// Record with fields which exactly match the Cosmos DB record with service fields starting with "_".
+export interface CosmosDbRecord {
+    id: string; // This is the unique name that identifies the document, i.e. no two documents can share the same id in partition. The id must not exceed 255 characters.
 
     _rid: string; // This is a system generated property. The resource ID (_rid) is a unique identifier that is also hierarchical per the resource stack on the resource model. It is used internally for placement and navigation of the document resource.
     _ts: number; // This is a system generated property. It specifies the last updated timestamp of the resource. The value is a timestamp.
@@ -38,7 +43,7 @@ export type CosmosDbRecordIdentifier = {
 
 export type QueryResult = {
     activityId?: string;
-    documents: CosmosDbRecord[];
+    documents: QueryResultRecord[];
     iteration: number;
     metadata: ResultViewMetadata;
     queryMetrics: QueryMetrics;
@@ -66,12 +71,14 @@ export type SerializedQueryMetrics = {
 
 export type SerializedQueryResult = {
     activityId?: string;
-    documents: CosmosDbRecord[];
+    documents: QueryResultRecord[];
     iteration: number;
     metadata: ResultViewMetadata;
     queryMetrics: SerializedQueryMetrics;
     requestCharge: number;
     roundTrips: number;
+
+    query: string; // The query that was executed
 };
 
 export type ResultViewMetadata = {

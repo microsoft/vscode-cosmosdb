@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import Denque from 'denque';
 import { type JSONSchema } from '../../JSONSchema';
 
 export interface FieldEntry {
@@ -34,7 +35,8 @@ export function getKnownFields(schema: JSONSchema): FieldEntry[] {
         path: string;
         schemaNode: JSONSchema;
     };
-    const queue: QueueItem[] = [];
+
+    const queue: Denque<QueueItem> = new Denque();
 
     // Initialize the queue with root properties
     if (schema.properties) {

@@ -5,6 +5,27 @@
 
 import { type FieldEntry } from './getKnownFields';
 
+/**
+ * Generates a JSON schema for MongoDB find filter queries.
+ *
+ * This function is a short-term solution for providing autocompletion for MongoDB find filter queries.
+ * A MongoDB find filter query is a JSON document that can range from simple to complex structures.
+ * Basic autocompletion can be provided using a modified JSON schema, which is what we've done here.
+ *
+ * The long-term plan is to provide a more sophisticated auto-completion using, for example,
+ * the suggestion API that Monaco provides. This will be looked at in the future.
+ *
+ * @param fieldEntries - An array of field entries where each entry contains:
+ *   - path: A string representing the full path of the field in the dataset (e.g., "age", "address.city").
+ *   - type: The most common or expected data type for that field (e.g., "number", "string").
+ *
+ * The data provided is supposed to contain all known data paths from the expected dataset,
+ * focusing only on leaf nodes.
+ *
+ * The returned JSON schema can be directly added to the Monaco editor to activate autocompletion.
+ *
+ * @returns A JSON schema object that can be used for autocompletion in the Monaco editor.
+ */
 export function generateMongoFindJsonSchema(fieldEntries: FieldEntry[]) {
     // Initialize the base schema object
     const schema = {
@@ -90,6 +111,9 @@ export function generateMongoFindJsonSchema(fieldEntries: FieldEntry[]) {
             'Schema for MongoDB find query filters, supporting known fields with various operators for querying documents.',
     };
 
+    // Set to collect all full paths
+    const fullPathsSet = new Set<string>();
+
     // Function to generate examples based on type
     function generateExamples(type: string): unknown[] {
         let examples;
@@ -129,9 +153,18 @@ export function generateMongoFindJsonSchema(fieldEntries: FieldEntry[]) {
     }
 
     // Function to create nested properties based on path components
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function createNestedProperty(obj: any, pathComponents: string[], type: string) {
+    function createNestedProperty(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        obj: any,
+        pathComponents: string[],
+        type: string,
+        currentPath: string = '',
+    ) {
         const fieldName = pathComponents[0];
+        const newPath = currentPath ? `${currentPath}.${fieldName}` : fieldName;
+
+        fullPathsSet.add(newPath);
+
         if (pathComponents.length === 1) {
             // Leaf node
             const examples = generateExamples(type);
@@ -163,26 +196,67 @@ export function generateMongoFindJsonSchema(fieldEntries: FieldEntry[]) {
                     description: `Embedded '${fieldName}' object containing fields.`,
                 };
             }
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            createNestedProperty(obj[fieldName]['properties'], pathComponents.slice(1), type);
+            createNestedProperty(
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                obj[fieldName]['properties'],
+                pathComponents.slice(1),
+                type,
+                newPath,
+            );
         }
     }
 
     // Process each fieldEntry
     for (const fieldEntry of fieldEntries) {
         const pathComponents = fieldEntry.path.split('.');
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         createNestedProperty(schema['properties'], pathComponents, fieldEntry.type);
+    }
+
+    // Function to get type for a full path
+    function getTypeForFullPath(fullPath: string): string | undefined {
+        for (const fieldEntry of fieldEntries) {
+            if (fieldEntry.path === fullPath) {
+                return fieldEntry.type;
+            }
+        }
+        return undefined;
+    }
+
+    // Create properties with full paths at the root level
+    for (const fullPath of fullPathsSet) {
+        const type = getTypeForFullPath(fullPath) || 'string';
+        const examples = generateExamples(type);
+        const operatorExamples = generateOperatorExamples(type);
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        schema['properties'][fullPath] = {
+            oneOf: [
+                {
+                    title: 'Direct Value',
+                    description: `A direct value for equality matching on the '${fullPath}' field.`,
+                    examples: examples,
+                },
+                {
+                    title: 'Operator-Based Query',
+                    $ref: '#/definitions/operatorObject',
+                    examples: operatorExamples,
+                },
+            ],
+        };
     }
 
     // Add logical operators
     const logicalOperators = ['$or', '$and', '$not', '$nor'];
     for (const operator of logicalOperators) {
         if (operator === '$not') {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             schema['properties'][operator] = {
                 oneOf: [{ $ref: '#' }],
                 description: `Inverts the effect of a query expression.`,
             };
         } else {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             schema['properties'][operator] = {
                 type: 'array',
                 items: { $ref: '#' },
@@ -191,5 +265,6 @@ export function generateMongoFindJsonSchema(fieldEntries: FieldEntry[]) {
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return schema;
 }

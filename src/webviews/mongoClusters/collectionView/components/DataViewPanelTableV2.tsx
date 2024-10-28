@@ -20,6 +20,7 @@ import { type TableDataEntry } from '../../../../mongoClusters/MongoClusterSessi
 import { bsonStringToDisplayString } from '../../../utils/slickgrid/typeToDisplayString';
 import { CollectionViewContext } from '../collectionViewContext';
 import './dataViewPanelTableV2.scss';
+import { ToolbarTableNavigation } from './toolbar/ToolbarTableNavigation';
 
 interface Props {
     liveHeaders: string[];
@@ -148,23 +149,27 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
         return <LoadingAnimationTable />;
     } else {
         return (
-            <SlickgridReact
-                gridId="myGrid"
-                ref={gridRef} // Attach the reference to SlickGrid
-                gridOptions={gridOptions}
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                columnDefinitions={gridColumns}
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                dataset={liveData}
-                onDblClick={(event) => onCellDblClick(event)}
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                // debouncing here as multiple events are fired on multiselect
-                onSelectedRowsChanged={debounce(
-                    (event: { detail: { eventData: unknown; args: OnSelectedRowsChangedEventArgs } }) =>
-                        onSelectedRowsChanged(event.detail.eventData, event.detail.args),
-                    100,
-                )}
-            />
+            <>
+                <ToolbarTableNavigation />
+
+                <SlickgridReact
+                    gridId="myGrid"
+                    ref={gridRef} // Attach the reference to SlickGrid
+                    gridOptions={gridOptions}
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                    columnDefinitions={gridColumns}
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                    dataset={liveData}
+                    onDblClick={(event) => onCellDblClick(event)}
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                    // debouncing here as multiple events are fired on multiselect
+                    onSelectedRowsChanged={debounce(
+                        (event: { detail: { eventData: unknown; args: OnSelectedRowsChangedEventArgs } }) =>
+                            onSelectedRowsChanged(event.detail.eventData, event.detail.args),
+                        100,
+                    )}
+                />
+            </>
         );
     }
 }

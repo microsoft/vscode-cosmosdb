@@ -13,6 +13,16 @@ export const ToolbarMainView = (): JSX.Element => {
     const [currentContext, setCurrentContext] = useContext(CollectionViewContext);
 
     const handleExecuteQuery = () => {
+        // return to the root level
+        setCurrentContext((prev) => ({
+            ...prev,
+            currentViewState: {
+                ...prev.currentViewState,
+                currentPath: [],
+            },
+        }));
+
+        // execute the query
         const queryContent = currentContext.queryEditor?.getCurrentContent() ?? '';
         setCurrentContext((prev) => ({
             ...prev,

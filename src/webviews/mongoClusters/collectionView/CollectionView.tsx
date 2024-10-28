@@ -21,6 +21,7 @@ import { DataViewPanelTree } from './components/DataViewPanelTree';
 import { QueryEditor } from './components/QueryEditor';
 import { ToolbarDocumentManipulation } from './components/toolbar/ToolbarDocumentManipulation';
 import { ToolbarMainView } from './components/toolbar/ToolbarMainView';
+import { ToolbarTableNavigation } from './components/toolbar/ToolbarTableNavigation';
 import { ToolbarViewNavigation } from './components/toolbar/ToolbarViewNavigation';
 import { ViewSwitcher } from './components/toolbar/ViewSwitcher';
 
@@ -357,6 +358,8 @@ export const CollectionView = (): JSX.Element => {
                         }[currentContext.currentView] // switch-statement
                     }
                 </div>
+
+                { currentContext.currentView === Views.TABLE && <ToolbarTableNavigation /> }
             </div>
         </CollectionViewContext.Provider>
     );

@@ -57,7 +57,7 @@ export const ToolbarTableNavigation = (): JSX.Element => {
     ];
 
     return (
-        <Toolbar aria-label="with Popover" size="small" style={{ paddingBottom: '10px' }}>
+        <Toolbar aria-label="with Popover" size="small">
             <Tooltip content="Level up" relationship="description" withArrow>
                 <ToolbarButton
                     onClick={levelUp}

@@ -21,8 +21,8 @@ export async function getConfirmationWithWarning(title: string, message: string)
                 detail:
                     message +
                     `\n\n` +
-                    `Choose '${randomInput.numbers[randomInput.index]}' to confirm.\n\n` +
-                    `(Planned: Adjust this safety check in the settings.)`,
+                    `Pick '${randomInput.numbers[randomInput.index]}' to confirm and continue.\n\n` +
+                    `This verification step can be adjusted in Settings.`,
             },
             randomInput.numbers[0].toString(),
             randomInput.numbers[1].toString(),

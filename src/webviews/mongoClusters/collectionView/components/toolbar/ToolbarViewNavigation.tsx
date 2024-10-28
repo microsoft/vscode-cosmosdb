@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Dropdown, Label, Option, Toolbar, ToolbarButton, ToolbarDivider, Tooltip } from '@fluentui/react-components';
-import { ArrowLeftFilled, ArrowPreviousFilled, ArrowRightFilled, ArrowUp16Filled } from '@fluentui/react-icons';
+import { Dropdown, Label, Option, Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
+import { ArrowLeftFilled, ArrowPreviousFilled, ArrowRightFilled } from '@fluentui/react-icons';
 import { useContext } from 'react';
-import { CollectionViewContext, Views } from '../../collectionViewContext';
+import { CollectionViewContext } from '../../collectionViewContext';
 import { ToolbarDividerTransparent } from './ToolbarDividerTransparent';
 
 export const ToolbarViewNavigation = (): JSX.Element => {
@@ -50,43 +50,8 @@ export const ToolbarViewNavigation = (): JSX.Element => {
         });
     }
 
-    function levelUp() {
-        setCurrentContext({
-            ...currentContext,
-            currentViewState: {
-                ...currentContext.currentViewState,
-                currentPath: currentContext.currentViewState?.currentPath.slice(0, -1) ?? [],
-            },
-        });
-    }
-
-    // function refresh() {
-    //     setCurrentContext({
-    //         ...currentContext
-    //     });
-    // }
-
     return (
         <Toolbar aria-label="with Popover" size="small">
-            {currentContext.currentView === Views.TABLE && ( // simple solution: show these buttons only in table view
-                <>
-                    <Tooltip content="Level up" relationship="description" withArrow>
-                        <ToolbarButton
-                            onClick={levelUp}
-                            aria-label="Up"
-                            icon={<ArrowUp16Filled />}
-                            disabled={
-                                currentContext.currentView !== Views.TABLE ||
-                                currentContext.currentViewState?.currentPath === undefined ||
-                                currentContext.currentViewState?.currentPath.length === 0
-                            }
-                        />
-                    </Tooltip>
-
-                    <ToolbarDivider />
-                </>
-            )}
-
             <Tooltip content="Go to first page" relationship="description" withArrow>
                 <ToolbarButton
                     onClick={goToFirstPage}

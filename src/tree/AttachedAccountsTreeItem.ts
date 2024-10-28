@@ -115,25 +115,30 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             this._loadPersistedAccountsTask = this.loadPersistedAccounts();
         }
 
-        const attachedAccounts: AzExtTreeItem[] = await this.getAttachedAccounts();
+        const attachedAccounts: AzExtTreeItem[] = [
+            new GenericTreeItem(undefined, { label: '🚀 Hello from ATTACHED ACCOUNTS!', contextValue: 'hello' }),
+            ...(await this.getAttachedAccounts()),
+        ];
 
-        if (attachedAccounts.length > 0) {
-            return attachedAccounts;
-        } else {
-            const attachDatabaseAccount = new GenericTreeItem(this, {
-                contextValue: 'cosmosDBAttachDatabaseAccount',
-                label: 'Attach Database Account...',
-                commandId: 'cosmosDB.attachDatabaseAccount',
-                includeInTreeItemPicker: true,
-            });
-            const attachEmulator = new GenericTreeItem(this, {
-                contextValue: 'cosmosDBAttachEmulator',
-                label: 'Attach Emulator...',
-                commandId: 'cosmosDB.attachEmulator',
-                includeInTreeItemPicker: true,
-            });
-            return isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
-        }
+        return [...attachedAccounts, ...this.getAttachDatabseActionItems()];
+    }
+
+    private getAttachDatabseActionItems(): AzExtTreeItem[] {
+        const attachDatabaseAccount = new GenericTreeItem(this, {
+            contextValue: 'cosmosDBAttachDatabaseAccount',
+            label: 'Attach Database Account...',
+            iconPath: new vscode.ThemeIcon('add'),
+            commandId: 'cosmosDB.attachDatabaseAccount',
+            includeInTreeItemPicker: true,
+        });
+        const attachEmulator = new GenericTreeItem(this, {
+            contextValue: 'cosmosDBAttachEmulator',
+            label: 'Attach Emulator...',
+            iconPath: new vscode.ThemeIcon('add'),
+            commandId: 'cosmosDB.attachEmulator',
+            includeInTreeItemPicker: true,
+        });
+        return isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {
@@ -161,7 +166,10 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         const _edition = await context.ui.showQuickPick(
             [
                 { label: 'New Experience', detail: 'Ideal for new MongoDB projects and users of MongoDB vCore.' },
-                { label: 'Legacy experience', detail: 'Select this option if you depend on functionality that is not yet available in the New Experience.' },
+                {
+                    label: 'Legacy experience',
+                    detail: 'Select this option if you depend on functionality that is not yet available in the New Experience.',
+                },
             ],
             {
                 placeHolder: 'Select the MongoDB Experience...',

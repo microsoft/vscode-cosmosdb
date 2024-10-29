@@ -21,7 +21,8 @@ export class DocumentTab extends BaseTab {
 
     private connection: NoSqlQueryConnection;
     private documentId: CosmosDbRecordIdentifier | undefined;
-    private mode: DocumentTabMode = 'view';
+    private _mode: DocumentTabMode = 'view';
+    private isDirty = false;
 
     protected constructor(
         panel: vscode.WebviewPanel,
@@ -35,7 +36,7 @@ export class DocumentTab extends BaseTab {
 
         this.connection = connection;
         this.documentId = documentId ?? undefined;
-        this.mode = mode;
+        this._mode = mode;
 
         if (connection.masterKey) {
             this.telemetryContext.addMaskedValue(connection.masterKey);
@@ -79,6 +80,7 @@ export class DocumentTab extends BaseTab {
             });
 
             if (openTab) {
+                openTab.mode = mode;
                 openTab.panel.reveal(column);
                 return openTab;
             }
@@ -99,6 +101,24 @@ export class DocumentTab extends BaseTab {
         this.session.dispose();
 
         super.dispose();
+    }
+
+    public get mode(): DocumentTabMode {
+        return this._mode;
+    }
+    public set mode(value: DocumentTabMode) {
+        if (value === 'view' && this._mode === 'edit' && this.isDirty) {
+            // do nothing, just keep the edit mode
+            return;
+        }
+
+        this._mode = value;
+
+        void this.channel.postMessage({
+            type: 'event',
+            name: 'modeChanged',
+            params: [this._mode],
+        });
     }
 
     protected initController() {
@@ -127,6 +147,12 @@ export class DocumentTab extends BaseTab {
                 return this.refreshDocument();
             case 'saveDocument':
                 return this.saveDocument(payload.params[0] as string);
+            case 'setMode':
+                this.mode = payload.params[0] as DocumentTabMode;
+                return Promise.resolve();
+            case 'setDirty':
+                this.isDirty = payload.params[0] as boolean;
+                return Promise.resolve();
         }
 
         return super.getCommand(payload);

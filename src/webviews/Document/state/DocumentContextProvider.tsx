@@ -42,6 +42,13 @@ export class DocumentContextProvider extends BaseContextProvider {
         }
     }
 
+    public setMode(mode: OpenDocumentMode): Promise<void> {
+        return this.sendCommand('setMode', mode);
+    }
+    public async notifyDirty(isDirty: boolean): Promise<void> {
+        await this.sendCommand('setDirty', isDirty);
+    }
+
     protected initEventListeners(): void {
         super.initEventListeners();
 
@@ -61,6 +68,10 @@ export class DocumentContextProvider extends BaseContextProvider {
                 this.dispatch({ type: 'initState', mode, databaseId, containerId, documentId, partitionKey });
             },
         );
+
+        this.channel.on('modeChanged', (mode: OpenDocumentMode) => {
+            this.dispatch({ type: 'setMode', mode });
+        });
 
         this.channel.on(
             'setDocument',

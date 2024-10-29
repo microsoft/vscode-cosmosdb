@@ -1138,7 +1138,7 @@
         "@azure/cosmos": "^3.6.3",
         "@microsoft/vscode-azext-azureauth": "^2.3.0",
         "@microsoft/vscode-azext-azureutils": "^3.0.1",
-        "@microsoft/vscode-azext-utils": "^2.5.6",
+        "@microsoft/vscode-azext-utils": "^2.5.8",
         "antlr4ts": "^0.4.1-alpha.0",
         "bson": "^6.0.0",
         "fs-extra": "^8.0.0",

@@ -16,7 +16,7 @@ import {
     ToolbarButton,
     Tooltip,
 } from '@fluentui/react-components';
-import { ArrowClockwiseRegular, SaveRegular } from '@fluentui/react-icons';
+import { ArrowClockwiseRegular, EditRegular, SaveRegular } from '@fluentui/react-icons';
 import { useState } from 'react';
 import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
 
@@ -73,6 +73,11 @@ export const DocumentToolbar = () => {
         void dispatcher.saveDocument(state.currentDocumentContent);
     };
 
+    const onEditRequest = () => {
+        // Open document for editing
+        void dispatcher.setMode('edit');
+    };
+
     const onRefreshRequest = () => {
         // Reload original document from the database
         if (state.isDirty) {
@@ -90,17 +95,31 @@ export const DocumentToolbar = () => {
         <>
             <AlertDialog open={open} setOpen={setOpen} doAction={doAction} />
             <Toolbar>
-                <Tooltip content="Save document to the database" relationship="description" withArrow>
-                    <ToolbarButton
-                        onClick={onSaveRequest}
-                        aria-label="Save document to the database"
-                        icon={<SaveRegular />}
-                        appearance={'primary'}
-                        disabled={isReadOnly || inProgress || !isDirty || !state.isValid}
-                    >
-                        Save
-                    </ToolbarButton>
-                </Tooltip>
+                {!isReadOnly && (
+                    <Tooltip content="Save document to the database" relationship="description" withArrow>
+                        <ToolbarButton
+                            onClick={onSaveRequest}
+                            aria-label="Save document to the database"
+                            icon={<SaveRegular />}
+                            appearance={'primary'}
+                            disabled={inProgress || !isDirty || !state.isValid}
+                        >
+                            Save
+                        </ToolbarButton>
+                    </Tooltip>
+                )}
+                {isReadOnly && (
+                    <Tooltip content="Open document for editing" relationship="description" withArrow>
+                        <ToolbarButton
+                            onClick={onEditRequest}
+                            aria-label="Open document for editing"
+                            icon={<EditRegular />}
+                            appearance={'primary'}
+                        >
+                            Edit
+                        </ToolbarButton>
+                    </Tooltip>
+                )}
 
                 <ToolbarDividerTransparent />
 

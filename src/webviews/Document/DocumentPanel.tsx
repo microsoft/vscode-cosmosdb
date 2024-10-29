@@ -6,6 +6,7 @@
 import { type JSONObject, type PartitionKeyDefinition } from '@azure/cosmos';
 import { makeStyles, MessageBar, MessageBarBody, MessageBarTitle, ProgressBar } from '@fluentui/react-components';
 import { parse as parseJson } from '@prantlf/jsonlint';
+import { useEffect } from 'react';
 import { extractPartitionKey } from '../../utils/document';
 import { MonacoEditor } from '../MonacoEditor';
 import { DocumentToolbar } from './DocumentToolbar';
@@ -97,6 +98,11 @@ export const DocumentPanel = () => {
 
         dispatcher.setValid(errors.length === 0, errors);
     };
+
+    // TODO: Hack, remove this when DocumentPanel will be moved to CustomTextEditor.
+    useEffect(() => {
+        void dispatcher?.notifyDirty?.(state.isDirty);
+    }, [dispatcher, state.isDirty]);
 
     return (
         <section className={classes.container}>

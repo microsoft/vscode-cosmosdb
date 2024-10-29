@@ -79,11 +79,11 @@ const documentToSlickGridTree = (
         idPrefix = uuid();
     }
 
-    const rootId = `${idPrefix}${localEntryId}`; // localEntryId is always a 0 here
+    const rootId = `${idPrefix}-${localEntryId}`; // localEntryId is always a 0 here
     tree.push({
         id: rootId,
-        field: document['id'] ? `${document['id']}` : `${index + 1}`,
-        value: '{...}',
+        field: document['id'] ? `${document['id']}` : `${index + 1} (Index number, id is missing)`,
+        value: '',
         type: 'Document',
         parentId: null,
     });
@@ -99,7 +99,7 @@ const documentToSlickGridTree = (
 
     while (stack.length > 0) {
         localEntryId++;
-        const globalEntryId = `${idPrefix}${localEntryId}`; // combines the global prefix with the local id
+        const globalEntryId = `${idPrefix}-${localEntryId}`; // combines the global prefix with the local id
 
         const stackEntry = stack.pop();
         if (!stackEntry) {

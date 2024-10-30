@@ -21,7 +21,6 @@ import {
 } from '@fluentui/react-components';
 import {
     DatabasePlugConnectedRegular,
-    DocumentMultipleRegular,
     FolderOpenRegular,
     LibraryRegular,
     PlayRegular,
@@ -38,7 +37,10 @@ const useClasses = makeStyles({
         color: tokens.colorStatusDangerBorderActive,
     },
     iconConnect: {
-        color: tokens.colorStatusWarningBorderActive,
+        color: tokens.colorStatusSuccessBorderActive,
+    },
+    iconDisconnect: {
+        color: tokens.colorStatusDangerBorderActive,
     },
 });
 
@@ -147,6 +149,7 @@ const LearnSection = () => {
 };
 
 const ConnectedActionsSection = () => {
+    const classes = useClasses();
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
@@ -154,7 +157,7 @@ const ConnectedActionsSection = () => {
         <>
             <ToolbarButton
                 aria-label="Disconnect"
-                icon={<DocumentMultipleRegular />}
+                icon={<DatabasePlugConnectedRegular className={classes.iconDisconnect} />}
                 onClick={() => void dispatcher.disconnectFromDatabase()}
             >
                 Disconnect

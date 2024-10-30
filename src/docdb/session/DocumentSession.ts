@@ -207,7 +207,7 @@ export class DocumentSession {
                     await this.channel.postMessage({
                         type: 'event',
                         name: 'documentError',
-                        params: [this.id, 'Document creation failed'],
+                        params: [this.id, 'Document update failed'],
                     });
                 }
             } catch (error) {
@@ -306,6 +306,7 @@ export class DocumentSession {
     }
 
     private async errorHandling(error: unknown): Promise<void> {
+        const isObject = error && typeof error === 'object';
         if (error instanceof ErrorResponse) {
             const code: string = `${error.code ?? 'Unknown'}`;
             const message: string = error.body?.message ?? `Query failed with status code ${code}`;
@@ -320,7 +321,7 @@ export class DocumentSession {
                 name: 'queryError',
                 params: [this.id, 'Query timed out'],
             });
-        } else if (error instanceof AbortError) {
+        } else if (error instanceof AbortError || (isObject && 'name' in error && error.name === 'AbortError')) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',

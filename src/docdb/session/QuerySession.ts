@@ -210,13 +210,19 @@ export class QuerySession {
                 throw new Error('Session is not running! Please run the session first');
             }
 
-            this.abortController?.abort();
+            try {
+                this.abortController?.abort();
+            } catch (error) {
+                await this.errorHandling(error);
+            } finally {
+                this.iterator = null;
 
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'executionStopped',
-                params: [this.id, Date.now()],
-            });
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'executionStopped',
+                    params: [this.id, Date.now()],
+                });
+            }
         });
     }
 
@@ -226,6 +232,7 @@ export class QuerySession {
     }
 
     private async errorHandling(error: unknown): Promise<void> {
+        const isObject = error && typeof error === 'object';
         if (error instanceof ErrorResponse) {
             const code: string = `${error.code ?? 'Unknown'}`;
             const message: string = error.body?.message ?? `Query failed with status code ${code}`;
@@ -240,7 +247,7 @@ export class QuerySession {
                 name: 'queryError',
                 params: [this.id, 'Query timed out'],
             });
-        } else if (error instanceof AbortError) {
+        } else if (error instanceof AbortError || (isObject && 'name' in error && error.name === 'AbortError')) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',

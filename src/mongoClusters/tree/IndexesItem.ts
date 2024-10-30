@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { nonNullValue, type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import { type TreeElementBase } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { MongoClustersClient, type CollectionItemModel, type DatabaseItemModel } from '../MongoClustersClient';
@@ -23,9 +23,7 @@ export class IndexesItem implements MongoClusterItemBase {
     }
 
     async getChildren(): Promise<TreeElementBase[]> {
-        const client: MongoClustersClient = await MongoClustersClient.getClient(
-            nonNullValue(this.mongoCluster.session?.credentialId),
-        );
+        const client: MongoClustersClient = await MongoClustersClient.getClient(this.mongoCluster.id);
         const indexes = await client.listIndexes(this.databaseInfo.name, this.collectionInfo.name);
         return indexes.map((index) => {
             return new IndexItem(this.subscription, this.mongoCluster, this.databaseInfo, this.collectionInfo, index);

@@ -22,7 +22,7 @@ import { createCollection } from './commands/createCollection';
 import { createDatabase } from './commands/createDatabase';
 import { dropCollection } from './commands/dropCollection';
 import { dropDatabase } from './commands/dropDatabase';
-import { mongoClustersExportDocuments } from './commands/exportDocuments';
+import { mongoClustersExportEntireCollection, mongoClustersExportQueryResults } from './commands/exportDocuments';
 import { mongoClustersImportDocuments } from './commands/importDocuments';
 import { launchShell } from './commands/launchShell';
 import { openCollectionView } from './commands/openCollectionView';
@@ -78,7 +78,13 @@ export class MongoClustersExtension implements vscode.Disposable {
             registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.createDatabase', createDatabase);
 
             registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.importDocuments', mongoClustersImportDocuments);
-            registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.exportDocuments', mongoClustersExportDocuments);
+            registerCommandWithTreeNodeUnwrapping(
+                'mongoClusters.cmd.exportDocuments',
+                mongoClustersExportEntireCollection,
+            );
+
+            registerCommand('mongoClusters.internal.importDocuments', mongoClustersImportDocuments);
+            registerCommand('mongoClusters.internal.exportDocuments', mongoClustersExportQueryResults);
 
             ext.outputChannel.appendLine(`mongoClusters: activated.`);
         });

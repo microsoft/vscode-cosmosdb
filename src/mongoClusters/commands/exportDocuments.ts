@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { EJSON } from 'bson';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
@@ -12,7 +12,15 @@ import { getRootPath } from '../../utils/workspacUtils';
 import { MongoClustersClient } from '../MongoClustersClient';
 import { type CollectionItem } from '../tree/CollectionItem';
 
-export async function mongoClustersExportDocuments(_context: IActionContext, node?: CollectionItem): Promise<void> {
+export async function mongoClustersExportEntireCollection(_context: IActionContext, node?: CollectionItem) {
+    return mongoClustersExportQueryResults(_context, node);
+}
+
+export async function mongoClustersExportQueryResults(
+    _context: IActionContext,
+    node?: CollectionItem,
+    queryText?: string,
+): Promise<void> {
     // node ??= ... pick a node if not provided
     if (!node) {
         throw new Error('No collection selected.');
@@ -24,13 +32,14 @@ export async function mongoClustersExportDocuments(_context: IActionContext, nod
         return;
     }
 
-    const client = await MongoClustersClient.getClient(nonNullValue(node.mongoCluster.session?.credentialId));
+    const client = await MongoClustersClient.getClient(node.mongoCluster.id);
 
     const docStreamAbortController = new AbortController();
     const docStream = client.streamDocuments(
         node.databaseInfo.name,
         node.collectionInfo.name,
         docStreamAbortController.signal,
+        queryText,
     );
 
     const filePath = targetUri.fsPath; // Convert `vscode.Uri` to a regular file path

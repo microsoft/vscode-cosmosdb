@@ -6,26 +6,26 @@
 import { addAuthenticationDataToConnectionString } from './utils/connectionStringHelpers';
 
 export interface MongoClustersCredentials {
-    credentialId: string;
+    mongoClusterId: string;
     connectionStringWithPassword?: string; // wipe it after use
     connectionString: string;
     connectionUser: string;
 }
 
 export class CredentialCache {
-    // clientId -> mongoClusters credentials
+    // the id of the cluster === the tree item id -> mongoClusters credentials
     private static _store: Map<string, MongoClustersCredentials> = new Map();
 
-    public static getConnectionStringWithPassword(credentialId: string): string {
-        return CredentialCache._store.get(credentialId)?.connectionStringWithPassword as string;
+    public static getConnectionStringWithPassword(mongoClusterId: string): string {
+        return CredentialCache._store.get(mongoClusterId)?.connectionStringWithPassword as string;
     }
 
-    public static hasCredentials(credentialId: string): boolean {
-        return CredentialCache._store.has(credentialId) as boolean;
+    public static hasCredentials(mongoClusterId: string): boolean {
+        return CredentialCache._store.has(mongoClusterId) as boolean;
     }
 
-    public static getCredentials(credentialId: string): MongoClustersCredentials | undefined {
-        return CredentialCache._store.get(credentialId);
+    public static getCredentials(mongoClusterId: string): MongoClustersCredentials | undefined {
+        return CredentialCache._store.get(mongoClusterId);
     }
 
     /**
@@ -35,14 +35,12 @@ export class CredentialCache {
     /**
      * Sets the credentials for a given connection string and stores them in the credential cache.
      *
+     * @param id - The credential id. It's supposed to be the same as the tree item id of the mongo cluster item to simplify the lookup.
      * @param connectionString - The connection string to which the credentials will be added.
      * @param username - The username to be used for authentication.
      * @param password - The password to be used for authentication.
-     * @returns A unique credential ID that can be used to retrieve the stored credentials.
      */
-    public static setCredentials(connectionString: string, username: string, password: string): string {
-        const credentialId = Math.random().toString(36).substring(7); // maybe a hash?
-
+    public static setCredentials(mongoClusterId: string, connectionString: string, username: string, password: string) {
         const connectionStringWithPassword = addAuthenticationDataToConnectionString(
             connectionString,
             username,
@@ -50,14 +48,12 @@ export class CredentialCache {
         );
 
         const credentials: MongoClustersCredentials = {
-            credentialId: credentialId,
+            mongoClusterId: mongoClusterId,
             connectionStringWithPassword: connectionStringWithPassword,
             connectionString: connectionString,
             connectionUser: username,
         };
 
-        CredentialCache._store.set(credentialId, credentials);
-
-        return credentialId;
+        CredentialCache._store.set(mongoClusterId, credentials);
     }
 }

@@ -6,6 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { CollectionViewController } from '../../webviews/mongoClusters/collectionView/collectionViewController';
 import { MongoClustersSession } from '../MongoClusterSession';
+import { type CollectionItem } from '../tree/CollectionItem';
 
 export async function openCollectionView(
     _context: IActionContext,
@@ -14,6 +15,7 @@ export async function openCollectionView(
         liveConnectionId: string;
         databaseName: string;
         collectionName: string;
+        collectionTreeItem: CollectionItem;
     },
 ): Promise<void> {
     /**
@@ -28,6 +30,7 @@ export async function openCollectionView(
         sessionId: sessionId,
         databaseName: props.databaseName,
         collectionName: props.collectionName,
+        collectionTreeItem: props.collectionTreeItem,
     });
 
     view.revealToForeground();

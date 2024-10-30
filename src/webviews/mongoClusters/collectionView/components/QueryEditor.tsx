@@ -24,6 +24,8 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
     const [, setCurrentContext] = useContext(CollectionViewContext);
 
     const handleEditorDidMount = (editor: monacoEditor.editor.IStandaloneCodeEditor, monaco: typeof monacoEditor) => {
+        editor.setValue('{  }');
+
         const getCurrentContentFunction = () => editor.getValue();
         // adding the function to the context for use outside of the editor
         setCurrentContext((prev) => ({
@@ -83,6 +85,8 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
                 },
             ],
         });
+
+
     };
 
     const monacoOptions: editor.IStandaloneEditorConstructionOptions = {

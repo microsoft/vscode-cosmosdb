@@ -169,7 +169,7 @@ export class DocumentTab extends BaseTab {
     }
 
     private async saveDocument(documentText: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.saveDocument', async () => {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.saveDocument', async (context) => {
             const documentContent: JSONValue = JSON.parse(documentText) as JSONValue;
 
             if (!this.isCosmosDbItemDefinition(documentContent)) {
@@ -181,6 +181,8 @@ export class DocumentTab extends BaseTab {
                 : await this.session.create(documentContent);
 
             if (!result) {
+                // TODO: should we show an error message notification?
+                context.errorHandling.suppressDisplay = true;
                 throw new Error('Failed to create document');
             }
 

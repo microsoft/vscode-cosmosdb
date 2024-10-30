@@ -102,10 +102,10 @@ export class DocumentContextProvider extends BaseContextProvider {
             this.dispatch({ type: 'setError', error: this.parseError(error) });
         });
 
-        this.channel.on('queryError', (_sessionId: string, error: string) => {
+        this.channel.on('queryError', async (_sessionId: string, error: string) => {
             this.dispatch({ type: 'setRefreshing', isRefreshing: false });
             this.dispatch({ type: 'setSaving', isSaving: false });
-            this.dispatch({ type: 'setError', error: this.parseError(error) });
+            await this.sendCommand('showErrorMessage', this.parseError(error));
         });
     }
 
@@ -118,7 +118,7 @@ export class DocumentContextProvider extends BaseContextProvider {
                 return error?.message?.toString() || JSON.stringify(error, null, 4);
             }
 
-            return `Error: ${error}`;
+            return `${error}`;
         } catch {
             return error;
         }

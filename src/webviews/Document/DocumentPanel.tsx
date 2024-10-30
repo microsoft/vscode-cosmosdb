@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type JSONObject, type PartitionKeyDefinition } from '@azure/cosmos';
-import { makeStyles, MessageBar, MessageBarBody, MessageBarTitle, ProgressBar } from '@fluentui/react-components';
+import { makeStyles, MessageBar, ProgressBar } from '@fluentui/react-components';
 import { parse as parseJson } from '@prantlf/jsonlint';
 import { useEffect } from 'react';
 import { extractPartitionKey } from '../../utils/document';
@@ -106,17 +106,14 @@ export const DocumentPanel = () => {
 
     return (
         <section className={classes.container}>
+            <DocumentToolbar />
+            {inProgress && <ProgressBar />}
             {state.error && (
                 <MessageBar key={'error'} intent={'error'} layout={'multiline'}>
-                    <MessageBarBody>
-                        <MessageBarTitle>Internal error</MessageBarTitle>
-                        {state.error}
-                    </MessageBarBody>
+                    {state.error}
                 </MessageBar>
             )}
-            <DocumentToolbar />
             {isReadOnly && <MessageBar intent={'info'}>This document is read-only.</MessageBar>}
-            {inProgress && <ProgressBar />}
             <section className={classes.resultDisplay}>
                 <MonacoEditor
                     height={'100%'}

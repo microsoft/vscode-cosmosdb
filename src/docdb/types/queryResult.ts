@@ -46,6 +46,7 @@ export type QueryResult = {
     documents: QueryResultRecord[];
     iteration: number;
     metadata: ResultViewMetadata;
+    indexMetrics: string;
     queryMetrics: QueryMetrics;
     requestCharge: number;
     roundTrips: number;
@@ -74,6 +75,7 @@ export type SerializedQueryResult = {
     documents: QueryResultRecord[];
     iteration: number;
     metadata: ResultViewMetadata;
+    indexMetrics: string;
     queryMetrics: SerializedQueryMetrics;
     requestCharge: number;
     roundTrips: number;

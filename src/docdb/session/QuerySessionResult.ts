@@ -57,6 +57,7 @@ export class QuerySessionResult {
             documents: response.resources,
             iteration: pageNumber,
             metadata: this.metadata,
+            indexMetrics: response.indexMetrics,
             // CosmosDB library has wrong type definition
             queryMetrics: (response.queryMetrics as unknown as QueryMetrics[])['0'],
             requestCharge: response.requestCharge,
@@ -78,6 +79,7 @@ export class QuerySessionResult {
                 documents: result.documents ?? [],
                 iteration: result.iteration,
                 metadata: this.metadata,
+                indexMetrics: result.indexMetrics,
                 queryMetrics: {
                     documentLoadTime: result.queryMetrics.documentLoadTime.totalMilliseconds(),
                     documentWriteTime: result.queryMetrics.documentWriteTime.totalMilliseconds(),

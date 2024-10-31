@@ -64,7 +64,8 @@
 
         flex-grow: 1;
 
-        //background-color: aqua; // used to invstigate layout issues
+
+        background-color: aqua; // used to invstigate layout issues
 
         .loadingAnimationTable {
             .headerRow {
@@ -78,6 +79,10 @@
                 gap: 10px;
             }
         }
+    }
+
+    .statusArea {
+        background-color: var(--vscode-breadcrumbPicker-background);
     }
 }
 

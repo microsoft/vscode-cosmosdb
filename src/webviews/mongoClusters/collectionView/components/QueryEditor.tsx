@@ -107,9 +107,12 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
         renderLineHighlight: 'none',
         readOnly: false,
         scrollBeyondLastLine: false,
+
     };
 
     const [editorHeight, setEditorHeight] = useState<number>(1 * 19); // Initial height
+
+
 
     return (
         <div

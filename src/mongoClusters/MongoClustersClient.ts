@@ -96,6 +96,14 @@ export class MongoClustersClient {
         return client;
     }
 
+    public static async deleteClient(credentialId: string): Promise<void> {
+        if (MongoClustersClient._clients.has(credentialId)) {
+            const client = MongoClustersClient._clients.get(credentialId) as MongoClustersClient;
+            await client._mongoClient.close(true);
+            MongoClustersClient._clients.delete(credentialId);
+        }
+    }
+
     getUserName() {
         return CredentialCache.getCredentials(this._credentialId)?.connectionUser;
     }

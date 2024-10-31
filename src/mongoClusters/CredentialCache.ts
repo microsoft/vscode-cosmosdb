@@ -28,6 +28,10 @@ export class CredentialCache {
         return CredentialCache._store.get(mongoClusterId);
     }
 
+    public static deleteCredentials(mongoClusterId: string): void {
+        CredentialCache._store.delete(mongoClusterId);
+    }
+
     /**
      *
      * @param connectionString connection string with credentials

@@ -167,6 +167,12 @@ export class MongoClusterItem implements MongoClusterItemBase {
                             throw error;
                         });
                     } catch (error) {
+                        // failure path, the connectdion has failed, let's make sure we don't cache these credentials.
+                        // It's possible it's not due to incorrect credentials, but these improvements will be made later.
+
+                        await MongoClustersClient.deleteClient(this.id);
+                        CredentialCache.deleteCredentials(this.id);
+
                         return [
                             createGenericElement({
                                 contextValue: 'error',

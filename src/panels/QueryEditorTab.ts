@@ -18,6 +18,7 @@ import { BaseTab, type CommandPayload } from './BaseTab';
 import { DocumentTab } from './DocumentTab';
 
 export class QueryEditorTab extends BaseTab {
+    public static readonly title = 'Query Editor';
     public static readonly viewType = 'cosmosDbQuery';
     public static readonly openTabs: Set<QueryEditorTab> = new Set<QueryEditorTab>();
 
@@ -42,9 +43,12 @@ export class QueryEditorTab extends BaseTab {
         }
     }
 
-    public static render(connection?: NoSqlQueryConnection, viewColumn?: vscode.ViewColumn): QueryEditorTab {
-        const column = viewColumn ?? vscode.ViewColumn.One;
-        if (connection) {
+    public static render(
+        connection?: NoSqlQueryConnection,
+        viewColumn = vscode.ViewColumn.One,
+        revealTabIfExist = false,
+    ): QueryEditorTab {
+        if (revealTabIfExist && connection) {
             const openTab = [...QueryEditorTab.openTabs].find(
                 (openTab) =>
                     openTab.connection?.endpoint === connection.endpoint &&
@@ -52,12 +56,12 @@ export class QueryEditorTab extends BaseTab {
                     openTab.connection?.containerId === connection.containerId,
             );
             if (openTab) {
-                openTab.panel.reveal(column);
+                openTab.panel.reveal(viewColumn);
                 return openTab;
             }
         }
 
-        const panel = vscode.window.createWebviewPanel(QueryEditorTab.viewType, 'Query Editor', column, {
+        const panel = vscode.window.createWebviewPanel(QueryEditorTab.viewType, QueryEditorTab.title, viewColumn, {
             enableScripts: true,
             retainContextWhenHidden: true,
         });
@@ -143,12 +147,15 @@ export class QueryEditorTab extends BaseTab {
                 params.push(containerDefinition.partitionKey);
             }
 
+            this.panel.title = `${databaseId}/${containerId}`;
+
             await this.channel.postMessage({
                 type: 'event',
                 name: 'databaseConnected',
                 params,
             });
         } else {
+            this.panel.title = QueryEditorTab.title;
             // We will not remove the connection details from the telemetry context
             // to prevent accidental logging of sensitive information
             await this.channel.postMessage({

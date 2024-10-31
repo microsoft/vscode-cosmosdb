@@ -25,13 +25,15 @@ export class QueryEditorTab extends BaseTab {
     private readonly sessions = new Map<string, QuerySession>();
 
     private connection: NoSqlQueryConnection | undefined;
+    private query: string | undefined;
 
-    protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection) {
+    protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection, query?: string) {
         super(panel, QueryEditorTab.viewType, { hasConnection: connection ? 'true' : 'false' });
 
         QueryEditorTab.openTabs.add(this);
 
         this.connection = connection;
+        this.query = query;
 
         if (connection) {
             if (connection.masterKey) {
@@ -47,6 +49,7 @@ export class QueryEditorTab extends BaseTab {
         connection?: NoSqlQueryConnection,
         viewColumn = vscode.ViewColumn.One,
         revealTabIfExist = false,
+        query?: string,
     ): QueryEditorTab {
         if (revealTabIfExist && connection) {
             const openTab = [...QueryEditorTab.openTabs].find(
@@ -66,7 +69,7 @@ export class QueryEditorTab extends BaseTab {
             retainContextWhenHidden: true,
         });
 
-        return new QueryEditorTab(panel, connection);
+        return new QueryEditorTab(panel, connection, query);
     }
 
     public dispose(): void {
@@ -83,6 +86,13 @@ export class QueryEditorTab extends BaseTab {
 
         this.channel.on<void>('ready', async () => {
             await this.updateConnection(this.connection);
+            if (this.query) {
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'fileOpened',
+                    params: [this.query],
+                });
+            }
         });
     }
 
@@ -97,6 +107,8 @@ export class QueryEditorTab extends BaseTab {
                     payload.params[1] as string,
                     payload.params[2] as string,
                 );
+            case 'duplicateTab':
+                return this.duplicateTab(payload.params[0] as string);
             case 'copyToClipboard':
                 return this.copyToClipboard(payload.params[0] as string);
             case 'connectToDatabase':
@@ -202,6 +214,12 @@ export class QueryEditorTab extends BaseTab {
                 ext = `.${ext}`;
             }
             await vscodeUtil.showNewFile(text, filename, ext);
+        });
+    }
+
+    private async duplicateTab(text: string): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.duplicateTab', () => {
+            QueryEditorTab.render(this.connection, this.panel.viewColumn, false, text);
         });
     }
 

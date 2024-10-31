@@ -56,6 +56,9 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     public async saveToFile(text: string, filename: string, ext: string): Promise<void> {
         await this.sendCommand('saveFile', text, filename, ext);
     }
+    public async duplicateTab(text: string): Promise<void> {
+        await this.sendCommand('duplicateTab', text);
+    }
     public insertText(query: string): void {
         this.dispatch({ type: 'insertText', queryValue: query ?? '' });
     }

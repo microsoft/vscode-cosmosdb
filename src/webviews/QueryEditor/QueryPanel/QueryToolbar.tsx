@@ -26,6 +26,7 @@ import {
     PlayRegular,
     SaveRegular,
     StopRegular,
+    TabDesktopMultipleRegular,
 } from '@fluentui/react-icons';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
@@ -103,6 +104,14 @@ const BaseActionsSection = () => {
                 onClick={() => void dispatcher.saveToFile(state.queryValue, 'New query', 'nosql')}
             >
                 Save
+            </ToolbarButton>
+            <ToolbarButton
+                aria-label="Copy into new tab"
+                icon={<TabDesktopMultipleRegular />}
+                onClick={() => void dispatcher.duplicateTab(state.queryValue)}
+                disabled={!state.isConnected}
+            >
+                Duplicate
             </ToolbarButton>
         </>
     );

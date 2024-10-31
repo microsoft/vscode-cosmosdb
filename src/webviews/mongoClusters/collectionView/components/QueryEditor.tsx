@@ -105,7 +105,7 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
         renderLineHighlight: 'none',
         readOnly: false,
         scrollBeyondLastLine: false,
-        automaticLayout: false
+        automaticLayout: false,
     };
 
     return (
@@ -117,7 +117,7 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
                 enabled: true,
                 maxLines: 10,
                 minLines: 1,
-                lineHeight: 19
+                lineHeight: 19,
             }}
             onExecuteRequest={(input) => {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-call

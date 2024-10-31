@@ -75,7 +75,10 @@ export const DocumentView = (): JSX.Element => {
     //     };
     // }, [vscodeEventTarget]);
 
-    const handleMonacoEditorMount = (editor: monacoEditor.editor.IStandaloneCodeEditor, _monaco: typeof monacoEditor) => {
+    const handleMonacoEditorMount = (
+        editor: monacoEditor.editor.IStandaloneCodeEditor,
+        _monaco: typeof monacoEditor,
+    ) => {
         // Store the editor instance in ref
         editorRef.current = editor;
 

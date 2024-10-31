@@ -144,7 +144,6 @@ export const MonacoAdaptive = (props: MonacoAdaptiveProps) => {
         }
     };
 
-
     return (
         <div className="monacoAdaptiveContainer" style={{ height: editorHeight }}>
             <MonacoEditor {...editorProps} onMount={handleMonacoEditorMount} />

@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useContext, useState, type JSX } from 'react';
-import { MonacoEditor } from '../../../MonacoEditor';
+import { useContext, type JSX } from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import type * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
@@ -14,6 +13,7 @@ import basicFindQuerySchema from '../../../../utils/json/mongo/autocomplete/basi
 // eslint-disable-next-line import/no-internal-modules
 import { type editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { CollectionViewContext } from '../collectionViewContext';
+import { MonacoAdaptive } from './MonacoAdaptive';
 // eslint-disable-next-line import/no-internal-modules
 
 // eslint-disable-next-line import/no-internal-modules
@@ -85,8 +85,6 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
                 },
             ],
         });
-
-
     };
 
     const monacoOptions: editor.IStandaloneEditorConstructionOptions = {
@@ -107,43 +105,26 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
         renderLineHighlight: 'none',
         readOnly: false,
         scrollBeyondLastLine: false,
-
+        automaticLayout: false
     };
 
-    const [editorHeight, setEditorHeight] = useState<number>(1 * 19); // Initial height
-
-
-
     return (
-        <div
-            className="monacoEditorContainer"
-            style={
-                {
-                    height: editorHeight,
-                    '--textbox-border-color': 'red', // theme.palette.neutralLight, // Pass Fluent UI color as CSS variable
-                } as React.CSSProperties
-            }
-        >
-            <MonacoEditor
-                height={'100%'}
-                width={'100%'}
-                language="json"
-                adaptiveHeight={{
-                    enabled: true,
-                    maxLines: 10,
-                    minLines: 1,
-                    lineHeight: 19,
-                    onEditorContentHeightChange: (height) => {
-                        setEditorHeight(height); // Dynamically update the outer component's height
-                    },
-                }}
-                onExecuteRequest={(input) => {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-                    onExecuteRequest(input);
-                }}
-                onEditorMount={handleEditorDidMount}
-                options={monacoOptions}
-            />
-        </div>
+        <MonacoAdaptive
+            height={'100%'}
+            width={'100%'}
+            language="json"
+            adaptiveHeight={{
+                enabled: true,
+                maxLines: 10,
+                minLines: 1,
+                lineHeight: 19
+            }}
+            onExecuteRequest={(input) => {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+                onExecuteRequest(input);
+            }}
+            onMount={handleEditorDidMount}
+            options={monacoOptions}
+        />
     );
 };

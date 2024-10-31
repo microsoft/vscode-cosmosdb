@@ -3,43 +3,63 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import debounce from 'lodash.debounce';
 import * as React from 'react';
 import { MonacoEditor } from '../../../MonacoEditor';
+
+// eslint-disable-next-line import/no-internal-modules
+import type * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
 interface Props {
     value: string[];
 }
 
 const monacoOptions = {
-    // autoIndent: 'full',
-    // contextmenu: true,
-    // fontFamily: 'monospace',
-    // fontSize: 13,
-    // lineHeight: 24,
-    // hideCursorInOverviewRuler: true,
-    // matchBrackets: 'always',
     minimap: {
         enabled: true,
     },
     scrollBeyondLastLine: false,
-    // scrollbar: {
-    //   horizontalSliderSize: 4,
-    //   verticalSliderSize: 18,
-    // },
-    // selectOnLineNumbers: true,
-    // roundedSelection: false,
     readOnly: true,
-    // cursorStyle: 'line',
-    // automaticLayout: true,
+    automaticLayout: false,
 };
 
 export const DataViewPanelJSON = ({ value }: Props): React.JSX.Element => {
+    const editorRef = React.useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
+
+    React.useEffect(() => {
+        // Add the debounced resize event listener
+        const debouncedResizeHandler = debounce(handleResize, 200);
+        window.addEventListener('resize', debouncedResizeHandler);
+
+        // Initial layout adjustment
+        handleResize();
+
+        // Clean up on component unmount
+        return () => {
+            if (editorRef.current) {
+                editorRef.current.dispose();
+            }
+            window.removeEventListener('resize', debouncedResizeHandler);
+        };
+    }, []);
+
+    const handleResize = () => {
+        if (editorRef.current) {
+            editorRef.current.layout();
+        }
+    };
+
     return (
         <MonacoEditor
             height={'100%'}
             width={'100%'}
             language="json"
             options={monacoOptions}
+            onMount={(editor) => {
+                // Store the editor instance in ref
+                editorRef.current = editor;
+                handleResize();
+            }}
             value={value.join('\n\n')}
         />
     );

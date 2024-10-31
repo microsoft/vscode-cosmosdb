@@ -32,25 +32,6 @@
         gap: 10px;
     }
 
-    .monacoEditorContainer {
-        // display: flex;
-        // flex-direction: row;
-        // justify-content: center;
-        // align-items: center;
-
-        // gap: 10px;
-        // flex-grow: 1;
-        // height: 100%;
-
-        padding-top: 6px;
-        padding-bottom: 6px;
-
-        border: 2px solid var(--vscode-checkbox-border); // TODO: find the style name of a fluent input field
-        border-radius: 4px;
-
-        //box-shadow: $ms-depth-shadow-4;
-    }
-
     .resultsActionBar {
         display: flex;
         flex-direction: row;
@@ -64,8 +45,7 @@
 
         flex-grow: 1;
 
-
-        background-color: aqua; // used to invstigate layout issues
+        //background-color: aqua; // used to invstigate layout issues
 
         .loadingAnimationTable {
             .headerRow {
@@ -79,10 +59,6 @@
                 gap: 10px;
             }
         }
-    }
-
-    .statusArea {
-        background-color: var(--vscode-breadcrumbPicker-background);
     }
 }
 

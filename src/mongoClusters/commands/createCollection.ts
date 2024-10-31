@@ -17,7 +17,7 @@ export async function createCollection(context: IActionContext, databaseNode?: D
 
     const wizardContext: CreateCollectionWizardContext = {
         ...context,
-        credentialsId: databaseNode.mongoCluster.session?.credentialId ?? '',
+        credentialsId: databaseNode.mongoCluster.id,
         databaseItem: databaseNode,
     };
 

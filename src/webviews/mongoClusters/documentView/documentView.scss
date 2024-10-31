@@ -8,11 +8,22 @@
 .documentView {
     display: flex;
     flex-direction: column;
+    height: 100vh;
     row-gap: 10px;
 
-    padding-top: 8px;
+    .toolbarContainer {
+        padding-top: 8px;
 
-    height: 100vh;
+        flex-grow: 0;
+        flex-shrink: 1;
+        flex-basis: auto;
+    }
+
+    .monacoContainer {
+        flex-grow: 1;
+        flex-shrink: 1;
+        flex-basis: 0%;
+    }
 }
 
 .privatePreview {

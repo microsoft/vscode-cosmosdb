@@ -22,9 +22,7 @@ export async function launchShell(
         throw new Error('No database or collection selected.');
     }
 
-    const client: MongoClustersClient = await MongoClustersClient.getClient(
-        nonNullValue(node.mongoCluster.session?.credentialId),
-    );
+    const client: MongoClustersClient = await MongoClustersClient.getClient(node.mongoCluster.id);
 
     const connectionString = client.getConnectionString();
     const username = client.getUserName();

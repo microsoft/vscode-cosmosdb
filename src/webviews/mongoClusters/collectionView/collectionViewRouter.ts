@@ -12,6 +12,7 @@ import { getConfirmationWithWarning } from '../../../utils/dialogsConfirmations'
 import { getKnownFields, type FieldEntry } from '../../../utils/json/mongo/autocomplete/getKnownFields';
 import { publicProcedure, router } from '../../api/extension-server/trpc';
 
+import { type CollectionItem } from '../../../mongoClusters/tree/CollectionItem';
 // eslint-disable-next-line import/no-internal-modules
 import basicFindQuerySchema from '../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';
 import { generateMongoFindJsonSchema } from '../../../utils/json/mongo/autocomplete/generateMongoFindJsonSchema';
@@ -20,6 +21,7 @@ export type RouterContext = {
     sessionId: string;
     databaseName: string;
     collectionName: string;
+    collectionTreeItem: CollectionItem; // needed to execute commands on the collection as the tree APIv2 doesn't support id-based search for tree items.
 };
 
 export const collectionsViewRouter = router({
@@ -183,4 +185,22 @@ export const collectionsViewRouter = router({
 
             return acknowledged;
         }),
+    exportDocuments: publicProcedure
+        // parameters
+        .input(z.object({ query: z.string() }))
+        //procedure type
+        .query(async ({ input, ctx }) => {
+            const myCtx = ctx as RouterContext;
+
+            vscode.commands.executeCommand(
+                'mongoClusters.internal.exportDocuments',
+                myCtx.collectionTreeItem,
+                input.query,
+            );
+        }),
+    importDocuments: publicProcedure.query(async ({ ctx }) => {
+        const myCtx = ctx as RouterContext;
+
+        vscode.commands.executeCommand('mongoClusters.internal.importDocuments', myCtx.collectionTreeItem);
+    }),
 });

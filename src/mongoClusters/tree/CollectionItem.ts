@@ -3,12 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    createGenericElement,
-    nonNullValue,
-    type IActionContext,
-    type TreeElementBase,
-} from '@microsoft/vscode-azext-utils';
+import { createGenericElement, type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { type Document } from 'bson';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
@@ -47,9 +42,10 @@ export class CollectionItem implements MongoClusterItemBase {
                         viewTitle: `${this.collectionInfo.name}`,
                         // viewTitle: `${this.mongoCluster.name}/${this.databaseInfo.name}/${this.collectionInfo.name}`, // using '/' as a separator to use VSCode's "title compression"(?) feature
 
-                        liveConnectionId: this.mongoCluster.session?.credentialId,
+                        liveConnectionId: this.mongoCluster.id,
                         databaseName: this.databaseInfo.name,
                         collectionName: this.collectionInfo.name,
+                        collectionTreeItem: this,
                     },
                 ],
                 iconPath: new ThemeIcon('explorer-view-icon'),
@@ -59,7 +55,7 @@ export class CollectionItem implements MongoClusterItemBase {
     }
 
     async delete(_context: IActionContext): Promise<boolean> {
-        const client = await MongoClustersClient.getClient(nonNullValue(this.mongoCluster.session?.credentialId));
+        const client = await MongoClustersClient.getClient(this.mongoCluster.id);
 
         await ext.state.showDeleting(this.id, async () => {
             await client.dropCollection(this.databaseInfo.name, this.collectionInfo.name);
@@ -71,7 +67,7 @@ export class CollectionItem implements MongoClusterItemBase {
     }
 
     async insertDocuments(_context: IActionContext, documents: Document[]): Promise<InsertDocumentsResult> {
-        const client = await MongoClustersClient.getClient(nonNullValue(this.mongoCluster.session?.credentialId));
+        const client = await MongoClustersClient.getClient(this.mongoCluster.id);
 
         let result: InsertDocumentsResult = { acknowledged: false, insertedCount: 0 };
 

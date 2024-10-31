@@ -5,6 +5,7 @@
 
 import { ViewColumn } from 'vscode';
 import { ext } from '../../../extensionVariables';
+import { type CollectionItem } from '../../../mongoClusters/tree/CollectionItem';
 import { WebviewController } from '../../api/extension-server/WebviewController';
 import { type RouterContext } from './collectionViewRouter';
 
@@ -14,6 +15,7 @@ export type CollectionViewWebviewConfigurationType = {
     sessionId: string;
     databaseName: string;
     collectionName: string;
+    collectionTreeItem: CollectionItem; // needed to execute commands on the collection as the tree APIv2 doesn't support id-based search for tree items.
 };
 
 export class CollectionViewController extends WebviewController<CollectionViewWebviewConfigurationType> {
@@ -29,6 +31,7 @@ export class CollectionViewController extends WebviewController<CollectionViewWe
             sessionId: initialData.sessionId,
             databaseName: initialData.databaseName,
             collectionName: initialData.collectionName,
+            collectionTreeItem: initialData.collectionTreeItem,
         };
 
         this.setupTrpc(trpcContext);

@@ -54,7 +54,7 @@ export class DocumentTab extends BaseTab {
         documentId?: CosmosDbRecordIdentifier,
         viewColumn?: vscode.ViewColumn,
     ): DocumentTab {
-        const column = viewColumn ?? vscode.ViewColumn.One;
+        const column = viewColumn ?? vscode.ViewColumn.Active;
         if (documentId) {
             const openTab = [...DocumentTab.openTabs].find((openTab) => {
                 if (!openTab.documentId) {

@@ -36,7 +36,7 @@ export class SelectUserNameStep extends AzureWizardPromptStep<AuthenticateWizard
         context.selectedUserName = res.label;
     }
 
-    public async configureBeforePrompt(wizardContext: AuthenticateWizardContext): Promise<void> {
+    public configureBeforePrompt(wizardContext: AuthenticateWizardContext): void {
         // in case there is actually only the admin user name specified,
         // we can skip the prompt and just select the admin user name.
         if (wizardContext.otherUserNames.length === 0) {

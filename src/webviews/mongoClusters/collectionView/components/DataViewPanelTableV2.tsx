@@ -128,10 +128,7 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
     };
 
     React.useEffect(() => {
-        console.log('Grid View has mounted');
-
         return () => {
-            console.log('Grid View will unmount');
             gridRef.current?.gridService.setSelectedRows([]);
         };
     }, []);

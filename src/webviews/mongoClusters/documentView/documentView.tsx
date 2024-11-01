@@ -9,6 +9,7 @@ import { type JSX, useEffect, useRef, useState } from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
+import { ProgressBar } from '@fluentui/react-components';
 import debounce from 'lodash.debounce';
 import { useConfiguration } from '../../api/webview-client/useConfiguration';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
@@ -43,15 +44,19 @@ export const DocumentView = (): JSX.Element => {
     const { trpcClient /*, vscodeEventTarget*/ } = useTrpcClient();
 
     const [editorContent] = configuration.mode === 'add' ? useState('{  }') : useState('{ "loading...": true }');
+    const [isLoading, setIsLoading] = useState(configuration.mode !== 'add');
 
     // a useEffect without a dependency runs only once after the first render only
     useEffect(() => {
         if (configuration.mode !== 'add') {
             const documentId: string = configuration.documentId;
 
+            setIsLoading(true);
             void trpcClient.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
                 setContent(response);
             });
+
+            setIsLoading(false);
         }
     }, []);
 
@@ -162,8 +167,11 @@ export const DocumentView = (): JSX.Element => {
     function handleOnRefreshRequest(): void {
         const documentId: string = configuration.documentId;
 
+        setIsLoading(true);
+
         void trpcClient.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
             setContent(response);
+            setIsLoading(false);
         });
     }
 
@@ -174,6 +182,8 @@ export const DocumentView = (): JSX.Element => {
             return;
         }
 
+        setIsLoading(true);
+
         // we're not sending the ID over becasue it has to be extracted from the document being sent over
         void trpcClient.mongoClusters.documentView.saveDocument
             .mutate({ documentContent: editorContent })
@@ -181,6 +191,7 @@ export const DocumentView = (): JSX.Element => {
                 // update the configuration for potential refreshes of the document
                 configuration.documentId = response.documentId;
                 setContent(response.documentStringified);
+                setIsLoading(false);
             });
     }
 
@@ -189,6 +200,7 @@ export const DocumentView = (): JSX.Element => {
     return (
         <div className="documentView">
             <div className="toolbarContainer">
+                {isLoading && <ProgressBar thickness="large" className="progressBar" />}
                 <ToolbarDocuments
                     viewerMode={configuration.mode}
                     onSaveRequest={handleOnSaveRequest}

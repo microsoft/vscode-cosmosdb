@@ -94,6 +94,9 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
         hideCursorInOverviewRuler: true,
         overviewRulerBorder: false,
         overviewRulerLanes: 0,
+        glyphMargin: false,
+        folding: false,
+        renderLineHighlight: 'none',
         minimap: {
             enabled: false,
         },
@@ -102,7 +105,6 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
             vertical: 'auto',
             horizontal: 'auto',
         },
-        renderLineHighlight: 'none',
         readOnly: false,
         scrollBeyondLastLine: false,
         automaticLayout: false,

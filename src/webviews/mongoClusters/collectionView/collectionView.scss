@@ -30,6 +30,8 @@
         justify-content: space-between;
         align-items: center;
         gap: 10px;
+
+        text-wrap: nowrap;
     }
 
     .resultsActionBar {
@@ -64,6 +66,12 @@
     .toolbarTableNavigation {
         margin-top: -10px;
     }
+}
+
+.progressBar {
+    position: absolute;
+    left: 0px;
+    top: 0px;
 }
 
 .toolbarDividerTransparent {

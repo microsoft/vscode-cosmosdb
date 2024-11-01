@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
-import { Tab, TabList } from '@fluentui/react-components';
+import { ProgressBar, Tab, TabList } from '@fluentui/react-components';
 import { type JSX, useEffect, useRef, useState } from 'react';
 import { type TableDataEntry } from '../../../mongoClusters/MongoClusterSession';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
@@ -107,10 +107,10 @@ export const CollectionView = (): JSX.Element => {
                 // 3. Load the data for the current view
                 getDataForView(currentContext.currentView);
 
-                setCurrentContext((prev) => ({ ...prev, isLoading: false }));
+                setCurrentContext((prev) => ({ ...prev, isLoading: false, isFirstTimeLoad: false }));
             })
             .catch((_error) => {
-                setCurrentContext((prev) => ({ ...prev, isLoading: false }));
+                setCurrentContext((prev) => ({ ...prev, isLoading: false, isFirstTimeLoad: false }));
             });
     }, [currentContext.currrentQueryDefinition]);
 
@@ -309,6 +309,8 @@ export const CollectionView = (): JSX.Element => {
     return (
         <CollectionViewContext.Provider value={[currentContext, setCurrentContext]}>
             <div className="collectionView">
+                {currentContext.isLoading && <ProgressBar thickness="large" className="progressBar" />}
+
                 <div className="toolbarMainView">
                     <ToolbarMainView />
                 </div>

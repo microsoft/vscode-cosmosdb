@@ -143,7 +143,7 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
         gridRef.current?.gridService.renderGrid();
     }, [liveData, gridColumns]); // Re-run when headers or data change
 
-    if (currentContext.isLoading) {
+    if (currentContext.isFirstTimeLoad) {
         return <LoadingAnimationTable />;
     } else {
         return (

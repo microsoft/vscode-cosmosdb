@@ -18,19 +18,22 @@ import { BaseTab, type CommandPayload } from './BaseTab';
 import { DocumentTab } from './DocumentTab';
 
 export class QueryEditorTab extends BaseTab {
+    public static readonly title = 'Query Editor';
     public static readonly viewType = 'cosmosDbQuery';
     public static readonly openTabs: Set<QueryEditorTab> = new Set<QueryEditorTab>();
 
     private readonly sessions = new Map<string, QuerySession>();
 
     private connection: NoSqlQueryConnection | undefined;
+    private query: string | undefined;
 
-    protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection) {
+    protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection, query?: string) {
         super(panel, QueryEditorTab.viewType, { hasConnection: connection ? 'true' : 'false' });
 
         QueryEditorTab.openTabs.add(this);
 
         this.connection = connection;
+        this.query = query;
 
         if (connection) {
             if (connection.masterKey) {
@@ -42,9 +45,13 @@ export class QueryEditorTab extends BaseTab {
         }
     }
 
-    public static render(connection?: NoSqlQueryConnection, viewColumn?: vscode.ViewColumn): QueryEditorTab {
-        const column = viewColumn ?? vscode.ViewColumn.One;
-        if (connection) {
+    public static render(
+        connection?: NoSqlQueryConnection,
+        viewColumn = vscode.ViewColumn.Active,
+        revealTabIfExist = false,
+        query?: string,
+    ): QueryEditorTab {
+        if (revealTabIfExist && connection) {
             const openTab = [...QueryEditorTab.openTabs].find(
                 (openTab) =>
                     openTab.connection?.endpoint === connection.endpoint &&
@@ -52,17 +59,17 @@ export class QueryEditorTab extends BaseTab {
                     openTab.connection?.containerId === connection.containerId,
             );
             if (openTab) {
-                openTab.panel.reveal(column);
+                openTab.panel.reveal(viewColumn);
                 return openTab;
             }
         }
 
-        const panel = vscode.window.createWebviewPanel(QueryEditorTab.viewType, 'Query Editor', column, {
+        const panel = vscode.window.createWebviewPanel(QueryEditorTab.viewType, QueryEditorTab.title, viewColumn, {
             enableScripts: true,
             retainContextWhenHidden: true,
         });
 
-        return new QueryEditorTab(panel, connection);
+        return new QueryEditorTab(panel, connection, query);
     }
 
     public dispose(): void {
@@ -79,6 +86,13 @@ export class QueryEditorTab extends BaseTab {
 
         this.channel.on<void>('ready', async () => {
             await this.updateConnection(this.connection);
+            if (this.query) {
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'fileOpened',
+                    params: [this.query],
+                });
+            }
         });
     }
 
@@ -93,6 +107,8 @@ export class QueryEditorTab extends BaseTab {
                     payload.params[1] as string,
                     payload.params[2] as string,
                 );
+            case 'duplicateTab':
+                return this.duplicateTab(payload.params[0] as string);
             case 'copyToClipboard':
                 return this.copyToClipboard(payload.params[0] as string);
             case 'connectToDatabase':
@@ -143,12 +159,15 @@ export class QueryEditorTab extends BaseTab {
                 params.push(containerDefinition.partitionKey);
             }
 
+            this.panel.title = `${databaseId}/${containerId}`;
+
             await this.channel.postMessage({
                 type: 'event',
                 name: 'databaseConnected',
                 params,
             });
         } else {
+            this.panel.title = QueryEditorTab.title;
             // We will not remove the connection details from the telemetry context
             // to prevent accidental logging of sensitive information
             await this.channel.postMessage({
@@ -195,6 +214,12 @@ export class QueryEditorTab extends BaseTab {
                 ext = `.${ext}`;
             }
             await vscodeUtil.showNewFile(text, filename, ext);
+        });
+    }
+
+    private async duplicateTab(text: string): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.duplicateTab', () => {
+            QueryEditorTab.render(this.connection, this.panel.viewColumn, false, text);
         });
     }
 
@@ -346,7 +371,7 @@ export class QueryEditorTab extends BaseTab {
     }
 
     private getNextViewColumn(): vscode.ViewColumn {
-        let viewColumn = this.panel.viewColumn ?? vscode.ViewColumn.One;
+        let viewColumn = this.panel.viewColumn ?? vscode.ViewColumn.Active;
         if (viewColumn === vscode.ViewColumn.Nine) {
             viewColumn = vscode.ViewColumn.One;
         } else {

@@ -4,8 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type JSONObject, type PartitionKeyDefinition } from '@azure/cosmos';
-import { makeStyles, MessageBar, MessageBarBody, MessageBarTitle, ProgressBar } from '@fluentui/react-components';
+import { makeStyles, MessageBar, ProgressBar } from '@fluentui/react-components';
 import { parse as parseJson } from '@prantlf/jsonlint';
+import { useEffect } from 'react';
 import { extractPartitionKey } from '../../utils/document';
 import { MonacoEditor } from '../MonacoEditor';
 import { DocumentToolbar } from './DocumentToolbar';
@@ -98,19 +99,21 @@ export const DocumentPanel = () => {
         dispatcher.setValid(errors.length === 0, errors);
     };
 
+    // TODO: Hack, remove this when DocumentPanel will be moved to CustomTextEditor.
+    useEffect(() => {
+        void dispatcher?.notifyDirty?.(state.isDirty);
+    }, [dispatcher, state.isDirty]);
+
     return (
         <section className={classes.container}>
+            <DocumentToolbar />
+            {inProgress && <ProgressBar />}
             {state.error && (
                 <MessageBar key={'error'} intent={'error'} layout={'multiline'}>
-                    <MessageBarBody>
-                        <MessageBarTitle>Internal error</MessageBarTitle>
-                        {state.error}
-                    </MessageBarBody>
+                    {state.error}
                 </MessageBar>
             )}
-            <DocumentToolbar />
             {isReadOnly && <MessageBar intent={'info'}>This document is read-only.</MessageBar>}
-            {inProgress && <ProgressBar />}
             <section className={classes.resultDisplay}>
                 <MonacoEditor
                     height={'100%'}

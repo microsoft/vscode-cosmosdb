@@ -21,12 +21,12 @@ import {
 } from '@fluentui/react-components';
 import {
     DatabasePlugConnectedRegular,
-    DocumentMultipleRegular,
     FolderOpenRegular,
     LibraryRegular,
     PlayRegular,
     SaveRegular,
     StopRegular,
+    TabDesktopMultipleRegular,
 } from '@fluentui/react-icons';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
@@ -38,7 +38,10 @@ const useClasses = makeStyles({
         color: tokens.colorStatusDangerBorderActive,
     },
     iconConnect: {
-        color: tokens.colorStatusWarningBorderActive,
+        color: tokens.colorStatusSuccessBorderActive,
+    },
+    iconDisconnect: {
+        color: tokens.colorStatusDangerBorderActive,
     },
 });
 
@@ -102,6 +105,14 @@ const BaseActionsSection = () => {
             >
                 Save
             </ToolbarButton>
+            <ToolbarButton
+                aria-label="Copy into new tab"
+                icon={<TabDesktopMultipleRegular />}
+                onClick={() => void dispatcher.duplicateTab(state.queryValue)}
+                disabled={!state.isConnected}
+            >
+                Duplicate
+            </ToolbarButton>
         </>
     );
 };
@@ -147,6 +158,7 @@ const LearnSection = () => {
 };
 
 const ConnectedActionsSection = () => {
+    const classes = useClasses();
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
@@ -154,7 +166,7 @@ const ConnectedActionsSection = () => {
         <>
             <ToolbarButton
                 aria-label="Disconnect"
-                icon={<DocumentMultipleRegular />}
+                icon={<DatabasePlugConnectedRegular className={classes.iconDisconnect} />}
                 onClick={() => void dispatcher.disconnectFromDatabase()}
             >
                 Disconnect

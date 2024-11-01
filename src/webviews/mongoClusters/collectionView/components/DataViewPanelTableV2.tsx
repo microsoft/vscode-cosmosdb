@@ -20,7 +20,6 @@ import { type TableDataEntry } from '../../../../mongoClusters/MongoClusterSessi
 import { bsonStringToDisplayString } from '../../../utils/slickgrid/typeToDisplayString';
 import { CollectionViewContext } from '../collectionViewContext';
 import './dataViewPanelTableV2.scss';
-import { ToolbarTableNavigation } from './toolbar/ToolbarTableNavigation';
 
 interface Props {
     liveHeaders: string[];
@@ -90,8 +89,9 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
     const gridOptions: GridOption = {
         autoResize: {
             calculateAvailableSizeBy: 'container',
-            container: '.resultsDisplayArea', // this is a selector of the parent container, in this case it's the collectionView.tsx and the class is "resultsDisplayArea"
+            container: '#resultsDisplayAreaId', // this is a selector of the parent container, in this case it's the collectionView.tsx and the class is "resultsDisplayArea"
             delay: 100,
+            bottomPadding: 2,
         },
         enableAutoResize: true,
         enableAutoSizeColumns: true, // true by default, we disabled it under the assumption that there are a lot of columns in users' data in general
@@ -124,13 +124,11 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
         enableGridMenu: false,
         enableHeaderButton: false,
         enableHeaderMenu: false,
+        footerRowHeight: 1,
     };
 
     React.useEffect(() => {
-        console.log('Grid View has mounted');
-
         return () => {
-            console.log('Grid View will unmount');
             gridRef.current?.gridService.setSelectedRows([]);
         };
     }, []);
@@ -145,31 +143,27 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
         gridRef.current?.gridService.renderGrid();
     }, [liveData, gridColumns]); // Re-run when headers or data change
 
-    if (currentContext.isLoading) {
+    if (currentContext.isFirstTimeLoad) {
         return <LoadingAnimationTable />;
     } else {
         return (
-            <>
-                <ToolbarTableNavigation />
-
-                <SlickgridReact
-                    gridId="myGrid"
-                    ref={gridRef} // Attach the reference to SlickGrid
-                    gridOptions={gridOptions}
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                    columnDefinitions={gridColumns}
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                    dataset={liveData}
-                    onDblClick={(event) => onCellDblClick(event)}
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                    // debouncing here as multiple events are fired on multiselect
-                    onSelectedRowsChanged={debounce(
-                        (event: { detail: { eventData: unknown; args: OnSelectedRowsChangedEventArgs } }) =>
-                            onSelectedRowsChanged(event.detail.eventData, event.detail.args),
-                        100,
-                    )}
-                />
-            </>
+            <SlickgridReact
+                gridId="myGrid"
+                ref={gridRef} // Attach the reference to SlickGrid
+                gridOptions={gridOptions}
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                columnDefinitions={gridColumns}
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                dataset={liveData}
+                onDblClick={(event) => onCellDblClick(event)}
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                // debouncing here as multiple events are fired on multiselect
+                onSelectedRowsChanged={debounce(
+                    (event: { detail: { eventData: unknown; args: OnSelectedRowsChangedEventArgs } }) =>
+                        onSelectedRowsChanged(event.detail.eventData, event.detail.args),
+                    100,
+                )}
+            />
         );
     }
 }

@@ -5,6 +5,7 @@
 
 import { AzureWizard, nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../utils/localize';
+import { CredentialCache } from '../CredentialCache';
 import { type MongoClusterItem } from '../tree/MongoClusterItem';
 import {
     type CreateCollectionWizardContext,
@@ -18,7 +19,7 @@ export async function createDatabase(context: IActionContext, clusterNode?: Mong
         throw new Error('No cluster selected.');
     }
 
-    if (!clusterNode.mongoCluster.session) {
+    if (!CredentialCache.hasCredentials(clusterNode.mongoCluster.id)) {
         throw new Error(
             localize(
                 'mongoClusters.notSignedIn',
@@ -30,7 +31,7 @@ export async function createDatabase(context: IActionContext, clusterNode?: Mong
 
     const wizardContext: CreateDatabaseWizardContext = {
         ...context,
-        credentialsId: clusterNode.mongoCluster.session?.credentialId ?? '',
+        credentialsId: clusterNode.mongoCluster.id,
         mongoClusterItem: clusterNode,
     };
 

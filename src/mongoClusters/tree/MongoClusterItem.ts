@@ -10,6 +10,7 @@ import {
     createGenericElement,
     nonNullProp,
     nonNullValue,
+    UserCancelledError,
     type IActionContext,
     type TreeElementBase,
 } from '@microsoft/vscode-azext-utils';
@@ -53,10 +54,10 @@ interface ResourceModelInUse extends Resource {
     // introduced new properties
     resourceGroup: string;
 
-    // introduced new property to track the live session / database connection
-    session?: {
-        credentialId?: string;
-    };
+    // // introduced new property to track the live session / database connection
+    // session?: {
+    //     credentialId?: string;
+    // };
 }
 
 // This info will be available at every level in the tree for immediate access
@@ -87,15 +88,17 @@ export class MongoClusterItem implements MongoClusterItemBase {
         const result = await callWithTelemetryAndErrorHandling(
             'mongoClusterItem.getChildren',
             async (context: IActionContext) => {
-                context.errorHandling.suppressDisplay = true;
+                context.errorHandling.suppressDisplay = false;
                 context.errorHandling.rethrow = true;
                 context.valuesToMask.push(this.id, this.mongoCluster.name);
 
-                ext.outputChannel.appendLine(`MongoDB (vCore): Loading cluster details for ${this.mongoCluster.name}`);
+                ext.outputChannel.appendLine(
+                    `MongoDB (vCore): Loading cluster details for "${this.mongoCluster.name}"`,
+                );
 
                 let mongoClustersClient: MongoClustersClient;
 
-                if (!this.mongoCluster.session) {
+                if (!CredentialCache.hasCredentials(this.id)) {
                     ext.outputChannel.appendLine(`MongoDB (vCore): Authenticating with ${this.mongoCluster.name}`);
 
                     const client = await createMongoClustersClient(context, this.subscription);
@@ -133,40 +136,57 @@ export class MongoClusterItem implements MongoClusterItemBase {
                             'mongoClustersAuthenticateCluster',
                             'Authenticate to connect with your MongoDB (vCore) cluster',
                         ),
+                        showLoadingPrompt: true,
                     });
 
                     await callWithTelemetryAndErrorHandling(
                         'mongoClusterItem.getChildren.passwordPrompt',
                         async (_context: IActionContext) => {
-                            await wizard.prompt(); // This will prompt the user for the username and password, results are stored in the wizardContext
+                            _context.errorHandling.rethrow = true;
+                            _context.errorHandling.suppressDisplay = false;
+                            try {
+                                await wizard.prompt(); // This will prompt the user for the username and password, results are stored in the wizardContext
+                            } catch (error) {
+                                if (error instanceof UserCancelledError) {
+                                    wizardContext.aborted = true;
+                                }
+                            }
                         },
                     );
 
+                    if (wizardContext.aborted) {
+                        return [];
+                    }
+
                     ext.outputChannel.append(
-                        `MongoDB (vCore): Connecting to the cluster as '${wizardContext.selectedUserName}'... `,
+                        `MongoDB (vCore): Connecting to the cluster as "${wizardContext.selectedUserName}"... `,
                     );
 
                     context.valuesToMask.push(nonNullProp(wizardContext, 'password'));
 
-                    const credentialId = CredentialCache.setCredentials(
+                    CredentialCache.setCredentials(
+                        this.id,
                         nonNullValue(cluster.connectionString),
                         nonNullProp(wizardContext, 'selectedUserName'),
                         nonNullProp(wizardContext, 'password'),
                     );
-                    this.mongoCluster.session = { credentialId: credentialId };
 
                     try {
-                        mongoClustersClient = await MongoClustersClient.getClient(credentialId).catch(
-                            (error: Error) => {
-                                ext.outputChannel.appendLine('failed.');
-                                ext.outputChannel.appendLine(`Error: ${(error as Error).message}`);
+                        mongoClustersClient = await MongoClustersClient.getClient(this.id).catch((error: Error) => {
+                            ext.outputChannel.appendLine('failed.');
+                            ext.outputChannel.appendLine(`Error: ${(error as Error).message}`);
 
-                                void vscode.window.showErrorMessage(`Failed to connect: ${(error as Error).message}`);
+                            void vscode.window.showErrorMessage(`Failed to connect: ${(error as Error).message}`);
 
-                                throw error;
-                            },
-                        );
+                            throw error;
+                        });
                     } catch (error) {
+                        // failure path, the connectdion has failed, let's make sure we don't cache these credentials.
+                        // It's possible it's not due to incorrect credentials, but these improvements will be made later.
+
+                        await MongoClustersClient.deleteClient(this.id);
+                        CredentialCache.deleteCredentials(this.id);
+
                         return [
                             createGenericElement({
                                 contextValue: 'error',
@@ -180,10 +200,8 @@ export class MongoClusterItem implements MongoClusterItemBase {
 
                     ext.outputChannel.appendLine('MongoDB (vCore): Connected.');
                 } else {
-                    ext.outputChannel.appendLine('MongoDB (vCore): Reusing active session');
-                    mongoClustersClient = await MongoClustersClient.getClient(
-                        nonNullValue(this.mongoCluster.session?.credentialId),
-                    );
+                    ext.outputChannel.appendLine('MongoDB (vCore): Reusing active connection.');
+                    mongoClustersClient = await MongoClustersClient.getClient(this.id);
                 }
 
                 return mongoClustersClient.listDatabases().then((databases: DatabaseItemModel[]) => {
@@ -198,7 +216,7 @@ export class MongoClusterItem implements MongoClusterItemBase {
     }
 
     async createDatabase(_context: IActionContext, databaseName: string): Promise<boolean> {
-        const client = await MongoClustersClient.getClient(nonNullValue(this.mongoCluster.session?.credentialId));
+        const client = await MongoClustersClient.getClient(this.mongoCluster.id);
 
         let success = false;
 

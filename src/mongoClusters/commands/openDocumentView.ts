@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { ViewColumn } from 'vscode';
 import { DocumentsViewController } from '../../webviews/mongoClusters/documentView/documentsViewController';
 
 export function openDocumentView(
@@ -30,5 +31,5 @@ export function openDocumentView(
         mode: props.mode,
     });
 
-    view.revealToForeground();
+    view.revealToForeground(ViewColumn.Active);
 }

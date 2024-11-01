@@ -24,25 +24,14 @@
 
     .toolbarMainView {
         padding-top: 10px;
-    }
 
-    .monacoEditorContainer {
-        // display: flex;
-        // flex-direction: row;
-        // justify-content: center;
-        // align-items: center;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
 
-        // gap: 10px;
-        // flex-grow: 1;
-        // height: 100%;
-
-        padding-top: 6px;
-        padding-bottom: 6px;
-
-        border: 2px solid var(--vscode-checkbox-border); // TODO: find the style name of a fluent input field
-        border-radius: 4px;
-
-        //box-shadow: $ms-depth-shadow-4;
+        text-wrap: nowrap;
     }
 
     .resultsActionBar {
@@ -73,6 +62,16 @@
             }
         }
     }
+
+    .toolbarTableNavigation {
+        margin-top: -10px;
+    }
+}
+
+.progressBar {
+    position: absolute;
+    left: 0px;
+    top: 0px;
 }
 
 .toolbarDividerTransparent {

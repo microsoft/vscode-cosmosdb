@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
-import { Tab, TabList } from '@fluentui/react-components';
+import { ProgressBar, Tab, TabList } from '@fluentui/react-components';
 import { type JSX, useEffect, useRef, useState } from 'react';
 import { type TableDataEntry } from '../../../mongoClusters/MongoClusterSession';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
@@ -21,6 +21,7 @@ import { DataViewPanelTree } from './components/DataViewPanelTree';
 import { QueryEditor } from './components/QueryEditor';
 import { ToolbarDocumentManipulation } from './components/toolbar/ToolbarDocumentManipulation';
 import { ToolbarMainView } from './components/toolbar/ToolbarMainView';
+import { ToolbarTableNavigation } from './components/toolbar/ToolbarTableNavigation';
 import { ToolbarViewNavigation } from './components/toolbar/ToolbarViewNavigation';
 import { ViewSwitcher } from './components/toolbar/ViewSwitcher';
 
@@ -106,10 +107,10 @@ export const CollectionView = (): JSX.Element => {
                 // 3. Load the data for the current view
                 getDataForView(currentContext.currentView);
 
-                setCurrentContext((prev) => ({ ...prev, isLoading: false }));
+                setCurrentContext((prev) => ({ ...prev, isLoading: false, isFirstTimeLoad: false }));
             })
             .catch((_error) => {
-                setCurrentContext((prev) => ({ ...prev, isLoading: false }));
+                setCurrentContext((prev) => ({ ...prev, isLoading: false, isFirstTimeLoad: false }));
             });
     }, [currentContext.currrentQueryDefinition]);
 
@@ -308,6 +309,8 @@ export const CollectionView = (): JSX.Element => {
     return (
         <CollectionViewContext.Provider value={[currentContext, setCurrentContext]}>
             <div className="collectionView">
+                {currentContext.isLoading && <ProgressBar thickness="large" className="progressBar" />}
+
                 <div className="toolbarMainView">
                     <ToolbarMainView />
                 </div>
@@ -357,6 +360,12 @@ export const CollectionView = (): JSX.Element => {
                         }[currentContext.currentView] // switch-statement
                     }
                 </div>
+
+                {currentContext.currentView === Views.TABLE && (
+                    <div className="toolbarTableNavigation">
+                        <ToolbarTableNavigation />
+                    </div>
+                )}
             </div>
         </CollectionViewContext.Provider>
     );

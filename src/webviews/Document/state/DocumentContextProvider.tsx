@@ -42,6 +42,13 @@ export class DocumentContextProvider extends BaseContextProvider {
         }
     }
 
+    public setMode(mode: OpenDocumentMode): Promise<void> {
+        return this.sendCommand('setMode', mode);
+    }
+    public async notifyDirty(isDirty: boolean): Promise<void> {
+        await this.sendCommand('setDirty', isDirty);
+    }
+
     protected initEventListeners(): void {
         super.initEventListeners();
 
@@ -61,6 +68,10 @@ export class DocumentContextProvider extends BaseContextProvider {
                 this.dispatch({ type: 'initState', mode, databaseId, containerId, documentId, partitionKey });
             },
         );
+
+        this.channel.on('modeChanged', (mode: OpenDocumentMode) => {
+            this.dispatch({ type: 'setMode', mode });
+        });
 
         this.channel.on(
             'setDocument',
@@ -91,10 +102,10 @@ export class DocumentContextProvider extends BaseContextProvider {
             this.dispatch({ type: 'setError', error: this.parseError(error) });
         });
 
-        this.channel.on('queryError', (_sessionId: string, error: string) => {
+        this.channel.on('queryError', async (_sessionId: string, error: string) => {
             this.dispatch({ type: 'setRefreshing', isRefreshing: false });
             this.dispatch({ type: 'setSaving', isSaving: false });
-            this.dispatch({ type: 'setError', error: this.parseError(error) });
+            await this.sendCommand('showErrorMessage', this.parseError(error));
         });
     }
 
@@ -107,7 +118,7 @@ export class DocumentContextProvider extends BaseContextProvider {
                 return error?.message?.toString() || JSON.stringify(error, null, 4);
             }
 
-            return `Error: ${error}`;
+            return `${error}`;
         } catch {
             return error;
         }

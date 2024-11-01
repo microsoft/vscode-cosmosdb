@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { nonNullValue, type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import { type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { ext } from '../../extensionVariables';
@@ -24,9 +24,7 @@ export class DatabaseItem implements MongoClusterItemBase {
     }
 
     async getChildren(): Promise<TreeElementBase[]> {
-        const client: MongoClustersClient = await MongoClustersClient.getClient(
-            nonNullValue(this.mongoCluster.session?.credentialId),
-        );
+        const client: MongoClustersClient = await MongoClustersClient.getClient(this.mongoCluster.id);
         const collections = await client.listCollections(this.databaseInfo.name);
         return collections.map((collection) => {
             return new CollectionItem(this.subscription, this.mongoCluster, this.databaseInfo, collection);
@@ -34,7 +32,7 @@ export class DatabaseItem implements MongoClusterItemBase {
     }
 
     async delete(_context: IActionContext): Promise<boolean> {
-        const client = await MongoClustersClient.getClient(nonNullValue(this.mongoCluster.session?.credentialId));
+        const client = await MongoClustersClient.getClient(this.mongoCluster.id);
 
         await ext.state.showDeleting(this.id, async () => {
             await client.dropDatabase(this.databaseInfo.name);
@@ -46,7 +44,7 @@ export class DatabaseItem implements MongoClusterItemBase {
     }
 
     async createCollection(_context: IActionContext, collectionName: string): Promise<boolean> {
-        const client = await MongoClustersClient.getClient(nonNullValue(this.mongoCluster.session?.credentialId));
+        const client = await MongoClustersClient.getClient(this.mongoCluster.id);
 
         let success = false;
 

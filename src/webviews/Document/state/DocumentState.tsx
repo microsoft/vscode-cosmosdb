@@ -32,6 +32,10 @@ export type DispatchAction =
           documentContent: string;
       }
     | {
+          type: 'setMode';
+          mode: OpenDocumentMode;
+      }
+    | {
           type: 'setValid';
           isValid: boolean;
       }
@@ -111,6 +115,8 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
                 partitionKey: action.partitionKey,
                 isDirty: false,
             };
+        case 'setMode':
+            return { ...state, mode: action.mode };
         case 'setValid':
             return { ...state, isValid: action.isValid };
         case 'setDirty':

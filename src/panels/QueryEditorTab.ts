@@ -47,7 +47,7 @@ export class QueryEditorTab extends BaseTab {
 
     public static render(
         connection?: NoSqlQueryConnection,
-        viewColumn = vscode.ViewColumn.One,
+        viewColumn = vscode.ViewColumn.Active,
         revealTabIfExist = false,
         query?: string,
     ): QueryEditorTab {
@@ -371,7 +371,7 @@ export class QueryEditorTab extends BaseTab {
     }
 
     private getNextViewColumn(): vscode.ViewColumn {
-        let viewColumn = this.panel.viewColumn ?? vscode.ViewColumn.One;
+        let viewColumn = this.panel.viewColumn ?? vscode.ViewColumn.Active;
         if (viewColumn === vscode.ViewColumn.Nine) {
             viewColumn = vscode.ViewColumn.One;
         } else {

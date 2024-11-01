@@ -26,6 +26,7 @@ const useStyles = makeStyles({
     tabContainer: {
         padding: '0 10px',
         height: '100%',
+        overflow: 'auto',
     },
     actionBar: {
         display: 'flex',

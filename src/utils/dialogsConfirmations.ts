@@ -3,8 +3,33 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { UserCancelledError } from '@microsoft/vscode-azext-utils';
 import vscode from 'vscode';
 import { ext } from '../extensionVariables';
+
+export async function getConfirmationWithWordQuestion(
+    title: string,
+    message: string,
+    expectedConfirmationWord: string,
+): Promise<boolean> {
+    const result = await vscode.window.showInputBox({
+        title: title,
+        prompt: message,
+        ignoreFocusOut: true,
+        validateInput: (val: string | undefined) => {
+            if (val && 0 === val.localeCompare(expectedConfirmationWord, undefined, { sensitivity: 'accent' })) {
+                return undefined;
+            }
+            return 'Please enter the word exactly as shown above to confirm the operation.';
+        },
+    });
+
+    if (!result) {
+        throw new UserCancelledError();
+    }
+
+    return 0 === result.localeCompare(expectedConfirmationWord, undefined, { sensitivity: 'accent' });
+}
 
 export async function getConfirmationWithWarning(title: string, message: string): Promise<boolean> {
     const performQuiz: boolean | undefined = vscode.workspace

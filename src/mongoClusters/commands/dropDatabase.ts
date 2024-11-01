@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { getConfirmationWithWarning } from '../../utils/dialogsConfirmations';
+import { getConfirmationWithWordQuestion } from '../../utils/dialogsConfirmations';
 import { type DatabaseItem } from '../tree/DatabaseItem';
 
 export async function dropDatabase(context: IActionContext, node?: DatabaseItem): Promise<void> {
@@ -13,9 +13,11 @@ export async function dropDatabase(context: IActionContext, node?: DatabaseItem)
         throw new Error('No database selected.');
     }
 
-    const confirmed = await getConfirmationWithWarning(
-        'Are you sure?',
-        `Drop database "${node?.databaseInfo.name}" and its contents?\nThis can't be undone.`,
+    const confirmed = await getConfirmationWithWordQuestion(
+        `Drop "${node?.databaseInfo.name}"?`,
+        `Drop database "${node?.databaseInfo.name}" and its contents?\nThis can't be undone.\n\n` +
+            'Please type the name of the database to confirm:',
+        node?.databaseInfo.name,
     );
 
     if (!confirmed) {

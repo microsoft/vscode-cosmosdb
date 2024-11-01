@@ -91,6 +91,7 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
             calculateAvailableSizeBy: 'container',
             container: '#resultsDisplayAreaId', // this is a selector of the parent container, in this case it's the collectionView.tsx and the class is "resultsDisplayArea"
             delay: 100,
+            bottomPadding: 2,
         },
         enableAutoResize: true,
         enableAutoSizeColumns: true, // true by default, we disabled it under the assumption that there are a lot of columns in users' data in general
@@ -123,6 +124,7 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
         enableGridMenu: false,
         enableHeaderButton: false,
         enableHeaderMenu: false,
+        footerRowHeight: 1
     };
 
     React.useEffect(() => {

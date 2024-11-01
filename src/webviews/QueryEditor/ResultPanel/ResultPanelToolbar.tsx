@@ -57,10 +57,22 @@ const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
+    const hasSelection = state.selectedRows.length > 1; // If one document selected, it's not a selection
+    const tooltipClipboardContent = hasSelection
+        ? 'Copy selected documents to clipboard'
+        : 'Copy all results from the current page to clipboard';
+    const tooltipExportContent = hasSelection
+        ? 'Export selected documents'
+        : 'Export all results from the current page';
+
     async function onSaveToClipboardAsCSV() {
         if (selectedTab === 'result__tab') {
             await dispatcher.copyToClipboard(
-                queryResultToCsv(state.currentQueryResult, state.partitionKey, state.selectedRows),
+                queryResultToCsv(
+                    state.currentQueryResult,
+                    state.partitionKey,
+                    hasSelection ? state.selectedRows : undefined,
+                ),
             );
         }
 
@@ -71,7 +83,9 @@ const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
 
     async function onSaveToClipboardAsJSON() {
         if (selectedTab === 'result__tab') {
-            await dispatcher.copyToClipboard(queryResultToJSON(state.currentQueryResult, state.selectedRows));
+            await dispatcher.copyToClipboard(
+                queryResultToJSON(state.currentQueryResult, hasSelection ? state.selectedRows : undefined),
+            );
         }
 
         if (selectedTab === 'stats__tab') {
@@ -107,41 +121,41 @@ const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
 
     return (
         <>
-            <Tooltip content="Copy to clipboard" relationship="description" withArrow>
-                <Menu>
-                    <MenuTrigger>
+            <Menu>
+                <MenuTrigger>
+                    <Tooltip content={tooltipClipboardContent} relationship="description" withArrow>
                         <ToolbarButton
                             aria-label="Copy to clipboard"
                             icon={<DocumentCopyRegular />}
                             disabled={!state.isConnected}
                         />
-                    </MenuTrigger>
-                    <MenuPopover>
-                        <MenuList>
-                            <MenuItem onClick={() => void onSaveToClipboardAsCSV()}>CSV</MenuItem>
-                            <MenuItem onClick={() => void onSaveToClipboardAsJSON()}>JSON</MenuItem>
-                        </MenuList>
-                    </MenuPopover>
-                </Menu>
-            </Tooltip>
+                    </Tooltip>
+                </MenuTrigger>
+                <MenuPopover>
+                    <MenuList>
+                        <MenuItem onClick={() => void onSaveToClipboardAsCSV()}>CSV</MenuItem>
+                        <MenuItem onClick={() => void onSaveToClipboardAsJSON()}>JSON</MenuItem>
+                    </MenuList>
+                </MenuPopover>
+            </Menu>
 
-            <Tooltip content="Export results" relationship="description" withArrow>
-                <Menu>
-                    <MenuTrigger>
+            <Menu>
+                <MenuTrigger>
+                    <Tooltip content={tooltipExportContent} relationship="description" withArrow>
                         <ToolbarButton
                             aria-label="Export"
                             icon={<ArrowDownloadRegular />}
                             disabled={!state.isConnected}
                         />
-                    </MenuTrigger>
-                    <MenuPopover>
-                        <MenuList>
-                            <MenuItem onClick={() => void onSaveAsCSV()}>CSV</MenuItem>
-                            <MenuItem onClick={() => void onSaveAsJSON()}>JSON</MenuItem>
-                        </MenuList>
-                    </MenuPopover>
-                </Menu>
-            </Tooltip>
+                    </Tooltip>
+                </MenuTrigger>
+                <MenuPopover>
+                    <MenuList>
+                        <MenuItem onClick={() => void onSaveAsCSV()}>CSV</MenuItem>
+                        <MenuItem onClick={() => void onSaveAsJSON()}>JSON</MenuItem>
+                    </MenuList>
+                </MenuPopover>
+            </Menu>
         </>
     );
 };

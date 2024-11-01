@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ViewColumn } from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { type CollectionItem } from '../../../mongoClusters/tree/CollectionItem';
 import { WebviewController } from '../../api/extension-server/WebviewController';
@@ -25,7 +24,7 @@ export class CollectionViewController extends WebviewController<CollectionViewWe
 
         const title: string = `${initialData.databaseName}/${initialData.collectionName}`;
 
-        super(ext.context, title, 'mongoClustersCollectionView', initialData, ViewColumn.Beside);
+        super(ext.context, title, 'mongoClustersCollectionView', initialData);
 
         const trpcContext: RouterContext = {
             sessionId: initialData.sessionId,

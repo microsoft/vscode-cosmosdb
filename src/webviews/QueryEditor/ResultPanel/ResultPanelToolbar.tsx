@@ -59,7 +59,9 @@ const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
 
     async function onSaveToClipboardAsCSV() {
         if (selectedTab === 'result__tab') {
-            await dispatcher.copyToClipboard(queryResultToCsv(state.currentQueryResult, state.partitionKey));
+            await dispatcher.copyToClipboard(
+                queryResultToCsv(state.currentQueryResult, state.partitionKey, state.selectedRows),
+            );
         }
 
         if (selectedTab === 'stats__tab') {
@@ -69,7 +71,7 @@ const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
 
     async function onSaveToClipboardAsJSON() {
         if (selectedTab === 'result__tab') {
-            await dispatcher.copyToClipboard(queryResultToJSON(state.currentQueryResult));
+            await dispatcher.copyToClipboard(queryResultToJSON(state.currentQueryResult, state.selectedRows));
         }
 
         if (selectedTab === 'stats__tab') {

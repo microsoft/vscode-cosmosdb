@@ -40,9 +40,22 @@ export const isSelectStar = (query: string): boolean => {
     return false;
 };
 
-export const queryResultToJSON = (queryResult: SerializedQueryResult | null) => {
+export const queryResultToJSON = (queryResult: SerializedQueryResult | null, selection?: number[]) => {
     if (!queryResult) {
         return '';
+    }
+
+    if (selection) {
+        const selectedDocs = queryResult.documents
+            .map((doc, index) => {
+                if (!selection.includes(index)) {
+                    return null;
+                }
+                return doc;
+            })
+            .filter((doc) => doc !== null);
+
+        return JSON.stringify(selectedDocs, null, 4);
     }
 
     return JSON.stringify(queryResult.documents, null, 4);
@@ -477,6 +490,7 @@ export const queryMetricsToCsv = (queryResult: SerializedQueryResult | null): st
 export const queryResultToCsv = (
     queryResult: SerializedQueryResult | null,
     partitionKey?: PartitionKeyDefinition,
+    selection?: number[],
 ): string => {
     if (!queryResult) {
         return '';
@@ -484,6 +498,11 @@ export const queryResultToCsv = (
 
     const tableView = queryResultToTable(queryResult, partitionKey);
     const headers = tableView.headers.join(',');
+
+    if (selection) {
+        tableView.dataset = tableView.dataset.filter((_, index) => selection.includes(index));
+    }
+
     const rows = tableView.dataset
         .map((row) => {
             const rowValues: string[] = [];

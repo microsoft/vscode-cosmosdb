@@ -131,11 +131,14 @@ export const MonacoAdaptive = (props: MonacoAdaptiveProps) => {
 
             const finalHeight = finalLines * lineHeight;
 
-            console.log('Final height:', finalHeight, 'lines:', finalLines);
-
             // Call the callback if provided
             setEditorHeight(finalHeight);
 
+            // TODO: once allotment is implemented, we can remove this hack:
+
+            // this is a hack to fix the issue with the editor not updating the layout properly
+            // the first run computes the correct width. The second run applies the height we need
+            editor.layout();
             // Update the editor layout with the new height
             editor.layout({ width: editor.getLayoutInfo().width, height: finalHeight });
 

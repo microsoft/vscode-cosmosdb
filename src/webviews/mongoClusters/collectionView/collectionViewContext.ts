@@ -13,6 +13,7 @@ export enum Views {
 
 export type CollectionViewContextType = {
     isLoading: boolean; // this is a concious decision to use 'isLoading' instead of <Suspense> tags. It's not only the data display component that is supposed to react to the lading state but also some input fields, buttons, etc.
+    isFirstTimeLoad: boolean; // this will be set to true during the first data fetch, here we need more time and add more loading animations, but only on the first load
     currentView: Views;
     currentViewState?: TableViewState; // | TreeViewConfiguration |  other views can get config over time
     currrentQueryDefinition: {
@@ -45,6 +46,7 @@ export type TableViewState = {
 
 export const DefaultCollectionViewContext: CollectionViewContextType = {
     isLoading: false,
+    isFirstTimeLoad: true,
     currentView: Views.TABLE,
     currrentQueryDefinition: {
         queryText: '{  }',

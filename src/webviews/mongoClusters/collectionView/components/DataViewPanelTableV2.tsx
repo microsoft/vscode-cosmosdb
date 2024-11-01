@@ -124,7 +124,7 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
         enableGridMenu: false,
         enableHeaderButton: false,
         enableHeaderMenu: false,
-        footerRowHeight: 1
+        footerRowHeight: 1,
     };
 
     React.useEffect(() => {

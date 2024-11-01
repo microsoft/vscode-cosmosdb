@@ -359,7 +359,11 @@ export const CollectionView = (): JSX.Element => {
                     }
                 </div>
 
-                {currentContext.currentView === Views.TABLE && <div className="toolbarTableNavigation"><ToolbarTableNavigation /></div>}
+                {currentContext.currentView === Views.TABLE && (
+                    <div className="toolbarTableNavigation">
+                        <ToolbarTableNavigation />
+                    </div>
+                )}
             </div>
         </CollectionViewContext.Provider>
     );

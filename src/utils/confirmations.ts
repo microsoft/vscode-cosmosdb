@@ -7,7 +7,6 @@ import { UserCancelledError } from '@microsoft/vscode-azext-utils';
 import vscode from 'vscode';
 import { ext } from '../extensionVariables';
 
-
 /**
  * Prompts the user for a confirmation based on the configured confirmation style.
  *

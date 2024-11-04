@@ -8,7 +8,7 @@ import { type JSONSchema } from 'vscode-json-languageservice';
 import { z } from 'zod';
 import { type MongoClustersClient } from '../../../mongoClusters/MongoClustersClient';
 import { MongoClustersSession } from '../../../mongoClusters/MongoClusterSession';
-import { getConfirmationWithWarning } from '../../../utils/dialogsConfirmations';
+import { getConfirmationAsInSettings } from '../../../utils/confirmations';
 import { getKnownFields, type FieldEntry } from '../../../utils/json/mongo/autocomplete/getKnownFields';
 import { publicProcedure, router } from '../../api/extension-server/trpc';
 
@@ -164,9 +164,10 @@ export const collectionsViewRouter = router({
         .mutation(async ({ input, ctx }) => {
             const myCtx = ctx as RouterContext;
 
-            const confirmed = await getConfirmationWithWarning(
+            const confirmed = await getConfirmationAsInSettings(
                 'Are you sure?',
                 `Delete ${input.length} documents?\n\nThis can't be undone.`,
+                'delete',
             );
 
             if (!confirmed) {

@@ -1266,10 +1266,18 @@
                     "description": "Whether to use OAuth credential for Cosmos DB NoSQL resources",
                     "default": false
                 },
-                "azureDatabases.requireAdditionalConfirmations": {
-                    "type": "boolean",
-                    "description": "Whether to require additional confirmation for risky operations: When enabled, this feature adds an extra layer of verification before confirming potentially risky actions. Instead of a simple 'Continue?' prompt, users will be shown a number and need to select the correct confirmation button from three options that matches the number presented.",
-                    "default": true
+                "azureDatabases.confirmationStyle": {
+                    "type": "string",
+                    "description": "The behavior to use when confirming operations that cannot be undone, such as deleting resources.",
+                    "enum": [
+                        "Word Confirmation",
+                        "Buton Click"
+                    ],
+                    "enumDescriptions": [
+                        "Prompts with an input box where you enter the name of the resource to delete.",
+                        "Prompts with a warning dialog where you click a button to delete."
+                    ],
+                    "default": "Word Confirmation"
                 },
                 "cosmosDB.documentLabelFields": {
                     "type": "array",

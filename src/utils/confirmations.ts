@@ -7,6 +7,12 @@ import { UserCancelledError } from '@microsoft/vscode-azext-utils';
 import vscode from 'vscode';
 import { ext } from '../extensionVariables';
 
+enum ConfirmationStyle {
+    wordConfirmation = 'wordConfirmation',
+    challengeConfirmation = 'challengeConfirmation',
+    buttonConfirmation = 'buttonConfirmation',
+}
+
 /**
  * Prompts the user for a confirmation based on the configured confirmation style.
  *
@@ -20,13 +26,16 @@ export async function getConfirmationAsInSettings(
     message: string,
     expectedConfirmationWord: string,
 ): Promise<boolean> {
-    const deleteConfirmation: string | undefined = vscode.workspace
+    const deleteConfirmation: ConfirmationStyle | undefined = vscode.workspace
         .getConfiguration()
-        .get<string>(ext.settingsKeys.confirmationStyle);
+        .get<ConfirmationStyle>(ext.settingsKeys.confirmationStyle);
 
-    if (deleteConfirmation === 'Word Confirmation') {
+    if (deleteConfirmation === ConfirmationStyle.wordConfirmation) {
         return await getConfirmationWithWordQuestion(title, message, expectedConfirmationWord);
+    } else if (deleteConfirmation === ConfirmationStyle.challengeConfirmation) {
+        return await getConfirmationWithNumberQuiz(title, message);
     }
+
     return await getConfirmationWithClick(title, message);
 }
 
@@ -61,11 +70,7 @@ export async function getConfirmationWithNumberQuiz(title: string, message: stri
         title,
         {
             modal: true,
-            detail:
-                message +
-                `\n\n` +
-                `Pick '${randomInput.numbers[randomInput.index]}' to confirm and continue.\n\n` +
-                `This verification step can be adjusted in Settings.`,
+            detail: message + `\n\nPick '${randomInput.numbers[randomInput.index]}' to confirm and continue.`,
         },
         randomInput.numbers[0].toString(),
         randomInput.numbers[1].toString(),

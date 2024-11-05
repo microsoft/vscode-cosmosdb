@@ -44,6 +44,7 @@ export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
 
     constructor(parent: MongoAccountTreeItem, databaseName: string, connectionString: string) {
         super(parent);
+        this.parent = parent;
         this.databaseName = databaseName;
         this.connectionString = addDatabaseToAccountConnectionString(connectionString, this.databaseName);
     }

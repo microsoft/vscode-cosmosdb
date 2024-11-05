@@ -44,6 +44,7 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
 
     constructor(parent: MongoCollectionTreeItem, document: IMongoDocument) {
         super(parent);
+        this.parent = parent;
         this.document = document;
         this._label = getDocumentTreeItemLabel(this.document);
         this.commandId = 'cosmosDB.openDocument';

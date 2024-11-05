@@ -36,7 +36,7 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
     public static contextValue: string = 'MongoDocument';
     public readonly contextValue: string = MongoDocumentTreeItem.contextValue;
     public document: IMongoDocument;
-    public readonly parent: MongoCollectionTreeItem;
+    public declare readonly parent: MongoCollectionTreeItem;
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
 

@@ -12,7 +12,7 @@ import { type PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 export class PostgresFunctionTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'postgresFunction';
     public readonly contextValue: string = PostgresFunctionTreeItem.contextValue;
-    public readonly parent: PostgresFunctionsTreeItem;
+    public declare readonly parent: PostgresFunctionsTreeItem;
     public readonly schema: string;
     public readonly name: string;
     public readonly args: string;

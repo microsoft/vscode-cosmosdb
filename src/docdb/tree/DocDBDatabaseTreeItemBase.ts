@@ -35,12 +35,11 @@ const throughputStepSize = 100;
  * (DocumentDB is the base type for all Cosmos DB accounts)
  */
 export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<ContainerDefinition & Resource> {
-    public readonly parent: DocDBAccountTreeItemBase;
+    public declare readonly parent: DocDBAccountTreeItemBase;
     private readonly _database: DatabaseDefinition & Resource;
 
     constructor(parent: DocDBAccountTreeItemBase, database: DatabaseDefinition & Resource) {
         super(parent);
-        this.parent = parent;
         this._database = database;
         this.root = this.parent.root;
     }

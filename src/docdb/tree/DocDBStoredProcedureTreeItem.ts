@@ -27,7 +27,7 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
     public static contextValue: string = 'cosmosDBStoredProcedure';
     public readonly contextValue: string = DocDBStoredProcedureTreeItem.contextValue;
     public readonly cTime: number = Date.now();
-    public readonly parent: DocDBStoredProceduresTreeItem;
+    public declare readonly parent: DocDBStoredProceduresTreeItem;
     public mTime: number = Date.now();
 
     constructor(
@@ -35,7 +35,6 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
         public procedure: StoredProcedureDefinition & Resource,
     ) {
         super(parent);
-        this.parent = parent;
         ext.fileSystem.fireChangedEvent(this);
         this.commandId = 'cosmosDB.openStoredProcedure';
     }

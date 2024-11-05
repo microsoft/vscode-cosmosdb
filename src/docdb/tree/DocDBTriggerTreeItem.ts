@@ -25,13 +25,12 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
     public static contextValue: string = 'cosmosDBTrigger';
     public readonly contextValue: string = DocDBTriggerTreeItem.contextValue;
     public readonly cTime: number = Date.now();
-    public readonly parent: DocDBTriggersTreeItem;
+    public declare readonly parent: DocDBTriggersTreeItem;
     public trigger: TriggerDefinition & Resource;
     public mTime: number = Date.now();
 
     constructor(parent: DocDBTriggersTreeItem, trigger: TriggerDefinition & Resource) {
         super(parent);
-        this.parent = parent;
         this.trigger = trigger;
         ext.fileSystem.fireChangedEvent(this);
         this.commandId = 'cosmosDB.openTrigger';

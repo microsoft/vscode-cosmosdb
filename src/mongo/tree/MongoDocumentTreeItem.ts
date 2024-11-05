@@ -36,7 +36,6 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
     public static contextValue: string = 'MongoDocument';
     public readonly contextValue: string = MongoDocumentTreeItem.contextValue;
     public document: IMongoDocument;
-    public readonly parent: MongoCollectionTreeItem;
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
 
@@ -44,12 +43,15 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
 
     constructor(parent: MongoCollectionTreeItem, document: IMongoDocument) {
         super(parent);
-        this.parent = parent;
         this.document = document;
         this._label = getDocumentTreeItemLabel(this.document);
         this.commandId = 'cosmosDB.openDocument';
         ext.fileSystem.fireChangedEvent(this);
     }
+
+    public get parentCollection() {
+        return this.parent as MongoCollectionTreeItem;
+      }
 
     public get id(): string {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -98,7 +100,7 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
             { modal: true, stepName: 'deleteMongoDocument' },
             DialogResponses.deleteResponse,
         );
-        const deleteResult: DeleteResult = await this.parent.collection.deleteOne({ _id: this.document._id });
+        const deleteResult: DeleteResult = await this.parentCollection.collection.deleteOne({ _id: this.document._id });
         if (deleteResult.deletedCount !== 1) {
             throw new Error(`Failed to delete document with _id '${this.document._id}'.`);
         }
@@ -107,6 +109,6 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const newDocument: IMongoDocument = EJSON.parse(content);
-        this.document = await MongoDocumentTreeItem.update(this.parent.collection, newDocument);
+        this.document = await MongoDocumentTreeItem.update(this.parentCollection.collection, newDocument);
     }
 }

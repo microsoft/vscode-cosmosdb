@@ -88,7 +88,7 @@ export async function pickTreeItem(
             accountNode = pickedItem;
         } else if (pickedItem instanceof MongoDatabaseTreeItem) {
             parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
-            accountNode = pickedItem.parent;
+            accountNode = pickedItem.parentAccount;
             databaseNode = pickedItem;
         } else if (pickedItem instanceof DocDBDatabaseTreeItemBase) {
             parsedCS = parseDocDBConnectionString(pickedItem.connectionString);

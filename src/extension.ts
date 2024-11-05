@@ -178,7 +178,7 @@ export async function activateInternal(
                         );
                     }
                     if (node instanceof MongoAccountTreeItem) {
-                        if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
+                        if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parentAccount.fullId) {
                             setConnectedNode(undefined);
                             await node.refresh(actionContext);
                         }

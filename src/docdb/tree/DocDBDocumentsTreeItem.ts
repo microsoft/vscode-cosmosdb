@@ -29,13 +29,15 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     public static contextValue: string = 'cosmosDBDocumentsGroup';
     public readonly contextValue: string = DocDBDocumentsTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Documents';
-    public readonly parent: DocDBCollectionTreeItem;
     public suppressMaskLabel = true;
 
     constructor(parent: DocDBCollectionTreeItem) {
         super(parent);
-        this.parent = parent;
-        this.root = this.parent.root;
+        this.root = parent.root;
+    }
+
+    public get parentCollection() {
+        return this.parent as DocDBCollectionTreeItem;
     }
 
     public get iconPath(): TreeItemIconPath {
@@ -51,7 +53,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public get link(): string {
-        return this.parent.link;
+        return this.parentCollection.link;
     }
 
     public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<ItemDefinition> {
@@ -86,7 +88,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
 
     public documentHasPartitionKey(doc: object): boolean {
         let interim = doc;
-        let partitionKey: string | undefined = this.parent.partitionKey && this.parent.partitionKey.paths[0];
+        let partitionKey: string | undefined = this.parentCollection.partitionKey && this.parentCollection.partitionKey.paths[0];
         if (!partitionKey) {
             return true;
         }
@@ -108,7 +110,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public async promptForPartitionKey(context: IActionContext, body: ItemDefinition): Promise<ItemDefinition> {
-        const partitionKey: string | undefined = this.parent.partitionKey && this.parent.partitionKey.paths[0];
+        const partitionKey: string | undefined = this.parentCollection.partitionKey && this.parentCollection.partitionKey.paths[0];
         if (partitionKey) {
             const partitionKeyValue: string = await context.ui.showInputBox({
                 prompt: `Enter a value for the partition key ("${partitionKey}")`,
@@ -122,7 +124,7 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     }
 
     public getContainerClient(client: CosmosClient): Container {
-        return this.parent.getContainerClient(client);
+        return this.parentCollection.getContainerClient(client);
     }
 
     // Create a nested Object given the partition key path and value

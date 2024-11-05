@@ -35,13 +35,15 @@ export class DocDBTriggersTreeItem extends DocDBTreeItemBase<TriggerDefinition> 
     public static contextValue: string = 'cosmosDBTriggersGroup';
     public readonly contextValue: string = DocDBTriggersTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Trigger';
-    public readonly parent: DocDBCollectionTreeItem | GraphCollectionTreeItem;
     public suppressMaskLabel = true;
 
     constructor(parent: DocDBCollectionTreeItem | GraphCollectionTreeItem) {
         super(parent);
-        this.parent = parent;
-        this.root = this.parent.root;
+        this.root = parent.root;
+    }
+
+    public get parentCollection() {
+        return (this.parent as DocDBCollectionTreeItem | GraphCollectionTreeItem);
     }
 
     public initChild(resource: TriggerDefinition & Resource): DocDBTriggerTreeItem {
@@ -92,7 +94,7 @@ export class DocDBTriggersTreeItem extends DocDBTreeItemBase<TriggerDefinition> 
     }
 
     public get link(): string {
-        return this.parent.link;
+        return this.parentCollection.link;
     }
 
     public getIterator(client: CosmosClient, feedOptions: FeedOptions): QueryIterator<TriggerDefinition & Resource> {
@@ -100,7 +102,7 @@ export class DocDBTriggersTreeItem extends DocDBTreeItemBase<TriggerDefinition> 
     }
 
     public getContainerClient(client: CosmosClient): Container {
-        return this.parent.getContainerClient(client);
+        return this.parentCollection.getContainerClient(client);
     }
 
     private validateTriggerName(name: string, currTriggerNames: string[]): string | undefined {

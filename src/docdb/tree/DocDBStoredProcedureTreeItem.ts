@@ -27,7 +27,6 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
     public static contextValue: string = 'cosmosDBStoredProcedure';
     public readonly contextValue: string = DocDBStoredProcedureTreeItem.contextValue;
     public readonly cTime: number = Date.now();
-    public readonly parent: DocDBStoredProceduresTreeItem;
     public mTime: number = Date.now();
 
     constructor(
@@ -35,13 +34,16 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
         public procedure: StoredProcedureDefinition & Resource,
     ) {
         super(parent);
-        this.parent = parent;
         ext.fileSystem.fireChangedEvent(this);
         this.commandId = 'cosmosDB.openStoredProcedure';
     }
 
+    public get parentCollection() {
+        return (this.parent as DocDBStoredProceduresTreeItem).parentCollection;
+    }
+
     public get root(): IDocDBTreeRoot {
-        return this.parent.root;
+        return (this.parent as DocDBStoredProceduresTreeItem).root;
     }
 
     public get filePath(): string {
@@ -70,7 +72,7 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
         const client = this.root.getCosmosClient();
-        const replace = await this.parent
+        const replace = await this.parentCollection
             .getContainerClient(client)
             .scripts.storedProcedure(this.id)
             .replace({ id: this.id, body: content });
@@ -93,12 +95,12 @@ export class DocDBStoredProcedureTreeItem extends AzExtTreeItem implements IEdit
             DialogResponses.deleteResponse,
         );
         const client = this.root.getCosmosClient();
-        await this.parent.getContainerClient(client).scripts.storedProcedure(this.id).delete();
+        await this.parentCollection.getContainerClient(client).scripts.storedProcedure(this.id).delete();
     }
 
     public async execute(context: IActionContext, partitionKey: string, parameters?: unknown[]): Promise<void> {
         const client = this.root.getCosmosClient();
-        const result = await this.parent
+        const result = await this.parentCollection
             .getContainerClient(client)
             .scripts.storedProcedure(this.id)
             .execute(partitionKey, parameters);

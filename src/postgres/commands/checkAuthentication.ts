@@ -17,14 +17,14 @@ export async function checkAuthentication(
 ): Promise<ClientConfig> {
     let clientConfig: ClientConfig | undefined;
     while (!clientConfig) {
-        const isFirewallRuleSet = await treeItem.parent.isFirewallRuleSet(context);
+        const isFirewallRuleSet = await treeItem.parentServer.isFirewallRuleSet(context);
         if (!isFirewallRuleSet) {
-            await configurePostgresFirewall(context, treeItem.parent);
+            await configurePostgresFirewall(context, treeItem.parentServer);
             continue;
         }
         try {
             const getClientConfigResult = await PostgresClientConfigFactory.getClientConfigFromNode(
-                treeItem.parent,
+                treeItem.parentServer,
                 treeItem.databaseName,
             );
             clientConfig = getClientConfigResult.clientConfig;
@@ -32,7 +32,7 @@ export async function checkAuthentication(
             const parsedError: IParsedError = parseError(error);
 
             if (parsedError.errorType === invalidCredentialsErrorType) {
-                await enterPostgresCredentials(context, treeItem.parent);
+                await enterPostgresCredentials(context, treeItem.parentServer);
             } else {
                 throw error;
             }

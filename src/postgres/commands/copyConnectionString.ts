@@ -21,10 +21,10 @@ export async function copyConnectionString(context: IActionContext, node: Postgr
     }
 
     await checkAuthentication(context, node);
-    const parsedConnectionString = await node.parent.getFullConnectionString();
+    const parsedConnectionString = await node.parentServer.getFullConnectionString();
     let connectionString: string;
-    if (node.parent.azureName) {
-        const parsedCS = await node.parent.getFullConnectionString();
+    if (node.parentServer.azureName) {
+        const parsedCS = await node.parentServer.getFullConnectionString();
         connectionString = copyPostgresConnectionString(
             parsedCS.hostName,
             parsedCS.port,

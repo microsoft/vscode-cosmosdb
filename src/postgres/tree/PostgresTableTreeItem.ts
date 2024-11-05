@@ -14,7 +14,6 @@ export class PostgresTableTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = 'postgresTable';
     public readonly contextValue: string = PostgresTableTreeItem.contextValue;
     public readonly table: IPostgresTable;
-    public readonly parent: PostgresTablesTreeItem;
 
     private _isDuplicate: boolean;
 
@@ -22,6 +21,10 @@ export class PostgresTableTreeItem extends AzExtParentTreeItem {
         super(parent);
         this.table = table;
         this._isDuplicate = isDuplicate;
+    }
+
+    public get parentTablesNode() {
+        return this.parent as PostgresTablesTreeItem;
     }
 
     public get id(): string {
@@ -50,7 +53,7 @@ export class PostgresTableTreeItem extends AzExtParentTreeItem {
 
     public async deleteTreeItemImpl(): Promise<void> {
         await runPostgresQuery(
-            this.parent.clientConfig,
+            this.parentTablesNode.clientConfig,
             `Drop Table ${this.table.schemaName}.${wrapArgInQuotes(this.table.name)};`,
         );
     }

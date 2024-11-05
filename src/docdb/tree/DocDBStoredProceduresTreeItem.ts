@@ -28,13 +28,15 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
     public static contextValue: string = 'cosmosDBStoredProceduresGroup';
     public readonly contextValue: string = DocDBStoredProceduresTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Stored Procedure';
-    public readonly parent: DocDBCollectionTreeItem | GraphCollectionTreeItem;
     public suppressMaskLabel = true;
 
     constructor(parent: DocDBCollectionTreeItem | GraphCollectionTreeItem) {
         super(parent);
-        this.parent = parent;
-        this.root = this.parent.root;
+        this.root = parent.root;
+    }
+
+    public get parentCollection() {
+        return (this.parent as DocDBCollectionTreeItem | GraphCollectionTreeItem);
     }
 
     public initChild(resource: StoredProcedureDefinition & Resource): DocDBStoredProcedureTreeItem {
@@ -75,7 +77,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
     }
 
     public get link(): string {
-        return this.parent.link;
+        return this.parentCollection.link;
     }
 
     public getIterator(
@@ -86,7 +88,7 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
     }
 
     public getContainerClient(client: CosmosClient): Container {
-        return this.parent.getContainerClient(client);
+        return this.parentCollection.getContainerClient(client);
     }
 
     private validateStoredProcedureName(name: string, currStoredProcedureNames: string[]): string | undefined {

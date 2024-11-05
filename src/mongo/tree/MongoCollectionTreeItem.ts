@@ -36,6 +36,7 @@ import { nonNullValue } from '../../utils/nonNull';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { type MongoCommand } from '../MongoCommand';
+import { type MongoDatabaseTreeItem } from './MongoDatabaseTreeItem';
 import { MongoDocumentTreeItem, type IMongoDocument } from './MongoDocumentTreeItem';
 
 // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
@@ -55,7 +56,6 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     public readonly contextValue: string = MongoCollectionTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Document';
     public readonly collection: Collection;
-    public parent: AzExtParentTreeItem;
     // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
     public findArgs?: Object[];
     public readonly cTime: number = Date.now();
@@ -68,9 +68,8 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     private _batchSize: number = getBatchSizeSetting();
 
     // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
-    constructor(parent: AzExtParentTreeItem, collection: Collection, findArgs?: Object[]) {
+    constructor(parent: MongoDatabaseTreeItem, collection: Collection, findArgs?: Object[]) {
         super(parent);
-        this.parent = parent;
         this.collection = collection;
         this.findArgs = findArgs;
         if (findArgs && findArgs.length) {
@@ -78,6 +77,10 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
             this._projection = findArgs.length > 1 ? findArgs[1] : undefined;
         }
         ext.fileSystem.fireChangedEvent(this);
+    }
+
+    public get parentDatabase() {
+        return this.parent as MongoDatabaseTreeItem;
     }
 
     public async writeFileContent(context: IActionContext, content: string): Promise<void> {

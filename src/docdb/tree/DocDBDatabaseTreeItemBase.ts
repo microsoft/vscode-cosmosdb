@@ -35,14 +35,16 @@ const throughputStepSize = 100;
  * (DocumentDB is the base type for all Cosmos DB accounts)
  */
 export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<ContainerDefinition & Resource> {
-    public readonly parent: DocDBAccountTreeItemBase;
     private readonly _database: DatabaseDefinition & Resource;
 
     constructor(parent: DocDBAccountTreeItemBase, database: DatabaseDefinition & Resource) {
         super(parent);
-        this.parent = parent;
         this._database = database;
-        this.root = this.parent.root;
+        this.root = parent.root;
+    }
+
+    public get parentAccount() {
+        return this.parent as DocDBAccountTreeItemBase;
     }
 
     public get iconPath(): TreeItemIconPath {
@@ -62,7 +64,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
     }
 
     public get connectionString(): string {
-        return this.parent.connectionString.concat(`;Database=${this.id}`);
+        return this.parentAccount.connectionString.concat(`;Database=${this.id}`);
     }
 
     public get databaseName(): string {
@@ -105,7 +107,7 @@ export abstract class DocDBDatabaseTreeItemBase extends DocDBTreeItemBase<Contai
         }
         const options: RequestOptions = {};
 
-        if (!this.parent.isServerless) {
+        if (!this.parentAccount.isServerless) {
             const isFixed: boolean = !containerDefinition.partitionKey;
             const minThroughput = isFixed ? minThroughputFixed : minThroughputPartitioned;
             const throughput: number = Number(

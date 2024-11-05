@@ -12,7 +12,6 @@ import { type PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
 export class PostgresFunctionTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'postgresFunction';
     public readonly contextValue: string = PostgresFunctionTreeItem.contextValue;
-    public readonly parent: PostgresFunctionsTreeItem;
     public readonly schema: string;
     public readonly name: string;
     public readonly args: string;
@@ -30,6 +29,10 @@ export class PostgresFunctionTreeItem extends AzExtTreeItem {
         this.isDuplicate = isDuplicate;
     }
 
+    public get parentFunctionsNode() {
+        return this.parent as PostgresFunctionsTreeItem;
+    }
+
     public get label(): string {
         return this.name;
     }
@@ -44,7 +47,7 @@ export class PostgresFunctionTreeItem extends AzExtTreeItem {
 
     public async deleteTreeItemImpl(): Promise<void> {
         await runPostgresQuery(
-            this.parent.clientConfig,
+            this.parentFunctionsNode.clientConfig,
             `DROP FUNCTION ${this.schema}.${wrapArgInQuotes(this.name)}(${this.args});`,
         );
     }

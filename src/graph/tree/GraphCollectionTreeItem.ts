@@ -21,7 +21,6 @@ import { GraphTreeItem } from './GraphTreeItem';
 export class GraphCollectionTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = 'cosmosDBGraph';
     public readonly contextValue: string = GraphCollectionTreeItem.contextValue;
-    public readonly parent: GraphDatabaseTreeItem;
 
     private readonly _graphTreeItem: GraphTreeItem;
     private readonly _storedProceduresTreeItem: DocDBStoredProceduresTreeItem;
@@ -35,8 +34,12 @@ export class GraphCollectionTreeItem extends AzExtParentTreeItem {
         this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this);
     }
 
+    public get parentDatabase() {
+        return this.parent as GraphDatabaseTreeItem;
+    }
+
     public get root(): IDocDBTreeRoot {
-        return this.parent.root;
+        return this.parentDatabase.root;
     }
 
     public get id(): string {
@@ -91,6 +94,6 @@ export class GraphCollectionTreeItem extends AzExtParentTreeItem {
     }
 
     public getContainerClient(client: CosmosClient): Container {
-        return this.parent.getDatabaseClient(client).container(this.id);
+        return this.parentDatabase.getDatabaseClient(client).container(this.id);
     }
 }

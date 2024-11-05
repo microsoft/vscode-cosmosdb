@@ -11,11 +11,14 @@ export class PostgresColumnTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'postgresColumn';
     public readonly contextValue: string = PostgresColumnTreeItem.contextValue;
     public readonly columnName: string;
-    public readonly parent: PostgresTableTreeItem;
 
     constructor(parent: PostgresTableTreeItem, columnName: string) {
         super(parent);
         this.columnName = columnName;
+    }
+
+    public get parentTable() {
+        return this.parent as PostgresTableTreeItem;
     }
 
     public get id(): string {

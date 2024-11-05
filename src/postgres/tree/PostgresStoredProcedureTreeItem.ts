@@ -12,7 +12,6 @@ import { type PostgresStoredProceduresTreeItem } from './PostgresStoredProcedure
 export class PostgresStoredProcedureTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'postgresStoredProcedure';
     public readonly contextValue: string = PostgresStoredProcedureTreeItem.contextValue;
-    public readonly parent: PostgresStoredProceduresTreeItem;
     public readonly schema: string;
     public readonly name: string;
     public readonly args: string;
@@ -30,6 +29,10 @@ export class PostgresStoredProcedureTreeItem extends AzExtTreeItem {
         this.isDuplicate = isDuplicate;
     }
 
+    public get parentStoredProceduresNode() {
+        return this.parent as PostgresStoredProceduresTreeItem;
+    }
+
     public get label(): string {
         return this.name;
     }
@@ -43,6 +46,6 @@ export class PostgresStoredProcedureTreeItem extends AzExtTreeItem {
     }
 
     public async deleteTreeItemImpl(): Promise<void> {
-        await runPostgresQuery(this.parent.clientConfig, `DROP PROCEDURE ${this.schema}.${this.name}(${this.args});`);
+        await runPostgresQuery(this.parentStoredProceduresNode.clientConfig, `DROP PROCEDURE ${this.schema}.${this.name}(${this.args});`);
     }
 }

@@ -25,20 +25,22 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
     public static contextValue: string = 'cosmosDBTrigger';
     public readonly contextValue: string = DocDBTriggerTreeItem.contextValue;
     public readonly cTime: number = Date.now();
-    public readonly parent: DocDBTriggersTreeItem;
     public trigger: TriggerDefinition & Resource;
     public mTime: number = Date.now();
 
     constructor(parent: DocDBTriggersTreeItem, trigger: TriggerDefinition & Resource) {
         super(parent);
-        this.parent = parent;
         this.trigger = trigger;
         ext.fileSystem.fireChangedEvent(this);
         this.commandId = 'cosmosDB.openTrigger';
     }
 
+    public get parentCollection() {
+        return (this.parent as DocDBTriggersTreeItem).parentCollection;
+    }
+
     public get root(): IDocDBTreeRoot {
-        return this.parent.root;
+        return (this.parent as DocDBTriggersTreeItem).root;
     }
 
     public get filePath(): string {
@@ -68,7 +70,7 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
     public async writeFileContent(context: IActionContext, content: string): Promise<void> {
         const client = this.root.getCosmosClient();
 
-        const readResponse = await this.parent.getContainerClient(client).scripts.trigger(this.id).read();
+        const readResponse = await this.parentCollection.getContainerClient(client).scripts.trigger(this.id).read();
         let triggerType = readResponse.resource?.triggerType;
         let triggerOperation = readResponse.resource?.triggerOperation;
 
@@ -79,7 +81,7 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
             triggerOperation = await getTriggerOperation(context);
         }
 
-        const replace = await this.parent.getContainerClient(client).scripts.trigger(this.id).replace({
+        const replace = await this.parentCollection.getContainerClient(client).scripts.trigger(this.id).replace({
             id: this.id,
             triggerType: triggerType,
             triggerOperation: triggerOperation,
@@ -104,6 +106,6 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
             DialogResponses.deleteResponse,
         );
         const client = this.root.getCosmosClient();
-        await this.parent.getContainerClient(client).scripts.trigger(this.id).delete();
+        await this.parentCollection.getContainerClient(client).scripts.trigger(this.id).delete();
     }
 }

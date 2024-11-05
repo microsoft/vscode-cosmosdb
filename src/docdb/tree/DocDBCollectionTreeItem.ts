@@ -33,7 +33,6 @@ import { type IDocDBTreeRoot } from './IDocDBTreeRoot';
 export class DocDBCollectionTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = 'cosmosDBDocumentCollection';
     public readonly contextValue: string = DocDBCollectionTreeItem.contextValue;
-    public readonly parent: DocDBDatabaseTreeItem;
 
     public readonly documentsTreeItem: DocDBDocumentsTreeItem;
     private readonly _storedProceduresTreeItem: DocDBStoredProceduresTreeItem;
@@ -44,14 +43,17 @@ export class DocDBCollectionTreeItem extends AzExtParentTreeItem {
         private _container: ContainerDefinition & Resource,
     ) {
         super(parent);
-        this.parent = parent;
         this.documentsTreeItem = new DocDBDocumentsTreeItem(this);
         this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this);
         this._triggersTreeItem = new DocDBTriggersTreeItem(this);
     }
 
+    public get parentDatabase() {
+        return this.parent as DocDBDatabaseTreeItem;
+    }
+
     public get root(): IDocDBTreeRoot {
-        return this.parent.root;
+        return this.parentDatabase.root;
     }
 
     public get id(): string {
@@ -113,6 +115,6 @@ export class DocDBCollectionTreeItem extends AzExtParentTreeItem {
     }
 
     public getContainerClient(client: CosmosClient): Container {
-        return this.parent.getDatabaseClient(client).container(this.id);
+        return this.parentDatabase.getDatabaseClient(client).container(this.id);
     }
 }

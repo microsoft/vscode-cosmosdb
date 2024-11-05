@@ -22,6 +22,6 @@ export async function runPostgresQueryWizard(
     await vscodeUtil.showNewFile(nonNullProp(context, 'query'), postgresBaseFileName, postgresFileExtension);
 
     if (treeItem) {
-        await connectPostgresDatabase(context, treeItem.parent);
+        await connectPostgresDatabase(context, treeItem.parentDatabase);
     }
 }

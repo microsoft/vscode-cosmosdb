@@ -88,15 +88,15 @@ export async function pickTreeItem(
             accountNode = pickedItem;
         } else if (pickedItem instanceof MongoDatabaseTreeItem) {
             parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
-            accountNode = pickedItem.parent;
+            accountNode = pickedItem.parentAccount;
             databaseNode = pickedItem;
         } else if (pickedItem instanceof DocDBDatabaseTreeItemBase) {
             parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
-            accountNode = pickedItem.parent;
+            accountNode = pickedItem.parentAccount;
             databaseNode = pickedItem;
         } else if (pickedItem instanceof PostgresDatabaseTreeItem) {
-            parsedCS = await pickedItem.parent.getFullConnectionString();
-            accountNode = pickedItem.parent;
+            parsedCS = await pickedItem.parentServer.getFullConnectionString();
+            accountNode = pickedItem.parentServer;
             databaseNode = pickedItem;
         } else {
             throw new RangeError(localize('invalidItem', 'Invalid item "{0}".', pickedItem.constructor.name));

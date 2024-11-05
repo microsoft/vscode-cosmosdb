@@ -15,7 +15,7 @@ export function createNoSqlQueryConnection(node: DocDBCollectionTreeItem): NoSql
     const root = node.root;
     const keyCred = getCosmosKeyCredential(root.credentials);
     return {
-        databaseId: node.parent.id,
+        databaseId: node.parentDatabase.id,
         containerId: node.id,
         endpoint: root.endpoint,
         masterKey: keyCred?.key,

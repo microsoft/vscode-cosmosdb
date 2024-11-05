@@ -23,6 +23,10 @@ export class PostgresStoredProceduresTreeItem extends PostgresResourcesTreeItemB
         this.clientConfig = clientConfig;
     }
 
+    public get parentDatabase() {
+        return this.parent as PostgresDatabaseTreeItem;
+    }
+
     public get iconPath(): TreeItemIconPath {
         return new ThemeIcon('server-process');
     }

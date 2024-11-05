@@ -30,7 +30,6 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     public contextValue: string = PostgresDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Resource Type';
     public readonly databaseName: string;
-    public readonly parent: PostgresServerTreeItem;
     public autoSelectInTreeItemPicker: boolean = true;
     public isShowingPasswordWarning: boolean;
 
@@ -38,6 +37,10 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
         super(parent);
         this.databaseName = databaseName;
         this.isShowingPasswordWarning = false;
+    }
+
+    public get parentServer() {
+        return this.parent as PostgresServerTreeItem;
     }
 
     public get label(): string {
@@ -61,20 +64,20 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
-        const isFirewallRuleSet = await this.parent.isFirewallRuleSet(context);
+        const isFirewallRuleSet = await this.parentServer.isFirewallRuleSet(context);
         if (!isFirewallRuleSet) {
             const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
                 contextValue: 'postgresFirewall',
-                label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
+                label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parentServer.label),
                 commandId: 'postgreSQL.configureFirewall',
             });
-            firewallTreeItem.commandArgs = [this.parent];
+            firewallTreeItem.commandArgs = [this.parentServer];
             return [firewallTreeItem];
         }
 
         try {
             const { type, clientConfig } = await PostgresClientConfigFactory.getClientConfigFromNode(
-                this.parent,
+                this.parentServer,
                 this.databaseName,
             );
             if (type === 'password') {
@@ -85,7 +88,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
                 new PostgresTablesTreeItem(this, clientConfig),
             ];
 
-            if (await this.parent.supportsStoredProcedures(clientConfig)) {
+            if (await this.parentServer.supportsStoredProcedures(clientConfig)) {
                 children.push(new PostgresStoredProceduresTreeItem(this, clientConfig));
             }
 
@@ -93,12 +96,12 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
         } catch (error) {
             const parsedError: IParsedError = parseError(error);
 
-            if (this.parent.azureName && parsedError.errorType === invalidCredentialsErrorType) {
+            if (this.parentServer.azureName && parsedError.errorType === invalidCredentialsErrorType) {
                 void context.ui.showWarningMessage(
                     localize(
                         'couldNotConnect',
                         'Could not connect to "{0}": {1}',
-                        this.parent.label,
+                        this.parentServer.label,
                         parsedError.message,
                     ),
                     { stepName: 'loadPostgresDatabases' },
@@ -108,18 +111,18 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
                     label: localize(
                         'enterCredentials',
                         'Enter server credentials to connect to "{0}"...',
-                        this.parent.label,
+                        this.parentServer.label,
                     ),
                     commandId: 'postgreSQL.enterCredentials',
                 });
-                credentialsTreeItem.commandArgs = [this.parent];
+                credentialsTreeItem.commandArgs = [this.parentServer];
                 return [credentialsTreeItem];
-            } else if (this.parent.azureName && parsedError.errorType === firewallNotConfiguredErrorType) {
+            } else if (this.parentServer.azureName && parsedError.errorType === firewallNotConfiguredErrorType) {
                 void context.ui.showWarningMessage(
                     localize(
                         'couldNotConnect',
                         'Could not connect to "{0}": {1}',
-                        this.parent.label,
+                        this.parentServer.label,
                         parsedError.message,
                     ),
                     { stepName: 'loadPostgresDatabases' },
@@ -133,7 +136,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
 
     public async deleteTreeItemImpl(): Promise<void> {
         const { clientConfig } = await PostgresClientConfigFactory.getClientConfigFromNode(
-            this.parent,
+            this.parentServer,
             this.databaseName,
         );
         await runPostgresQuery(clientConfig, `Drop Database ${wrapArgInQuotes(this.databaseName)};`);

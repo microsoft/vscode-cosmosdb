@@ -205,6 +205,19 @@ export class MongoClusterItem implements MongoClusterItemBase {
                 }
 
                 return mongoClustersClient.listDatabases().then((databases: DatabaseItemModel[]) => {
+                    if (databases.length === 0) {
+                        return [
+                            createGenericElement({
+                                contextValue: 'mongoClusters.item.no-databases',
+                                id: `${this.id}/no-databases`,
+                                label: 'Create database...',
+                                iconPath: new vscode.ThemeIcon('plus'),
+                                commandId: 'mongoClusters.cmd.createDatabase',
+                                commandArgs: [this],
+                            }),
+                        ];
+                    }
+
                     return databases.map(
                         (database) => new DatabaseItem(this.subscription, this.mongoCluster, database),
                     );

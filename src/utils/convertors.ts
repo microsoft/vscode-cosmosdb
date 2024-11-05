@@ -226,7 +226,9 @@ export const getTableHeadersWithRecordIdentifyColumns = (
         partitionKeyPaths.unshift('id');
     }
 
-    return [...partitionKeyPaths, ...columns, ...serviceColumns];
+    // Remove duplicates while keeping order
+    const uniqueHeaders = new Set<string>([...partitionKeyPaths, ...columns, ...serviceColumns]);
+    return Array.from(uniqueHeaders);
 };
 
 /**

@@ -27,7 +27,7 @@ const hiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts']
 export class DocDBDocumentTreeItem extends AzExtTreeItem implements IEditableTreeItem {
     public static contextValue: string = 'cosmosDBDocument';
     public readonly contextValue: string = DocDBDocumentTreeItem.contextValue;
-    public readonly parent: DocDBDocumentsTreeItem;
+    public declare readonly parent: DocDBDocumentsTreeItem;
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
     private _label: string;
@@ -35,7 +35,6 @@ export class DocDBDocumentTreeItem extends AzExtTreeItem implements IEditableTre
 
     constructor(parent: DocDBDocumentsTreeItem, document: ItemDefinition) {
         super(parent);
-        this.parent = parent;
         this._document = document;
         this._label = getDocumentTreeItemLabel(this._document);
         ext.fileSystem.fireChangedEvent(this);

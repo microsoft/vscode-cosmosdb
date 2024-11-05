@@ -33,7 +33,7 @@ import { type IDocDBTreeRoot } from './IDocDBTreeRoot';
 export class DocDBCollectionTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = 'cosmosDBDocumentCollection';
     public readonly contextValue: string = DocDBCollectionTreeItem.contextValue;
-    public readonly parent: DocDBDatabaseTreeItem;
+    public declare readonly parent: DocDBDatabaseTreeItem;
 
     public readonly documentsTreeItem: DocDBDocumentsTreeItem;
     private readonly _storedProceduresTreeItem: DocDBStoredProceduresTreeItem;
@@ -44,7 +44,6 @@ export class DocDBCollectionTreeItem extends AzExtParentTreeItem {
         private _container: ContainerDefinition & Resource,
     ) {
         super(parent);
-        this.parent = parent;
         this.documentsTreeItem = new DocDBDocumentsTreeItem(this);
         this._storedProceduresTreeItem = new DocDBStoredProceduresTreeItem(this);
         this._triggersTreeItem = new DocDBTriggersTreeItem(this);

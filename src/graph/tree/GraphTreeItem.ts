@@ -15,7 +15,7 @@ const alternativeGraphVisualizationToolsDocLink = 'https://aka.ms/cosmosdb-graph
 export class GraphTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'cosmosDBGraphGraph';
     public readonly contextValue: string = GraphTreeItem.contextValue;
-    public readonly parent: GraphCollectionTreeItem;
+    public declare readonly parent: GraphCollectionTreeItem;
     public suppressMaskLabel = true;
 
     private readonly _collection: ContainerDefinition & Resource;

@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardPromptStep, type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
+import { AzureWizardPromptStep, UserCancelledError, type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
+import { API } from '../../AzureDBExperiences';
 import { localize } from '../../utils/localize';
 import { openUrl } from '../../utils/openUrl';
 import { type ICosmosDBWizardContext } from './ICosmosDBWizardContext';
@@ -30,6 +31,18 @@ export class CosmosDBAccountCapacityStep extends AzureWizardPromptStep<ICosmosDB
                 data: true,
             },
         ];
+        const vcore: IAzureQuickPickItem<boolean | undefined> = {
+            label: localize('vCoreOption', '$(link-external) vCore cluster'),
+            detail: localize(
+                'vCoreOptionDescription',
+                'Fully managed MongoDB-compatible database service',
+            ),
+            description: localize('vCoreOptionPortalHint', '(Create in Azure Portal...)'),
+            data: false,
+        };
+        if (context.defaultExperience?.api === API.MongoDB) {
+            picks.push(vcore);
+        }
         const learnMore: IAzureQuickPickItem = {
             label: localize('learnMore', '$(link-external) Learn more...'),
             data: undefined,
@@ -51,6 +64,11 @@ export class CosmosDBAccountCapacityStep extends AzureWizardPromptStep<ICosmosDB
         if (pick.data) {
             context.isServerless = pick.data;
             context.telemetry.properties.isServerless = pick.data ? 'true' : 'false';
+        }
+        if (pick === vcore) {
+            await openUrl("https://learn.microsoft.com/azure/cosmos-db/mongodb/vcore/quickstart-portal");
+            context.telemetry.properties.isvCore = 'true';
+            throw new UserCancelledError();
         }
     }
 

@@ -18,6 +18,8 @@ import { type MongoDBLanguageClient } from './mongo/languageClient';
 import { type MongoCodeLensProvider } from './mongo/services/MongoCodeLensProvider';
 import { type MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
 import { type MongoClustersBranchDataProvider } from './mongoClusters/tree/MongoClustersBranchDataProvider';
+import { type MongoClustersWorkspaceBranchDataProvider } from './mongoClusters/tree/workspace/MongoClustersWorkbenchBranchDataProvider';
+import { type WorkspaceDataProvider } from './mongoClusters/tree/workspace/WorkbenchDataProvider';
 import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
 import { type AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
@@ -48,7 +50,14 @@ export namespace ext {
 
     export let state: TreeElementStateManager;
 
+    // used for the resources tree
     export let mongoClustersBranchDataProvider: MongoClustersBranchDataProvider;
+
+    // used for the workspace: this is the general provider
+    export let workspaceDataProvider: WorkspaceDataProvider;
+
+    // used for the workspace: these are the dedicated providers
+    export let mongoClustersWorkspaceBranchDataProvider: MongoClustersWorkspaceBranchDataProvider;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

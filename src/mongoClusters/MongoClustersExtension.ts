@@ -28,6 +28,8 @@ import { launchShell } from './commands/launchShell';
 import { openCollectionView } from './commands/openCollectionView';
 import { openDocumentView } from './commands/openDocumentView';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
+import { MongoClustersWorkspaceBranchDataProvider } from './tree/workspace/MongoClustersWorkbenchBranchDataProvider';
+import { WorkspaceDataProvider, WorkspaceResourceType } from './tree/workspace/WorkbenchDataProvider';
 import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
 
 export class MongoClustersExtension implements vscode.Disposable {
@@ -61,6 +63,20 @@ export class MongoClustersExtension implements vscode.Disposable {
                 AzExtResourceType.MongoClusters,
                 ext.mongoClustersBranchDataProvider,
             );
+
+            ext.workspaceDataProvider = new WorkspaceDataProvider();
+            ext.rgApiV2.resources.registerWorkspaceResourceProvider(ext.workspaceDataProvider);
+
+            ext.mongoClustersWorkspaceBranchDataProvider = new MongoClustersWorkspaceBranchDataProvider();
+            ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
+                WorkspaceResourceType.MongoClusters,
+                ext.mongoClustersWorkspaceBranchDataProvider,
+            );
+
+            // ext.mongoClustersWorkspaceDataProvider = new MongoClustersWorkspaceDataProvider( () => {});
+            // ext.rgApiV2.resources.registerWorkspaceResourceProvider(
+            //     ext.mongoClustersWorkspaceDataProvider,
+            // );
 
             // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
             // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling

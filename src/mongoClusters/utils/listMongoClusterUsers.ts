@@ -10,7 +10,7 @@ import { type MongoClusterUser } from './MongoClusterUser';
 
 export async function listMongoClusterNonAdminUsers(
     client: CosmosDBManagementClient,
-    props: { subscriptionId: string; resourceGroupName: string; mongoClusterNamer: string; clusterAdminUser: string },
+    props: { subscriptionId: string; resourceGroupName: string; mongoClusterName: string; clusterAdminUser: string },
 ): Promise<string[]> {
     const getUsersResponse = await client.sendRequest({
         method: 'GET',

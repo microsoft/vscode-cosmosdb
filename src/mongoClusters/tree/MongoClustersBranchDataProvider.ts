@@ -10,8 +10,7 @@ import {
     type AzureResource,
     type AzureResourceBranchDataProvider,
     type AzureSubscription,
-    type ResourceModelBase,
-    type ViewPropertiesModel,
+    type ResourceModelBase
 } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
@@ -22,7 +21,7 @@ export interface TreeElementBase extends ResourceModelBase {
     getChildren?(): vscode.ProviderResult<TreeElementBase[]>;
     getTreeItem(): vscode.TreeItem | Thenable<vscode.TreeItem>;
 
-    viewProperties?: ViewPropertiesModel;
+    //viewProperties?: ViewPropertiesModel;
 }
 
 export class MongoClustersBranchDataProvider

@@ -126,7 +126,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
     private getAttachDatabseActionItems(): AzExtTreeItem[] {
         const attachDatabaseAccount = new GenericTreeItem(this, {
             contextValue: 'cosmosDBAttachDatabaseAccount',
-            label: 'Attach Database Account...',
+            label: 'New connection...',
             iconPath: new vscode.ThemeIcon('add'),
             commandId: 'cosmosDB.attachDatabaseAccount',
             includeInTreeItemPicker: true,
@@ -381,6 +381,9 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
                     persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
                 }),
             );
+            persistedAccounts.push(
+                new GenericTreeItem(this, { contextValue: 'myc', label: '🚀 Hello from loading PERSISTED ACCOUNTS!' }),
+            )
         }
 
         return persistedAccounts;

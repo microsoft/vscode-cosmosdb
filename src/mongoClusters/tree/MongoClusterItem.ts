@@ -44,11 +44,16 @@ export class MongoClusterItem implements MongoClusterItemBase {
 
     /**
      * Authenticates and connects to the cluster to list all available databases.
-     * (This operation can be slow as it involves network and authentication calls.)
+     * Here, the MongoDB client is created and cached for future use.
+     *
+     * In case of the Azure environment (vCore), we might reach out to Azure to pull
+     * the list of users known to the cluster
+     *
+     * (These operations can be slow as they involve network and authentication calls.)
      *
      * Children of MongoClusterItem are databases in the cluster, available after authentication.
      *
-     * @returns A list of databases in the cluster.
+     * @returns A list of databases in the cluster or a single element to create a new database.
      */
     async getChildren(): Promise<TreeElementBase[]> {
         const result = await callWithTelemetryAndErrorHandling(

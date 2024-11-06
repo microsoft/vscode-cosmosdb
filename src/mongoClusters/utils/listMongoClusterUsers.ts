@@ -14,7 +14,7 @@ export async function listMongoClusterNonAdminUsers(
 ): Promise<string[]> {
     const getUsersResponse = await client.sendRequest({
         method: 'GET',
-        url: `https://management.azure.com/subscriptions/${props.subscriptionId}/resourceGroups/${props.resourceGroupName}/providers/Microsoft.DocumentDB/mongoClusters/${props.mongoClusterNamer}/users?api-version=2024-03-01-preview`,
+        url: `https://management.azure.com/subscriptions/${props.subscriptionId}/resourceGroups/${props.resourceGroupName}/providers/Microsoft.DocumentDB/mongoClusters/${props.mongoClusterName}/users?api-version=2024-03-01-preview`,
         headers: createHttpHeaders({ 'Content-Type': 'application/json' }),
         timeout: 0,
         withCredentials: false,

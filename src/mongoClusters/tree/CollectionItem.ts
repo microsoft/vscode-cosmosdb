@@ -15,7 +15,8 @@ import {
     type InsertDocumentsResult,
 } from '../MongoClustersClient';
 import { IndexesItem } from './IndexesItem';
-import { type MongoClusterItemBase, type MongoClusterModel } from './MongoClusterItem';
+import { type MongoClusterItemBase } from './MongoClusterItemBase';
+import { type MongoClusterModel } from './MongoClusterModel';
 
 export class CollectionItem implements MongoClusterItemBase {
     id: string;

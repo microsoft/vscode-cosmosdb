@@ -15,7 +15,8 @@ import {
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { createMongoClustersClient } from '../../utils/azureClients';
-import { MongoClusterItem, type MongoClusterModel } from './MongoClusterItem';
+import { MongoClusterItem } from './MongoClusterItem';
+import { type MongoClusterModel } from './MongoClusterModel';
 
 export interface TreeElementBase extends ResourceModelBase {
     getChildren?(): vscode.ProviderResult<TreeElementBase[]>;

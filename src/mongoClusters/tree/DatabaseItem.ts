@@ -11,7 +11,8 @@ import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersClient';
 import { CollectionItem } from './CollectionItem';
-import { type MongoClusterItemBase, type MongoClusterModel } from './MongoClusterItem';
+import { type MongoClusterItemBase } from './MongoClusterItemBase';
+import { type MongoClusterModel } from './MongoClusterModel';
 
 export class DatabaseItem implements MongoClusterItemBase {
     id: string;

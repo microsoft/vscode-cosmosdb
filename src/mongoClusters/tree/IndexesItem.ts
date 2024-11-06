@@ -8,7 +8,8 @@ import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { MongoClustersClient, type CollectionItemModel, type DatabaseItemModel } from '../MongoClustersClient';
 import { IndexItem } from './IndexItem';
-import { type MongoClusterItemBase, type MongoClusterModel } from './MongoClusterItem';
+import { type MongoClusterItemBase } from './MongoClusterItemBase';
+import { type MongoClusterModel } from './MongoClusterModel';
 
 export class IndexesItem implements MongoClusterItemBase {
     id: string;

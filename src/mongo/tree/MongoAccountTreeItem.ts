@@ -103,7 +103,7 @@ export class MongoAccountTreeItem extends AzExtParentTreeItem {
                 );
         } catch (error) {
             const message = parseError(error).message;
-            if (this._root.isEmulator && message.includes('ECONNREFUSED')) {
+            if (this.root?.isEmulator && message.includes('ECONNREFUSED')) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 error.message = `Unable to reach emulator. See ${Links.LocalConnectionDebuggingTips} for debugging tips.\n${message}`;
             }

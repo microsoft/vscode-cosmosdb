@@ -106,12 +106,13 @@ export function getExperienceQuickPickForAttached(api: API): IAzureQuickPickItem
 
 // Mongo is distinguished by having kind="MongoDB". All others have kind="GlobalDocumentDB"
 // Table and Gremlin are distinguished from SQL by their capabilities
+// Tags reflect the defaultExperience tag in the portal and should not be changed unless they are changed in the portal
 export const CoreExperience: Experience = {
     api: API.Core,
     longName: 'Azure Cosmos DB NoSQL',
     shortName: 'NoSQL',
     kind: DBAccountKind.GlobalDocumentDB,
-    tag: 'Azure Cosmos DB NoSQL',
+    tag: 'Core (SQL)',
 } as const;
 export const MongoExperience: Experience = {
     api: API.MongoDB,

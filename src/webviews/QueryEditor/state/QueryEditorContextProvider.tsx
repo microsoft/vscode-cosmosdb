@@ -131,8 +131,11 @@ export class QueryEditorContextProvider extends BaseContextProvider {
             this.dispatch({ type: 'updateQueryResult', executionId, result, currentPage });
         });
 
-        this.channel.on('queryError', (_executionId: string, error: string) => {
-            this.showToast('Query error', error, 'error');
+        //TODO: there should be no queryError event that needs to show a toast,
+        //      all errors should be handled by QuerySession and dispatched to host error handling.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        this.channel.on('queryError', (_executionId: string, _error: string) => {
+            //this.showToast('Query error', error, 'error');
         });
     }
 }

@@ -19,11 +19,11 @@ import { type MongoCodeLensProvider } from './mongo/services/MongoCodeLensProvid
 import { type MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
 import { type MongoClustersBranchDataProvider } from './mongoClusters/tree/MongoClustersBranchDataProvider';
 import { type MongoClustersWorkspaceBranchDataProvider } from './mongoClusters/tree/workspace/MongoClustersWorkbenchBranchDataProvider';
-import { type WorkspaceDataProvider } from './mongoClusters/tree/workspace/WorkbenchDataProvider';
 import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
 import { type AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
 import { type AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
+import { type SharedWorkspaceResourceProvider } from './tree/workspace/SharedWorkspaceResourceProvider';
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -54,7 +54,7 @@ export namespace ext {
     export let mongoClustersBranchDataProvider: MongoClustersBranchDataProvider;
 
     // used for the workspace: this is the general provider
-    export let workspaceDataProvider: WorkspaceDataProvider;
+    export let workspaceDataProvider: SharedWorkspaceResourceProvider;
 
     // used for the workspace: these are the dedicated providers
     export let mongoClustersWorkspaceBranchDataProvider: MongoClustersWorkspaceBranchDataProvider;

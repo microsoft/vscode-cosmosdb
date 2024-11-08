@@ -4,18 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type TreeElementBase } from '@microsoft/vscode-azext-utils';
-import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { MongoClustersClient, type CollectionItemModel, type DatabaseItemModel } from '../MongoClustersClient';
 import { IndexItem } from './IndexItem';
-import { type MongoClusterItemBase } from './MongoClusterItemBase';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class IndexesItem implements MongoClusterItemBase {
+export class IndexesItem {
     id: string;
 
     constructor(
-        readonly subscription: AzureSubscription,
         readonly mongoCluster: MongoClusterModel,
         readonly databaseInfo: DatabaseItemModel,
         readonly collectionInfo: CollectionItemModel,
@@ -27,7 +24,7 @@ export class IndexesItem implements MongoClusterItemBase {
         const client: MongoClustersClient = await MongoClustersClient.getClient(this.mongoCluster.id);
         const indexes = await client.listIndexes(this.databaseInfo.name, this.collectionInfo.name);
         return indexes.map((index) => {
-            return new IndexItem(this.subscription, this.mongoCluster, this.databaseInfo, this.collectionInfo, index);
+            return new IndexItem(this.mongoCluster, this.databaseInfo, this.collectionInfo, index);
         });
     }
 

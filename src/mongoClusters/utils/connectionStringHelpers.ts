@@ -22,6 +22,14 @@ export const addAuthenticationDataToConnectionString = (
     return connectionStringOb.toString();
 };
 
+export const getUserNameFromConnectionString = (connectionString: string): string => {
+    return new ConnectionString(connectionString).username;
+};
+
+export const getPasswordFromConnectionString = (connectionString: string): string => {
+    return new ConnectionString(connectionString).password;
+};
+
 export const addDatabasePathToConnectionString = (connectionString: string, databaseName: string): string => {
     const connectionStringOb = new ConnectionString(connectionString);
     connectionStringOb.pathname = databaseName;

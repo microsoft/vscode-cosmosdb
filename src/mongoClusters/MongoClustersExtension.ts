@@ -18,6 +18,10 @@ import {
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import {
+    SharedWorkspaceResourceProvider,
+    WorkspaceResourceType,
+} from '../tree/workspace/SharedWorkspaceResourceProvider';
 import { createCollection } from './commands/createCollection';
 import { createDatabase } from './commands/createDatabase';
 import { dropCollection } from './commands/dropCollection';
@@ -29,7 +33,6 @@ import { openCollectionView } from './commands/openCollectionView';
 import { openDocumentView } from './commands/openDocumentView';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
 import { MongoClustersWorkspaceBranchDataProvider } from './tree/workspace/MongoClustersWorkbenchBranchDataProvider';
-import { WorkspaceDataProvider, WorkspaceResourceType } from './tree/workspace/WorkbenchDataProvider';
 import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
 
 export class MongoClustersExtension implements vscode.Disposable {
@@ -64,7 +67,7 @@ export class MongoClustersExtension implements vscode.Disposable {
                 ext.mongoClustersBranchDataProvider,
             );
 
-            ext.workspaceDataProvider = new WorkspaceDataProvider();
+            ext.workspaceDataProvider = new SharedWorkspaceResourceProvider();
             ext.rgApiV2.resources.registerWorkspaceResourceProvider(ext.workspaceDataProvider);
 
             ext.mongoClustersWorkspaceBranchDataProvider = new MongoClustersWorkspaceBranchDataProvider();
@@ -72,11 +75,6 @@ export class MongoClustersExtension implements vscode.Disposable {
                 WorkspaceResourceType.MongoClusters,
                 ext.mongoClustersWorkspaceBranchDataProvider,
             );
-
-            // ext.mongoClustersWorkspaceDataProvider = new MongoClustersWorkspaceDataProvider( () => {});
-            // ext.rgApiV2.resources.registerWorkspaceResourceProvider(
-            //     ext.mongoClustersWorkspaceDataProvider,
-            // );
 
             // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
             // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling

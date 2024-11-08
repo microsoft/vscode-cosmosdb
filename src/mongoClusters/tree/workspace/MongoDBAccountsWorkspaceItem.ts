@@ -6,12 +6,10 @@
 import { createGenericElement, type TreeElementBase } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, TreeItemCollapsibleState, type ProviderResult, type TreeItem } from 'vscode';
 
-
 export class MongoDBAccountsItem implements TreeElementBase {
     id: string;
 
-    constructor(
-    ) {
+    constructor() {
         this.id = `vscode.cosmosdb.workspace.mongoclusters.mongodbaccounts`;
     }
 
@@ -25,15 +23,15 @@ export class MongoDBAccountsItem implements TreeElementBase {
                 commandId: 'mongoClusters.cmd.createCollection',
                 commandArgs: [this],
             }),
-        ]
+        ];
     }
 
     getTreeItem(): TreeItem {
         return {
             id: this.id,
             contextValue: 'vscode.cosmosdb.workspace.mongoclusters.mongodbaccounts',
-            label: 'MongoDB Accounts',
-            iconPath: new ThemeIcon('plug'),
+            label: 'MongoDB Cluster Accounts',
+            iconPath: new ThemeIcon('link'),
             collapsibleState: TreeItemCollapsibleState.Collapsed,
         };
     }

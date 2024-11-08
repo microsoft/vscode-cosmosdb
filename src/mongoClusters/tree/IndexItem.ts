@@ -4,17 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createGenericElement, type TreeElementBase } from '@microsoft/vscode-azext-utils';
-import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { type CollectionItemModel, type DatabaseItemModel, type IndexItemModel } from '../MongoClustersClient';
-import { type MongoClusterItemBase } from './MongoClusterItemBase';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class IndexItem implements MongoClusterItemBase {
+export class IndexItem {
     id: string;
 
     constructor(
-        readonly subscription: AzureSubscription,
         readonly mongoCluster: MongoClusterModel,
         readonly databaseInfo: DatabaseItemModel,
         readonly collectionInfo: CollectionItemModel,

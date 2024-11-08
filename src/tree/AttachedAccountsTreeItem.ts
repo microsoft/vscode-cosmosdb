@@ -383,7 +383,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             );
             persistedAccounts.push(
                 new GenericTreeItem(this, { contextValue: 'myc', label: '🚀 Hello from loading PERSISTED ACCOUNTS!' }),
-            )
+            );
         }
 
         return persistedAccounts;

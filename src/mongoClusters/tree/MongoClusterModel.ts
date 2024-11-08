@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type MongoCluster, type Resource } from "@azure/arm-cosmosdb";
+import { type MongoCluster, type Resource } from '@azure/arm-cosmosdb';
 
 // Selecting only the properties used in the extension, but keeping an easy option to extend the model later and offer full coverage of MongoCluster
 // '|' means that you can only access properties that are common to both types.
@@ -22,7 +22,6 @@ interface ResourceModelInUse extends Resource {
     systemData?: {
         createdAt?: Date;
     };
-
 
     // moved from nodeGroupSpecs[0] to the top level
     // todo: check the spec learn more about the nodeGroupSpecs array

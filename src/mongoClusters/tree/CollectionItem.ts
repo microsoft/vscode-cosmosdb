@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createGenericElement, type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
-import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { type Document } from 'bson';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { ext } from '../../extensionVariables';
@@ -15,14 +14,12 @@ import {
     type InsertDocumentsResult,
 } from '../MongoClustersClient';
 import { IndexesItem } from './IndexesItem';
-import { type MongoClusterItemBase } from './MongoClusterItemBase';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class CollectionItem implements MongoClusterItemBase {
+export class CollectionItem {
     id: string;
 
     constructor(
-        readonly subscription: AzureSubscription,
         readonly mongoCluster: MongoClusterModel,
         readonly databaseInfo: DatabaseItemModel,
         readonly collectionInfo: CollectionItemModel,
@@ -51,7 +48,7 @@ export class CollectionItem implements MongoClusterItemBase {
                 ],
                 iconPath: new ThemeIcon('explorer-view-icon'),
             }),
-            new IndexesItem(this.subscription, this.mongoCluster, this.databaseInfo, this.collectionInfo),
+            new IndexesItem(this.mongoCluster, this.databaseInfo, this.collectionInfo),
         ];
     }
 

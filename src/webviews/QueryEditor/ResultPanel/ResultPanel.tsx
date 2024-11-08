@@ -5,7 +5,6 @@
 
 import { makeStyles, Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { useState, type PropsWithChildren } from 'react';
-import { IndexTab } from './IndexTab';
 import { ResultPanelToolbar } from './ResultPanelToolbar';
 import { ResultTab } from './ResultTab';
 import { ResultTabToolbar } from './ResultTabToolbar';
@@ -61,10 +60,7 @@ export const ResultPanel = () => {
                             Result
                         </Tab>
                         <Tab id="Stats" value="stats__tab">
-                            Query Metrics
-                        </Tab>
-                        <Tab id="Index" value="index__tab">
-                            Index Metrics
+                            Stats
                         </Tab>
                     </TabList>
                 </div>
@@ -74,7 +70,6 @@ export const ResultPanel = () => {
             <div className={styles.tabContainer}>
                 {selectedTab === 'result__tab' && <ResultTab />}
                 {selectedTab === 'stats__tab' && <StatsTab />}
-                {selectedTab === 'index__tab' && <IndexTab />}
             </div>
         </section>
     );

@@ -88,6 +88,7 @@ export class QuerySession {
                     .items.query<QueryResultRecord>(this.query, {
                         abortSignal: this.abortController.signal,
                         populateQueryMetrics: true,
+                        populateIndexMetrics: true,
                         maxItemCount: isFetchAll
                             ? undefined
                             : (this.resultViewMetadata?.countPerPage ?? DEFAULT_PAGE_SIZE),

@@ -48,7 +48,7 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
     }
 
     return (
-        <Toolbar aria-label="Result view toolbar">
+        <Toolbar aria-label="Result view toolbar" size="small">
             {isEditMode && (
                 <>
                     <Tooltip content="Add new document in separate tab" relationship="description" withArrow>

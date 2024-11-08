@@ -9,7 +9,6 @@ import {
     nonNullProp,
     nonNullValue,
     UserCancelledError,
-    type AzureWizardPromptStep,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 
@@ -21,9 +20,10 @@ import { MongoClustersClient } from '../../MongoClustersClient';
 import { type AuthenticateWizardContext } from '../../wizards/authenticate/AuthenticateWizardContext';
 import { ProvidePasswordStep } from '../../wizards/authenticate/ProvidePasswordStep';
 import { ProvideUserNameStep } from '../../wizards/authenticate/ProvideUsernameStep';
-import { SelectUserNameFromListStep } from '../../wizards/authenticate/SelectUserNameFromListStep';
 import { MongoClusterItemBase } from '../MongoClusterItemBase';
 import { type MongoClusterModel } from '../MongoClusterModel';
+
+import ConnectionString from 'mongodb-connection-string-url';
 
 export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
     id: string;
@@ -42,44 +42,41 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
 
         let mongoClustersClient: MongoClustersClient;
 
-        /**
-         * Now, we should figure out whether it's an Azure environment (vCore) or not.
-         * If it is, we should use the Azure SDK to fetch the cluster details.
-         * If it's not, we should use the connection string to connect to the cluster directly.
-         */
+        const connectionString = new ConnectionString(nonNullValue(this.mongoCluster.connectionString));
 
-        const clusterConnectionString: string | undefined = 'undefined';
-        const clusterAdministratorLogin: string | undefined = undefined;
-        const clusterNonAdminUsers: string[] = [];
+        let username: string | undefined = connectionString.username;
+        let password: string | undefined = connectionString.password;
 
-        const wizardContext: AuthenticateWizardContext = {
-            ...context,
-            adminUserName: clusterAdministratorLogin,
-            otherUserNames: clusterNonAdminUsers,
-            resourceName: this.mongoCluster.name,
-        };
+        if (!username || username.length === 0 || !password || password.length === 0) {
+            const wizardContext: AuthenticateWizardContext = {
+                ...context,
+                adminUserName: undefined,
+                otherUserNames: [],
+                resourceName: this.mongoCluster.name,
 
-        // Prompt the user for credentials using the extracted method
-        const credentialsProvided = await this.promptForCredentials(wizardContext);
+                // preconfigure the username in case it's provided connection string
+                selectedUserName: username,
+                // we'll always ask for the password
+            };
 
-        // If the wizard was aborted or failed, return null
-        if (!credentialsProvided) {
-            return null;
+            // Prompt the user for credentials using the extracted method
+            const credentialsProvided = await this.promptForCredentials(wizardContext);
+
+            // If the wizard was aborted or failed, return null
+            if (!credentialsProvided) {
+                return null;
+            }
+
+            context.valuesToMask.push(nonNullProp(wizardContext, 'password'));
+
+            username = nonNullProp(wizardContext, 'selectedUserName');
+            password = nonNullProp(wizardContext, 'password');
         }
 
-        ext.outputChannel.append(
-            `MongoDB (vCore): Connecting to the cluster as "${wizardContext.selectedUserName}"... `,
-        );
-
-        context.valuesToMask.push(nonNullProp(wizardContext, 'password'));
+        ext.outputChannel.append(`MongoDB Clusters: Connecting to the cluster as "${username}"... `);
 
         // Cache the credentials
-        CredentialCache.setCredentials(
-            this.id,
-            nonNullValue(clusterConnectionString),
-            nonNullProp(wizardContext, 'selectedUserName'),
-            nonNullProp(wizardContext, 'password'),
-        );
+        CredentialCache.setCredentials(this.id, connectionString.toString(), username, password);
 
         // Attempt to create the client with the provided credentials
         try {
@@ -101,9 +98,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
             return null;
         }
 
-        ext.outputChannel.appendLine(
-            `MongoDB (vCore): Connected to "${this.mongoCluster.name}" as "${wizardContext.selectedUserName}"`,
-        );
+        ext.outputChannel.appendLine(`MongoDB Clusters: Connected to "${this.mongoCluster.name}" as "${username}"`);
 
         return mongoClustersClient;
     }
@@ -114,22 +109,8 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
      * @returns True if the wizard completed successfully; false if the user canceled or an error occurred.
      */
     private async promptForCredentials(wizardContext: AuthenticateWizardContext): Promise<boolean> {
-        // Determine which prompt steps to include based on conditions
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const promptSteps: AzureWizardPromptStep<AuthenticateWizardContext>[] = [
-            // Conditionally include steps without adding nulls
-            ...(wizardContext.otherUserNames && wizardContext.otherUserNames.length > 0
-                ? [new SelectUserNameFromListStep()]
-                : [new ProvideUserNameStep()]),
-            // Always include the password step
-            new ProvidePasswordStep(),
-        ];
-
-        // Additional condition to decide whether to run the wizard at all
-        // if (run wizard?) {
-        // Initialize the wizard
         const wizard = new AzureWizard(wizardContext, {
-            promptSteps: promptSteps,
+            promptSteps: [new ProvideUserNameStep(), new ProvidePasswordStep()],
             title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB cluster'),
             showLoadingPrompt: true,
         });
@@ -149,10 +130,6 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                 }
             },
         );
-        // } else {
-        //     // Handle the case where the wizard should not run
-        //     wizardContext.aborted = true;
-        // }
 
         // Return true if the wizard completed successfully; false otherwise
         return !wizardContext.aborted;

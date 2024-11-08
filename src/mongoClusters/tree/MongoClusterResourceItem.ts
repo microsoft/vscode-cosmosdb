@@ -9,7 +9,6 @@ import {
     nonNullProp,
     nonNullValue,
     UserCancelledError,
-    type AzureWizardPromptStep,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
@@ -124,13 +123,8 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
      * @returns True if the wizard completed successfully; false if the user canceled or an error occurred.
      */
     private async promptForCredentials(wizardContext: AuthenticateWizardContext): Promise<boolean> {
-        const promptSteps: AzureWizardPromptStep<AuthenticateWizardContext>[] = [
-            new SelectUserNameFromListStep(),
-            new ProvidePasswordStep(),
-        ];
-
         const wizard = new AzureWizard(wizardContext, {
-            promptSteps: promptSteps,
+            promptSteps: [new SelectUserNameFromListStep(), new ProvidePasswordStep()],
             title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB cluster'),
             showLoadingPrompt: true,
         });

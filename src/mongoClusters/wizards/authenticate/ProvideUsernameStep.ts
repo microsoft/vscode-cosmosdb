@@ -22,6 +22,6 @@ export class ProvideUserNameStep extends AzureWizardPromptStep<AuthenticateWizar
     public shouldPrompt(context: AuthenticateWizardContext): boolean {
         // onyl prompt for the username when no name is set
         // and no adminUserName is preconfigured
-        return !context.selectedUserName && context.adminUserName === undefined;
+        return !context.selectedUserName || context.selectedUserName.length === 0;
     }
 }

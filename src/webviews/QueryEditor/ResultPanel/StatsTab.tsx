@@ -39,7 +39,7 @@ const useStyles = makeStyles({
     panel1: {
         flexGrow: '1',
         flexShrink: '1',
-        flexBasis: '68%',
+        flexBasis: '70%',
     },
     panel2: {
         flexGrow: '1',

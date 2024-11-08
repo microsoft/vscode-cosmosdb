@@ -5,14 +5,42 @@
 
 import { type WorkspaceResourceType } from '@microsoft/vscode-azureresources-api';
 import { ext } from '../../extensionVariables';
+
+/**
+ * Represents an item stored in the shared workspace storage.
+ * Each item has a unique `id`, a `name`, optional `properties`, and optional `secrets`.
+ * The `id` of the item is used as the key in storage and must be unique per `workspaceType`.
+ */
 export type SharedWorkspaceStorageItem = {
+    /**
+     * Unique identifier for the item.
+     */
     id: string;
+
+    /**
+     * Name of the item.
+     */
     name: string;
+
+    /**
+     * Optional properties associated with the item.
+     */
     properties?: Record<string, string>;
 
+    /**
+     * Optional array of secrets associated with the item.
+     * Secrets are stored securely using VSCode's SecretStorage API.
+     */
     secrets?: string[];
 };
 
+/**
+ * Manages the storage of items and their associated secrets in a shared workspace.
+ * Items are stored in VSCode's globalState, and secrets are stored using SecretStorage.
+ * Each item is uniquely identified by its `id` within a given `workspaceType`.
+ *
+ * The `id` of the item is used as the key in storage and must be unique per `workspaceType`.
+ */
 export class SharedWorkspaceStorage {
     private readonly storageName: string = 'ms-azuretools.vscode-cosmosdb.workspace';
 
@@ -32,16 +60,19 @@ export class SharedWorkspaceStorage {
             const item = ext.context.globalState.get<SharedWorkspaceStorageItem>(key);
             if (item) {
                 // Read secrets associated with the item
-                const secrets: string[] = [];
-                const secretsLengthStr = await ext.secretStorage.get(`${key}.length`);
-                const secretsLength = secretsLengthStr ? parseInt(secretsLengthStr, 10) : 0;
+                const secretKey = `${key}/secrets`;
+                const secretsJson = await ext.secretStorage.get(secretKey);
 
-                for (let i = 0; i < secretsLength; i++) {
-                    const secret = await ext.secretStorage.get(`${key}/${i}`);
-                    if (secret !== undefined) {
-                        secrets.push(secret);
+                let secrets: string[] = [];
+                if (secretsJson) {
+                    try {
+                        secrets = JSON.parse(secretsJson) as string[];
+                    } catch (error) {
+                        console.error(`Failed to parse secrets for key ${key}:`, error);
+                        secrets = [];
                     }
                 }
+
                 item.secrets = secrets;
                 items.push(item);
             }
@@ -75,15 +106,14 @@ export class SharedWorkspaceStorage {
 
         // Save all secrets
         if (item.secrets && item.secrets.length > 0) {
-            // Store the number of secrets
-            await ext.secretStorage.store(`${storageKey}.length`, item.secrets.length.toString());
-
-            // Store each secret individually
-            await Promise.all(
-                item.secrets.map(async (secret, index) => {
-                    await ext.secretStorage.store(`${storageKey}/${index}`, secret);
-                }),
-            );
+            const secretKey = `${storageKey}/secrets`;
+            const secretsJson = JSON.stringify(item.secrets);
+            try {
+                await ext.secretStorage.store(secretKey, secretsJson);
+            } catch (error) {
+                console.error(`Failed to store secrets for key ${secretKey}:`, error);
+                throw error;
+            }
         }
 
         // Remove secrets from the item before storing in globalState
@@ -107,17 +137,8 @@ export class SharedWorkspaceStorage {
         // Delete the item from globalState
         await ext.context.globalState.update(storageKey, undefined);
 
-        // Retrieve the number of secrets to delete
-        const secretsLengthStr = await ext.secretStorage.get(`${storageKey}.length`);
-        const secretsLength = secretsLengthStr ? parseInt(secretsLengthStr, 10) : 0;
-
-        // Delete each secret
-        for (let i = 0; i < secretsLength; i++) {
-            await ext.secretStorage.delete(`${storageKey}/${i}`);
-        }
-
-        // Delete the secret length indicator
-        await ext.secretStorage.delete(`${storageKey}.length`);
+        // Delete its secrets
+        await ext.secretStorage.delete(`${storageKey}/secrets`);
     }
 
     /**

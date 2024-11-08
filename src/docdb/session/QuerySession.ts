@@ -217,7 +217,7 @@ export class QuerySession {
             try {
                 this.abortController?.abort();
             } catch (error) {
-                await this.errorHandling(error ,context);
+                await this.errorHandling(error, context);
             } finally {
                 this.iterator = null;
 

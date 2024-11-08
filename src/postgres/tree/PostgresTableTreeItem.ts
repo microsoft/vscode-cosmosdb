@@ -14,7 +14,7 @@ export class PostgresTableTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = 'postgresTable';
     public readonly contextValue: string = PostgresTableTreeItem.contextValue;
     public readonly table: IPostgresTable;
-    public readonly parent: PostgresTablesTreeItem;
+    public declare readonly parent: PostgresTablesTreeItem;
 
     private _isDuplicate: boolean;
 

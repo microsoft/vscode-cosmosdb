@@ -55,7 +55,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     public readonly contextValue: string = MongoCollectionTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Document';
     public readonly collection: Collection;
-    public parent: AzExtParentTreeItem;
+    public declare parent: AzExtParentTreeItem;
     // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
     public findArgs?: Object[];
     public readonly cTime: number = Date.now();

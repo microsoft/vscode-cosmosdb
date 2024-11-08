@@ -21,7 +21,7 @@ import { GraphTreeItem } from './GraphTreeItem';
 export class GraphCollectionTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = 'cosmosDBGraph';
     public readonly contextValue: string = GraphCollectionTreeItem.contextValue;
-    public readonly parent: GraphDatabaseTreeItem;
+    public declare readonly parent: GraphDatabaseTreeItem;
 
     private readonly _graphTreeItem: GraphTreeItem;
     private readonly _storedProceduresTreeItem: DocDBStoredProceduresTreeItem;

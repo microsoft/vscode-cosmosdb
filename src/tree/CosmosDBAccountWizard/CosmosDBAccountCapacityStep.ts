@@ -10,10 +10,25 @@ import { type ICosmosDBWizardContext } from './ICosmosDBWizardContext';
 
 export class CosmosDBAccountCapacityStep extends AzureWizardPromptStep<ICosmosDBWizardContext> {
     public async prompt(context: ICosmosDBWizardContext): Promise<void> {
-        const placeHolder: string = localize('selectDBServerMsg', 'Select a capacity model.');
+        const learnMoreLink: string = 'https://aka.ms/cosmos-models';
+        const placeHolder: string = localize('selectDBServerMsg', 'Select a capacity model');
         const picks: IAzureQuickPickItem<boolean | undefined>[] = [
-            { label: localize('provisionedOption', 'Provisioned Throughput'), data: false },
-            { label: localize('serverlessOption', 'Serverless'), data: true },
+            {
+                label: localize('provisionedOption', 'Provisioned Throughput'),
+                detail: localize(
+                    'provisionedOptionDescription',
+                    'Workloads with sustained traffic requiring predictable performance',
+                ),
+                data: false,
+            },
+            {
+                label: localize('serverlessOption', 'Serverless'),
+                detail: localize(
+                    'serverlessOptionDescription',
+                    'Workloads with intermittent or unpredictable traffic and low average-to-peak traffic ratio',
+                ),
+                data: true,
+            },
         ];
         const learnMore: IAzureQuickPickItem = {
             label: localize('learnMore', '$(link-external) Learn more...'),
@@ -23,9 +38,13 @@ export class CosmosDBAccountCapacityStep extends AzureWizardPromptStep<ICosmosDB
         let pick: IAzureQuickPickItem<boolean | undefined>;
 
         do {
-            pick = await context.ui.showQuickPick(picks, { placeHolder, suppressPersistence: true });
+            pick = await context.ui.showQuickPick(picks, {
+                placeHolder,
+                suppressPersistence: true,
+                learnMoreLink: learnMoreLink,
+            });
             if (pick === learnMore) {
-                await openUrl('https://aka.ms/cosmos-models');
+                await openUrl(learnMoreLink);
             }
         } while (pick === learnMore);
 

@@ -33,7 +33,7 @@ export class DocumentsViewController extends WebviewController<DocumentsViewWebv
             }
         }
 
-        super(ext.context, title, 'mongoClustersDocumentView', initialData, ViewColumn.Beside);
+        super(ext.context, title, 'mongoClustersDocumentView', initialData, ViewColumn.Active);
 
         const trpcContext: RouterContext = {
             sessionId: initialData.sessionId,

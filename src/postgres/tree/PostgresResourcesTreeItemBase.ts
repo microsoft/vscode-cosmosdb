@@ -9,7 +9,7 @@ import { type PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 
 // Base class for Postgres tree items whose children are individual resources
 export abstract class PostgresResourcesTreeItemBase extends AzExtParentTreeItem {
-    public parent: PostgresDatabaseTreeItem;
+    public declare parent: PostgresDatabaseTreeItem;
     public clientConfig: ClientConfig;
     public resourcesAndSchemas: { [key: string]: string[] }; // Resource name to list of schemas
 

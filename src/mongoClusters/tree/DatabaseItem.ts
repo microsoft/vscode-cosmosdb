@@ -3,8 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import { createGenericElement, type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
+import * as vscode from 'vscode';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
@@ -26,6 +27,21 @@ export class DatabaseItem implements MongoClusterItemBase {
     async getChildren(): Promise<TreeElementBase[]> {
         const client: MongoClustersClient = await MongoClustersClient.getClient(this.mongoCluster.id);
         const collections = await client.listCollections(this.databaseInfo.name);
+
+        if (collections.length === 0) {
+            // no databases in there:
+            return [
+                createGenericElement({
+                    contextValue: 'mongoClusters.item.no-collection',
+                    id: `${this.id}/no-databases`,
+                    label: 'Create collection...',
+                    iconPath: new vscode.ThemeIcon('plus'),
+                    commandId: 'mongoClusters.cmd.createCollection',
+                    commandArgs: [this],
+                }),
+            ];
+        }
+
         return collections.map((collection) => {
             return new CollectionItem(this.subscription, this.mongoCluster, this.databaseInfo, collection);
         });

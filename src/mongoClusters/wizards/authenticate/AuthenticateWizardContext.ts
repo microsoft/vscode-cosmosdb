@@ -14,4 +14,5 @@ export interface AuthenticateWizardContext extends IActionContext {
     /** These values will be populated by the wizard. */
     selectedUserName?: string;
     password?: string;
+    aborted?: boolean;
 }

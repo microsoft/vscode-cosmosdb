@@ -10,6 +10,7 @@ import {
     createGenericElement,
     nonNullProp,
     nonNullValue,
+    UserCancelledError,
     type IActionContext,
     type TreeElementBase,
 } from '@microsoft/vscode-azext-utils';
@@ -87,7 +88,7 @@ export class MongoClusterItem implements MongoClusterItemBase {
         const result = await callWithTelemetryAndErrorHandling(
             'mongoClusterItem.getChildren',
             async (context: IActionContext) => {
-                context.errorHandling.suppressDisplay = true;
+                context.errorHandling.suppressDisplay = false;
                 context.errorHandling.rethrow = true;
                 context.valuesToMask.push(this.id, this.mongoCluster.name);
 
@@ -135,14 +136,27 @@ export class MongoClusterItem implements MongoClusterItemBase {
                             'mongoClustersAuthenticateCluster',
                             'Authenticate to connect with your MongoDB (vCore) cluster',
                         ),
+                        showLoadingPrompt: true,
                     });
 
                     await callWithTelemetryAndErrorHandling(
                         'mongoClusterItem.getChildren.passwordPrompt',
                         async (_context: IActionContext) => {
-                            await wizard.prompt(); // This will prompt the user for the username and password, results are stored in the wizardContext
+                            _context.errorHandling.rethrow = true;
+                            _context.errorHandling.suppressDisplay = false;
+                            try {
+                                await wizard.prompt(); // This will prompt the user for the username and password, results are stored in the wizardContext
+                            } catch (error) {
+                                if (error instanceof UserCancelledError) {
+                                    wizardContext.aborted = true;
+                                }
+                            }
                         },
                     );
+
+                    if (wizardContext.aborted) {
+                        return [];
+                    }
 
                     ext.outputChannel.append(
                         `MongoDB (vCore): Connecting to the cluster as "${wizardContext.selectedUserName}"... `,
@@ -191,6 +205,19 @@ export class MongoClusterItem implements MongoClusterItemBase {
                 }
 
                 return mongoClustersClient.listDatabases().then((databases: DatabaseItemModel[]) => {
+                    if (databases.length === 0) {
+                        return [
+                            createGenericElement({
+                                contextValue: 'mongoClusters.item.no-databases',
+                                id: `${this.id}/no-databases`,
+                                label: 'Create database...',
+                                iconPath: new vscode.ThemeIcon('plus'),
+                                commandId: 'mongoClusters.cmd.createDatabase',
+                                commandArgs: [this],
+                            }),
+                        ];
+                    }
+
                     return databases.map(
                         (database) => new DatabaseItem(this.subscription, this.mongoCluster, database),
                     );

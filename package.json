@@ -1266,6 +1266,19 @@
                     "description": "Whether to use OAuth credential for Cosmos DB NoSQL resources",
                     "default": false
                 },
+                "azureDatabases.confirmationStyle": {
+                    "type": "string",
+                    "description": "The behavior to use when confirming operations that cannot be undone, such as deleting resources.",
+                    "enum": [
+                        "Word Confirmation",
+                        "Buton Click"
+                    ],
+                    "enumDescriptions": [
+                        "Prompts with an input box where you enter the name of the resource to delete.",
+                        "Prompts with a warning dialog where you click a button to delete."
+                    ],
+                    "default": "Word Confirmation"
+                },
                 "cosmosDB.documentLabelFields": {
                     "type": "array",
                     "default": [

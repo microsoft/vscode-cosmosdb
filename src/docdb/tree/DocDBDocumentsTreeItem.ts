@@ -29,12 +29,11 @@ export class DocDBDocumentsTreeItem extends DocDBTreeItemBase<ItemDefinition> {
     public static contextValue: string = 'cosmosDBDocumentsGroup';
     public readonly contextValue: string = DocDBDocumentsTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Documents';
-    public readonly parent: DocDBCollectionTreeItem;
+    public declare readonly parent: DocDBCollectionTreeItem;
     public suppressMaskLabel = true;
 
     constructor(parent: DocDBCollectionTreeItem) {
         super(parent);
-        this.parent = parent;
         this.root = this.parent.root;
     }
 

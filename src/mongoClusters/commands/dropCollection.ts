@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { getConfirmationWithWarning } from '../../utils/dialogsConfirmations';
+import { getConfirmationAsInSettings } from '../../utils/confirmations';
 import { type CollectionItem } from '../tree/CollectionItem';
 
 export async function dropCollection(context: IActionContext, node?: CollectionItem): Promise<void> {
@@ -13,9 +13,10 @@ export async function dropCollection(context: IActionContext, node?: CollectionI
         throw new Error('No collection selected.');
     }
 
-    const confirmed = await getConfirmationWithWarning(
-        'Are you sure?',
-        `Drop collection "${node?.collectionInfo.name} and its contents"?\nThis can't be undone.`,
+    const confirmed = await getConfirmationAsInSettings(
+        `Drop "${node?.collectionInfo.name}"?`,
+        `Drop collection "${node?.collectionInfo.name}" and its contents?\nThis can't be undone.\n\n`,
+        node?.collectionInfo.name,
     );
 
     if (!confirmed) {

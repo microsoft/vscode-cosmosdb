@@ -32,6 +32,7 @@ export const DataViewPanelTree = ({ liveData }: Props): React.JSX.Element => {
             calculateAvailableSizeBy: 'container',
             container: '.resultsDisplayArea', // this is a selector of the parent container, in this case it's the collectionView.tsx and the class is "resultsDisplayArea"
             delay: 100,
+            bottomPadding: 0,
         },
         enableAutoResize: true,
         enableAutoSizeColumns: true, // true as when using a tree, there are only 3 columns to work with

@@ -23,7 +23,7 @@ import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeL
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
 import { type AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
 import { type AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
-import { type SharedWorkspaceResourceProvider } from './tree/workspace/SharedWorkspaceResourceProvider';
+import { type SharedWorkspaceResourceProvider } from './tree/workspace/sharedWorkspaceResourceProvider';
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts

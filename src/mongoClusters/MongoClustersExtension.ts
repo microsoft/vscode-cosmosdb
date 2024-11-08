@@ -21,7 +21,7 @@ import { ext } from '../extensionVariables';
 import {
     SharedWorkspaceResourceProvider,
     WorkspaceResourceType,
-} from '../tree/workspace/SharedWorkspaceResourceProvider';
+} from '../tree/workspace/sharedWorkspaceResourceProvider';
 import { createCollection } from './commands/createCollection';
 import { createDatabase } from './commands/createDatabase';
 import { dropCollection } from './commands/dropCollection';

@@ -8,7 +8,8 @@ import * as vscode from 'vscode';
 import { MongoClustersClient } from '../MongoClustersClient';
 import { type CollectionItem } from '../tree/CollectionItem';
 import { type DatabaseItem } from '../tree/DatabaseItem';
-import { MongoClusterResourceItem } from '../tree/MongoClusterResourceItem';
+import { MongoClusterItemBase } from '../tree/MongoClusterItemBase';
+import { type MongoClusterResourceItem } from '../tree/MongoClusterResourceItem';
 import {
     addAuthenticationDataToConnectionString,
     addDatabasePathToConnectionString,
@@ -35,7 +36,7 @@ export async function launchShell(
 
     let shellParameters = '';
 
-    if (node instanceof MongoClusterResourceItem) {
+    if (node instanceof MongoClusterItemBase) {
         shellParameters = `"${connectionStringWithUserName}"`;
     } /*if (node instanceof DatabaseItem)*/ else {
         const connStringWithDb = addDatabasePathToConnectionString(

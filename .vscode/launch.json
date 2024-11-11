@@ -36,9 +36,7 @@
             "type": "extensionHost",
             "request": "launch",
             "runtimeExecutable": "${execPath}",
-            "args": [
-                                "--profile=noExtensionsProfile", // uses a local profile with a limited number of installed extensions
-"--extensionDevelopmentPath=${workspaceFolder}/dist"],
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}/dist"],
             "outFiles": ["${workspaceFolder}/dist/**/*.js"],
             "preLaunchTask": "Watch",
             "autoAttachChildProcesses": true,

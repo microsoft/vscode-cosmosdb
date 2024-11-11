@@ -81,13 +81,11 @@ export async function addWorkspaceConnection(context: IActionContext): Promise<v
                 { modal: true },
             );
 
-            void ext.attachedAccountsNode.attachConnectionString(
-                context,
-                connectionStringWithCredentials,
-                API.MongoDB,
-            ).then((newItem) => {
-                ext.rgApi.workspaceResourceTreeView.reveal(newItem, { select: true, focus: true });
-            });
+            void ext.attachedAccountsNode
+                .attachConnectionString(context, connectionStringWithCredentials, API.MongoDB)
+                .then((newItem) => {
+                    ext.rgApi.workspaceResourceTreeView.reveal(newItem, { select: true, focus: true });
+                });
         } catch (error) {
             void vscode.window.showErrorMessage(
                 localize(

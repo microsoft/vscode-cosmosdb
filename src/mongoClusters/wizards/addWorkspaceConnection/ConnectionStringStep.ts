@@ -20,10 +20,12 @@ export class ConnectionStringStep extends AzureWizardPromptStep<AddWorkspaceConn
             await context.ui.showInputBox({
                 prompt: prompt,
                 ignoreFocusOut: true,
-                placeHolder: localize('mongoClusters.addWorkspaceConnection.connectionString.placeholder', 'Starts with mongodb:// or mongodb+srv://'),
+                placeHolder: localize(
+                    'mongoClusters.addWorkspaceConnection.connectionString.placeholder',
+                    'Starts with mongodb:// or mongodb+srv://',
+                ),
                 validateInput: ConnectionStringStep.validateInput,
-                asyncValidationTask: (connectionString: string) =>
-                    this.validateConnectionString(connectionString)
+                asyncValidationTask: (connectionString: string) => this.validateConnectionString(connectionString),
             })
         ).trim();
 
@@ -39,7 +41,11 @@ export class ConnectionStringStep extends AzureWizardPromptStep<AddWorkspaceConn
             if (error instanceof Error && error.name === 'MongoParseError') {
                 return error.message;
             } else {
-                return localize('mongoClusters.addWorkspaceConnection.connectionString.invalid', 'Invalid Connection String: {0}', `${error}`);
+                return localize(
+                    'mongoClusters.addWorkspaceConnection.connectionString.invalid',
+                    'Invalid Connection String: {0}',
+                    `${error}`,
+                );
             }
         }
 

@@ -133,11 +133,11 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
         return !wizardContext.aborted;
     }
 
-     /**
+    /**
      * Returns the tree item representation of the cluster.
      * @returns The TreeItem object.
      */
-     getTreeItem(): vscode.TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: 'mongoClusters.item.mongoCluster',

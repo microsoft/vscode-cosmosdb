@@ -115,30 +115,25 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             this._loadPersistedAccountsTask = this.loadPersistedAccounts();
         }
 
-        const attachedAccounts: AzExtTreeItem[] = [
-            new GenericTreeItem(undefined, { label: '🚀 Hello from ATTACHED ACCOUNTS!', contextValue: 'hello' }),
-            ...(await this.getAttachedAccounts()),
-        ];
+        const attachedAccounts: AzExtTreeItem[] = await this.getAttachedAccounts();
 
-        return [...attachedAccounts, ...this.getAttachDatabseActionItems()];
-    }
-
-    private getAttachDatabseActionItems(): AzExtTreeItem[] {
-        const attachDatabaseAccount = new GenericTreeItem(this, {
-            contextValue: 'cosmosDBAttachDatabaseAccount',
-            label: 'New connection...',
-            iconPath: new vscode.ThemeIcon('add'),
-            commandId: 'cosmosDB.attachDatabaseAccount',
-            includeInTreeItemPicker: true,
-        });
-        const attachEmulator = new GenericTreeItem(this, {
-            contextValue: 'cosmosDBAttachEmulator',
-            label: 'Attach Emulator...',
-            iconPath: new vscode.ThemeIcon('add'),
-            commandId: 'cosmosDB.attachEmulator',
-            includeInTreeItemPicker: true,
-        });
-        return isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
+        if (attachedAccounts.length > 0) {
+            return attachedAccounts;
+        } else {
+            const attachDatabaseAccount = new GenericTreeItem(this, {
+                contextValue: 'cosmosDBAttachDatabaseAccount',
+                label: 'Attach Database Account...',
+                commandId: 'cosmosDB.attachDatabaseAccount',
+                includeInTreeItemPicker: true,
+            });
+            const attachEmulator = new GenericTreeItem(this, {
+                contextValue: 'cosmosDBAttachEmulator',
+                label: 'Attach Emulator...',
+                commandId: 'cosmosDB.attachEmulator',
+                includeInTreeItemPicker: true,
+            });
+            return isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
+        }
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {
@@ -162,29 +157,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             placeHolder: 'Select a Database type...',
             stepName: 'attachNewAccount',
         });
-
-        const _edition = await context.ui.showQuickPick(
-            [
-                { label: 'New Experience', detail: 'Ideal for new MongoDB projects and users of MongoDB vCore.' },
-                {
-                    label: 'Legacy experience',
-                    detail: 'Select this option if you depend on functionality that is not yet available in the New Experience.',
-                },
-            ],
-            {
-                placeHolder: 'Select the MongoDB Experience...',
-                stepName: 'attachNewAccountStep2',
-            },
-        );
-
-        // todo: we need a workspace branch data provider.. that integrates with current workspace provider
-        // and this provider doesn't support 'branches'.. so a new tree level to build..
-        // and then.. we need to add a new tree item for the mongoClusters..
-        // from then on, existing code base would be able to handle the mongoClusters tree items..
-        // also, menu items / commands need to be updated to support the new tree items in the workspace area
-
         const defaultExperience = defaultExperiencePick.data;
-
         let placeholder: string;
         let defaultValue: string | undefined;
         let validateInput: (value: string) => string | undefined | null;
@@ -380,9 +353,6 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
                     );
                     persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
                 }),
-            );
-            persistedAccounts.push(
-                new GenericTreeItem(this, { contextValue: 'myc', label: '🚀 Hello from loading PERSISTED ACCOUNTS!' }),
             );
         }
 

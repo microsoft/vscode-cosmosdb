@@ -5,7 +5,6 @@
 
 import {
     callWithTelemetryAndErrorHandling,
-    GenericTreeItem,
     type AzExtParentTreeItem,
     type AzExtTreeItem,
     type IActionContext,
@@ -26,10 +25,7 @@ export class DatabaseWorkspaceProvider implements WorkspaceResourceProvider {
         return await callWithTelemetryAndErrorHandling(
             'AzureAccountTreeItemWithProjects.provideResources',
             async (_context: IActionContext) => {
-                return [
-                    ext.attachedAccountsNode,
-                    new GenericTreeItem(undefined, { label: '🚀 Hello from your Workspace!', contextValue: 'hello' }),
-                ];
+                return [ext.attachedAccountsNode];
             },
         );
     }

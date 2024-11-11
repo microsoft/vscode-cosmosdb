@@ -10,6 +10,7 @@ import {
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import ConnectionString from 'mongodb-connection-string-url';
+import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { WorkspaceResourceType } from '../../tree/workspace/sharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../tree/workspace/sharedWorkspaceStorage';
@@ -18,7 +19,6 @@ import { type AddWorkspaceConnectionContext } from '../wizards/addWorkspaceConne
 import { ConnectionStringStep } from '../wizards/addWorkspaceConnection/ConnectionStringStep';
 import { PasswordStep } from '../wizards/addWorkspaceConnection/PasswordStep';
 import { UsernameStep } from '../wizards/addWorkspaceConnection/UsernameStep';
-
 
 export async function addWorkspaceConnection(context: IActionContext): Promise<void> {
     const wizardContext: AddWorkspaceConnectionContext = context;
@@ -62,16 +62,37 @@ export async function addWorkspaceConnection(context: IActionContext): Promise<v
     const connectionStringWithCredentials = connectionString.toString();
     wizardContext.valuesToMask.push(connectionStringWithCredentials);
 
-    // Save the connection string
-    void await SharedWorkspaceStorage.push(
-        WorkspaceResourceType.MongoClusters,
-        {
-            id: connectionString.username + '@' + connectionString.redact().toString(),
-            name: connectionString.username + '@' + connectionString.hosts.join(','),
-            secrets: [connectionStringWithCredentials],
+    // discover whether it's a MongoDB RU connection string and abort here.
+    let isRU: boolean = false;
+    connectionString.hosts.forEach((host) => {
+        if (isMongoDBRU(host)) {
+            isRU = true;
         }
-    )
+    });
+    if (isRU) {
+        await ext.attachedAccountsNode.attachConnectionString(context, connectionStringWithCredentials, API.MongoDB);
+        return;
+    }
+
+    // Save the connection string
+    void (await SharedWorkspaceStorage.push(WorkspaceResourceType.MongoClusters, {
+        id: connectionString.username + '@' + connectionString.redact().toString(),
+        name: connectionString.username + '@' + connectionString.hosts.join(','),
+        secrets: [connectionStringWithCredentials],
+    }));
 
     // refresh the workspace tree view
     ext.mongoClustersWorkspaceBranchDataProvider.refresh();
+}
+
+function isMongoDBRU(host: string): boolean {
+    const knownSuffixes = ['mongo.cosmos.azure.com'];
+    const hostWithoutPort = host.split(':')[0];
+
+    for (const suffix of knownSuffixes) {
+        if (hostWithoutPort.toLowerCase().endsWith(suffix)) {
+            return true;
+        }
+    }
+    return false;
 }

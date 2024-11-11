@@ -4,11 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AbortError, ErrorResponse, TimeoutError, type QueryIterator } from '@azure/cosmos';
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
+import * as vscode from 'vscode';
+import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
+import { localize } from '../../utils/localize';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClientByConnection } from '../getCosmosClient';
 import {
@@ -88,6 +91,7 @@ export class QuerySession {
                     .items.query<QueryResultRecord>(this.query, {
                         abortSignal: this.abortController.signal,
                         populateQueryMetrics: true,
+                        populateIndexMetrics: true,
                         maxItemCount: isFetchAll
                             ? undefined
                             : (this.resultViewMetadata?.countPerPage ?? DEFAULT_PAGE_SIZE),
@@ -102,7 +106,7 @@ export class QuerySession {
                     await this.nextPage();
                 }
             } catch (error) {
-                await this.errorHandling(error);
+                await this.errorHandling(error, context);
             }
         });
     }
@@ -119,7 +123,7 @@ export class QuerySession {
                 throw new Error('Session is not running! Please run the session first');
             }
 
-            await this.wrappedFetch(async () => {
+            await this.wrappedFetch(context, async () => {
                 const response = await this.iterator!.fetchAll();
                 this.sessionResult.push(response);
                 this.currentIteration++;
@@ -143,7 +147,7 @@ export class QuerySession {
                 throw new Error('Cannot fetch next page if all records have been fetched before');
             }
 
-            await this.wrappedFetch(async () => {
+            await this.wrappedFetch(context, async () => {
                 if (this.currentIteration + 1 > this.sessionResult.iterationsCount) {
                     const response = await this.iterator!.fetchNext();
                     this.sessionResult.push(response);
@@ -174,7 +178,7 @@ export class QuerySession {
                 throw new Error('Cannot fetch previous page if current page is the first page');
             }
 
-            await this.wrappedFetch(async () => {
+            await this.wrappedFetch(context, async () => {
                 this.currentIteration--;
             });
         });
@@ -192,7 +196,7 @@ export class QuerySession {
                 throw new Error('Session is not running! Please run the session first');
             }
 
-            await this.wrappedFetch(async () => {
+            await this.wrappedFetch(context, async () => {
                 this.currentIteration = 1;
             });
         });
@@ -213,7 +217,7 @@ export class QuerySession {
             try {
                 this.abortController?.abort();
             } catch (error) {
-                await this.errorHandling(error);
+                await this.errorHandling(error, context);
             } finally {
                 this.iterator = null;
 
@@ -231,7 +235,7 @@ export class QuerySession {
         this.abortController?.abort();
     }
 
-    private async errorHandling(error: unknown): Promise<void> {
+    private async errorHandling(error: unknown, context: IActionContext): Promise<void> {
         const isObject = error && typeof error === 'object';
         if (error instanceof ErrorResponse) {
             const code: string = `${error.code ?? 'Unknown'}`;
@@ -241,30 +245,34 @@ export class QuerySession {
                 name: 'queryError',
                 params: [this.id, message],
             });
+            void this.logAndThrowError('Query failed', error);
         } else if (error instanceof TimeoutError) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
                 params: [this.id, 'Query timed out'],
             });
+            void this.logAndThrowError('Query timed out', error);
         } else if (error instanceof AbortError || (isObject && 'name' in error && error.name === 'AbortError')) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
                 params: [this.id, 'Query was aborted'],
             });
+            void this.logAndThrowError('Query was aborted', error);
         } else {
+            // always force unexpected query errors to be included in report issue command
+            context.errorHandling.forceIncludeInReportIssueCommand = true;
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
                 params: [this.id, getErrorMessage(error)],
             });
+            await this.logAndThrowError('Query failed', error);
         }
-
-        throw error;
     }
 
-    private async wrappedFetch(action: () => Promise<void>): Promise<void> {
+    private async wrappedFetch(context: IActionContext, action: () => Promise<void>): Promise<void> {
         try {
             await this.channel.postMessage({
                 type: 'event',
@@ -280,13 +288,39 @@ export class QuerySession {
                 params: [this.id, this.sessionResult.getSerializedResult(this.currentIteration), this.currentIteration],
             });
         } catch (error) {
-            await this.errorHandling(error);
+            await this.errorHandling(error, context);
         } finally {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'executionStopped',
                 params: [this.id, Date.now()],
             });
+        }
+    }
+
+    private async logAndThrowError(message: string, error: unknown = undefined): Promise<void> {
+        if (error) {
+            //TODO: parseError does not handle "Message : {JSON}" format coming from Cosmos DB SDK
+            // we need to parse the error message and show it in a better way in the UI
+            const parsedError = parseError(error);
+            ext.outputChannel.error(`${message}: ${parsedError.message}`);
+
+            if (parsedError.message) {
+                message = `${message}\n${parsedError.message}`;
+            }
+
+            if (error instanceof ErrorResponse && error.message.indexOf('ActivityId:') === 0) {
+                message = `${message}\nActivityId: ${error.ActivityId}`;
+            }
+
+            const showLogButton = localize('goToOutput', 'Go to output');
+            if (await vscode.window.showErrorMessage(message, showLogButton)) {
+                ext.outputChannel.show();
+            }
+            throw new Error(`${message}, ${parsedError.message}`);
+        } else {
+            await vscode.window.showErrorMessage(message);
+            throw new Error(message);
         }
     }
 

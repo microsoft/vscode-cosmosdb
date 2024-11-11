@@ -33,7 +33,7 @@ export class AzureDBAPIStep extends AzureWizardPromptStep<IPostgresServerWizardC
         const picks: IAzureQuickPickItem<Experience>[] = getExperienceQuickPicks();
 
         const result: IAzureQuickPickItem<Experience> = await context.ui.showQuickPick(picks, {
-            placeHolder: localize('selectDBServerMsg', 'Select an Azure Database Server.'),
+            placeHolder: localize('selectDBServerMsg', 'Select an Azure Database Server'),
         });
 
         context.defaultExperience = result.data;

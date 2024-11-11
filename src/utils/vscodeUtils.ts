@@ -109,7 +109,7 @@ export function getDocumentTreeItemLabel(document: IMongoDocument | ItemDefiniti
             }
         }
     }
-    return String(document._id);
+    return String(document._id ?? document.id);
 }
 
 function getDocumentLabelFields(): string[] {

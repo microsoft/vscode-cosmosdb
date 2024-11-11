@@ -44,7 +44,9 @@
         "build": "tsc",
         "clean": "git clean -dfx",
         "compile": "tsc -watch",
-        "package": "npm run webpack-prod && cd dist && npm pkg delete \"scripts.vscode:prepublish\" && npx vsce package --no-dependencies",
+        "package": "run-script-os",
+        "package:win32": "npm run webpack-prod && cd dist && npm pkg delete \"scripts.vscode:prepublish\" && npx vsce package --no-dependencies --out ../%npm_package_name%-%npm_package_version%.vsix",
+        "package:default": "npm run webpack-prod && cd dist && npm pkg delete \"scripts.vscode:prepublish\" && npx vsce package --no-dependencies --out ../${npm_package_name}-${npm_package_version}.vsix",
         "lint": "eslint --quiet --ext .ts --ext .tsx .",
         "lint-fix": "eslint --ext .ts --ext .tsx . --fix",
         "prettier": "prettier -c \"src/**/*.@(js|ts|jsx|tsx)\" \"test/**/*.@(js|ts|jsx|tsx)\"",
@@ -110,10 +112,12 @@
         "react-dom": "^18.3.1",
         "react-refresh": "^0.14.2",
         "rimraf": "^5.0.10",
+        "run-script-os": "^1.1.6",
         "sass": "~1.79.6",
         "sass-loader": "^16.0.2",
         "style-loader": "^4.0.0",
         "swc-loader": "^0.2.6",
+        "terser-webpack-plugin": "^5.3.10",
         "ts-jest": "^29.2.5",
         "ts-node": "^10.9.2",
         "typescript": "^5.6.2",
@@ -1272,7 +1276,7 @@
                 },
                 "azureDatabases.useCosmosOAuth": {
                     "type": "boolean",
-                    "description": "Whether to use OAuth credential for Cosmos DB NoSQL resources",
+                    "markdownDescription": "Always authenticate using Entra ID RBAC when connecting to Cosmos DB NoSQL Accounts. [Enable RBAC and assign Roles](https://aka.ms/cosmos-native-rbac).",
                     "default": false
                 },
                 "azureDatabases.confirmationStyle": {

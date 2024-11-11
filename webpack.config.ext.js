@@ -8,6 +8,7 @@
 const webpack = require('webpack');
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = (env, { mode }) => {
     const isDev = mode === 'development';
@@ -27,6 +28,20 @@ module.exports = (env, { mode }) => {
             chunkFormat: 'commonjs',
             libraryTarget: 'commonjs2',
             devtoolModuleFilenameTemplate: '[resource-path]',
+        },
+        optimization: {
+            minimize: !isDev,
+            minimizer: [
+                new TerserPlugin({
+                    // TODO: Code should not rely on function names
+                    //  https://msdata.visualstudio.com/CosmosDB/_workitems/edit/3594054
+                    // minify: TerserPlugin.swcMinify, // SWC minify doesn't have "keep_fnames" option
+                    terserOptions: {
+                        keep_classnames: true,
+                        keep_fnames: true,
+                    },
+                }),
+            ],
         },
         externalsType: 'node-commonjs',
         externals: {
@@ -60,18 +75,8 @@ module.exports = (env, { mode }) => {
                             },
                             isModule: true,
                             sourceMaps: isDev,
-                            minify: !isDev,
                             jsc: {
                                 baseUrl: path.resolve(__dirname, './'), // Set absolute path here
-                                minify: {
-                                    compress: !isDev,
-                                    mangle: isDev
-                                        ? false
-                                        : {
-                                              keep_classnames: true,
-                                              keep_fnames: true,
-                                          },
-                                },
                                 keepClassNames: true,
                                 target: 'es2021',
                                 parser: {

@@ -12,12 +12,15 @@ import {
     type JSONObject,
     type PartitionKeyDefinition,
 } from '@azure/cosmos';
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
+import vscode from 'vscode';
+import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { extractPartitionKey } from '../../utils/document';
+import { localize } from '../../utils/localize';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
 import { type CosmosDbRecord, type CosmosDbRecordIdentifier } from '../types/queryResult';
@@ -94,7 +97,7 @@ export class DocumentSession {
                     });
                 }
             } catch (error) {
-                await this.errorHandling(error);
+                await this.errorHandling(error, context);
             }
 
             return undefined;
@@ -159,7 +162,7 @@ export class DocumentSession {
                     });
                 }
             } catch (error) {
-                await this.errorHandling(error);
+                await this.errorHandling(error, context);
             }
         });
     }
@@ -211,7 +214,7 @@ export class DocumentSession {
                     });
                 }
             } catch (error) {
-                await this.errorHandling(error);
+                await this.errorHandling(error, context);
             }
 
             return undefined;
@@ -253,7 +256,7 @@ export class DocumentSession {
                     });
                 }
             } catch (error) {
-                await this.errorHandling(error);
+                await this.errorHandling(error, context);
             }
         });
     }
@@ -305,7 +308,7 @@ export class DocumentSession {
         this.abortController?.abort();
     }
 
-    private async errorHandling(error: unknown): Promise<void> {
+    private async errorHandling(error: unknown, context: IActionContext): Promise<void> {
         const isObject = error && typeof error === 'object';
         if (error instanceof ErrorResponse) {
             const code: string = `${error.code ?? 'Unknown'}`;
@@ -315,24 +318,30 @@ export class DocumentSession {
                 name: 'queryError',
                 params: [this.id, message],
             });
+            await this.logAndThrowError('Query failed', error);
         } else if (error instanceof TimeoutError) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
                 params: [this.id, 'Query timed out'],
             });
+            await this.logAndThrowError('Query timed out', error);
         } else if (error instanceof AbortError || (isObject && 'name' in error && error.name === 'AbortError')) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
                 params: [this.id, 'Query was aborted'],
             });
+            await this.logAndThrowError('Query was aborted', error);
         } else {
+            // always force unexpected query errors to be included in report issue command
+            context.errorHandling.forceIncludeInReportIssueCommand = true;
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
                 params: [this.id, getErrorMessage(error)],
             });
+            await this.logAndThrowError('Query failed', error);
         }
 
         throw error;
@@ -365,5 +374,31 @@ export class DocumentSession {
             this.partitionKey = container.resource.partitionKey;
             return this.partitionKey;
         });
+    }
+
+    private async logAndThrowError(message: string, error: unknown = undefined): Promise<void> {
+        if (error) {
+            //TODO: parseError does not handle "Message : {JSON}" format coming from Cosmos DB SDK
+            // we need to parse the error message and show it in a better way in the UI
+            const parsedError = parseError(error);
+            ext.outputChannel.error(`${message}: ${parsedError.message}`);
+
+            if (parsedError.message) {
+                message = `${message}\n${parsedError.message}`;
+            }
+
+            if (error instanceof ErrorResponse && error.message.indexOf('ActivityId:') === 0) {
+                message = `${message}\nActivityId: ${error.ActivityId}`;
+            }
+
+            const showLogButton = localize('goToOutput', 'Go to output');
+            if (await vscode.window.showErrorMessage(message, showLogButton)) {
+                ext.outputChannel.show();
+            }
+            throw new Error(`${message}, ${parsedError.message}`);
+        } else {
+            await vscode.window.showErrorMessage(message);
+            throw new Error(message);
+        }
     }
 }

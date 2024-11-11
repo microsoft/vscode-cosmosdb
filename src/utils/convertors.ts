@@ -462,12 +462,25 @@ export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): 
     return stats;
 };
 
+const indexMetricsToTableItem = (queryResult: SerializedQueryResult): StatsItem => {
+    return {
+        metric: 'Index Metrics',
+        value: queryResult.indexMetrics.trim(),
+        formattedValue: queryResult.indexMetrics.trim(),
+        tooltip: '',
+    };
+};
+
 export const queryMetricsToJSON = (queryResult: SerializedQueryResult | null): string => {
     if (!queryResult) {
         return '';
     }
 
-    return JSON.stringify(queryMetricsToTable(queryResult), null, 4);
+    const stats = queryMetricsToTable(queryResult);
+
+    stats.push(indexMetricsToTableItem(queryResult));
+
+    return JSON.stringify(stats, null, 4);
 };
 
 export const escapeCsvValue = (value: string): string => {
@@ -484,6 +497,9 @@ export const queryMetricsToCsv = (queryResult: SerializedQueryResult | null): st
     }
 
     const stats = queryMetricsToTable(queryResult);
+
+    stats.push(indexMetricsToTableItem(queryResult));
+
     const titles = stats.map((item) => item.metric).join(',');
     const values = stats.map((item) => escapeCsvValue(item.value.toString())).join(',');
     return `${titles}\n${values}`;

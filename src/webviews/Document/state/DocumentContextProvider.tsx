@@ -102,10 +102,9 @@ export class DocumentContextProvider extends BaseContextProvider {
             this.dispatch({ type: 'setError', error: this.parseError(error) });
         });
 
-        this.channel.on('queryError', async (_sessionId: string, error: string) => {
+        this.channel.on('queryError', (_sessionId: string, _error: string) => {
             this.dispatch({ type: 'setRefreshing', isRefreshing: false });
             this.dispatch({ type: 'setSaving', isSaving: false });
-            await this.sendCommand('showErrorMessage', this.parseError(error));
         });
     }
 

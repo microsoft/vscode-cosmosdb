@@ -101,7 +101,7 @@ export function getExperienceQuickPick(api: API): IAzureQuickPickItem<Experience
 
 export function getExperienceQuickPickForAttached(api: API): IAzureQuickPickItem<Experience> {
     const exp = getExperienceFromApi(api);
-    return { label: exp.shortName, description: exp.description, data: exp };
+    return { label: exp.longName, description: exp.description, data: exp };
 }
 
 // Mongo is distinguished by having kind="MongoDB". All others have kind="GlobalDocumentDB"

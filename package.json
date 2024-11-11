@@ -1266,7 +1266,7 @@
                 },
                 "azureDatabases.useCosmosOAuth": {
                     "type": "boolean",
-                    "description": "Whether to use OAuth credential for Cosmos DB NoSQL resources",
+                    "markdownDescription": "Always authenticate using Entra ID RBAC when connecting to Cosmos DB NoSQL Accounts. [Enable RBAC and assign Roles](https://aka.ms/cosmos-native-rbac).",
                     "default": false
                 },
                 "azureDatabases.confirmationStyle": {

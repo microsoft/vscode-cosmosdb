@@ -6,6 +6,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../../utils/localize';
+
 import { type AuthenticateWizardContext } from './AuthenticateWizardContext';
 
 export class ProvideUserNameStep extends AzureWizardPromptStep<AuthenticateWizardContext> {

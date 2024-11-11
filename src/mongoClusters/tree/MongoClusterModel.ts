@@ -31,5 +31,5 @@ interface ResourceModelInUse extends Resource {
     enableHa?: boolean;
 
     // introduced new properties
-    resourceGroup: string;
+    resourceGroup?: string;
 }

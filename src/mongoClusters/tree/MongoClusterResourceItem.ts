@@ -48,7 +48,7 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
         // Create a client to interact with the MongoDB vCore management API and read the cluster details
         const managementClient = await createMongoClustersManagementClient(context, this.subscription);
         const clusterInformation = await managementClient.mongoClusters.get(
-            this.mongoCluster.resourceGroup,
+            this.mongoCluster.resourceGroup as string,
             this.mongoCluster.name,
         );
 
@@ -165,7 +165,7 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
         const clusterNonAdminUsers: string[] = await listMongoClusterNonAdminUsers(client, {
             clusterAdminUser: nonNullValue(cluster.administratorLogin),
             subscriptionId: this.subscription.subscriptionId,
-            resourceGroupName: this.mongoCluster.resourceGroup,
+            resourceGroupName: this.mongoCluster.resourceGroup as string,
             mongoClusterName: this.mongoCluster.name,
         });
 

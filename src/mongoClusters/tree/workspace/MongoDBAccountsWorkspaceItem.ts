@@ -4,7 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createGenericElement, type TreeElementBase } from '@microsoft/vscode-azext-utils';
-import { ThemeIcon, TreeItemCollapsibleState, type ProviderResult, type TreeItem } from 'vscode';
+import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
+import { WorkspaceResourceType } from '../../../tree/workspace/sharedWorkspaceResourceProvider';
+import { SharedWorkspaceStorage } from '../../../tree/workspace/sharedWorkspaceStorage';
+import { type MongoClusterModel } from '../MongoClusterModel';
+import { MongoClusterWorkspaceItem } from './MongoClusterWorkspaceItem';
 
 export class MongoDBAccountsItem implements TreeElementBase {
     id: string;
@@ -13,15 +17,24 @@ export class MongoDBAccountsItem implements TreeElementBase {
         this.id = `vscode.cosmosdb.workspace.mongoclusters.mongodbaccounts`;
     }
 
-    getChildren(): ProviderResult<TreeElementBase[]> {
+    async getChildren(): Promise<TreeElementBase[]> {
+        const items = await SharedWorkspaceStorage.getItems(WorkspaceResourceType.MongoClusters);
+
         return [
+            ...items.map((item) => {
+                const model: MongoClusterModel = {
+                    id: item.id,
+                    name: item.name,
+                    connectionString: item?.secrets?.[0] ?? undefined,
+                };
+                return new MongoClusterWorkspaceItem(model);
+            }),
             createGenericElement({
                 contextValue: this.id + '/newConnection',
                 id: this.id + '/newConnection',
                 label: 'New Connection...',
                 iconPath: new ThemeIcon('plus'),
-                commandId: 'mongoClusters.cmd.createCollection',
-                commandArgs: [this],
+                commandId: 'mongoClusters.cmd.addWorkspaceConnection',
             }),
         ];
     }

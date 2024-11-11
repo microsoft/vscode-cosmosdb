@@ -627,6 +627,11 @@
                 "category": "MongoDB (vCore)",
                 "command": "mongoClusters.cmd.launchShell",
                 "title": "Launch Shell"
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.removeWorkspaceConnection",
+                "title": "Remove Connection..."
             }
         ],
         "submenus": [
@@ -1132,6 +1137,10 @@
                 {
                     "command": "mongoClusters.cmd.dropDatabase",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.database"
+                },
+                {
+                    "command": "mongoClusters.cmd.removeWorkspaceConnection",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && view == azureWorkspace && viewItem == mongoClusters.item.mongoCluster"
                 },
                 {
                     "command": "mongoClusters.cmd.createCollection",

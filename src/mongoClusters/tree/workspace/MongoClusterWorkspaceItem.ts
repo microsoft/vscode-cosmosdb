@@ -26,8 +26,6 @@ import { type MongoClusterModel } from '../MongoClusterModel';
 import ConnectionString from 'mongodb-connection-string-url';
 
 export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
-    id: string;
-
     constructor(mongoCluster: MongoClusterModel) {
         super(mongoCluster);
     }
@@ -133,5 +131,20 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
 
         // Return true if the wizard completed successfully; false otherwise
         return !wizardContext.aborted;
+    }
+
+     /**
+     * Returns the tree item representation of the cluster.
+     * @returns The TreeItem object.
+     */
+     getTreeItem(): vscode.TreeItem {
+        return {
+            id: this.id,
+            contextValue: 'mongoClusters.item.mongoCluster',
+            label: this.mongoCluster.name,
+            description: this.mongoCluster.sku !== undefined ? `(${this.mongoCluster.sku})` : false,
+            iconPath: new vscode.ThemeIcon('server-environment'), // Uncomment if icon is available
+            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
+        };
     }
 }

@@ -86,7 +86,7 @@ export abstract class MongoClusterItemBase implements TreeElementBase {
                             contextValue: 'error',
                             id: `${this.id}/error`,
                             label: 'Failed to authenticate (click to retry)',
-                            iconPath: new vscode.ThemeIcon('chrome-close'),
+                            iconPath: new vscode.ThemeIcon('error'),
                             commandId: 'azureResourceGroups.refreshTree',
                         }),
                     ];

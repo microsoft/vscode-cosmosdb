@@ -94,7 +94,7 @@ export const DocumentToolbar = () => {
     return (
         <>
             <AlertDialog open={open} setOpen={setOpen} doAction={doAction} />
-            <Toolbar>
+            <Toolbar size={'small'}>
                 {!isReadOnly && (
                     <Tooltip content="Save document to the database" relationship="description" withArrow>
                         <ToolbarButton

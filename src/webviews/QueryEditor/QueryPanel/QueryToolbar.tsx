@@ -199,7 +199,7 @@ export const QueryToolbar = (props: Partial<ToolbarProps>) => {
     const state = useQueryEditorState();
 
     return (
-        <Toolbar aria-label="Default" {...props}>
+        <Toolbar aria-label="Default" size={'small'} {...props}>
             <BaseActionsSection />
             <LearnSection />
             <ToolbarDivider />

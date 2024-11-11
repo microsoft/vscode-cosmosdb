@@ -117,23 +117,23 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
 
         const attachedAccounts: AzExtTreeItem[] = await this.getAttachedAccounts();
 
-        if (attachedAccounts.length > 0) {
-            return attachedAccounts;
-        } else {
-            const attachDatabaseAccount = new GenericTreeItem(this, {
-                contextValue: 'cosmosDBAttachDatabaseAccount',
-                label: 'Attach Database Account...',
-                commandId: 'cosmosDB.attachDatabaseAccount',
-                includeInTreeItemPicker: true,
-            });
-            const attachEmulator = new GenericTreeItem(this, {
-                contextValue: 'cosmosDBAttachEmulator',
-                label: 'Attach Emulator...',
-                commandId: 'cosmosDB.attachEmulator',
-                includeInTreeItemPicker: true,
-            });
-            return isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
-        }
+        return [...attachedAccounts, ...this.getAttachAccountActionItems()];
+    }
+
+    private getAttachAccountActionItems(): AzExtTreeItem[] {
+        const attachDatabaseAccount = new GenericTreeItem(this, {
+            contextValue: 'cosmosDBAttachDatabaseAccount',
+            label: 'Attach Database Account...',
+            commandId: 'cosmosDB.attachDatabaseAccount',
+            includeInTreeItemPicker: true,
+        });
+        const attachEmulator = new GenericTreeItem(this, {
+            contextValue: 'cosmosDBAttachEmulator',
+            label: 'Attach Emulator...',
+            commandId: 'cosmosDB.attachEmulator',
+            includeInTreeItemPicker: true,
+        });
+        return isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {

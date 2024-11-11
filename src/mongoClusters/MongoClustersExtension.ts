@@ -103,7 +103,10 @@ export class MongoClustersExtension implements vscode.Disposable {
             registerCommand('mongoClusters.internal.exportDocuments', mongoClustersExportQueryResults);
 
             registerCommand('mongoClusters.cmd.addWorkspaceConnection', addWorkspaceConnection);
-            registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.removeWorkspaceConnection', removeWorkspaceConnection);
+            registerCommandWithTreeNodeUnwrapping(
+                'mongoClusters.cmd.removeWorkspaceConnection',
+                removeWorkspaceConnection,
+            );
 
             ext.outputChannel.appendLine(`mongoClusters: activated.`);
         });

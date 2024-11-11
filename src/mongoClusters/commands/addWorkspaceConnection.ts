@@ -10,6 +10,7 @@ import {
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import ConnectionString from 'mongodb-connection-string-url';
+import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { WorkspaceResourceType } from '../../tree/workspace/sharedWorkspaceResourceProvider';
@@ -70,7 +71,33 @@ export async function addWorkspaceConnection(context: IActionContext): Promise<v
         }
     });
     if (isRU) {
-        await ext.attachedAccountsNode.attachConnectionString(context, connectionStringWithCredentials, API.MongoDB);
+        try {
+            await vscode.window.showInformationMessage(
+                localize(
+                    'mongoClusters.addWorkspaceConnection.addingRU',
+                    'The connection string you provided targets an Azure CosmosDB for MongoDB RU cluster.\n' +
+                        'It will be added to the "Attached Database Accounts" section.',
+                ),
+                { modal: true },
+            );
+
+            void ext.attachedAccountsNode.attachConnectionString(
+                context,
+                connectionStringWithCredentials,
+                API.MongoDB,
+            ).then((newItem) => {
+                ext.rgApi.workspaceResourceTreeView.reveal(newItem, { select: true, focus: true });
+            });
+        } catch (error) {
+            void vscode.window.showErrorMessage(
+                localize(
+                    'mongoClusters.addWorkspaceConnection.errorRU',
+                    'Failed to add the link to your Azure Cosmos DB for MongoDB RU cluster. \n\n' + error,
+                ),
+                { modal: true },
+            );
+        }
+
         return;
     }
 

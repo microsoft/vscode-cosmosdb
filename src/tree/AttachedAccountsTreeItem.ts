@@ -115,25 +115,33 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             this._loadPersistedAccountsTask = this.loadPersistedAccounts();
         }
 
-        const attachedAccounts: AzExtTreeItem[] = await this.getAttachedAccounts();
-
-        if (attachedAccounts.length > 0) {
-            return attachedAccounts;
-        } else {
-            const attachDatabaseAccount = new GenericTreeItem(this, {
-                contextValue: 'cosmosDBAttachDatabaseAccount',
-                label: 'Attach Database Account...',
-                commandId: 'cosmosDB.attachDatabaseAccount',
-                includeInTreeItemPicker: true,
-            });
-            const attachEmulator = new GenericTreeItem(this, {
-                contextValue: 'cosmosDBAttachEmulator',
-                label: 'Attach Emulator...',
-                commandId: 'cosmosDB.attachEmulator',
-                includeInTreeItemPicker: true,
-            });
-            return isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
+        let attachedAccounts: AzExtTreeItem[] = [];
+        try {
+            attachedAccounts = await this.getAttachedAccounts();
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            void vscode.window.showErrorMessage(errorMessage);
         }
+
+        return [...attachedAccounts, ...this.getAttachAccountActionItems()];
+    }
+
+    private getAttachAccountActionItems(): AzExtTreeItem[] {
+        const attachDatabaseAccount = new GenericTreeItem(this, {
+            contextValue: 'cosmosDBAttachDatabaseAccount',
+            label: 'Attach Database Account...',
+            iconPath: new vscode.ThemeIcon('plus'),
+            commandId: 'cosmosDB.attachDatabaseAccount',
+            includeInTreeItemPicker: true,
+        });
+        const attachEmulator = new GenericTreeItem(this, {
+            contextValue: 'cosmosDBAttachEmulator',
+            label: 'Attach Emulator...',
+            iconPath: new vscode.ThemeIcon('plus'),
+            commandId: 'cosmosDB.attachEmulator',
+            includeInTreeItemPicker: true,
+        });
+        return isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {

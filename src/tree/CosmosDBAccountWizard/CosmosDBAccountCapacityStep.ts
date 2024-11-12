@@ -33,10 +33,7 @@ export class CosmosDBAccountCapacityStep extends AzureWizardPromptStep<ICosmosDB
         ];
         const vcore: IAzureQuickPickItem<boolean | undefined> = {
             label: localize('vCoreOption', '$(link-external) vCore cluster'),
-            detail: localize(
-                'vCoreOptionDescription',
-                'Fully managed MongoDB-compatible database service',
-            ),
+            detail: localize('vCoreOptionDescription', 'Fully managed MongoDB-compatible database service'),
             description: localize('vCoreOptionPortalHint', '(Create in Azure Portal...)'),
             data: false,
         };
@@ -66,7 +63,7 @@ export class CosmosDBAccountCapacityStep extends AzureWizardPromptStep<ICosmosDB
             context.telemetry.properties.isServerless = pick.data ? 'true' : 'false';
         }
         if (pick === vcore) {
-            await openUrl("https://learn.microsoft.com/azure/cosmos-db/mongodb/vcore/quickstart-portal");
+            await openUrl('https://learn.microsoft.com/azure/cosmos-db/mongodb/vcore/quickstart-portal');
             context.telemetry.properties.isvCore = 'true';
             throw new UserCancelledError();
         }

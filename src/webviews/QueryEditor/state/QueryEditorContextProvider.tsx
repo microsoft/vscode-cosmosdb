@@ -62,6 +62,9 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     public insertText(query: string): void {
         this.dispatch({ type: 'insertText', queryValue: query ?? '' });
     }
+    public setSelectedText(query: string): void {
+        this.dispatch({ type: 'setQuerySelectedValue', selectedValue: query });
+    }
 
     public async connectToDatabase(): Promise<void> {
         await this.sendCommand('connectToDatabase');

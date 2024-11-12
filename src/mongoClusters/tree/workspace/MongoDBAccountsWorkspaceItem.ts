@@ -10,7 +10,7 @@ import { SharedWorkspaceStorage } from '../../../tree/workspace/sharedWorkspaceS
 import { type MongoClusterModel } from '../MongoClusterModel';
 import { MongoClusterWorkspaceItem } from './MongoClusterWorkspaceItem';
 
-export class MongoDBAccountsItem implements TreeElementBase {
+export class MongoDBAccountsWorkspaceItem implements TreeElementBase {
     id: string;
 
     constructor() {

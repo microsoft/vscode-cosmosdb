@@ -76,18 +76,16 @@ export async function addWorkspaceConnection(context: IActionContext): Promise<v
                 localize(
                     'mongoClusters.addWorkspaceConnection.addingRU',
                     'The connection string you provided targets an Azure CosmosDB for MongoDB RU cluster.\n' +
-                    'It will be added to the "Attached Database Accounts" section.',
+                        'It will be added to the "Attached Database Accounts" section.',
                 ),
                 { modal: true },
             );
 
-            void ext.attachedAccountsNode.attachConnectionString(
-                context,
-                connectionStringWithCredentials,
-                API.MongoDB,
-            ).then((newItem) => {
-                ext.rgApi.workspaceResourceTreeView.reveal(newItem, { select: true, focus: true });
-            });
+            void ext.attachedAccountsNode
+                .attachConnectionString(context, connectionStringWithCredentials, API.MongoDB)
+                .then((newItem) => {
+                    ext.rgApi.workspaceResourceTreeView.reveal(newItem, { select: true, focus: true });
+                });
         } catch (error) {
             void vscode.window.showErrorMessage(
                 localize(
@@ -109,7 +107,7 @@ export async function addWorkspaceConnection(context: IActionContext): Promise<v
     }));
 
     // refresh the workspace tree view
-    ext.mongoClustersWorkspaceBranchDataProvider.refresh()
+    ext.mongoClustersWorkspaceBranchDataProvider.refresh();
 }
 
 function isMongoDBRU(host: string): boolean {

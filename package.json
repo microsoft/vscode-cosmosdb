@@ -5,6 +5,7 @@
     "publisher": "ms-azuretools",
     "displayName": "Azure Databases",
     "description": "Create, browse, and update globally distributed, multi-model databases in Azure.",
+    "enableMongoClusters": true,
     "engines": {
         "vscode": "^1.82.0"
     },
@@ -39,6 +40,136 @@
         "onFileSystem:azureDatabases",
         "onView:azureWorkspace"
     ],
+    "scripts": {
+        "build": "tsc",
+        "clean": "git clean -dfx",
+        "compile": "tsc -watch",
+        "package": "run-script-os",
+        "package:win32": "npm run webpack-prod && cd dist && npm pkg delete \"scripts.vscode:prepublish\" && npx vsce package --no-dependencies --out ../%npm_package_name%-%npm_package_version%.vsix",
+        "package:default": "npm run webpack-prod && cd dist && npm pkg delete \"scripts.vscode:prepublish\" && npx vsce package --no-dependencies --out ../${npm_package_name}-${npm_package_version}.vsix",
+        "lint": "eslint --quiet --ext .ts --ext .tsx .",
+        "lint-fix": "eslint --ext .ts --ext .tsx . --fix",
+        "prettier": "prettier -c \"src/**/*.@(js|ts|jsx|tsx)\" \"test/**/*.@(js|ts|jsx|tsx)\"",
+        "prettier-fix": "prettier -w \"src/**/*.@(js|ts|jsx|tsx)\" \"test/**/*.@(js|ts|jsx|tsx)\"",
+        "pretest": "npm run build",
+        "test": "vscode-test",
+        "jesttest": "jest",
+        "update-grammar": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src/mongo/grammar",
+        "webpack-dev": "rimraf ./dist && npm run webpack-dev-ext && npm run webpack-dev-wv",
+        "webpack-prod": "rimraf ./dist && npm run webpack-prod-ext && npm run webpack-prod-wv",
+        "webpack-dev-ext": "webpack --mode development --config ./webpack.config.ext.js",
+        "webpack-dev-wv": "webpack --mode development --config ./webpack.config.views.js",
+        "webpack-prod-ext": "webpack --mode production --config ./webpack.config.ext.js",
+        "webpack-prod-wv": "webpack --mode production --config ./webpack.config.views.js",
+        "watch:ext": "webpack --mode development --config ./webpack.config.ext.js --watch",
+        "watch:views": "webpack serve --mode development --config ./webpack.config.views.js",
+        "resapi.resetall": "rimraf out node_modules dist && npm install && npm run resapi.link",
+        "resapi.link": "npm link @microsoft/vscode-azureresources-api"
+    },
+    "devDependencies": {
+        "@microsoft/vscode-azext-dev": "^2.0.4",
+        "@pmmmwh/react-refresh-webpack-plugin": "^0.5.15",
+        "@swc/cli": "^0.4.0",
+        "@swc/core": "^1.7.36",
+        "@swc/jest": "^0.2.36",
+        "@types/documentdb": "^1.10.13",
+        "@types/fs-extra": "^11.0.4",
+        "@types/gulp": "^4.0.17",
+        "@types/jest": "^29.5.13",
+        "@types/lodash.debounce": "^4.0.9",
+        "@types/lodash.omit": "^4.5.9",
+        "@types/mocha": "^10.0.9",
+        "@types/node": "^18.19.57",
+        "@types/pg": "^8.11.10",
+        "@types/react": "^18.3.11",
+        "@types/react-dom": "^18.3.1",
+        "@types/uuid": "^10.0.0",
+        "@types/vscode": "1.82.0",
+        "@types/vscode-webview": "^1.57.5",
+        "@typescript-eslint/eslint-plugin": "^8.10.0",
+        "@typescript-eslint/parser": "^8.10.0",
+        "@vscode/test-cli": "^0.0.10",
+        "@vscode/test-electron": "^2.4.1",
+        "@vscode/vsce": "~2.32.0",
+        "antlr4ts-cli": "^0.5.0-alpha.4",
+        "copy-webpack-plugin": "^12.0.2",
+        "css-loader": "^7.1.2",
+        "eslint": "^8.57.1",
+        "eslint-plugin-import": "^2.31.0",
+        "eslint-plugin-jest": "^28.8.3",
+        "eslint-plugin-license-header": "^0.6.1",
+        "eslint-plugin-mocha": "^10.5.0",
+        "glob": "^7.2.3",
+        "jest": "^29.7.0",
+        "jest-mock-vscode": "^2.1.1",
+        "mocha": "^10.7.3",
+        "mocha-junit-reporter": "^2.2.1",
+        "mocha-multi-reporters": "^1.5.1",
+        "monaco-editor-webpack-plugin": "^7.1.0",
+        "prettier": "^3.3.3",
+        "prettier-plugin-organize-imports": "^4.1.0",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "react-refresh": "^0.14.2",
+        "rimraf": "^5.0.10",
+        "run-script-os": "^1.1.6",
+        "sass": "~1.79.6",
+        "sass-loader": "^16.0.2",
+        "style-loader": "^4.0.0",
+        "swc-loader": "^0.2.6",
+        "terser-webpack-plugin": "^5.3.10",
+        "ts-jest": "^29.2.5",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.6.2",
+        "webpack": "^5.95.0",
+        "webpack-bundle-analyzer": "^4.10.2",
+        "webpack-cli": "^5.1.4",
+        "webpack-dev-server": "^5.1.0"
+    },
+    "dependencies": {
+        "@azure/arm-cosmosdb": "16.0.0-beta.7",
+        "@azure/arm-postgresql": "^6.1.0",
+        "@azure/arm-postgresql-flexible": "^7.1.0",
+        "@azure/cosmos": "^4.1.1",
+        "@fluentui/react-components": "^9.55.1",
+        "@fluentui/react-icons": "^2.0.261",
+        "@microsoft/vscode-azext-azureauth": "^2.5.0",
+        "@microsoft/vscode-azext-azureutils": "^3.1.2",
+        "@microsoft/vscode-azext-utils": "^2.5.10",
+        "@microsoft/vscode-azureresources-api": "2.3.2",
+        "@monaco-editor/react": "^4.6.0",
+        "@prantlf/jsonlint": "^16.0.0",
+        "@tanstack/react-query": "^5.59.15",
+        "@trpc/client": "11.0.0-rc.566",
+        "@trpc/server": "11.0.0-rc.566",
+        "allotment": "^1.20.2",
+        "antlr4ts": "^0.4.1-alpha.0",
+        "bson": "^6.8.0",
+        "denque": "^2.1.0",
+        "fs-extra": "^8.0.0",
+        "lodash.debounce": "^4.0.8",
+        "lodash.isequal": "^4.5.0",
+        "lodash.merge": "^4.6.2",
+        "lodash.omit": "^4.5.0",
+        "monaco-editor": "~0.51.0",
+        "mongodb": "^6.9.0",
+        "pg": "^8.13.0",
+        "pg-connection-string": "^2.7.0",
+        "pg-structure": "^7.15.3",
+        "semver": "^7.6.3",
+        "slickgrid-react": "~5.8.0",
+        "uuid": "^10.0.0",
+        "vscode-json-languageservice": "^5.4.1",
+        "vscode-languageclient": "^6.1.4",
+        "vscode-languageserver": "^6.1.1",
+        "vscode-languageserver-textdocument": "^1.0.12",
+        "vscode-nls": "^4.0.0",
+        "vscode-uri": "^3.0.8",
+        "zod": "^3.23.8"
+    },
+    "extensionDependencies": [
+        "ms-azuretools.vscode-azureresourcegroups"
+    ],
     "contributes": {
         "x-azResources": {
             "azure": {
@@ -51,6 +182,9 @@
                     },
                     {
                         "type": "PostgresqlServersFlexible"
+                    },
+                    {
+                        "type": "MongoClusters"
                     }
                 ]
             },
@@ -74,7 +208,8 @@
                 "onResolve": [
                     "microsoft.documentdb/databaseaccounts",
                     "microsoft.dbforpostgresql/servers",
-                    "microsoft.dbforpostgresql/flexibleservers"
+                    "microsoft.dbforpostgresql/flexibleservers",
+                    "microsoft.documentdb/mongoclusters"
                 ]
             }
         },
@@ -184,27 +319,27 @@
                 "title": "Copy Connection String"
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.createDocDBCollection",
-                "title": "Create Collection..."
+                "title": "Create Container..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.createDocDBDatabase",
                 "title": "Create Database..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.createDocDBDocument",
                 "title": "Create Document..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.createDocDBStoredProcedure",
                 "title": "Create Stored Procedure..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.createDocDBTrigger",
                 "title": "Create Trigger..."
             },
@@ -239,27 +374,27 @@
                 "title": "Delete Account..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBCollection",
-                "title": "Delete Collection..."
+                "title": "Delete Container..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBDatabase",
                 "title": "Delete Database..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBDocument",
                 "title": "Delete Document..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBStoredProcedure",
                 "title": "Delete Stored Procedure..."
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBTrigger",
                 "title": "Delete Trigger..."
             },
@@ -294,7 +429,7 @@
                 "title": "Execute All MongoDB Commands"
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.executeDocDBStoredProcedure",
                 "title": "Execute Stored Procedure..."
             },
@@ -348,6 +483,11 @@
             },
             {
                 "category": "Cosmos DB",
+                "command": "cosmosDB.openNoSqlQueryEditor",
+                "title": "Open Query Editor (preview)"
+            },
+            {
+                "category": "Cosmos DB",
                 "command": "cosmosDB.openStoredProcedure",
                 "title": "Open Stored Procedure"
             },
@@ -357,14 +497,14 @@
                 "title": "Open Trigger"
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.viewDocDBCollectionOffer",
-                "title": "View Collection Offer"
+                "title": "View Container Offer"
             },
             {
-                "category": "Core (SQL)",
+                "category": "NoSQL",
                 "command": "cosmosDB.writeNoSqlQuery",
-                "title": "Create New NoSQL Query"
+                "title": "Open Query Scrapbook"
             },
             {
                 "category": "PostgreSQL",
@@ -446,6 +586,56 @@
                 "command": "postgreSQL.showPasswordlessWiki",
                 "title": "Learn more about authenticating with Azure Active Directory",
                 "icon": "$(warning)"
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.hello",
+                "title": "Dev: Say Hello!"
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.webview",
+                "title": "Dev: Show WebView"
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.dropCollection",
+                "title": "Drop Collection..."
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.dropDatabase",
+                "title": "Drop Database..."
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.createCollection",
+                "title": "Create Collection..."
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.createDatabase",
+                "title": "Create Database..."
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.importDocuments",
+                "title": "Import Documents into Collection..."
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.exportDocuments",
+                "title": "Export Documents from Collection..."
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.launchShell",
+                "title": "Launch Shell"
+            },
+            {
+                "category": "MongoDB (vCore)",
+                "command": "mongoClusters.cmd.removeWorkspaceConnection",
+                "title": "Remove Connection..."
             }
         ],
         "submenus": [
@@ -585,9 +775,19 @@
                     "group": "1@1"
                 },
                 {
+                    "command": "cosmosDB.openNoSqlQueryEditor",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection && config.cosmosDB.preview.queryEditor",
+                    "group": "1@1"
+                },
+                {
                     "command": "cosmosDB.writeNoSqlQuery",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
                     "group": "1@2"
+                },
+                {
+                    "command": "cosmosDB.importDocument",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
+                    "group": "1@3"
                 },
                 {
                     "command": "cosmosDB.createDocDBStoredProcedure",
@@ -692,12 +892,12 @@
                 {
                     "command": "cosmosDB.deleteDocDBCollection",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
-                    "group": "1@2"
+                    "group": "1@4"
                 },
                 {
                     "command": "cosmosDB.viewDocDBCollectionOffer",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
-                    "group": "1@3"
+                    "group": "1@5"
                 },
                 {
                     "command": "cosmosDB.deleteDocDBDocument",
@@ -920,11 +1120,6 @@
                     "group": "1@3"
                 },
                 {
-                    "command": "cosmosDB.importDocument",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
-                    "group": "1@1"
-                },
-                {
                     "command": "postgreSQL.connectDatabase",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /postgresDatabase(?![a-z])/i",
                     "group": "1@1"
@@ -938,6 +1133,42 @@
                     "command": "postgreSQL.createStoredProcedureQuery",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresStoredProcedures",
                     "group": "1@1"
+                },
+                {
+                    "command": "mongoClusters.cmd.dropCollection",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.collection"
+                },
+                {
+                    "command": "mongoClusters.cmd.dropDatabase",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.database"
+                },
+                {
+                    "command": "mongoClusters.cmd.removeWorkspaceConnection",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && view == azureWorkspace && viewItem == mongoClusters.item.mongoCluster"
+                },
+                {
+                    "command": "mongoClusters.cmd.createCollection",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.database"
+                },
+                {
+                    "command": "mongoClusters.cmd.createDatabase",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /mongoClusters.item.mongoCluster/i",
+                    "group": "1@1"
+                },
+                {
+                    "command": "mongoClusters.cmd.importDocuments",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.collection",
+                    "group": "1@1"
+                },
+                {
+                    "command": "mongoClusters.cmd.exportDocuments",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.collection",
+                    "group": "1@2"
+                },
+                {
+                    "command": "mongoClusters.cmd.launchShell",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /mongoClusters.item.(mongoCluster|database|collection)/i",
+                    "group": "2@1"
                 }
             ],
             "explorer/context": [
@@ -982,6 +1213,14 @@
                 {
                     "command": "postgreSQL.executeQuery",
                     "when": "editorLangId == 'postgres'"
+                },
+                {
+                    "command": "mongoClusters.cmd.hello",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled"
+                },
+                {
+                    "command": "mongoClusters.cmd.webview",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled"
                 }
             ]
         },
@@ -1025,10 +1264,40 @@
                     "description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 30 seconds.",
                     "default": 30
                 },
+                "azureDatabases.batchSize": {
+                    "type": "number",
+                    "description": "The batch size to be used when querying Azure Database resources.",
+                    "default": 50
+                },
                 "azureDatabases.showExplorer": {
                     "type": "boolean",
                     "default": true,
                     "description": "Show or hide the Azure Databases Explorer"
+                },
+                "azureDatabases.useCosmosOAuth": {
+                    "type": "boolean",
+                    "markdownDescription": "Always authenticate using Entra ID RBAC when connecting to Cosmos DB NoSQL Accounts. [Enable RBAC and assign Roles](https://aka.ms/cosmos-native-rbac).",
+                    "default": false
+                },
+                "azureDatabases.confirmationStyle": {
+                    "type": "string",
+                    "description": "The behavior to use when confirming operations that cannot be undone, such as deleting resources.",
+                    "enum": [
+                        "wordConfirmation",
+                        "challengeConfirmation",
+                        "buttonConfirmation"
+                    ],
+                    "enumItemLabels": [
+                        "Word Entry Confirmation",
+                        "Challenge Confirmation",
+                        "Button Click Confirmation"
+                    ],
+                    "enumDescriptions": [
+                        "Prompts with an input box where you enter the name of the resource to confirm deletion.",
+                        "Prompts with a challenge where you select the correct number among multiple options to confirm deletion.",
+                        "Prompts with a warning dialog where you click a button to confirm deletion."
+                    ],
+                    "default": "wordConfirmation"
                 },
                 "cosmosDB.documentLabelFields": {
                     "type": "array",
@@ -1045,21 +1314,6 @@
                     ],
                     "description": "The field values to display as labels in the treeview for Cosmos DB and MongoDB documents, in priority order"
                 },
-                "cosmosDB.enableEndpointDiscovery": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Flag to enable/disable automatic redirecting of requests based on read/write operations."
-                },
-                "cosmosDB.showSavePrompt": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Show warning dialog when uploading a document to the cloud."
-                },
-                "azureDatabases.batchSize": {
-                    "type": "number",
-                    "description": "The batch size to be used when querying Azure Database resources.",
-                    "default": 50
-                },
                 "cosmosDB.emulator.mongoPort": {
                     "type": "integer",
                     "default": 10255,
@@ -1070,96 +1324,22 @@
                     "default": 8081,
                     "description": "Port to use when connecting to a CosmosDB Emulator instance"
                 },
-                "azureDatabases.useCosmosOAuth": {
+                "cosmosDB.enableEndpointDiscovery": {
                     "type": "boolean",
-                    "description": "Whether to use OAuth credential for Cosmos DB NoSQL resources",
-                    "default": false
+                    "default": true,
+                    "description": "Flag to enable/disable automatic redirecting of requests based on read/write operations."
+                },
+                "cosmosDB.showSavePrompt": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show warning dialog when uploading a document to the cloud."
+                },
+                "cosmosDB.preview.queryEditor": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable the NoSQL Query Editor."
                 }
             }
         }
-    },
-    "scripts": {
-        "vscode:prepublish": "npm run webpack-prod",
-        "build": "tsc",
-        "cleanReadme": "gulp cleanReadme",
-        "clean": "git clean -dfx",
-        "compile": "tsc -watch",
-        "package": "vsce package --githubBranch main",
-        "package-local": "vsce package",
-        "lint": "eslint --quiet --ext .ts --ext .tsx .",
-        "lint-fix": "eslint --ext .ts --ext .tsx . --fix",
-        "pretest": "npm run webpack-prod",
-        "test": "node ./out/test/runTest.js",
-        "unittest": "mocha ./out/test/unit/**/*.js",
-        "update-grammar": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src/mongo/grammar",
-        "webpack": "npm run build && gulp webpack-dev",
-        "webpack-prod": "npm run build && gulp webpack-prod",
-        "webpack-profile": "webpack --profile --json --mode production > webpack-stats.json && echo Use http://webpack.github.io/analyse to analyze the stats",
-        "all": "npm i && npm run lint && npm test",
-        "prepare": "husky install"
-    },
-    "devDependencies": {
-        "@azure/arm-resources": "^4.0.0",
-        "@microsoft/vscode-azext-dev": "^2.0.4",
-        "@types/copy-webpack-plugin": "^6.4.0",
-        "@types/documentdb": "^1.10.2",
-        "@types/fs-extra": "^8.1.0",
-        "@types/gulp": "^4.0.6",
-        "@types/mocha": "^7.0.2",
-        "@types/node": "^14.0.0",
-        "@types/pg": "^8.10.2",
-        "@types/vscode": "1.82.0",
-        "@typescript-eslint/eslint-plugin": "^8.5.0",
-        "@typescript-eslint/parser": "^8.5.0",
-        "@vscode/test-electron": "^2.3.8",
-        "antlr4ts-cli": "^0.4.0-alpha.4",
-        "copy-webpack-plugin": "^6.4.0",
-        "eslint": "^8.57.0",
-        "eslint-plugin-import": "^2.30.0",
-        "glob": "^7.1.6",
-        "gulp": "^4.0.0",
-        "husky": "^7.0.2",
-        "mocha": "^10.2.0",
-        "mocha-junit-reporter": "^1.18.0",
-        "mocha-multi-reporters": "^1.1.7",
-        "prettier": "^3.3.3",
-        "prettier-plugin-organize-imports": "^4.0.0",
-        "ts-node": "^7.0.1",
-        "typescript": "^5.5.4",
-        "vsce": "^1.87.0",
-        "webpack": "^5.76.0",
-        "webpack-cli": "^4.6.0",
-        "webpack-log": "^3.0.2"
-    },
-    "dependencies": {
-        "@azure/arm-cosmosdb": "^15.0.0",
-        "@azure/arm-postgresql": "^6.0.0",
-        "@azure/arm-postgresql-flexible": "^7.1.0",
-        "@azure/cosmos": "^3.6.3",
-        "@microsoft/vscode-azext-azureauth": "^2.3.0",
-        "@microsoft/vscode-azext-azureutils": "^3.1.2",
-        "@microsoft/vscode-azext-utils": "^2.5.8",
-        "antlr4ts": "^0.4.1-alpha.0",
-        "bson": "^6.0.0",
-        "fs-extra": "^8.0.0",
-        "mongodb": "^6.0.0",
-        "open": "^8.0.0",
-        "pg": "^8.11.2",
-        "pg-connection-string": "^2.6.2",
-        "pg-structure": "^7.15.0",
-        "semver": "^7.5.2",
-        "underscore": "^1.12.1",
-        "vscode-json-languageservice": "^3.0.8",
-        "vscode-languageclient": "^6.1.3",
-        "vscode-languageserver": "^6.1.1",
-        "vscode-languageserver-textdocument": "^1.0.1",
-        "vscode-nls": "^4.0.0",
-        "vscode-uri": "^1.0.1"
-    },
-    "extensionDependencies": [
-        "ms-azuretools.vscode-azureresourcegroups"
-    ],
-    "overrides": {
-        "es5-ext": "0.10.53"
     }
 }

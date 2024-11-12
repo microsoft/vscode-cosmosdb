@@ -6,7 +6,14 @@
     "singleQuote": true,
     "trailingComma": "all",
     "bracketSpacing": true,
-    "jsxBracketSameLine": true,
     "arrowParens": "always",
-    "plugins": ["prettier-plugin-organize-imports"]
+    "plugins": ["prettier-plugin-organize-imports"],
+    "overrides": [
+        {
+            "files": ["*.md"],
+            "options": {
+                "tabWidth": 2
+            }
+        }
+    ]
 }

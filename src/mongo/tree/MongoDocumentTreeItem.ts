@@ -10,6 +10,7 @@ import {
     type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
 import { EJSON } from 'bson';
+import { omit } from 'lodash';
 import {
     type Collection,
     type DeleteResult,
@@ -17,7 +18,6 @@ import {
     type ObjectId,
     type UpdateResult,
 } from 'mongodb';
-import * as _ from 'underscore';
 import * as vscode from 'vscode';
 import { type IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
@@ -36,7 +36,7 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
     public static contextValue: string = 'MongoDocument';
     public readonly contextValue: string = MongoDocumentTreeItem.contextValue;
     public document: IMongoDocument;
-    public readonly parent: MongoCollectionTreeItem;
+    public declare readonly parent: MongoCollectionTreeItem;
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
 
@@ -72,8 +72,8 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
             throw new Error(`The "_id" field is required to update a document.`);
         }
         const filter: object = { _id: newDocument._id };
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-argument
-        const result: MongoDocument | UpdateResult = await collection.replaceOne(filter, _.omit(newDocument, '_id'));
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        const result: MongoDocument | UpdateResult = await collection.replaceOne(filter, omit(newDocument, '_id'));
         if (result.modifiedCount !== 1) {
             throw new Error(`Failed to update document with _id '${newDocument._id}'.`);
         }

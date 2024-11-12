@@ -4,15 +4,27 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { commands } from 'vscode';
-import { type DocDBDocumentTreeItem } from '../tree/DocDBDocumentTreeItem';
-import { DocDBDocumentsTreeItem } from '../tree/DocDBDocumentsTreeItem';
+import { ViewColumn } from 'vscode';
+import { DocumentTab } from '../../panels/DocumentTab';
+import { DocDBCollectionTreeItem } from '../tree/DocDBCollectionTreeItem';
+import { type DocDBDocumentsTreeItem } from '../tree/DocDBDocumentsTreeItem';
+import { createNoSqlQueryConnection } from './connectNoSqlContainer';
 import { pickDocDBAccount } from './pickDocDBAccount';
 
 export async function createDocDBDocument(context: IActionContext, node?: DocDBDocumentsTreeItem): Promise<void> {
+    let collectionNode: DocDBCollectionTreeItem | undefined;
+
     if (!node) {
-        node = await pickDocDBAccount<DocDBDocumentsTreeItem>(context, DocDBDocumentsTreeItem.contextValue);
+        collectionNode = await pickDocDBAccount<DocDBCollectionTreeItem>(context, DocDBCollectionTreeItem.contextValue);
+    } else {
+        collectionNode = node.parent;
     }
-    const documentNode = <DocDBDocumentTreeItem>await node.createChild(context);
-    await commands.executeCommand('cosmosDB.openDocument', documentNode);
+
+    const connection = collectionNode ? createNoSqlQueryConnection(collectionNode) : undefined;
+
+    if (!connection) {
+        return;
+    }
+
+    DocumentTab.render(connection, 'add', undefined, ViewColumn.Active);
 }

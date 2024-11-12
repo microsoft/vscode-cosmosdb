@@ -1,18 +1,14 @@
 // A launch configuration that compiles the extension and then opens it inside a new window
 {
-    "version": "0.1.0",
+    "version": "0.2.0",
     "configurations": [
         {
             "name": "Launch Extension",
             "type": "extensionHost",
             "request": "launch",
             "runtimeExecutable": "${execPath}",
-            "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/out/**/*.js"
-            ],
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
                 "DEBUGTELEMETRY": "v",
@@ -28,9 +24,7 @@
                 "--extensionDevelopmentPath=${workspaceFolder}",
                 "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups"
             ],
-            "outFiles": [
-                "${workspaceFolder}/out/**/*.js"
-            ],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
                 "DEBUGTELEMETRY": "v",
@@ -42,18 +36,69 @@
             "type": "extensionHost",
             "request": "launch",
             "runtimeExecutable": "${execPath}",
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}/dist"],
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+            "preLaunchTask": "Watch",
+            "autoAttachChildProcesses": true,
+            "debugWebWorkerHost": true,
+            "debugWebviews": false,
+            "trace": true,
+            "sourceMaps": true,
+            "pauseForSourceMap": true,
+            "rendererDebugOptions": {
+                "webRoot": "${workspaceFolder}"
+            },
+            "resolveSourceMapLocations": ["${workspaceFolder}/dist/**", "!**/node_modules/**"],
+            "sourceMapPathOverrides": {
+                "./*": "${workspaceFolder}/*"
+            },
+            "env": {
+                "DEBUGTELEMETRY": "",
+                "NODE_DEBUG": "",
+                "DEBUG_WEBPACK": "",
+                "DEVSERVER": "true",
+                "STOP_ON_ENTRY": "false" // stop on entry is not allowed for "type": "extensionHost", therefore, it's emulated here (review main.ts)
+            }
+        },
+        {
+            "name": "Launch Extension + Host (webpack)",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
             "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}"
+                "--profile=noExtensionsProfile", // uses a local profile with a limited number of installed extensions
+                "--extensionDevelopmentPath=${workspaceFolder}/dist",
+                "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups"
             ],
             "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
+                "${workspaceFolder}/dist/**/*.js",
+                "${workspaceFolder}/../vscode-azureresourcegroups/out/**/*.js"
             ],
-            "preLaunchTask": "npm: webpack",
+            "resolveSourceMapLocations": ["${workspaceFolder}/dist/**", "!**/node_modules/**"],
+            "sourceMapPathOverrides": {
+                "./*": "${workspaceFolder}/*"
+            },
+            "preLaunchTask": "Watch",
             "env": {
                 "DEBUGTELEMETRY": "v",
                 "NODE_DEBUG": "",
-                "DEBUG_WEBPACK": "1"
-            }
+                "DEBUG_WEBPACK": "",
+                "DEVSERVER": "true",
+                "STOP_ON_ENTRY": "false" // stop on entry is not allowed for "type": "extensionHost", therefore, it's emulated here (review main.ts)
+            },
+            "debugWebWorkerHost": true,
+            "rendererDebugOptions": {
+                "pauseForSourceMap": true,
+                "sourceMapRenames": true,
+                "sourceMaps": true,
+                "webRoot": "${workspaceFolder}/src/webviews/"
+            },
+            "skipFiles": ["**/node_modules/**"],
+            "smartStep": true,
+            "sourceMapRenames": true,
+            "sourceMaps": true,
+            "pauseForSourceMap": true,
+            "trace": true
         },
         {
             "name": "Launch Tests",
@@ -65,9 +110,7 @@
                 "--extensionTestsPath=${workspaceFolder}/out/test/index",
                 "${workspaceFolder}/test/test.code-workspace"
             ],
-            "outFiles": [
-                "${workspaceFolder}/out/**/*.js"
-            ],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
                 "MOCHA_grep": "", // RegExp of tests to run (empty for all)
@@ -87,9 +130,7 @@
                 "--extensionTestsPath=${workspaceFolder}/dist/test/index",
                 "${workspaceFolder}/test/test.code-workspace"
             ],
-            "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
-            ],
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
             "preLaunchTask": "npm: webpack",
             "env": {
                 "MOCHA_grep": "", // RegExp of tests to run (empty for all)
@@ -107,9 +148,7 @@
             "protocol": "inspector",
             "port": 6005,
             "sourceMaps": true,
-            "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
-            ]
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"]
         },
         {
             "type": "node",
@@ -119,9 +158,7 @@
             "port": 5870,
             "sourceMaps": true,
             "restart": true,
-            "outFiles": [
-                "${workspaceFolder}/out/src"
-            ]
+            "outFiles": ["${workspaceFolder}/out/src"]
         },
         {
             // INSTRUCTIONS

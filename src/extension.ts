@@ -1,4 +1,4 @@
-/*--------------------------------------------------------------------------------------------
+/*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
@@ -15,17 +15,17 @@ import {
     registerEvent,
     registerReportIssueCommand,
     registerUIExtensionVariables,
+    TreeElementStateManager,
+    type apiUtils,
     type AzExtParentTreeItem,
     type AzExtTreeItem,
     type AzureExtensionApi,
     type IActionContext,
     type ITreeItemPickerContext,
-    type apiUtils,
 } from '@microsoft/vscode-azext-utils';
-import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import { platform } from 'os';
 import * as vscode from 'vscode';
-import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
@@ -38,6 +38,7 @@ import {
     doubleClickDebounceDelay,
     sqlFilter,
 } from './constants';
+import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
 import { type DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
@@ -52,6 +53,7 @@ import { setConnectedNode } from './mongo/setConnectedNode';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
 import { type MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
+import { MongoClustersExtension } from './mongoClusters/MongoClustersExtension';
 import { registerPostgresCommands } from './postgres/commands/registerPostgresCommands';
 import { DatabaseResolver } from './resolver/AppResolver';
 import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider';
@@ -70,10 +72,9 @@ const cosmosDBTopLevelContextValues: string[] = [
 export async function activateInternal(
     context: vscode.ExtensionContext,
     perfStats: { loadStartTime: number; loadEndTime: number },
-    ignoreBundle?: boolean,
 ): Promise<apiUtils.AzureExtensionApiProvider> {
     ext.context = context;
-    ext.ignoreBundle = ignoreBundle;
+    ext.isBundle = !!process.env.IS_BUNDLE;
 
     ext.outputChannel = createAzExtLogOutputChannel('Azure Databases');
     context.subscriptions.push(ext.outputChannel);
@@ -87,6 +88,14 @@ export async function activateInternal(
         ext.secretStorage = context.secrets;
 
         ext.rgApi = await getResourceGroupsApi();
+
+        // getAzureResourcesExtensionApi provides a way to get the Azure Resources extension's API V2
+        // and is used to work with the tree view structure, as an improved alternative to the
+        // AzureResourceGraph API V1 provided by the getResourceGroupsApi call above.
+        // TreeElementStateManager is needed here too
+        ext.state = new TreeElementStateManager();
+        ext.rgApiV2 = await getAzureResourcesExtensionApi(context, '2.0.0');
+
         ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.AzureCosmosDb, new DatabaseResolver());
         ext.rgApi.registerApplicationResourceResolver(
             AzExtResourceType.PostgresqlServersStandard,
@@ -109,6 +118,11 @@ export async function activateInternal(
         registerGraphCommands();
         registerPostgresCommands();
         registerMongoCommands();
+
+        // init and activate mongoClusters-support (branch data provider, commands, ...)
+        const mongoClustersSupport: MongoClustersExtension = new MongoClustersExtension();
+        context.subscriptions.push(mongoClustersSupport); // to be disposed when extension is deactivated.
+        await mongoClustersSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
@@ -153,7 +167,7 @@ export async function activateInternal(
             'azureDatabases.detachDatabaseAccount',
             async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzExtTreeItem) => {
                 const children = await ext.attachedAccountsNode.loadAllChildren(actionContext);
-                if (children[0].contextValue === 'cosmosDBAttachDatabaseAccount') {
+                if (children.length < 2) {
                     const message = localize('noAttachedAccounts', 'There are no Attached Accounts.');
                     void vscode.window.showInformationMessage(message);
                 } else {
@@ -248,7 +262,7 @@ export async function activateInternal(
 }
 
 // this method is called when your extension is deactivated
-export function deactivateInternal(): void {
+export function deactivateInternal(_context: vscode.ExtensionContext): void {
     // NOOP
 }
 

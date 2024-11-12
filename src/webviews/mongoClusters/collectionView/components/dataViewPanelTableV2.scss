@@ -1,0 +1,118 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.typeIcon {
+    opacity: 0.4;
+    font-size: 80%;
+    display: inline-block;
+    width: 14pt;
+}
+
+.typedTableCell {
+    position: relative;
+
+    &:before {
+        float: right;
+        right: 3px;
+        font-size: smaller;
+        opacity: 0.4;
+    }
+
+    &.type-string:before {
+        content: 'Ab'; // For 'String', as in alphabetical letters
+    }
+
+    &.type-number:before {
+        content: '12'; // For 'Number', representing digits
+    }
+
+    &.type-int32:before {
+        content: 'i32'; // For 'Int32', using 32 as a shorthand
+    }
+
+    &.type-double:before {
+        content: '.12'; // For 'Double', "Db" for abbreviation
+    }
+
+    &.type-decimal128:before {
+        content: 'd128'; // For 'Decimal128', shorthand for large decimals
+    }
+
+    &.type-long:before {
+        content: 'L'; // For 'Long', "L" for Long
+    }
+
+    &.type-boolean:before {
+        content: 'tf'; // For 'Boolean', representing True/False
+    }
+
+    &.type-object:before {
+        content: '{ }'; // For 'Object', brackets representing an object
+    }
+
+    &.type-array:before {
+        content: '[ ]'; // For 'Array', brackets representing an array
+    }
+
+    &.type-null:before {
+        content: 'Ø'; // For 'Null', empty set symbol for null
+    }
+
+    &.type-undefined:before {
+        content: '?'; // For 'Undefined', question marks indicating unknown
+    }
+
+    &.type-date:before {
+        content: 'DT'; // For 'Date', shorthand for date
+    }
+
+    &.type-regexp:before {
+        content: '/./'; // For 'RegExp', regex pattern
+    }
+
+    &.type-binary:before {
+        content: '01'; // For 'Binary', representing binary digits
+    }
+
+    &.type-objectid:before {
+        content: 'ID'; // For 'ObjectId', shorthand for ID
+    }
+
+    &.type-symbol:before {
+        content: 'Σ'; // For 'Symbol', using Greek letter Sigma
+    }
+
+    &.type-timestamp:before {
+        content: 'TS'; // For 'Timestamp', using "TS" shorthand
+    }
+
+    &.type-minkey:before {
+        content: 'Min'; // For 'MinKey', "Min" for minimum
+    }
+
+    &.type-maxkey:before {
+        content: 'Max'; // For 'MaxKey', "Max" for maximum
+    }
+
+    &.type-dbref:before {
+        content: 'DB'; // For 'DBRef', shorthand for database reference
+    }
+
+    &.type-code:before {
+        content: '</>'; // For 'Code', using code brackets as shorthand
+    }
+
+    &.type-codewithscope:before {
+        content: '</>'; // For 'CodeWithScope', "C" within braces to indicate scope
+    }
+
+    &.type-map:before {
+        content: 'map'; // For 'Map', short for map
+    }
+
+    &.type-_unknown_:before {
+        content: '??'; // For '_UNKNOWN_', indicating an unknown value
+    }
+}

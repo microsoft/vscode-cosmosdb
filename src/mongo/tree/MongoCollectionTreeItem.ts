@@ -13,8 +13,9 @@ import {
     type ICreateChildImplContext,
     type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
-import * as assert from 'assert';
+import assert from 'assert';
 import { EJSON } from 'bson';
+import { omit } from 'lodash';
 import {
     type AnyBulkWriteOperation,
     type BulkWriteOptions,
@@ -28,7 +29,6 @@ import {
     type InsertOneResult,
     type Document as MongoDocument,
 } from 'mongodb';
-import * as _ from 'underscore';
 import * as vscode from 'vscode';
 import { type IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
@@ -55,7 +55,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
     public readonly contextValue: string = MongoCollectionTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Document';
     public readonly collection: Collection;
-    public parent: AzExtParentTreeItem;
+    public declare parent: AzExtParentTreeItem;
     // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
     public findArgs?: Object[];
     public readonly cTime: number = Date.now();
@@ -86,8 +86,7 @@ export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEdi
             return {
                 replaceOne: {
                     filter: { _id: document._id },
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-                    replacement: _.omit(document, '_id'),
+                    replacement: omit(document, '_id'),
                     upsert: false,
                 },
             };

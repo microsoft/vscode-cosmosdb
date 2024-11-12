@@ -5,9 +5,10 @@
 
 export const isWindows: boolean = /^win/.test(process.platform);
 
-import * as assert from 'assert';
 import * as fs from 'fs';
+import assert from 'node:assert';
 import * as path from 'path';
+import { Utils, type URI } from 'vscode-uri';
 import { CoreExperience, GremlinExperience, MongoExperience, TableExperience } from './AzureDBExperiences';
 import { ext } from './extensionVariables';
 
@@ -20,12 +21,17 @@ export interface IThemedIconPath {
     dark: string;
 }
 
+export interface IThemedIconURI {
+    light: URI;
+    dark: URI;
+}
+
 export function getThemedIconPath(iconName: string): IThemedIconPath {
     const a = {
         light: path.join(getResourcesPath(), 'icons', 'light', iconName),
         dark: path.join(getResourcesPath(), 'icons', 'dark', iconName),
     };
-    assert(fs.existsSync(a.light));
+    assert.ok(fs.existsSync(a.light));
     return a;
 }
 
@@ -34,7 +40,16 @@ export function getThemeAgnosticIconPath(iconName: string): IThemedIconPath {
         light: path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName),
         dark: path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName),
     };
-    assert(fs.existsSync(a.light));
+    assert.ok(fs.existsSync(a.light));
+    return a;
+}
+
+export function getThemeAgnosticIconURI(iconName: string): IThemedIconURI {
+    const a = {
+        light: Utils.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName),
+        dark: Utils.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName),
+    };
+    assert.ok(fs.existsSync(a.light.path));
     return a;
 }
 
@@ -121,7 +136,7 @@ export const cosmosTableFilter = {
     },
 };
 
-export const sqlDefaultExperienceTag = 'Core (SQL)';
+export const sqlDefaultExperienceTag = 'NoSQL';
 
 export const sqlFilter = {
     type: databaseAccountType,

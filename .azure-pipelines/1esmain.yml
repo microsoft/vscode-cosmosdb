@@ -40,3 +40,11 @@ extends:
   template: azure-pipelines/1esmain.yml@azExtTemplates
   parameters:
     useAzureFederatedCredentials: ${{ parameters.enableLongRunningTests }}
+    additionalSetupSteps:
+      - task: Npm@1
+        displayName: "\U0001F449 Install Dependencies"
+        inputs:
+          command: custom
+          customCommand: ci
+          workingDir: $(working_directory)
+        condition: succeeded()

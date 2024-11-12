@@ -25,7 +25,7 @@ export class DocDBTriggerTreeItem extends AzExtTreeItem implements IEditableTree
     public static contextValue: string = 'cosmosDBTrigger';
     public readonly contextValue: string = DocDBTriggerTreeItem.contextValue;
     public readonly cTime: number = Date.now();
-    public readonly parent: DocDBTriggersTreeItem;
+    public declare readonly parent: DocDBTriggersTreeItem;
     public trigger: TriggerDefinition & Resource;
     public mTime: number = Date.now();
 

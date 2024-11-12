@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { UserCancelledError } from '@microsoft/vscode-azext-utils';
+import { DialogResponses, UserCancelledError } from '@microsoft/vscode-azext-utils';
 import vscode from 'vscode';
 import { ext } from '../extensionVariables';
 
@@ -87,17 +87,38 @@ export async function getConfirmationWithClick(title: string, message: string): 
             modal: true,
             detail: message,
         },
-        'Yes',
+        DialogResponses.yes,
     );
 
-    return confirmation === 'Yes';
+    return confirmation === DialogResponses.yes;
 }
 
+/**
+ * Generates an array of random numbers and a random index that is always greater than 0.
+ * The provided length must be larger than 1.
+ *
+ * @param length - The length of the array to generate.
+ * @returns An object containing the array of random numbers and a random index greater than 0.
+ */
 function getRandomArrayAndIndex(length: number): { numbers: number[]; index: number } {
-    // Generate an array of three random numbers between 0 and 100 (can adjust range)
-    const randomNumbers: number[] = Array.from({ length: length }, () => Math.floor(Math.random() * 101));
+    if (length <= 1) {
+        throw new Error('Length must be greater than 1');
+    }
 
-    const randomIndex: number = Math.floor(Math.random() * randomNumbers.length);
+    // Generate an array of random numbers between 0 and 100 (can adjust range).
+    // Why the loop below? Well, we want to ensure that these random numbers are unique,
+    // and it did seem unlikely that we would get a duplicate number in a small array
+    // but I actually got a duplicate number in a 3 element array on the second try
+    const randomNumbers: number[] = [];
+    while (randomNumbers.length < length) {
+        const randomNumber = Math.floor(Math.random() * 101);
+        if (!randomNumbers.includes(randomNumber)) {
+            randomNumbers.push(randomNumber);
+        }
+    }
+
+    // Ensure the random index is always greater than 0
+    const randomIndex: number = Math.floor(Math.random() * (randomNumbers.length - 1)) + 1;
 
     return { numbers: randomNumbers, index: randomIndex };
 }

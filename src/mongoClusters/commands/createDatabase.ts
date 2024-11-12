@@ -6,14 +6,14 @@
 import { AzureWizard, nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { localize } from '../../utils/localize';
 import { CredentialCache } from '../CredentialCache';
-import { type MongoClusterItem } from '../tree/MongoClusterItem';
+import { type MongoClusterResourceItem } from '../tree/MongoClusterResourceItem';
 import {
     type CreateCollectionWizardContext,
     type CreateDatabaseWizardContext,
 } from '../wizards/create/createWizardContexts';
 import { DatabaseNameStep } from '../wizards/create/PromptDatabaseNameStep';
 
-export async function createDatabase(context: IActionContext, clusterNode?: MongoClusterItem): Promise<void> {
+export async function createDatabase(context: IActionContext, clusterNode?: MongoClusterResourceItem): Promise<void> {
     // node ??= ... pick a node if not provided
     if (!clusterNode) {
         throw new Error('No cluster selected.');

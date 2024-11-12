@@ -11,18 +11,18 @@ import {
     type AzureResourceBranchDataProvider,
     type AzureSubscription,
     type ResourceModelBase,
-    type ViewPropertiesModel,
 } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { createMongoClustersClient } from '../../utils/azureClients';
-import { MongoClusterItem, type MongoClusterModel } from './MongoClusterItem';
+import { createMongoClustersManagementClient } from '../../utils/azureClients';
+import { type MongoClusterModel } from './MongoClusterModel';
+import { MongoClusterResourceItem } from './MongoClusterResourceItem';
 
 export interface TreeElementBase extends ResourceModelBase {
     getChildren?(): vscode.ProviderResult<TreeElementBase[]>;
     getTreeItem(): vscode.TreeItem | Thenable<vscode.TreeItem>;
 
-    viewProperties?: ViewPropertiesModel;
+    //viewProperties?: ViewPropertiesModel;
 }
 
 export class MongoClustersBranchDataProvider
@@ -31,7 +31,7 @@ export class MongoClustersBranchDataProvider
 {
     private detailsCacheUpdateRequested = true;
     private detailsCache: Map<string, MongoClusterModel> = new Map<string, MongoClusterModel>();
-    private itemsToUpdateInfo: Map<string, MongoClusterItem> = new Map<string, MongoClusterItem>();
+    private itemsToUpdateInfo: Map<string, MongoClusterResourceItem> = new Map<string, MongoClusterResourceItem>();
 
     private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<TreeElementBase | undefined>();
 
@@ -76,7 +76,7 @@ export class MongoClustersBranchDataProvider
                          * so that when the cache is updated, the items can be refreshed.
                          * I had to keep all of them in the map becasuse refresh requires the actual MongoClusterItem instance.
                          */
-                        this.itemsToUpdateInfo.forEach((value: MongoClusterItem) => {
+                        this.itemsToUpdateInfo.forEach((value: MongoClusterResourceItem) => {
                             value.mongoCluster = {
                                 ...value.mongoCluster,
                                 ...this.detailsCache.get(value.mongoCluster.id),
@@ -99,7 +99,7 @@ export class MongoClustersBranchDataProvider
                     };
                 }
 
-                const clusterItem = new MongoClusterItem(element.subscription, clusterInfo);
+                const clusterItem = new MongoClusterResourceItem(element.subscription, clusterInfo);
 
                 // 3. store the item in the update queue, so that when the cache is updated, the item can be refreshed
                 this.itemsToUpdateInfo.set(clusterItem.id, clusterItem);
@@ -128,7 +128,7 @@ export class MongoClustersBranchDataProvider
                         this.detailsCacheUpdateRequested = true;
                     }, cacheDuration); // clear cache after 5 minutes == keep cache for 5 minutes 1000 * 60 * 5
 
-                    const client = await createMongoClustersClient(_context, subscription);
+                    const client = await createMongoClustersManagementClient(_context, subscription);
                     const accounts = await uiUtils.listAllIterator(client.mongoClusters.list());
 
                     accounts.map((MongoClustersAccount) => {

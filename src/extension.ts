@@ -167,7 +167,7 @@ export async function activateInternal(
             'azureDatabases.detachDatabaseAccount',
             async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzExtTreeItem) => {
                 const children = await ext.attachedAccountsNode.loadAllChildren(actionContext);
-                if (children[0].contextValue === 'cosmosDBAttachDatabaseAccount') {
+                if (children.length < 2) {
                     const message = localize('noAttachedAccounts', 'There are no Attached Accounts.');
                     void vscode.window.showInformationMessage(message);
                 } else {

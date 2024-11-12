@@ -8,7 +8,8 @@ import * as vscode from 'vscode';
 import { MongoClustersClient } from '../MongoClustersClient';
 import { type CollectionItem } from '../tree/CollectionItem';
 import { type DatabaseItem } from '../tree/DatabaseItem';
-import { MongoClusterItem } from '../tree/MongoClusterItem';
+import { MongoClusterItemBase } from '../tree/MongoClusterItemBase';
+import { type MongoClusterResourceItem } from '../tree/MongoClusterResourceItem';
 import {
     addAuthenticationDataToConnectionString,
     addDatabasePathToConnectionString,
@@ -16,7 +17,7 @@ import {
 
 export async function launchShell(
     _context: IActionContext,
-    node?: DatabaseItem | CollectionItem | MongoClusterItem,
+    node?: DatabaseItem | CollectionItem | MongoClusterResourceItem,
 ): Promise<void> {
     if (!node) {
         throw new Error('No database or collection selected.');
@@ -35,7 +36,7 @@ export async function launchShell(
 
     let shellParameters = '';
 
-    if (node instanceof MongoClusterItem) {
+    if (node instanceof MongoClusterItemBase) {
         shellParameters = `"${connectionStringWithUserName}"`;
     } /*if (node instanceof DatabaseItem)*/ else {
         const connStringWithDb = addDatabasePathToConnectionString(

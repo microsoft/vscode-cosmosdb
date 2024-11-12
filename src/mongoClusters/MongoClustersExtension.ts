@@ -18,6 +18,11 @@ import {
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import {
+    SharedWorkspaceResourceProvider,
+    WorkspaceResourceType,
+} from '../tree/workspace/sharedWorkspaceResourceProvider';
+import { addWorkspaceConnection } from './commands/addWorkspaceConnection';
 import { createCollection } from './commands/createCollection';
 import { createDatabase } from './commands/createDatabase';
 import { dropCollection } from './commands/dropCollection';
@@ -27,7 +32,9 @@ import { mongoClustersImportDocuments } from './commands/importDocuments';
 import { launchShell } from './commands/launchShell';
 import { openCollectionView } from './commands/openCollectionView';
 import { openDocumentView } from './commands/openDocumentView';
+import { removeWorkspaceConnection } from './commands/removeWorkspaceConnection';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
+import { MongoClustersWorkspaceBranchDataProvider } from './tree/workspace/MongoClustersWorkbenchBranchDataProvider';
 import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
 
 export class MongoClustersExtension implements vscode.Disposable {
@@ -62,6 +69,15 @@ export class MongoClustersExtension implements vscode.Disposable {
                 ext.mongoClustersBranchDataProvider,
             );
 
+            ext.workspaceDataProvider = new SharedWorkspaceResourceProvider();
+            ext.rgApiV2.resources.registerWorkspaceResourceProvider(ext.workspaceDataProvider);
+
+            ext.mongoClustersWorkspaceBranchDataProvider = new MongoClustersWorkspaceBranchDataProvider();
+            ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
+                WorkspaceResourceType.MongoClusters,
+                ext.mongoClustersWorkspaceBranchDataProvider,
+            );
+
             // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
             // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
             registerCommand('mongoClusters.cmd.hello', this.commandSayHello);
@@ -85,6 +101,12 @@ export class MongoClustersExtension implements vscode.Disposable {
 
             registerCommand('mongoClusters.internal.importDocuments', mongoClustersImportDocuments);
             registerCommand('mongoClusters.internal.exportDocuments', mongoClustersExportQueryResults);
+
+            registerCommand('mongoClusters.cmd.addWorkspaceConnection', addWorkspaceConnection);
+            registerCommandWithTreeNodeUnwrapping(
+                'mongoClusters.cmd.removeWorkspaceConnection',
+                removeWorkspaceConnection,
+            );
 
             ext.outputChannel.appendLine(`mongoClusters: activated.`);
         });

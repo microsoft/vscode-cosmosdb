@@ -4,20 +4,18 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createGenericElement, type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
-import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersClient';
 import { CollectionItem } from './CollectionItem';
-import { type MongoClusterItemBase, type MongoClusterModel } from './MongoClusterItem';
+import { type MongoClusterModel } from './MongoClusterModel';
 
-export class DatabaseItem implements MongoClusterItemBase {
+export class DatabaseItem {
     id: string;
 
     constructor(
-        readonly subscription: AzureSubscription,
         readonly mongoCluster: MongoClusterModel,
         readonly databaseInfo: DatabaseItemModel,
     ) {
@@ -43,7 +41,7 @@ export class DatabaseItem implements MongoClusterItemBase {
         }
 
         return collections.map((collection) => {
-            return new CollectionItem(this.subscription, this.mongoCluster, this.databaseInfo, collection);
+            return new CollectionItem(this.mongoCluster, this.databaseInfo, collection);
         });
     }
 

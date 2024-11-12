@@ -5,7 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type DatabaseItem } from '../../tree/DatabaseItem';
-import { type MongoClusterItem } from '../../tree/MongoClusterItem';
+import { type MongoClusterResourceItem } from '../../tree/MongoClusterResourceItem';
 
 export interface CreateCollectionWizardContext extends IActionContext {
     /** These values have to be provided for the wizard to function correctly. */
@@ -19,7 +19,7 @@ export interface CreateCollectionWizardContext extends IActionContext {
 export interface CreateDatabaseWizardContext extends IActionContext {
     /** These values have to be provided for the wizard to function correctly. */
     credentialsId: string;
-    mongoClusterItem: MongoClusterItem;
+    mongoClusterItem: MongoClusterResourceItem;
 
     /** These values will be populated by the wizard. */
     newDatabaseName?: string;

@@ -13,9 +13,12 @@ export async function removeWorkspaceConnection(
     _context: IActionContext,
     node: MongoClusterWorkspaceItem,
 ): Promise<void> {
-    await ext.state.showDeleting(node.id, async () => {
-        await SharedWorkspaceStorage.delete(WorkspaceResourceType.MongoClusters, node.id);
-    });
+    await ext.state.showDeleting(
+        node.id,
+        async () => {
+            await SharedWorkspaceStorage.delete(WorkspaceResourceType.MongoClusters, node.id);
+        },
+    )
 
     ext.mongoClustersWorkspaceBranchDataProvider.refresh();
 }

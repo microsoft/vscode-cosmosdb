@@ -3,9 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { UserCancelledError } from '@microsoft/vscode-azext-utils';
+import { DialogResponses, UserCancelledError } from '@microsoft/vscode-azext-utils';
 import vscode from 'vscode';
 import { ext } from '../extensionVariables';
+
+enum ConfirmationStyle {
+    wordConfirmation = 'wordConfirmation',
+    challengeConfirmation = 'challengeConfirmation',
+    buttonConfirmation = 'buttonConfirmation',
+}
 
 /**
  * Prompts the user for a confirmation based on the configured confirmation style.
@@ -20,13 +26,16 @@ export async function getConfirmationAsInSettings(
     message: string,
     expectedConfirmationWord: string,
 ): Promise<boolean> {
-    const deleteConfirmation: string | undefined = vscode.workspace
+    const deleteConfirmation: ConfirmationStyle | undefined = vscode.workspace
         .getConfiguration()
-        .get<string>(ext.settingsKeys.confirmationStyle);
+        .get<ConfirmationStyle>(ext.settingsKeys.confirmationStyle);
 
-    if (deleteConfirmation === 'Word Confirmation') {
+    if (deleteConfirmation === ConfirmationStyle.wordConfirmation) {
         return await getConfirmationWithWordQuestion(title, message, expectedConfirmationWord);
+    } else if (deleteConfirmation === ConfirmationStyle.challengeConfirmation) {
+        return await getConfirmationWithNumberQuiz(title, message);
     }
+
     return await getConfirmationWithClick(title, message);
 }
 
@@ -61,11 +70,7 @@ export async function getConfirmationWithNumberQuiz(title: string, message: stri
         title,
         {
             modal: true,
-            detail:
-                message +
-                `\n\n` +
-                `Pick '${randomInput.numbers[randomInput.index]}' to confirm and continue.\n\n` +
-                `This verification step can be adjusted in Settings.`,
+            detail: message + `\n\nPick '${randomInput.numbers[randomInput.index]}' to confirm and continue.`,
         },
         randomInput.numbers[0].toString(),
         randomInput.numbers[1].toString(),
@@ -82,17 +87,38 @@ export async function getConfirmationWithClick(title: string, message: string): 
             modal: true,
             detail: message,
         },
-        'Yes',
+        DialogResponses.yes,
     );
 
-    return confirmation === 'Yes';
+    return confirmation === DialogResponses.yes;
 }
 
+/**
+ * Generates an array of random numbers and a random index that is always greater than 0.
+ * The provided length must be larger than 1.
+ *
+ * @param length - The length of the array to generate.
+ * @returns An object containing the array of random numbers and a random index greater than 0.
+ */
 function getRandomArrayAndIndex(length: number): { numbers: number[]; index: number } {
-    // Generate an array of three random numbers between 0 and 100 (can adjust range)
-    const randomNumbers: number[] = Array.from({ length: length }, () => Math.floor(Math.random() * 101));
+    if (length <= 1) {
+        throw new Error('Length must be greater than 1');
+    }
 
-    const randomIndex: number = Math.floor(Math.random() * randomNumbers.length);
+    // Generate an array of random numbers between 0 and 100 (can adjust range).
+    // Why the loop below? Well, we want to ensure that these random numbers are unique,
+    // and it did seem unlikely that we would get a duplicate number in a small array
+    // but I actually got a duplicate number in a 3 element array on the second try
+    const randomNumbers: number[] = [];
+    while (randomNumbers.length < length) {
+        const randomNumber = Math.floor(Math.random() * 101);
+        if (!randomNumbers.includes(randomNumber)) {
+            randomNumbers.push(randomNumber);
+        }
+    }
+
+    // Ensure the random index is always greater than 0
+    const randomIndex: number = Math.floor(Math.random() * (randomNumbers.length - 1)) + 1;
 
     return { numbers: randomNumbers, index: randomIndex };
 }

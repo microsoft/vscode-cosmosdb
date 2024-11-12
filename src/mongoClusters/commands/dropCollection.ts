@@ -15,7 +15,7 @@ export async function dropCollection(context: IActionContext, node?: CollectionI
 
     const confirmed = await getConfirmationAsInSettings(
         `Drop "${node?.collectionInfo.name}"?`,
-        `Drop collection "${node?.collectionInfo.name}" and its contents?\nThis can't be undone.\n\n`,
+        `Drop collection "${node?.collectionInfo.name}" and its contents?\nThis can't be undone.`,
         node?.collectionInfo.name,
     );
 

@@ -1274,14 +1274,21 @@
                     "type": "string",
                     "description": "The behavior to use when confirming operations that cannot be undone, such as deleting resources.",
                     "enum": [
-                        "Word Confirmation",
-                        "Buton Click"
+                        "wordConfirmation",
+                        "challengeConfirmation",
+                        "buttonConfirmation"
+                    ],
+                    "enumItemLabels": [
+                        "Word Entry Confirmation",
+                        "Challenge Confirmation",
+                        "Button Click Confirmation"
                     ],
                     "enumDescriptions": [
-                        "Prompts with an input box where you enter the name of the resource to delete.",
-                        "Prompts with a warning dialog where you click a button to delete."
+                        "Prompts with an input box where you enter the name of the resource to confirm deletion.",
+                        "Prompts with a challenge where you select the correct number among multiple options to confirm deletion.",
+                        "Prompts with a warning dialog where you click a button to confirm deletion."
                     ],
-                    "default": "Word Confirmation"
+                    "default": "wordConfirmation"
                 },
                 "cosmosDB.documentLabelFields": {
                     "type": "array",

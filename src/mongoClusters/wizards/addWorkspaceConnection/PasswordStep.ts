@@ -32,6 +32,8 @@ export class PasswordStep extends AzureWizardPromptStep<AddWorkspaceConnectionCo
             ignoreFocusOut: true,
             password: true,
         });
+
+        context.valuesToMask.push(context.password);
     }
 
     public shouldPrompt(): boolean {

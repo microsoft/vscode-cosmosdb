@@ -31,6 +31,8 @@ export class UsernameStep extends AzureWizardPromptStep<AddWorkspaceConnectionCo
             ignoreFocusOut: true,
             value: this.usernameFromCS,
         });
+
+        context.valuesToMask.push(context.username);
     }
 
     public shouldPrompt(): boolean {

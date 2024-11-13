@@ -41,11 +41,11 @@ export const documentsViewRouter = router({
              * Not all BSON objects can be serialized to JSON. Therefore, we're using
              * EJSON to serialize the document to an object that can be serialized to JSON.
              */
-            const extendedJson = EJSON.serialize(documentContent);
+            const extendedJson = EJSON.stringify(documentContent, undefined, 4);
 
-            const documentContetntAsString = JSON.stringify(extendedJson, null, 4);
+            //const documentContetntAsString = JSON.stringify(extendedJson, null, 4);
 
-            return documentContetntAsString;
+            return extendedJson;
         }),
     saveDocument: publicProcedure
         // parameteres
@@ -55,15 +55,13 @@ export const documentsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            const documentObj: Document = JSON.parse(input.documentContent);
+            const documentBson: Document = EJSON.parse(input.documentContent);
 
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            const documentBson: Document = EJSON.deserialize(documentObj);
-
-            let documentId: string = '';
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let documentId: any;
             if (documentBson['_id']) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-                documentId = documentBson['_id'].toString();
+                documentId = documentBson['_id'];
             }
 
             // run query
@@ -74,12 +72,12 @@ export const documentsViewRouter = router({
             const upsertResult = await client.upsertDocument(
                 myCtx.databaseName,
                 myCtx.collectionName,
-                documentId,
+                documentId ? EJSON.stringify(documentId) : '',
                 documentBson,
             );
 
             // extract the _id field from the document
-            const objectId = upsertResult.documentId.toString();
+            const newDocumentId = EJSON.stringify(upsertResult.documentId);
 
             /**
              * Please note, the document is a 'Document' object, which is a BSON object.
@@ -89,9 +87,9 @@ export const documentsViewRouter = router({
             const extendedJson = EJSON.serialize(upsertResult.document);
             const newDocumentStringified = JSON.stringify(extendedJson, null, 4);
 
-            myCtx.viewPanelTitleSetter(`${myCtx.databaseName}/${myCtx.collectionName}/${objectId}`);
+            myCtx.viewPanelTitleSetter(`${myCtx.databaseName}/${myCtx.collectionName}/${newDocumentId}`);
 
-            return { documentStringified: newDocumentStringified, documentId: objectId };
+            return { documentStringified: newDocumentStringified, documentId: newDocumentId };
         }),
 });
 

@@ -10,7 +10,21 @@ import { getDataAtPath } from '../utils/slickgrid/mongo/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
 import { MongoClustersClient } from './MongoClustersClient';
 
-export type TableDataEntry = { 'x-objectid'?: string; [key: string]: unknown };
+export type TableDataEntry = {
+    /**
+     * The unique identifier for the entry. It is used to identify the document in the table.
+     *
+     * @remarks
+     * The format of this identifier is a copy of the original '_id' value that is converted to EJSON and then stringified.
+     * This conversion is necessary to facilitate the movement of data between the extension and the webview,
+     * as webviews do not have access to the BSON library and require the identifier to be in string format.
+     *
+     * @type {string}
+     * @optional
+     */
+    'x-objectid'?: string;
+    [key: string]: unknown
+};
 
 export interface TableData {
     path: string[];

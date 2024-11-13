@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { EJSON } from 'bson';
 import { type Document, type WithId } from 'mongodb';
 import { type TableDataEntry } from '../../../mongoClusters/MongoClusterSession';
 import { MongoBSONTypes } from '../../json/mongo/MongoBSONTypes';
@@ -44,11 +45,11 @@ export function getDataAtPath(documents: WithId<Document>[], path: string[]): Ta
         // we also make sure that the '_id' field is always included in the data!
         if (doc._id) {
             row['_id'] = {
-                value: valueToDisplayString(doc._id, MongoBSONTypes.ObjectId),
-                type: MongoBSONTypes.ObjectId,
+                value: valueToDisplayString(doc._id, MongoBSONTypes.inferType(doc._id)),
+                type: MongoBSONTypes.inferType(doc._id),
             };
             // TODO: problem here -> what if the user has a field with this name...
-            row['x-objectid'] = doc._id.toString();
+            row['x-objectid'] = EJSON.stringify(doc._id, { relaxed: false }); // this is crucial, we need to retain the _id field for future queries from the table view
         }
 
         // traverse the path to get the level required

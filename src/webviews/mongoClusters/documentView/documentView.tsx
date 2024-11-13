@@ -185,12 +185,18 @@ export const DocumentView = (): JSX.Element => {
         setIsLoading(true);
 
         // we're not sending the ID over becasue it has to be extracted from the document being sent over
+        // TODO: how to handle the case when one is editing a document and actually changing the _id field?
+        // this needs to be addressed, we do have to transmit the orignal _id field as well!
         void trpcClient.mongoClusters.documentView.saveDocument
             .mutate({ documentContent: editorContent })
             .then((response) => {
                 // update the configuration for potential refreshes of the document
                 configuration.documentId = response.documentId;
                 setContent(response.documentStringified);
+                setIsLoading(false);
+            }).catch((error) => {
+                console.error('Error saving document:', error);
+            }).finally(() => {
                 setIsLoading(false);
             });
     }

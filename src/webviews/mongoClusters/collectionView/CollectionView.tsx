@@ -297,7 +297,16 @@ export const CollectionView = (): JSX.Element => {
 
         console.log('Step-in requested on cell', activeCell, 'in row', row, 'column', cell);
 
-        // TODO: move the path from results to a better place
+        if (activeColumn === '_id') {
+            console.log('Cell is an _id, skipping step-in');
+            return;
+        }
+
+        if (activeCell.type !== 'object') {
+            console.log('Cell is not an object, skipping step-in');
+            return;
+        }
+
         setCurrentContext((prev) => ({
             ...prev,
             currentViewState: {

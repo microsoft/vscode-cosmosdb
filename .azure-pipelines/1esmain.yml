@@ -40,9 +40,6 @@ extends:
   template: azure-pipelines/1esmain.yml@azExtTemplates
   parameters:
     useAzureFederatedCredentials: ${{ parameters.enableLongRunningTests }}
-    sdl:
-      suppression:
-        suppressionFile: $(Build.SourcesDirectory)\.config\guardian\.gdnsuppress
     additionalSetupSteps:
       - task: Npm@1
         displayName: "\U0001F449 Install Dependencies"

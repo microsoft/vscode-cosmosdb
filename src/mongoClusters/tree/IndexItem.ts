@@ -38,6 +38,7 @@ export class IndexItem {
     getTreeItem(): TreeItem {
         return {
             id: this.id,
+            contextValue: 'mongoClusters.item.index',
             label: this.indexInfo.name,
             iconPath: new ThemeIcon('combine'), // TODO: create our onw icon here, this one's shape can change
             collapsibleState: TreeItemCollapsibleState.Collapsed,

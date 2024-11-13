@@ -14,7 +14,7 @@ export class MongoDBAccountsWorkspaceItem implements TreeElementBase {
     id: string;
 
     constructor() {
-        this.id = `vscode.cosmosdb.workspace.mongoclusters.mongodbaccounts`;
+        this.id = `vscode.cosmosdb.workspace.mongoclusters.accounts`;
     }
 
     async getChildren(): Promise<TreeElementBase[]> {
@@ -34,7 +34,7 @@ export class MongoDBAccountsWorkspaceItem implements TreeElementBase {
                 id: this.id + '/newConnection',
                 label: 'New Connection...',
                 iconPath: new ThemeIcon('plus'),
-                commandId: 'mongoClusters.cmd.addWorkspaceConnection',
+                commandId: 'command.mongoClusters.addWorkspaceConnection',
             }),
         ];
     }
@@ -42,7 +42,7 @@ export class MongoDBAccountsWorkspaceItem implements TreeElementBase {
     getTreeItem(): TreeItem {
         return {
             id: this.id,
-            contextValue: 'vscode.cosmosdb.workspace.mongoclusters.mongodbaccounts',
+            contextValue: 'vscode.cosmosdb.workspace.mongoclusters.accounts',
             label: 'MongoDB Cluster Accounts',
             iconPath: new ThemeIcon('link'),
             collapsibleState: TreeItemCollapsibleState.Collapsed,

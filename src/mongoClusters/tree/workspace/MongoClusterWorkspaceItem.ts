@@ -35,70 +35,82 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
      * @param context The action context.
      * @returns An instance of MongoClustersClient if successful; otherwise, null.
      */
-    protected async authenticateAndConnect(context: IActionContext): Promise<MongoClustersClient | null> {
-        ext.outputChannel.appendLine(`MongoDB Clusters: Attempting to authenticate with ${this.mongoCluster.name}`);
+    protected async authenticateAndConnect(): Promise<MongoClustersClient | null> {
+        const result = await callWithTelemetryAndErrorHandling(
+            'cosmosDB.mongoClusters.authenticate',
+            async (context: IActionContext) => {
+                context.telemetry.properties.view = 'workspace';
 
-        let mongoClustersClient: MongoClustersClient;
+                ext.outputChannel.appendLine(
+                    `MongoDB Clusters: Attempting to authenticate with ${this.mongoCluster.name}`,
+                );
 
-        const connectionString = new ConnectionString(nonNullValue(this.mongoCluster.connectionString));
+                let mongoClustersClient: MongoClustersClient;
 
-        let username: string | undefined = connectionString.username;
-        let password: string | undefined = connectionString.password;
+                const connectionString = new ConnectionString(nonNullValue(this.mongoCluster.connectionString));
 
-        if (!username || username.length === 0 || !password || password.length === 0) {
-            const wizardContext: AuthenticateWizardContext = {
-                ...context,
-                adminUserName: undefined,
-                otherUserNames: [],
-                resourceName: this.mongoCluster.name,
+                let username: string | undefined = connectionString.username;
+                let password: string | undefined = connectionString.password;
 
-                // preconfigure the username in case it's provided connection string
-                selectedUserName: username,
-                // we'll always ask for the password
-            };
+                if (!username || username.length === 0 || !password || password.length === 0) {
+                    const wizardContext: AuthenticateWizardContext = {
+                        ...context,
+                        adminUserName: undefined,
+                        otherUserNames: [],
+                        resourceName: this.mongoCluster.name,
 
-            // Prompt the user for credentials using the extracted method
-            const credentialsProvided = await this.promptForCredentials(wizardContext);
+                        // preconfigure the username in case it's provided connection string
+                        selectedUserName: username,
+                        // we'll always ask for the password
+                    };
 
-            // If the wizard was aborted or failed, return null
-            if (!credentialsProvided) {
-                return null;
-            }
+                    // Prompt the user for credentials using the extracted method
+                    const credentialsProvided = await this.promptForCredentials(wizardContext);
 
-            context.valuesToMask.push(nonNullProp(wizardContext, 'password'));
+                    // If the wizard was aborted or failed, return null
+                    if (!credentialsProvided) {
+                        return null;
+                    }
 
-            username = nonNullProp(wizardContext, 'selectedUserName');
-            password = nonNullProp(wizardContext, 'password');
-        }
+                    context.valuesToMask.push(nonNullProp(wizardContext, 'password'));
 
-        ext.outputChannel.append(`MongoDB Clusters: Connecting to the cluster as "${username}"... `);
+                    username = nonNullProp(wizardContext, 'selectedUserName');
+                    password = nonNullProp(wizardContext, 'password');
+                }
 
-        // Cache the credentials
-        CredentialCache.setCredentials(this.id, connectionString.toString(), username, password);
+                ext.outputChannel.append(`MongoDB Clusters: Connecting to the cluster as "${username}"... `);
 
-        // Attempt to create the client with the provided credentials
-        try {
-            mongoClustersClient = await MongoClustersClient.getClient(this.id).catch((error: Error) => {
-                ext.outputChannel.appendLine('failed.');
-                ext.outputChannel.appendLine(`Error: ${error.message}`);
+                // Cache the credentials
+                CredentialCache.setCredentials(this.id, connectionString.toString(), username, password);
 
-                void vscode.window.showErrorMessage(`Failed to connect: ${error.message}`);
+                // Attempt to create the client with the provided credentials
+                try {
+                    mongoClustersClient = await MongoClustersClient.getClient(this.id).catch((error: Error) => {
+                        ext.outputChannel.appendLine('failed.');
+                        ext.outputChannel.appendLine(`Error: ${error.message}`);
 
-                throw error;
-            });
-        } catch (error) {
-            console.log(error);
-            // If connection fails, remove cached credentials
-            await MongoClustersClient.deleteClient(this.id);
-            CredentialCache.deleteCredentials(this.id);
+                        void vscode.window.showErrorMessage(`Failed to connect: ${error.message}`);
 
-            // Return null to indicate failure
-            return null;
-        }
+                        throw error;
+                    });
+                } catch (error) {
+                    console.log(error);
+                    // If connection fails, remove cached credentials
+                    await MongoClustersClient.deleteClient(this.id);
+                    CredentialCache.deleteCredentials(this.id);
 
-        ext.outputChannel.appendLine(`MongoDB Clusters: Connected to "${this.mongoCluster.name}" as "${username}"`);
+                    // Return null to indicate failure
+                    return null;
+                }
 
-        return mongoClustersClient;
+                ext.outputChannel.appendLine(
+                    `MongoDB Clusters: Connected to "${this.mongoCluster.name}" as "${username}"`,
+                );
+
+                return mongoClustersClient;
+            },
+        );
+        return result ?? null;
     }
 
     /**
@@ -115,10 +127,12 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
 
         // Prompt the user for credentials
         await callWithTelemetryAndErrorHandling(
-            'mongoClusterItem.authenticate.promptForCredentials',
-            async (_context: IActionContext) => {
-                _context.errorHandling.rethrow = true;
-                _context.errorHandling.suppressDisplay = false;
+            'cosmosDB.mongoClusters.authenticate.promptForCredentials',
+            async (context: IActionContext) => {
+                context.telemetry.properties.view = 'workspace';
+
+                context.errorHandling.rethrow = true;
+                context.errorHandling.suppressDisplay = false;
                 try {
                     await wizard.prompt(); // This will prompt the user; results are stored in wizardContext
                 } catch (error) {

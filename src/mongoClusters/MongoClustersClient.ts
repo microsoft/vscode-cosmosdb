@@ -274,7 +274,8 @@ export class MongoClustersClient {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         let parsedId: any;
 
-        if (documentId === '') { // TODO: do not rely in empty string, use null or undefined
+        if (documentId === '') {
+            // TODO: do not rely in empty string, use null or undefined
             parsedId = new ObjectId();
         } else {
             try {

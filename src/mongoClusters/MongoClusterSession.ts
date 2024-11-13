@@ -23,7 +23,7 @@ export type TableDataEntry = {
      * @optional
      */
     'x-objectid'?: string;
-    [key: string]: unknown
+    [key: string]: unknown;
 };
 
 export interface TableData {

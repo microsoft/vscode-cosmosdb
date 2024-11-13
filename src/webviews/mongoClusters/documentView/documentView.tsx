@@ -194,9 +194,11 @@ export const DocumentView = (): JSX.Element => {
                 configuration.documentId = response.documentId;
                 setContent(response.documentStringified);
                 setIsLoading(false);
-            }).catch((error) => {
+            })
+            .catch((error) => {
                 console.error('Error saving document:', error);
-            }).finally(() => {
+            })
+            .finally(() => {
                 setIsLoading(false);
             });
     }

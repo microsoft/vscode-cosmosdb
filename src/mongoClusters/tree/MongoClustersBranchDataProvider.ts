@@ -13,6 +13,7 @@ import {
     type ResourceModelBase,
 } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
+import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { createMongoClustersManagementClient } from '../../utils/azureClients';
 import { type MongoClusterModel } from './MongoClusterModel';
@@ -49,14 +50,22 @@ export class MongoClustersBranchDataProvider
         /**
          * getChildren is called for every element in the tree when expanding, the element being expanded is being passed as an argument
          */
-        return (await element.getChildren?.())?.map((child) => {
-            if (child.id) {
-                return ext.state.wrapItemInStateHandling(child as TreeElementBase & { id: string }, () =>
-                    this.refresh(child),
-                );
-            }
-            return child;
-        });
+        return await callWithTelemetryAndErrorHandling(
+            'getChildren',
+            async (context: IActionContext) => {
+                context.telemetry.properties.experience = API.MongoClusters;
+                context.telemetry.properties.parentContext = (await element.getTreeItem()).contextValue ?? 'unknown';
+
+                return (await element.getChildren?.())?.map((child) => {
+                    if (child.id) {
+                        return ext.state.wrapItemInStateHandling(child as TreeElementBase & { id: string }, () =>
+                            this.refresh(child),
+                        );
+                    }
+                    return child;
+                });
+            },
+        );
     }
 
     async getResourceItem(element: AzureResource): Promise<TreeElementBase> {
@@ -65,12 +74,14 @@ export class MongoClustersBranchDataProvider
          */
 
         const resourceItem = await callWithTelemetryAndErrorHandling(
-            'mongoCluster.getResourceItem',
+            'resolveResource',
             // disabling require-await, the async aspect is in there, but uses the .then pattern
             // eslint-disable-next-line @typescript-eslint/require-await
-            async (_context: IActionContext) => {
+            async (context: IActionContext) => {
+                context.telemetry.properties.experience = API.MongoClusters;
+
                 if (this.detailsCacheUpdateRequested) {
-                    void this.updateResourceCache(_context, element.subscription, 1000 * 60 * 5).then(() => {
+                    void this.updateResourceCache(context, element.subscription, 1000 * 60 * 5).then(() => {
                         /**
                          * Instances of MongoClusterItem were  stored in the itemsToUpdateInfo map,
                          * so that when the cache is updated, the items can be refreshed.
@@ -118,9 +129,11 @@ export class MongoClustersBranchDataProvider
         cacheDuration: number,
     ): Promise<void> {
         return callWithTelemetryAndErrorHandling(
-            'mongoClusters.getResourceItem.cacheUpdate',
+            'resolveResource.updatingResourceCache',
             async (context: IActionContext) => {
                 try {
+                    context.telemetry.properties.experience = API.MongoClusters;
+
                     this.detailsCacheUpdateRequested = false;
 
                     setTimeout(() => {

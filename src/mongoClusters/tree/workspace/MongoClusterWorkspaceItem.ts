@@ -39,6 +39,8 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
         const result = await callWithTelemetryAndErrorHandling(
             'cosmosDB.mongoClusters.authenticate',
             async (context: IActionContext) => {
+                context.telemetry.properties.view = 'workspace';
+
                 ext.outputChannel.appendLine(
                     `MongoDB Clusters: Attempting to authenticate with ${this.mongoCluster.name}`,
                 );
@@ -126,9 +128,11 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
         // Prompt the user for credentials
         await callWithTelemetryAndErrorHandling(
             'cosmosDB.mongoClusters.authenticate.promptForCredentials',
-            async (_context: IActionContext) => {
-                _context.errorHandling.rethrow = true;
-                _context.errorHandling.suppressDisplay = false;
+            async (context: IActionContext) => {
+                context.telemetry.properties.view = 'workspace';
+
+                context.errorHandling.rethrow = true;
+                context.errorHandling.suppressDisplay = false;
                 try {
                     await wizard.prompt(); // This will prompt the user; results are stored in wizardContext
                 } catch (error) {

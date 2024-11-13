@@ -213,10 +213,10 @@ export class MongoClustersClient {
         }
     }
 
-    async deleteDocuments(databaseName: string, collectionName: string, documentObjectIds: string[]): Promise<boolean> {
+    async deleteDocuments(databaseName: string, collectionName: string, documentIds: string[]): Promise<boolean> {
         // convert input data
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const objectIds: any[] = documentObjectIds.map((id) => {
+        const parsedDocumentIds: any[] = documentIds.map((id) => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let parsedId: any;
             try {
@@ -235,20 +235,20 @@ export class MongoClustersClient {
 
         // connect and extecute
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
-        const deleteResult: DeleteResult = await collection.deleteMany({ _id: { $in: objectIds } });
+        const deleteResult: DeleteResult = await collection.deleteMany({ _id: { $in: parsedDocumentIds } });
 
         return deleteResult.acknowledged;
     }
 
     async pointRead(databaseName: string, collectionName: string, documentId: string) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let parsedId: any;
+        let parsedDocumentId: any;
         try {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            parsedId = EJSON.parse(documentId);
+            parsedDocumentId = EJSON.parse(documentId);
         } catch (error) {
             if (ObjectId.isValid(documentId)) {
-                parsedId = new ObjectId(documentId);
+                parsedDocumentId = new ObjectId(documentId);
             } else {
                 throw error;
             }
@@ -258,7 +258,7 @@ export class MongoClustersClient {
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const documentContent = await collection.findOne({ _id: parsedId });
+        const documentContent = await collection.findOne({ _id: parsedDocumentId });
 
         return documentContent;
     }

@@ -53,13 +53,6 @@ export const collectionsViewRouter = router({
                 input.pageSize,
             );
 
-            // const result = {
-            // jsonDocuments: responsePack.jsonDocuments ?? [],
-            // tableHeaders: responsePack.tableHeaders ?? [],
-            // tableData: (responsePack.tableData as { 'x-objectid': string; [key: string]: unknown }[]) ?? [],
-            // treeData: responsePack.treeData ?? [],
-            // };
-
             return { documentCount: size };
         }),
     getAutocompletionSchema: publicProcedure

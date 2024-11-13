@@ -10,7 +10,7 @@
     "plugins": ["prettier-plugin-organize-imports"],
     "overrides": [
         {
-            "files": ["*.md"],
+            "files": ["*.md", "*.yaml", "*.yml"],
             "options": {
                 "tabWidth": 2
             }

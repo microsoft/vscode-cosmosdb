@@ -120,7 +120,7 @@ export const collectionsViewRouter = router({
         .mutation(({ ctx }) => {
             const myCtx = ctx as RouterContext;
 
-            vscode.commands.executeCommand('mongoClusters.internal.documentView.open', {
+            vscode.commands.executeCommand('command.internal.mongoClusters.documentView.open', {
                 sessionId: myCtx.sessionId,
                 databaseName: myCtx.databaseName,
                 collectionName: myCtx.collectionName,
@@ -134,7 +134,7 @@ export const collectionsViewRouter = router({
         .mutation(({ input, ctx }) => {
             const myCtx = ctx as RouterContext;
 
-            vscode.commands.executeCommand('mongoClusters.internal.documentView.open', {
+            vscode.commands.executeCommand('command.internal.mongoClusters.documentView.open', {
                 sessionId: myCtx.sessionId,
                 databaseName: myCtx.databaseName,
                 collectionName: myCtx.collectionName,
@@ -149,7 +149,7 @@ export const collectionsViewRouter = router({
         .mutation(({ input, ctx }) => {
             const myCtx = ctx as RouterContext;
 
-            vscode.commands.executeCommand('mongoClusters.internal.documentView.open', {
+            vscode.commands.executeCommand('command.internal.mongoClusters.documentView.open', {
                 sessionId: myCtx.sessionId,
                 databaseName: myCtx.databaseName,
                 collectionName: myCtx.collectionName,
@@ -194,7 +194,7 @@ export const collectionsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             vscode.commands.executeCommand(
-                'mongoClusters.internal.exportDocuments',
+                'command.internal.mongoClusters.exportDocuments',
                 myCtx.collectionTreeItem,
                 input.query,
             );
@@ -202,6 +202,6 @@ export const collectionsViewRouter = router({
     importDocuments: publicProcedure.query(async ({ ctx }) => {
         const myCtx = ctx as RouterContext;
 
-        vscode.commands.executeCommand('mongoClusters.internal.importDocuments', myCtx.collectionTreeItem);
+        vscode.commands.executeCommand('command.internal.mongoClusters.importDocuments', myCtx.collectionTreeItem);
     }),
 });

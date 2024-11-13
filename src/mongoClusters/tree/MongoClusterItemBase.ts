@@ -86,7 +86,7 @@ export abstract class MongoClusterItemBase implements TreeElementBase {
                         id: `${this.id}/no-databases`,
                         label: 'Create database...',
                         iconPath: new vscode.ThemeIcon('plus'),
-                        commandId: 'mongoClusters.cmd.createDatabase',
+                        commandId: 'command.mongoClusters.createDatabase',
                         commandArgs: [this],
                     }),
                 ];

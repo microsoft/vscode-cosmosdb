@@ -3,12 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    AzureWizard,
-    callWithTelemetryAndErrorHandling,
-    UserCancelledError,
-    type IActionContext,
-} from '@microsoft/vscode-azext-utils';
+import { AzureWizard, UserCancelledError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import ConnectionString from 'mongodb-connection-string-url';
 import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
@@ -29,25 +24,20 @@ export async function addWorkspaceConnection(context: IActionContext): Promise<v
         promptSteps: [new ConnectionStringStep(), new UsernameStep(), new PasswordStep()],
     });
 
-    // Prompt the user for credentials
-    await callWithTelemetryAndErrorHandling(
-        'mongoClusters.addWorkspaceConnection.promptForCredentials',
-        async (context: IActionContext) => {
-            context.errorHandling.rethrow = true;
-            context.errorHandling.suppressDisplay = true;
-            try {
-                await wizard.prompt();
-            } catch (error) {
-                if (error instanceof UserCancelledError) {
-                    // The user cancelled the wizard
-                    wizardContext.aborted = true;
-                    return;
-                } else {
-                    throw error;
-                }
-            }
-        },
-    );
+    context.errorHandling.rethrow = true;
+    context.errorHandling.suppressDisplay = true;
+
+    try {
+        await wizard.prompt();
+    } catch (error) {
+        if (error instanceof UserCancelledError) {
+            // The user cancelled the wizard
+            wizardContext.aborted = true;
+            return;
+        } else {
+            throw error;
+        }
+    }
 
     if (wizardContext.aborted) {
         return;

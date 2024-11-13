@@ -589,52 +589,42 @@
             },
             {
                 "category": "MongoDB (vCore)",
-                "command": "mongoClusters.cmd.hello",
-                "title": "Dev: Say Hello!"
-            },
-            {
-                "category": "MongoDB (vCore)",
-                "command": "mongoClusters.cmd.webview",
-                "title": "Dev: Show WebView"
-            },
-            {
-                "category": "MongoDB (vCore)",
-                "command": "mongoClusters.cmd.dropCollection",
+                "command": "command.mongoClusters.dropCollection",
                 "title": "Drop Collection..."
             },
             {
                 "category": "MongoDB (vCore)",
-                "command": "mongoClusters.cmd.dropDatabase",
+                "command": "command.mongoClusters.dropDatabase",
                 "title": "Drop Database..."
             },
             {
                 "category": "MongoDB (vCore)",
-                "command": "mongoClusters.cmd.createCollection",
+                "command": "command.mongoClusters.createCollection",
                 "title": "Create Collection..."
             },
             {
                 "category": "MongoDB (vCore)",
-                "command": "mongoClusters.cmd.createDatabase",
+                "command": "command.mongoClusters.createDatabase",
                 "title": "Create Database..."
             },
             {
                 "category": "MongoDB (vCore)",
-                "command": "mongoClusters.cmd.importDocuments",
+                "command": "command.mongoClusters.importDocuments",
                 "title": "Import Documents into Collection..."
             },
             {
                 "category": "MongoDB (vCore)",
-                "command": "mongoClusters.cmd.exportDocuments",
+                "command": "command.mongoClusters.exportDocuments",
                 "title": "Export Documents from Collection..."
             },
             {
                 "category": "MongoDB (vCore)",
-                "command": "mongoClusters.cmd.launchShell",
+                "command": "command.mongoClusters.launchShell",
                 "title": "Launch Shell"
             },
             {
                 "category": "MongoDB (vCore)",
-                "command": "mongoClusters.cmd.removeWorkspaceConnection",
+                "command": "command.mongoClusters.removeWorkspaceConnection",
                 "title": "Remove Connection..."
             }
         ],
@@ -1135,38 +1125,38 @@
                     "group": "1@1"
                 },
                 {
-                    "command": "mongoClusters.cmd.dropCollection",
+                    "command": "command.mongoClusters.dropCollection",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.collection"
                 },
                 {
-                    "command": "mongoClusters.cmd.dropDatabase",
+                    "command": "command.mongoClusters.dropDatabase",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.database"
                 },
                 {
-                    "command": "mongoClusters.cmd.removeWorkspaceConnection",
+                    "command": "command.mongoClusters.removeWorkspaceConnection",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && view == azureWorkspace && viewItem == mongoClusters.item.mongoCluster"
                 },
                 {
-                    "command": "mongoClusters.cmd.createCollection",
+                    "command": "command.mongoClusters.createCollection",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.database"
                 },
                 {
-                    "command": "mongoClusters.cmd.createDatabase",
+                    "command": "command.mongoClusters.createDatabase",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /mongoClusters.item.mongoCluster/i",
                     "group": "1@1"
                 },
                 {
-                    "command": "mongoClusters.cmd.importDocuments",
+                    "command": "command.mongoClusters.importDocuments",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.collection",
                     "group": "1@1"
                 },
                 {
-                    "command": "mongoClusters.cmd.exportDocuments",
+                    "command": "command.mongoClusters.exportDocuments",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.collection",
                     "group": "1@2"
                 },
                 {
-                    "command": "mongoClusters.cmd.launchShell",
+                    "command": "command.mongoClusters.launchShell",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /mongoClusters.item.(mongoCluster|database|collection)/i",
                     "group": "2@1"
                 }
@@ -1213,14 +1203,6 @@
                 {
                     "command": "postgreSQL.executeQuery",
                     "when": "editorLangId == 'postgres'"
-                },
-                {
-                    "command": "mongoClusters.cmd.hello",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled"
-                },
-                {
-                    "command": "mongoClusters.cmd.webview",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled"
                 }
             ]
         },

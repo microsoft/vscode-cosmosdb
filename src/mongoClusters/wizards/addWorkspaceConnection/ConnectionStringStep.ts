@@ -35,8 +35,7 @@ export class ConnectionStringStep extends AzureWizardPromptStep<AddWorkspaceConn
     // eslint-disable-next-line @typescript-eslint/require-await
     private async validateConnectionString(connectionString: string): Promise<string | null | undefined> {
         try {
-            const parsedCS = new ConnectionString(connectionString);
-            console.log(parsedCS);
+            new ConnectionString(connectionString);
         } catch (error) {
             if (error instanceof Error && error.name === 'MongoParseError') {
                 return error.message;

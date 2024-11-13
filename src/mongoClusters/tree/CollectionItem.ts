@@ -33,7 +33,7 @@ export class CollectionItem {
                 contextValue: 'mongoClusters.item.documents',
                 id: `${this.id}/documents`,
                 label: 'Documents',
-                commandId: 'mongoClusters.internal.containerView.open',
+                commandId: 'command.internal.mongoClusters.containerView.open',
                 commandArgs: [
                     {
                         id: this.id,

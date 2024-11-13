@@ -34,7 +34,7 @@ export class MongoDBAccountsWorkspaceItem implements TreeElementBase {
                 id: this.id + '/newConnection',
                 label: 'New Connection...',
                 iconPath: new ThemeIcon('plus'),
-                commandId: 'mongoClusters.cmd.addWorkspaceConnection',
+                commandId: 'command.mongoClusters.addWorkspaceConnection',
             }),
         ];
     }

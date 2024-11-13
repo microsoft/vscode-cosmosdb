@@ -80,48 +80,37 @@ export class MongoClustersExtension implements vscode.Disposable {
 
             // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
             // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
-            registerCommand('mongoClusters.cmd.hello', this.commandSayHello);
 
-            registerCommand('mongoClusters.internal.containerView.open', openCollectionView);
-            registerCommand('mongoClusters.internal.documentView.open', openDocumentView);
+            registerCommand('command.internal.mongoClusters.containerView.open', openCollectionView);
+            registerCommand('command.internal.mongoClusters.documentView.open', openDocumentView);
 
-            registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.launchShell', launchShell);
+            registerCommand('command.internal.mongoClusters.importDocuments', mongoClustersImportDocuments);
+            registerCommand('command.internal.mongoClusters.exportDocuments', mongoClustersExportQueryResults);
 
-            registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.dropCollection', dropCollection);
-            registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.dropDatabase', dropDatabase);
+            registerCommandWithTreeNodeUnwrapping('command.mongoClusters.launchShell', launchShell);
 
-            registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.createCollection', createCollection);
-            registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.createDatabase', createDatabase);
+            registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropCollection', dropCollection);
+            registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropDatabase', dropDatabase);
 
-            registerCommandWithTreeNodeUnwrapping('mongoClusters.cmd.importDocuments', mongoClustersImportDocuments);
+            registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createCollection', createCollection);
+            registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDatabase', createDatabase);
+
             registerCommandWithTreeNodeUnwrapping(
-                'mongoClusters.cmd.exportDocuments',
+                'command.mongoClusters.importDocuments',
+                mongoClustersImportDocuments,
+            );
+            registerCommandWithTreeNodeUnwrapping(
+                'command.mongoClusters.exportDocuments',
                 mongoClustersExportEntireCollection,
             );
 
-            registerCommand('mongoClusters.internal.importDocuments', mongoClustersImportDocuments);
-            registerCommand('mongoClusters.internal.exportDocuments', mongoClustersExportQueryResults);
-
-            registerCommand('mongoClusters.cmd.addWorkspaceConnection', addWorkspaceConnection);
+            registerCommand('command.mongoClusters.addWorkspaceConnection', addWorkspaceConnection);
             registerCommandWithTreeNodeUnwrapping(
-                'mongoClusters.cmd.removeWorkspaceConnection',
+                'command.mongoClusters.removeWorkspaceConnection',
                 removeWorkspaceConnection,
             );
 
-            ext.outputChannel.appendLine(`mongoClusters: activated.`);
+            ext.outputChannel.appendLine(`MongoDB Clusters: activated.`);
         });
     }
-
-    // commands
-
-    commandSayHello = (): void => {
-        console.log(`Hello there here!!!`);
-        void vscode.window.showInformationMessage('Saying hello here!');
-
-        void vscode.window.showWarningMessage(
-            `Are you sure?`,
-            { modal: true, detail: "You are about to:\n\ndelete 5 documents.\n\nThis action can't be undone." },
-            'Delete',
-        );
-    };
 }

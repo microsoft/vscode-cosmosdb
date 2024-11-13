@@ -34,7 +34,7 @@ export class DatabaseItem {
                     id: `${this.id}/no-databases`,
                     label: 'Create collection...',
                     iconPath: new vscode.ThemeIcon('plus'),
-                    commandId: 'mongoClusters.cmd.createCollection',
+                    commandId: 'command.mongoClusters.createCollection',
                     commandArgs: [this],
                 }),
             ];

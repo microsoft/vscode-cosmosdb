@@ -50,22 +50,19 @@ export class MongoClustersBranchDataProvider
         /**
          * getChildren is called for every element in the tree when expanding, the element being expanded is being passed as an argument
          */
-        return await callWithTelemetryAndErrorHandling(
-            'getChildren',
-            async (context: IActionContext) => {
-                context.telemetry.properties.experience = API.MongoClusters;
-                context.telemetry.properties.parentContext = (await element.getTreeItem()).contextValue ?? 'unknown';
+        return await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
+            context.telemetry.properties.experience = API.MongoClusters;
+            context.telemetry.properties.parentContext = (await element.getTreeItem()).contextValue ?? 'unknown';
 
-                return (await element.getChildren?.())?.map((child) => {
-                    if (child.id) {
-                        return ext.state.wrapItemInStateHandling(child as TreeElementBase & { id: string }, () =>
-                            this.refresh(child),
-                        );
-                    }
-                    return child;
-                });
-            },
-        );
+            return (await element.getChildren?.())?.map((child) => {
+                if (child.id) {
+                    return ext.state.wrapItemInStateHandling(child as TreeElementBase & { id: string }, () =>
+                        this.refresh(child),
+                    );
+                }
+                return child;
+            });
+        });
     }
 
     async getResourceItem(element: AzureResource): Promise<TreeElementBase> {

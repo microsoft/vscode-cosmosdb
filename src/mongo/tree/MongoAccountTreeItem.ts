@@ -7,12 +7,15 @@ import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import {
     appendExtensionUserAgent,
     AzExtParentTreeItem,
+    callWithTelemetryAndErrorHandling,
     parseError,
     type AzExtTreeItem,
+    type IActionContext,
     type ICreateChildImplContext,
 } from '@microsoft/vscode-azext-utils';
 import { type MongoClient } from 'mongodb';
 import type * as vscode from 'vscode';
+import { API } from '../../AzureDBExperiences';
 import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
 import { type IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
 import { getThemeAgnosticIconPath, Links, testDb } from '../../constants';
@@ -63,56 +66,70 @@ export class MongoAccountTreeItem extends AzExtParentTreeItem {
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean): Promise<AzExtTreeItem[]> {
-        let mongoClient: MongoClient | undefined;
-        try {
-            let databases: IDatabaseInfo[];
+        const result = await callWithTelemetryAndErrorHandling(
+            'getChildren',
+            async (context: IActionContext): Promise<AzExtTreeItem[]> => {
+                context.telemetry.properties.experience = API.MongoDB;
+                context.telemetry.properties.parentContext = this.contextValue;
 
-            if (!this.connectionString) {
-                throw new Error('Missing connection string');
-            }
+                let mongoClient: MongoClient | undefined;
+                try {
+                    let databases: IDatabaseInfo[];
 
-            // Azure MongoDB accounts need to have the name passed in for private endpoints
-            mongoClient = await connectToMongoClient(
-                this.connectionString,
-                this.databaseAccount ? nonNullProp(this.databaseAccount, 'name') : appendExtensionUserAgent(),
-            );
+                    if (!this.connectionString) {
+                        throw new Error('Missing connection string');
+                    }
 
-            const databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);
-            if (databaseInConnectionString && !this.root.isEmulator) {
-                // emulator violates the connection string format
-                // If the database is in the connection string, that's all we connect to (we might not even have permissions to list databases)
-                databases = [
-                    {
-                        name: databaseInConnectionString,
-                        empty: false,
-                    },
-                ];
-            } else {
-                // https://mongodb.github.io/node-mongodb-native/3.1/api/index.html
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                const result: { databases: IDatabaseInfo[] } = await mongoClient.db(testDb).admin().listDatabases();
-                databases = result.databases;
-            }
-            return databases
-                .filter(
-                    (database: IDatabaseInfo) =>
-                        !(database.name && database.name.toLowerCase() === 'admin' && database.empty),
-                ) // Filter out the 'admin' database if it's empty
-                .map(
-                    (database) => new MongoDatabaseTreeItem(this, nonNullProp(database, 'name'), this.connectionString),
-                );
-        } catch (error) {
-            const message = parseError(error).message;
-            if (this.root?.isEmulator && message.includes('ECONNREFUSED')) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                error.message = `Unable to reach emulator. See ${Links.LocalConnectionDebuggingTips} for debugging tips.\n${message}`;
-            }
-            throw error;
-        } finally {
-            if (mongoClient) {
-                void mongoClient.close();
-            }
-        }
+                    // Azure MongoDB accounts need to have the name passed in for private endpoints
+                    mongoClient = await connectToMongoClient(
+                        this.connectionString,
+                        this.databaseAccount ? nonNullProp(this.databaseAccount, 'name') : appendExtensionUserAgent(),
+                    );
+
+                    const databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);
+                    if (databaseInConnectionString && !this.root.isEmulator) {
+                        // emulator violates the connection string format
+                        // If the database is in the connection string, that's all we connect to (we might not even have permissions to list databases)
+                        databases = [
+                            {
+                                name: databaseInConnectionString,
+                                empty: false,
+                            },
+                        ];
+                    } else {
+                        // https://mongodb.github.io/node-mongodb-native/3.1/api/index.html
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        const result: { databases: IDatabaseInfo[] } = await mongoClient
+                            .db(testDb)
+                            .admin()
+                            .listDatabases();
+                        databases = result.databases;
+                    }
+                    return databases
+                        .filter(
+                            (database: IDatabaseInfo) =>
+                                !(database.name && database.name.toLowerCase() === 'admin' && database.empty),
+                        ) // Filter out the 'admin' database if it's empty
+                        .map(
+                            (database) =>
+                                new MongoDatabaseTreeItem(this, nonNullProp(database, 'name'), this.connectionString),
+                        );
+                } catch (error) {
+                    const message = parseError(error).message;
+                    if (this.root?.isEmulator && message.includes('ECONNREFUSED')) {
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                        error.message = `Unable to reach emulator. See ${Links.LocalConnectionDebuggingTips} for debugging tips.\n${message}`;
+                    }
+                    throw error;
+                } finally {
+                    if (mongoClient) {
+                        void mongoClient.close();
+                    }
+                }
+            },
+        );
+
+        return result ?? [];
     }
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDatabaseTreeItem> {

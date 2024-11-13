@@ -328,9 +328,6 @@ export const CollectionView = (): JSX.Element => {
                     <Tab id="tab.results" value="tab_result">
                         Results
                     </Tab>
-                    <Tab id="tab.performance" value="tab_performance" disabled={true}>
-                        Query Performance
-                    </Tab>
                 </TabList>
 
                 <div className="resultsActionBar">

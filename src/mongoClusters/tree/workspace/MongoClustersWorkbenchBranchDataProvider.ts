@@ -32,8 +32,9 @@ export class MongoClustersWorkspaceBranchDataProvider
     }
 
     async getChildren(element: TreeElementBase): Promise<TreeElementBase[] | null | undefined> {
-        return await callWithTelemetryAndErrorHandling('workspace.getChildren', async (context: IActionContext) => {
+        return await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
             context.telemetry.properties.experience = API.MongoClusters;
+            context.telemetry.properties.view = 'workspace';
             context.telemetry.properties.parentContext = (await element.getTreeItem()).contextValue ?? 'unknown';
 
             return (await element.getChildren?.())?.map((child) => {

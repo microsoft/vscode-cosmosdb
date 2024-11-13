@@ -1,0 +1,85 @@
+{
+  "properties": {
+    "helpUri": "https://eng.ms/docs/microsoft-security/security/azure-security/cloudai-security-fundamentals-engineering/security-integration/guardian-wiki/microsoft-guardian/general/baselines"
+  },
+  "version": "1.0.0",
+  "baselines": {
+    "default": {
+      "name": "default",
+      "createdDate": "2024-11-05 17:46:58Z",
+      "lastUpdatedDate": "2024-11-05 17:46:58Z"
+    }
+  },
+  "results": {
+    "e954c2aff836ade49660932396fc01d8090169ef61cc22ce7fa63a919073491c": {
+      "signature": "e954c2aff836ade49660932396fc01d8090169ef61cc22ce7fa63a919073491c",
+      "alternativeSignatures": [],
+      "target": "test/docDBConnectionStrings.test.ts",
+      "line": 140,
+      "memberOf": [
+        "default"
+      ],
+      "tool": "credscan",
+      "ruleId": "CSCAN-AZURE0080",
+      "createdDate": "2024-11-05 17:46:58Z",
+      "expirationDate": "2025-04-24 17:48:07Z",
+      "justification": "This error is baselined with an expiration date of 180 days from 2024-11-05 17:48:07Z"
+    },
+    "1e8647141db71b69fdcdb7416242a37c2a2585a8b81150707cbb1970c5369b81": {
+      "signature": "1e8647141db71b69fdcdb7416242a37c2a2585a8b81150707cbb1970c5369b81",
+      "alternativeSignatures": [],
+      "target": "test/mongoConnectionStrings.test.ts",
+      "line": 137,
+      "memberOf": [
+        "default"
+      ],
+      "tool": "credscan",
+      "ruleId": "CSCAN-GENERAL0030",
+      "createdDate": "2024-11-05 17:46:58Z",
+      "expirationDate": "2025-04-24 17:48:07Z",
+      "justification": "This error is baselined with an expiration date of 180 days from 2024-11-05 17:48:07Z"
+    },
+    "087ad259e337c4a1b1244f608d46044dce61b4cc3679068e8bfeede69c14ccee": {
+      "signature": "087ad259e337c4a1b1244f608d46044dce61b4cc3679068e8bfeede69c14ccee",
+      "alternativeSignatures": [],
+      "target": "test/mongoConnectionStrings.test.ts",
+      "line": 142,
+      "memberOf": [
+        "default"
+      ],
+      "tool": "credscan",
+      "ruleId": "CSCAN-GENERAL0030",
+      "createdDate": "2024-11-05 17:46:58Z",
+      "expirationDate": "2025-04-24 17:48:07Z",
+      "justification": "This error is baselined with an expiration date of 180 days from 2024-11-05 17:48:07Z"
+    },
+    "d43e0d353be2b6d20dfaf0090d121da0347a72a43c85b74f80a49842518b76b0": {
+      "signature": "d43e0d353be2b6d20dfaf0090d121da0347a72a43c85b74f80a49842518b76b0",
+      "alternativeSignatures": [],
+      "target": "test/mongoConnectionStrings.test.ts",
+      "line": 284,
+      "memberOf": [
+        "default"
+      ],
+      "tool": "credscan",
+      "ruleId": "CSCAN-GENERAL0030",
+      "createdDate": "2024-11-05 17:46:58Z",
+      "expirationDate": "2025-04-24 17:48:07Z",
+      "justification": "This error is baselined with an expiration date of 180 days from 2024-11-05 17:48:07Z"
+    },
+    "352fc38d31dbd556a0011bbb0d6bb51195adba19c8dca2fc699e172722d38e44": {
+      "signature": "352fc38d31dbd556a0011bbb0d6bb51195adba19c8dca2fc699e172722d38e44",
+      "alternativeSignatures": [],
+      "target": "test/mongoConnectionStrings.test.ts",
+      "line": 369,
+      "memberOf": [
+        "default"
+      ],
+      "tool": "credscan",
+      "ruleId": "CSCAN-GENERAL0030",
+      "createdDate": "2024-11-05 17:46:58Z",
+      "expirationDate": "2025-04-24 17:48:07Z",
+      "justification": "This error is baselined with an expiration date of 180 days from 2024-11-05 17:48:07Z"
+    }
+  }
+}

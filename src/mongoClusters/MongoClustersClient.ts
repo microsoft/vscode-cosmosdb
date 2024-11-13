@@ -263,6 +263,8 @@ export class MongoClustersClient {
         return documentContent;
     }
 
+    // TODO: add a dedicated insert function. The original idea of keeping it in upsert was to avoid code duplication,
+    // however it leads to issues with the upsert logic.
     async upsertDocument(
         databaseName: string,
         collectionName: string,
@@ -271,12 +273,17 @@ export class MongoClustersClient {
     ): Promise<{ documentId: unknown; document: WithId<Document> | null }> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         let parsedId: any;
-        try {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            parsedId = EJSON.parse(documentId);
-        } catch {
-            if (ObjectId.isValid(documentId)) {
-                parsedId = new ObjectId(documentId);
+
+        if (documentId === '') { // TODO: do not rely in empty string, use null or undefined
+            parsedId = new ObjectId();
+        } else {
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                parsedId = EJSON.parse(documentId);
+            } catch {
+                if (ObjectId.isValid(documentId)) {
+                    parsedId = new ObjectId(documentId);
+                }
             }
         }
 

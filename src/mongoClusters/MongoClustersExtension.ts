@@ -43,74 +43,77 @@ export class MongoClustersExtension implements vscode.Disposable {
     }
 
     async activate(): Promise<void> {
-        await callWithTelemetryAndErrorHandling('mongoClusters.activate', async (activateContext: IActionContext) => {
-            activateContext.telemetry.properties.isActivationEvent = 'true';
+        await callWithTelemetryAndErrorHandling(
+            'cosmosDB.mongoClusters.activate',
+            async (activateContext: IActionContext) => {
+                activateContext.telemetry.properties.isActivationEvent = 'true';
 
-            const isMongoClustersEnabled: boolean = isMongoClustersSupportenabled() ?? false;
+                const isMongoClustersEnabled: boolean = isMongoClustersSupportenabled() ?? false;
 
-            activateContext.telemetry.properties.mongoClustersEnabled = isMongoClustersEnabled.toString();
+                activateContext.telemetry.properties.mongoClustersEnabled = isMongoClustersEnabled.toString();
 
-            // allows to show/hide commands in the package.json file
-            vscode.commands.executeCommand(
-                'setContext',
-                'vscodeDatabases.mongoClustersSupportEnabled',
-                isMongoClustersEnabled,
-            );
+                // allows to show/hide commands in the package.json file
+                vscode.commands.executeCommand(
+                    'setContext',
+                    'vscodeDatabases.mongoClustersSupportEnabled',
+                    isMongoClustersEnabled,
+                );
 
-            if (!isMongoClustersEnabled) {
-                return;
-            }
+                if (!isMongoClustersEnabled) {
+                    return;
+                }
 
-            // // // MongoClusters / MongoDB (vCore) support is enabled // // //
+                // // // MongoClusters / MongoDB (vCore) support is enabled // // //
 
-            ext.mongoClustersBranchDataProvider = new MongoClustersBranchDataProvider();
-            ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
-                AzExtResourceType.MongoClusters,
-                ext.mongoClustersBranchDataProvider,
-            );
+                ext.mongoClustersBranchDataProvider = new MongoClustersBranchDataProvider();
+                ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
+                    AzExtResourceType.MongoClusters,
+                    ext.mongoClustersBranchDataProvider,
+                );
 
-            ext.workspaceDataProvider = new SharedWorkspaceResourceProvider();
-            ext.rgApiV2.resources.registerWorkspaceResourceProvider(ext.workspaceDataProvider);
+                ext.workspaceDataProvider = new SharedWorkspaceResourceProvider();
+                ext.rgApiV2.resources.registerWorkspaceResourceProvider(ext.workspaceDataProvider);
 
-            ext.mongoClustersWorkspaceBranchDataProvider = new MongoClustersWorkspaceBranchDataProvider();
-            ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
-                WorkspaceResourceType.MongoClusters,
-                ext.mongoClustersWorkspaceBranchDataProvider,
-            );
+                ext.mongoClustersWorkspaceBranchDataProvider = new MongoClustersWorkspaceBranchDataProvider();
+                ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
+                    WorkspaceResourceType.MongoClusters,
+                    ext.mongoClustersWorkspaceBranchDataProvider,
+                );
 
-            // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
-            // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
+                // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
+                // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
 
-            registerCommand('command.internal.mongoClusters.containerView.open', openCollectionView);
-            registerCommand('command.internal.mongoClusters.documentView.open', openDocumentView);
+                registerCommand('command.internal.mongoClusters.containerView.open', openCollectionView);
+                registerCommand('command.internal.mongoClusters.documentView.open', openDocumentView);
 
-            registerCommand('command.internal.mongoClusters.importDocuments', mongoClustersImportDocuments);
-            registerCommand('command.internal.mongoClusters.exportDocuments', mongoClustersExportQueryResults);
+                registerCommand('command.internal.mongoClusters.importDocuments', mongoClustersImportDocuments);
+                registerCommand('command.internal.mongoClusters.exportDocuments', mongoClustersExportQueryResults);
 
-            registerCommandWithTreeNodeUnwrapping('command.mongoClusters.launchShell', launchShell);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.launchShell', launchShell);
 
-            registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropCollection', dropCollection);
-            registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropDatabase', dropDatabase);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropCollection', dropCollection);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropDatabase', dropDatabase);
 
-            registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createCollection', createCollection);
-            registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDatabase', createDatabase);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createCollection', createCollection);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDatabase', createDatabase);
 
-            registerCommandWithTreeNodeUnwrapping(
-                'command.mongoClusters.importDocuments',
-                mongoClustersImportDocuments,
-            );
-            registerCommandWithTreeNodeUnwrapping(
-                'command.mongoClusters.exportDocuments',
-                mongoClustersExportEntireCollection,
-            );
+                registerCommandWithTreeNodeUnwrapping(
+                    'command.mongoClusters.importDocuments',
+                    mongoClustersImportDocuments,
+                );
+                registerCommandWithTreeNodeUnwrapping(
+                    'command.mongoClusters.exportDocuments',
+                    mongoClustersExportEntireCollection,
+                );
 
-            registerCommand('command.mongoClusters.addWorkspaceConnection', addWorkspaceConnection);
-            registerCommandWithTreeNodeUnwrapping(
-                'command.mongoClusters.removeWorkspaceConnection',
-                removeWorkspaceConnection,
-            );
+                registerCommand('command.mongoClusters.addWorkspaceConnection', addWorkspaceConnection);
+                registerCommandWithTreeNodeUnwrapping(
+                    'command.mongoClusters.removeWorkspaceConnection',
+                    removeWorkspaceConnection,
+                );
 
-            ext.outputChannel.appendLine(`MongoDB Clusters: activated.`);
-        });
+                ext.outputChannel.appendLine(`MongoDB Clusters: activated.`);
+            },
+        );
     }
 }

@@ -139,20 +139,14 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
         });
 
         // Prompt the user for credentials
-        await callWithTelemetryAndErrorHandling(
-            'mongoClusterItem.authenticate.promptForCredentials',
-            async (_context: IActionContext) => {
-                _context.errorHandling.rethrow = true;
-                _context.errorHandling.suppressDisplay = false;
-                try {
-                    await wizard.prompt(); // This will prompt the user; results are stored in wizardContext
-                } catch (error) {
-                    if (error instanceof UserCancelledError) {
-                        wizardContext.aborted = true;
-                    }
-                }
-            },
-        );
+
+        try {
+            await wizard.prompt(); // This will prompt the user; results are stored in wizardContext
+        } catch (error) {
+            if (error instanceof UserCancelledError) {
+                wizardContext.aborted = true;
+            }
+        }
 
         // Return true if the wizard completed successfully; false otherwise
         return !wizardContext.aborted;

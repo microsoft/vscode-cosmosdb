@@ -9,6 +9,7 @@ import { nonNullProp } from './utils/nonNull';
 
 export enum API {
     MongoDB = 'MongoDB',
+    MongoClusters = 'MongoClusters',
     Graph = 'Graph',
     Table = 'Table',
     Core = 'Core', // Now called NoSQL

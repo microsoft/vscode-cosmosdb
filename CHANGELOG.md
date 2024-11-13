@@ -4,7 +4,8 @@
 
 ### Added
 
-- New UI for executing queries in the NoSQL account. UI supports viewing results in a table, tree or a JSON view, showing the query stats and the RU cost.
+- Added support for MongoDB vCore. Azure Resources now lists existing vCore clusters or they can be added manually to the Workspace using a connection string.
+- New UI for executing queries in the NoSQL account. UI supports viewing results in a table, tree or a JSON view, showing the query stats, the RU cost and Index Metrics.
 - New UI for executing search queries in the vCore account. UI supports viewing results in a table, tree or a JSON view.
 - New UI for creating, viewing and editing documents in a separate tab.
 - New UI supports VS Code theming (except Monarch).

@@ -1,0 +1,44 @@
+parameters:
+  - name: useAzureFederatedCredentials
+    type: boolean
+    default: false
+
+steps:
+  # This gives the AzCodeE2ETests service connection access to this pipeline.
+  - ${{ if eq(parameters.useAzureFederatedCredentials, true) }}:
+      - task: AzureKeyVault@1
+        displayName: "\U0001F449 Authorize AzCodeE2ETests service connection"
+        inputs:
+          azureSubscription: 'AzCodeE2ETests'
+          KeyVaultName: 'AzCodeE2ETestsDummyKV'
+        env:
+          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
+  # This task obtains the values necessary to connect to the AzCodeE2ETests service connection from the AzCodeE2ETestsCredKV key vault.
+  - ${{ if eq(parameters.useAzureFederatedCredentials, true) }}:
+      - task: AzureKeyVault@2
+        displayName: "\U0001F449 Get AzCodeE2ETests service connection secrets"
+        inputs:
+          azureSubscription: 'AzCodeE2ETestsCreds'
+          KeyVaultName: 'AzCodeE2ETestsCredsKV'
+          SecretsFilter: 'AzCodeServiceConnectionID, AzCodeServiceConnectionDomain, AzCodeServiceConnectionClientID'
+          RunAsPreJob: true
+        env:
+          SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
+  - task: Npm@1
+    displayName: "\U0001F449 Test"
+    inputs:
+      command: custom
+      customCommand: test
+      workingDir: $(working_directory)
+    condition: succeeded()
+    env:
+      DISPLAY: :99 # Only necessary for linux tests
+      ${{ if eq(parameters.useAzureFederatedCredentials, true) }}:
+        SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+        AzCode_UseAzureFederatedCredentials: true
+        AzCode_ServiceConnectionID: $(AzCodeServiceConnectionID)
+        AzCode_ServiceConnectionDomain: $(AzCodeServiceConnectionDomain)
+        AzCode_ServiceConnectionClientID: $(AzCodeServiceConnectionClientID)
+

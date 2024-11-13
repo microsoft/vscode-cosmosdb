@@ -1,0 +1,8 @@
+steps:
+  - task: Npm@1
+    displayName: "\U0001F449 Package"
+    inputs:
+      command: custom
+      customCommand: run package
+      workingDir: $(working_directory)
+    condition: succeeded()

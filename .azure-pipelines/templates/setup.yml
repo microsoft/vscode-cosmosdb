@@ -1,0 +1,28 @@
+parameters:
+  - name: additionalSetupSteps
+    type: stepList
+    default: []
+
+steps:
+  - task: NodeTool@0
+    displayName: "\U0001F449 Using Node.js"
+    inputs:
+      versionSource: fromFile
+      versionFilePath: .nvmrc
+    condition: succeeded()
+
+  - task: Npm@1
+    displayName: "\U0001F449 Install Dependencies"
+    inputs:
+      command: custom
+      customCommand: ci --no-optional
+      workingDir: $(working_directory)
+    condition: succeeded()
+
+  - bash: |
+      /usr/bin/Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+      echo ">>> Started xvfb"
+    displayName: "\U0001F449 Start X Virtual Frame Buffer"
+    condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
+
+  - ${{ parameters.additionalSetupSteps }}

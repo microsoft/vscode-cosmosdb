@@ -1,0 +1,47 @@
+parameters:
+  - name: 'jobs'
+    type: object
+    default:
+      - name: Root # TODO: would like this to be repository name but can't use build variables here
+        working_directory: .
+  - name: 'useAzureFederatedCredentials'
+    type: boolean
+    default: false
+  - name: additionalSetupSteps
+    type: stepList
+    default: []
+  - name: enableSigning
+    type: boolean
+    default: True
+
+stages:
+  - stage: BuildStage
+    jobs:
+      - ${{ each job in parameters.jobs }}:
+          - job: ${{ job.name }}
+            templateContext:
+              mb: # Enable the MicroBuild Signing toolset
+                signing:
+                  enabled: ${{ parameters.enableSigning }}
+                  signType: real # options are 'real' & 'test'
+                  zipSources: false
+              outputs:
+                - output: pipelineArtifact
+                  targetPath: $(build.artifactstagingdirectory)/build/${{ job.name }}
+                  artifactName: Build ${{ job.name }}
+            steps:
+              - template: ./templates/setup.yml
+                parameters:
+                  additionalSetupSteps: ${{ parameters.additionalSetupSteps }}
+              - template: ./templates/build.yml
+              - template: ./templates/1espackage.yml
+              - template: ./templates/sign.yml
+                parameters:
+                  enableSigning: ${{ parameters.enableSigning }}
+              - template: ./templates/stage-artifacts.yml
+              - template: ./templates/test.yml
+                parameters:
+                  useAzureFederatedCredentials: ${{ parameters.useAzureFederatedCredentials }}
+            variables:
+              artifact_name: ${{ job.name }}
+              working_directory: ${{ job.working_directory }}

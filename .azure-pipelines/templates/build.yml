@@ -1,0 +1,8 @@
+steps:
+  - task: Npm@1
+    displayName: "\U0001F449 Build"
+    inputs:
+      command: custom
+      customCommand: run build
+      workingDir: $(working_directory)
+    condition: succeeded()

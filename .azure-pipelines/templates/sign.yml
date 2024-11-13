@@ -1,0 +1,52 @@
+parameters:
+  - name: enableSigning
+    type: boolean
+    default: True
+
+steps:
+  # Check if the SignExtension.signproj file exists and set a variable using PowerShell
+  # All other steps in this template will only run if the file exists
+  - powershell: |
+      $fileExists = Test-Path -Path "$(Build.SourcesDirectory)/.azure-pipelines/SignExtension.signproj"
+      Write-Output "##vso[task.setvariable variable=signprojExists]$fileExists"
+      
+      if ($fileExists) {
+          Write-Output "SignExtension.signproj file found. Signing extension."
+      } else {
+          Write-Output "SignExtension.signproj file not found. Skipping signing."
+      }
+    displayName: "\U0001F449 Check for SignExtension.signproj File"
+    condition: ${{ parameters.enableSigning }}
+
+  # put the extension name and version from the package.json into variables to use later. Variables can be used in later steps as $(package.name) and $(package.version)
+  - pwsh: | 
+      Write-Output "##vso[task.setvariable variable=name;isOutput=true]$((Get-Content -Raw -Path package.json | ConvertFrom-Json).name)"
+      Write-Output "##vso[task.setvariable variable=version;isOutput=true]$((Get-Content -Raw -Path package.json | ConvertFrom-Json).version)"
+    condition: eq(variables['signprojExists'], True)
+    name: package
+    displayName: "\U0001F449 Get extension info from package.json"
+
+  - script: npx @vscode/vsce@latest generate-manifest -i $(package.name)-$(package.version).vsix -o $(Build.SourcesDirectory)/extension.manifest
+    condition: eq(variables['signprojExists'], True)
+    displayName: "\U0001F449 Generate extension manifest"
+
+  # this task will pass even if signing fails, so we follow it up with a check to see if the signature file was created
+  - task: DotNetCoreCLI@2
+    condition: eq(variables['signprojExists'], True)
+    displayName: "\U0001F449 Sign with MSBuild"
+    inputs:
+      command: 'build'
+      projects: $(Build.SourcesDirectory)/.azure-pipelines/SignExtension.signproj
+
+  - pwsh: |
+      $filePath = "extension.signature.p7s"
+
+      if (-Not (Test-Path $filePath)) {
+          Write-Error "The file '$filePath' does not exist."
+          exit 1
+      }
+
+      Write-Output "The file '$filePath' exists."
+      exit 0
+    displayName: "\U0001F449 Verify extension.signature.p7s file was created"
+    condition: eq(variables['signprojExists'], True)

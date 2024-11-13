@@ -3,10 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import {
+    callWithTelemetryAndErrorHandling,
+    type IActionContext,
+    type TreeElementBase,
+} from '@microsoft/vscode-azext-utils';
 import { type WorkspaceResourceBranchDataProvider } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { type TreeItem } from 'vscode';
+import { API } from '../../../AzureDBExperiences';
 import { ext } from '../../../extensionVariables';
 import { MongoDBAccountsWorkspaceItem } from './MongoDBAccountsWorkspaceItem';
 
@@ -27,13 +32,18 @@ export class MongoClustersWorkspaceBranchDataProvider
     }
 
     async getChildren(element: TreeElementBase): Promise<TreeElementBase[] | null | undefined> {
-        return (await element.getChildren?.())?.map((child) => {
-            if (child.id) {
-                return ext.state.wrapItemInStateHandling(child as TreeElementBase & { id: string }, () =>
-                    this.refresh(child),
-                );
-            }
-            return child;
+        return await callWithTelemetryAndErrorHandling('workspace.getChildren', async (context: IActionContext) => {
+            context.telemetry.properties.experience = API.MongoClusters;
+            context.telemetry.properties.parentContext = (await element.getTreeItem()).contextValue ?? 'unknown';
+
+            return (await element.getChildren?.())?.map((child) => {
+                if (child.id) {
+                    return ext.state.wrapItemInStateHandling(child as TreeElementBase & { id: string }, () =>
+                        this.refresh(child),
+                    );
+                }
+                return child;
+            });
         });
     }
 

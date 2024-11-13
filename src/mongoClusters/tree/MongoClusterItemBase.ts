@@ -3,12 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    callWithTelemetryAndErrorHandling,
-    createGenericElement,
-    type IActionContext,
-    type TreeElementBase,
-} from '@microsoft/vscode-azext-utils';
+import { createGenericElement, type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
 import { type TreeItem } from 'vscode';
 
 import * as vscode from 'vscode';
@@ -38,7 +33,7 @@ export abstract class MongoClusterItemBase implements TreeElementBase {
      * @param context The action context.
      * @returns An instance of MongoClustersClient if successful; otherwise, null.
      */
-    protected abstract authenticateAndConnect(context: IActionContext): Promise<MongoClustersClient | null>;
+    protected abstract authenticateAndConnect(): Promise<MongoClustersClient | null>;
 
     /**
      * Authenticates and connects to the cluster to list all available databases.
@@ -54,66 +49,52 @@ export abstract class MongoClusterItemBase implements TreeElementBase {
      * @returns A list of databases in the cluster or a single element to create a new database.
      */
     async getChildren(): Promise<TreeElementBase[]> {
-        const result = await callWithTelemetryAndErrorHandling(
-            'mongoClusterItem.getChildren',
-            async (context: IActionContext) => {
-                // Error handling setup
-                context.errorHandling.suppressDisplay = false;
-                context.errorHandling.rethrow = true;
-                context.valuesToMask.push(this.id, this.mongoCluster.name);
+        ext.outputChannel.appendLine(`MongoDB Clusters: Loading cluster details for "${this.mongoCluster.name}"`);
 
-                ext.outputChannel.appendLine(
-                    `MongoDB Clusters: Loading cluster details for "${this.mongoCluster.name}"`,
-                );
+        let mongoClustersClient: MongoClustersClient | null;
 
-                let mongoClustersClient: MongoClustersClient | null;
+        // Check if credentials are cached, and return the cached client if available
+        if (CredentialCache.hasCredentials(this.id)) {
+            ext.outputChannel.appendLine(
+                `MongoDB Clusters: Reusing active connection for "${this.mongoCluster.name}".`,
+            );
+            mongoClustersClient = await MongoClustersClient.getClient(this.id);
+        } else {
+            // Call to the abstract method to authenticate and connect to the cluster
+            mongoClustersClient = await this.authenticateAndConnect();
+        }
 
-                // Check if credentials are cached, and return the cached client if available
-                if (CredentialCache.hasCredentials(this.id)) {
-                    ext.outputChannel.appendLine(
-                        `MongoDB Clusters: Reusing active connection for "${this.mongoCluster.name}".`,
-                    );
-                    mongoClustersClient = await MongoClustersClient.getClient(this.id);
-                } else {
-                    // Call to the abstract method to authenticate and connect to the cluster
-                    mongoClustersClient = await this.authenticateAndConnect(context);
-                }
+        // If authentication failed, return the error element
+        if (!mongoClustersClient) {
+            return [
+                createGenericElement({
+                    contextValue: 'error',
+                    id: `${this.id}/error`,
+                    label: 'Failed to authenticate (click to retry)',
+                    iconPath: new vscode.ThemeIcon('error'),
+                    commandId: 'azureResourceGroups.refreshTree',
+                }),
+            ];
+        }
 
-                // If authentication failed, return the error element
-                if (!mongoClustersClient) {
-                    return [
-                        createGenericElement({
-                            contextValue: 'error',
-                            id: `${this.id}/error`,
-                            label: 'Failed to authenticate (click to retry)',
-                            iconPath: new vscode.ThemeIcon('error'),
-                            commandId: 'azureResourceGroups.refreshTree',
-                        }),
-                    ];
-                }
+        // List the databases
+        return mongoClustersClient.listDatabases().then((databases: DatabaseItemModel[]) => {
+            if (databases.length === 0) {
+                return [
+                    createGenericElement({
+                        contextValue: 'mongoClusters.item.no-databases',
+                        id: `${this.id}/no-databases`,
+                        label: 'Create database...',
+                        iconPath: new vscode.ThemeIcon('plus'),
+                        commandId: 'mongoClusters.cmd.createDatabase',
+                        commandArgs: [this],
+                    }),
+                ];
+            }
 
-                // List the databases
-                return mongoClustersClient.listDatabases().then((databases: DatabaseItemModel[]) => {
-                    if (databases.length === 0) {
-                        return [
-                            createGenericElement({
-                                contextValue: 'mongoClusters.item.no-databases',
-                                id: `${this.id}/no-databases`,
-                                label: 'Create database...',
-                                iconPath: new vscode.ThemeIcon('plus'),
-                                commandId: 'mongoClusters.cmd.createDatabase',
-                                commandArgs: [this],
-                            }),
-                        ];
-                    }
-
-                    // Map the databases to DatabaseItem elements
-                    return databases.map((database) => new DatabaseItem(this.mongoCluster, database));
-                });
-            },
-        );
-
-        return result ?? [];
+            // Map the databases to DatabaseItem elements
+            return databases.map((database) => new DatabaseItem(this.mongoCluster, database));
+        });
     }
 
     /**

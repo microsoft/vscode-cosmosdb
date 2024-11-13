@@ -13,11 +13,14 @@ import {
     type Resource,
 } from '@azure/cosmos';
 import {
+    callWithTelemetryAndErrorHandling,
     type AzExtParentTreeItem,
     type AzExtTreeItem,
+    type IActionContext,
     type ICreateChildImplContext,
 } from '@microsoft/vscode-azext-utils';
 import type * as vscode from 'vscode';
+import { API } from '../../AzureDBExperiences';
 import { type IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
 import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
 import { getThemeAgnosticIconPath, SERVERLESS_CAPABILITY_NAME } from '../../constants';
@@ -98,31 +101,55 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
     }
 
     public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
-        if (this.root.isEmulator) {
-            const unableToReachEmulatorMessage: string =
-                "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.";
-            return await rejectOnTimeout(
-                2000,
-                () => super.loadMoreChildrenImpl(clearCache),
-                unableToReachEmulatorMessage,
-            );
-        } else {
-            try {
-                return await super.loadMoreChildrenImpl(clearCache);
-            } catch (e) {
-                if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
-                    this.hasShownRbacNotification = true;
-                    const principalId = (await getSignedInPrincipalIdForAccountEndpoint(this.root.endpoint)) ?? '';
-                    // chedck if the principal ID matches the one that is signed in, otherwise this might be a security problem, hence show the error message
-                    if (e.message.includes(`[${principalId}]`) && (await ensureRbacPermission(this, principalId))) {
+        const result = await callWithTelemetryAndErrorHandling(
+            'getChildren',
+            async (context: IActionContext): Promise<AzExtTreeItem[]> => {
+                context.telemetry.properties.parentContext = this.contextValue;
+
+                // move this to a shared file, currently it's defined in DocDBAccountTreeItem so I can't reference it here
+                if (this.contextValue.includes('cosmosDBDocumentServer')) {
+                    context.telemetry.properties.experience = API.Core;
+                    // same issue as above
+                } else if (this.contextValue.includes('cosmosDBGraphAccount')) {
+                    context.telemetry.properties.experience = API.Graph;
+                    // same issue as above
+                } else if (this.contextValue.includes('cosmosDBTableAccount')) {
+                    context.telemetry.properties.experience = API.Table;
+                }
+
+                if (this.root.isEmulator) {
+                    const unableToReachEmulatorMessage: string =
+                        "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.";
+                    return await rejectOnTimeout(
+                        2000,
+                        () => super.loadMoreChildrenImpl(clearCache),
+                        unableToReachEmulatorMessage,
+                    );
+                } else {
+                    try {
                         return await super.loadMoreChildrenImpl(clearCache);
-                    } else {
-                        void showRbacPermissionError(this.fullId, principalId);
+                    } catch (e) {
+                        if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
+                            this.hasShownRbacNotification = true;
+                            const principalId =
+                                (await getSignedInPrincipalIdForAccountEndpoint(this.root.endpoint)) ?? '';
+                            // chedck if the principal ID matches the one that is signed in, otherwise this might be a security problem, hence show the error message
+                            if (
+                                e.message.includes(`[${principalId}]`) &&
+                                (await ensureRbacPermission(this, principalId))
+                            ) {
+                                return await super.loadMoreChildrenImpl(clearCache);
+                            } else {
+                                void showRbacPermissionError(this.fullId, principalId);
+                            }
+                        }
+                        throw e; // rethrowing tells the resources extension to show the exception message in the tree
                     }
                 }
-                throw e; // rethrowing tells the resources extension to show the exception message in the tree
-            }
-        }
+            },
+        );
+
+        return result ?? [];
     }
 
     public async deleteTreeItemImpl(context: IDeleteWizardContext): Promise<void> {

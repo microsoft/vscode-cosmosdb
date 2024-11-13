@@ -9,6 +9,7 @@
  * singletone on a client with a getter from a connection pool..
  */
 
+import { EJSON } from 'bson';
 import {
     MongoClient,
     ObjectId,
@@ -51,8 +52,6 @@ export type InsertDocumentsResult = {
     /** The number of inserted documents for this operations */
     insertedCount: number;
 };
-
-// type TableColumnDef = { id: string; name: string; field: string; minWidth: number };
 
 export class MongoClustersClient {
     // cache of active/existing clients
@@ -214,34 +213,80 @@ export class MongoClustersClient {
         }
     }
 
-    async deleteDocuments(databaseName: string, collectionName: string, documentObjectIds: string[]): Promise<boolean> {
+    async deleteDocuments(databaseName: string, collectionName: string, documentIds: string[]): Promise<boolean> {
         // convert input data
-        const objectIds = documentObjectIds.map((id) => new ObjectId(id));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const parsedDocumentIds: any[] = documentIds.map((id) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let parsedId: any;
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                parsedId = EJSON.parse(id);
+            } catch (error) {
+                if (ObjectId.isValid(id)) {
+                    parsedId = new ObjectId(id);
+                } else {
+                    throw error;
+                }
+            }
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+            return parsedId;
+        });
 
         // connect and extecute
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
-        const deleteResult: DeleteResult = await collection.deleteMany({ _id: { $in: objectIds } });
+        const deleteResult: DeleteResult = await collection.deleteMany({ _id: { $in: parsedDocumentIds } });
 
         return deleteResult.acknowledged;
     }
 
     async pointRead(databaseName: string, collectionName: string, documentId: string) {
-        const objectId = new ObjectId(documentId);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let parsedDocumentId: any;
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            parsedDocumentId = EJSON.parse(documentId);
+        } catch (error) {
+            if (ObjectId.isValid(documentId)) {
+                parsedDocumentId = new ObjectId(documentId);
+            } else {
+                throw error;
+            }
+        }
 
         // connect and execute
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
-        const documentContent = await collection.findOne({ _id: objectId });
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const documentContent = await collection.findOne({ _id: parsedDocumentId });
 
         return documentContent;
     }
 
+    // TODO: add a dedicated insert function. The original idea of keeping it in upsert was to avoid code duplication,
+    // however it leads to issues with the upsert logic.
     async upsertDocument(
         databaseName: string,
         collectionName: string,
         documentId: string,
         document: Document,
-    ): Promise<{ documentId: ObjectId; document: WithId<Document> | null }> {
-        const objectId = documentId !== '' ? new ObjectId(documentId) : new ObjectId();
+    ): Promise<{ documentId: unknown; document: WithId<Document> | null }> {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+        let parsedId: any;
+
+        if (documentId === '') {
+            // TODO: do not rely in empty string, use null or undefined
+            parsedId = new ObjectId();
+        } else {
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                parsedId = EJSON.parse(documentId);
+            } catch {
+                if (ObjectId.isValid(documentId)) {
+                    parsedId = new ObjectId(documentId);
+                }
+            }
+        }
 
         // connect and execute
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
@@ -250,14 +295,17 @@ export class MongoClustersClient {
         delete document._id;
 
         const replaceResult = await collection.replaceOne(
-            { _id: objectId },
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            { _id: parsedId },
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             document as WithoutId<Document>,
             { upsert: true },
         );
 
-        const newDocumentId = (replaceResult.upsertedId as ObjectId) ?? objectId;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+        const newDocumentId = (replaceResult.upsertedId as any) ?? parsedId;
 
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const newDocument = await collection.findOne({ _id: newDocumentId });
 
         return { documentId: newDocumentId, document: newDocument };

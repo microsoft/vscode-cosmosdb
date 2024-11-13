@@ -78,7 +78,7 @@ export function documentToSlickGridTree(document: WithId<Document>, idPrefix?: s
     const rootId = `${idPrefix}${localEntryId}`; // localEntryId is always a 0 here
     tree.push({
         id: rootId,
-        field: document._id.toString(),
+        field: document._id._bsontype === 'ObjectId' ? document._id.toString() : JSON.stringify(document._id),
         value: '{...}',
         type: 'Document',
         parentId: null,

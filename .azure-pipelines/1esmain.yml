@@ -41,6 +41,8 @@ extends:
   template: azure-pipelines/MicroBuild.1ES.Official.yml@1esPipelines
   parameters:
     sdl:
+      suppression:
+        suppressionFile: $(Build.SourcesDirectory)\.config\guardian\.gdnsuppress
       credscan:
         suppressionsFile: $(Build.SourcesDirectory)\.azure-pipelines\compliance\CredScanSuppressions.json
       # codeql:

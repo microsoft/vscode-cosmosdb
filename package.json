@@ -772,11 +772,16 @@
                 {
                     "command": "cosmosDB.createDocDBDocument",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentsGroup",
-                    "group": "1@1"
+                    "group": "1@2"
                 },
                 {
                     "command": "cosmosDB.openNoSqlQueryEditor",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection && config.cosmosDB.preview.queryEditor",
+                    "group": "1@1"
+                },
+                {
+                    "command": "cosmosDB.openNoSqlQueryEditor",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentsGroup && config.cosmosDB.preview.queryEditor",
                     "group": "1@1"
                 },
                 {

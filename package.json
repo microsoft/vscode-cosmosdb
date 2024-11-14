@@ -588,42 +588,42 @@
                 "icon": "$(warning)"
             },
             {
-                "category": "MongoDB (vCore)",
+                "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.dropCollection",
                 "title": "Drop Collection..."
             },
             {
-                "category": "MongoDB (vCore)",
+                "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.dropDatabase",
                 "title": "Drop Database..."
             },
             {
-                "category": "MongoDB (vCore)",
+                "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.createCollection",
                 "title": "Create Collection..."
             },
             {
-                "category": "MongoDB (vCore)",
+                "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.createDatabase",
                 "title": "Create Database..."
             },
             {
-                "category": "MongoDB (vCore)",
+                "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.importDocuments",
                 "title": "Import Documents into Collection..."
             },
             {
-                "category": "MongoDB (vCore)",
+                "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.exportDocuments",
                 "title": "Export Documents from Collection..."
             },
             {
-                "category": "MongoDB (vCore)",
+                "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.launchShell",
                 "title": "Launch Shell"
             },
             {
-                "category": "MongoDB (vCore)",
+                "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.removeWorkspaceConnection",
                 "title": "Remove Connection..."
             }

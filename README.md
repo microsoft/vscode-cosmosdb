@@ -56,6 +56,8 @@ The extension now offers enhanced support for MongoDB clusters, making it easier
 - **Document Management**: View, edit, and delete individual documents directly from the interface. Gain the flexibility to manage documents in-place, streamlining the database management process.
 - **JSON Import and Export**: Import data from JSON files or export documents as needed. You can even export entire collections or the result of a query, making data sharing simpler and more efficient.
 
+  ![MongoDB Clusters with a Collection View and auto-completion](resources/readme/vscode-cosmosdb-vcore.png)
+
 ## Scrapbooks
 
 ### Run Mongo Commands with Rich Intellisense

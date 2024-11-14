@@ -44,7 +44,7 @@ Browse, manage and query your Azure databases both locally and in the cloud with
 
 ![Query Editor with Results](resources/readme/queryEditor.png)
 
-## Improved MongoDB Cluster Support
+## MongoDB Cluster Support
 
 The extension now offers enhanced support for MongoDB clusters, making it easier than ever to connect, view, and manage your MongoDB resources, whether on Azure or any external cluster.
 

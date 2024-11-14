@@ -56,7 +56,7 @@ The extension now offers enhanced support for MongoDB clusters, making it easier
 - **Document Management**: View, edit, and delete individual documents directly from the interface. Gain the flexibility to manage documents in-place, streamlining the database management process.
 - **JSON Import and Export**: Import data from JSON files or export documents as needed. You can even export entire collections or the result of a query, making data sharing simpler and more efficient.
 
-  ![MongoDB Clusters with a Collection View and auto-completion](resources/readme/vscode-cosmosdb-vcore.png)
+![MongoDB Clusters with a Collection View and auto-completion](resources/readme/vscode-cosmosdb-vcore.png)
 
 ## Scrapbooks
 
@@ -83,8 +83,11 @@ The extension now offers enhanced support for MongoDB clusters, making it easier
 1. Sign in to your Azure Account by clicking "Sign in to Azure..." in the Azure Resources explorer
    > If you don't already have an Azure Account, select "Create a Free Azure Account"
 2. Select the `+` button to open the "Create Resource" menu
+
    ![Create resource](resources/readme/createResource.png)
+   
 3. Choose "Create Database Server..."
+
    ![Create Database Server](resources/readme/createDatabaseServer.png)
 
 ## Attach to the Cosmos DB Emulator

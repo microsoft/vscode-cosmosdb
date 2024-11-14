@@ -23,7 +23,7 @@ export async function createDatabase(context: IActionContext, clusterNode?: Mong
         throw new Error(
             localize(
                 'mongoClusters.notSignedIn',
-                'You are not signed in to the MongoDB (vCore) cluster. Please sign in (by expanding the node "{0}") and try again.',
+                'You are not signed in to the MongoDB Cluster. Please sign in (by expanding the node "{0}") and try again.',
                 clusterNode.mongoCluster.name,
             ),
         );

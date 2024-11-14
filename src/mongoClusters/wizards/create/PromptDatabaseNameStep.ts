@@ -79,7 +79,7 @@ export class DatabaseNameStep extends AzureWizardPromptStep<CreateDatabaseWizard
             ) {
                 return localize(
                     'mongoClusters.databaseExists',
-                    'The database "{0}" already exists in the MongoDB (vCore) cluster "{1}". \n' +
+                    'The database "{0}" already exists in the MongoDB Cluster "{1}". \n' +
                         'Do not rely on case to distinguish between databases. For example, you cannot use two databases with names like, salesData and SalesData.',
                     name,
                     context.mongoClusterItem.mongoCluster.name,

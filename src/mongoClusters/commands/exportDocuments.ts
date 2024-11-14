@@ -43,7 +43,7 @@ export async function mongoClustersExportQueryResults(
     );
 
     const filePath = targetUri.fsPath; // Convert `vscode.Uri` to a regular file path
-    ext.outputChannel.appendLog(`MongoDB (vCore): Exporting data to: ${filePath}`);
+    ext.outputChannel.appendLog(`MongoDB Clusters: Exporting data to: ${filePath}`);
 
     let documentCount = 0;
 
@@ -58,7 +58,7 @@ export async function mongoClustersExportQueryResults(
         );
     });
 
-    ext.outputChannel.appendLog(`MongoDB (vCore): Exported document count: ${documentCount}`);
+    ext.outputChannel.appendLog(`MongoDB Clusters: Exported document count: ${documentCount}`);
 }
 
 async function runExportWithProgressAndDescription(
@@ -80,7 +80,7 @@ async function runExportWithProgressAndDescription(
                     await exportFunction(progress, cancellationToken);
                 } catch (error) {
                     vscode.window.showErrorMessage('Failed to export documents. Please see the output for details.');
-                    ext.outputChannel.appendLog(`MongoDB (vCore): Error exporting documents: ${error}`);
+                    ext.outputChannel.appendLog(`MongoDB Clusters: Error exporting documents: ${error}`);
                 }
                 progress.report({ increment: 100 }); // Complete the progress bar
             },

@@ -216,6 +216,6 @@ async function insertDocumentsIntoMongoCluster(
         message = `Import failed. The operation was not acknowledged by the database.`;
     }
 
-    ext.outputChannel.appendLog('MongoDB (vCore): ' + message);
+    ext.outputChannel.appendLog('MongoDB Clusters ' + message);
     return message;
 }

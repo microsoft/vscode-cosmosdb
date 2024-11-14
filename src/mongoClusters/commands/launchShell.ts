@@ -50,7 +50,7 @@ export async function launchShell(
     //     shellParameters = `"${connStringWithDb}" --eval 'db.getCollection("${node.collectionInfo.name}")'`
     // }
 
-    const terminal: vscode.Terminal = vscode.window.createTerminal('MongoDB (vCore) Shell');
+    const terminal: vscode.Terminal = vscode.window.createTerminal('MongoDB Clusters Shell');
 
     terminal.sendText('mongosh ' + shellParameters);
     terminal.show();

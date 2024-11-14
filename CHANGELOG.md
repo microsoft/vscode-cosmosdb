@@ -4,7 +4,8 @@
 
 ### Added
 
-- Added support for MongoDB vCore. Azure Resources now lists existing vCore clusters or they can be added manually to the Workspace using a connection string.
+- Added support for Azure Cosmos DB for MongoDB vCore. Azure Resources now lists existing MongoDB vCore clusters.
+- Added support for universal MongoDB Cluster connectivity using a connection string (MongoDB Cluster Connections). This supports both MongoDB vCore clusters as well as other MongoDB cluster platforms.
 - New UI for executing queries in the NoSQL account. UI supports viewing results in a table, tree or a JSON view, showing the query stats, the RU cost and Index Metrics.
 - New UI for executing search queries in the vCore account. UI supports viewing results in a table, tree or a JSON view.
 - New UI for creating, viewing and editing documents in a separate tab.

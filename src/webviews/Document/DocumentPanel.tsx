@@ -195,7 +195,7 @@ export const DocumentPanel = () => {
                     width={'100%'}
                     defaultLanguage={'json'}
                     value={state.currentDocumentContent ?? 'No result'}
-                    options={{ domReadOnly: isReadOnly, readOnly: isReadOnly }}
+                    options={{ domReadOnly: isReadOnly, readOnly: isReadOnly, scrollBeyondLastLine: false }}
                     onChange={onChange}
                 />
             </section>

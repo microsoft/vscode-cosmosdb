@@ -93,10 +93,10 @@ export class BaseTab {
                       `form-action 'none';`,
                       `default-src ${cspSource};`,
                       `script-src ${cspSource} 'nonce-${nonce}';`,
-                      `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
-                      `font-src ${cspSource} ${DEV_SERVER_HOST};`,
-                      `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
-                      `img-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
+                      `style-src ${cspSource} 'unsafe-inline';`,
+                      `font-src ${cspSource};`,
+                      `worker-src ${cspSource} blob:;`,
+                      `img-src ${cspSource} data:;`,
                   ]
                 : [
                       `form-action 'none';`,

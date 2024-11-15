@@ -106,13 +106,13 @@ export abstract class WebviewBaseController<Configuration> implements vscode.Dis
                   ]
                 : [
                       `form-action 'none';`,
-                      `default-src ${DEV_SERVER_HOST};`,
-                      `script-src ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
-                      `style-src ${DEV_SERVER_HOST} vscode-resource: 'unsafe-inline';`,
-                      `img-src ${DEV_SERVER_HOST} data: vscode-resource:;`,
-                      `connect-src ${DEV_SERVER_HOST} ws:;`,
-                      `font-src ${DEV_SERVER_HOST};`,
-                      `worker-src ${DEV_SERVER_HOST} blob:;`,
+                      `default-src ${webview?.cspSource} ${DEV_SERVER_HOST};`,
+                      `script-src ${webview?.cspSource} ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
+                      `style-src ${webview?.cspSource} ${DEV_SERVER_HOST} vscode-resource: 'unsafe-inline';`,
+                      `img-src ${webview?.cspSource} ${DEV_SERVER_HOST} data: vscode-resource:;`,
+                      `connect-src ${webview?.cspSource} ${DEV_SERVER_HOST} ws:;`,
+                      `font-src ${webview?.cspSource} ${DEV_SERVER_HOST};`,
+                      `worker-src ${webview?.cspSource} ${DEV_SERVER_HOST} blob:;`,
                   ]
         ).join(' ');
 

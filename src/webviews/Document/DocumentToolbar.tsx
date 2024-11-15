@@ -23,14 +23,23 @@ export const DocumentToolbar = (props: DocumentToolbarProps) => {
     const inProgress = state.isSaving || state.isRefreshing;
     const hasDocumentInDB = state.documentId !== undefined;
     const isReadOnly = state.mode === 'view';
+    const isMac = navigator.platform.toLowerCase().includes('mac');
+
+    const onSaveHotkeyTitle = isMac ? 'Cmd+S' : 'Ctrl+S';
+    const onEditHotkeyTitle = isMac ? 'Cmd+Shift+E' : 'Ctrl+Shift+E';
+    const onRefreshHotkeyTitle = isMac ? 'Cmd+Shift+R' : 'Ctrl+Shift+R';
 
     return (
         <>
             <Toolbar size={'small'}>
                 {!isReadOnly && (
-                    <Tooltip content="Save document to the database" relationship="description" withArrow>
+                    <Tooltip
+                        content={`Save document to the database (${onSaveHotkeyTitle})`}
+                        relationship="description"
+                        withArrow
+                    >
                         <ToolbarButton
-                            onClick={() => void props.onSave}
+                            onClick={() => void props.onSave()}
                             aria-label="Save document to the database"
                             icon={<SaveRegular />}
                             appearance={'primary'}
@@ -41,9 +50,13 @@ export const DocumentToolbar = (props: DocumentToolbarProps) => {
                     </Tooltip>
                 )}
                 {isReadOnly && (
-                    <Tooltip content="Open document for editing" relationship="description" withArrow>
+                    <Tooltip
+                        content={`Open document for editing (${onEditHotkeyTitle})`}
+                        relationship="description"
+                        withArrow
+                    >
                         <ToolbarButton
-                            onClick={() => void props.onEdit}
+                            onClick={() => void props.onEdit()}
                             aria-label="Open document for editing"
                             icon={<EditRegular />}
                             appearance={'primary'}
@@ -55,9 +68,13 @@ export const DocumentToolbar = (props: DocumentToolbarProps) => {
 
                 <ToolbarDividerTransparent />
 
-                <Tooltip content="Reload original document from the database" relationship="description" withArrow>
+                <Tooltip
+                    content={`Reload original document from the database (${onRefreshHotkeyTitle})`}
+                    relationship="description"
+                    withArrow
+                >
                     <ToolbarButton
-                        onClick={() => void props.onRefresh}
+                        onClick={() => void props.onRefresh()}
                         aria-label="Reload original document from the database"
                         icon={<ArrowClockwiseRegular />}
                         disabled={inProgress || !hasDocumentInDB}

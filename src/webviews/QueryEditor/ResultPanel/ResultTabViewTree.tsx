@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useEffect } from 'react';
 import { FieldType, Formatters, SlickgridReact, type GridOption } from 'slickgrid-react';
 
 type ResultTabViewTreeProps = {
@@ -61,23 +60,6 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
         enableHeaderButton: false,
         enableHeaderMenu: false,
     };
-
-    useEffect(() => {
-        return () => {
-            /**
-             * The following code is required to undo modifications made to the data
-             * by the SlickGrid Tree Data plugin. If you don't do this, the data
-             * will start to duplicate as the 'children' property is filled with
-             * new nodes on each mount. This leads to duplicates and the tree view crashing.
-             *
-             * This is a known issue with the SlickGrid Tree Data plugin and is being discussed here:
-             * https://github.com/ghiscoding/slickgrid-universal/discussions/1655
-             */
-            data.forEach((item) => {
-                delete item.children;
-            });
-        };
-    }, []);
 
     return (
         <SlickgridReact

@@ -10,7 +10,8 @@ import {
     DialogBody,
     DialogContent,
     DialogSurface,
-    DialogTitle, DialogTrigger,
+    DialogTitle,
+    DialogTrigger,
 } from '@fluentui/react-components';
 
 export type AlertDialogProps = {

@@ -318,7 +318,7 @@ export const CollectionView = (): JSX.Element => {
     return (
         <CollectionViewContext.Provider value={[currentContext, setCurrentContext]}>
             <div className="collectionView">
-                {currentContext.isLoading && <ProgressBar thickness="large" className="progressBar" />}
+                {currentContext.isLoading && <ProgressBar thickness="large" shape="square" className="progressBar" />}
 
                 <div className="toolbarMainView">
                     <ToolbarMainView />

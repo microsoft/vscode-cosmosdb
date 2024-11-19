@@ -45,6 +45,7 @@ export const DocumentView = (): JSX.Element => {
 
     const [editorContent] = configuration.mode === 'add' ? useState('{  }') : useState('{ "loading...": true }');
     const [isLoading, setIsLoading] = useState(configuration.mode !== 'add');
+    const [isDirty, setIsDirty] = useState(true);
 
     // a useEffect without a dependency runs only once after the first render only
     useEffect(() => {
@@ -194,6 +195,7 @@ export const DocumentView = (): JSX.Element => {
                 configuration.documentId = response.documentId;
                 setContent(response.documentStringified);
                 setIsLoading(false);
+                setIsDirty(false);
             })
             .catch((error) => {
                 console.error('Error saving document:', error);
@@ -208,9 +210,9 @@ export const DocumentView = (): JSX.Element => {
     return (
         <div className="documentView">
             <div className="toolbarContainer">
-                {isLoading && <ProgressBar thickness="large" className="progressBar" />}
+                {isLoading && <ProgressBar thickness="large" shape="square" className="progressBar" />}
                 <ToolbarDocuments
-                    viewerMode={configuration.mode}
+                    disableSaveButton={configuration.mode === 'view' || !isDirty}
                     onSaveRequest={handleOnSaveRequest}
                     onValidateRequest={handleOnValidateRequest}
                     onRefreshRequest={handleOnRefreshRequest}
@@ -224,6 +226,9 @@ export const DocumentView = (): JSX.Element => {
                     options={monacoOptions}
                     value={editorContent}
                     onMount={handleMonacoEditorMount}
+                    onChange={() => {
+                        setIsDirty(true);
+                    }}
                 />
             </div>
         </div>

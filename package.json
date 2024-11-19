@@ -1281,6 +1281,11 @@
                     ],
                     "default": "wordConfirmation"
                 },
+                "azureDatabases.showOperationSummaries": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show detailed operation summaries, displaying messages for actions such as database drops, document additions, deletions, or similar events."
+                },
                 "cosmosDB.documentLabelFields": {
                     "type": "array",
                     "default": [

@@ -4,7 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { getConfirmationAsInSettings } from '../../utils/confirmations';
+import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
+import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
+import { localize } from '../../utils/localize';
 import { type CollectionItem } from '../tree/CollectionItem';
 
 export async function dropCollection(context: IActionContext, node?: CollectionItem): Promise<void> {
@@ -23,5 +25,11 @@ export async function dropCollection(context: IActionContext, node?: CollectionI
         return;
     }
 
-    await node.delete(context);
+    const success = await node.delete(context);
+
+    if (success) {
+        showConfirmationAsInSettings(
+            localize('showConfirmation.droppedCollection', 'The "{0}" collection has been dropped.', node.collectionInfo.name),
+        );
+    }
 }

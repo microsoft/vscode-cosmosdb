@@ -9,14 +9,14 @@ import { type JSX } from 'react';
 import { ToolbarDividerTransparent } from '../../collectionView/components/toolbar/ToolbarDividerTransparent';
 
 interface ToolbarDocumentsProps {
-    viewerMode: string;
+    disableSaveButton: boolean;
     onValidateRequest: () => void;
     onRefreshRequest: () => void;
     onSaveRequest: () => void;
 }
 
 export const ToolbarDocuments = ({
-    viewerMode,
+    disableSaveButton,
     onValidateRequest,
     onRefreshRequest,
     onSaveRequest,
@@ -29,7 +29,7 @@ export const ToolbarDocuments = ({
                     aria-label="Save to the database"
                     icon={<SaveRegular />}
                     appearance={'primary'}
-                    disabled={viewerMode === 'view'}
+                    disabled={disableSaveButton}
                 >
                     Save
                 </ToolbarButton>

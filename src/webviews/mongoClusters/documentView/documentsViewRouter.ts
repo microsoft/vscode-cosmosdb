@@ -8,6 +8,8 @@ import { type Document } from 'mongodb';
 import { z } from 'zod';
 import { type MongoClustersClient } from '../../../mongoClusters/MongoClustersClient';
 import { MongoClustersSession } from '../../../mongoClusters/MongoClusterSession';
+import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
+import { localize } from '../../../utils/localize';
 import { publicProcedure, router } from '../../api/extension-server/trpc';
 
 export type RouterContext = {
@@ -88,6 +90,10 @@ export const documentsViewRouter = router({
             const newDocumentStringified = JSON.stringify(extendedJson, null, 4);
 
             myCtx.viewPanelTitleSetter(`${myCtx.databaseName}/${myCtx.collectionName}/${newDocumentId}`);
+
+            showConfirmationAsInSettings(
+                localize('showConfirmation.mongoClusters.documentView.saveDocument', 'The document with the _id {0} has been saved.', newDocumentId),
+            );
 
             return { documentStringified: newDocumentStringified, documentId: newDocumentId };
         }),

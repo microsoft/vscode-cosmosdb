@@ -22,6 +22,9 @@ export async function removeWorkspaceConnection(
     ext.mongoClustersWorkspaceBranchDataProvider.refresh();
 
     showConfirmationAsInSettings(
-        localize('showConfirmation.removedWorkspaceConnecdtion', 'The selected connection has been removed from your workspace.'),
+        localize(
+            'showConfirmation.removedWorkspaceConnecdtion',
+            'The selected connection has been removed from your workspace.',
+        ),
     );
 }

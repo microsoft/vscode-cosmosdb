@@ -29,7 +29,11 @@ export async function dropCollection(context: IActionContext, node?: CollectionI
 
     if (success) {
         showConfirmationAsInSettings(
-            localize('showConfirmation.droppedCollection', 'The "{0}" collection has been dropped.', node.collectionInfo.name),
+            localize(
+                'showConfirmation.droppedCollection',
+                'The "{0}" collection has been dropped.',
+                node.collectionInfo.name,
+            ),
         );
     }
 }

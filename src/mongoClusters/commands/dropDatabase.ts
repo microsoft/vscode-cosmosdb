@@ -29,7 +29,11 @@ export async function dropDatabase(context: IActionContext, node?: DatabaseItem)
 
     if (success) {
         showConfirmationAsInSettings(
-            localize('showConfirmation.droppedDatabase', 'The "{0}" database has been dropped.', node.databaseInfo.name),
+            localize(
+                'showConfirmation.droppedDatabase',
+                'The "{0}" database has been dropped.',
+                node.databaseInfo.name,
+            ),
         );
     }
 }

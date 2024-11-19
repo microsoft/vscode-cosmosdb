@@ -92,7 +92,11 @@ export const documentsViewRouter = router({
             myCtx.viewPanelTitleSetter(`${myCtx.databaseName}/${myCtx.collectionName}/${newDocumentId}`);
 
             showConfirmationAsInSettings(
-                localize('showConfirmation.mongoClusters.documentView.saveDocument', 'The document with the _id {0} has been saved.', newDocumentId),
+                localize(
+                    'showConfirmation.mongoClusters.documentView.saveDocument',
+                    'The document with the _id {0} has been saved.',
+                    newDocumentId,
+                ),
             );
 
             return { documentStringified: newDocumentStringified, documentId: newDocumentId };

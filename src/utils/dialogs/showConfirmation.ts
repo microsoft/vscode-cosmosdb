@@ -9,13 +9,10 @@ import { localize } from '../localize';
 
 export function showConfirmationAsInSettings(message: string) {
     const showSummary: boolean | undefined = vscode.workspace
-    .getConfiguration()
-    .get<boolean>(ext.settingsKeys.showOperationSummaries);
+        .getConfiguration()
+        .get<boolean>(ext.settingsKeys.showOperationSummaries);
 
     if (showSummary) {
-        vscode.window.showInformationMessage(
-            message,
-            localize('showConfirmation.ok', 'OK')
-        )
+        vscode.window.showInformationMessage(message, localize('showConfirmation.ok', 'OK'));
     }
 }

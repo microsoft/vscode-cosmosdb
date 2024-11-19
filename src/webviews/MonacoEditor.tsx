@@ -31,7 +31,7 @@ export const MonacoEditor = (props: EditorProps) => {
         <section {...attr} style={{ width: '100%', height: '100%' }}>
             <Editor {...props} theme={themeState.monaco.themeName} />
             <input
-                style={{ position: 'absolute', width: '1px', height: '1px' }}
+                style={{ position: 'absolute', width: '1px', height: '1px', top: '0px', zIndex: -999 }}
                 id="monaco-editor-aria-container"
                 aria-label="Element to prevent loosing focus from editor"
             />

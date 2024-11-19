@@ -320,14 +320,15 @@ export class MongoClustersClient {
     }
 
     async createCollection(databaseName: string, collectionName: string): Promise<boolean> {
+        let newCollection;
         try {
-            await this._mongoClient.db(databaseName).createCollection(collectionName);
+            newCollection = await this._mongoClient.db(databaseName).createCollection(collectionName);
         } catch (_e) {
             console.log(_e); //todo: add to telemetry
             return false;
         }
 
-        return true;
+        return newCollection !== undefined;
     }
 
     async createDatabase(databaseName: string): Promise<boolean> {

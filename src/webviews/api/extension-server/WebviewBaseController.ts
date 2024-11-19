@@ -89,7 +89,6 @@ export abstract class WebviewBaseController<Configuration> implements vscode.Dis
         const uri = (...parts: string[]) =>
             webview?.asWebviewUri(vscode.Uri.file(path.join(ext.context.extensionPath, dir, ...parts))).toString(true);
 
-        const publicPath = isProduction || !devServer ? uri() : `${DEV_SERVER_HOST}/`;
         const srcUri = isProduction || !devServer ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
 
         const csp = (
@@ -140,7 +139,7 @@ export abstract class WebviewBaseController<Configuration> implements vscode.Dis
                             };
 
                                 import { render } from "${srcUri}";
-                                render('${this._webviewName}', acquireVsCodeApi(), "${publicPath}");
+                                render('${this._webviewName}', acquireVsCodeApi());
                             </script>
 
                     </body>

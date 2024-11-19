@@ -25,9 +25,9 @@ export const DocumentToolbar = (props: DocumentToolbarProps) => {
     const isReadOnly = state.mode === 'view';
     const isMac = navigator.platform.toLowerCase().includes('mac');
 
-    const onSaveHotkeyTitle = isMac ? 'Cmd+S' : 'Ctrl+S';
-    const onEditHotkeyTitle = isMac ? 'Cmd+Shift+E' : 'Ctrl+Shift+E';
-    const onRefreshHotkeyTitle = isMac ? 'Cmd+Shift+R' : 'Ctrl+Shift+R';
+    const onSaveHotkeyTitle = isMac ? '\u2318 S' : 'Ctrl+S';
+    const onEditHotkeyTitle = isMac ? '\u2318 \u21E7 E' : 'Ctrl+Shift+E';
+    const onRefreshHotkeyTitle = isMac ? '\u2318 \u21E7 R' : 'Ctrl+Shift+R';
 
     return (
         <>

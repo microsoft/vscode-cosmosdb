@@ -13,8 +13,8 @@ import { getKnownFields, type FieldEntry } from '../../../utils/json/mongo/autoc
 import { publicProcedure, router } from '../../api/extension-server/trpc';
 
 import { type CollectionItem } from '../../../mongoClusters/tree/CollectionItem';
-// eslint-disable-next-line import/no-internal-modules
 import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
+// eslint-disable-next-line import/no-internal-modules
 import basicFindQuerySchema from '../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';
 import { generateMongoFindJsonSchema } from '../../../utils/json/mongo/autocomplete/generateMongoFindJsonSchema';
 import { localize } from '../../../utils/localize';

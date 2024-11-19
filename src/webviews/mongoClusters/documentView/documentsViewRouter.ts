@@ -94,7 +94,7 @@ export const documentsViewRouter = router({
             showConfirmationAsInSettings(
                 localize(
                     'showConfirmation.mongoClusters.documentView.saveDocument',
-                    'The document with the _id {0} has been saved.',
+                    'The document with the _id "{0}" has been saved.',
                     newDocumentId,
                 ),
             );

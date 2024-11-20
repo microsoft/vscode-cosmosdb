@@ -3,115 +3,60 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    Button,
-    Dialog,
-    DialogActions,
-    DialogBody,
-    DialogContent,
-    DialogSurface,
-    DialogTitle,
-    DialogTrigger,
-    Toolbar,
-    ToolbarButton,
-    Tooltip,
-} from '@fluentui/react-components';
+import { Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, EditRegular, SaveRegular } from '@fluentui/react-icons';
-import { useState } from 'react';
-import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
-
-type AlertDialogProps = {
-    open: boolean;
-    setOpen: (open: boolean) => void;
-    doAction: () => Promise<void>;
-};
-
-const AlertDialog = ({ open, setOpen, doAction }: AlertDialogProps) => {
-    return (
-        <Dialog modalType="alert" open={open} onOpenChange={(_event, data) => setOpen(data.open)}>
-            <DialogSurface>
-                <DialogBody>
-                    <DialogTitle>Attention</DialogTitle>
-                    <DialogContent>
-                        <div>Your document has unsaved changes. If you continue, these changes will be lost.</div>
-                        <div>Are you sure you want to continue?</div>
-                    </DialogContent>
-
-                    <DialogActions>
-                        <Button appearance="secondary" onClick={() => void doAction()}>
-                            Continue
-                        </Button>
-
-                        <DialogTrigger disableButtonEnhancement>
-                            <Button appearance="primary">Close</Button>
-                        </DialogTrigger>
-                    </DialogActions>
-                </DialogBody>
-            </DialogSurface>
-        </Dialog>
-    );
-};
+import { useDocumentState } from './state/DocumentContext';
 
 const ToolbarDividerTransparent = () => {
     return <div style={{ padding: '4px' }} />;
 };
 
-export const DocumentToolbar = () => {
-    const state = useDocumentState();
-    const dispatcher = useDocumentDispatcher();
+export type DocumentToolbarProps = {
+    onSave: () => Promise<void>;
+    onEdit: () => Promise<void>;
+    onRefresh: () => Promise<void>;
+};
 
-    const [open, setOpen] = useState(false);
-    const [doAction, setDoAction] = useState<() => Promise<void>>(() => async () => {});
+export const DocumentToolbar = (props: DocumentToolbarProps) => {
+    const state = useDocumentState();
 
     const inProgress = state.isSaving || state.isRefreshing;
     const hasDocumentInDB = state.documentId !== undefined;
-    const isDirty = state.isDirty;
     const isReadOnly = state.mode === 'view';
+    const isMac = navigator.platform.toLowerCase().includes('mac');
 
-    const onSaveRequest = () => {
-        // Save document to the database
-        void dispatcher.saveDocument(state.currentDocumentContent);
-    };
-
-    const onEditRequest = () => {
-        // Open document for editing
-        void dispatcher.setMode('edit');
-    };
-
-    const onRefreshRequest = () => {
-        // Reload original document from the database
-        if (state.isDirty) {
-            setOpen(true);
-            setDoAction(() => async () => {
-                setOpen(false);
-                await dispatcher.refreshDocument();
-            });
-        } else {
-            void dispatcher.refreshDocument();
-        }
-    };
+    const onSaveHotkeyTitle = isMac ? '\u2318 S' : 'Ctrl+S';
+    const onEditHotkeyTitle = isMac ? '\u2318 \u21E7 E' : 'Ctrl+Shift+E';
+    const onRefreshHotkeyTitle = isMac ? '\u2318 \u21E7 R' : 'Ctrl+Shift+R';
 
     return (
         <>
-            <AlertDialog open={open} setOpen={setOpen} doAction={doAction} />
             <Toolbar size={'small'}>
                 {!isReadOnly && (
-                    <Tooltip content="Save document to the database" relationship="description" withArrow>
+                    <Tooltip
+                        content={`Save document to the database (${onSaveHotkeyTitle})`}
+                        relationship="description"
+                        withArrow
+                    >
                         <ToolbarButton
-                            onClick={onSaveRequest}
+                            onClick={() => void props.onSave()}
                             aria-label="Save document to the database"
                             icon={<SaveRegular />}
                             appearance={'primary'}
-                            disabled={inProgress || !isDirty || !state.isValid}
+                            disabled={inProgress || !state.isDirty || !state.isValid}
                         >
                             Save
                         </ToolbarButton>
                     </Tooltip>
                 )}
                 {isReadOnly && (
-                    <Tooltip content="Open document for editing" relationship="description" withArrow>
+                    <Tooltip
+                        content={`Open document for editing (${onEditHotkeyTitle})`}
+                        relationship="description"
+                        withArrow
+                    >
                         <ToolbarButton
-                            onClick={onEditRequest}
+                            onClick={() => void props.onEdit()}
                             aria-label="Open document for editing"
                             icon={<EditRegular />}
                             appearance={'primary'}
@@ -123,9 +68,13 @@ export const DocumentToolbar = () => {
 
                 <ToolbarDividerTransparent />
 
-                <Tooltip content="Reload original document from the database" relationship="description" withArrow>
+                <Tooltip
+                    content={`Reload original document from the database (${onRefreshHotkeyTitle})`}
+                    relationship="description"
+                    withArrow
+                >
                     <ToolbarButton
-                        onClick={onRefreshRequest}
+                        onClick={() => void props.onRefresh()}
                         aria-label="Reload original document from the database"
                         icon={<ArrowClockwiseRegular />}
                         disabled={inProgress || !hasDocumentInDB}

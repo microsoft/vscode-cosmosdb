@@ -78,7 +78,7 @@ module.exports = (env, { mode }) => {
                             jsc: {
                                 baseUrl: path.resolve(__dirname, './'), // Set absolute path here
                                 keepClassNames: true,
-                                target: 'es2021',
+                                target: 'es2022',
                                 parser: {
                                     syntax: 'typescript',
                                     tsx: true,

@@ -26,7 +26,12 @@ import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/dele
 import { getThemeAgnosticIconPath, SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
 import { rejectOnTimeout } from '../../utils/timeout';
-import { getCosmosClient, getCosmosKeyCredential, type CosmosDBCredential } from '../getCosmosClient';
+import {
+    getCosmosAuthCredential,
+    getCosmosClient,
+    getCosmosKeyCredential,
+    type CosmosDBCredential,
+} from '../getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../utils/azureSessionHelper';
 import { ensureRbacPermission, isRbacException, showRbacPermissionError } from '../utils/rbacUtils';
 import { DocDBTreeItemBase } from './DocDBTreeItemBase';
@@ -131,8 +136,9 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
                     } catch (e) {
                         if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
                             this.hasShownRbacNotification = true;
+                            const tenantId = getCosmosAuthCredential(this.root.credentials)?.tenantId;
                             const principalId =
-                                (await getSignedInPrincipalIdForAccountEndpoint(this.root.endpoint)) ?? '';
+                                (await getSignedInPrincipalIdForAccountEndpoint(this.root.endpoint, tenantId)) ?? '';
                             // chedck if the principal ID matches the one that is signed in, otherwise this might be a security problem, hence show the error message
                             if (
                                 e.message.includes(`[${principalId}]`) &&

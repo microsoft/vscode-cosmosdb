@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 export const isWindows: boolean = /^win/.test(process.platform);
+export const isLinux: boolean = /^linux/.test(process.platform);
 
 import * as fs from 'fs';
 import assert from 'node:assert';

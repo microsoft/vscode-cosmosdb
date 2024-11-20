@@ -6,7 +6,7 @@
 import { callWithTelemetryAndErrorHandling, createContextValue, nonNullValue } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, TreeItemCollapsibleState } from 'vscode';
 import { API, getExperienceFromApi } from '../../AzureDBExperiences';
-import { isWindows } from '../../constants';
+import { isLinux, isWindows } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { type PersistedAccount } from '../AttachedAccountsTreeItem';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
@@ -37,7 +37,7 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
 
         const items = await SharedWorkspaceStorage.getItems(this.id);
         const children = await this.getChildrenImpl(items);
-        const auxItems = isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
+        const auxItems = (isWindows || isLinux) ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
 
         return [...children, ...auxItems];
     }

@@ -147,6 +147,10 @@ export class QuerySession {
                 throw new Error('Cannot fetch next page if all records have been fetched before');
             }
 
+            if (this.sessionResult.getResult(this.currentIteration)?.hasMoreResults === false) {
+                throw new Error('Cannot fetch next page if current page is the last page');
+            }
+
             await this.wrappedFetch(context, async () => {
                 if (this.currentIteration + 1 > this.sessionResult.iterationsCount) {
                     const response = await this.iterator!.fetchNext();

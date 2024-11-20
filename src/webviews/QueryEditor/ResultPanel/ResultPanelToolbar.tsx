@@ -227,6 +227,18 @@ export const ResultPanelToolbar = ({ selectedTab }: ResultToolbarProps) => {
     const dispatcher = useQueryEditorDispatcher();
     const restoreFocusTargetAttribute = useRestoreFocusTarget();
 
+    const hasMoreResults = state.currentQueryResult?.hasMoreResults ?? false;
+    const toFirstPageDisabled =
+        state.pageNumber === 1 || !state.isConnected || state.isExecuting || !state.currentExecutionId;
+    const toPrevPageDisabled =
+        state.pageNumber === 1 || !state.isConnected || state.isExecuting || !state.currentExecutionId;
+    const toNextPageDisabled =
+        state.pageSize === -1 || // Disable if page size is set to 'All'
+        !state.isConnected ||
+        state.isExecuting ||
+        !state.currentExecutionId ||
+        !hasMoreResults;
+
     const [open, setOpen] = useState(false);
     const [doAction, setDoAction] = useState<() => Promise<void>>(() => async () => {});
 
@@ -290,12 +302,7 @@ export const ResultPanelToolbar = ({ selectedTab }: ResultToolbarProps) => {
                         onClick={() => void firstPage()}
                         aria-label="Go to start"
                         icon={<ArrowPreviousFilled />}
-                        disabled={
-                            state.pageNumber === 1 ||
-                            !state.isConnected ||
-                            state.isExecuting ||
-                            !state.currentExecutionId
-                        }
+                        disabled={toFirstPageDisabled}
                     />
                 </Tooltip>
 
@@ -304,12 +311,7 @@ export const ResultPanelToolbar = ({ selectedTab }: ResultToolbarProps) => {
                         onClick={() => void prevPage()}
                         aria-label="Go to previous page"
                         icon={<ArrowLeftFilled />}
-                        disabled={
-                            state.pageNumber === 1 ||
-                            !state.isConnected ||
-                            state.isExecuting ||
-                            !state.currentExecutionId
-                        }
+                        disabled={toPrevPageDisabled}
                     />
                 </Tooltip>
 
@@ -318,12 +320,7 @@ export const ResultPanelToolbar = ({ selectedTab }: ResultToolbarProps) => {
                         onClick={() => void nextPage()}
                         aria-label="Go to next page"
                         icon={<ArrowRightFilled />}
-                        disabled={
-                            state.pageSize === -1 ||
-                            !state.isConnected ||
-                            state.isExecuting ||
-                            !state.currentExecutionId
-                        } // Disable if page size is set to 'All'
+                        disabled={toNextPageDisabled}
                     />
                 </Tooltip>
 

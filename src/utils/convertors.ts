@@ -353,7 +353,7 @@ export const queryResultToTable = (
 };
 
 export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): StatsItem[] => {
-    if (!queryResult) {
+    if (!queryResult || queryResult?.queryMetrics === undefined) {
         return [];
     }
 

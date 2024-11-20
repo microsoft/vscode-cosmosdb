@@ -7,8 +7,8 @@
         "AzCode@microsoft.com"
     ],
     "codebaseAdmins": [
-        "REDMOND\\jinglou",
-        "REDMOND\\AzCode"
+        "REDMOND\\sevoku",
+        "REDMOND\\tnaumowicz"
     ],
     "instanceUrl": "https://devdiv.visualstudio.com",
     "projectName": "DevDiv",

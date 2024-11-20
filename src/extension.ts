@@ -24,7 +24,6 @@ import {
     type ITreeItemPickerContext,
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
-import { platform } from 'os';
 import * as vscode from 'vscode';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
@@ -36,6 +35,8 @@ import {
     cosmosMongoFilter,
     cosmosTableFilter,
     doubleClickDebounceDelay,
+    isLinux,
+    isWindows,
     sqlFilter,
 } from './constants';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
@@ -142,10 +143,10 @@ export async function activateInternal(
             },
         );
         registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', async (actionContext: IActionContext) => {
-            if (platform() !== 'win32') {
+            if (!isWindows && !isLinux) {
                 actionContext.errorHandling.suppressReportIssue = true;
                 throw new Error(
-                    localize('emulatorNotSupported', 'The Cosmos DB emulator is only supported on Windows.'),
+                    localize('emulatorNotSupported', 'The Cosmos DB emulator is only supported on Windows and Linux.'),
                 );
             }
 

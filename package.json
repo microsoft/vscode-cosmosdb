@@ -266,11 +266,6 @@
                 "icon": "$(add)"
             },
             {
-                "category": "Cosmos DB",
-                "command": "azureDatabases.detachDatabaseAccount",
-                "title": "Detach"
-            },
-            {
                 "category": "Azure Databases",
                 "command": "azureDatabases.loadMore",
                 "title": "Load More"
@@ -297,6 +292,11 @@
                 "command": "cosmosDB.attachDatabaseAccount",
                 "title": "Attach Database Account...",
                 "icon": "$(plug)"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "azureDatabases.detachDatabaseAccount",
+                "title": "Detach Database Account..."
             },
             {
                 "category": "Cosmos DB",

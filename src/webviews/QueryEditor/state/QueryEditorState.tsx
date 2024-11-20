@@ -56,6 +56,10 @@ export type DispatchAction =
     | {
           type: 'setSelectedRows';
           selectedRows: number[];
+      }
+    | {
+          type: 'setQuerySelectedValue';
+          selectedValue: string;
       };
 
 export type QueryEditorState = {
@@ -65,6 +69,7 @@ export type QueryEditorState = {
     currentExecutionId: string; // Execution ID of the current query (Value exists on both client and server)
     queryHistory: string[];
     queryValue: string;
+    querySelectedValue: string;
     isConnected: boolean;
     isExecuting: boolean;
     startExecutionTime: number; // Time when the query execution started
@@ -87,6 +92,7 @@ export const defaultState: QueryEditorState = {
     currentExecutionId: '',
     queryHistory: [],
     queryValue: DEFAULT_QUERY_VALUE,
+    querySelectedValue: '',
     isConnected: false,
     isExecuting: false,
     startExecutionTime: 0,
@@ -149,5 +155,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, tableViewMode: action.mode };
         case 'setSelectedRows':
             return { ...state, selectedRows: action.selectedRows };
+        case 'setQuerySelectedValue':
+            return { ...state, querySelectedValue: action.selectedValue };
     }
 }

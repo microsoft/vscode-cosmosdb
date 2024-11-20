@@ -57,6 +57,14 @@ const BaseActionsSection = () => {
         return str;
     };
 
+    const runQuery = () => {
+        if (state.querySelectedValue) {
+            return void dispatcher.runQuery(state.querySelectedValue, { countPerPage: state.pageSize });
+        }
+
+        void dispatcher.runQuery(state.queryValue, { countPerPage: state.pageSize });
+    };
+
     return (
         <>
             <Menu>
@@ -68,10 +76,7 @@ const BaseActionsSection = () => {
                             disabled={state.isExecuting || !state.isConnected}
                             appearance={'primary'}
                             menuButton={triggerProps}
-                            primaryActionButton={{
-                                onClick: () =>
-                                    void dispatcher.runQuery(state.queryValue, { countPerPage: state.pageSize }),
-                            }}
+                            primaryActionButton={{ onClick: () => runQuery() }}
                         >
                             Run
                         </SplitButton>

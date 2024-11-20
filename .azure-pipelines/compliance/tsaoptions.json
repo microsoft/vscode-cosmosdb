@@ -4,15 +4,15 @@
     "codeBaseName": "vscode-cosmosdb",
     "tsaStamp": "DevDiv",
     "notificationAliases": [
-        "AzCode@microsoft.com"
+        "cosmosdbdevtooling@microsoft.com"
     ],
     "codebaseAdmins": [
         "REDMOND\\sevoku",
         "REDMOND\\tnaumowicz"
     ],
-    "instanceUrl": "https://devdiv.visualstudio.com",
-    "projectName": "DevDiv",
-    "areaPath": "DevDiv\\VS Azure Tools\\AzCode Extensions",
-    "iterationPath": "DevDiv",
+    "instanceUrl": "https://msdata.visualstudio.com",
+    "projectName": "CosmosDB",
+    "areaPath": "CosmosDB\\Desktop Tooling",
+    "iterationPath": "CosmosDB\\Triage",
     "allTools": true
 }

@@ -77,27 +77,6 @@ export const DataViewPanelTree = ({ liveData }: Props): React.JSX.Element => {
         enableHeaderMenu: false,
     };
 
-    React.useEffect(() => {
-        console.log('Tree View has mounted');
-
-        return () => {
-            console.log('Tree View will unmount');
-
-            /**
-             * The folowing code is required to undo modifications made to the data
-             * by the SlickGrid Tree Data plugin. If you don't do this, the data
-             * will start to duplicate as the 'children' property is filled with
-             * new nodes on each mount. This leads to duplicates and the tree view crashing.
-             *
-             * This is a known issue with the SlickGrid Tree Data plugin and is being discussed here:
-             * https://github.com/ghiscoding/slickgrid-universal/discussions/1655
-             */
-            liveData.forEach((item) => {
-                delete item.children;
-            });
-        };
-    }, []);
-
     // Empty dependency array means this runs only once, like componentDidMount
 
     return (

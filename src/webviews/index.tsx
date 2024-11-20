@@ -13,21 +13,11 @@ import { type WebviewState, WithWebviewContext } from './WebviewContext';
 
 export type ViewKey = keyof typeof WebviewRegistry;
 
-export function render<V extends ViewKey>(
-    key: V,
-    vscodeApi: WebviewApi<WebviewState>,
-    publicPath: string,
-    rootId = 'root',
-): void {
+export function render<V extends ViewKey>(key: V, vscodeApi: WebviewApi<WebviewState>, rootId = 'root'): void {
     const container = document.getElementById(rootId);
     if (!container) {
         throw new Error(`Element with id of ${rootId} not found.`);
     }
-
-    // TODO: avoid using __webpack_public_path__
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    __webpack_public_path__ = publicPath;
 
     const Component: React.ComponentType = WebviewRegistry[key];
 

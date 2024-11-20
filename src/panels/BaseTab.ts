@@ -84,7 +84,6 @@ export class BaseTab {
                 .asWebviewUri(vscode.Uri.file(path.join(ctx.extensionPath, dir, ...parts)))
                 .toString(true);
 
-        const publicPath = isProduction || !devServer ? uri() : `${DEV_SERVER_HOST}/`;
         const srcUri = isProduction || !devServer ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
 
         const csp = (
@@ -93,10 +92,10 @@ export class BaseTab {
                       `form-action 'none';`,
                       `default-src ${cspSource};`,
                       `script-src ${cspSource} 'nonce-${nonce}';`,
-                      `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
-                      `font-src ${cspSource} ${DEV_SERVER_HOST};`,
-                      `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
-                      `img-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
+                      `style-src ${cspSource} 'unsafe-inline';`,
+                      `font-src ${cspSource};`,
+                      `worker-src ${cspSource} blob:;`,
+                      `img-src ${cspSource} data:;`,
                   ]
                 : [
                       `form-action 'none';`,
@@ -114,20 +113,12 @@ export class BaseTab {
             title: this.panel.title,
             csp,
             srcUri,
-            publicPath,
             viewType: this.viewType,
             nonce,
         });
     }
 
-    private template(params: {
-        csp: string;
-        viewType: string;
-        srcUri: string;
-        publicPath: string;
-        title: string;
-        nonce: string;
-    }) {
+    private template(params: { csp: string; viewType: string; srcUri: string; title: string; nonce: string }) {
         return `
 <!DOCTYPE html>
 <html lang="en">
@@ -142,7 +133,7 @@ export class BaseTab {
     <div id="root"></div>
     <script type="module" nonce="${params.nonce}">
       import { render } from "${params.srcUri}";
-      render("${params.viewType}", acquireVsCodeApi(), "${params.publicPath}");
+      render("${params.viewType}", acquireVsCodeApi());
     </script>
   </body>
 </html>

@@ -42,17 +42,7 @@ module.exports = (env, { mode }) => {
                             },
                             isModule: true,
                             sourceMaps: isDev,
-                            minify: !isDev,
                             jsc: {
-                                minify: {
-                                    compress: !isDev,
-                                    mangle: isDev
-                                        ? false
-                                        : {
-                                              keep_classnames: true,
-                                              keep_fnames: true,
-                                          },
-                                },
                                 keepClassNames: true,
                                 target: 'es2022',
                                 parser: {

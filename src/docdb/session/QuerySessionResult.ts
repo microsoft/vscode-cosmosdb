@@ -62,6 +62,7 @@ export class QuerySessionResult {
             queryMetrics: (response.queryMetrics as unknown as QueryMetrics[])['0'],
             requestCharge: response.requestCharge,
             roundTrips: 1, // TODO: Is it required field? Query Pages Until Content Present
+            hasMoreResults: response.hasMoreResults,
         });
         this.hasMoreResults = response.hasMoreResults;
     }
@@ -74,13 +75,21 @@ export class QuerySessionResult {
         const result = this.queryResults.get(pageNumber);
 
         if (result) {
-            return {
+            const serializedResult: SerializedQueryResult = {
                 activityId: result.activityId,
                 documents: result.documents ?? [],
                 iteration: result.iteration,
                 metadata: this.metadata,
                 indexMetrics: result.indexMetrics,
-                queryMetrics: {
+                requestCharge: result.requestCharge,
+                roundTrips: result.roundTrips,
+                hasMoreResults: result.hasMoreResults,
+
+                query: this.query,
+            };
+
+            if (result.queryMetrics) {
+                serializedResult.queryMetrics = {
                     documentLoadTime: result.queryMetrics.documentLoadTime.totalMilliseconds(),
                     documentWriteTime: result.queryMetrics.documentWriteTime.totalMilliseconds(),
                     indexHitDocumentCount: result.queryMetrics.indexHitDocumentCount,
@@ -99,12 +108,10 @@ export class QuerySessionResult {
                             result.queryMetrics.runtimeExecutionTimes.userDefinedFunctionExecutionTime.totalMilliseconds(),
                     },
                     totalQueryExecutionTime: result.queryMetrics.totalQueryExecutionTime.totalMilliseconds(),
-                },
-                requestCharge: result.requestCharge,
-                roundTrips: result.roundTrips,
+                };
+            }
 
-                query: this.query,
-            };
+            return serializedResult;
         }
 
         return undefined;

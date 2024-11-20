@@ -89,7 +89,6 @@ export abstract class WebviewBaseController<Configuration> implements vscode.Dis
         const uri = (...parts: string[]) =>
             webview?.asWebviewUri(vscode.Uri.file(path.join(ext.context.extensionPath, dir, ...parts))).toString(true);
 
-        const publicPath = isProduction || !devServer ? uri() : `${DEV_SERVER_HOST}/`;
         const srcUri = isProduction || !devServer ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
 
         const csp = (
@@ -106,13 +105,13 @@ export abstract class WebviewBaseController<Configuration> implements vscode.Dis
                   ]
                 : [
                       `form-action 'none';`,
-                      `default-src ${DEV_SERVER_HOST};`,
-                      `script-src ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
-                      `style-src ${DEV_SERVER_HOST} vscode-resource: 'unsafe-inline';`,
-                      `img-src ${DEV_SERVER_HOST} data: vscode-resource:;`,
-                      `connect-src ${DEV_SERVER_HOST} ws:;`,
-                      `font-src ${DEV_SERVER_HOST};`,
-                      `worker-src ${DEV_SERVER_HOST} blob:;`,
+                      `default-src ${webview?.cspSource} ${DEV_SERVER_HOST};`,
+                      `script-src ${webview?.cspSource} ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
+                      `style-src ${webview?.cspSource} ${DEV_SERVER_HOST} vscode-resource: 'unsafe-inline';`,
+                      `img-src ${webview?.cspSource} ${DEV_SERVER_HOST} data: vscode-resource:;`,
+                      `connect-src ${webview?.cspSource} ${DEV_SERVER_HOST} ws:;`,
+                      `font-src ${webview?.cspSource} ${DEV_SERVER_HOST};`,
+                      `worker-src ${webview?.cspSource} ${DEV_SERVER_HOST} blob:;`,
                   ]
         ).join(' ');
 
@@ -140,7 +139,7 @@ export abstract class WebviewBaseController<Configuration> implements vscode.Dis
                             };
 
                                 import { render } from "${srcUri}";
-                                render('${this._webviewName}', acquireVsCodeApi(), "${publicPath}");
+                                render('${this._webviewName}', acquireVsCodeApi());
                             </script>
 
                     </body>

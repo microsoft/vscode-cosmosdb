@@ -55,13 +55,14 @@ export class CollectionItem {
     async delete(_context: IActionContext): Promise<boolean> {
         const client = await MongoClustersClient.getClient(this.mongoCluster.id);
 
+        let success = false;
         await ext.state.showDeleting(this.id, async () => {
-            await client.dropCollection(this.databaseInfo.name, this.collectionInfo.name);
+            success = await client.dropCollection(this.databaseInfo.name, this.collectionInfo.name);
         });
 
         ext.state.notifyChildrenChanged(`${this.mongoCluster.id}/${this.databaseInfo.name}`);
 
-        return true;
+        return success;
     }
 
     async insertDocuments(_context: IActionContext, documents: Document[]): Promise<InsertDocumentsResult> {

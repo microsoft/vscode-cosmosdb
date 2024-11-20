@@ -78,7 +78,7 @@ module.exports = (env, { mode }) => {
                             jsc: {
                                 baseUrl: path.resolve(__dirname, './'), // Set absolute path here
                                 keepClassNames: true,
-                                target: 'es2021',
+                                target: 'es2022',
                                 parser: {
                                     syntax: 'typescript',
                                     tsx: true,
@@ -96,7 +96,7 @@ module.exports = (env, { mode }) => {
             new webpack.EnvironmentPlugin({
                 NODE_ENV: mode,
                 IS_BUNDLE: 'true',
-                DEVSERVER: 'true',
+                DEVSERVER: isDev ? 'true' : '',
             }),
             // Copy everything what is needed to run the extension
             // - We can't bundle everything into one file because system-dependent binaries in node_modules

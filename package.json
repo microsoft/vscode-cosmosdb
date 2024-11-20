@@ -1257,11 +1257,6 @@
                     "description": "The batch size to be used when querying Azure Database resources.",
                     "default": 50
                 },
-                "azureDatabases.showExplorer": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Show or hide the Azure Databases Explorer"
-                },
                 "azureDatabases.useCosmosOAuth": {
                     "type": "boolean",
                     "markdownDescription": "Always authenticate using Entra ID RBAC when connecting to Cosmos DB NoSQL Accounts. [Enable RBAC and assign Roles](https://aka.ms/cosmos-native-rbac).",

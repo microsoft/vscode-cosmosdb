@@ -67,6 +67,7 @@ export namespace ext {
         export const mongoShellTimeout = 'mongo.shell.timeout';
         export const batchSize = 'azureDatabases.batchSize';
         export const confirmationStyle = 'azureDatabases.confirmationStyle';
+        export const showOperationSummaries = 'azureDatabases.showOperationSummaries';
 
         export namespace vsCode {
             export const proxyStrictSSL = 'http.proxyStrictSSL';

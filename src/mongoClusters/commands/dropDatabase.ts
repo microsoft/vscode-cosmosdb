@@ -4,7 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { getConfirmationAsInSettings } from '../../utils/confirmations';
+import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
+import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
+import { localize } from '../../utils/localize';
 import { type DatabaseItem } from '../tree/DatabaseItem';
 
 export async function dropDatabase(context: IActionContext, node?: DatabaseItem): Promise<void> {
@@ -23,5 +25,15 @@ export async function dropDatabase(context: IActionContext, node?: DatabaseItem)
         return;
     }
 
-    await node.delete(context);
+    const success = await node.delete(context);
+
+    if (success) {
+        showConfirmationAsInSettings(
+            localize(
+                'showConfirmation.droppedDatabase',
+                'The "{0}" database has been dropped.',
+                node.databaseInfo.name,
+            ),
+        );
+    }
 }

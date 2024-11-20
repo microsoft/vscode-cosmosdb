@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizard, nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { localize } from '../../utils/localize';
 import { type DatabaseItem } from '../tree/DatabaseItem';
 import { type CreateCollectionWizardContext } from '../wizards/create/createWizardContexts';
@@ -31,5 +32,11 @@ export async function createCollection(context: IActionContext, databaseNode?: D
 
     const newCollectionName = nonNullValue(wizardContext.newCollectionName);
 
-    await databaseNode.createCollection(context, newCollectionName);
+    const success = await databaseNode.createCollection(context, newCollectionName);
+
+    if (success) {
+        showConfirmationAsInSettings(
+            localize('showConfirmation.createdDatabase', 'The "{0}" collection has been created.', newCollectionName),
+        );
+    }
 }

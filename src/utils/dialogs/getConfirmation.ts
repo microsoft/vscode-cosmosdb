@@ -5,7 +5,7 @@
 
 import { DialogResponses, UserCancelledError } from '@microsoft/vscode-azext-utils';
 import vscode from 'vscode';
-import { ext } from '../extensionVariables';
+import { ext } from '../../extensionVariables';
 
 enum ConfirmationStyle {
     wordConfirmation = 'wordConfirmation',

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizard, nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { localize } from '../../utils/localize';
 import { CredentialCache } from '../CredentialCache';
 import { type MongoClusterResourceItem } from '../tree/MongoClusterResourceItem';
@@ -45,5 +46,11 @@ export async function createDatabase(context: IActionContext, clusterNode?: Mong
 
     const newDatabaseName = nonNullValue(wizardContext.newDatabaseName);
 
-    await clusterNode.createDatabase(context, newDatabaseName);
+    const success = await clusterNode.createDatabase(context, newDatabaseName);
+
+    if (success) {
+        showConfirmationAsInSettings(
+            localize('showConfirmation.createdDatabase', 'The "{0}" database has been created.', newDatabaseName),
+        );
+    }
 }

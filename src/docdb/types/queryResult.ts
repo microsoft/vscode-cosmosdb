@@ -47,9 +47,10 @@ export type QueryResult = {
     iteration: number;
     metadata: ResultViewMetadata;
     indexMetrics: string;
-    queryMetrics: QueryMetrics;
+    queryMetrics?: QueryMetrics;
     requestCharge: number;
     roundTrips: number;
+    hasMoreResults: boolean;
 };
 
 export type SerializedQueryMetrics = {
@@ -76,9 +77,10 @@ export type SerializedQueryResult = {
     iteration: number;
     metadata: ResultViewMetadata;
     indexMetrics: string;
-    queryMetrics: SerializedQueryMetrics;
+    queryMetrics?: SerializedQueryMetrics;
     requestCharge: number;
     roundTrips: number;
+    hasMoreResults: boolean;
 
     query: string; // The query that was executed
 };

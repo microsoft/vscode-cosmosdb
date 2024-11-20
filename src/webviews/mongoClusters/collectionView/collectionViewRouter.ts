@@ -8,14 +8,16 @@ import { type JSONSchema } from 'vscode-json-languageservice';
 import { z } from 'zod';
 import { type MongoClustersClient } from '../../../mongoClusters/MongoClustersClient';
 import { MongoClustersSession } from '../../../mongoClusters/MongoClusterSession';
-import { getConfirmationAsInSettings } from '../../../utils/confirmations';
+import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { getKnownFields, type FieldEntry } from '../../../utils/json/mongo/autocomplete/getKnownFields';
 import { publicProcedure, router } from '../../api/extension-server/trpc';
 
 import { type CollectionItem } from '../../../mongoClusters/tree/CollectionItem';
+import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
 // eslint-disable-next-line import/no-internal-modules
 import basicFindQuerySchema from '../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';
 import { generateMongoFindJsonSchema } from '../../../utils/json/mongo/autocomplete/generateMongoFindJsonSchema';
+import { localize } from '../../../utils/localize';
 
 export type RouterContext = {
     sessionId: string;
@@ -170,6 +172,22 @@ export const collectionsViewRouter = router({
             const client: MongoClustersClient = MongoClustersSession.getSession(myCtx.sessionId).getClient();
 
             const acknowledged = await client.deleteDocuments(myCtx.databaseName, myCtx.collectionName, input);
+
+            if (acknowledged) {
+                showConfirmationAsInSettings(
+                    input.length > 1
+                        ? localize(
+                              'showConfirmation.deletedNdocuments',
+                              '{0} documents have been deleted.',
+                              input.length,
+                          )
+                        : localize(
+                              'showConfirmation.deletedNdocuments',
+                              '{0} document has been deleted.',
+                              input.length,
+                          ),
+                );
+            }
 
             if (!acknowledged) {
                 void vscode.window.showErrorMessage('Failed to delete documents. Unknown error.', {

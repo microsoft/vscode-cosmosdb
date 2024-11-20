@@ -266,11 +266,6 @@
                 "icon": "$(add)"
             },
             {
-                "category": "Cosmos DB",
-                "command": "azureDatabases.detachDatabaseAccount",
-                "title": "Detach"
-            },
-            {
                 "category": "Azure Databases",
                 "command": "azureDatabases.loadMore",
                 "title": "Load More"
@@ -297,6 +292,11 @@
                 "command": "cosmosDB.attachDatabaseAccount",
                 "title": "Attach Database Account...",
                 "icon": "$(plug)"
+            },
+            {
+                "category": "Cosmos DB",
+                "command": "azureDatabases.detachDatabaseAccount",
+                "title": "Detach Database Account..."
             },
             {
                 "category": "Cosmos DB",
@@ -1257,11 +1257,6 @@
                     "description": "The batch size to be used when querying Azure Database resources.",
                     "default": 50
                 },
-                "azureDatabases.showExplorer": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Show or hide the Azure Databases Explorer"
-                },
                 "azureDatabases.useCosmosOAuth": {
                     "type": "boolean",
                     "markdownDescription": "Always authenticate using Entra ID RBAC when connecting to Cosmos DB NoSQL Accounts. [Enable RBAC and assign Roles](https://aka.ms/cosmos-native-rbac).",
@@ -1286,6 +1281,11 @@
                         "Prompts with a warning dialog where you click a button to confirm deletion."
                     ],
                     "default": "wordConfirmation"
+                },
+                "azureDatabases.showOperationSummaries": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show detailed operation summaries, displaying messages for actions such as database drops, document additions, deletions, or similar events."
                 },
                 "cosmosDB.documentLabelFields": {
                     "type": "array",

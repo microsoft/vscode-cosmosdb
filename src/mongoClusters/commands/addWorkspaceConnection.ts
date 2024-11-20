@@ -10,6 +10,7 @@ import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { WorkspaceResourceType } from '../../tree/workspace/sharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../tree/workspace/sharedWorkspaceStorage';
+import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { localize } from '../../utils/localize';
 import { type AddWorkspaceConnectionContext } from '../wizards/addWorkspaceConnection/AddWorkspaceConnectionContext';
 import { ConnectionStringStep } from '../wizards/addWorkspaceConnection/ConnectionStringStep';
@@ -98,6 +99,10 @@ export async function addWorkspaceConnection(context: IActionContext): Promise<v
 
     // refresh the workspace tree view
     ext.mongoClustersWorkspaceBranchDataProvider.refresh();
+
+    showConfirmationAsInSettings(
+        localize('showConfirmation.addedWorkspaceConnecdtion', 'New connection has been added to your workspace.'),
+    );
 }
 
 function isMongoDBRU(host: string): boolean {

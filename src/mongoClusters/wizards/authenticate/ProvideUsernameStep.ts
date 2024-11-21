@@ -20,6 +20,8 @@ export class ProvideUserNameStep extends AzureWizardPromptStep<AuthenticateWizar
         });
 
         context.selectedUserName = username.trim();
+
+        context.valuesToMask.push(context.selectedUserName, username);
     }
 
     public shouldPrompt(context: AuthenticateWizardContext): boolean {

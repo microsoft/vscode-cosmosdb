@@ -37,7 +37,7 @@ const useClasses = makeStyles({
     iconDisconnect: {
         color: tokens.colorStatusDangerBorderActive,
     },
-}); // #005aa1  #1765BF
+});
 
 const BaseActionsSection = () => {
     const classes = useClasses();

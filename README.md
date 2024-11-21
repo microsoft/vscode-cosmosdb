@@ -6,7 +6,7 @@
 
 <!-- endregion exclude-from-marketplace -->
 
-Browse, manage and query your Azure databases both locally and in the cloud with support for MongoDB, Graph (Gremlin), and NoSQL (previously known as DocumentDB).
+Browse, manage, and query your Azure databases both locally and in the cloud with support for MongoDB, Graph (Gremlin), and NoSQL (previously known as DocumentDB).
 
 ![Azure Databases Extension](resources/readme/overview.png)
 
@@ -14,33 +14,37 @@ Browse, manage and query your Azure databases both locally and in the cloud with
 
 # Prerequisites
 
-- Some less-common commands in the Mongo [scrapbook](#mongo-scrapbooks) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
+- **Mongo Shell Requirement (Optional)**: Some advanced commands in the Mongo [scrapbook](#mongo-scrapbooks) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
 
 # Features
 
 ## Azure Databases Explorer
 
-- Find database servers in your Azure subscription
-- Create a database server using the `+` button
-- Open database servers in the Azure portal
-- View/Create/Delete databases, collections, graphs, stored procedures, documents, and queries
-- Open documents, stored procedures, or queries in the editor
-- Edit documents and persist changes to the cloud
-- Attach database servers to your Workspace using connection strings
+The Azure Databases Explorer provides a comprehensive interface to explore and manage your Azure databases.
+
+- **Discover Database Servers**: Find database servers in your Azure subscription.
+- **Create Database Servers**: Use the `+` button to create a new database server.
+- **Azure Portal Integration**: Open database servers directly in the Azure portal.
+- **Full Database Management**: View, create, and delete databases, collections, graphs, stored procedures, documents, and queries.
+- **Integrated Document Editor**: Open documents, stored procedures, or queries directly in the editor for easy viewing and editing.
+- **Edit and Persist Changes**: Make changes to documents and persist them to the cloud.
+- **Workspace Integration**: Attach database servers to your workspace using connection strings, enabling centralized management.
+- **Flexible MongoDB Connectivity**: Easily establish connections to MongoDB clusters across both Azure and non-Azure environments using a simple connection string.
 
 ![Browse PostgreSQL, CosmosDB, and MongoDB databases](resources/readme/explorer.png)
 
 ## Query Editor
 
-- Write Queries with Syntax Highlighting
-- Show Query history and save/open queries on disk
-- Execute Queries and see the results (currently NoSQL only)
-- Show results in a table, as JSON or in a hierarchical tree view
-- Copy results as JSON or CSV to the clipboard or store them in a file
-- Choose how many results to show at once with paging support
-- Show Query Statistics (consumed RUs, time, size and other metrics)
-- View, Edit and Update single documents from the result view
-- Create new documents with syntax highlighting and partition key validation
+The Query Editor provides a powerful interface to write and execute queries across your databases.
+
+- **Rich Syntax Highlighting**: Write queries with built-in syntax highlighting to improve readability and reduce errors.
+- **Query History and Management**: Save and open queries from disk, and access query history for re-use.
+- **Execute Queries**: Run queries and view the results in multiple formats including Table, JSON, or a hierarchical Tree view (currently NoSQL only).
+- **Flexible Result Management**: Copy query results as JSON or CSV to the clipboard or store them in a file as needed.
+- **Paging Support**: Choose how many results to display at once with convenient paging support, allowing navigation through large datasets.
+- **Query Statistics and Index Advisor**: View detailed query statistics such as consumed RUs, execution time, and index optimization suggestions.
+- **Document Management**: View, edit, and update single documents from the result view directly.
+- **New Document Creation**: Create new documents with syntax highlighting and partition key validation.
 
 ![Query Editor with Results](resources/readme/queryEditor.png)
 
@@ -60,49 +64,57 @@ The extension now offers enhanced support for MongoDB clusters, making it easier
 
 ## Scrapbooks
 
-### Run Mongo Commands with Rich Intellisense
+Scrapbooks allow you to run Mongo commands with a rich IntelliSense experience, making it easier to work with your MongoDB databases.
 
-- View your MongoDB database account by clicking "Sign in to Azure..." in the Azure Resources explorer or using "Attach Database Account" to connect via a connection string
-- Optionally configure the settings `mongo.shell.path` and `mongo.shell.args` if your mongo executable is not already on your system's PATH (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
-- Click on "New Mongo Scrapbook" in the tree title bar
-- Click on "Connect to a database" to indicate which database to run the commands against
-- Enter your commands and/or comments, eg: `db.<collectionName>.find()`
-- IntelliSense (auto-completions) will be provided
-- Click on "Execute" above a command to execute it, or press <kbd>CMD</kbd>+<kbd>"</kbd> (Mac) or <kbd>CTRL</kbd>+<kbd>"</kbd> (Windows and Linux) to execute the line with the cursor
-- To run all commands, click on "Execute All", or press <kbd>CMD</kbd>+<kbd>:</kbd> or <kbd>Ctrl</kbd>+<kbd>:</kbd>
-- Save and re-use later
+- **Quick Account Viewing**: View your MongoDB database account by clicking "Sign in to Azure..." or use "Attach Database Account" to connect via a connection string.
+- **Configurable Shell Settings**: Configure `mongo.shell.path` and `mongo.shell.args` if your mongo executable is not on your system's PATH.
+- **Create New Scrapbooks**: Click "New Mongo Scrapbook" in the tree title bar to create a new scrapbook.
+- **Database Connection**: Click "Connect to a database" to indicate which database to run commands against.
+- **IntelliSense Integration**: Enter commands like `db.<collectionName>.find()` and enjoy full IntelliSense support with auto-completions.
+- **Execute Commands Easily**: Click "Execute" or press <kbd>CMD</kbd>+<kbd>"</kbd> (Mac) or <kbd>CTRL</kbd>+<kbd>"</kbd> (Windows/Linux) to execute a command.
+- **Batch Execution Support**: Click "Execute All" or press <kbd>CMD</kbd>+<kbd>:</kbd> or <kbd>Ctrl</kbd>+<kbd>:</kbd> to run all commands at once.
+
   ![Mongo Scrapbook](resources/readme/Scrapbook.gif)
 
 ## Import into Cosmos DB
 
-- You can now import documents from your workspace into CosmosDB. Use the context menu of a collection or a document file (json) to get started!
+The extension allows you to import documents into CosmosDB.
+
+- **Workspace Integration**: Use the context menu of a collection or document file (JSON) to initiate import.
+
   ![Import documents](resources/readme/import_documents.gif)
 
 ## Create an Azure Databases Server
 
-1. Sign in to your Azure Account by clicking "Sign in to Azure..." in the Azure Resources explorer
-   > If you don't already have an Azure Account, select "Create a Free Azure Account"
-2. Select the `+` button to open the "Create Resource" menu
+Creating an Azure Databases Server is simple and straightforward, allowing you to get started quickly.
+
+1. **Sign In to Azure**: Sign in to your Azure Account by clicking "Sign in to Azure..." in the Azure Resources explorer.
+   - If you don't have an Azure Account, select "Create a Free Azure Account" to get started.
+2. **Open the Create Resource Menu**: Select the `+` button to open the "Create Resource" menu.
 
    ![Create resource](resources/readme/createResource.png)
-   
-3. Choose "Create Database Server..."
+
+3. **Select Create Database Server**: Choose "Create Database Server..." and follow the guided prompts to set up your server.
 
    ![Create Database Server](resources/readme/createDatabaseServer.png)
 
 ## Attach to the Cosmos DB Emulator
 
-- Install and run the [Cosmos DB Emulator](https://docs.microsoft.com/azure/cosmos-db/local-emulator) on your local machine
-- Right click 'Attached Database Accounts' and select 'Attach Emulator'
+Attach the Cosmos DB Emulator to work with a local instance of Cosmos DB for development and testing purposes.
+
+- **Emulator Installation**: Install and run the [Cosmos DB Emulator](https://docs.microsoft.com/azure/cosmos-db/local-emulator) on your local machine.
+- **Attach Emulator**: Right-click 'Attached Database Accounts' and select 'Attach Emulator' to link the emulator to your workspace.
 
 ![Attach Emulator](resources/readme/attachEmulator.png)
 
 ## Known Issues
 
-- Azure no longer supports gremlin queries on pre-GA graph accounts. If you see the error "Could not find a valid gremlin endpoint for _graph_", then choose "Open Portal" on the graph node and check the "Gremlin Endpoint" in the Overview tab. If it does not take the form of '...[graph-name].**_gremlin_**.cosmosdb.azure.com...', then you will need to create a new graph account using the Azure portal or the current version of the extension.
-- Graphs are not currently supported with the emulator
-- Viewing/editing tables is not currently supported
-- Support for escapes in the scrapbooks is preliminary. We currently do not support escaped characters as is inside a string - the characters need to be double escaped. For example, newlines in the string should be '\\\\n' instead of '\\n' to be recognized correctly. If you find any issues with how the scrapbook handles escapes, please add to issue [#937](https://github.com/Microsoft/vscode-cosmosdb/issues/937).
+Here are some known issues and limitations to be aware of when using the Azure Databases extension:
+
+- **Gremlin Endpoint Limitation**: Azure no longer supports Gremlin queries on pre-GA graph accounts. If you encounter an error like "Could not find a valid gremlin endpoint for _graph_", open the graph node in the portal and verify the "Gremlin Endpoint" format. If it does not match the expected form '...[graph-name].**_gremlin_**.cosmosdb.azure.com...', you may need to create a new graph account.
+- **Graphs Not Supported with Emulator**: Graphs are not currently supported with the Cosmos DB Emulator.
+- **Table Viewing/Editing**: Viewing and editing tables is not currently supported by the extension.
+- **Escaped Characters in Scrapbooks**: Scrapbook support for escaped characters is preliminary. Use double escaping for newlines (`\\n` instead of `\n`). If you find issues, report them to [#937](https://github.com/Microsoft/vscode-cosmosdb/issues/937).
 
 <!-- region exclude-from-marketplace -->
 

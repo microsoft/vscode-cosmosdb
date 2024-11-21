@@ -14,15 +14,15 @@ export class ProvideUserNameStep extends AzureWizardPromptStep<AuthenticateWizar
         const username = await context.ui.showInputBox({
             prompt: `Please provide the username for '${context.resourceName}':`,
             placeHolder: `Username for ${context.resourceName}`,
+            value: context.adminUserName,
             title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB cluster'),
+            ignoreFocusOut: true,
         });
 
         context.selectedUserName = username.trim();
     }
 
     public shouldPrompt(context: AuthenticateWizardContext): boolean {
-        // onyl prompt for the username when no name is set
-        // and no adminUserName is preconfigured
-        return !context.selectedUserName || context.selectedUserName.length === 0;
+        return context.selectedUserName === undefined;
     }
 }

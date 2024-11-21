@@ -13,17 +13,15 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 
-import { type CosmosDBManagementClient, type MongoClustersGetResponse } from '@azure/arm-cosmosdb';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { createMongoClustersManagementClient } from '../../utils/azureClients';
 import { localize } from '../../utils/localize';
 import { CredentialCache } from '../CredentialCache';
 import { MongoClustersClient } from '../MongoClustersClient';
-import { listMongoClusterNonAdminUsers } from '../utils/listMongoClusterUsers';
 import { type AuthenticateWizardContext } from '../wizards/authenticate/AuthenticateWizardContext';
 import { ProvidePasswordStep } from '../wizards/authenticate/ProvidePasswordStep';
-import { SelectUserNameFromListStep } from '../wizards/authenticate/SelectUserNameFromListStep';
+import { ProvideUserNameStep } from '../wizards/authenticate/ProvideUsernameStep';
 import { MongoClusterItemBase } from './MongoClusterItemBase';
 import { type MongoClusterModel } from './MongoClusterModel';
 
@@ -57,18 +55,11 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
 
                 const clusterConnectionString = nonNullValue(clusterInformation.connectionString);
 
-                context.valuesToMask.push(clusterConnectionString);
-
-                // Fetch non-admin users using the extracted method
-                const clusterNonAdminUsers = await this.fetchNonAdminUsersFromAzure(
-                    managementClient,
-                    clusterInformation,
-                );
+                context.valuesToMask.push(clusterConnectionString, clusterInformation.administratorLogin ?? '');
 
                 const wizardContext: AuthenticateWizardContext = {
                     ...context,
                     adminUserName: clusterInformation.administratorLogin,
-                    otherUserNames: clusterNonAdminUsers,
                     resourceName: this.mongoCluster.name,
                 };
 
@@ -133,7 +124,7 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
      */
     private async promptForCredentials(wizardContext: AuthenticateWizardContext): Promise<boolean> {
         const wizard = new AzureWizard(wizardContext, {
-            promptSteps: [new SelectUserNameFromListStep(), new ProvidePasswordStep()],
+            promptSteps: [new ProvideUserNameStep(), new ProvidePasswordStep()],
             title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB cluster'),
             showLoadingPrompt: true,
         });
@@ -150,30 +141,5 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
 
         // Return true if the wizard completed successfully; false otherwise
         return !wizardContext.aborted;
-    }
-
-    /**
-     * Fetches the list of non-admin users for the given cluster.
-     * @param client The CosmosDBManagementClient instance.
-     * @param cluster The cluster model.
-     * @returns A list of non-admin user names.
-     */
-    private async fetchNonAdminUsersFromAzure(
-        client: CosmosDBManagementClient,
-        cluster: MongoClustersGetResponse,
-    ): Promise<string[]> {
-        ext.outputChannel.appendLine(`MongoDB (vCore): Listing non-admin users for ${this.mongoCluster.name}... `);
-
-        // Fetch non-admin users
-        const clusterNonAdminUsers: string[] = await listMongoClusterNonAdminUsers(client, {
-            clusterAdminUser: nonNullValue(cluster.administratorLogin),
-            subscriptionId: this.subscription.subscriptionId,
-            resourceGroupName: this.mongoCluster.resourceGroup as string,
-            mongoClusterName: this.mongoCluster.name,
-        });
-
-        ext.outputChannel.appendLine(`Discovered ${clusterNonAdminUsers.length} non-admin user(s).`);
-
-        return clusterNonAdminUsers;
     }
 }

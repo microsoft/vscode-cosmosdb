@@ -12,21 +12,23 @@ import { getRootPath } from '../../utils/workspacUtils';
 import { MongoClustersClient } from '../MongoClustersClient';
 import { type CollectionItem } from '../tree/CollectionItem';
 
-export async function mongoClustersExportEntireCollection(_context: IActionContext, node?: CollectionItem) {
-    return mongoClustersExportQueryResults(_context, node);
+export async function mongoClustersExportEntireCollection(context: IActionContext, node?: CollectionItem) {
+    return mongoClustersExportQueryResults(context, node);
 }
 
 export async function mongoClustersExportQueryResults(
-    _context: IActionContext,
+    context: IActionContext,
     node?: CollectionItem,
-    queryText?: string,
+    props?: { queryText?: string; source?: string },
 ): Promise<void> {
     // node ??= ... pick a node if not provided
     if (!node) {
         throw new Error('No collection selected.');
     }
 
-    const targetUri = await askForTargetFile(_context);
+    context.telemetry.properties.calledFrom = props?.source ?? 'contextMenu';
+
+    const targetUri = await askForTargetFile(context);
 
     if (!targetUri) {
         return;
@@ -39,7 +41,7 @@ export async function mongoClustersExportQueryResults(
         node.databaseInfo.name,
         node.collectionInfo.name,
         docStreamAbortController.signal,
-        queryText,
+        props?.queryText,
     );
 
     const filePath = targetUri.fsPath; // Convert `vscode.Uri` to a regular file path

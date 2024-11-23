@@ -201,18 +201,19 @@ export const collectionsViewRouter = router({
         // parameters
         .input(z.object({ query: z.string() }))
         //procedure type
-        .query(async ({ input, ctx }) => {
+        .query(({ input, ctx }) => {
             const myCtx = ctx as RouterContext;
 
-            vscode.commands.executeCommand(
-                'command.internal.mongoClusters.exportDocuments',
-                myCtx.collectionTreeItem,
-                input.query,
-            );
+            vscode.commands.executeCommand('command.internal.mongoClusters.exportDocuments', myCtx.collectionTreeItem, {
+                queryText: input.query,
+                source: 'webview;collectionView',
+            });
         }),
-    importDocuments: publicProcedure.query(async ({ ctx }) => {
+    importDocuments: publicProcedure.query(({ ctx }) => {
         const myCtx = ctx as RouterContext;
 
-        vscode.commands.executeCommand('command.internal.mongoClusters.importDocuments', myCtx.collectionTreeItem);
+        vscode.commands.executeCommand('command.mongoClusters.importDocuments', myCtx.collectionTreeItem, null, {
+            source: 'webview;collectionView',
+        });
     }),
 });

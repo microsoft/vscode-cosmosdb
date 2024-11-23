@@ -12,23 +12,23 @@ Thanks for helping us improve! Please fill out the details below to help us unde
 ## 🌟 What's the Issue?
 Briefly describe the problem you're experiencing. What's not working as expected?
 
-## 🔄 Steps to Reproduce
+## Steps to Reproduce
 Can you help us see what you're seeing? Share the steps to reproduce the issue:
 1. Go to '...'
 2. Click on '...'
 3. Scroll down to '...'
 4. Notice the issue.
 
-## 🖼️ Screenshots or Videos
+## Screenshots or Videos
 Do you have screenshots or screen recordings? Drop them here to show us what’s happening.
 
-## 📋 Your Setup
+## Your Setup
 Knowing more about your environment helps us investigate. Please complete:
 - **Operating System**: [e.g., Windows 10, macOS Ventura]
 - **VSCode Version**: [e.g., 1.95.3]
 - **Extension Version**: [e.g., 0.24.0]
 
-## 💡 Any Other Details?
+## Any Other Details?
 If there’s anything else we should know—like how often this happens or what you tried to fix it—please add it here.
 
 ---

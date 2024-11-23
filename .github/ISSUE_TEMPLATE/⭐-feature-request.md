@@ -12,13 +12,13 @@ We love hearing your ideas! ⭐ Share your thoughts below to help us understand 
 ## 🧐 What's the Problem?
 Is this feature solving a frustration or filling a gap? Tell us about the issue you’re facing. (e.g., "I always find it tricky when...")
 
-## 🌈 Your Ideal Solution
+## Your Ideal Solution
 What does your dream solution look like? Describe how this feature would work and what it would accomplish.
 
-## 🔍 Have You Thought About Alternatives?
+## Have You Thought About Alternatives?
 Have you explored other ways to solve this problem? Share any other ideas or approaches you’ve considered.
 
-## ✨ Extra Context
+## Extra Context
 Got any additional details, use cases, or even a sketch or screenshot to show us your vision? Drop them here!
 
 ---

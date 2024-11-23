@@ -10,7 +10,7 @@ import { type MongoClustersClient } from '../../../mongoClusters/MongoClustersCl
 import { MongoClustersSession } from '../../../mongoClusters/MongoClusterSession';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { getKnownFields, type FieldEntry } from '../../../utils/json/mongo/autocomplete/getKnownFields';
-import { publicProcedure, router } from '../../api/extension-server/trpc';
+import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
 
 import { type CollectionItem } from '../../../mongoClusters/tree/CollectionItem';
 import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
@@ -27,12 +27,13 @@ export type RouterContext = {
 };
 
 export const collectionsViewRouter = router({
-    getInfo: publicProcedure.query(({ ctx }) => {
+    getInfo: publicProcedure.use(trpcToTelemetry).query(({ ctx }) => {
         const myCtx = ctx as RouterContext;
 
         return 'Info from the webview: ' + JSON.stringify(myCtx);
     }),
     runQuery: publicProcedure
+        .use(trpcToTelemetry)
         // parameters
         .input(
             z.object({
@@ -58,6 +59,7 @@ export const collectionsViewRouter = router({
             return { documentCount: size };
         }),
     getAutocompletionSchema: publicProcedure
+        .use(trpcToTelemetry)
         // procedure type
         .query(({ ctx }) => {
             const myCtx = ctx as RouterContext;
@@ -79,6 +81,7 @@ export const collectionsViewRouter = router({
             return querySchema;
         }),
     getCurrentPageAsTable: publicProcedure
+        .use(trpcToTelemetry)
         //parameters
         .input(z.array(z.string()))
         // procedure type
@@ -91,6 +94,7 @@ export const collectionsViewRouter = router({
             return tableData;
         }),
     getCurrentPageAsTree: publicProcedure
+        .use(trpcToTelemetry)
         // procedure type
         .query(({ ctx }) => {
             const myCtx = ctx as RouterContext;
@@ -101,6 +105,7 @@ export const collectionsViewRouter = router({
             return treeData;
         }),
     getCurrentPageAsJson: publicProcedure
+        .use(trpcToTelemetry)
         // procedure type
         .query(({ ctx }) => {
             const myCtx = ctx as RouterContext;
@@ -111,6 +116,7 @@ export const collectionsViewRouter = router({
             return jsonData;
         }),
     addDocument: publicProcedure
+        .use(trpcToTelemetry)
         // procedure type
         .mutation(({ ctx }) => {
             const myCtx = ctx as RouterContext;
@@ -123,6 +129,7 @@ export const collectionsViewRouter = router({
             });
         }),
     viewDocumentById: publicProcedure
+        .use(trpcToTelemetry)
         // parameters
         .input(z.string())
         // procedure type
@@ -138,6 +145,7 @@ export const collectionsViewRouter = router({
             });
         }),
     editDocumentById: publicProcedure
+        .use(trpcToTelemetry)
         // parameters
         .input(z.string())
         // procedure type
@@ -153,6 +161,7 @@ export const collectionsViewRouter = router({
             });
         }),
     deleteDocumentsById: publicProcedure
+        .use(trpcToTelemetry)
         // parameteres
         .input(z.array(z.string())) // stands for string[]
         // procedure type
@@ -198,6 +207,7 @@ export const collectionsViewRouter = router({
             return acknowledged;
         }),
     exportDocuments: publicProcedure
+        .use(trpcToTelemetry)
         // parameters
         .input(z.object({ query: z.string() }))
         //procedure type
@@ -209,7 +219,7 @@ export const collectionsViewRouter = router({
                 source: 'webview;collectionView',
             });
         }),
-    importDocuments: publicProcedure.query(({ ctx }) => {
+    importDocuments: publicProcedure.use(trpcToTelemetry).query(({ ctx }) => {
         const myCtx = ctx as RouterContext;
 
         vscode.commands.executeCommand('command.mongoClusters.importDocuments', myCtx.collectionTreeItem, null, {

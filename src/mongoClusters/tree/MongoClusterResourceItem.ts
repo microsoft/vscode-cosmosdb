@@ -55,7 +55,10 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
 
                 const clusterConnectionString = nonNullValue(clusterInformation.connectionString);
 
-                context.valuesToMask.push(clusterConnectionString, clusterInformation.administratorLogin ?? '');
+                context.valuesToMask.push(clusterConnectionString);
+                if (clusterInformation.administratorLogin) {
+                    context.valuesToMask.push(clusterInformation.administratorLogin);
+                }
 
                 const wizardContext: AuthenticateWizardContext = {
                     ...context,

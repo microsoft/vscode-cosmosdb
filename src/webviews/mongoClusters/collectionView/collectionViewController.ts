@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { API } from '../../../AzureDBExperiences';
 import { ext } from '../../../extensionVariables';
 import { type CollectionItem } from '../../../mongoClusters/tree/CollectionItem';
 import { WebviewController } from '../../api/extension-server/WebviewController';
@@ -24,9 +25,11 @@ export class CollectionViewController extends WebviewController<CollectionViewWe
 
         const title: string = `${initialData.databaseName}/${initialData.collectionName}`;
 
-        super(ext.context, title, 'mongoClustersCollectionView', initialData);
+        super(ext.context, API.MongoClusters, title, 'mongoClustersCollectionView', initialData);
 
         const trpcContext: RouterContext = {
+            dbExperience: API.MongoClusters,
+            webviewName: 'collectionView',
             sessionId: initialData.sessionId,
             databaseName: initialData.databaseName,
             collectionName: initialData.collectionName,

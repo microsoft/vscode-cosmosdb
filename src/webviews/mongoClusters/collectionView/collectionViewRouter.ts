@@ -18,8 +18,9 @@ import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirm
 import basicFindQuerySchema from '../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';
 import { generateMongoFindJsonSchema } from '../../../utils/json/mongo/autocomplete/generateMongoFindJsonSchema';
 import { localize } from '../../../utils/localize';
+import { type BaseRouterContext } from '../../api/configuration/appRouter';
 
-export type RouterContext = {
+export type RouterContext = BaseRouterContext & {
     sessionId: string;
     databaseName: string;
     collectionName: string;

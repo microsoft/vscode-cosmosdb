@@ -37,11 +37,18 @@ export const publicProcedure = t.procedure;
 // Create middleware for logging requests
 export const trpcToTelemetry = t.middleware(async ({ path, type, next }) => {
     const result = await callWithTelemetryAndErrorHandling<MiddlewareResult<object>>(
-        `cosmosDB.common.rpc.${type}.${path}`,
+        `cosmosDB.rpc.${type}.${path}`,
         async (context) => {
             context.errorHandling.suppressDisplay = true;
 
+            const startTime = Date.now(); // Start time
             const result = await next();
+            const duration = Date.now() - startTime; // Duration in milliseconds
+
+            context.telemetry.measurements = {
+                ...context.telemetry.measurements,
+                duration: duration,
+            };
 
             if (!result.ok) {
                 context.telemetry.properties.result = 'Failed';

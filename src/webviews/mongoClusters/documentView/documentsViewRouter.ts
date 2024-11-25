@@ -10,9 +10,10 @@ import { type MongoClustersClient } from '../../../mongoClusters/MongoClustersCl
 import { MongoClustersSession } from '../../../mongoClusters/MongoClusterSession';
 import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
 import { localize } from '../../../utils/localize';
+import { type BaseRouterContext } from '../../api/configuration/appRouter';
 import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
 
-export type RouterContext = {
+export type RouterContext = BaseRouterContext & {
     sessionId: string;
     databaseName: string;
     collectionName: string;

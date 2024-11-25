@@ -307,12 +307,28 @@ export const CollectionView = (): JSX.Element => {
             return;
         }
 
+        const newPath = [...(currentContext.currentViewState?.currentPath ?? []), activeColumn];
+
         setCurrentContext((prev) => ({
             ...prev,
             currentViewState: {
-                currentPath: [...(currentContext.currentViewState?.currentPath ?? []), activeColumn],
+                currentPath: newPath,
             },
         }));
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'stepIn',
+                properties: {
+                    source: 'step-in-button',
+                },
+                measurements: {
+                    depth: newPath.length ?? 0,
+                },
+            })
+            .catch((_error) => {
+                console.log('error');
+            });
     }
 
     return (

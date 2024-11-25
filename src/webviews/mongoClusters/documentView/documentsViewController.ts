@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ViewColumn } from 'vscode';
+import { API } from '../../../AzureDBExperiences';
 import { ext } from '../../../extensionVariables';
 import { WebviewController } from '../../api/extension-server/WebviewController';
 import { type RouterContext } from './documentsViewRouter';
@@ -33,9 +34,11 @@ export class DocumentsViewController extends WebviewController<DocumentsViewWebv
             }
         }
 
-        super(ext.context, title, 'mongoClustersDocumentView', initialData, ViewColumn.Active);
+        super(ext.context, API.MongoClusters, title, 'mongoClustersDocumentView', initialData, ViewColumn.Active);
 
         const trpcContext: RouterContext = {
+            dbExperience: API.MongoClusters,
+            webviewName: 'documentView',
             sessionId: initialData.sessionId,
             databaseName: initialData.databaseName,
             collectionName: initialData.collectionName,

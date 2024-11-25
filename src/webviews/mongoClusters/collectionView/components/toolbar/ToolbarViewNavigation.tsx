@@ -6,30 +6,73 @@
 import { Dropdown, Label, Option, Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { ArrowLeftFilled, ArrowPreviousFilled, ArrowRightFilled } from '@fluentui/react-icons';
 import { useContext } from 'react';
+import { useTrpcClient } from '../../../../api/webview-client/useTrpcClient';
 import { CollectionViewContext } from '../../collectionViewContext';
 import { ToolbarDividerTransparent } from './ToolbarDividerTransparent';
 
 export const ToolbarViewNavigation = (): JSX.Element => {
+    /**
+     * Use the `useTrpcClient` hook to get the tRPC client and an event target
+     * for handling notifications from the extension.
+     */
+    const { trpcClient /** , vscodeEventTarget */ } = useTrpcClient();
+
     const [currentContext, setCurrentContext] = useContext(CollectionViewContext);
 
     function goToNextPage() {
+        const newPage = currentContext.currrentQueryDefinition.pageNumber + 1;
+
         setCurrentContext({
             ...currentContext,
             currrentQueryDefinition: {
                 ...currentContext.currrentQueryDefinition,
-                pageNumber: currentContext.currrentQueryDefinition.pageNumber + 1,
+                pageNumber: newPage,
             },
         });
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'pagination',
+                properties: {
+                    source: 'nextPage',
+                    ui: 'button',
+                },
+                measurements: {
+                    page: newPage,
+                    pageSize: currentContext.currrentQueryDefinition.pageSize,
+                },
+            })
+            .catch((error) => {
+                console.error('Failed to report pagination event:', error);
+            });
     }
 
     function goToPreviousPage() {
+        const newPage = Math.max(1, currentContext.currrentQueryDefinition.pageNumber - 1);
+
         setCurrentContext({
             ...currentContext,
             currrentQueryDefinition: {
                 ...currentContext.currrentQueryDefinition,
-                pageNumber: Math.max(1, currentContext.currrentQueryDefinition.pageNumber - 1),
+                pageNumber: newPage,
             },
         });
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'pagination',
+                properties: {
+                    source: 'prevPage',
+                    ui: 'button',
+                },
+                measurements: {
+                    page: newPage,
+                    pageSize: currentContext.currrentQueryDefinition.pageSize,
+                },
+            })
+            .catch((error) => {
+                console.error('Failed to report pagination event:', error);
+            });
     }
 
     function goToFirstPage() {
@@ -37,6 +80,22 @@ export const ToolbarViewNavigation = (): JSX.Element => {
             ...currentContext,
             currrentQueryDefinition: { ...currentContext.currrentQueryDefinition, pageNumber: 1 },
         });
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'pagination',
+                properties: {
+                    source: 'firstPage',
+                    ui: 'button',
+                },
+                measurements: {
+                    page: 1,
+                    pageSize: currentContext.currrentQueryDefinition.pageSize,
+                },
+            })
+            .catch((error) => {
+                console.error('Failed to report pagination event:', error);
+            });
     }
 
     function setPageSize(pageSize: number) {
@@ -48,6 +107,20 @@ export const ToolbarViewNavigation = (): JSX.Element => {
                 pageNumber: 1,
             },
         });
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'pagination',
+                properties: {
+                    source: 'pageSize',
+                },
+                measurements: {
+                    pageSize: pageSize,
+                },
+            })
+            .catch((error) => {
+                console.error('Failed to report pagination event:', error);
+            });
     }
 
     return (

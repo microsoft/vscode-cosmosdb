@@ -138,6 +138,17 @@ export const CollectionView = (): JSX.Element => {
                 break;
         }
 
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'viewChanged',
+                properties: {
+                    view: selection,
+                },
+            })
+            .catch((_error) => {
+                console.log('error');
+            });
+
         setCurrentContext((prev) => ({ ...prev, currentView: selection }));
         getDataForView(selection);
     };

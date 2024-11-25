@@ -12,4 +12,5 @@
 
 .slick-cell.row-is-deleted {
     text-decoration: line-through;
+    color: var(--vscode-editor-findMatchBackground);
 }

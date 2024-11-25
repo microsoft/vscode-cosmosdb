@@ -9,3 +9,7 @@
 
 /* make sure to add the @import the SlickGrid Bootstrap Theme AFTER the variables changes */
 @import '@slickgrid-universal/common/dist/styles/sass/slickgrid-theme-salesforce.scss';
+
+.slick-cell.row-is-deleted {
+    text-decoration: line-through;
+}

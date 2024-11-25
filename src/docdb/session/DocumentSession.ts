@@ -19,11 +19,11 @@ import vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
-import { extractPartitionKey } from '../../utils/document';
+import { extractPartitionKey, getDocumentId } from '../../utils/document';
 import { localize } from '../../utils/localize';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
-import { type CosmosDbRecord, type CosmosDbRecordIdentifier } from '../types/queryResult';
+import { type CosmosDbRecord, type CosmosDbRecordIdentifier, type QueryResultRecord } from '../types/queryResult';
 
 export class DocumentSession {
     public readonly id: string;
@@ -221,43 +221,60 @@ export class DocumentSession {
         });
     }
 
-    public async delete(documentId: CosmosDbRecordIdentifier): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.delete', async (context) => {
-            this.setTelemetryProperties(context);
+    // Returns true if document was deleted, false if not, undefined if exception occurred
+    public async delete(documentId: CosmosDbRecordIdentifier): Promise<boolean | undefined> {
+        return callWithTelemetryAndErrorHandling<boolean | undefined>(
+            'cosmosDB.nosql.document.session.delete',
+            async (context) => {
+                this.setTelemetryProperties(context);
 
-            if (this.isDisposed) {
-                throw new Error('Session is disposed');
-            }
-
-            if (documentId.id === undefined) {
-                throw new Error('Document id is required');
-            }
-
-            try {
-                const result = await this.client
-                    .database(this.databaseId)
-                    .container(this.containerId)
-                    .item(documentId.id, documentId.partitionKey)
-                    .delete({
-                        abortSignal: this.abortController.signal,
-                    });
-
-                if (result?.statusCode === 204) {
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'documentDeleted',
-                        params: [this.id, documentId],
-                    });
-                } else {
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'documentError',
-                        params: [this.id, 'Document deletion failed'],
-                    });
+                if (this.isDisposed) {
+                    throw new Error('Session is disposed');
                 }
-            } catch (error) {
-                await this.errorHandling(error, context);
-            }
+
+                if (documentId.id === undefined) {
+                    throw new Error('Document id is required');
+                }
+
+                try {
+                    const result = await this.client
+                        .database(this.databaseId)
+                        .container(this.containerId)
+                        .item(documentId.id, documentId.partitionKey)
+                        .delete({
+                            abortSignal: this.abortController.signal,
+                        });
+
+                    if (result?.statusCode === 204) {
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'documentDeleted',
+                            params: [this.id, documentId],
+                        });
+
+                        return true;
+                    } else {
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'documentError',
+                            params: [this.id, 'Document deletion failed'],
+                        });
+
+                        return false;
+                    }
+                } catch (error) {
+                    await this.errorHandling(error, context);
+                }
+
+                return undefined;
+            },
+        );
+    }
+
+    public async getDocumentId(document: QueryResultRecord): Promise<CosmosDbRecordIdentifier | undefined> {
+        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.getDocumentId', async () => {
+            const partitionKey = await this.getPartitionKey();
+            return getDocumentId(document, partitionKey);
         });
     }
 

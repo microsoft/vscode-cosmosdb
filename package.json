@@ -504,6 +504,11 @@
             },
             {
                 "category": "NoSQL",
+                "command": "cosmosDB.viewDocDBDatabaseOffer",
+                "title": "View Database Offer"
+            },
+            {
+                "category": "NoSQL",
                 "command": "cosmosDB.writeNoSqlQuery",
                 "title": "Open Query Scrapbook"
             },
@@ -893,6 +898,11 @@
                 {
                     "command": "cosmosDB.viewDocDBCollectionOffer",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
+                    "group": "1@5"
+                },
+                {
+                    "command": "cosmosDB.viewDocDBDatabaseOffer",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentDatabase",
                     "group": "1@5"
                 },
                 {

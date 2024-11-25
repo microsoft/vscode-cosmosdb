@@ -352,12 +352,26 @@ export const CollectionView = (): JSX.Element => {
                 </div>
 
                 <QueryEditor
-                    onExecuteRequest={(q: string) =>
+                    onExecuteRequest={(q: string) => {
                         setCurrentContext((prev) => ({
                             ...prev,
                             currrentQueryDefinition: { ...prev.currrentQueryDefinition, queryText: q, pageNumber: 1 },
-                        }))
-                    }
+                        }));
+
+                        trpcClient.common.reportEvent
+                            .mutate({
+                                eventName: 'executeQuery',
+                                properties: {
+                                    ui: 'shortcut',
+                                },
+                                measurements: {
+                                    queryLenth: q.length,
+                                },
+                            })
+                            .catch((error) => {
+                                console.error('Failed to report query event:', error);
+                            });
+                    }}
                 />
 
                 <TabList selectedValue="tab_result" style={{ marginTop: '-10px' }}>

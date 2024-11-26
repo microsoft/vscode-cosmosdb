@@ -9,6 +9,7 @@
  * singletone on a client with a getter from a connection pool..
  */
 
+import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
 import { EJSON } from 'bson';
 import {
     MongoClient,
@@ -22,6 +23,7 @@ import {
     type WithoutId,
 } from 'mongodb';
 import { CredentialCache } from './CredentialCache';
+import { areMongoDBAzure, getHostsFromConnectionString } from './utils/connectionStringHelpers';
 import { toFilterQueryObj } from './utils/toFilterQuery';
 
 export interface DatabaseItemModel {
@@ -73,9 +75,22 @@ export class MongoClustersClient {
         }
 
         this._credentialId = credentialId;
+
+        // check if it's an azure connection, and do some special handling
+        let userAgentString: string | undefined = undefined;
+        {
+            const cString = CredentialCache.getCredentials(credentialId)?.connectionString as string;
+            const hosts = getHostsFromConnectionString(cString);
+            if (areMongoDBAzure(hosts)) {
+                userAgentString = appendExtensionUserAgent();
+            }
+        }
+
         const cStringPassword = CredentialCache.getConnectionStringWithPassword(credentialId);
 
-        this._mongoClient = await MongoClient.connect(cStringPassword as string);
+        this._mongoClient = await MongoClient.connect(cStringPassword as string, {
+            appName: userAgentString,
+        });
     }
 
     public static async getClient(credentialId: string): Promise<MongoClustersClient> {

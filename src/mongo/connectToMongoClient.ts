@@ -10,7 +10,7 @@ export async function connectToMongoClient(connectionString: string, appName: st
     // appname appears to be the correct equivalent to user-agent for mongo
     const options: MongoClientOptions = <MongoClientOptions>{
         // appName should be wrapped in '@'s when trying to connect to a Mongo account, this doesn't effect the appendUserAgent string
-        appName: `@${appName}@`,
+        appName: `${appName}[RU]`,
         // https://github.com/lmammino/mongo-uri-builder/issues/2
         useNewUrlParser: true,
         useUnifiedTopology: true,

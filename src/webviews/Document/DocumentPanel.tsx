@@ -95,9 +95,10 @@ export const DocumentPanel = () => {
     const state = useDocumentState();
     const dispatcher = useDocumentDispatcher();
 
+    const isInit = state.isInit;
     const isReadOnly = state.mode === 'view';
     const inProgress = state.isSaving || state.isRefreshing;
-    const hasDocumentInDB = state.documentId !== undefined;
+    const hasDocumentInDB = state.documentId !== '';
 
     const onSave = async () => {
         // Save document to the database
@@ -177,6 +178,14 @@ export const DocumentPanel = () => {
     useEffect(() => {
         void dispatcher?.notifyDirty?.(state.isDirty);
     }, [dispatcher, state.isDirty]);
+
+    if (!isInit || !state.currentDocumentContent) {
+        return (
+            <section className={classes.container}>
+                <ProgressBar />
+            </section>
+        );
+    }
 
     return (
         <section className={classes.container}>

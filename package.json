@@ -454,7 +454,7 @@
             {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.importDocument",
-                "title": "Import Document into a Collection..."
+                "title": "Import Document into a Container..."
             },
             {
                 "category": "MongoDB",

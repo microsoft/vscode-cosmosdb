@@ -31,14 +31,8 @@ import {
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 const useClasses = makeStyles({
-    iconPlay: {
-        color: tokens.colorStatusSuccessBorderActive,
-    },
     iconStop: {
         color: tokens.colorStatusDangerBorderActive,
-    },
-    iconConnect: {
-        color: tokens.colorStatusSuccessBorderActive,
     },
     iconDisconnect: {
         color: tokens.colorStatusDangerBorderActive,
@@ -72,7 +66,7 @@ const BaseActionsSection = () => {
                     {(triggerProps: MenuButtonProps) => (
                         <SplitButton
                             aria-label="Run"
-                            icon={<PlayRegular className={classes.iconPlay} />}
+                            icon={<PlayRegular />}
                             disabled={state.isExecuting || !state.isConnected}
                             appearance={'primary'}
                             menuButton={triggerProps}
@@ -185,14 +179,13 @@ const ConnectedActionsSection = () => {
 };
 
 const DisconnectedActionsSection = () => {
-    const classes = useClasses();
     const dispatcher = useQueryEditorDispatcher();
 
     return (
         <ToolbarButton
             aria-label="Connect"
             appearance={'primary'}
-            icon={<DatabasePlugConnectedRegular className={classes.iconConnect} />}
+            icon={<DatabasePlugConnectedRegular />}
             onClick={() => void dispatcher.connectToDatabase()}
         >
             Connect

@@ -41,14 +41,7 @@ export const trpcToTelemetry = t.middleware(async ({ path, type, next }) => {
         async (context) => {
             context.errorHandling.suppressDisplay = true;
 
-            const startTime = Date.now(); // Start time
             const result = await next();
-            const duration = Date.now() - startTime; // Duration in milliseconds
-
-            context.telemetry.measurements = {
-                ...context.telemetry.measurements,
-                duration: duration,
-            };
 
             if (!result.ok) {
                 context.telemetry.properties.result = 'Failed';

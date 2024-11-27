@@ -16,7 +16,5 @@ export async function mongoClustersImportDocuments(
     const source = (args[0] as { source?: string })?.source ?? 'contextMenu';
     context.telemetry.properties.calledFrom = source;
 
-    context.telemetry.properties.source = source as string;
-
     return importDocuments(context, undefined, collectionNode);
 }

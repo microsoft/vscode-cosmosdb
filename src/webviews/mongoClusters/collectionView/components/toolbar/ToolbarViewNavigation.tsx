@@ -34,8 +34,9 @@ export const ToolbarViewNavigation = (): JSX.Element => {
             .mutate({
                 eventName: 'pagination',
                 properties: {
-                    source: 'nextPage',
+                    source: 'next-page',
                     ui: 'button',
+                    view: currentContext.currentView,
                 },
                 measurements: {
                     page: newPage,
@@ -62,8 +63,9 @@ export const ToolbarViewNavigation = (): JSX.Element => {
             .mutate({
                 eventName: 'pagination',
                 properties: {
-                    source: 'prevPage',
+                    source: 'prev-page',
                     ui: 'button',
+                    view: currentContext.currentView,
                 },
                 measurements: {
                     page: newPage,
@@ -85,8 +87,9 @@ export const ToolbarViewNavigation = (): JSX.Element => {
             .mutate({
                 eventName: 'pagination',
                 properties: {
-                    source: 'firstPage',
+                    source: 'first-page',
                     ui: 'button',
+                    view: currentContext.currentView,
                 },
                 measurements: {
                     page: 1,
@@ -112,9 +115,12 @@ export const ToolbarViewNavigation = (): JSX.Element => {
             .mutate({
                 eventName: 'pagination',
                 properties: {
-                    source: 'pageSize',
+                    source: 'page-size',
+                    ui: 'button',
+                    view: currentContext.currentView,
                 },
                 measurements: {
+                    page: currentContext.currrentQueryDefinition.pageNumber,
                     pageSize: pageSize,
                 },
             })

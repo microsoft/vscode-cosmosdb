@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { EJSON } from 'bson';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
@@ -50,14 +50,20 @@ export async function mongoClustersExportQueryResults(
     let documentCount = 0;
 
     // Wrap the export process inside a progress reporting function
-    await runExportWithProgressAndDescription(node.id, async (progress, cancellationToken) => {
-        documentCount = await exportDocumentsToFile(
-            docStream,
-            filePath,
-            progress,
-            cancellationToken,
-            docStreamAbortController,
-        );
+    await callWithTelemetryAndErrorHandling('cosmosDB.mongoClusters.exportDocuments', async (actionContext) => {
+        await runExportWithProgressAndDescription(node.id, async (progress, cancellationToken) => {
+            documentCount = await exportDocumentsToFile(
+                docStream,
+                filePath,
+                progress,
+                cancellationToken,
+                docStreamAbortController,
+            );
+        });
+
+        actionContext.telemetry.properties.source = props?.source;
+        actionContext.telemetry.measurements.queryLength = props?.queryText?.length;
+        actionContext.telemetry.measurements.documentCount = documentCount;
     });
 
     ext.outputChannel.appendLog(`MongoDB Clusters: Exported document count: ${documentCount}`);

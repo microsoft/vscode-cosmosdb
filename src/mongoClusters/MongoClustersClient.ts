@@ -9,7 +9,7 @@
  * singletone on a client with a getter from a connection pool..
  */
 
-import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
+import { appendExtensionUserAgent, callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { EJSON } from 'bson';
 import {
     MongoClient,
@@ -24,6 +24,7 @@ import {
 } from 'mongodb';
 import { CredentialCache } from './CredentialCache';
 import { areMongoDBAzure, getHostsFromConnectionString } from './utils/connectionStringHelpers';
+import { getMongoClusterMetadata, type MongoClusterMetadata } from './utils/getMongoClusterMetadata';
 import { toFilterQueryObj } from './utils/toFilterQuery';
 
 export interface DatabaseItemModel {
@@ -90,6 +91,15 @@ export class MongoClustersClient {
 
         this._mongoClient = await MongoClient.connect(cStringPassword as string, {
             appName: userAgentString,
+        });
+
+        void callWithTelemetryAndErrorHandling('cosmosDB.mongoClusters.connect.getmetadata', async (context) => {
+            const metadata: MongoClusterMetadata = await getMongoClusterMetadata(this._mongoClient);
+
+            context.telemetry.properties = {
+                ...context.telemetry.properties,
+                ...metadata,
+            };
         });
     }
 

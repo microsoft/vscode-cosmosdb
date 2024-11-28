@@ -113,14 +113,17 @@ const RunQueryButton = forwardRef((props: OverflowToolbarItemProps, ref: Forward
     );
 });
 
-const CancelQueryButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
-    const classes = useClasses();
-    const state = useQueryEditorState();
-    const dispatcher = useQueryEditorDispatcher();
+const CancelQueryButton = forwardRef(
+    (props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement | HTMLDivElement>) => {
+        const classes = useClasses();
+        const state = useQueryEditorState();
+        const dispatcher = useQueryEditorDispatcher();
+        const Component = props.type === 'button' ? ToolbarButton : MenuItem;
 
-    if (props.type === 'button') {
         return (
-            <ToolbarButton
+            <Component
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
                 ref={ref}
                 aria-label="Cancel"
                 icon={<StopRegular className={classes.iconStop} />}
@@ -128,80 +131,62 @@ const CancelQueryButton = forwardRef((props: OverflowToolbarItemProps, ref: Forw
                 onClick={() => void dispatcher.stopQuery(state.currentExecutionId)}
             >
                 Cancel
-            </ToolbarButton>
+            </Component>
         );
-    }
+    },
+);
 
-    return (
-        <MenuItem
-            aria-label="Cancel"
-            icon={<StopRegular className={classes.iconStop} />}
-            disabled={!state.isExecuting}
-            onClick={() => void dispatcher.stopQuery(state.currentExecutionId)}
-        >
-            Cancel
-        </MenuItem>
-    );
-});
+const OpenFileButton = forwardRef(
+    (props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement | HTMLDivElement>) => {
+        const dispatcher = useQueryEditorDispatcher();
+        const Component = props.type === 'button' ? ToolbarButton : MenuItem;
 
-const OpenFileButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
-    const dispatcher = useQueryEditorDispatcher();
-
-    if (props.type === 'button') {
         return (
-            <ToolbarButton
+            <Component
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
                 ref={ref}
                 aria-label="Open"
                 icon={<FolderOpenRegular />}
                 onClick={() => void dispatcher.openFile()}
             >
                 Open
-            </ToolbarButton>
+            </Component>
         );
-    }
+    },
+);
 
-    return (
-        <MenuItem aria-label="Open" icon={<FolderOpenRegular />} onClick={() => void dispatcher.openFile()}>
-            Open
-        </MenuItem>
-    );
-});
+const SaveToFileButton = forwardRef(
+    (props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement | HTMLDivElement>) => {
+        const state = useQueryEditorState();
+        const dispatcher = useQueryEditorDispatcher();
+        const Component = props.type === 'button' ? ToolbarButton : MenuItem;
 
-const SaveToFileButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
-    const state = useQueryEditorState();
-    const dispatcher = useQueryEditorDispatcher();
-
-    if (props.type === 'button') {
         return (
-            <ToolbarButton
+            <Component
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
                 ref={ref}
                 aria-label="Save query"
                 icon={<SaveRegular />}
                 onClick={() => void dispatcher.saveToFile(state.queryValue, 'New query', 'nosql')}
             >
                 Save
-            </ToolbarButton>
+            </Component>
         );
-    }
+    },
+);
 
-    return (
-        <MenuItem
-            aria-label="Save query"
-            icon={<SaveRegular />}
-            onClick={() => void dispatcher.saveToFile(state.queryValue, 'New query', 'nosql')}
-        >
-            Save
-        </MenuItem>
-    );
-});
+const DuplicateTabButton = forwardRef(
+    (props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement | HTMLDivElement>) => {
+        const state = useQueryEditorState();
+        const dispatcher = useQueryEditorDispatcher();
+        const Component = props.type === 'button' ? ToolbarButton : MenuItem;
 
-const DuplicateTabButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
-    const state = useQueryEditorState();
-    const dispatcher = useQueryEditorDispatcher();
-
-    if (props.type === 'button') {
         return (
-            <ToolbarButton
+            <Component
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
                 ref={ref}
                 aria-label="Copy into new tab"
                 icon={<TabDesktopMultipleRegular />}
@@ -209,21 +194,10 @@ const DuplicateTabButton = forwardRef((props: OverflowToolbarItemProps, ref: For
                 disabled={!state.isConnected}
             >
                 Duplicate
-            </ToolbarButton>
+            </Component>
         );
-    }
-
-    return (
-        <MenuItem
-            aria-label="Copy into new tab"
-            icon={<TabDesktopMultipleRegular />}
-            onClick={() => void dispatcher.duplicateTab(state.queryValue)}
-            disabled={!state.isConnected}
-        >
-            Duplicate
-        </MenuItem>
-    );
-});
+    },
+);
 
 const LearnButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
     const state = useQueryEditorState();
@@ -271,59 +245,42 @@ const LearnButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedR
     );
 });
 
-const ConnectionButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
-    const classes = useClasses();
-    const state = useQueryEditorState();
-    const dispatcher = useQueryEditorDispatcher();
+const ConnectionButton = forwardRef(
+    (props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement | HTMLDivElement>) => {
+        const classes = useClasses();
+        const state = useQueryEditorState();
+        const dispatcher = useQueryEditorDispatcher();
+        const Component = props.type === 'button' ? ToolbarButton : MenuItem;
 
-    if (state.isConnected) {
-        if (props.type === 'button') {
+        if (state.isConnected) {
             return (
-                <ToolbarButton
+                <Component
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-ignore
                     ref={ref}
                     aria-label="Disconnect"
                     icon={<DatabasePlugConnectedRegular className={classes.iconDisconnect} />}
                     onClick={() => void dispatcher.disconnectFromDatabase()}
                 >
                     Disconnect
-                </ToolbarButton>
+                </Component>
             );
         }
 
         return (
-            <MenuItem
-                aria-label="Disconnect"
-                icon={<DatabasePlugConnectedRegular className={classes.iconDisconnect} />}
-                onClick={() => void dispatcher.disconnectFromDatabase()}
-            >
-                Disconnect
-            </MenuItem>
-        );
-    }
-
-    if (props.type === 'button') {
-        return (
-            <ToolbarButton
+            <Component
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
                 ref={ref}
                 aria-label="Connect"
                 icon={<DatabasePlugConnectedRegular />}
                 onClick={() => void dispatcher.connectToDatabase()}
             >
                 Connect
-            </ToolbarButton>
+            </Component>
         );
-    }
-
-    return (
-        <MenuItem
-            aria-label="Connect"
-            icon={<DatabasePlugConnectedRegular />}
-            onClick={() => void dispatcher.connectToDatabase()}
-        >
-            Connect
-        </MenuItem>
-    );
-});
+    },
+);
 
 interface ToolbarOverflowMenuItemProps extends Omit<MenuItemProps, 'id'> {
     id: string;

@@ -49,7 +49,11 @@ const useClasses = makeStyles({
     },
 });
 
-const RunQueryButton = forwardRef((_, ref: ForwardedRef<HTMLButtonElement>) => {
+type OverflowToolbarItemProps = {
+    type: 'button' | 'menuitem';
+};
+
+const RunQueryButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
@@ -71,18 +75,29 @@ const RunQueryButton = forwardRef((_, ref: ForwardedRef<HTMLButtonElement>) => {
     return (
         <Menu>
             <MenuTrigger>
-                {(triggerProps: MenuButtonProps) => (
-                    <SplitButton
-                        ref={ref}
+                {props.type === 'button' ? (
+                    (triggerProps: MenuButtonProps) => (
+                        <SplitButton
+                            ref={ref}
+                            aria-label="Run"
+                            icon={<PlayRegular />}
+                            disabled={state.isExecuting || !state.isConnected}
+                            appearance={'primary'}
+                            menuButton={triggerProps}
+                            primaryActionButton={{ onClick: () => runQuery() }}
+                        >
+                            Run
+                        </SplitButton>
+                    )
+                ) : (
+                    <MenuItem
                         aria-label="Run"
                         icon={<PlayRegular />}
                         disabled={state.isExecuting || !state.isConnected}
-                        appearance={'primary'}
-                        menuButton={triggerProps}
-                        primaryActionButton={{ onClick: () => runQuery() }}
+                        onClick={() => runQuery()}
                     >
                         Run
-                    </SplitButton>
+                    </MenuItem>
                 )}
             </MenuTrigger>
             <MenuPopover>
@@ -98,72 +113,24 @@ const RunQueryButton = forwardRef((_, ref: ForwardedRef<HTMLButtonElement>) => {
     );
 });
 
-const RunQueryMenuItem = () => {
-    const state = useQueryEditorState();
-    const dispatcher = useQueryEditorDispatcher();
-
-    const truncateString = (str: string, maxLength: number) => {
-        if (str.length > maxLength) {
-            return str.slice(0, maxLength - 1) + '\u2026';
-        }
-        return str;
-    };
-
-    const runQuery = () => {
-        if (state.querySelectedValue) {
-            return void dispatcher.runQuery(state.querySelectedValue, { countPerPage: state.pageSize });
-        }
-
-        void dispatcher.runQuery(state.queryValue, { countPerPage: state.pageSize });
-    };
-
-    return (
-        <Menu>
-            <MenuTrigger>
-                <MenuItem
-                    aria-label="Run"
-                    icon={<PlayRegular />}
-                    disabled={state.isExecuting || !state.isConnected}
-                    onClick={() => runQuery()}
-                >
-                    Run
-                </MenuItem>
-            </MenuTrigger>
-            <MenuPopover>
-                {state.queryHistory.length === 0 && <MenuItem disabled>No history</MenuItem>}
-                {state.queryHistory.length > 0 &&
-                    state.queryHistory.map((query, index) => (
-                        <MenuItem onClick={() => dispatcher.insertText(query)} key={index}>
-                            {truncateString(query, 50)}
-                        </MenuItem>
-                    ))}
-            </MenuPopover>
-        </Menu>
-    );
-};
-
-const CancelQueryButton = forwardRef((_, ref: ForwardedRef<HTMLButtonElement>) => {
+const CancelQueryButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
     const classes = useClasses();
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
-    return (
-        <ToolbarButton
-            ref={ref}
-            aria-label="Cancel"
-            icon={<StopRegular className={classes.iconStop} />}
-            disabled={!state.isExecuting}
-            onClick={() => void dispatcher.stopQuery(state.currentExecutionId)}
-        >
-            Cancel
-        </ToolbarButton>
-    );
-});
-
-const CancelQueryMenuItem = () => {
-    const classes = useClasses();
-    const state = useQueryEditorState();
-    const dispatcher = useQueryEditorDispatcher();
+    if (props.type === 'button') {
+        return (
+            <ToolbarButton
+                ref={ref}
+                aria-label="Cancel"
+                icon={<StopRegular className={classes.iconStop} />}
+                disabled={!state.isExecuting}
+                onClick={() => void dispatcher.stopQuery(state.currentExecutionId)}
+            >
+                Cancel
+            </ToolbarButton>
+        );
+    }
 
     return (
         <MenuItem
@@ -175,217 +142,158 @@ const CancelQueryMenuItem = () => {
             Cancel
         </MenuItem>
     );
-};
-
-const OpenFileButton = forwardRef((_, ref: ForwardedRef<HTMLButtonElement>) => {
-    const dispatcher = useQueryEditorDispatcher();
-
-    return (
-        <ToolbarButton
-            ref={ref}
-            aria-label="Open"
-            icon={<FolderOpenRegular />}
-            onClick={() => void dispatcher.openFile()}
-        >
-            Open
-        </ToolbarButton>
-    );
 });
 
-const OpenFileMenuItem = () => {
+const OpenFileButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
     const dispatcher = useQueryEditorDispatcher();
+
+    if (props.type === 'button') {
+        return (
+            <ToolbarButton
+                ref={ref}
+                aria-label="Open"
+                icon={<FolderOpenRegular />}
+                onClick={() => void dispatcher.openFile()}
+            >
+                Open
+            </ToolbarButton>
+        );
+    }
 
     return (
         <MenuItem aria-label="Open" icon={<FolderOpenRegular />} onClick={() => void dispatcher.openFile()}>
             Open
         </MenuItem>
     );
-};
-
-const SaveToFileButton = forwardRef((_, ref: ForwardedRef<HTMLButtonElement>) => {
-    const state = useQueryEditorState();
-    const dispatcher = useQueryEditorDispatcher();
-
-    return (
-        <ToolbarButton
-            ref={ref}
-            aria-label="Save query"
-            icon={<SaveRegular />}
-            onClick={() => void dispatcher.saveToFile(state.queryValue, 'New query', 'nosql')}
-        >
-            Save
-        </ToolbarButton>
-    );
 });
 
-const SaveToFileMenuItem = () => {
+const SaveToFileButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
-    return (
-        <MenuItem
-            aria-label="Save query"
-            icon={<SaveRegular />}
-            onClick={() => void dispatcher.saveToFile(state.queryValue, 'New query', 'nosql')}
-        >
-            Save
-        </MenuItem>
-    );
-};
-
-const DuplicateTabButton = forwardRef((_, ref: ForwardedRef<HTMLButtonElement>) => {
-    const state = useQueryEditorState();
-    const dispatcher = useQueryEditorDispatcher();
-
-    return (
-        <ToolbarButton
-            ref={ref}
-            aria-label="Copy into new tab"
-            icon={<TabDesktopMultipleRegular />}
-            onClick={() => void dispatcher.duplicateTab(state.queryValue)}
-            disabled={!state.isConnected}
-        >
-            Duplicate
-        </ToolbarButton>
-    );
-});
-
-const DuplicateTabMenuItem = () => {
-    const state = useQueryEditorState();
-    const dispatcher = useQueryEditorDispatcher();
-
-    return (
-        <MenuItem
-            aria-label="Copy into new tab"
-            icon={<TabDesktopMultipleRegular />}
-            onClick={() => void dispatcher.duplicateTab(state.queryValue)}
-            disabled={!state.isConnected}
-        >
-            Duplicate
-        </MenuItem>
-    );
-};
-
-const LearnButton = forwardRef((_, ref: ForwardedRef<HTMLButtonElement>) => {
-    const state = useQueryEditorState();
-    const dispatcher = useQueryEditorDispatcher();
-    const samples = ['SELECT * FROM c', 'SELECT * FROM c ORDER BY c.id', 'SELECT * FROM c OFFSET 0 LIMIT 10'];
-    const noSqlQuickReferenceUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/';
-    const noSqlLearningCenterUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/';
-
-    return (
-        <Menu>
-            <MenuTrigger>
-                <ToolbarButton ref={ref} aria-label="Learn more" icon={<LibraryRegular />}>
-                    Learn
-                </ToolbarButton>
-            </MenuTrigger>
-            <MenuPopover>
-                <MenuList>
-                    <Menu>
-                        <MenuTrigger>
-                            <MenuItem>Query examples</MenuItem>
-                        </MenuTrigger>
-                        <MenuPopover>
-                            {samples.map((sample, index) => (
-                                <MenuItem
-                                    disabled={state.isExecuting}
-                                    onClick={() => dispatcher.insertText(sample)}
-                                    key={index}
-                                >
-                                    {sample}
-                                </MenuItem>
-                            ))}
-                        </MenuPopover>
-                    </Menu>
-                    <MenuItemLink href={noSqlQuickReferenceUrl}>NoSQL quick reference</MenuItemLink>
-                    <MenuItemLink href={noSqlLearningCenterUrl}>Learning center</MenuItemLink>
-                </MenuList>
-            </MenuPopover>
-        </Menu>
-    );
-});
-
-const LearnMenuItem = () => {
-    const state = useQueryEditorState();
-    const dispatcher = useQueryEditorDispatcher();
-    const samples = ['SELECT * FROM c', 'SELECT * FROM c ORDER BY c.id', 'SELECT * FROM c OFFSET 0 LIMIT 10'];
-    const noSqlQuickReferenceUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/';
-    const noSqlLearningCenterUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/';
-
-    return (
-        <Menu>
-            <MenuTrigger>
-                <MenuItem aria-label="Learn more" icon={<LibraryRegular />}>
-                    Learn
-                </MenuItem>
-            </MenuTrigger>
-            <MenuPopover>
-                <MenuList>
-                    <Menu>
-                        <MenuTrigger>
-                            <MenuItem>Query examples</MenuItem>
-                        </MenuTrigger>
-                        <MenuPopover>
-                            {samples.map((sample, index) => (
-                                <MenuItem
-                                    disabled={state.isExecuting}
-                                    onClick={() => dispatcher.insertText(sample)}
-                                    key={index}
-                                >
-                                    {sample}
-                                </MenuItem>
-                            ))}
-                        </MenuPopover>
-                    </Menu>
-                    <MenuItemLink href={noSqlQuickReferenceUrl}>NoSQL quick reference</MenuItemLink>
-                    <MenuItemLink href={noSqlLearningCenterUrl}>Learning center</MenuItemLink>
-                </MenuList>
-            </MenuPopover>
-        </Menu>
-    );
-};
-
-const ConnectionButton = forwardRef((_, ref: ForwardedRef<HTMLButtonElement>) => {
-    const classes = useClasses();
-    const state = useQueryEditorState();
-    const dispatcher = useQueryEditorDispatcher();
-
-    if (state.isConnected) {
+    if (props.type === 'button') {
         return (
             <ToolbarButton
                 ref={ref}
-                aria-label="Disconnect"
-                icon={<DatabasePlugConnectedRegular className={classes.iconDisconnect} />}
-                onClick={() => void dispatcher.disconnectFromDatabase()}
+                aria-label="Save query"
+                icon={<SaveRegular />}
+                onClick={() => void dispatcher.saveToFile(state.queryValue, 'New query', 'nosql')}
             >
-                Disconnect
+                Save
             </ToolbarButton>
         );
     }
 
     return (
-        <ToolbarButton
-            ref={ref}
-            aria-label="Connect"
-            appearance={'primary'}
-            icon={<DatabasePlugConnectedRegular />}
-            onClick={() => void dispatcher.connectToDatabase()}
+        <MenuItem
+            aria-label="Save query"
+            icon={<SaveRegular />}
+            onClick={() => void dispatcher.saveToFile(state.queryValue, 'New query', 'nosql')}
         >
-            Connect
-        </ToolbarButton>
+            Save
+        </MenuItem>
     );
 });
 
-const ConnectionMenuItem = () => {
+const DuplicateTabButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
+    const state = useQueryEditorState();
+    const dispatcher = useQueryEditorDispatcher();
+
+    if (props.type === 'button') {
+        return (
+            <ToolbarButton
+                ref={ref}
+                aria-label="Copy into new tab"
+                icon={<TabDesktopMultipleRegular />}
+                onClick={() => void dispatcher.duplicateTab(state.queryValue)}
+                disabled={!state.isConnected}
+            >
+                Duplicate
+            </ToolbarButton>
+        );
+    }
+
+    return (
+        <MenuItem
+            aria-label="Copy into new tab"
+            icon={<TabDesktopMultipleRegular />}
+            onClick={() => void dispatcher.duplicateTab(state.queryValue)}
+            disabled={!state.isConnected}
+        >
+            Duplicate
+        </MenuItem>
+    );
+});
+
+const LearnButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
+    const state = useQueryEditorState();
+    const dispatcher = useQueryEditorDispatcher();
+    const samples = ['SELECT * FROM c', 'SELECT * FROM c ORDER BY c.id', 'SELECT * FROM c OFFSET 0 LIMIT 10'];
+    const noSqlQuickReferenceUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/';
+    const noSqlLearningCenterUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/';
+
+    return (
+        <Menu>
+            <MenuTrigger>
+                {props.type === 'button' ? (
+                    <ToolbarButton ref={ref} aria-label="Learn more" icon={<LibraryRegular />}>
+                        Learn
+                    </ToolbarButton>
+                ) : (
+                    <MenuItem aria-label="Learn more" icon={<LibraryRegular />}>
+                        Learn
+                    </MenuItem>
+                )}
+            </MenuTrigger>
+            <MenuPopover>
+                <MenuList>
+                    <Menu>
+                        <MenuTrigger>
+                            <MenuItem>Query examples</MenuItem>
+                        </MenuTrigger>
+                        <MenuPopover>
+                            {samples.map((sample, index) => (
+                                <MenuItem
+                                    disabled={state.isExecuting}
+                                    onClick={() => dispatcher.insertText(sample)}
+                                    key={index}
+                                >
+                                    {sample}
+                                </MenuItem>
+                            ))}
+                        </MenuPopover>
+                    </Menu>
+                    <MenuItemLink href={noSqlQuickReferenceUrl}>NoSQL quick reference</MenuItemLink>
+                    <MenuItemLink href={noSqlLearningCenterUrl}>Learning center</MenuItemLink>
+                </MenuList>
+            </MenuPopover>
+        </Menu>
+    );
+});
+
+const ConnectionButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
+    const classes = useClasses();
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
     if (state.isConnected) {
+        if (props.type === 'button') {
+            return (
+                <ToolbarButton
+                    ref={ref}
+                    aria-label="Disconnect"
+                    icon={<DatabasePlugConnectedRegular className={classes.iconDisconnect} />}
+                    onClick={() => void dispatcher.disconnectFromDatabase()}
+                >
+                    Disconnect
+                </ToolbarButton>
+            );
+        }
+
         return (
             <MenuItem
                 aria-label="Disconnect"
-                icon={<DatabasePlugConnectedRegular />}
+                icon={<DatabasePlugConnectedRegular className={classes.iconDisconnect} />}
                 onClick={() => void dispatcher.disconnectFromDatabase()}
             >
                 Disconnect
@@ -393,6 +301,19 @@ const ConnectionMenuItem = () => {
         );
     }
 
+    if (props.type === 'button') {
+        return (
+            <ToolbarButton
+                ref={ref}
+                aria-label="Connect"
+                icon={<DatabasePlugConnectedRegular />}
+                onClick={() => void dispatcher.connectToDatabase()}
+            >
+                Connect
+            </ToolbarButton>
+        );
+    }
+
     return (
         <MenuItem
             aria-label="Connect"
@@ -402,7 +323,7 @@ const ConnectionMenuItem = () => {
             Connect
         </MenuItem>
     );
-};
+});
 
 interface ToolbarOverflowMenuItemProps extends Omit<MenuItemProps, 'id'> {
     id: string;
@@ -449,27 +370,27 @@ const OverflowMenu = () => {
             <MenuPopover>
                 <MenuList>
                     <ToolbarOverflowMenuItem id="1">
-                        <RunQueryMenuItem />
+                        <RunQueryButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
                     <ToolbarOverflowMenuItem id="2">
-                        <CancelQueryMenuItem />
+                        <CancelQueryButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
                     <ToolbarMenuOverflowDivider id="1" />
                     <ToolbarOverflowMenuItem id="3">
-                        <OpenFileMenuItem />
+                        <OpenFileButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
                     <ToolbarOverflowMenuItem id="4">
-                        <SaveToFileMenuItem />
+                        <SaveToFileButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
                     <ToolbarOverflowMenuItem id="5">
-                        <DuplicateTabMenuItem />
+                        <DuplicateTabButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
                     <ToolbarOverflowMenuItem id="6">
-                        <LearnMenuItem />
+                        <LearnButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
                     <ToolbarMenuOverflowDivider id="2" />
                     <ToolbarOverflowMenuItem id="7">
-                        <ConnectionMenuItem />
+                        <ConnectionButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
                 </MenuList>
             </MenuPopover>
@@ -496,27 +417,27 @@ export const QueryToolbarOverflow = (props: Partial<ToolbarProps>) => {
         <Overflow padding={40}>
             <Toolbar aria-label="Default" size={'small'} {...props}>
                 <OverflowItem id={'1'} groupId={'1'}>
-                    <RunQueryButton />
+                    <RunQueryButton type={'button'} />
                 </OverflowItem>
                 <OverflowItem id={'2'} groupId={'1'}>
-                    <CancelQueryButton />
+                    <CancelQueryButton type={'button'} />
                 </OverflowItem>
                 <ToolbarOverflowDivider groupId="1" />
                 <OverflowItem id={'3'} groupId={'2'}>
-                    <OpenFileButton />
+                    <OpenFileButton type={'button'} />
                 </OverflowItem>
                 <OverflowItem id={'4'} groupId={'2'}>
-                    <SaveToFileButton />
+                    <SaveToFileButton type={'button'} />
                 </OverflowItem>
                 <OverflowItem id={'5'} groupId={'2'}>
-                    <DuplicateTabButton />
+                    <DuplicateTabButton type={'button'} />
                 </OverflowItem>
                 <OverflowItem id={'6'} groupId={'2'}>
-                    <LearnButton />
+                    <LearnButton type={'button'} />
                 </OverflowItem>
                 <ToolbarOverflowDivider groupId="2" />
                 <OverflowItem id={'7'} groupId={'3'}>
-                    <ConnectionButton />
+                    <ConnectionButton type={'button'} />
                 </OverflowItem>
                 <OverflowMenu />
             </Toolbar>

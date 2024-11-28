@@ -56,7 +56,6 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                     const wizardContext: AuthenticateWizardContext = {
                         ...context,
                         adminUserName: undefined,
-                        otherUserNames: [],
                         resourceName: this.mongoCluster.name,
 
                         // preconfigure the username in case it's provided connection string

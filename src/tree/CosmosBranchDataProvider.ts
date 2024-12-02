@@ -82,7 +82,7 @@ export class CosmosBranchDataProvider
                             const accountInfo: MongoAccountModel = element as unknown as MongoAccountModel;
                             accountInfo.dbExperience = API.MongoDB;
 
-                            const item = new MongoAccountResourceItem(element.subscription, accountInfo);
+                            const item = new MongoAccountResourceItem(accountInfo, element.subscription);
 
                             return item;
                         } else {
@@ -93,7 +93,7 @@ export class CosmosBranchDataProvider
                             const accountInfo: NoSqlAccountModel = element as unknown as NoSqlAccountModel;
                             accountInfo.dbExperience = API.Core;
 
-                            const item = new NoSqlAccountResourceItem(element.subscription, accountInfo);
+                            const item = new NoSqlAccountResourceItem(accountInfo, element.subscription);
 
                             return item;
                         }

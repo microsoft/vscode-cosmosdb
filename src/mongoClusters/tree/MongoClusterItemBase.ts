@@ -19,10 +19,7 @@ import { type MongoClusterModel } from './MongoClusterModel';
 export abstract class MongoClusterItemBase implements TreeElementBase {
     id: string;
 
-    constructor(
-        // public readonly subscription: AzureSubscription,
-        public mongoCluster: MongoClusterModel,
-    ) {
+    constructor(public mongoCluster: MongoClusterModel) {
         this.id = mongoCluster.id ?? '';
     }
 

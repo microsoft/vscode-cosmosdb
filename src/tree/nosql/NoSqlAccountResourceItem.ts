@@ -9,9 +9,10 @@ import { type NoSqlAccountModel } from './NoSqlAccountModel';
 
 export class NoSqlAccountResourceItem extends CosmosAccountResourceItemBase {
     constructor(
-        private readonly subscription: AzureSubscription,
         account: NoSqlAccountModel,
+        /**private*/ readonly subscription?: AzureSubscription, // optional for the case of a workspace connection | private commented out to keep the compiler happy for now
     ) {
+        console.log(subscription ? subscription.subscriptionId : 'No subscription');
         super(account);
     }
 

@@ -15,6 +15,7 @@ export class ProvidePasswordStep extends AzureWizardPromptStep<AuthenticateWizar
             placeHolder: `Password for ${context.selectedUserName}@${context.resourceName}`,
             title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB cluster'),
             password: true,
+            ignoreFocusOut: true,
         });
 
         context.password = passwordTemp.trim();

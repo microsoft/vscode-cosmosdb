@@ -5,7 +5,7 @@
 
 import { makeStyles, Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { useState, type PropsWithChildren } from 'react';
-import { ResultPanelToolbar } from './ResultPanelToolbar';
+import { ResultPanelToolbarOverflow } from './ResultPanelToolbarOverflow';
 import { ResultTab } from './ResultTab';
 import { ResultTabToolbar } from './ResultTabToolbar';
 import { StatsTab } from './StatsTab';
@@ -22,6 +22,18 @@ const useStyles = makeStyles({
     },
     tabs: {
         flexGrow: 1,
+        flexBasis: '120px',
+        minWidth: '120px',
+    },
+    tabToolbar: {
+        flexBasis: '280px',
+        '& [role="toolbar"]': {
+            justifyContent: 'flex-end',
+        },
+    },
+    panelToolbar: {
+        minWidth: '0',
+        flexBasis: '480px',
     },
     tabContainer: {
         padding: '0 10px',
@@ -65,8 +77,12 @@ export const ResultPanel = () => {
                         </Tab>
                     </TabList>
                 </div>
-                <ResultTabToolbar selectedTab={selectedTab} />
-                <ResultPanelToolbar selectedTab={selectedTab} />
+                <div className={styles.tabToolbar}>
+                    <ResultTabToolbar selectedTab={selectedTab} />
+                </div>
+                <div className={styles.panelToolbar}>
+                    <ResultPanelToolbarOverflow selectedTab={selectedTab} />
+                </div>
             </ActionBar>
             <div className={styles.tabContainer}>
                 {selectedTab === 'result__tab' && <ResultTab />}

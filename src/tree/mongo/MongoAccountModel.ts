@@ -5,7 +5,7 @@
 
 import { type CosmosAccountModel } from '../CosmosAccountModel';
 
-export interface MongoDatabaseAccountModel extends CosmosAccountModel {
+export interface MongoAccountModel extends CosmosAccountModel {
     // whaterver needed to be added
     connectionString?: string;
     isServerless?: boolean;

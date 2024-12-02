@@ -5,14 +5,14 @@
 
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
-import { type MongoDatabaseAccountModel } from './MongoDatabaseAccountModel';
+import { type NoSqlAccountModel } from './NoSqlAccountModel';
 
-export class MongoDatabaseAccountResourceItem extends CosmosAccountResourceItemBase {
+export class NoSqlAccountResourceItem extends CosmosAccountResourceItemBase {
     constructor(
         private readonly subscription: AzureSubscription,
-        databaseAccount: MongoDatabaseAccountModel,
+        account: NoSqlAccountModel,
     ) {
-        super(databaseAccount);
+        super(account);
     }
 
     // here, we can add more methods or properties specific to MongoDB

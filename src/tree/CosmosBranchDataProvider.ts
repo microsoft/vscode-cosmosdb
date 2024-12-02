@@ -12,8 +12,10 @@ import {
 import * as vscode from 'vscode';
 import { API } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
-import { type MongoDatabaseAccountModel } from './mongo/MongoDatabaseAccountModel';
-import { MongoDatabaseAccountResourceItem } from './mongo/MongoDatabaseAccountResourceItem';
+import { type MongoAccountModel } from './mongo/MongoAccountModel';
+import { MongoAccountResourceItem } from './mongo/MongoAccountResourceItem';
+import { type NoSqlAccountModel } from './nosql/NoSqlAccountModel';
+import { NoSqlAccountResourceItem } from './nosql/NoSqlAccountResourceItem';
 
 const resourceTypes = [
     'microsoft.documentdb/databaseaccounts', // then, investigate .kind for "MongoDB"
@@ -77,17 +79,23 @@ export class CosmosBranchDataProvider
                             context.telemetry.properties.experience = API.MongoDB;
 
                             // 1. extract the basic info from the element (subscription, resource group, etc., provided by Azure Resources)
-                            const accountInfo: MongoDatabaseAccountModel =
-                                element as unknown as MongoDatabaseAccountModel;
+                            const accountInfo: MongoAccountModel = element as unknown as MongoAccountModel;
                             accountInfo.dbExperience = API.MongoDB;
 
-                            const item = new MongoDatabaseAccountResourceItem(element.subscription, accountInfo);
+                            const item = new MongoAccountResourceItem(element.subscription, accountInfo);
 
                             return item;
                         } else {
-                            // TODO: really? explore the other options for 'kind', don't we have table, graphapi etc. in there??
+                            // TODO: just "else"? really? explore the other options for 'kind', don't we have table, graphapi etc. in there??
                             context.telemetry.properties.experience = API.Core; // TODO: verify whether 'else' is still a good choice here
-                            console.log('CoreAPI/NoSQL');
+
+                            // 1. extract the basic info from the element (subscription, resource group, etc., provided by Azure Resources)
+                            const accountInfo: NoSqlAccountModel = element as unknown as NoSqlAccountModel;
+                            accountInfo.dbExperience = API.Core;
+
+                            const item = new NoSqlAccountResourceItem(element.subscription, accountInfo);
+
+                            return item;
                         }
 
                         // const client = await createCosmosDBClient({ ...context, ...subContext });

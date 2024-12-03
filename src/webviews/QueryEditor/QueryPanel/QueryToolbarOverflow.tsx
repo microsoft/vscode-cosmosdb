@@ -205,6 +205,7 @@ const LearnButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedR
     const samples = ['SELECT * FROM c', 'SELECT * FROM c ORDER BY c.id', 'SELECT * FROM c OFFSET 0 LIMIT 10'];
     const noSqlQuickReferenceUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/';
     const noSqlLearningCenterUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/';
+    const cosmosDBLimitations = 'https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/cosmosdb/cosmos#limitations';
 
     return (
         <Menu>
@@ -239,6 +240,7 @@ const LearnButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedR
                     </Menu>
                     <MenuItemLink href={noSqlQuickReferenceUrl}>NoSQL quick reference</MenuItemLink>
                     <MenuItemLink href={noSqlLearningCenterUrl}>Learning center</MenuItemLink>
+                    <MenuItemLink href={cosmosDBLimitations}>CosmosDB SDK limitations</MenuItemLink>
                 </MenuList>
             </MenuPopover>
         </Menu>

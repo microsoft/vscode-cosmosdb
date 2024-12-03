@@ -8,18 +8,19 @@ import * as React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     SlickgridReact,
+    type Formatter,
     type GridOption,
     type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
 } from 'slickgrid-react';
-import { getDocumentId, isSelectStar, type TableData } from '../../utils';
+import { isSelectStar, type TableData } from '../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 type ResultTabViewTableProps = TableData & {};
 
-type GridColumn = { id: string; name: string; field: string; minWidth: number };
+type GridColumn = { id: string; name: string; field: string; minWidth: number; formatter: Formatter };
 
-export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps) => {
+export const ResultTabViewTable = ({ headers, dataset, deletedRows }: ResultTabViewTableProps) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const gridRef = useRef<SlickgridReact>(null);
@@ -29,11 +30,8 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
         [state.currentQueryResult],
     );
 
-    React.useEffect(() => {
-        gridRef.current?.gridService.renderGrid();
-    }, [dataset, headers]); // Re-run when headers or data change
-
     const [reservedHeaders, setReservedHeaders] = useState<string[]>([]);
+    const [gridColumns, setGridColumns] = useState<GridColumn[]>([]);
 
     useEffect(() => {
         setReservedHeaders(headers);
@@ -45,14 +43,35 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
         headers = reservedHeaders;
     }
 
-    const gridColumns: GridColumn[] = headers.map((header) => {
-        return {
-            id: header + '_id',
-            name: header,
-            field: header.startsWith('/') ? header.slice(1) : header,
-            minWidth: 100,
-        };
-    });
+    useEffect(() => {
+        const gridColumns: GridColumn[] = headers.map((header) => {
+            return {
+                id: header + '_id',
+                name: header,
+                field: header.startsWith('/') ? header.slice(1) : header,
+                minWidth: 100,
+                formatter: (row: number, _cell: number, value: string) => {
+                    if (deletedRows.includes(row)) {
+                        return {
+                            text: value,
+                            addClasses: 'row-is-deleted',
+                            toolTip: 'This document is deleted',
+                        };
+                    } else {
+                        return {
+                            text: value,
+                        };
+                    }
+                },
+            };
+        });
+
+        setGridColumns(gridColumns);
+    }, [headers, deletedRows]);
+
+    React.useEffect(() => {
+        gridRef.current?.gridService.renderGrid();
+    }, [dataset, headers]); // Re-run when headers or data change
 
     const onDblClick = (args: OnDblClickEventArgs) => {
         // If not in edit mode, do nothing
@@ -60,9 +79,8 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
 
         // Open document in view mode
         const activeDocument = dataset[args.row];
-        const documentId = activeDocument ? getDocumentId(activeDocument, state.partitionKey) : undefined;
-        if (documentId) {
-            void dispatcher.openDocument('view', documentId);
+        if (activeDocument && !deletedRows.includes(args.row)) {
+            void dispatcher.openDocument(state.currentExecutionId, 'view', args.row);
         }
     };
 

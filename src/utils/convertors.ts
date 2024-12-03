@@ -20,6 +20,7 @@ export type TableRecord = Record<string, string> & { __id: string };
 export type TableData = {
     headers: string[];
     dataset: TableRecord[];
+    deletedRows: number[];
 };
 
 /**
@@ -45,20 +46,13 @@ export const queryResultToJSON = (queryResult: SerializedQueryResult | null, sel
         return '';
     }
 
-    if (selection) {
-        const selectedDocs = queryResult.documents
-            .map((doc, index) => {
-                if (!selection.includes(index)) {
-                    return null;
-                }
-                return doc;
-            })
-            .filter((doc) => doc !== null);
+    const notDeletedRows = queryResult.documents
+        .map((_, index) => index)
+        .filter((index) => !queryResult.deletedDocuments.includes(index));
+    const selectedRows = selection ? notDeletedRows.filter((index) => selection.includes(index)) : notDeletedRows;
+    const selectedDocs = queryResult.documents.filter((_, index) => selectedRows.includes(index));
 
-        return JSON.stringify(selectedDocs, null, 4);
-    }
-
-    return JSON.stringify(queryResult.documents, null, 4);
+    return JSON.stringify(selectedDocs, null, 4);
 };
 
 export const queryResultToTree = (
@@ -322,7 +316,7 @@ export const queryResultToTable = (
     reorderColumns?: boolean,
     showServiceColumns?: boolean,
 ): TableData => {
-    let result: TableData = { headers: [], dataset: [] };
+    let result: TableData = { headers: [], dataset: [], deletedRows: [] };
 
     if (!queryResult) {
         return result;
@@ -337,11 +331,13 @@ export const queryResultToTable = (
         result = {
             headers: getTableHeadersWithRecordIdentifyColumns(queryResult.documents, partitionKey),
             dataset: getTableDatasetWithRecordIdentifyColumns(queryResult.documents, partitionKey),
+            deletedRows: queryResult.deletedDocuments,
         };
     } else {
         result = {
             headers: getTableHeaders(queryResult.documents),
             dataset: getTableDataset(queryResult.documents),
+            deletedRows: queryResult.deletedDocuments,
         };
     }
 
@@ -517,9 +513,12 @@ export const queryResultToCsv = (
     const tableView = queryResultToTable(queryResult, partitionKey);
     const headers = tableView.headers.join(',');
 
-    if (selection) {
-        tableView.dataset = tableView.dataset.filter((_, index) => selection.includes(index));
-    }
+    const notDeletedRows = tableView.dataset
+        .map((_, index) => index)
+        .filter((index) => !tableView.deletedRows.includes(index));
+    const selectedRows = selection ? notDeletedRows.filter((index) => selection.includes(index)) : notDeletedRows;
+
+    tableView.dataset = tableView.dataset.filter((_, index) => selectedRows.includes(index));
 
     const rows = tableView.dataset
         .map((row) => {

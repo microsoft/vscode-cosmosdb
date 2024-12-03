@@ -63,6 +63,7 @@ export class QuerySessionResult {
             requestCharge: response.requestCharge,
             roundTrips: 1, // TODO: Is it required field? Query Pages Until Content Present
             hasMoreResults: response.hasMoreResults,
+            deletedDocuments: [],
         });
         this.hasMoreResults = response.hasMoreResults;
     }
@@ -84,6 +85,7 @@ export class QuerySessionResult {
                 requestCharge: result.requestCharge,
                 roundTrips: result.roundTrips,
                 hasMoreResults: result.hasMoreResults,
+                deletedDocuments: result.deletedDocuments,
 
                 query: this.query,
             };

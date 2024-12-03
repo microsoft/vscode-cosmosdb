@@ -97,7 +97,11 @@ const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
         const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
         if (selectedTab === 'result__tab') {
             await dispatcher.saveToFile(
-                queryResultToCsv(state.currentQueryResult, state.partitionKey),
+                queryResultToCsv(
+                    state.currentQueryResult,
+                    state.partitionKey,
+                    hasSelection ? state.selectedRows : undefined,
+                ),
                 `${filename}_result`,
                 'csv',
             );
@@ -111,7 +115,11 @@ const ToolbarGroupSave = ({ selectedTab }: ResultToolbarProps) => {
     async function onSaveAsJSON() {
         const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
         if (selectedTab === 'result__tab') {
-            await dispatcher.saveToFile(queryResultToJSON(state.currentQueryResult), `${filename}_result`, 'json');
+            await dispatcher.saveToFile(
+                queryResultToJSON(state.currentQueryResult, hasSelection ? state.selectedRows : undefined),
+                `${filename}_result`,
+                'json',
+            );
         }
 
         if (selectedTab === 'stats__tab') {

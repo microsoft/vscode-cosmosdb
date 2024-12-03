@@ -7,7 +7,7 @@ import Editor, { loader, useMonaco, type EditorProps } from '@monaco-editor/reac
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
-import { useUncontrolledFocus } from '@fluentui/react-components';
+import { useArrowNavigationGroup, useUncontrolledFocus } from '@fluentui/react-components';
 import { useEffect } from 'react';
 import { useThemeState } from './theme/state/ThemeContext';
 
@@ -16,7 +16,9 @@ loader.config({ monaco: monacoEditor });
 export const MonacoEditor = (props: EditorProps) => {
     const monaco = useMonaco();
     const themeState = useThemeState();
-    const attr = useUncontrolledFocus();
+    const uncontrolledFocus = useUncontrolledFocus();
+    const navigationGroup = useArrowNavigationGroup({ circular: true, axis: 'both' });
+    const tabsterHook = { ...navigationGroup, ...uncontrolledFocus }; // The order of these attributes is important
 
     useEffect(() => {
         if (monaco) {
@@ -28,13 +30,8 @@ export const MonacoEditor = (props: EditorProps) => {
     }, [monaco, themeState]);
 
     return (
-        <section {...attr} style={{ width: '100%', height: '100%' }}>
+        <section {...tabsterHook} style={{ width: '100%', height: '100%' }}>
             <Editor {...props} theme={themeState.monaco.themeName} />
-            <input
-                style={{ position: 'absolute', width: '1px', height: '1px', top: '0px', zIndex: -999 }}
-                id="monaco-editor-aria-container"
-                aria-label="Element to prevent loosing focus from editor"
-            />
         </section>
     );
 };

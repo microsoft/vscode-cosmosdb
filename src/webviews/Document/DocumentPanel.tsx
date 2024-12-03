@@ -95,7 +95,7 @@ export const DocumentPanel = () => {
     const state = useDocumentState();
     const dispatcher = useDocumentDispatcher();
 
-    const isInit = state.isInit;
+    const isReady = state.isReady;
     const isReadOnly = state.mode === 'view';
     const inProgress = state.isSaving || state.isRefreshing;
     const hasDocumentInDB = state.documentId !== '';
@@ -179,7 +179,7 @@ export const DocumentPanel = () => {
         void dispatcher?.notifyDirty?.(state.isDirty);
     }, [dispatcher, state.isDirty]);
 
-    if (!isInit || !state.currentDocumentContent) {
+    if (!isReady || !state.currentDocumentContent) {
         return (
             <section className={classes.container}>
                 <ProgressBar />

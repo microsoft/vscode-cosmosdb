@@ -20,10 +20,10 @@ export type DocumentToolbarProps = {
 export const DocumentToolbar = (props: DocumentToolbarProps) => {
     const state = useDocumentState();
 
-    const isInit = state.isInit;
+    const isReady = state.isReady;
     const inProgress = state.isSaving || state.isRefreshing;
     const hasDocumentInDB = state.documentId !== '';
-    const isReadOnly = isInit && state.mode === 'view'; // If the document is not initialized, it is considered as not state
+    const isReadOnly = isReady && state.mode === 'view'; // If the document is not initialized, it is considered as not state
     const isMac = navigator.platform.toLowerCase().includes('mac');
 
     const onSaveHotkeyTitle = isMac ? '\u2318 S' : 'Ctrl+S';
@@ -33,7 +33,7 @@ export const DocumentToolbar = (props: DocumentToolbarProps) => {
     return (
         <>
             <Toolbar size={'small'}>
-                {isInit && !isReadOnly && (
+                {isReady && !isReadOnly && (
                     <Tooltip
                         content={`Save document to the database (${onSaveHotkeyTitle})`}
                         relationship="description"
@@ -50,7 +50,7 @@ export const DocumentToolbar = (props: DocumentToolbarProps) => {
                         </ToolbarButton>
                     </Tooltip>
                 )}
-                {isInit && isReadOnly && (
+                {isReady && isReadOnly && (
                     <Tooltip
                         content={`Open document for editing (${onEditHotkeyTitle})`}
                         relationship="description"

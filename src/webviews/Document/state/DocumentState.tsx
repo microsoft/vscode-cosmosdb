@@ -66,7 +66,7 @@ export type DocumentState = {
     isDirty: boolean; // Document has been modified
     isSaving: boolean; // Document is being saved
     isRefreshing: boolean; // Document is being refreshed
-    isInit: boolean; // Document is being initialized
+    isReady: boolean; // Document is being initialized
 
     currentDocumentContent: string; // Current content of the document
     error: string | undefined; // Error message
@@ -83,7 +83,7 @@ export const defaultState: DocumentState = {
     isDirty: false,
     isSaving: false,
     isRefreshing: false,
-    isInit: false,
+    isReady: false,
     currentDocumentContent: '',
     error: undefined,
 };
@@ -108,7 +108,7 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
                 documentId: action.documentId,
                 dbName: action.databaseId,
                 collectionName: action.containerId,
-                isInit: true,
+                isReady: true,
             };
         case 'setDocument':
             return {

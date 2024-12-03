@@ -50,7 +50,7 @@ export const ToolbarTableNavigation = (): JSX.Element => {
                 },
             })
             .catch((_error) => {
-                console.log('error');
+                console.debug(_error);
             });
     }
 
@@ -76,7 +76,7 @@ export const ToolbarTableNavigation = (): JSX.Element => {
                 },
             })
             .catch((_error) => {
-                console.log('error');
+                console.debug(_error);
             });
     }
 

@@ -146,7 +146,7 @@ export const CollectionView = (): JSX.Element => {
                 },
             })
             .catch((_error) => {
-                console.log('error');
+                console.log(_error);
             });
 
         setCurrentContext((prev) => ({ ...prev, currentView: selection }));
@@ -181,7 +181,7 @@ export const CollectionView = (): JSX.Element => {
                         }));
                     })
                     .catch((_error) => {
-                        console.log('error');
+                        console.log(_error);
                     });
                 break;
             }
@@ -195,7 +195,7 @@ export const CollectionView = (): JSX.Element => {
                         }));
                     })
                     .catch((_error) => {
-                        console.log('error');
+                        console.log(_error);
                     });
                 break;
             case Views.JSON:
@@ -208,7 +208,7 @@ export const CollectionView = (): JSX.Element => {
                         }));
                     })
                     .catch((_error) => {
-                        console.log('error');
+                        console.log(_error);
                     });
                 break;
             default:
@@ -223,7 +223,7 @@ export const CollectionView = (): JSX.Element => {
                 void (await currentContextRef.current.queryEditor?.setJsonSchema(schema));
             })
             .catch((_error) => {
-                console.log('error');
+                console.log(_error);
             });
     }
 
@@ -338,7 +338,7 @@ export const CollectionView = (): JSX.Element => {
                 },
             })
             .catch((_error) => {
-                console.log('error');
+                console.log(_error);
             });
     }
 
@@ -369,7 +369,7 @@ export const CollectionView = (): JSX.Element => {
                                 },
                             })
                             .catch((error) => {
-                                console.error('Failed to report query event:', error);
+                                console.debug('Failed to report query event:', error);
                             });
                     }}
                 />

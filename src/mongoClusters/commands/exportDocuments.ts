@@ -26,7 +26,7 @@ export async function mongoClustersExportQueryResults(
         throw new Error('No collection selected.');
     }
 
-    context.telemetry.properties.calledFrom = props?.source ?? 'contextMenu';
+    context.telemetry.properties.calledFrom = props?.source || 'contextMenu';
 
     const targetUri = await askForTargetFile(context);
 

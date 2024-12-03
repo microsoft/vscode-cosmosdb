@@ -78,14 +78,9 @@ export class MongoClustersClient {
         this._credentialId = credentialId;
 
         // check if it's an azure connection, and do some special handling
-        let userAgentString: string | undefined = undefined;
-        {
-            const cString = CredentialCache.getCredentials(credentialId)?.connectionString as string;
-            const hosts = getHostsFromConnectionString(cString);
-            if (areMongoDBAzure(hosts)) {
-                userAgentString = appendExtensionUserAgent();
-            }
-        }
+        const cString = CredentialCache.getCredentials(credentialId)?.connectionString as string;
+        const hosts = getHostsFromConnectionString(cString);
+        const userAgentString = areMongoDBAzure(hosts) ? appendExtensionUserAgent() : undefined;
 
         const cStringPassword = CredentialCache.getConnectionStringWithPassword(credentialId);
 

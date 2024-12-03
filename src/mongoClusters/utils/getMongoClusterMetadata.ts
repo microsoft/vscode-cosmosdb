@@ -66,7 +66,7 @@ export async function getMongoClusterMetadata(client: MongoClient): Promise<Mong
         result['serverInfo.storageEngines'] = (buildInfo.storageEngines as string[])?.join(';');
         result['serverInfo.modules'] = (buildInfo.modules as string[])?.join(';');
     } catch (error) {
-        result['serverInfo.error'] = (error as Error).message;
+        result['serverInfo.error'] = error instanceof Error ? error.message : String(error);
     }
 
     // Fetch server status information.
@@ -79,7 +79,7 @@ export async function getMongoClusterMetadata(client: MongoClient): Promise<Mong
         result['serverStatus.memory.resident'] = serverStatus.mem?.resident.toString();
         result['serverStatus.memory.virtual'] = serverStatus.mem?.virtual.toString();
     } catch (error) {
-        result['serverStatus.error'] = (error as Error).message;
+        result['serverStatus.error'] = error instanceof Error ? error.message : String(error);
     }
 
     // Fetch topology information using the 'hello' command.
@@ -91,7 +91,7 @@ export async function getMongoClusterMetadata(client: MongoClient): Promise<Mong
         result['topology.minWireVersion'] = helloInfo.minWireVersion.toString();
         result['topology.maxWireVersion'] = helloInfo.maxWireVersion.toString();
     } catch (error) {
-        result['topology.error'] = (error as Error).message;
+        result['topology.error'] = error instanceof Error ? error.message : String(error);
     }
 
     // Fetch host information
@@ -99,7 +99,7 @@ export async function getMongoClusterMetadata(client: MongoClient): Promise<Mong
         const hostInfo = await adminDb.command({ hostInfo: 1 });
         result['hostInfo.json'] = JSON.stringify(hostInfo);
     } catch (error) {
-        result['hostInfo.error'] = (error as Error).message;
+        result['hostInfo.error'] = error instanceof Error ? error.message : String(error);
     }
 
     // Return the collected metadata.

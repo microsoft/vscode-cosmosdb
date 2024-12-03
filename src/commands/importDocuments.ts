@@ -7,13 +7,11 @@ import { type ItemDefinition } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { EJSON } from 'bson';
 import * as fse from 'fs-extra';
-import { type InsertManyResult } from 'mongodb';
 import * as vscode from 'vscode';
 import { cosmosMongoFilter, sqlFilter } from '../constants';
 import { DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
 import { MongoCollectionTreeItem } from '../mongo/tree/MongoCollectionTreeItem';
-import { type InsertDocumentsResult } from '../mongoClusters/MongoClustersClient';
 import { CollectionItem } from '../mongoClusters/tree/CollectionItem';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { getRootPath } from '../utils/workspacUtils';
@@ -194,12 +192,13 @@ async function insertDocumentsIntoDocdb(
 async function insertDocumentsIntoMongo(node: MongoCollectionTreeItem, documents: any[]): Promise<string> {
     let output = '';
 
-    let parsed: InsertManyResult<Document> | undefined;
-    await callWithTelemetryAndErrorHandling('cosmosDB.mongo.importDocumets', async (actionContext) => {
+    const parsed = await callWithTelemetryAndErrorHandling('cosmosDB.mongo.importDocumets', async (actionContext) => {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-        parsed = await node.collection.insertMany(documents);
+        const parsed = await node.collection.insertMany(documents);
 
         actionContext.telemetry.measurements.documentCount = parsed?.insertedCount;
+
+        return parsed;
     });
 
     if (parsed?.acknowledged) {
@@ -216,12 +215,16 @@ async function insertDocumentsIntoMongoCluster(
     node: CollectionItem,
     documents: unknown[],
 ): Promise<string> {
-    let result: InsertDocumentsResult | undefined;
-    await callWithTelemetryAndErrorHandling('cosmosDB.mongoClusters.importDocumets', async (actionContext) => {
-        result = await node.insertDocuments(context, documents as Document[]);
+    const result = await callWithTelemetryAndErrorHandling(
+        'cosmosDB.mongoClusters.importDocumets',
+        async (actionContext) => {
+            const result = await node.insertDocuments(context, documents as Document[]);
 
-        actionContext.telemetry.measurements.documentCount = result?.insertedCount;
-    });
+            actionContext.telemetry.measurements.documentCount = result?.insertedCount;
+
+            return result;
+        },
+    );
 
     let message: string;
     if (result?.acknowledged) {

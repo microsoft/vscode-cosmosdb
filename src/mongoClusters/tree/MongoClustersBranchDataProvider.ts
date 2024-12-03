@@ -52,7 +52,7 @@ export class MongoClustersBranchDataProvider
          */
         return await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
             context.telemetry.properties.experience = API.MongoClusters;
-            context.telemetry.properties.parentNodeContext = (await element.getTreeItem()).contextValue ?? 'unknown';
+            context.telemetry.properties.parentNodeContext = (await element.getTreeItem()).contextValue || 'unknown';
 
             return (await element.getChildren?.())?.map((child) => {
                 if (child.id) {
@@ -174,7 +174,7 @@ export class MongoClustersBranchDataProvider
                         });
                     });
                 } catch (e) {
-                    console.error({ ...context, ...subscription });
+                    console.debug({ ...context, ...subscription });
                     throw e;
                 }
             },

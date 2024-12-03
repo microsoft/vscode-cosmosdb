@@ -190,7 +190,7 @@ export const DocumentView = (): JSX.Element => {
                 },
             })
             .catch((error) => {
-                console.error('Failed to report event:', error);
+                console.debug('Failed to report event:', error);
             });
     }
 
@@ -216,7 +216,7 @@ export const DocumentView = (): JSX.Element => {
                 setIsDirty(false);
             })
             .catch((error) => {
-                console.error('Error saving document:', error);
+                console.debug('Error saving document:', error);
             })
             .finally(() => {
                 setIsLoading(false);
@@ -233,7 +233,7 @@ export const DocumentView = (): JSX.Element => {
                 },
             })
             .catch((error) => {
-                console.error('Failed to report event:', error);
+                console.debug('Failed to report event:', error);
             });
     }
 

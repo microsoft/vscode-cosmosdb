@@ -166,12 +166,15 @@ export const DocumentView = (): JSX.Element => {
     // }
 
     function handleOnRefreshRequest(): void {
-        const documentId: string = configuration.documentId;
+        if (configuration.documentId === undefined) {
+            return;
+        }
 
         setIsLoading(true);
 
-        void trpcClient.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
+        void trpcClient.mongoClusters.documentView.getDocumentById.query(configuration.documentId).then((response) => {
             setContent(response);
+        }).finally(() => {
             setIsLoading(false);
         });
     }

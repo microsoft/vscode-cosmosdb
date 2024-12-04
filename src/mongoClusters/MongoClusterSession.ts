@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type Document, type WithId } from 'mongodb';
+import { EJSON } from 'bson';
+import { ObjectId, type Document, type WithId } from 'mongodb';
 import { type JSONSchema } from '../utils/json/JSONSchema';
 import { getPropertyNamesAtLevel, updateSchemaWithDocument } from '../utils/json/mongo/SchemaAnalyzer';
 import { getDataAtPath } from '../utils/slickgrid/mongo/toSlickGridTable';
@@ -107,6 +108,33 @@ export class MongoClustersSession {
 
     public getCurrentPageAsTree(): TreeData[] {
         return toSlickGridTree(this._currentRawDocuments);
+    }
+
+    async deleteDocuments(databaseName: string, collectionName: string, documentIds: string[]): Promise<boolean> {
+        const acknowledged = await this._client.deleteDocuments(databaseName, collectionName, documentIds);
+
+        if (acknowledged) {
+            this._currentRawDocuments = this._currentRawDocuments.filter((doc) => {
+                // Convert documentIds to BSON types and compare them with doc._id
+                return !documentIds.some((id) => {
+                    let parsedId;
+                    try {
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        parsedId = EJSON.parse(id);
+                    } catch {
+                        if (ObjectId.isValid(id)) {
+                            parsedId = new ObjectId(id);
+                        } else {
+                            return false;
+                        }
+                    }
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                    return doc._id.equals(parsedId);
+                });
+            });
+        }
+
+        return acknowledged;
     }
 
     public getCurrentPageAsTable(path: string[]): TableData {

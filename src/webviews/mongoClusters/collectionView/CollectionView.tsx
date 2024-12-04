@@ -224,9 +224,11 @@ export const CollectionView = (): JSX.Element => {
                     return;
                 }
 
-                // TODO: update cached data in the controller
-
-                // TODO: update the current view, not all views.
+                /**
+                 * The data on the server has been deleted and our extension code has updated its
+                 * cache as well. Now we need to update the view locally, so that the user sees
+                 * the changes immediately without potential focus/table resizing issues etc.
+                 */
 
                 setCurrentQueryResults((prev) => ({
                     ...prev,
@@ -248,9 +250,9 @@ export const CollectionView = (): JSX.Element => {
             })
             .catch((error: unknown) => {
                 if (error instanceof Error) {
-                    console.error('Error adding document:', error.message);
+                    console.error('Error deleting the document:', error.message);
                 } else {
-                    console.error('Unexpected error adding document:', error);
+                    console.error('Unexpected error when deleting a document:', error);
                 }
             });
     }

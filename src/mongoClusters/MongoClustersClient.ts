@@ -213,6 +213,8 @@ export class MongoClustersClient {
         }
     }
 
+    // TODO: revisit, maybe we can work on BSON here for the documentIds, and the conversion from string etc.,
+    // will remain in the MongoClusterSession class
     async deleteDocuments(databaseName: string, collectionName: string, documentIds: string[]): Promise<boolean> {
         // Convert input data to BSON types
         const parsedDocumentIds = documentIds.map((id) => {

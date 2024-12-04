@@ -15,6 +15,16 @@ export async function viewDocDBCollectionOffer(context: IActionContext, node?: D
         node = await pickDocDBAccount<DocDBCollectionTreeItem>(context, DocDBCollectionTreeItem.contextValue);
     }
     const client = node.root.getCosmosClient();
-    const offer = await node.getContainerClient(client).readOffer();
-    await vscodeUtil.showNewFile(JSON.stringify(offer.resource, undefined, 2), `offer of ${node.label}`, '.json');
+    let offer = await node.getContainerClient(client).readOffer();
+    if (!offer.resource) {
+        // collections with shared throughput will not have an offer, show the database offer instead
+        offer = await node.parent.getDatabaseClient(client).readOffer();
+        await vscodeUtil.showNewFile(
+            JSON.stringify(offer.resource, undefined, 2),
+            `offer of ${node.parent.label}`,
+            '.json',
+        );
+    } else {
+        await vscodeUtil.showNewFile(JSON.stringify(offer.resource, undefined, 2), `offer of ${node.label}`, '.json');
+    }
 }

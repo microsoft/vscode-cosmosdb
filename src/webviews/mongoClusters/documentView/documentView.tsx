@@ -172,11 +172,14 @@ export const DocumentView = (): JSX.Element => {
 
         setIsLoading(true);
 
-        void trpcClient.mongoClusters.documentView.getDocumentById.query(configuration.documentId).then((response) => {
-            setContent(response);
-        }).finally(() => {
-            setIsLoading(false);
-        });
+        void trpcClient.mongoClusters.documentView.getDocumentById
+            .query(configuration.documentId)
+            .then((response) => {
+                setContent(response);
+            })
+            .finally(() => {
+                setIsLoading(false);
+            });
     }
 
     function handleOnSaveRequest(): void {

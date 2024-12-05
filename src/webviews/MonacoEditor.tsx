@@ -7,7 +7,7 @@ import Editor, { loader, useMonaco, type EditorProps } from '@monaco-editor/reac
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
-import { useArrowNavigationGroup, useUncontrolledFocus } from '@fluentui/react-components';
+import { useUncontrolledFocus } from '@fluentui/react-components';
 import { useEffect } from 'react';
 import { useThemeState } from './theme/state/ThemeContext';
 
@@ -17,8 +17,6 @@ export const MonacoEditor = (props: EditorProps) => {
     const monaco = useMonaco();
     const themeState = useThemeState();
     const uncontrolledFocus = useUncontrolledFocus();
-    const navigationGroup = useArrowNavigationGroup({ circular: true, axis: 'both' });
-    const tabsterHook = { ...navigationGroup, ...uncontrolledFocus }; // The order of these attributes is important
 
     useEffect(() => {
         if (monaco) {
@@ -30,8 +28,23 @@ export const MonacoEditor = (props: EditorProps) => {
     }, [monaco, themeState]);
 
     return (
-        <section {...tabsterHook} style={{ width: '100%', height: '100%' }}>
-            <Editor {...props} theme={themeState.monaco.themeName} />
+        <section {...uncontrolledFocus} style={{ width: '100%', height: '100%' }}>
+            <i
+                // The hack to make the focus trap work
+                // https://github.com/microsoft/fluentui/blob/0f490a4fea60df6b2ad0f5a6e088017df7ce1d54/packages/react-components/react-tabster/src/hooks/useTabster.ts#L34
+                data-is-focus-trap-zone-bumper={true}
+                style={{
+                    position: 'fixed',
+                    height: '1px',
+                    width: '1px',
+                    opacity: '0.001',
+                    zIndex: '-1',
+                    contentVisibility: 'hidden',
+                    top: '0px',
+                    left: '0px',
+                }}
+            ></i>
+            <Editor {...props} data-is-focus-trap-zone-bumper={'true'} theme={themeState.monaco.themeName} />
         </section>
     );
 };

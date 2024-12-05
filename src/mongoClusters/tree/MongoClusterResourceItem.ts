@@ -40,7 +40,7 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
      */
     protected async authenticateAndConnect(): Promise<MongoClustersClient | null> {
         const result = await callWithTelemetryAndErrorHandling(
-            'cosmosDB.mongoClusters.authenticate',
+            'cosmosDB.mongoClusters.connect',
             async (context: IActionContext) => {
                 ext.outputChannel.appendLine(
                     `MongoDB Clusters: Attempting to authenticate with "${this.mongoCluster.name}"...`,

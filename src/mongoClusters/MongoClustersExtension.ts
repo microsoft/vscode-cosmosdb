@@ -86,9 +86,6 @@ export class MongoClustersExtension implements vscode.Disposable {
                 registerCommand('command.internal.mongoClusters.containerView.open', openCollectionView);
                 registerCommand('command.internal.mongoClusters.documentView.open', openDocumentView);
 
-                registerCommand('command.internal.mongoClusters.importDocuments', mongoClustersImportDocuments);
-                registerCommand('command.internal.mongoClusters.exportDocuments', mongoClustersExportQueryResults);
-
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.launchShell', launchShell);
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropCollection', dropCollection);
@@ -101,6 +98,18 @@ export class MongoClustersExtension implements vscode.Disposable {
                     'command.mongoClusters.importDocuments',
                     mongoClustersImportDocuments,
                 );
+
+                /**
+                 * Here, exporting documents is done in two ways: one is accessible from the tree view
+                 * via a context menu, and the other is accessible programmatically. Both of them
+                 * use the same underlying function to export documents.
+                 *
+                 * mongoClustersExportEntireCollection calls mongoClustersExportQueryResults with no queryText.
+                 *
+                 * It was possible to merge the two commands into one, but it would result in code that is
+                 * harder to understand and maintain.
+                 */
+                registerCommand('command.internal.mongoClusters.exportDocuments', mongoClustersExportQueryResults);
                 registerCommandWithTreeNodeUnwrapping(
                     'command.mongoClusters.exportDocuments',
                     mongoClustersExportEntireCollection,

@@ -70,7 +70,7 @@ export class MongoAccountTreeItem extends AzExtParentTreeItem {
             'getChildren',
             async (context: IActionContext): Promise<AzExtTreeItem[]> => {
                 context.telemetry.properties.experience = API.MongoDB;
-                context.telemetry.properties.parentContext = this.contextValue;
+                context.telemetry.properties.parentNodeContext = this.contextValue;
 
                 let mongoClient: MongoClient | undefined;
                 try {

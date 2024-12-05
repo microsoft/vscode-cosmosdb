@@ -172,13 +172,30 @@ export const DocumentView = (): JSX.Element => {
 
         setIsLoading(true);
 
+        let documentLength = 0;
+
         void trpcClient.mongoClusters.documentView.getDocumentById
             .query(configuration.documentId)
             .then((response) => {
+                documentLength = response.length ?? 0;
                 setContent(response);
             })
             .finally(() => {
                 setIsLoading(false);
+            });
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'refreshDocument',
+                properties: {
+                    ui: 'button',
+                },
+                measurements: {
+                    documentLength: documentLength,
+                },
+            })
+            .catch((error) => {
+                console.debug('Failed to report event:', error);
             });
     }
 
@@ -204,10 +221,24 @@ export const DocumentView = (): JSX.Element => {
                 setIsDirty(false);
             })
             .catch((error) => {
-                console.error('Error saving document:', error);
+                console.debug('Error saving document:', error);
             })
             .finally(() => {
                 setIsLoading(false);
+            });
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'saveDocument',
+                properties: {
+                    ui: 'button',
+                },
+                measurements: {
+                    documentLength: editorContent.length,
+                },
+            })
+            .catch((error) => {
+                console.debug('Failed to report event:', error);
             });
     }
 

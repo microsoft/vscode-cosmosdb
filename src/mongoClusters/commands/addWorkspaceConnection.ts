@@ -12,6 +12,7 @@ import { WorkspaceResourceType } from '../../tree/workspace/sharedWorkspaceResou
 import { SharedWorkspaceStorage } from '../../tree/workspace/sharedWorkspaceStorage';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { localize } from '../../utils/localize';
+import { areMongoDBRU } from '../utils/connectionStringHelpers';
 import { type AddWorkspaceConnectionContext } from '../wizards/addWorkspaceConnection/AddWorkspaceConnectionContext';
 import { ConnectionStringStep } from '../wizards/addWorkspaceConnection/ConnectionStringStep';
 import { PasswordStep } from '../wizards/addWorkspaceConnection/PasswordStep';
@@ -55,12 +56,8 @@ export async function addWorkspaceConnection(context: IActionContext): Promise<v
     wizardContext.valuesToMask.push(connectionStringWithCredentials);
 
     // discover whether it's a MongoDB RU connection string and abort here.
-    let isRU: boolean = false;
-    connectionString.hosts.forEach((host) => {
-        if (isMongoDBRU(host)) {
-            isRU = true;
-        }
-    });
+    const isRU = areMongoDBRU(connectionString.hosts);
+
     if (isRU) {
         try {
             await vscode.window.showInformationMessage(
@@ -103,16 +100,4 @@ export async function addWorkspaceConnection(context: IActionContext): Promise<v
     showConfirmationAsInSettings(
         localize('showConfirmation.addedWorkspaceConnecdtion', 'New connection has been added to your workspace.'),
     );
-}
-
-function isMongoDBRU(host: string): boolean {
-    const knownSuffixes = ['mongo.cosmos.azure.com'];
-    const hostWithoutPort = host.split(':')[0];
-
-    for (const suffix of knownSuffixes) {
-        if (hostWithoutPort.toLowerCase().endsWith(suffix)) {
-            return true;
-        }
-    }
-    return false;
 }

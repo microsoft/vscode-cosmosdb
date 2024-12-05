@@ -10,9 +10,10 @@ import { type MongoClustersClient } from '../../../mongoClusters/MongoClustersCl
 import { MongoClustersSession } from '../../../mongoClusters/MongoClusterSession';
 import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
 import { localize } from '../../../utils/localize';
-import { publicProcedure, router } from '../../api/extension-server/trpc';
+import { type BaseRouterContext } from '../../api/configuration/appRouter';
+import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
 
-export type RouterContext = {
+export type RouterContext = BaseRouterContext & {
     sessionId: string;
     databaseName: string;
     collectionName: string;
@@ -28,6 +29,7 @@ export const documentsViewRouter = router({
         return 'Info from the webview: ' + JSON.stringify(myCtx);
     }),
     getDocumentById: publicProcedure
+        .use(trpcToTelemetry)
         // parameters
         .input(z.string())
         // procedure type
@@ -50,6 +52,7 @@ export const documentsViewRouter = router({
             return extendedJson;
         }),
     saveDocument: publicProcedure
+        .use(trpcToTelemetry)
         // parameteres
         .input(z.object({ documentContent: z.string() }))
         // procedure type

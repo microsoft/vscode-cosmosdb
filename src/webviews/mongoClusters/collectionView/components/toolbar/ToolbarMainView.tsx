@@ -20,6 +20,12 @@ export const ToolbarMainView = (): JSX.Element => {
 };
 
 const ToolbarQueryOperations = (): JSX.Element => {
+    /**
+     * Use the `useTrpcClient` hook to get the tRPC client and an event target
+     * for handling notifications from the extension.
+     */
+    const { trpcClient /** , vscodeEventTarget */ } = useTrpcClient();
+
     const [currentContext, setCurrentContext] = useContext(CollectionViewContext);
 
     const handleExecuteQuery = () => {
@@ -38,6 +44,20 @@ const ToolbarQueryOperations = (): JSX.Element => {
             ...prev,
             currrentQueryDefinition: { ...prev.currrentQueryDefinition, queryText: queryContent, pageNumber: 1 },
         }));
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'executeQuery',
+                properties: {
+                    ui: 'button',
+                },
+                measurements: {
+                    queryLenth: queryContent.length,
+                },
+            })
+            .catch((error) => {
+                console.debug('Failed to report query event:', error);
+            });
     };
 
     const handleRefreshResults = () => {
@@ -46,6 +66,23 @@ const ToolbarQueryOperations = (): JSX.Element => {
             ...prev,
             currrentQueryDefinition: { ...prev.currrentQueryDefinition },
         }));
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'refreshResults',
+                properties: {
+                    ui: 'button',
+                    view: currentContext.currentView,
+                },
+                measurements: {
+                    page: currentContext.currrentQueryDefinition.pageNumber,
+                    pageSize: currentContext.currrentQueryDefinition.pageSize,
+                    queryLength: currentContext.currrentQueryDefinition.queryText.length,
+                },
+            })
+            .catch((error) => {
+                console.debug('Failed to report query event:', error);
+            });
     };
 
     return (

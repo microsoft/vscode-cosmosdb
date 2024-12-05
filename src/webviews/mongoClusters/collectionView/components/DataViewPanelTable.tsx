@@ -74,7 +74,7 @@ export function DataViewPanelTable({ liveHeaders, liveData }: Props): React.JSX.
                 columnDefinitions={gridColumns}
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 dataset={liveData}
-                onReactGridCreated={() => console.log('Grid created')}
+                onReactGridCreated={() => console.debug('Grid created')}
             />
         );
     }

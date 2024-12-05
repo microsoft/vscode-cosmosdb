@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { getResourceGroupFromId, uiUtils } from '@microsoft/vscode-azext-azureutils';
 import { callWithTelemetryAndErrorHandling, nonNullProp, type IActionContext } from '@microsoft/vscode-azext-utils';
 import {
@@ -22,8 +21,6 @@ import { MongoClusterResourceItem } from './MongoClusterResourceItem';
 export interface TreeElementBase extends ResourceModelBase {
     getChildren?(): vscode.ProviderResult<TreeElementBase[]>;
     getTreeItem(): vscode.TreeItem | Thenable<vscode.TreeItem>;
-
-    //viewProperties?: ViewPropertiesModel;
 }
 
 export class MongoClustersBranchDataProvider

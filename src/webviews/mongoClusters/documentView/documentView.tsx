@@ -183,7 +183,7 @@ export const DocumentView = (): JSX.Element => {
             .finally(() => {
                 setIsLoading(false);
             });
-  
+
         trpcClient.common.reportEvent
             .mutate({
                 eventName: 'refreshDocument',
@@ -196,8 +196,8 @@ export const DocumentView = (): JSX.Element => {
             })
             .catch((error) => {
                 console.debug('Failed to report event:', error);
-        });
-}
+            });
+    }
 
     function handleOnSaveRequest(): void {
         const editorContent = getCurrentContent();

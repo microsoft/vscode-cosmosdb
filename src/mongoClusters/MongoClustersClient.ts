@@ -217,7 +217,7 @@ export class MongoClustersClient {
         try {
             while (await cursor.hasNext()) {
                 if (abortSignal.aborted) {
-                    console.log('streamDocuments: Aborted by an abort signal.');
+                    console.debug('streamDocuments: Aborted by an abort signal.');
                     return;
                 }
 
@@ -344,7 +344,7 @@ export class MongoClustersClient {
         try {
             newCollection = await this._mongoClient.db(databaseName).createCollection(collectionName);
         } catch (_e) {
-            console.log(_e); //todo: add to telemetry
+            console.error(_e); //todo: add to telemetry
             return false;
         }
 
@@ -358,7 +358,7 @@ export class MongoClustersClient {
                 .createCollection('_dummy_collection_creation_forces_db_creation');
             await newCollection.drop();
         } catch (_e) {
-            console.log(_e); //todo: add to telemetry
+            console.error(_e); //todo: add to telemetry
             return false;
         }
 

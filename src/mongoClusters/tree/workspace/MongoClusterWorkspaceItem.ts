@@ -93,7 +93,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                         throw error;
                     });
                 } catch (error) {
-                    console.log(error);
+                    console.error(error);
                     // If connection fails, remove cached credentials
                     await MongoClustersClient.deleteClient(this.id);
                     CredentialCache.deleteCredentials(this.id);

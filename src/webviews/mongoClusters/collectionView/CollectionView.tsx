@@ -145,8 +145,8 @@ export const CollectionView = (): JSX.Element => {
                     view: selection,
                 },
             })
-            .catch((_error) => {
-                console.log(_error);
+            .catch((error) => {
+                console.debug('Failed to report an event:', error);
             });
 
         setCurrentContext((prev) => ({ ...prev, currentView: selection }));
@@ -180,8 +180,8 @@ export const CollectionView = (): JSX.Element => {
                             tableData: (result.data as TableDataEntry[]) ?? [],
                         }));
                     })
-                    .catch((_error) => {
-                        console.log(_error);
+                    .catch((error) => {
+                        console.debug('Failed to perform an action:', error);
                     });
                 break;
             }
@@ -194,8 +194,8 @@ export const CollectionView = (): JSX.Element => {
                             treeData: result,
                         }));
                     })
-                    .catch((_error) => {
-                        console.log(_error);
+                    .catch((error) => {
+                        console.debug('Failed to perform an action:', error);
                     });
                 break;
             case Views.JSON:
@@ -207,8 +207,8 @@ export const CollectionView = (): JSX.Element => {
                             jsonDocuments: result,
                         }));
                     })
-                    .catch((_error) => {
-                        console.log(_error);
+                    .catch((error) => {
+                        console.debug('Failed to perform an action:', error);
                     });
                 break;
             default:
@@ -222,8 +222,8 @@ export const CollectionView = (): JSX.Element => {
             .then(async (schema) => {
                 void (await currentContextRef.current.queryEditor?.setJsonSchema(schema));
             })
-            .catch((_error) => {
-                console.log(_error);
+            .catch((error) => {
+                console.debug('Failed to perform an action:', error);
             });
     }
 
@@ -308,15 +308,15 @@ export const CollectionView = (): JSX.Element => {
 
         const activeCell = activeDocument[activeColumn] as { value?: string; type?: string };
 
-        console.log('Step-in requested on cell', activeCell, 'in row', row, 'column', cell);
+        console.debug('Step-in requested on cell', activeCell, 'in row', row, 'column', cell);
 
         if (activeColumn === '_id') {
-            console.log('Cell is an _id, skipping step-in');
+            console.debug('Cell is an _id, skipping step-in');
             return;
         }
 
         if (activeCell.type !== 'object') {
-            console.log('Cell is not an object, skipping step-in');
+            console.debug('Cell is not an object, skipping step-in');
             return;
         }
 
@@ -339,8 +339,8 @@ export const CollectionView = (): JSX.Element => {
                     depth: newPath.length ?? 0,
                 },
             })
-            .catch((_error) => {
-                console.log(_error);
+            .catch((error) => {
+                console.debug('Failed to report query event:', error);
             });
     }
 

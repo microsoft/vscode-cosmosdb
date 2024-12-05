@@ -31,7 +31,7 @@ export class TableAccountTreeItem extends DocDBAccountTreeItemBase {
             'getChildren',
             (context: IActionContext): AzExtTreeItem[] => {
                 context.telemetry.properties.experience = API.Table;
-                context.telemetry.properties.parentContext = this.contextValue;
+                context.telemetry.properties.parentNodeContext = this.contextValue;
 
                 const tableNotFoundTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
                     contextValue: 'tableNotSupported',

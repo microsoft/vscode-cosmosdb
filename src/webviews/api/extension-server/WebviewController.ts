@@ -4,7 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { appRouter } from '../configuration/appRouter';
+import { type API } from '../../../AzureDBExperiences';
+import { appRouter, type BaseRouterContext } from '../configuration/appRouter';
 import { type VsCodeLinkNotification, type VsCodeLinkRequestMessage } from '../webview-client/vscodeLink';
 import { WebviewBaseController } from './WebviewBaseController';
 import { createCallerFactory } from './trpc';
@@ -21,7 +22,7 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
 
     /**
      * Creates a new WebviewController
-     * @param _context The context of the extension-server
+     * @param context The context of the extension-server
      * @param title The title of the webview panel
      * @param webviewName The source file that the webview will use
      * @param initialState The initial state object that the webview will use
@@ -29,7 +30,8 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
      * @param _iconPath The icon path that the webview will use
      */
     constructor(
-        _context: vscode.ExtensionContext,
+        context: vscode.ExtensionContext,
+        protected dbExperience: API,
         title: string,
         webviewName: string,
         initialState: Configuration,
@@ -41,7 +43,7 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
                   readonly dark: vscode.Uri;
               },
     ) {
-        super(_context, webviewName, initialState);
+        super(context, webviewName, initialState);
 
         this._panel = vscode.window.createWebviewPanel('react-webview-' + webviewName, title, viewColumn, {
             enableScripts: true,
@@ -63,7 +65,7 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
         this.initializeBase();
     }
 
-    protected setupTrpc(context: object): void {
+    protected setupTrpc(context: BaseRouterContext): void {
         const callerFactory = createCallerFactory(appRouter);
 
         this.registerDisposable(

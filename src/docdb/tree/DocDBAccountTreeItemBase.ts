@@ -104,7 +104,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         const result = await callWithTelemetryAndErrorHandling(
             'getChildren',
             async (context: IActionContext): Promise<AzExtTreeItem[]> => {
-                context.telemetry.properties.parentContext = this.contextValue;
+                context.telemetry.properties.parentNodeContext = this.contextValue;
 
                 // move this to a shared file, currently it's defined in DocDBAccountTreeItem so I can't reference it here
                 if (this.contextValue.includes('cosmosDBDocumentServer')) {

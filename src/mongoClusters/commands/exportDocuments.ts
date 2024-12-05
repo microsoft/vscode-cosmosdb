@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { EJSON } from 'bson';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
@@ -12,21 +12,23 @@ import { getRootPath } from '../../utils/workspacUtils';
 import { MongoClustersClient } from '../MongoClustersClient';
 import { type CollectionItem } from '../tree/CollectionItem';
 
-export async function mongoClustersExportEntireCollection(_context: IActionContext, node?: CollectionItem) {
-    return mongoClustersExportQueryResults(_context, node);
+export async function mongoClustersExportEntireCollection(context: IActionContext, node?: CollectionItem) {
+    return mongoClustersExportQueryResults(context, node);
 }
 
 export async function mongoClustersExportQueryResults(
-    _context: IActionContext,
+    context: IActionContext,
     node?: CollectionItem,
-    queryText?: string,
+    props?: { queryText?: string; source?: string },
 ): Promise<void> {
     // node ??= ... pick a node if not provided
     if (!node) {
         throw new Error('No collection selected.');
     }
 
-    const targetUri = await askForTargetFile(_context);
+    context.telemetry.properties.calledFrom = props?.source || 'contextMenu';
+
+    const targetUri = await askForTargetFile(context);
 
     if (!targetUri) {
         return;
@@ -39,7 +41,7 @@ export async function mongoClustersExportQueryResults(
         node.databaseInfo.name,
         node.collectionInfo.name,
         docStreamAbortController.signal,
-        queryText,
+        props?.queryText,
     );
 
     const filePath = targetUri.fsPath; // Convert `vscode.Uri` to a regular file path
@@ -48,14 +50,20 @@ export async function mongoClustersExportQueryResults(
     let documentCount = 0;
 
     // Wrap the export process inside a progress reporting function
-    await runExportWithProgressAndDescription(node.id, async (progress, cancellationToken) => {
-        documentCount = await exportDocumentsToFile(
-            docStream,
-            filePath,
-            progress,
-            cancellationToken,
-            docStreamAbortController,
-        );
+    await callWithTelemetryAndErrorHandling('cosmosDB.mongoClusters.exportDocuments', async (actionContext) => {
+        await runExportWithProgressAndDescription(node.id, async (progress, cancellationToken) => {
+            documentCount = await exportDocumentsToFile(
+                docStream,
+                filePath,
+                progress,
+                cancellationToken,
+                docStreamAbortController,
+            );
+        });
+
+        actionContext.telemetry.properties.source = props?.source;
+        actionContext.telemetry.measurements.queryLength = props?.queryText?.length;
+        actionContext.telemetry.measurements.documentCount = documentCount;
     });
 
     ext.outputChannel.appendLog(`MongoDB Clusters: Exported document count: ${documentCount}`);

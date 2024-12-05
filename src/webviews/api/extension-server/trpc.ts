@@ -13,7 +13,10 @@
  * @see https://trpc.io/docs/v11/procedures
  */
 
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { initTRPC } from '@trpc/server';
+// eslint-disable-next-line import/no-internal-modules
+import { type MiddlewareResult } from '@trpc/server/dist/unstable-core-do-not-import/middleware';
 
 /**
  * Initialization of tRPC backend.
@@ -30,3 +33,29 @@ export const createCallerFactory = t.createCallerFactory;
 
 export const router = t.router;
 export const publicProcedure = t.procedure;
+
+// Create middleware for logging requests
+export const trpcToTelemetry = t.middleware(async ({ path, type, next }) => {
+    const result = await callWithTelemetryAndErrorHandling<MiddlewareResult<object>>(
+        `cosmosDB.rpc.${type}.${path}`,
+        async (context) => {
+            context.errorHandling.suppressDisplay = true;
+
+            const result = await next();
+
+            if (!result.ok) {
+                context.telemetry.properties.result = 'Failed';
+                context.telemetry.properties.error = result.error.message;
+
+                /**
+                 * we're not any error here as we just want to log it here and let the
+                 * caller of the RPC call handle the error there.
+                 */
+            }
+
+            return result;
+        },
+    );
+
+    return result as MiddlewareResult<object>;
+});

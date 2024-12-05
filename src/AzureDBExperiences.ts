@@ -15,6 +15,7 @@ export enum API {
     Core = 'Core', // Now called NoSQL
     PostgresSingle = 'PostgresSingle',
     PostgresFlexible = 'PostgresFlexible',
+    Common = 'Common', // In case we're reporting a common event and still need to provide the value of the API
 }
 
 export enum DBAccountKind {

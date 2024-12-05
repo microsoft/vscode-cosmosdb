@@ -166,19 +166,24 @@ export const DocumentView = (): JSX.Element => {
     // }
 
     function handleOnRefreshRequest(): void {
-        const documentId: string = configuration.documentId;
+        if (configuration.documentId === undefined) {
+            return;
+        }
 
         setIsLoading(true);
 
         let documentLength = 0;
 
-        void trpcClient.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
-            documentLength = response.length ?? 0;
-
-            setContent(response);
-            setIsLoading(false);
-        });
-
+        void trpcClient.mongoClusters.documentView.getDocumentById
+            .query(configuration.documentId)
+            .then((response) => {
+                documentLength = response.length ?? 0;
+                setContent(response);
+            })
+            .finally(() => {
+                setIsLoading(false);
+            });
+  
         trpcClient.common.reportEvent
             .mutate({
                 eventName: 'refreshDocument',
@@ -191,8 +196,8 @@ export const DocumentView = (): JSX.Element => {
             })
             .catch((error) => {
                 console.debug('Failed to report event:', error);
-            });
-    }
+        });
+}
 
     function handleOnSaveRequest(): void {
         const editorContent = getCurrentContent();

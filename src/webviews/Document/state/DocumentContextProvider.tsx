@@ -66,6 +66,7 @@ export class DocumentContextProvider extends BaseContextProvider {
                 }
 
                 this.dispatch({ type: 'initState', mode, databaseId, containerId, documentId, partitionKey });
+                this.dispatch({ type: 'setRefreshing', isRefreshing: true });
             },
         );
 

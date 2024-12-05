@@ -23,11 +23,13 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
     const dispatcher = useQueryEditorDispatcher();
     const restoreFocusTargetAttribute = useRestoreFocusTarget();
 
-    const isEditMode = useMemo<boolean>(
-        () => isSelectStar(state.currentQueryResult?.query ?? ''),
-        [state.currentQueryResult],
-    );
+    const isEditMode = useMemo<boolean>(() => {
+        return state.isExecuting
+            ? isSelectStar(state.querySelectedValue || state.queryValue || '')
+            : isSelectStar(state.currentQueryResult?.query ?? '');
+    }, [state.currentQueryResult, state.isExecuting]);
 
+    const visibility = state.isExecuting ? 'hidden' : 'visible';
     const hasSelectedRows = state.selectedRows.length > 0;
 
     const getSelectedDocuments = () => {
@@ -56,6 +58,7 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
                             aria-label={'Add new document'}
                             icon={<AddFilled />}
                             onClick={() => void dispatcher.openDocument('add')}
+                            style={{ visibility }}
                         />
                     </Tooltip>
                     <Tooltip content="View selected document in separate tab" relationship="description" withArrow>
@@ -64,6 +67,7 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
                             icon={<EyeRegular />}
                             onClick={() => void dispatcher.openDocuments('view', getSelectedDocuments())}
                             disabled={!hasSelectedRows}
+                            style={{ visibility }}
                         />
                     </Tooltip>
                     <Tooltip content="Edit selected document in separate tab" relationship="description" withArrow>
@@ -72,6 +76,7 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
                             icon={<EditRegular />}
                             onClick={() => void dispatcher.openDocuments('edit', getSelectedDocuments())}
                             disabled={!hasSelectedRows}
+                            style={{ visibility }}
                         />
                     </Tooltip>
                     <Tooltip content="Delete selected document" relationship="description" withArrow>
@@ -80,6 +85,7 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
                             icon={<DeleteRegular />}
                             onClick={() => void dispatcher.deleteDocuments(getSelectedDocuments())}
                             disabled={!hasSelectedRows}
+                            style={{ visibility }}
                         />
                     </Tooltip>
 

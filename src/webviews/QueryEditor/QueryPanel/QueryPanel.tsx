@@ -5,7 +5,7 @@
 
 import { makeStyles } from '@fluentui/react-components';
 import { QueryMonaco } from './QueryMonaco';
-import { QueryToolbar } from './QueryToolbar';
+import { QueryToolbarOverflow } from './QueryToolbarOverflow';
 
 const useClasses = makeStyles({
     monacoContainer: {
@@ -26,7 +26,7 @@ export const QueryPanel = () => {
 
     return (
         <section className={classes.container}>
-            <QueryToolbar />
+            <QueryToolbarOverflow />
             <section className={classes.monacoContainer}>
                 <QueryMonaco />
             </section>

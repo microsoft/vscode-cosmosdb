@@ -6,7 +6,6 @@
 import * as vscode from 'vscode';
 import { type JSONSchema } from 'vscode-json-languageservice';
 import { z } from 'zod';
-import { type MongoClustersClient } from '../../../mongoClusters/MongoClustersClient';
 import { MongoClustersSession } from '../../../mongoClusters/MongoClusterSession';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { getKnownFields, type FieldEntry } from '../../../utils/json/mongo/autocomplete/getKnownFields';
@@ -179,9 +178,8 @@ export const collectionsViewRouter = router({
                 return false;
             }
 
-            const client: MongoClustersClient = MongoClustersSession.getSession(myCtx.sessionId).getClient();
-
-            const acknowledged = await client.deleteDocuments(myCtx.databaseName, myCtx.collectionName, input);
+            const session: MongoClustersSession = MongoClustersSession.getSession(myCtx.sessionId);
+            const acknowledged = await session.deleteDocuments(myCtx.databaseName, myCtx.collectionName, input);
 
             if (acknowledged) {
                 showConfirmationAsInSettings(
@@ -197,9 +195,7 @@ export const collectionsViewRouter = router({
                               input.length,
                           ),
                 );
-            }
-
-            if (!acknowledged) {
+            } else {
                 void vscode.window.showErrorMessage('Failed to delete documents. Unknown error.', {
                     modal: true,
                 });

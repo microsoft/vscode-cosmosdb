@@ -213,27 +213,27 @@ export class MongoClustersClient {
         }
     }
 
+    // TODO: revisit, maybe we can work on BSON here for the documentIds, and the conversion from string etc.,
+    // will remain in the MongoClusterSession class
     async deleteDocuments(databaseName: string, collectionName: string, documentIds: string[]): Promise<boolean> {
-        // convert input data
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const parsedDocumentIds: any[] = documentIds.map((id) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            let parsedId: any;
+        // Convert input data to BSON types
+        const parsedDocumentIds = documentIds.map((id) => {
+            let parsedId;
             try {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 parsedId = EJSON.parse(id);
-            } catch (error) {
+            } catch {
                 if (ObjectId.isValid(id)) {
                     parsedId = new ObjectId(id);
                 } else {
-                    throw error;
+                    throw new Error(`Invalid document ID: ${id}`);
                 }
             }
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return parsedId;
         });
 
-        // connect and extecute
+        // Connect and execute
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
         const deleteResult: DeleteResult = await collection.deleteMany({ _id: { $in: parsedDocumentIds } });
 

@@ -1,5 +1,13 @@
 # Change Log
 
+## 0.24.1
+
+### Changed
+
+- Fixed several issues around keyboard access and accessibility in general.
+- NoSQL query editor toolbar now folds to a menu to fit the window size keeping all elements accessible.
+- Fixed some minor issues.
+
 ## 0.24.0
 
 ### Added

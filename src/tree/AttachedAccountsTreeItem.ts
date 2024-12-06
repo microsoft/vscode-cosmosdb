@@ -16,7 +16,7 @@ import { type MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
-import { emulatorPassword, isWindows } from '../constants';
+import { emulatorPassword, isLinux, isWindows } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
 import { type CosmosDBCredential } from '../docdb/getCosmosClient';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
@@ -47,7 +47,8 @@ export const MONGO_CONNECTION_EXPECTED: string = 'Connection string must start w
 const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
 
 export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
-    public static contextValue: string = 'cosmosDBAttachedAccounts' + (isWindows ? 'WithEmulator' : 'WithoutEmulator');
+    public static contextValue: string =
+        'cosmosDBAttachedAccounts' + (isWindows || isLinux ? 'WithEmulator' : 'WithoutEmulator');
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
     public readonly label: string = 'Attached Database Accounts';
     public childTypeLabel: string = 'Account';
@@ -141,7 +142,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             commandId: 'cosmosDB.attachEmulator',
             includeInTreeItemPicker: true,
         });
-        return isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
+        return isWindows || isLinux ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {

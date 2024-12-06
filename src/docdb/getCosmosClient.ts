@@ -20,6 +20,7 @@ export type CosmosDBKeyCredential = {
 
 export type CosmosDBAuthCredential = {
     type: 'auth';
+    tenantId: string;
 };
 
 export type CosmosDBCredential = CosmosDBKeyCredential | CosmosDBAuthCredential;
@@ -106,7 +107,7 @@ export function getCosmosClient(
             ...commonProperties,
             aadCredentials: {
                 getToken: async (scopes, _options) => {
-                    const session = await getSessionFromVSCode(scopes, undefined, { createIfNone: true });
+                    const session = await getSessionFromVSCode(scopes, authCred.tenantId, { createIfNone: true });
                     return {
                         token: session?.accessToken ?? '',
                         expiresOnTimestamp: 0,

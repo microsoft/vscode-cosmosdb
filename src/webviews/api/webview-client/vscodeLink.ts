@@ -27,10 +27,13 @@ export interface VsCodeLinkResponseMessage {
     id: string;
     result?: unknown;
     error?: {
-        code?: number;
-        message: string;
-        data?: unknown;
         name: string;
+        message: string;
+
+        code?: number;
+        stack?: string;
+        cause?: unknown;
+        data?: unknown;
     };
     complete?: boolean;
 }

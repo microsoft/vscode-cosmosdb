@@ -63,7 +63,7 @@ function vscodeLink(options: VSCodeLinkOptions): TRPCLink<AppRouter> {
      * Notes to maintainers:
      *  - types of messages have been derived from node_modules/@trpc/client/src/links/types.ts
      *    It was not straightforward to import them directly due to the use of `@trpc/server/unstable-core-do-not-import`
-     *    Fell free to revisit once tRPC reaches version 11.0.0
+     *    TODO: Fell free to revisit once tRPC reaches version 11.0.0
      */
 
     // The link function required by tRPC client

@@ -16,7 +16,7 @@
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { initTRPC } from '@trpc/server';
 // eslint-disable-next-line import/no-internal-modules
-import { type MiddlewareResult } from '@trpc/server/dist/unstable-core-do-not-import/middleware';
+import { type MiddlewareResult } from '@trpc/server/dist/unstable-core-do-not-import/middleware'; //TODO: the API for v11 is not stable and will change, revisit when upgrading TRPC
 
 /**
  * Initialization of tRPC backend.

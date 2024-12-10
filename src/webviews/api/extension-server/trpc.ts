@@ -16,7 +16,7 @@
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { initTRPC } from '@trpc/server';
 // eslint-disable-next-line import/no-internal-modules
-import { type MiddlewareResult } from '@trpc/server/dist/unstable-core-do-not-import/middleware';
+import { type MiddlewareResult } from '@trpc/server/dist/unstable-core-do-not-import/middleware'; //TODO: the API for v11 is not stable and will change, revisit when upgrading TRPC
 
 /**
  * Initialization of tRPC backend.
@@ -44,13 +44,18 @@ export const trpcToTelemetry = t.middleware(async ({ path, type, next }) => {
             const result = await next();
 
             if (!result.ok) {
-                context.telemetry.properties.result = 'Failed';
-                context.telemetry.properties.error = result.error.message;
-
                 /**
-                 * we're not any error here as we just want to log it here and let the
+                 * we're not handling any error here as we just want to log it here and let the
                  * caller of the RPC call handle the error there.
                  */
+
+                context.telemetry.properties.result = 'Failed';
+                context.telemetry.properties.error = result.error.name;
+                context.telemetry.properties.errorMessage = result.error.message;
+                context.telemetry.properties.errorStack = result.error.stack;
+                if (result.error.cause) {
+                    context.telemetry.properties.errorCause = JSON.stringify(result.error.cause, null, 0);
+                }
             }
 
             return result;

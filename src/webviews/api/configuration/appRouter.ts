@@ -7,6 +7,7 @@
  * This a minimal tRPC server
  */
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { z } from 'zod';
 import { type API } from '../../../AzureDBExperiences';
 import { collectionsViewRouter as collectionViewRouter } from '../../mongoClusters/collectionView/collectionViewRouter';
@@ -87,6 +88,25 @@ const commonRouter = router({
                     throw newError;
                 },
             );
+        }),
+    displayErrorMessage: publicProcedure
+        .input(
+            z.object({
+                message: z.string(),
+                modal: z.boolean(),
+                cause: z.string(),
+            }),
+        )
+        .mutation(({ input }) => {
+            let message = input.message;
+            if (input.cause && !input.modal) {
+                message += ` (${input.cause})`;
+            }
+
+            void vscode.window.showErrorMessage(message, {
+                modal: input.modal,
+                detail: input.modal ? input.cause : undefined, // The content of the 'detail' field is only shown when modal is true
+            });
         }),
     hello: publicProcedure
         // This is the input schema of your procedure, no parameters

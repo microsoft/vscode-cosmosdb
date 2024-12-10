@@ -109,7 +109,14 @@ export const CollectionView = (): JSX.Element => {
 
                 setCurrentContext((prev) => ({ ...prev, isLoading: false, isFirstTimeLoad: false }));
             })
-            .catch((_error) => {
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error while running the query',
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
+            })
+            .finally(() => {
                 setCurrentContext((prev) => ({ ...prev, isLoading: false, isFirstTimeLoad: false }));
             });
     }, [currentContext.currrentQueryDefinition]);
@@ -181,7 +188,11 @@ export const CollectionView = (): JSX.Element => {
                         }));
                     })
                     .catch((error) => {
-                        console.debug('Failed to perform an action:', error);
+                        void trpcClient.common.displayErrorMessage.mutate({
+                            message: 'Error while loading the data',
+                            modal: false,
+                            cause: error instanceof Error ? error.message : String(error),
+                        });
                     });
                 break;
             }
@@ -195,7 +206,11 @@ export const CollectionView = (): JSX.Element => {
                         }));
                     })
                     .catch((error) => {
-                        console.debug('Failed to perform an action:', error);
+                        void trpcClient.common.displayErrorMessage.mutate({
+                            message: 'Error while loading the data',
+                            modal: false,
+                            cause: error instanceof Error ? error.message : String(error),
+                        });
                     });
                 break;
             case Views.JSON:
@@ -208,7 +223,11 @@ export const CollectionView = (): JSX.Element => {
                         }));
                     })
                     .catch((error) => {
-                        console.debug('Failed to perform an action:', error);
+                        void trpcClient.common.displayErrorMessage.mutate({
+                            message: 'Error while loading the data',
+                            modal: false,
+                            cause: error instanceof Error ? error.message : String(error),
+                        });
                     });
                 break;
             default:
@@ -223,7 +242,11 @@ export const CollectionView = (): JSX.Element => {
                 void (await currentContextRef.current.queryEditor?.setJsonSchema(schema));
             })
             .catch((error) => {
-                console.debug('Failed to perform an action:', error);
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error while loading the autocompletion data',
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
             });
     }
 
@@ -259,46 +282,46 @@ export const CollectionView = (): JSX.Element => {
                     },
                 }));
             })
-            .catch((error: unknown) => {
-                if (error instanceof Error) {
-                    console.error('Error deleting the document:', error.message);
-                } else {
-                    console.error('Unexpected error when deleting a document:', error);
-                }
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error deleting selected documents',
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
             });
     }
 
     function handleViewDocumentRequest(): void {
         trpcClient.mongoClusters.collectionView.viewDocumentById
             .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
-            .catch((error: unknown) => {
-                if (error instanceof Error) {
-                    console.error('Error opening document:', error.message);
-                } else {
-                    console.error('Unexpected error opening document:', error);
-                }
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error opening the document view',
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
             });
     }
 
     function handleEditDocumentRequest(): void {
         trpcClient.mongoClusters.collectionView.editDocumentById
             .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
-            .catch((error: unknown) => {
-                if (error instanceof Error) {
-                    console.error('Error opening document:', error.message);
-                } else {
-                    console.error('Unexpected error opening document:', error);
-                }
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error opening the document view',
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
             });
     }
 
     function handleAddDocumentRequest(): void {
-        trpcClient.mongoClusters.collectionView.addDocument.mutate().catch((error: unknown) => {
-            if (error instanceof Error) {
-                console.error('Error adding document:', error.message);
-            } else {
-                console.error('Unexpected error adding document:', error);
-            }
+        trpcClient.mongoClusters.collectionView.addDocument.mutate().catch((error) => {
+            void trpcClient.common.displayErrorMessage.mutate({
+                message: 'Error opening the document view',
+                modal: false,
+                cause: error instanceof Error ? error.message : String(error),
+            });
         });
     }
 
@@ -340,7 +363,7 @@ export const CollectionView = (): JSX.Element => {
                 },
             })
             .catch((error) => {
-                console.debug('Failed to report query event:', error);
+                console.debug('Failed to report an event:', error);
             });
     }
 
@@ -371,7 +394,7 @@ export const CollectionView = (): JSX.Element => {
                                 },
                             })
                             .catch((error) => {
-                                console.debug('Failed to report query event:', error);
+                                console.debug('Failed to report an event:', error);
                             });
                     }}
                 />

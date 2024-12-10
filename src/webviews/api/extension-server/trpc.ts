@@ -50,7 +50,8 @@ export const trpcToTelemetry = t.middleware(async ({ path, type, next }) => {
                  */
 
                 context.telemetry.properties.result = 'Failed';
-                context.telemetry.properties.error = result.error.message;
+                context.telemetry.properties.error = result.error.name;
+                context.telemetry.properties.errorMessage = result.error.message;
                 context.telemetry.properties.errorStack = result.error.stack;
                 if (result.error.cause) {
                     context.telemetry.properties.errorCause = JSON.stringify(result.error.cause, null, 0);

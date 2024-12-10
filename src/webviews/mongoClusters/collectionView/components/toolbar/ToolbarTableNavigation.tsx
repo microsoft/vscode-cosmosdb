@@ -49,8 +49,8 @@ export const ToolbarTableNavigation = (): JSX.Element => {
                     depth: newPath.length ?? 0,
                 },
             })
-            .catch((_error) => {
-                console.debug(_error);
+            .catch((error) => {
+                console.debug('Failed to report an event:', error);
             });
     }
 
@@ -75,8 +75,8 @@ export const ToolbarTableNavigation = (): JSX.Element => {
                     depth: newPath.length ?? 0,
                 },
             })
-            .catch((_error) => {
-                console.debug(_error);
+            .catch((error) => {
+                console.debug('Failed to report an event:', error);
             });
     }
 

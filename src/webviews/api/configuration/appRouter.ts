@@ -29,6 +29,7 @@ import { publicProcedure, router } from '../extension-server/trpc';
 export type BaseRouterContext = {
     dbExperience: API;
     webviewName: string;
+    signal?: AbortSignal; // This is a special property that is used to cancel subscriptions
 };
 
 /**
@@ -108,6 +109,76 @@ const commonRouter = router({
                 detail: input.modal ? input.cause : undefined, // The content of the 'detail' field is only shown when modal is true
             });
         }),
+    /**
+     * Example Subscription Procedure: `demoCounter`
+     *
+     * This subscription demonstrates how to stream data from the server to the client over time
+     * using asynchronous generators (the tRPC v11/v12 approach).
+     *
+     * **How Subscriptions Work in tRPC:**
+     * - A subscription procedure is defined using `publicProcedure.subscription(async function*(opts) { ... })`.
+     * - Inside the async generator, you `yield` values over time. Each yielded value is sent to the client.
+     * - The subscription remains active until one of the following occurs:
+     *   1. The server side returns from the async generator function (e.g., after certain logic or conditions).
+     *   2. An error is thrown inside the async generator, causing the subscription to terminate with an error.
+     *   3. The client unsubscribes (calling `subscription.unsubscribe()` on the client), which triggers the server to cancel the subscription.
+     *   4. The server receives an abort signal (such as `ctx.signal.aborted`), and you return early to stop emitting more values.
+     *
+     * **Context and Abort Signals:**
+     * - `ctx` contains an `AbortSignal` (`ctx.signal`) that indicates when the client wants to stop the subscription.
+     * - By checking `if (ctx.signal?.aborted)`, you can gracefully end the subscription. This ensures no further values are emitted.
+     *
+     * **Usage Example (on the Client):**
+     * ```typescript
+     * const subscription = trpcClient.common.demoCounter.subscribe(undefined, {
+     *   onStarted() {
+     *     console.log('Subscription started');
+     *   },
+     *   onData(data) {
+     *     console.log('Received subscription data:', data);
+     *     if (data === 5) {
+     *       // Manually unsubscribe after receiving the number 5
+     *       subscription.unsubscribe();
+     *       // Note: onComplete() will not be called because we're forcefully unsubscribing here
+     *     }
+     *   },
+     *   onError(err) {
+     *     console.error('Subscription error:', err);
+     *   },
+     *   onComplete() {
+     *     console.log('Subscription completed');
+     *   }
+     * });
+     * ```
+     *
+     * **Key Points:**
+     * - Subscriptions can produce multiple values over time.
+     * - You decide when to stop by returning or by the client unsubscribing.
+     * - Error handling and completion are well-defined; the client receives these signals via callbacks.
+     */
+    demoCounter: publicProcedure.subscription(async function* ({ ctx }) {
+        const myCtx = ctx as BaseRouterContext;
+
+        let count = 0;
+        while (true) {
+            // Simulate work or data updates by delaying each emission
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // Optionally, you can stop emitting values after a certain condition:
+            // if (count > 2) {
+            //     return; // This completes the subscription after three iterations (0, 1, 2)
+            // }
+
+            // Check if the client has aborted (unsubscribed) before yielding the next value
+            if (myCtx.signal?.aborted) {
+                // If aborted, just return to end the subscription gracefully
+                return;
+            }
+
+            // Yield the next value of `count`. This value is sent to the client as soon as possible.
+            yield count++;
+        }
+    }),
     hello: publicProcedure
         // This is the input schema of your procedure, no parameters
         .query(async () => {

@@ -66,19 +66,92 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
         this.initializeBase();
     }
 
+    protected _activeSubscriptions = new Map<string, AbortController>();
+
+    /**
+     * Sets up the tRPC (TypeScript Remote Procedure Call) for the webview panel.
+     * This method registers a disposable listener for messages received from the webview,
+     * and handles different types of operations such as subscriptions and procedure calls.
+     *
+     * @param context - The base router context used to create a caller for tRPC procedures.
+     *
+     * The method performs the following operations:
+     * - Creates a caller factory using the provided appRouter.
+     * - Registers a listener for messages received from the webview.
+     * - Handles 'subscription' messages by creating an async iterator for the subscription procedure,
+     *   posting messages to the webview with the results, and supporting cancellation using an AbortController.
+     * - Handles 'subscription.stop' messages by aborting the active subscription.
+     * - Handles other messages by calling the appropriate tRPC procedure and posting the result to the webview.
+     *
+     * The method ensures proper error handling by wrapping errors in tRPC error messages and posting them to the webview.
+     *
+     * @remarks
+     * This function must be called in order to enable tRPC functionality for the webview.
+     */
     protected setupTrpc(context: BaseRouterContext): void {
         const callerFactory = createCallerFactory(appRouter);
 
         this.registerDisposable(
             this._panel.webview.onDidReceiveMessage(async (message: VsCodeLinkRequestMessage) => {
-                // Create a caller with the necessary context (currrently none, but maybe a telemetry hook later?)
+                // Create a caller with the necessary context
                 const caller = callerFactory(context);
 
                 switch (message.op.type) {
-                    // case 'subscription':
-                    //     break;
-                    // case 'subscription.stop':
-                    //     break;
+                    case 'subscription': {
+                        try {
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                            const procedure = caller[message.op.path];
+
+                            if (typeof procedure !== 'function') {
+                                throw new Error(`Procedure not found: ${message.op.path}`);
+                            }
+
+                            // TODO: In v12, tRPC is expected to support cancellation. In the meantime, we'll work with an AbortController to support cancellation.
+                            const abortController = new AbortController();
+                            this._activeSubscriptions.set(message.id, abortController);
+
+                            context.signal = abortController.signal;
+
+                            // Call the subscription procedure, which returns an observable
+                            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+                            const asyncIter = await procedure(message.op.input);
+
+                            void (async () => {
+                                try {
+                                    for await (const value of asyncIter) {
+                                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                                        this._panel.webview.postMessage({ id: message.id, result: value });
+                                    }
+
+                                    // If we exit the loop naturally, it's complete
+                                    this._panel.webview.postMessage({ id: message.id, complete: true });
+                                } catch (error) {
+                                    // If the async iterator throws, send an error message
+                                    const trpcErrorMessage = this.wrapInTrpcErrorMessage(error, message.id);
+                                    this._panel.webview.postMessage(trpcErrorMessage);
+                                } finally {
+                                    // Once done, remove from active subscriptions
+                                    this._activeSubscriptions.delete(message.id);
+                                }
+                            })();
+                        } catch (error) {
+                            const trpcErrorMessage = this.wrapInTrpcErrorMessage(error, message.id);
+                            this._panel.webview.postMessage(trpcErrorMessage);
+                        }
+
+                        break;
+                    }
+
+                    case 'subscription.stop': {
+                        // Stop the async generator by aborting it
+                        const abortController = this._activeSubscriptions.get(message.id);
+                        if (abortController) {
+                            abortController.abort();
+                            this._activeSubscriptions.delete(message.id);
+                        }
+                        break;
+                    }
+
                     default:
                         try {
                             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

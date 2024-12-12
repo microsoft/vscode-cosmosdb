@@ -38,10 +38,9 @@ export const DocumentView = (): JSX.Element => {
     const configuration = useConfiguration<DocumentsViewWebviewConfigurationType>();
 
     /**
-     * Use the `useTrpcClient` hook to get the tRPC client and an event target
-     * for handling notifications from the extension.
+     * Use the `useTrpcClient` hook to get the tRPC client
      */
-    const { trpcClient /*, vscodeEventTarget*/ } = useTrpcClient();
+    const { trpcClient } = useTrpcClient();
 
     const [editorContent] = configuration.mode === 'add' ? useState('{  }') : useState('{ "loading...": true }');
     const [isLoading, setIsLoading] = useState(configuration.mode !== 'add');
@@ -75,22 +74,6 @@ export const DocumentView = (): JSX.Element => {
     const editorRef = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
     const getCurrentContent = () => editorRef.current?.getValue() || '';
     const setContent = (newValue: string) => editorRef.current?.setValue(newValue);
-
-    // useEffect(() => { // example of handling notifications from the extension
-    //     const handleNotification = (event: Event) => {
-    //         const customEvent = event as CustomEvent<VsCodeLinkNotification>;
-    //         const notification = customEvent.detail;
-
-    //         // Handle the notification data, just playing with it
-    //         console.log('Handling notification:', notification);
-    //     };
-
-    //     vscodeEventTarget.addEventListener('VsCodeLinkNotification', handleNotification);
-
-    //     return () => {
-    //         vscodeEventTarget.removeEventListener('VsCodeLinkNotification', handleNotification);
-    //     };
-    // }, [vscodeEventTarget]);
 
     const handleMonacoEditorMount = (
         editor: monacoEditor.editor.IStandaloneCodeEditor,

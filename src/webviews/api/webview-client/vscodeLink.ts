@@ -43,11 +43,6 @@ export interface VsCodeLinkResponseMessage {
     complete?: boolean;
 }
 
-export interface VsCodeLinkNotification {
-    notification: string;
-    parameters: unknown;
-}
-
 interface VSCodeLinkOptions {
     //   Function to send a message to the server / extension
     send: (message: VsCodeLinkRequestMessage) => void;

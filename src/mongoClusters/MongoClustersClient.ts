@@ -9,6 +9,7 @@
  * singletone on a client with a getter from a connection pool..
  */
 
+import { appendExtensionUserAgent, callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { EJSON } from 'bson';
 import {
     MongoClient,
@@ -22,6 +23,8 @@ import {
     type WithoutId,
 } from 'mongodb';
 import { CredentialCache } from './CredentialCache';
+import { areMongoDBAzure, getHostsFromConnectionString } from './utils/connectionStringHelpers';
+import { getMongoClusterMetadata, type MongoClusterMetadata } from './utils/getMongoClusterMetadata';
 import { toFilterQueryObj } from './utils/toFilterQuery';
 
 export interface DatabaseItemModel {
@@ -73,9 +76,26 @@ export class MongoClustersClient {
         }
 
         this._credentialId = credentialId;
+
+        // check if it's an azure connection, and do some special handling
+        const cString = CredentialCache.getCredentials(credentialId)?.connectionString as string;
+        const hosts = getHostsFromConnectionString(cString);
+        const userAgentString = areMongoDBAzure(hosts) ? appendExtensionUserAgent() : undefined;
+
         const cStringPassword = CredentialCache.getConnectionStringWithPassword(credentialId);
 
-        this._mongoClient = await MongoClient.connect(cStringPassword as string);
+        this._mongoClient = await MongoClient.connect(cStringPassword as string, {
+            appName: userAgentString,
+        });
+
+        void callWithTelemetryAndErrorHandling('cosmosDB.mongoClusters.connect.getmetadata', async (context) => {
+            const metadata: MongoClusterMetadata = await getMongoClusterMetadata(this._mongoClient);
+
+            context.telemetry.properties = {
+                ...context.telemetry.properties,
+                ...metadata,
+            };
+        });
     }
 
     public static async getClient(credentialId: string): Promise<MongoClustersClient> {
@@ -197,7 +217,7 @@ export class MongoClustersClient {
         try {
             while (await cursor.hasNext()) {
                 if (abortSignal.aborted) {
-                    console.log('streamDocuments: Aborted by an abort signal.');
+                    console.debug('streamDocuments: Aborted by an abort signal.');
                     return;
                 }
 
@@ -213,27 +233,27 @@ export class MongoClustersClient {
         }
     }
 
+    // TODO: revisit, maybe we can work on BSON here for the documentIds, and the conversion from string etc.,
+    // will remain in the MongoClusterSession class
     async deleteDocuments(databaseName: string, collectionName: string, documentIds: string[]): Promise<boolean> {
-        // convert input data
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const parsedDocumentIds: any[] = documentIds.map((id) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            let parsedId: any;
+        // Convert input data to BSON types
+        const parsedDocumentIds = documentIds.map((id) => {
+            let parsedId;
             try {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 parsedId = EJSON.parse(id);
-            } catch (error) {
+            } catch {
                 if (ObjectId.isValid(id)) {
                     parsedId = new ObjectId(id);
                 } else {
-                    throw error;
+                    throw new Error(`Invalid document ID: ${id}`);
                 }
             }
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return parsedId;
         });
 
-        // connect and extecute
+        // Connect and execute
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
         const deleteResult: DeleteResult = await collection.deleteMany({ _id: { $in: parsedDocumentIds } });
 
@@ -324,7 +344,7 @@ export class MongoClustersClient {
         try {
             newCollection = await this._mongoClient.db(databaseName).createCollection(collectionName);
         } catch (_e) {
-            console.log(_e); //todo: add to telemetry
+            console.error(_e); //todo: add to telemetry
             return false;
         }
 
@@ -338,7 +358,7 @@ export class MongoClustersClient {
                 .createCollection('_dummy_collection_creation_forces_db_creation');
             await newCollection.drop();
         } catch (_e) {
-            console.log(_e); //todo: add to telemetry
+            console.error(_e); //todo: add to telemetry
             return false;
         }
 

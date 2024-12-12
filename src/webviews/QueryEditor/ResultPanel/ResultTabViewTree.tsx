@@ -62,12 +62,6 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
     };
 
     return (
-        <SlickgridReact
-            gridId="myGridTree"
-            gridOptions={gridOptions}
-            columnDefinitions={columnsDef}
-            dataset={data}
-            onReactGridCreated={() => console.log('Tree View created')}
-        />
+        <SlickgridReact gridId="myGridTree" gridOptions={gridOptions} columnDefinitions={columnsDef} dataset={data} />
     );
 };

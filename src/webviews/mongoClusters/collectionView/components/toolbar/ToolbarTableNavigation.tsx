@@ -16,29 +16,68 @@ import {
 } from '@fluentui/react-components';
 import { ArrowUp16Filled } from '@fluentui/react-icons';
 import { useContext } from 'react';
+import { useTrpcClient } from '../../../../api/webview-client/useTrpcClient';
 import { CollectionViewContext, Views } from '../../collectionViewContext';
 
 export const ToolbarTableNavigation = (): JSX.Element => {
+    /**
+     * Use the `useTrpcClient` hook to get the tRPC client and an event target
+     * for handling notifications from the extension.
+     */
+    const { trpcClient /** , vscodeEventTarget */ } = useTrpcClient();
+
     const [currentContext, setCurrentContext] = useContext(CollectionViewContext);
 
     function levelUp() {
+        const newPath = currentContext.currentViewState?.currentPath.slice(0, -1) ?? [];
+
         setCurrentContext({
             ...currentContext,
             currentViewState: {
                 ...currentContext.currentViewState,
-                currentPath: currentContext.currentViewState?.currentPath.slice(0, -1) ?? [],
+                currentPath: newPath,
             },
         });
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'stepIn',
+                properties: {
+                    source: 'step-out-button',
+                },
+                measurements: {
+                    depth: newPath.length ?? 0,
+                },
+            })
+            .catch((error) => {
+                console.debug('Failed to report an event:', error);
+            });
     }
 
     function jumpToLevel(level: number) {
+        const newPath = currentContext.currentViewState?.currentPath.slice(0, level) ?? [];
+
         setCurrentContext({
             ...currentContext,
             currentViewState: {
                 ...currentContext.currentViewState,
-                currentPath: currentContext.currentViewState?.currentPath.slice(0, level) ?? [],
+                currentPath: newPath,
             },
         });
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'stepIn',
+                properties: {
+                    source: 'breadcrumb',
+                },
+                measurements: {
+                    depth: newPath.length ?? 0,
+                },
+            })
+            .catch((error) => {
+                console.debug('Failed to report an event:', error);
+            });
     }
 
     type Item = {

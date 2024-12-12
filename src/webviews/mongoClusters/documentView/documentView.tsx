@@ -53,11 +53,22 @@ export const DocumentView = (): JSX.Element => {
             const documentId: string = configuration.documentId;
 
             setIsLoading(true);
-            void trpcClient.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
-                setContent(response);
-            });
 
-            setIsLoading(false);
+            void trpcClient.mongoClusters.documentView.getDocumentById
+                .query(documentId)
+                .then((response) => {
+                    setContent(response);
+                })
+                .catch((error) => {
+                    void trpcClient.common.displayErrorMessage.mutate({
+                        message: 'Error while loading the document',
+                        modal: false,
+                        cause: error instanceof Error ? error.message : String(error),
+                    });
+                })
+                .finally(() => {
+                    setIsLoading(false);
+                });
         }
     }, []);
 
@@ -166,14 +177,44 @@ export const DocumentView = (): JSX.Element => {
     // }
 
     function handleOnRefreshRequest(): void {
-        const documentId: string = configuration.documentId;
+        if (configuration.documentId === undefined) {
+            return;
+        }
 
         setIsLoading(true);
 
-        void trpcClient.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
-            setContent(response);
-            setIsLoading(false);
-        });
+        let documentLength = 0;
+
+        void trpcClient.mongoClusters.documentView.getDocumentById
+            .query(configuration.documentId)
+            .then((response) => {
+                documentLength = response.length ?? 0;
+                setContent(response);
+            })
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error while refreshing the document',
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
+            })
+            .finally(() => {
+                setIsLoading(false);
+            });
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'refreshDocument',
+                properties: {
+                    ui: 'button',
+                },
+                measurements: {
+                    documentLength: documentLength,
+                },
+            })
+            .catch((error) => {
+                console.debug('Failed to report an event:', error);
+            });
     }
 
     function handleOnSaveRequest(): void {
@@ -198,10 +239,28 @@ export const DocumentView = (): JSX.Element => {
                 setIsDirty(false);
             })
             .catch((error) => {
-                console.error('Error saving document:', error);
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error saving the document',
+                    modal: true, // we want to show the error in a modal dialog as it's an important one, failed to save the document
+                    cause: error instanceof Error ? error.message : String(error),
+                });
             })
             .finally(() => {
                 setIsLoading(false);
+            });
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'saveDocument',
+                properties: {
+                    ui: 'button',
+                },
+                measurements: {
+                    documentLength: editorContent.length,
+                },
+            })
+            .catch((error) => {
+                console.debug('Failed to report an event:', error);
             });
     }
 

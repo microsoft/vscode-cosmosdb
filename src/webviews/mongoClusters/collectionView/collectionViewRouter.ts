@@ -6,11 +6,10 @@
 import * as vscode from 'vscode';
 import { type JSONSchema } from 'vscode-json-languageservice';
 import { z } from 'zod';
-import { type MongoClustersClient } from '../../../mongoClusters/MongoClustersClient';
 import { MongoClustersSession } from '../../../mongoClusters/MongoClusterSession';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { getKnownFields, type FieldEntry } from '../../../utils/json/mongo/autocomplete/getKnownFields';
-import { publicProcedure, router } from '../../api/extension-server/trpc';
+import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
 
 import { type CollectionItem } from '../../../mongoClusters/tree/CollectionItem';
 import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
@@ -18,8 +17,9 @@ import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirm
 import basicFindQuerySchema from '../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';
 import { generateMongoFindJsonSchema } from '../../../utils/json/mongo/autocomplete/generateMongoFindJsonSchema';
 import { localize } from '../../../utils/localize';
+import { type BaseRouterContext } from '../../api/configuration/appRouter';
 
-export type RouterContext = {
+export type RouterContext = BaseRouterContext & {
     sessionId: string;
     databaseName: string;
     collectionName: string;
@@ -27,12 +27,13 @@ export type RouterContext = {
 };
 
 export const collectionsViewRouter = router({
-    getInfo: publicProcedure.query(({ ctx }) => {
+    getInfo: publicProcedure.use(trpcToTelemetry).query(({ ctx }) => {
         const myCtx = ctx as RouterContext;
 
         return 'Info from the webview: ' + JSON.stringify(myCtx);
     }),
     runQuery: publicProcedure
+        .use(trpcToTelemetry)
         // parameters
         .input(
             z.object({
@@ -58,6 +59,7 @@ export const collectionsViewRouter = router({
             return { documentCount: size };
         }),
     getAutocompletionSchema: publicProcedure
+        .use(trpcToTelemetry)
         // procedure type
         .query(({ ctx }) => {
             const myCtx = ctx as RouterContext;
@@ -79,6 +81,7 @@ export const collectionsViewRouter = router({
             return querySchema;
         }),
     getCurrentPageAsTable: publicProcedure
+        .use(trpcToTelemetry)
         //parameters
         .input(z.array(z.string()))
         // procedure type
@@ -91,6 +94,7 @@ export const collectionsViewRouter = router({
             return tableData;
         }),
     getCurrentPageAsTree: publicProcedure
+        .use(trpcToTelemetry)
         // procedure type
         .query(({ ctx }) => {
             const myCtx = ctx as RouterContext;
@@ -101,6 +105,7 @@ export const collectionsViewRouter = router({
             return treeData;
         }),
     getCurrentPageAsJson: publicProcedure
+        .use(trpcToTelemetry)
         // procedure type
         .query(({ ctx }) => {
             const myCtx = ctx as RouterContext;
@@ -111,6 +116,7 @@ export const collectionsViewRouter = router({
             return jsonData;
         }),
     addDocument: publicProcedure
+        .use(trpcToTelemetry)
         // procedure type
         .mutation(({ ctx }) => {
             const myCtx = ctx as RouterContext;
@@ -123,6 +129,7 @@ export const collectionsViewRouter = router({
             });
         }),
     viewDocumentById: publicProcedure
+        .use(trpcToTelemetry)
         // parameters
         .input(z.string())
         // procedure type
@@ -138,6 +145,7 @@ export const collectionsViewRouter = router({
             });
         }),
     editDocumentById: publicProcedure
+        .use(trpcToTelemetry)
         // parameters
         .input(z.string())
         // procedure type
@@ -153,6 +161,7 @@ export const collectionsViewRouter = router({
             });
         }),
     deleteDocumentsById: publicProcedure
+        .use(trpcToTelemetry)
         // parameteres
         .input(z.array(z.string())) // stands for string[]
         // procedure type
@@ -169,9 +178,8 @@ export const collectionsViewRouter = router({
                 return false;
             }
 
-            const client: MongoClustersClient = MongoClustersSession.getSession(myCtx.sessionId).getClient();
-
-            const acknowledged = await client.deleteDocuments(myCtx.databaseName, myCtx.collectionName, input);
+            const session: MongoClustersSession = MongoClustersSession.getSession(myCtx.sessionId);
+            const acknowledged = await session.deleteDocuments(myCtx.databaseName, myCtx.collectionName, input);
 
             if (acknowledged) {
                 showConfirmationAsInSettings(
@@ -187,9 +195,7 @@ export const collectionsViewRouter = router({
                               input.length,
                           ),
                 );
-            }
-
-            if (!acknowledged) {
+            } else {
                 void vscode.window.showErrorMessage('Failed to delete documents. Unknown error.', {
                     modal: true,
                 });
@@ -198,21 +204,23 @@ export const collectionsViewRouter = router({
             return acknowledged;
         }),
     exportDocuments: publicProcedure
+        .use(trpcToTelemetry)
         // parameters
         .input(z.object({ query: z.string() }))
         //procedure type
-        .query(async ({ input, ctx }) => {
+        .query(({ input, ctx }) => {
             const myCtx = ctx as RouterContext;
 
-            vscode.commands.executeCommand(
-                'command.internal.mongoClusters.exportDocuments',
-                myCtx.collectionTreeItem,
-                input.query,
-            );
+            vscode.commands.executeCommand('command.internal.mongoClusters.exportDocuments', myCtx.collectionTreeItem, {
+                queryText: input.query,
+                source: 'webview;collectionView',
+            });
         }),
-    importDocuments: publicProcedure.query(async ({ ctx }) => {
+    importDocuments: publicProcedure.use(trpcToTelemetry).query(({ ctx }) => {
         const myCtx = ctx as RouterContext;
 
-        vscode.commands.executeCommand('command.internal.mongoClusters.importDocuments', myCtx.collectionTreeItem);
+        vscode.commands.executeCommand('command.mongoClusters.importDocuments', myCtx.collectionTreeItem, null, {
+            source: 'webview;collectionView',
+        });
     }),
 });

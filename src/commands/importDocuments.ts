@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ItemDefinition } from '@azure/cosmos';
-import { parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { EJSON } from 'bson';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
@@ -191,9 +191,17 @@ async function insertDocumentsIntoDocdb(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function insertDocumentsIntoMongo(node: MongoCollectionTreeItem, documents: any[]): Promise<string> {
     let output = '';
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    const parsed = await node.collection.insertMany(documents);
-    if (parsed.acknowledged) {
+
+    const parsed = await callWithTelemetryAndErrorHandling('cosmosDB.mongo.importDocumets', async (actionContext) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        const parsed = await node.collection.insertMany(documents);
+
+        actionContext.telemetry.measurements.documentCount = parsed?.insertedCount;
+
+        return parsed;
+    });
+
+    if (parsed?.acknowledged) {
         output = `Import into mongo successful. Inserted ${parsed.insertedCount} document(s). See output for more details.`;
         for (const inserted of Object.values(parsed.insertedIds)) {
             ext.outputChannel.appendLog(`Inserted document: ${inserted}`);
@@ -207,10 +215,19 @@ async function insertDocumentsIntoMongoCluster(
     node: CollectionItem,
     documents: unknown[],
 ): Promise<string> {
-    const result = await node.insertDocuments(context, documents as Document[]);
+    const result = await callWithTelemetryAndErrorHandling(
+        'cosmosDB.mongoClusters.importDocumets',
+        async (actionContext) => {
+            const result = await node.insertDocuments(context, documents as Document[]);
+
+            actionContext.telemetry.measurements.documentCount = result?.insertedCount;
+
+            return result;
+        },
+    );
 
     let message: string;
-    if (result.acknowledged) {
+    if (result?.acknowledged) {
         message = `Import successful. Inserted ${result.insertedCount} document(s).`;
     } else {
         message = `Import failed. The operation was not acknowledged by the database.`;

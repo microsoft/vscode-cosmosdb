@@ -109,7 +109,14 @@ export const CollectionView = (): JSX.Element => {
 
                 setCurrentContext((prev) => ({ ...prev, isLoading: false, isFirstTimeLoad: false }));
             })
-            .catch((_error) => {
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error while running the query',
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
+            })
+            .finally(() => {
                 setCurrentContext((prev) => ({ ...prev, isLoading: false, isFirstTimeLoad: false }));
             });
     }, [currentContext.currrentQueryDefinition]);
@@ -137,6 +144,17 @@ export const CollectionView = (): JSX.Element => {
                 selection = Views.TABLE;
                 break;
         }
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'viewChanged',
+                properties: {
+                    view: selection,
+                },
+            })
+            .catch((error) => {
+                console.debug('Failed to report an event:', error);
+            });
 
         setCurrentContext((prev) => ({ ...prev, currentView: selection }));
         getDataForView(selection);
@@ -169,8 +187,12 @@ export const CollectionView = (): JSX.Element => {
                             tableData: (result.data as TableDataEntry[]) ?? [],
                         }));
                     })
-                    .catch((_error) => {
-                        console.log('error');
+                    .catch((error) => {
+                        void trpcClient.common.displayErrorMessage.mutate({
+                            message: 'Error while loading the data',
+                            modal: false,
+                            cause: error instanceof Error ? error.message : String(error),
+                        });
                     });
                 break;
             }
@@ -183,8 +205,12 @@ export const CollectionView = (): JSX.Element => {
                             treeData: result,
                         }));
                     })
-                    .catch((_error) => {
-                        console.log('error');
+                    .catch((error) => {
+                        void trpcClient.common.displayErrorMessage.mutate({
+                            message: 'Error while loading the data',
+                            modal: false,
+                            cause: error instanceof Error ? error.message : String(error),
+                        });
                     });
                 break;
             case Views.JSON:
@@ -196,8 +222,12 @@ export const CollectionView = (): JSX.Element => {
                             jsonDocuments: result,
                         }));
                     })
-                    .catch((_error) => {
-                        console.log('error');
+                    .catch((error) => {
+                        void trpcClient.common.displayErrorMessage.mutate({
+                            message: 'Error while loading the data',
+                            modal: false,
+                            cause: error instanceof Error ? error.message : String(error),
+                        });
                     });
                 break;
             default:
@@ -211,8 +241,12 @@ export const CollectionView = (): JSX.Element => {
             .then(async (schema) => {
                 void (await currentContextRef.current.queryEditor?.setJsonSchema(schema));
             })
-            .catch((_error) => {
-                console.log('error');
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error while loading the autocompletion data',
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
             });
     }
 
@@ -224,9 +258,11 @@ export const CollectionView = (): JSX.Element => {
                     return;
                 }
 
-                // TODO: update cached data in the controller
-
-                // TODO: update the current view, not all views.
+                /**
+                 * The data on the server has been deleted and our extension code has updated its
+                 * cache as well. Now we need to update the view locally, so that the user sees
+                 * the changes immediately without potential focus/table resizing issues etc.
+                 */
 
                 setCurrentQueryResults((prev) => ({
                     ...prev,
@@ -246,46 +282,46 @@ export const CollectionView = (): JSX.Element => {
                     },
                 }));
             })
-            .catch((error: unknown) => {
-                if (error instanceof Error) {
-                    console.error('Error adding document:', error.message);
-                } else {
-                    console.error('Unexpected error adding document:', error);
-                }
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error deleting selected documents',
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
             });
     }
 
     function handleViewDocumentRequest(): void {
         trpcClient.mongoClusters.collectionView.viewDocumentById
             .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
-            .catch((error: unknown) => {
-                if (error instanceof Error) {
-                    console.error('Error opening document:', error.message);
-                } else {
-                    console.error('Unexpected error opening document:', error);
-                }
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error opening the document view',
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
             });
     }
 
     function handleEditDocumentRequest(): void {
         trpcClient.mongoClusters.collectionView.editDocumentById
             .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
-            .catch((error: unknown) => {
-                if (error instanceof Error) {
-                    console.error('Error opening document:', error.message);
-                } else {
-                    console.error('Unexpected error opening document:', error);
-                }
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error opening the document view',
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
             });
     }
 
     function handleAddDocumentRequest(): void {
-        trpcClient.mongoClusters.collectionView.addDocument.mutate().catch((error: unknown) => {
-            if (error instanceof Error) {
-                console.error('Error adding document:', error.message);
-            } else {
-                console.error('Unexpected error adding document:', error);
-            }
+        trpcClient.mongoClusters.collectionView.addDocument.mutate().catch((error) => {
+            void trpcClient.common.displayErrorMessage.mutate({
+                message: 'Error opening the document view',
+                modal: false,
+                cause: error instanceof Error ? error.message : String(error),
+            });
         });
     }
 
@@ -295,24 +331,40 @@ export const CollectionView = (): JSX.Element => {
 
         const activeCell = activeDocument[activeColumn] as { value?: string; type?: string };
 
-        console.log('Step-in requested on cell', activeCell, 'in row', row, 'column', cell);
+        console.debug('Step-in requested on cell', activeCell, 'in row', row, 'column', cell);
 
         if (activeColumn === '_id') {
-            console.log('Cell is an _id, skipping step-in');
+            console.debug('Cell is an _id, skipping step-in');
             return;
         }
 
         if (activeCell.type !== 'object') {
-            console.log('Cell is not an object, skipping step-in');
+            console.debug('Cell is not an object, skipping step-in');
             return;
         }
+
+        const newPath = [...(currentContext.currentViewState?.currentPath ?? []), activeColumn];
 
         setCurrentContext((prev) => ({
             ...prev,
             currentViewState: {
-                currentPath: [...(currentContext.currentViewState?.currentPath ?? []), activeColumn],
+                currentPath: newPath,
             },
         }));
+
+        trpcClient.common.reportEvent
+            .mutate({
+                eventName: 'stepIn',
+                properties: {
+                    source: 'step-in-button',
+                },
+                measurements: {
+                    depth: newPath.length ?? 0,
+                },
+            })
+            .catch((error) => {
+                console.debug('Failed to report an event:', error);
+            });
     }
 
     return (
@@ -325,12 +377,26 @@ export const CollectionView = (): JSX.Element => {
                 </div>
 
                 <QueryEditor
-                    onExecuteRequest={(q: string) =>
+                    onExecuteRequest={(q: string) => {
                         setCurrentContext((prev) => ({
                             ...prev,
                             currrentQueryDefinition: { ...prev.currrentQueryDefinition, queryText: q, pageNumber: 1 },
-                        }))
-                    }
+                        }));
+
+                        trpcClient.common.reportEvent
+                            .mutate({
+                                eventName: 'executeQuery',
+                                properties: {
+                                    ui: 'shortcut',
+                                },
+                                measurements: {
+                                    queryLenth: q.length,
+                                },
+                            })
+                            .catch((error) => {
+                                console.debug('Failed to report an event:', error);
+                            });
+                    }}
                 />
 
                 <TabList selectedValue="tab_result" style={{ marginTop: '-10px' }}>

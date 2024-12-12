@@ -86,7 +86,7 @@ export class DatabaseNameStep extends AzureWizardPromptStep<CreateDatabaseWizard
                 );
             }
         } catch (_error) {
-            console.log(_error); // todo: push it to our telemetry
+            console.error(_error); // todo: push it to our telemetry
             return undefined; // we don't want to block the user from continuing if we can't validate the name
         }
 

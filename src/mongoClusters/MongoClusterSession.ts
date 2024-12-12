@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type Document, type WithId } from 'mongodb';
+import { EJSON } from 'bson';
+import { ObjectId, type Document, type WithId } from 'mongodb';
 import { type JSONSchema } from '../utils/json/JSONSchema';
 import { getPropertyNamesAtLevel, updateSchemaWithDocument } from '../utils/json/mongo/SchemaAnalyzer';
 import { getDataAtPath } from '../utils/slickgrid/mongo/toSlickGridTable';
@@ -107,6 +108,45 @@ export class MongoClustersSession {
 
     public getCurrentPageAsTree(): TreeData[] {
         return toSlickGridTree(this._currentRawDocuments);
+    }
+
+    async deleteDocuments(databaseName: string, collectionName: string, documentIds: string[]): Promise<boolean> {
+        const acknowledged = await this._client.deleteDocuments(databaseName, collectionName, documentIds);
+
+        if (acknowledged) {
+            this._currentRawDocuments = this._currentRawDocuments.filter((doc) => {
+                // Convert documentIds to BSON types and compare them with doc._id
+                return !documentIds.some((id) => {
+                    let parsedId;
+                    try {
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        parsedId = EJSON.parse(id);
+                    } catch {
+                        if (ObjectId.isValid(id)) {
+                            parsedId = new ObjectId(id);
+                        } else {
+                            parsedId = id;
+                        }
+                    }
+
+                    /**
+                     * deep equality for _id is tricky as we'd have to consider embedded objects,
+                     * arrays, etc. For now, we'll just stringify the _id and compare the strings.
+                     * The reasoning here is that this operation is used during interactive work
+                     * and were not expecting to delete a large number of documents at once.
+                     * Hence, the performance impact of this approach is negligible, and it's more
+                     * about simplicity here.
+                     */
+
+                    const docIdStr = EJSON.stringify(doc._id, { relaxed: false }, 0);
+                    const parsedIdStr = EJSON.stringify(parsedId, { relaxed: false }, 0);
+
+                    return docIdStr === parsedIdStr;
+                });
+            });
+        }
+
+        return acknowledged;
     }
 
     public getCurrentPageAsTable(path: string[]): TableData {

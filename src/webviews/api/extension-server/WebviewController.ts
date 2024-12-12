@@ -3,8 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { getTRPCErrorFromUnknown } from '@trpc/server';
 import * as vscode from 'vscode';
-import { appRouter } from '../configuration/appRouter';
+import { type API } from '../../../AzureDBExperiences';
+import { appRouter, type BaseRouterContext } from '../configuration/appRouter';
 import { type VsCodeLinkNotification, type VsCodeLinkRequestMessage } from '../webview-client/vscodeLink';
 import { WebviewBaseController } from './WebviewBaseController';
 import { createCallerFactory } from './trpc';
@@ -21,7 +23,7 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
 
     /**
      * Creates a new WebviewController
-     * @param _context The context of the extension-server
+     * @param context The context of the extension-server
      * @param title The title of the webview panel
      * @param webviewName The source file that the webview will use
      * @param initialState The initial state object that the webview will use
@@ -29,7 +31,8 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
      * @param _iconPath The icon path that the webview will use
      */
     constructor(
-        _context: vscode.ExtensionContext,
+        context: vscode.ExtensionContext,
+        protected dbExperience: API,
         title: string,
         webviewName: string,
         initialState: Configuration,
@@ -41,7 +44,7 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
                   readonly dark: vscode.Uri;
               },
     ) {
-        super(_context, webviewName, initialState);
+        super(context, webviewName, initialState);
 
         this._panel = vscode.window.createWebviewPanel('react-webview-' + webviewName, title, viewColumn, {
             enableScripts: true,
@@ -63,7 +66,7 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
         this.initializeBase();
     }
 
-    protected setupTrpc(context: object): void {
+    protected setupTrpc(context: BaseRouterContext): void {
         const callerFactory = createCallerFactory(appRouter);
 
         this.registerDisposable(
@@ -93,13 +96,51 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
 
                             this._panel.webview.postMessage(response);
                         } catch (error) {
-                            console.log(error);
+                            const trpcErrorMessage = this.wrapInTrpcErrorMessage(error, message.id);
+                            this._panel.webview.postMessage(trpcErrorMessage);
                         }
 
                         break;
                 }
             }),
         );
+    }
+
+    /**
+     * Wraps an error into a TRPC error message format suitable for sending via `postMessage`.
+     *
+     * This function manually constructs the error object by extracting the necessary properties
+     * from the `errorEntry`. This is important because when using `postMessage` to send data
+     * from the extension to the webview, the data is serialized (e.g., using `JSON.stringify`).
+     * During serialization, only own enumerable properties of the object are included, while
+     * properties inherited from the prototype chain or non-enumerable properties are omitted.
+     *
+     * Error objects like instances of `Error` or `TRPCError` often have their properties
+     * (such as `message`, `name`, and `stack`) either inherited from the prototype or defined
+     * as non-enumerable. As a result, directly passing such error objects to `postMessage`
+     * would result in the webview receiving an error object without these essential properties.
+     *
+     * By explicitly constructing a plain object with the required error properties, we ensure
+     * that all necessary information is included during serialization and properly received
+     * by the webview.
+     *
+     * @param error - The error to be wrapped.
+     * @param operationId - The ID of the operation associated with the error.
+     * @returns An object containing the operation ID and a plain error object with own enumerable properties.
+     */
+    wrapInTrpcErrorMessage(error: unknown, operationId: string) {
+        const errorEntry = getTRPCErrorFromUnknown(error);
+
+        return {
+            id: operationId,
+            error: {
+                code: errorEntry.code,
+                name: errorEntry.name,
+                message: errorEntry.message,
+                stack: errorEntry.stack,
+                cause: errorEntry.cause,
+            },
+        };
     }
 
     protected _getWebview(): vscode.Webview {

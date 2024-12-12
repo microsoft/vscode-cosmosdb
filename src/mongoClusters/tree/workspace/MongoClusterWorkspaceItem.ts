@@ -37,7 +37,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
      */
     protected async authenticateAndConnect(): Promise<MongoClustersClient | null> {
         const result = await callWithTelemetryAndErrorHandling(
-            'cosmosDB.mongoClusters.authenticate',
+            'cosmosDB.mongoClusters.connect',
             async (context: IActionContext) => {
                 context.telemetry.properties.view = 'workspace';
 
@@ -93,7 +93,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                         throw error;
                     });
                 } catch (error) {
-                    console.log(error);
+                    console.error(error);
                     // If connection fails, remove cached credentials
                     await MongoClustersClient.deleteClient(this.id);
                     CredentialCache.deleteCredentials(this.id);
@@ -126,7 +126,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
 
         // Prompt the user for credentials
         await callWithTelemetryAndErrorHandling(
-            'cosmosDB.mongoClusters.authenticate.promptForCredentials',
+            'cosmosDB.mongoClusters.connect.promptForCredentials',
             async (context: IActionContext) => {
                 context.telemetry.properties.view = 'workspace';
 

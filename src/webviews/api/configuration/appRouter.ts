@@ -110,8 +110,8 @@ const commonRouter = router({
             });
         }),
 });
-    
-    const demoRouter = router({
+
+const demoRouter = router({
     /**
      * Example Subscription Procedure: `demoBasicSubscription`
      *

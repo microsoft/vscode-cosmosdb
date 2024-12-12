@@ -56,7 +56,7 @@ const ToolbarQueryOperations = (): JSX.Element => {
                 },
             })
             .catch((error) => {
-                console.debug('Failed to report query event:', error);
+                console.debug('Failed to report an event:', error);
             });
     };
 
@@ -81,7 +81,7 @@ const ToolbarQueryOperations = (): JSX.Element => {
                 },
             })
             .catch((error) => {
-                console.debug('Failed to report query event:', error);
+                console.debug('Failed to report an event:', error);
             });
     };
 

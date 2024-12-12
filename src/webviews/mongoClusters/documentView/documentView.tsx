@@ -53,11 +53,22 @@ export const DocumentView = (): JSX.Element => {
             const documentId: string = configuration.documentId;
 
             setIsLoading(true);
-            void trpcClient.mongoClusters.documentView.getDocumentById.query(documentId).then((response) => {
-                setContent(response);
-            });
 
-            setIsLoading(false);
+            void trpcClient.mongoClusters.documentView.getDocumentById
+                .query(documentId)
+                .then((response) => {
+                    setContent(response);
+                })
+                .catch((error) => {
+                    void trpcClient.common.displayErrorMessage.mutate({
+                        message: 'Error while loading the document',
+                        modal: false,
+                        cause: error instanceof Error ? error.message : String(error),
+                    });
+                })
+                .finally(() => {
+                    setIsLoading(false);
+                });
         }
     }, []);
 
@@ -180,6 +191,13 @@ export const DocumentView = (): JSX.Element => {
                 documentLength = response.length ?? 0;
                 setContent(response);
             })
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error while refreshing the document',
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
+            })
             .finally(() => {
                 setIsLoading(false);
             });
@@ -195,7 +213,7 @@ export const DocumentView = (): JSX.Element => {
                 },
             })
             .catch((error) => {
-                console.debug('Failed to report event:', error);
+                console.debug('Failed to report an event:', error);
             });
     }
 
@@ -221,7 +239,11 @@ export const DocumentView = (): JSX.Element => {
                 setIsDirty(false);
             })
             .catch((error) => {
-                console.debug('Error saving document:', error);
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: 'Error saving the document',
+                    modal: true, // we want to show the error in a modal dialog as it's an important one, failed to save the document
+                    cause: error instanceof Error ? error.message : String(error),
+                });
             })
             .finally(() => {
                 setIsLoading(false);
@@ -238,7 +260,7 @@ export const DocumentView = (): JSX.Element => {
                 },
             })
             .catch((error) => {
-                console.debug('Failed to report event:', error);
+                console.debug('Failed to report an event:', error);
             });
     }
 

@@ -44,7 +44,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
                 },
             })
             .catch((error) => {
-                console.debug('Failed to report pagination event:', error);
+                console.debug('Failed to report an event:', error);
             });
     }
 
@@ -73,7 +73,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
                 },
             })
             .catch((error) => {
-                console.debug('Failed to report pagination event:', error);
+                console.debug('Failed to report an event:', error);
             });
     }
 
@@ -97,7 +97,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
                 },
             })
             .catch((error) => {
-                console.debug('Failed to report pagination event:', error);
+                console.debug('Failed to report an event:', error);
             });
     }
 
@@ -125,7 +125,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
                 },
             })
             .catch((error) => {
-                console.debug('Failed to report pagination event:', error);
+                console.debug('Failed to report an event:', error);
             });
     }
 

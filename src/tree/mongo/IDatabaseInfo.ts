@@ -4,6 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 export interface IDatabaseInfo {
-    name?: string;
+    name: string;
     empty?: boolean;
 }

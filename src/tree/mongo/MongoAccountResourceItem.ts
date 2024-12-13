@@ -5,31 +5,33 @@
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import {
-    appendExtensionUserAgent,
     callWithTelemetryAndErrorHandling,
     nonNullProp,
     parseError,
     type IActionContext,
-    type TreeElementBase,
+    type TreeElementBase
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { type MongoClient } from 'mongodb';
-import { Links, testDb } from '../../constants';
+import ConnectionString from 'mongodb-connection-string-url';
+import { Links } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { connectToMongoClient } from '../../mongo/connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../../mongo/mongoConnectionStrings';
+import { CredentialCache } from '../../mongoClusters/CredentialCache';
+import { MongoClustersClient, type DatabaseItemModel } from '../../mongoClusters/MongoClustersClient';
+import { DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
+import { type MongoClusterModel } from '../../mongoClusters/tree/MongoClusterModel';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
-import { DatabaseItem } from './DatabaseItem';
 import { type IDatabaseInfo } from './IDatabaseInfo';
 import { type MongoAccountModel } from './MongoAccountModel';
 
 export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
     constructor(
         protected account: MongoAccountModel,
-        protected subscription?: AzureSubscription, // optional for the case of a workspace connection
-        readonly databaseAccount?: DatabaseAccountGetResults,
-        readonly isEmulator?: boolean,
+        protected subscription?: AzureSubscription, // available when the account is a azure-resource one
+        readonly databaseAccount?: DatabaseAccountGetResults, // TODO: exploring during v1->v2 migration
+        readonly isEmulator?: boolean, // TODO: exploring during v1->v2 migration
     ) {
         super(account);
     }
@@ -76,11 +78,14 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
 
         let mongoClient: MongoClient | undefined;
         try {
-            let databases: IDatabaseInfo[];
+            let databases: DatabaseItemModel[];
 
             if (!this.account.connectionString) {
                 if (this.subscription) {
                     const cString = await this.discoverConnectionString();
+                    if (!cString) {
+                        throw new Error('Failed to discover the connection string.');
+                    }
                     this.account.connectionString = cString;
                 }
                 if (!this.account.connectionString) {
@@ -88,11 +93,42 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
                 }
             }
 
-            // Azure MongoDB accounts need to have the name passed in for private endpoints
-            mongoClient = await connectToMongoClient(
-                this.account.connectionString,
-                this.databaseAccount ? nonNullProp(this.databaseAccount, 'name') : appendExtensionUserAgent(),
-            );
+            let mongoClient: MongoClustersClient | null;
+
+            // Check if credentials are cached, and return the cached client if available
+            if (CredentialCache.hasCredentials(this.id)) {
+                ext.outputChannel.appendLine(`MongoDB (RU): Reusing active connection for "${this.account.name}".`);
+                mongoClient = await MongoClustersClient.getClient(this.id);
+            } else {
+                // Call to the abstract method to authenticate and connect to the cluster
+                const cString = new ConnectionString(this.account.connectionString);
+                const username: string | undefined = cString.username;
+                const password: string | undefined = cString.password;
+                CredentialCache.setCredentials(this.id, cString.toString(), username, password);
+
+                try {
+                    mongoClient = await MongoClustersClient.getClient(this.id).catch((error: Error) => {
+                        ext.outputChannel.appendLine('failed.');
+                        ext.outputChannel.appendLine(`Error: ${error.message}`);
+
+                        throw error;
+                    });
+                } catch (error) {
+                    console.error(error);
+                    // If connection fails, remove cached credentials
+                    await MongoClustersClient.deleteClient(this.id);
+                    CredentialCache.deleteCredentials(this.id);
+
+                    // Return null to indicate failure
+                    return [];
+                }
+            }
+
+            // // Azure MongoDB accounts need to have the name passed in for private endpoints
+            // mongoClient = await connectToMongoClient(
+            //     this.account.connectionString,
+            //     this.databaseAccount ? nonNullProp(this.databaseAccount, 'name') : appendExtensionUserAgent(),
+            // );
 
             const databaseInConnectionString = getDatabaseNameFromConnectionString(this.account.connectionString);
             if (databaseInConnectionString && !this.isEmulator) {
@@ -107,15 +143,23 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
             } else {
                 // https://mongodb.github.io/node-mongodb-native/3.1/api/index.html
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                const result: { databases: IDatabaseInfo[] } = await mongoClient.db(testDb).admin().listDatabases();
-                databases = result.databases;
+                databases = await mongoClient.listDatabases();
             }
             return databases
                 .filter(
-                    (database: IDatabaseInfo) =>
-                        !(database.name && database.name.toLowerCase() === 'admin' && database.empty),
+                    (databaseInfo: IDatabaseInfo) =>
+                        !(databaseInfo.name && databaseInfo.name.toLowerCase() === 'admin' && databaseInfo.empty),
                 ) // Filter out the 'admin' database if it's empty
-                .map((database) => new DatabaseItem(this.account, database));
+                .map((database) => {
+                    const clusterInfo = this.account as MongoClusterModel;
+                    // eslint-disable-next-line no-unused-vars
+                    const databaseInfo: DatabaseItemModel = {
+                        name: database.name,
+                        empty: database.empty,
+                    };
+
+                    return new DatabaseItem(clusterInfo, databaseInfo);
+                });
         } catch (error) {
             const message = parseError(error).message;
             if (this.isEmulator && message.includes('ECONNREFUSED')) {

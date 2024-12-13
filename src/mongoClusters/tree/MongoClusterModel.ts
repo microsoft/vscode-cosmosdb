@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MongoCluster, type Resource } from '@azure/arm-cosmosdb';
+import { type API } from '../../AzureDBExperiences';
 
 // Selecting only the properties used in the extension, but keeping an easy option to extend the model later and offer full coverage of MongoCluster
 // '|' means that you can only access properties that are common to both types.
@@ -32,4 +33,9 @@ interface ResourceModelInUse extends Resource {
 
     // introduced new properties
     resourceGroup?: string;
+
+    // adding support for MongoRU and vCore
+    dbExperience?: API.MongoDB | API.MongoClusters;
+
+    isServerless?: boolean;
 }

@@ -72,6 +72,9 @@ export interface Experience {
     shortName: string;
     description?: string;
 
+    // the string used as a telemetry key for a given experience
+    telemetryName?: string;
+
     // These properties are what the portal actually looks at to determine the difference between APIs
     kind?: DBAccountKind;
     capability?: CapabilityName;
@@ -120,8 +123,15 @@ export const MongoExperience: Experience = {
     api: API.MongoDB,
     longName: 'Cosmos DB for MongoDB',
     shortName: 'MongoDB',
+    telemetryName: 'mongo',
     kind: DBAccountKind.MongoDB,
     tag: 'Azure Cosmos DB for MongoDB API',
+} as const;
+export const MongoClustersExprience: Experience = {
+    api: API.MongoClusters,
+    longName: 'Cosmos DB for MongoDB (vCore)',
+    shortName: 'MongoDB (vCore)',
+    telemetryName: 'mongoClusters'
 } as const;
 export const TableExperience: Experience = {
     api: API.Table,

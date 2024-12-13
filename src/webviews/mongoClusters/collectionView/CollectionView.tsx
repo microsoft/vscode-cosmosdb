@@ -43,10 +43,9 @@ export const CollectionView = (): JSX.Element => {
     //const configuration = useConfiguration<DocumentsViewWebviewConfigurationType>();
 
     /**
-     * Use the `useTrpcClient` hook to get the tRPC client and an event target
-     * for handling notifications from the extension.
+     * Use the `useTrpcClient` hook to get the tRPC client
      */
-    const { trpcClient /** , vscodeEventTarget */ } = useTrpcClient();
+    const { trpcClient } = useTrpcClient();
 
     /**
      * Please note: using the context and states inside of closures can lead to stale data.

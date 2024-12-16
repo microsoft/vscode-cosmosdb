@@ -128,6 +128,7 @@
     },
     "dependencies": {
         "@azure/arm-cosmosdb": "16.0.0-beta.7",
+        "@azure/arm-resources": "^5.2.0",
         "@azure/arm-postgresql": "^6.1.0",
         "@azure/arm-postgresql-flexible": "^7.1.0",
         "@azure/cosmos": "^4.1.1",

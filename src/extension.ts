@@ -59,7 +59,7 @@ import { DatabaseResolver } from './resolver/AppResolver';
 import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider';
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
-import { CosmosBranchDataProvider } from './tree/CosmosBranchDataProvider';
+import { CosmosDBBranchDataProvider } from './tree/CosmosDBBranchDataProvider';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
 import { localize } from './utils/localize';
 
@@ -100,7 +100,7 @@ export async function activateInternal(
         // ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.AzureCosmosDb, new DatabaseResolver());
         ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
             AzExtResourceType.AzureCosmosDb,
-            new CosmosBranchDataProvider(),
+            new CosmosDBBranchDataProvider(),
         );
 
         ext.rgApi.registerApplicationResourceResolver(

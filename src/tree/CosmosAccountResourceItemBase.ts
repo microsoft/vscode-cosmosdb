@@ -3,18 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type TreeElementBase } from '@microsoft/vscode-azext-utils';
-import { type TreeItem } from 'vscode';
-
 import * as vscode from 'vscode';
-import { getExperienceFromApi } from '../AzureDBExperiences';
+import { type TreeItem } from 'vscode';
 import { type CosmosAccountModel } from './CosmosAccountModel';
+import { type CosmosDbTreeElement } from './CosmosDbTreeElement';
 
-export abstract class CosmosAccountResourceItemBase implements TreeElementBase {
-    id: string;
+export abstract class CosmosAccountResourceItemBase implements CosmosDbTreeElement {
+    public id: string;
+    public readonly account: CosmosAccountModel;
 
-    constructor(public cosmosAccount: CosmosAccountModel) {
+    protected constructor(cosmosAccount: CosmosAccountModel) {
         this.id = cosmosAccount.id ?? '';
+        this.account = cosmosAccount;
     }
 
     /**
@@ -24,9 +24,9 @@ export abstract class CosmosAccountResourceItemBase implements TreeElementBase {
     getTreeItem(): TreeItem {
         return {
             id: this.id,
-            contextValue: `${this.cosmosAccount.dbExperience}.item.account`,
-            label: this.cosmosAccount.name,
-            description: `(${getExperienceFromApi(this.cosmosAccount.dbExperience).shortName})`,
+            contextValue: `${this.account.dbExperience.api}.item.account`,
+            label: this.account.name,
+            description: `(${this.account.dbExperience.shortName})`,
             //iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg'), // Uncomment if icon is available
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };

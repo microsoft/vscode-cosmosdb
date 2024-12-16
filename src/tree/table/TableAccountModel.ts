@@ -5,4 +5,4 @@
 
 import { type CosmosAccountModel } from '../CosmosAccountModel';
 
-export type NoSqlAccountModel = CosmosAccountModel;
+export type TableAccountModel = CosmosAccountModel;

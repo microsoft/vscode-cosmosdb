@@ -5,18 +5,15 @@
 
 import { type CosmosDBCredential } from '../../docdb/getCosmosClient';
 import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
-import { type NoSqlAccountModel } from './NoSqlAccountModel';
+import { type TableAccountModel } from './TableAccountModel';
 
-export class NoSqlAccountResourceItem extends CosmosAccountResourceItemBase {
+export class TableAccountResourceItem extends CosmosAccountResourceItemBase {
     constructor(
-        account: NoSqlAccountModel,
+        account: TableAccountModel,
         private readonly credentials: CosmosDBCredential[],
         private readonly documentEndpoint: string,
     ) {
         super(account);
-        //
-        // // Default to DocumentDB, the base type for all Cosmos DB Accounts
-        // return new DocDBAccountTreeItem(parent, id, label, documentEndpoint, credentials, isEmulator, databaseAccount);
     }
 
     // here, we can add more methods or properties specific to MongoDB

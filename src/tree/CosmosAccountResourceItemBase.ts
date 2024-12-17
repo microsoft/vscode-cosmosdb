@@ -5,16 +5,23 @@
 
 import * as vscode from 'vscode';
 import { type TreeItem } from 'vscode';
+import { getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
 import { type CosmosAccountModel } from './CosmosAccountModel';
 import { type CosmosDbTreeElement } from './CosmosDbTreeElement';
 
 export abstract class CosmosAccountResourceItemBase implements CosmosDbTreeElement {
     public id: string;
-    public readonly account: CosmosAccountModel;
 
-    protected constructor(cosmosAccount: CosmosAccountModel) {
-        this.id = cosmosAccount.id ?? '';
-        this.account = cosmosAccount;
+    protected constructor(protected readonly account: CosmosAccountModel) {
+        this.id = account.id ?? '';
+    }
+
+    /**
+     * Returns the children of the cluster.
+     * @returns The children of the cluster.
+     */
+    getChildren(): Promise<CosmosDbTreeElement[]> {
+        return Promise.resolve([]);
     }
 
     /**
@@ -22,12 +29,22 @@ export abstract class CosmosAccountResourceItemBase implements CosmosDbTreeEleme
      * @returns The TreeItem object.
      */
     getTreeItem(): TreeItem {
+        const experience = tryGetExperience(this.account);
+        if (!experience) {
+            const accountKindLabel = getExperienceLabel(this.account);
+            const label: string = this.account.name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
+            return {
+                id: this.id,
+                contextValue: 'cosmosDB.item.account',
+                label: label,
+                collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
+            };
+        }
         return {
             id: this.id,
-            contextValue: `${this.account.dbExperience.api}.item.account`,
+            contextValue: `${experience.api}.item.account`,
             label: this.account.name,
-            description: `(${this.account.dbExperience.shortName})`,
-            //iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg'), // Uncomment if icon is available
+            description: `(${experience.shortName})`,
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }

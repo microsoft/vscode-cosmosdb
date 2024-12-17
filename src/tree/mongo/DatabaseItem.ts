@@ -3,12 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createGenericElement, type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
+import { type CosmosDbTreeElement } from '../CosmosDbTreeElement';
 import { type IDatabaseInfo } from './IDatabaseInfo';
 import { type MongoAccountModel } from './MongoAccountModel';
 
-export class DatabaseItem {
+export class DatabaseItem implements CosmosDbTreeElement {
     id: string;
 
     constructor(
@@ -18,7 +19,7 @@ export class DatabaseItem {
         this.id = `${account.id}/${databaseInfo.name}`;
     }
 
-    async getChildren(): Promise<TreeElementBase[]> {
+    async getChildren(): Promise<CosmosDbTreeElement[]> {
         return [
             createGenericElement({
                 contextValue: 'mongoClusters.item.no-collection',
@@ -26,7 +27,7 @@ export class DatabaseItem {
                 label: 'Create collection...',
                 commandId: 'command.mongoClusters.createCollection',
                 commandArgs: [this],
-            }),
+            }) as CosmosDbTreeElement,
         ];
     }
     // const client: MongoClustersClient = await MongoClustersClient.getClient(this.mongoCluster.id);

@@ -10,7 +10,6 @@ import {
     nonNullProp,
     parseError,
     type IActionContext,
-    type TreeElementBase,
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { type MongoClient } from 'mongodb';
@@ -20,13 +19,16 @@ import { connectToMongoClient } from '../../mongo/connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../../mongo/mongoConnectionStrings';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
+import { type CosmosDbTreeElement } from '../CosmosDbTreeElement';
 import { DatabaseItem } from './DatabaseItem';
 import { type IDatabaseInfo } from './IDatabaseInfo';
 import { type MongoAccountModel } from './MongoAccountModel';
 
 export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
+    protected declare account: MongoAccountModel; // Not adding a new property, just changing the type of an existing one
+
     constructor(
-        protected account: MongoAccountModel,
+        account: MongoAccountModel,
         protected subscription?: AzureSubscription, // optional for the case of a workspace connection
         readonly databaseAccount?: DatabaseAccountGetResults,
         readonly isEmulator?: boolean,
@@ -71,8 +73,8 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
         return result ?? undefined;
     }
 
-    async getChildren(): Promise<TreeElementBase[]> {
-        ext.outputChannel.appendLine(`Cosmos DB for MongoDB (RU): Loading details for "${this.cosmosAccount.name}"`);
+    async getChildren(): Promise<CosmosDbTreeElement[]> {
+        ext.outputChannel.appendLine(`Cosmos DB for MongoDB (RU): Loading details for "${this.account.name}"`);
 
         let mongoClient: MongoClient | undefined;
         try {

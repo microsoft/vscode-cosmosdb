@@ -4,8 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type GenericResource } from '@azure/arm-resources';
-import { type AzureResource } from '@microsoft/vscode-azureresources-api';
-import { type Experience } from '../AzureDBExperiences';
+import { type AzureResource, type WorkspaceResource } from '@microsoft/vscode-azureresources-api';
+
+export type CosmosDBWorkspaceResource = WorkspaceResource;
+
+export interface CosmosDBWorkspaceModel extends CosmosDBWorkspaceResource {
+    connectionString?: string;
+}
 
 /**
  * Cosmos DB resource
@@ -18,6 +23,4 @@ export type CosmosDBResource = AzureResource &
         readonly raw: GenericResource; // Resource object from Azure SDK
     };
 
-export interface CosmosAccountModel extends CosmosDBResource {
-    dbExperience: Experience; // Cosmos DB Experience
-}
+export type CosmosAccountModel = CosmosDBResource;

@@ -3,18 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosDBCredential } from '../../docdb/getCosmosClient';
-import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
-import { type TableAccountModel } from './TableAccountModel';
+import { createGenericElement } from '@microsoft/vscode-azext-utils';
+import { type CosmosDbTreeElement } from '../CosmosDbTreeElement';
+import { DocumentDBAccountResourceItem } from '../DocumentDBAccountResourceItem';
 
-export class TableAccountResourceItem extends CosmosAccountResourceItemBase {
-    constructor(
-        account: TableAccountModel,
-        private readonly credentials: CosmosDBCredential[],
-        private readonly documentEndpoint: string,
-    ) {
-        super(account);
+export class TableAccountResourceItem extends DocumentDBAccountResourceItem {
+    public getChildren(): Promise<CosmosDbTreeElement[]> {
+        return Promise.resolve([
+            createGenericElement({
+                contextValue: 'tableNotSupported',
+                label: 'Table Accounts are not supported yet.',
+                id: `${this.id}/no-databases`,
+            }) as CosmosDbTreeElement,
+        ]);
     }
-
-    // here, we can add more methods or properties specific to MongoDB
 }

@@ -3,7 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createGenericElement, type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import {
+    createGenericElement,
+    type IActionContext,
+    type TreeElementBase,
+    type TreeElementWithId,
+} from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { ext } from '../../extensionVariables';
@@ -12,7 +17,7 @@ import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersCli
 import { CollectionItem } from './CollectionItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class DatabaseItem {
+export class DatabaseItem implements TreeElementWithId {
     id: string;
 
     constructor(

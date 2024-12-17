@@ -14,7 +14,6 @@ import { type CosmosAccountModel, type CosmosDBResource } from './CosmosAccountM
 import { type CosmosDbTreeElement } from './CosmosDbTreeElement';
 import { DocumentDBAccountResourceItem } from './DocumentDBAccountResourceItem';
 import { GraphAccountResourceItem } from './graph/GraphAccountResourceItem';
-import { type MongoAccountModel } from './mongo/MongoAccountModel';
 import { MongoAccountResourceItem } from './mongo/MongoAccountResourceItem';
 import { NoSqlAccountResourceItem } from './nosql/NoSqlAccountResourceItem';
 import { TableAccountResourceItem } from './table/TableAccountResourceItem';
@@ -75,7 +74,7 @@ export class CosmosDBBranchDataProvider
                     const experience = tryGetExperience(resource);
 
                     if (experience?.api === API.MongoDB) {
-                        return new MongoAccountResourceItem(accountModel as MongoAccountModel, resource.subscription);
+                        return new MongoAccountResourceItem(accountModel, experience);
                     }
 
                     if (experience?.api === API.Cassandra) {

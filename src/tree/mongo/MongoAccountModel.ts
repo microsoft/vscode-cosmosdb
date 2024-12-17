@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type MongoClusterModel } from '../../mongoClusters/tree/MongoClusterModel';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
 
-export type MongoAccountModel = CosmosAccountModel & MongoClusterModel;
+export type MongoAccountModel = CosmosAccountModel & {
+    connectionString?: string;
+};

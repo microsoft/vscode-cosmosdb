@@ -166,7 +166,7 @@ export const MongoClustersExprience: Experience = {
     api: API.MongoClusters,
     longName: 'Cosmos DB for MongoDB (vCore)',
     shortName: 'MongoDB (vCore)',
-    telemetryName: 'mongoClusters'
+    telemetryName: 'mongoClusters',
 } as const;
 export const TableExperience: Experience = {
     api: API.Table,

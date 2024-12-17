@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type TreeElementBase } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { type TreeItem } from 'vscode';
 import { getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
@@ -20,7 +21,7 @@ export abstract class CosmosAccountResourceItemBase implements CosmosDbTreeEleme
      * Returns the children of the cluster.
      * @returns The children of the cluster.
      */
-    getChildren(): Promise<CosmosDbTreeElement[]> {
+    getChildren(): Promise<TreeElementBase[]> {
         return Promise.resolve([]);
     }
 

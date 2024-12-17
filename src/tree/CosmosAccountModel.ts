@@ -3,15 +3,24 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type Resource } from '@azure/arm-cosmosdb';
-import { type API } from '../AzureDBExperiences';
+import { type GenericResource } from '@azure/arm-resources';
+import { type AzureResource, type WorkspaceResource } from '@microsoft/vscode-azureresources-api';
 
-export interface CosmosAccountModel extends Resource {
-    id: string;
-    name: string;
+export type CosmosDBWorkspaceResource = WorkspaceResource;
 
-    dbExperience: API;
-
-    // introduced new properties
-    resourceGroup?: string;
+export interface CosmosDBWorkspaceModel extends CosmosDBWorkspaceResource {
+    connectionString?: string;
 }
+
+/**
+ * Cosmos DB resource
+ * Azure Resource group library mixes the raw generic resource into AzureResource
+ * Therefore, we can access the raw generic resource from the CosmosDBResource
+ * However, ideally we have to use raw property to access to the Cosmos DB resource
+ */
+export type CosmosDBResource = AzureResource &
+    GenericResource & {
+        readonly raw: GenericResource; // Resource object from Azure SDK
+    };
+
+export type CosmosAccountModel = CosmosDBResource;

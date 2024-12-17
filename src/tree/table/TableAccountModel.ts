@@ -3,6 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { DocumentDBAccountResourceItem } from '../DocumentDBAccountResourceItem';
+import { type CosmosAccountModel } from '../CosmosAccountModel';
 
-export class NoSqlAccountResourceItem extends DocumentDBAccountResourceItem {}
+export type TableAccountModel = CosmosAccountModel;

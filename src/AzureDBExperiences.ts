@@ -5,6 +5,7 @@
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
+import { type CosmosDBResource } from './tree/CosmosAccountModel';
 import { nonNullProp } from './utils/nonNull';
 
 export enum API {
@@ -12,6 +13,7 @@ export enum API {
     MongoClusters = 'MongoClusters',
     Graph = 'Graph',
     Table = 'Table',
+    Cassandra = 'Cassandra',
     Core = 'Core', // Now called NoSQL
     PostgresSingle = 'PostgresSingle',
     PostgresFlexible = 'PostgresFlexible',
@@ -23,7 +25,21 @@ export enum DBAccountKind {
     GlobalDocumentDB = 'GlobalDocumentDB',
 }
 
-export type CapabilityName = 'EnableGremlin' | 'EnableTable';
+enum Capability {
+    EnableGremlin = 'EnableGremlin',
+    EnableTable = 'EnableTable',
+    EnableCassandra = 'EnableCassandra',
+}
+
+enum Tag {
+    Core = 'Core (SQL)',
+    Mongo = 'Azure Cosmos DB for MongoDB API',
+    Table = 'Azure Table',
+    Gremlin = 'Gremlin (graph)',
+    Cassandra = 'Cassandra',
+}
+
+export type CapabilityName = 'EnableGremlin' | 'EnableTable' | 'EnableCassandra';
 
 export function getExperienceFromApi(api: API): Experience {
     let info = experiencesMap.get(api);
@@ -33,30 +49,49 @@ export function getExperienceFromApi(api: API): Experience {
     return info;
 }
 
-export function getExperienceLabel(databaseAccount: DatabaseAccountGetResults): string {
-    const experience: Experience | undefined = tryGetExperience(databaseAccount);
+export function getExperienceLabel(resource: CosmosDBResource | DatabaseAccountGetResults): string {
+    const experience: Experience | undefined = tryGetExperience(resource);
     if (experience) {
         return experience.shortName;
     }
     // Must be some new kind of resource that we aren't aware of.  Try to get a decent label
-    const defaultExperience: string = <API>(
-        (databaseAccount && databaseAccount.tags && databaseAccount.tags.defaultExperience)
-    );
-    const firstCapability = databaseAccount.capabilities && databaseAccount.capabilities[0];
-    const firstCapabilityName = firstCapability?.name?.replace(/^Enable/, '');
-    return defaultExperience || firstCapabilityName || nonNullProp(databaseAccount, 'kind');
+    const defaultExperience: string = resource?.tags?.defaultExperience ?? '';
+
+    if ('capabilities' in resource) {
+        const firstCapability = resource?.capabilities?.[0] ?? {};
+        const firstCapabilityName = firstCapability?.name?.replace(/^Enable/, '');
+        return firstCapabilityName || nonNullProp(resource, 'kind');
+    }
+
+    return defaultExperience || nonNullProp(resource, 'kind');
 }
 
-export function tryGetExperience(resource: DatabaseAccountGetResults): Experience | undefined {
-    // defaultExperience in the resource doesn't really mean anything, we can't depend on its value for determining resource type
+export function tryGetExperience(resource: CosmosDBResource | DatabaseAccountGetResults): Experience | undefined {
     if (resource.kind === DBAccountKind.MongoDB) {
         return MongoExperience;
-    } else if (resource.capabilities?.find((cap) => cap.name === 'EnableGremlin')) {
-        return GremlinExperience;
-    } else if (resource.capabilities?.find((cap) => cap.name === 'EnableTable')) {
-        return TableExperience;
-    } else if (resource.capabilities?.length === 0) {
-        return CoreExperience;
+    }
+
+    if ('capabilities' in resource) {
+        // defaultExperience in the resource doesn't really mean anything, we can't depend on its value for determining resource type
+        if (resource.capabilities?.find((cap) => cap.name === Capability.EnableGremlin)) {
+            return GremlinExperience;
+        } else if (resource.capabilities?.find((cap) => cap.name === Capability.EnableTable)) {
+            return TableExperience;
+        } else if (resource.capabilities?.find((cap) => cap.name === Capability.EnableCassandra)) {
+            return CassandraExperience;
+        } else if (resource.capabilities?.length === 0) {
+            return CoreExperience;
+        }
+    } else if ('tags' in resource) {
+        if (resource.tags?.defaultExperience === Tag.Gremlin) {
+            return GremlinExperience;
+        } else if (resource.tags?.defaultExperience === Tag.Table) {
+            return TableExperience;
+        } else if (resource.tags?.defaultExperience === Tag.Cassandra) {
+            return CassandraExperience;
+        } else if (resource.tags?.defaultExperience === Tag.Core) {
+            return CoreExperience;
+        }
     }
 
     return undefined;
@@ -150,12 +185,20 @@ export const GremlinExperience: Experience = {
     capability: 'EnableGremlin',
     tag: 'Gremlin (graph)',
 } as const;
-const PostgresSingleExperience: Experience = {
+export const CassandraExperience: Experience = {
+    api: API.Cassandra,
+    longName: 'Cosmos DB for Cassandra',
+    shortName: 'Cassandra',
+    kind: DBAccountKind.GlobalDocumentDB,
+    capability: 'EnableCassandra',
+    tag: 'Cassandra',
+};
+export const PostgresSingleExperience: Experience = {
     api: API.PostgresSingle,
     longName: 'PostgreSQL Single Server',
     shortName: 'PostgreSQLSingle',
 };
-const PostgresFlexibleExperience: Experience = {
+export const PostgresFlexibleExperience: Experience = {
     api: API.PostgresFlexible,
     longName: 'PostgreSQL Flexible Server',
     shortName: 'PostgreSQLFlexible',

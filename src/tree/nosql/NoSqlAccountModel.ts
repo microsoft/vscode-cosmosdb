@@ -5,8 +5,4 @@
 
 import { type CosmosAccountModel } from '../CosmosAccountModel';
 
-export interface NoSqlAccountModel extends CosmosAccountModel {
-    // whaterver needed to be added
-    connectionString?: string;
-    isServerless?: boolean;
-}
+export type NoSqlAccountModel = CosmosAccountModel;

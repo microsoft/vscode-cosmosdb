@@ -3,7 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createGenericElement, type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import {
+    createContextValue,
+    createGenericElement,
+    type IActionContext,
+    type TreeElementBase,
+} from '@microsoft/vscode-azext-utils';
 import { type Document } from 'bson';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { ext } from '../../extensionVariables';
@@ -30,7 +35,7 @@ export class CollectionItem {
     async getChildren(): Promise<TreeElementBase[]> {
         return [
             createGenericElement({
-                contextValue: 'mongoClusters.item.documents',
+                contextValue: createContextValue(['treeitem.documents', this.mongoCluster.dbExperience?.api ?? '']),
                 id: `${this.id}/documents`,
                 label: 'Documents',
                 commandId: 'command.internal.mongoClusters.containerView.open',
@@ -80,7 +85,7 @@ export class CollectionItem {
     getTreeItem(): TreeItem {
         return {
             id: this.id,
-            contextValue: 'mongoClusters.item.collection',
+            contextValue: createContextValue(['treeitem.collection', this.mongoCluster.dbExperience?.api ?? '']),
             label: this.collectionInfo.name,
             iconPath: new ThemeIcon('folder-opened'),
             collapsibleState: TreeItemCollapsibleState.Collapsed,

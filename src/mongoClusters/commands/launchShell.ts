@@ -16,9 +16,11 @@ import {
 } from '../utils/connectionStringHelpers';
 
 export async function launchShell(
-    _context: IActionContext,
+    context: IActionContext,
     node?: DatabaseItem | CollectionItem | MongoClusterResourceItem,
 ): Promise<void> {
+    context.telemetry.properties.experience = node?.mongoCluster.dbExperience?.api;
+
     if (!node) {
         throw new Error('No database or collection selected.');
     }

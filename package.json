@@ -1143,38 +1143,38 @@
                 },
                 {
                     "command": "command.mongoClusters.dropCollection",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.collection"
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i"
                 },
                 {
                     "command": "command.mongoClusters.dropDatabase",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.database"
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.database/i && viewItem =~ /(mongocluster|mongodb)/i"
                 },
                 {
                     "command": "command.mongoClusters.removeWorkspaceConnection",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && view == azureWorkspace && viewItem == mongoClusters.item.mongoCluster"
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && view == azureWorkspace && viewItem =~ /treeitem.mongoCluster/i && viewItem =~ /(mongocluster|mongodb)/i"
                 },
                 {
                     "command": "command.mongoClusters.createCollection",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.database"
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.database/i && viewItem =~ /(mongocluster|mongodb)/i"
                 },
                 {
                     "command": "command.mongoClusters.createDatabase",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /mongoClusters.item.mongoCluster/i",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.mongoCluster/i && viewItem =~ /(mongocluster|mongodb)/i",
                     "group": "1@1"
                 },
                 {
                     "command": "command.mongoClusters.importDocuments",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.collection",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
                     "group": "1@1"
                 },
                 {
                     "command": "command.mongoClusters.exportDocuments",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem == mongoClusters.item.collection",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
                     "group": "1@2"
                 },
                 {
                     "command": "command.mongoClusters.launchShell",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /mongoClusters.item.(mongoCluster|database|collection)/i",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.(mongoCluster|database|collection)/i && viewItem =~ /(mongocluster|mongodb)/i",
                     "group": "2@1"
                 }
             ],

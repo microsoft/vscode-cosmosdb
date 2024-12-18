@@ -132,7 +132,10 @@ export class MongoClustersClient {
 
     async listDatabases(): Promise<DatabaseItemModel[]> {
         const rawDatabases: ListDatabasesResult = await this._mongoClient.db().admin().listDatabases();
-        const databases: DatabaseItemModel[] = rawDatabases.databases;
+        const databases: DatabaseItemModel[] = rawDatabases.databases.filter(
+            // Filter out the 'admin' database if it's empty
+            (databaseInfo) => !(databaseInfo.name && databaseInfo.name.toLowerCase() === 'admin' && databaseInfo.empty),
+        );
 
         return databases;
     }

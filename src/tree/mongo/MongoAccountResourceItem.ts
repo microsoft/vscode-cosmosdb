@@ -23,7 +23,7 @@ import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase'
 import { type MongoAccountModel } from './MongoAccountModel';
 
 /**
- * This implementation relies on information from the CosmosAccountModel, i.e.
+ * This implementation relies on information from the MongoAccountModel, i.e.
  * will only behave as expected when used in the context of an Azure Subscription.
  */
 export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
@@ -122,8 +122,7 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
             throw new Error('Failed to connect.');
         }
 
-        // TODO: add support for single databases via connection string.
-        // move it to monogoclustersclient
+        // TODO: add support for single databases via connection string. move it to monogoclustersclient
         //
         // const databaseInConnectionString = getDatabaseNameFromConnectionString(this.account.connectionString);
         // if (databaseInConnectionString && !this.isEmulator) {
@@ -137,25 +136,20 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
         //     ];
         // }
 
-        // https://mongodb.github.io/node-mongodb-native/3.1/api/index.html
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const databases = await mongoClient.listDatabases();
 
-        return databases
-            .filter(
-                (databaseInfo) =>
-                    !(databaseInfo.name && databaseInfo.name.toLowerCase() === 'admin' && databaseInfo.empty),
-            ) // Filter out the 'admin' database if it's empty
-            .map((database) => {
-                const clusterInfo = this.account as MongoClusterModel;
-                // eslint-disable-next-line no-unused-vars
-                const databaseInfo: DatabaseItemModel = {
-                    name: database.name,
-                    empty: database.empty,
-                };
+        return databases.map((database) => {
+            const clusterInfo = this.account as MongoClusterModel;
+            clusterInfo.dbExperience = this.experience;
 
-                return new DatabaseItem(clusterInfo, databaseInfo);
-            });
+            // eslint-disable-next-line no-unused-vars
+            const databaseInfo: DatabaseItemModel = {
+                name: database.name,
+                empty: database.empty,
+            };
+
+            return new DatabaseItem(clusterInfo, databaseInfo);
+        });
 
         // } catch (error) {
         //     const message = parseError(error).message;

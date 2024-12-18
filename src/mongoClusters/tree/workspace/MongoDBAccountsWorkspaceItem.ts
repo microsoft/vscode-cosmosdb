@@ -5,7 +5,7 @@
 
 import { createGenericElement, type TreeElementBase } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
-import { API } from '../../../AzureDBExperiences';
+import { MongoClustersExprience } from '../../../AzureDBExperiences';
 import { WorkspaceResourceType } from '../../../tree/workspace/sharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../../tree/workspace/sharedWorkspaceStorage';
 import { type MongoClusterModel } from '../MongoClusterModel';
@@ -26,13 +26,13 @@ export class MongoDBAccountsWorkspaceItem implements TreeElementBase {
                 const model: MongoClusterModel = {
                     id: item.id,
                     name: item.name,
-                    dbExperience: API.MongoClusters,
+                    dbExperience: MongoClustersExprience,
                     connectionString: item?.secrets?.[0] ?? undefined,
                 };
                 return new MongoClusterWorkspaceItem(model);
             }),
             createGenericElement({
-                contextValue: this.id + '/newConnection',
+                contextValue: 'treeitem.newConnection',
                 id: this.id + '/newConnection',
                 label: 'New Connection...',
                 iconPath: new ThemeIcon('plus'),

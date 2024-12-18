@@ -3,7 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createGenericElement, type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import {
+    createContextValue,
+    createGenericElement,
+    type IActionContext,
+    type TreeElementBase,
+} from '@microsoft/vscode-azext-utils';
 import { type TreeItem } from 'vscode';
 
 import * as vscode from 'vscode';
@@ -79,7 +84,10 @@ export abstract class MongoClusterItemBase implements TreeElementBase {
             if (databases.length === 0) {
                 return [
                     createGenericElement({
-                        contextValue: 'mongoClusters.item.no-databases',
+                        contextValue: createContextValue([
+                            'treeitem.no-databases',
+                            this.mongoCluster.dbExperience?.api ?? '',
+                        ]),
                         id: `${this.id}/no-databases`,
                         label: 'Create database...',
                         iconPath: new vscode.ThemeIcon('plus'),
@@ -123,7 +131,7 @@ export abstract class MongoClusterItemBase implements TreeElementBase {
     getTreeItem(): TreeItem {
         return {
             id: this.id,
-            contextValue: 'mongoClusters.item.mongoCluster',
+            contextValue: createContextValue(['treeitem.mongocluster', this.mongoCluster.dbExperience?.api ?? '']),
             label: this.mongoCluster.name,
             description: this.mongoCluster.sku !== undefined ? `(${this.mongoCluster.sku})` : false,
             // iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg'), // Uncomment if icon is available

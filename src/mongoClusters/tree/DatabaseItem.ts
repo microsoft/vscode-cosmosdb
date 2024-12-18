@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    createContextValue,
     createGenericElement,
     type IActionContext,
     type TreeElementBase,
@@ -35,7 +36,10 @@ export class DatabaseItem implements TreeElementWithId {
             // no databases in there:
             return [
                 createGenericElement({
-                    contextValue: 'mongoClusters.item.no-collection',
+                    contextValue: createContextValue([
+                        'treeitem.no-collections',
+                        this.mongoCluster.dbExperience?.api ?? '',
+                    ]),
                     id: `${this.id}/no-databases`,
                     label: 'Create collection...',
                     iconPath: new vscode.ThemeIcon('plus'),
@@ -82,7 +86,7 @@ export class DatabaseItem implements TreeElementWithId {
     getTreeItem(): TreeItem {
         return {
             id: this.id,
-            contextValue: 'mongoClusters.item.database',
+            contextValue: createContextValue(['treeitem.database', this.mongoCluster.dbExperience?.api ?? '']),
             label: this.databaseInfo.name,
             iconPath: new ThemeIcon('database'), // TODO: create our onw icon here, this one's shape can change
             collapsibleState: TreeItemCollapsibleState.Collapsed,

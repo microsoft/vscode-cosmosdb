@@ -6,6 +6,7 @@
 import {
     AzureWizard,
     callWithTelemetryAndErrorHandling,
+    createContextValue,
     nonNullProp,
     nonNullValue,
     UserCancelledError,
@@ -153,7 +154,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
     getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
-            contextValue: 'mongoClusters.item.mongoCluster',
+            contextValue: createContextValue(['treeitem.mongocluster', this.mongoCluster.dbExperience?.api ?? '']),
             label: this.mongoCluster.name,
             description: this.mongoCluster.sku !== undefined ? `(${this.mongoCluster.sku})` : false,
             iconPath: new vscode.ThemeIcon('server-environment'), // Uncomment if icon is available

@@ -10,6 +10,8 @@ import { localize } from '../../utils/localize';
 import { type DatabaseItem } from '../tree/DatabaseItem';
 
 export async function dropDatabase(context: IActionContext, node?: DatabaseItem): Promise<void> {
+    context.telemetry.properties.experience = node?.mongoCluster.dbExperience?.api;
+
     // node ??= ... pick a node if not provided
     if (!node) {
         throw new Error('No database selected.');

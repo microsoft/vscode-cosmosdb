@@ -11,6 +11,8 @@ import { type CreateCollectionWizardContext } from '../wizards/create/createWiza
 import { CollectionNameStep } from '../wizards/create/PromptCollectionNameStep';
 
 export async function createCollection(context: IActionContext, databaseNode?: DatabaseItem): Promise<void> {
+    context.telemetry.properties.experience = databaseNode?.mongoCluster.dbExperience?.api;
+
     // node ??= ... pick a node if not provided
     if (!databaseNode) {
         throw new Error('No database selected.');

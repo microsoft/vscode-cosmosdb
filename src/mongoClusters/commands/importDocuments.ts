@@ -13,6 +13,8 @@ export async function mongoClustersImportDocuments(
     _collectionNodes?: CollectionItem[], // required by the TreeNodeCommandCallback, but not used
     ...args: unknown[]
 ): Promise<void> {
+    context.telemetry.properties.experience = collectionNode?.mongoCluster.dbExperience?.api;
+
     const source = (args[0] as { source?: string })?.source || 'contextMenu';
     context.telemetry.properties.calledFrom = source;
 

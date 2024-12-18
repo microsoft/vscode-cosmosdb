@@ -13,6 +13,8 @@ import { MongoClustersClient } from '../MongoClustersClient';
 import { type CollectionItem } from '../tree/CollectionItem';
 
 export async function mongoClustersExportEntireCollection(context: IActionContext, node?: CollectionItem) {
+    context.telemetry.properties.experience = node?.mongoCluster.dbExperience?.api;
+
     return mongoClustersExportQueryResults(context, node);
 }
 
@@ -21,6 +23,8 @@ export async function mongoClustersExportQueryResults(
     node?: CollectionItem,
     props?: { queryText?: string; source?: string },
 ): Promise<void> {
+    context.telemetry.properties.experience = node?.mongoCluster.dbExperience?.api;
+
     // node ??= ... pick a node if not provided
     if (!node) {
         throw new Error('No collection selected.');

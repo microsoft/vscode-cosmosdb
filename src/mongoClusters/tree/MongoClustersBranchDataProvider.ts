@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { getResourceGroupFromId, uiUtils } from '@microsoft/vscode-azext-azureutils';
 import { callWithTelemetryAndErrorHandling, nonNullProp, type IActionContext } from '@microsoft/vscode-azext-utils';
 import {
@@ -22,8 +21,6 @@ import { MongoClusterResourceItem } from './MongoClusterResourceItem';
 export interface TreeElementBase extends ResourceModelBase {
     getChildren?(): vscode.ProviderResult<TreeElementBase[]>;
     getTreeItem(): vscode.TreeItem | Thenable<vscode.TreeItem>;
-
-    //viewProperties?: ViewPropertiesModel;
 }
 
 export class MongoClustersBranchDataProvider
@@ -98,6 +95,7 @@ export class MongoClustersBranchDataProvider
 
                 // 1. extract the basic info from the element (subscription, resource group, etc., provided by Azure Resources)
                 let clusterInfo: MongoClusterModel = element as MongoClusterModel;
+                clusterInfo.dbExperience = API.MongoClusters;
 
                 // 2. lookup the details in the cache, on subsequent refreshes, the details will be available in the cache
                 if (this.detailsCache.has(clusterInfo.id)) {
@@ -144,6 +142,7 @@ export class MongoClustersBranchDataProvider
                     accounts.map((MongoClustersAccount) => {
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                         this.detailsCache.set(nonNullProp(MongoClustersAccount, 'id'), {
+                            dbExperience: API.MongoClusters,
                             id: MongoClustersAccount.id as string,
                             name: MongoClustersAccount.name as string,
                             resourceGroup: getResourceGroupFromId(MongoClustersAccount.id as string),

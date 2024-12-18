@@ -3,7 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createGenericElement, type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import {
+    createContextValue,
+    createGenericElement,
+    type IActionContext,
+    type TreeElementBase,
+    type TreeElementWithId,
+} from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { ext } from '../../extensionVariables';
@@ -12,7 +18,7 @@ import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersCli
 import { CollectionItem } from './CollectionItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class DatabaseItem {
+export class DatabaseItem implements TreeElementWithId {
     id: string;
 
     constructor(
@@ -30,7 +36,10 @@ export class DatabaseItem {
             // no databases in there:
             return [
                 createGenericElement({
-                    contextValue: 'mongoClusters.item.no-collection',
+                    contextValue: createContextValue([
+                        'treeitem.no-collections',
+                        this.mongoCluster.dbExperience?.api ?? '',
+                    ]),
                     id: `${this.id}/no-databases`,
                     label: 'Create collection...',
                     iconPath: new vscode.ThemeIcon('plus'),
@@ -77,7 +86,7 @@ export class DatabaseItem {
     getTreeItem(): TreeItem {
         return {
             id: this.id,
-            contextValue: 'mongoClusters.item.database',
+            contextValue: createContextValue(['treeitem.database', this.mongoCluster.dbExperience?.api ?? '']),
             label: this.databaseInfo.name,
             iconPath: new ThemeIcon('database'), // TODO: create our onw icon here, this one's shape can change
             collapsibleState: TreeItemCollapsibleState.Collapsed,

@@ -15,6 +15,8 @@ import {
 import { DatabaseNameStep } from '../wizards/create/PromptDatabaseNameStep';
 
 export async function createDatabase(context: IActionContext, clusterNode?: MongoClusterResourceItem): Promise<void> {
+    context.telemetry.properties.experience = clusterNode?.mongoCluster.dbExperience?.api;
+
     // node ??= ... pick a node if not provided
     if (!clusterNode) {
         throw new Error('No cluster selected.');

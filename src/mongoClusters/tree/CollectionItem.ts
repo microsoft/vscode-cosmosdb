@@ -45,7 +45,7 @@ export class CollectionItem {
                         viewTitle: `${this.collectionInfo.name}`,
                         // viewTitle: `${this.mongoCluster.name}/${this.databaseInfo.name}/${this.collectionInfo.name}`, // using '/' as a separator to use VSCode's "title compression"(?) feature
 
-                        liveConnectionId: this.mongoCluster.id,
+                        clusterId: this.mongoCluster.id,
                         databaseName: this.databaseInfo.name,
                         collectionName: this.collectionInfo.name,
                         collectionTreeItem: this,

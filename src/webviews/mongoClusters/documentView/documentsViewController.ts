@@ -12,7 +12,7 @@ import { type RouterContext } from './documentsViewRouter';
 export type DocumentsViewWebviewConfigurationType = {
     id: string; // move to base type
 
-    sessionId: string;
+    clusterId: string;
     databaseName: string;
     collectionName: string;
     documentId: string;
@@ -39,7 +39,7 @@ export class DocumentsViewController extends WebviewController<DocumentsViewWebv
         const trpcContext: RouterContext = {
             dbExperience: API.MongoClusters,
             webviewName: 'documentView',
-            sessionId: initialData.sessionId,
+            clusterId: initialData.clusterId,
             databaseName: initialData.databaseName,
             collectionName: initialData.collectionName,
             documentId: initialData.documentId,

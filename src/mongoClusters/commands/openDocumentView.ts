@@ -12,7 +12,7 @@ export function openDocumentView(
     props: {
         id: string;
 
-        sessionId: string;
+        clusterId: string;
         databaseName: string;
         collectionName: string;
         documentId: string;
@@ -23,7 +23,7 @@ export function openDocumentView(
     const view = new DocumentsViewController({
         id: props.id,
 
-        sessionId: props.sessionId,
+        clusterId: props.clusterId,
         databaseName: props.databaseName,
         collectionName: props.collectionName,
         documentId: props.documentId,

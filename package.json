@@ -626,6 +626,11 @@
             },
             {
                 "category": "MongoDB Clusters",
+                "command": "command.mongoClusters.createDocument",
+                "title": "Create Document..."
+            },
+            {
+                "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.launchShell",
                 "title": "Launch Shell"
             },
@@ -1171,6 +1176,11 @@
                     "command": "command.mongoClusters.exportDocuments",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
                     "group": "1@2"
+                },
+                {
+                    "command": "command.mongoClusters.createDocument",
+                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "group": "1@1"
                 },
                 {
                     "command": "command.mongoClusters.launchShell",

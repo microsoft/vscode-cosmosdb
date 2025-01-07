@@ -12,7 +12,7 @@ export async function openCollectionView(
     _context: IActionContext,
     props: {
         id: string;
-        liveConnectionId: string;
+        clusterId: string;
         databaseName: string;
         collectionName: string;
         collectionTreeItem: CollectionItem;
@@ -22,12 +22,13 @@ export async function openCollectionView(
      * We're starting a new "session" using the existing connection.
      * A session can cache data, handle paging, and convert data.
      */
-    const sessionId = await MongoClustersSession.initNewSession(props.liveConnectionId);
+    const sessionId = await MongoClustersSession.initNewSession(props.clusterId);
 
     const view = new CollectionViewController({
         id: props.id,
 
         sessionId: sessionId,
+        clusterId: props.clusterId,
         databaseName: props.databaseName,
         collectionName: props.collectionName,
         collectionTreeItem: props.collectionTreeItem,

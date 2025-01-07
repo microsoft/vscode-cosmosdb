@@ -13,6 +13,7 @@ export type CollectionViewWebviewConfigurationType = {
     id: string; // move to base type
 
     sessionId: string;
+    clusterId: string;
     databaseName: string;
     collectionName: string;
     collectionTreeItem: CollectionItem; // needed to execute commands on the collection as the tree APIv2 doesn't support id-based search for tree items.
@@ -31,6 +32,7 @@ export class CollectionViewController extends WebviewController<CollectionViewWe
             dbExperience: API.MongoClusters,
             webviewName: 'collectionView',
             sessionId: initialData.sessionId,
+            clusterId: initialData.clusterId,
             databaseName: initialData.databaseName,
             collectionName: initialData.collectionName,
             collectionTreeItem: initialData.collectionTreeItem,

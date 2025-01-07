@@ -25,6 +25,7 @@ import {
 import { addWorkspaceConnection } from './commands/addWorkspaceConnection';
 import { createCollection } from './commands/createCollection';
 import { createDatabase } from './commands/createDatabase';
+import { createDocument } from './commands/createDocument';
 import { dropCollection } from './commands/dropCollection';
 import { dropDatabase } from './commands/dropDatabase';
 import { mongoClustersExportEntireCollection, mongoClustersExportQueryResults } from './commands/exportDocuments';
@@ -93,6 +94,8 @@ export class MongoClustersExtension implements vscode.Disposable {
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createCollection', createCollection);
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDatabase', createDatabase);
+
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDocument', createDocument);
 
                 registerCommandWithTreeNodeUnwrapping(
                     'command.mongoClusters.importDocuments',

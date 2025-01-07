@@ -21,6 +21,7 @@ import { type BaseRouterContext } from '../../api/configuration/appRouter';
 
 export type RouterContext = BaseRouterContext & {
     sessionId: string;
+    clusterId: string;
     databaseName: string;
     collectionName: string;
     collectionTreeItem: CollectionItem; // needed to execute commands on the collection as the tree APIv2 doesn't support id-based search for tree items.
@@ -122,7 +123,7 @@ export const collectionsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             vscode.commands.executeCommand('command.internal.mongoClusters.documentView.open', {
-                sessionId: myCtx.sessionId,
+                clusterId: myCtx.clusterId,
                 databaseName: myCtx.databaseName,
                 collectionName: myCtx.collectionName,
                 mode: 'add',
@@ -137,7 +138,7 @@ export const collectionsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             vscode.commands.executeCommand('command.internal.mongoClusters.documentView.open', {
-                sessionId: myCtx.sessionId,
+                clusterId: myCtx.clusterId,
                 databaseName: myCtx.databaseName,
                 collectionName: myCtx.collectionName,
                 documentId: input,
@@ -153,7 +154,7 @@ export const collectionsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             vscode.commands.executeCommand('command.internal.mongoClusters.documentView.open', {
-                sessionId: myCtx.sessionId,
+                clusterId: myCtx.clusterId,
                 databaseName: myCtx.databaseName,
                 collectionName: myCtx.collectionName,
                 documentId: input,

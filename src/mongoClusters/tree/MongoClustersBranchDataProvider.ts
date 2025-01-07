@@ -12,7 +12,7 @@ import {
     type ResourceModelBase,
 } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
-import { API } from '../../AzureDBExperiences';
+import { API, MongoClustersExprience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { createMongoClustersManagementClient } from '../../utils/azureClients';
 import { type MongoClusterModel } from './MongoClusterModel';
@@ -142,7 +142,7 @@ export class MongoClustersBranchDataProvider
                     accounts.map((MongoClustersAccount) => {
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                         this.detailsCache.set(nonNullProp(MongoClustersAccount, 'id'), {
-                            dbExperience: API.MongoClusters,
+                            dbExperience: MongoClustersExprience,
                             id: MongoClustersAccount.id as string,
                             name: MongoClustersAccount.name as string,
                             resourceGroup: getResourceGroupFromId(MongoClustersAccount.id as string),

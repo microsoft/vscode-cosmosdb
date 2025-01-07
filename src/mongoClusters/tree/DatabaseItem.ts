@@ -12,6 +12,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
+import { type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
 import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersClient';
@@ -20,12 +21,14 @@ import { type MongoClusterModel } from './MongoClusterModel';
 
 export class DatabaseItem implements TreeElementWithId {
     id: string;
+    experience?: Experience;
 
     constructor(
         readonly mongoCluster: MongoClusterModel,
         readonly databaseInfo: DatabaseItemModel,
     ) {
         this.id = `${mongoCluster.id}/${databaseInfo.name}`;
+        this.experience = mongoCluster.dbExperience;
     }
 
     async getChildren(): Promise<TreeElementBase[]> {

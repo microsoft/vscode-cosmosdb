@@ -8,9 +8,11 @@ import {
     createGenericElement,
     type IActionContext,
     type TreeElementBase,
+    type TreeElementWithId
 } from '@microsoft/vscode-azext-utils';
 import { type Document } from 'bson';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
+import { type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import {
     MongoClustersClient,
@@ -21,8 +23,9 @@ import {
 import { IndexesItem } from './IndexesItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class CollectionItem {
+export class CollectionItem implements TreeElementWithId {
     id: string;
+    experience?: Experience;
 
     constructor(
         readonly mongoCluster: MongoClusterModel,
@@ -30,6 +33,7 @@ export class CollectionItem {
         readonly collectionInfo: CollectionItemModel,
     ) {
         this.id = `${mongoCluster.id}/${databaseInfo.name}/${collectionInfo.name}`;
+        this.experience = mongoCluster.dbExperience;
     }
 
     async getChildren(): Promise<TreeElementBase[]> {
@@ -54,6 +58,12 @@ export class CollectionItem {
                 iconPath: new ThemeIcon('explorer-view-icon'),
             }),
             new IndexesItem(this.mongoCluster, this.databaseInfo, this.collectionInfo),
+            createGenericElement({
+                contextValue: createContextValue(['treeitem.documents', this.mongoCluster.dbExperience?.api ?? '']),
+                id: `${this.id}/documents/asdf`,
+                label: 'aa' + new Date().toLocaleTimeString(),
+                iconPath: new ThemeIcon('explorer-view-icon'),
+            }),
         ];
     }
 

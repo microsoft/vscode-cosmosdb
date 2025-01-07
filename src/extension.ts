@@ -21,7 +21,7 @@ import {
     type AzExtTreeItem,
     type AzureExtensionApi,
     type IActionContext,
-    type ITreeItemPickerContext,
+    type ITreeItemPickerContext
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import { platform } from 'os';
@@ -60,6 +60,7 @@ import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider'
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { CosmosDBBranchDataProvider } from './tree/CosmosDBBranchDataProvider';
+import { type CosmosDbTreeElement } from './tree/CosmosDbTreeElement';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
 import { localize } from './utils/localize';
 
@@ -165,6 +166,19 @@ export async function activateInternal(
                     await node.refresh(actionContext);
                 } else {
                     await ext.rgApi.appResourceTree.refresh(actionContext, node);
+                }
+            },
+        );
+
+        registerCommandWithTreeNodeUnwrapping(
+            'azureDatabases.refresh_v2',
+            (context: IActionContext, node?: CosmosDbTreeElement) => {
+                if (node?.experience) {
+                    context.telemetry.properties.experience = node.experience.api;
+                }
+
+                if (node?.id) {
+                    ext.state.notifyChildrenChanged(node.id);
                 }
             },
         );

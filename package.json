@@ -276,6 +276,11 @@
                 "command": "azureDatabases.refresh",
                 "title": "Refresh",
                 "icon": "$(refresh)"
+            },{
+                "category": "Azure Databases",
+                "command": "azureDatabases.refresh_v2",
+                "title": "Refresh",
+                "icon": "$(refresh)"
             },
             {
                 "category": "Azure Databases",
@@ -1176,7 +1181,18 @@
                     "command": "command.mongoClusters.launchShell",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.(mongoCluster|database|collection)/i && viewItem =~ /(mongocluster|mongodb)/i",
                     "group": "2@1"
+                },
+                {
+                    "command": "azureDatabases.refresh_v2",
+                    "when" : "viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "group": "4@1"
+                },
+                {
+                    "command": "azureDatabases.refresh_v2",
+                    "when" : "viewItem =~ /treeitem.database/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "group": "4@1"
                 }
+
             ],
             "explorer/context": [
                 {

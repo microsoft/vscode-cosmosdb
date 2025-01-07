@@ -57,13 +57,7 @@ export class CollectionItem implements TreeElementWithId {
                 ],
                 iconPath: new ThemeIcon('explorer-view-icon'),
             }),
-            new IndexesItem(this.mongoCluster, this.databaseInfo, this.collectionInfo),
-            createGenericElement({
-                contextValue: createContextValue(['treeitem.documents', this.mongoCluster.dbExperience?.api ?? '']),
-                id: `${this.id}/documents/asdf`,
-                label: 'aa' + new Date().toLocaleTimeString(),
-                iconPath: new ThemeIcon('explorer-view-icon'),
-            }),
+            new IndexesItem(this.mongoCluster, this.databaseInfo, this.collectionInfo)
         ];
     }
 

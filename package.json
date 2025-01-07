@@ -366,11 +366,6 @@
                 "title": "Create Database..."
             },
             {
-                "category": "MongoDB",
-                "command": "cosmosDB.createMongoDocument",
-                "title": "Create Document"
-            },
-            {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.deleteAccount",
                 "title": "Delete Account..."
@@ -759,11 +754,6 @@
                 {
                     "command": "cosmosDB.createMongoDatabase",
                     "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /cosmosDBMongoServer(?![a-z])/i",
-                    "group": "1@1"
-                },
-                {
-                    "command": "cosmosDB.createMongoDocument",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == MongoCollection",
                     "group": "1@1"
                 },
                 {

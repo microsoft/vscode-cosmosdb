@@ -16,7 +16,6 @@ import { ext } from '../extensionVariables';
 import { connectMongoDatabase, loadPersistedMongoDB } from './commands/connectMongoDatabase';
 import { createMongoCollection } from './commands/createMongoCollection';
 import { createMongoDatabase } from './commands/createMongoDatabase';
-import { createMongoDocument } from './commands/createMongoDocument';
 import { createMongoSrapbook } from './commands/createMongoScrapbook';
 import { deleteMongoCollection } from './commands/deleteMongoCollection';
 import { deleteMongoDB } from './commands/deleteMongoDatabase';
@@ -69,7 +68,6 @@ export function registerMongoCommands(): void {
     // #region Collection command
 
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openCollection', openMongoCollection);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createMongoDocument', createMongoDocument);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteMongoCollection', deleteMongoCollection);
 
     // #endregion

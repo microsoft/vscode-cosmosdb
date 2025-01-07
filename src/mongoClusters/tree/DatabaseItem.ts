@@ -88,7 +88,7 @@ export class DatabaseItem implements TreeElementWithId {
             id: this.id,
             contextValue: createContextValue(['treeitem.database', this.mongoCluster.dbExperience?.api ?? '']),
             label: this.databaseInfo.name,
-            iconPath: new ThemeIcon('database'), // TODO: create our onw icon here, this one's shape can change
+            iconPath: new ThemeIcon('database'), // TODO: create our own icon here, this one's shape can change
             collapsibleState: TreeItemCollapsibleState.Collapsed,
         };
     }

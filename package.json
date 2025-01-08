@@ -356,16 +356,6 @@
                 "title": "Create Database..."
             },
             {
-                "category": "MongoDB",
-                "command": "cosmosDB.createMongoCollection",
-                "title": "Create Collection..."
-            },
-            {
-                "category": "MongoDB",
-                "command": "cosmosDB.createMongoDatabase",
-                "title": "Create Database..."
-            },
-            {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.deleteAccount",
                 "title": "Delete Account..."
@@ -404,21 +394,6 @@
                 "category": "Graph (Gremlin)",
                 "command": "cosmosDB.deleteGraphDatabase",
                 "title": "Delete Database..."
-            },
-            {
-                "category": "MongoDB",
-                "command": "cosmosDB.deleteMongoCollection",
-                "title": "Delete Collection..."
-            },
-            {
-                "category": "MongoDB",
-                "command": "cosmosDB.deleteMongoDB",
-                "title": "Delete Database..."
-            },
-            {
-                "category": "MongoDB",
-                "command": "cosmosDB.deleteMongoDocument",
-                "title": "Delete Document..."
             },
             {
                 "category": "MongoDB",
@@ -462,11 +437,6 @@
                 "command": "cosmosDB.newMongoScrapbook",
                 "title": "New Mongo Scrapbook",
                 "icon": "$(new-file)"
-            },
-            {
-                "category": "MongoDB",
-                "command": "cosmosDB.openCollection",
-                "title": "Open Collection"
             },
             {
                 "category": "Cosmos DB",
@@ -747,21 +717,6 @@
                     "group": "1@2"
                 },
                 {
-                    "command": "cosmosDB.createMongoDatabase",
-                    "when": "view == azureWorkspace && viewItem == cosmosDBMongoServerAttached",
-                    "group": "1@1"
-                },
-                {
-                    "command": "cosmosDB.createMongoDatabase",
-                    "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /cosmosDBMongoServer(?![a-z])/i",
-                    "group": "1@1"
-                },
-                {
-                    "command": "cosmosDB.createMongoCollection",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == mongoDb",
-                    "group": "1@1"
-                },
-                {
                     "command": "cosmosDB.createDocDBDocument",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentsGroup",
                     "group": "1@2"
@@ -872,21 +827,6 @@
                     "group": "2@1"
                 },
                 {
-                    "command": "cosmosDB.deleteMongoDB",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == mongoDb",
-                    "group": "1@2"
-                },
-                {
-                    "command": "cosmosDB.deleteMongoCollection",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == MongoCollection",
-                    "group": "1@4"
-                },
-                {
-                    "command": "cosmosDB.deleteMongoDocument",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == MongoDocument",
-                    "group": "1@2"
-                },
-                {
                     "command": "cosmosDB.deleteDocDBCollection",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
                     "group": "1@4"
@@ -964,11 +904,6 @@
                 {
                     "command": "cosmosDB.attachEmulator",
                     "when": "view == azureWorkspace && viewItem == cosmosDBAttachedAccountsWithEmulator",
-                    "group": "1@2"
-                },
-                {
-                    "command": "cosmosDB.openCollection",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == MongoCollection",
                     "group": "1@2"
                 },
                 {

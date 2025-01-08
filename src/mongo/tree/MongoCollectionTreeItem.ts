@@ -6,28 +6,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import {
-    createGenericElement,
+    AzExtParentTreeItem,
+    DialogResponses,
+    type AzExtTreeItem,
     type IActionContext,
-    type TreeElementBase,
-    type TreeElementWithId,
+    type ICreateChildImplContext,
+    type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
 import assert from 'assert';
 import { EJSON } from 'bson';
+import { omit } from 'lodash';
 import {
+    type AnyBulkWriteOperation,
     type BulkWriteOptions,
+    type BulkWriteResult,
     type Collection,
     type CountOptions,
     type DeleteResult,
     type Filter,
+    type FindCursor,
     type InsertManyResult,
     type InsertOneResult,
     type Document as MongoDocument,
 } from 'mongodb';
 import * as vscode from 'vscode';
-import { ThemeIcon, type TreeItem } from 'vscode';
-import { type MongoAccountModel } from '../../tree/mongo/MongoAccountModel';
+import { type IEditableTreeItem } from '../../DatabasesFileSystem';
+import { ext } from '../../extensionVariables';
+import { nonNullValue } from '../../utils/nonNull';
+import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
+import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { type MongoCommand } from '../MongoCommand';
-import { type IDatabaseInfo } from './MongoAccountTreeItem';
+import { MongoDocumentTreeItem, type IMongoDocument } from './MongoDocumentTreeItem';
 
 // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
 type MongoFunction = (...args: (Object | Object[] | undefined)[]) => Thenable<string>;
@@ -41,172 +50,161 @@ class FunctionDescriptor {
     ) {}
 }
 
-// export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEditableTreeItem {
-export class MongoCollectionTreeItem implements TreeElementWithId {
-    //     public static contextValue: string = 'MongoCollection';
-    // public readonly contextValue: string = MongoCollectionTreeItem.contextValue;
-    // public readonly childTypeLabel: string = 'Document';
-    // public readonly collection: Collection;
-    // public declare parent: AzExtParentTreeItem;
+export class MongoCollectionTreeItem extends AzExtParentTreeItem implements IEditableTreeItem {
+    public static contextValue: string = 'MongoCollection';
+    public readonly contextValue: string = MongoCollectionTreeItem.contextValue;
+    public readonly childTypeLabel: string = 'Document';
+    public readonly collection: Collection;
+    public declare parent: AzExtParentTreeItem;
     // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
     public findArgs?: Object[];
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
 
-    id: string;
+    private readonly _query: Filter<MongoDocument> | undefined;
+    private readonly _projection: object | undefined;
+    private _cursor: FindCursor | undefined;
+    private _hasMoreChildren: boolean = true;
+    private _batchSize: number = getBatchSizeSetting();
 
     // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
-    constructor(
-        readonly account: MongoAccountModel,
-        readonly databaseInfo: IDatabaseInfo,
-        readonly collection: Collection,
-    ) {
-        this.id = `${account.id}/${databaseInfo.name}/${collection.collectionName}`;
+    constructor(parent: AzExtParentTreeItem, collection: Collection, findArgs?: Object[]) {
+        super(parent);
+        this.collection = collection;
+        this.findArgs = findArgs;
+        if (findArgs && findArgs.length) {
+            this._query = findArgs[0];
+            this._projection = findArgs.length > 1 ? findArgs[1] : undefined;
+        }
+        ext.fileSystem.fireChangedEvent(this);
     }
 
-    getChildren?(): TreeElementBase[] {
-        return [
-            createGenericElement({
-                contextValue: 'mongo.item.documents',
-                id: `${this.id}/documents`,
-                label: 'Documents',
-                // commandId: 'command.internal.mongoClusters.containerView.open',
-                commandArgs: [
-                    {
-                        id: this.id,
-                        // viewTitle: `${this.collectionInfo.name}`,
-                        // // viewTitle: `${this.mongoCluster.name}/${this.databaseInfo.name}/${this.collectionInfo.name}`, // using '/' as a separator to use VSCode's "title compression"(?) feature
+    public async writeFileContent(context: IActionContext, content: string): Promise<void> {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        const documents: IMongoDocument[] = EJSON.parse(content);
+        const operations: AnyBulkWriteOperation<MongoDocument>[] = documents.map((document) => {
+            return {
+                replaceOne: {
+                    filter: { _id: document._id },
+                    replacement: omit(document, '_id'),
+                    upsert: false,
+                },
+            };
+        });
 
-                        // liveConnectionId: this.mongoCluster.id,
-                        // databaseName: this.databaseInfo.name,
-                        // collectionName: this.collectionInfo.name,
-                        // collectionTreeItem: this,
-                    },
-                ],
-            }),
-        ];
+        const result: BulkWriteResult = await this.collection.bulkWrite(operations);
+        ext.outputChannel.appendLog(
+            `Successfully updated ${result.modifiedCount} document(s), inserted ${result.insertedCount} document(s)`,
+        );
+
+        // The current tree item may have been a temporary one used to execute a scrapbook command.
+        // We want to refresh children for this one _and_ the actual one in the tree (if it's different)
+        const nodeInTree: MongoCollectionTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(
+            this.fullId,
+            context,
+        );
+        const nodesToRefresh: MongoCollectionTreeItem[] = [this];
+        if (nodeInTree && this !== nodeInTree) {
+            nodesToRefresh.push(nodeInTree);
+        }
+
+        await Promise.all(nodesToRefresh.map((n) => n.refreshChildren(context, documents)));
+
+        if (nodeInTree && this !== nodeInTree) {
+            // Don't need to fire a changed event on the item being saved at the moment. Just the node in the tree if it's different
+            ext.fileSystem.fireChangedEvent(nodeInTree);
+        }
     }
 
-    getTreeItem(): TreeItem {
-        return {
-            id: this.id,
-            contextValue: 'mongo.item.collection',
-            label: this.collection.collectionName,
-            iconPath: new ThemeIcon('folder-opened'),
-            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
-        };
+    public async getFileContent(context: IActionContext): Promise<string> {
+        const children = <MongoDocumentTreeItem[]>await this.getCachedChildren(context);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        return EJSON.stringify(
+            children.map((c) => c.document),
+            undefined,
+            2,
+        );
     }
 
-    // public async writeFileContent(context: IActionContext, content: string): Promise<void> {
-    //     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    //     const documents: IMongoDocument[] = EJSON.parse(content);
-    //     const operations: AnyBulkWriteOperation<MongoDocument>[] = documents.map((document) => {
-    //         return {
-    //             replaceOne: {
-    //                 filter: { _id: document._id },
-    //                 replacement: omit(document, '_id'),
-    //                 upsert: false,
-    //             },
-    //         };
-    //     });
+    public get id(): string {
+        return this.collection.collectionName;
+    }
 
-    //     const result: BulkWriteResult = await this.collection.bulkWrite(operations);
-    //     ext.outputChannel.appendLog(
-    //         `Successfully updated ${result.modifiedCount} document(s), inserted ${result.insertedCount} document(s)`,
-    //     );
+    public get label(): string {
+        return this.collection.collectionName;
+    }
 
-    //     // The current tree item may have been a temporary one used to execute a scrapbook command.
-    //     // We want to refresh children for this one _and_ the actual one in the tree (if it's different)
-    //     const nodeInTree: MongoCollectionTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(
-    //         this.fullId,
-    //         context,
-    //     );
-    //     const nodesToRefresh: MongoCollectionTreeItem[] = [this];
-    //     if (nodeInTree && this !== nodeInTree) {
-    //         nodesToRefresh.push(nodeInTree);
-    //     }
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('files');
+    }
 
-    //     await Promise.all(nodesToRefresh.map((n) => n.refreshChildren(context, documents)));
+    public get filePath(): string {
+        return this.label + '-cosmos-collection.json';
+    }
 
-    //     if (nodeInTree && this !== nodeInTree) {
-    //         // Don't need to fire a changed event on the item being saved at the moment. Just the node in the tree if it's different
-    //         ext.fileSystem.fireChangedEvent(nodeInTree);
-    //     }
-    // }
+    public async refreshImpl(): Promise<void> {
+        this._batchSize = getBatchSizeSetting();
+        ext.fileSystem.fireChangedEvent(this);
+    }
 
-    // public async getFileContent(context: IActionContext): Promise<string> {
-    //     const children = <MongoDocumentTreeItem[]>await this.getCachedChildren(context);
-    //     // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    //     return EJSON.stringify(
-    //         children.map((c) => c.document),
-    //         undefined,
-    //         2,
-    //     );
-    // }
+    public async refreshChildren(context: IActionContext, docs: IMongoDocument[]): Promise<void> {
+        const documentNodes = <MongoDocumentTreeItem[]>await this.getCachedChildren(context);
+        for (const doc of docs) {
+            const documentNode = documentNodes.find((node) => node.document._id.toString() === doc._id.toString());
+            if (documentNode) {
+                documentNode.document = doc;
+                await documentNode.refresh(context);
+            }
+        }
+    }
 
-    // public get filePath(): string {
-    //     return this.label + '-cosmos-collection.json';
-    // }
+    public hasMoreChildrenImpl(): boolean {
+        return this._hasMoreChildren;
+    }
 
-    // public async refreshImpl(): Promise<void> {
-    //     this._batchSize = getBatchSizeSetting();
-    //     ext.fileSystem.fireChangedEvent(this);
-    // }
+    public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
+        if (clearCache || this._cursor === undefined) {
+            if (this._query) {
+                this._cursor = this.collection.find(this._query).batchSize(this._batchSize);
+            } else {
+                this._cursor = this.collection.find().batchSize(this._batchSize);
+            }
+            if (this._projection) {
+                this._cursor = this._cursor.project(this._projection);
+            }
+        }
 
-    // public async refreshChildren(context: IActionContext, docs: IMongoDocument[]): Promise<void> {
-    //     const documentNodes = <MongoDocumentTreeItem[]>await this.getCachedChildren(context);
-    //     for (const doc of docs) {
-    //         const documentNode = documentNodes.find((node) => node.document._id.toString() === doc._id.toString());
-    //         if (documentNode) {
-    //             documentNode.document = doc;
-    //             await documentNode.refresh(context);
-    //         }
-    //     }
-    // }
+        const documents: IMongoDocument[] = [];
+        let count: number = 0;
+        while (count < this._batchSize) {
+            this._hasMoreChildren = await this._cursor.hasNext();
+            if (this._hasMoreChildren) {
+                documents.push(<IMongoDocument>await this._cursor.next());
+                count += 1;
+            } else {
+                break;
+            }
+        }
+        this._batchSize *= 2;
 
-    // public async loadMoreChildrenImpl(clearCache: boolean): Promise<AzExtTreeItem[]> {
-    //     if (clearCache || this._cursor === undefined) {
-    //         if (this._query) {
-    //             this._cursor = this.collection.find(this._query).batchSize(this._batchSize);
-    //         } else {
-    //             this._cursor = this.collection.find().batchSize(this._batchSize);
-    //         }
-    //         if (this._projection) {
-    //             this._cursor = this._cursor.project(this._projection);
-    //         }
-    //     }
+        return this.createTreeItemsWithErrorHandling<IMongoDocument>(
+            documents,
+            'invalidMongoDocument',
+            (doc) => new MongoDocumentTreeItem(this, doc),
+            getDocumentTreeItemLabel,
+        );
+    }
 
-    //     const documents: IMongoDocument[] = [];
-    //     let count: number = 0;
-    //     while (count < this._batchSize) {
-    //         this._hasMoreChildren = await this._cursor.hasNext();
-    //         if (this._hasMoreChildren) {
-    //             documents.push(<IMongoDocument>await this._cursor.next());
-    //             count += 1;
-    //         } else {
-    //             break;
-    //         }
-    //     }
-    //     this._batchSize *= 2;
-
-    //     return this.createTreeItemsWithErrorHandling<IMongoDocument>(
-    //         documents,
-    //         'invalidMongoDocument',
-    //         (doc) => new MongoDocumentTreeItem(this, doc),
-    //         getDocumentTreeItemLabel,
-    //     );
-    // }
-
-    // public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDocumentTreeItem> {
-    //     context.showCreatingTreeItem('');
-    //     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    //     const result: InsertOneResult<MongoDocument> = await this.collection.insertOne({});
-    //     const newDocument: IMongoDocument = nonNullValue(
-    //         await this.collection.findOne({ _id: result.insertedId }),
-    //         'newDocument',
-    //     );
-    //     return new MongoDocumentTreeItem(this, newDocument);
-    // }
+    public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDocumentTreeItem> {
+        context.showCreatingTreeItem('');
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const result: InsertOneResult<MongoDocument> = await this.collection.insertOne({});
+        const newDocument: IMongoDocument = nonNullValue(
+            await this.collection.findOne({ _id: result.insertedId }),
+            'newDocument',
+        );
+        return new MongoDocumentTreeItem(this, newDocument);
+    }
 
     public async tryExecuteCommandDirectly(
         command: Partial<MongoCommand>,
@@ -255,15 +253,14 @@ export class MongoCollectionTreeItem implements TreeElementWithId {
         return { deferToShell: true, result: undefined };
     }
 
-    public async deleteTreeItemImpl(_context: IActionContext): Promise<void> {
-        // TODO: this file is about to be deleted
-        // const message: string = `Are you sure you want to delete collection '${this.collection.collectionName}'?`;
-        // await context.ui.showWarningMessage(
-        //     message,
-        //     { modal: true, stepName: 'deleteMongoCollection' },
-        //     DialogResponses.deleteResponse,
-        // );
-        // await this.drop();
+    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
+        const message: string = `Are you sure you want to delete collection '${this.label}'?`;
+        await context.ui.showWarningMessage(
+            message,
+            { modal: true, stepName: 'deleteMongoCollection' },
+            DialogResponses.deleteResponse,
+        );
+        await this.drop();
     }
 
     private async drop(): Promise<string> {

@@ -5,19 +5,19 @@
 
 import {
     appendExtensionUserAgent,
+    AzExtParentTreeItem,
+    DialogResponses,
     UserCancelledError,
     type IActionContext,
-    type TreeElementBase,
+    type ICreateChildImplContext,
+    type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
 import * as fse from 'fs-extra';
 import { type Collection, type CreateCollectionOptions, type Db } from 'mongodb';
 import * as path from 'path';
 import * as process from 'process';
 import * as vscode from 'vscode';
-import { type TreeItem } from 'vscode';
 import { ext } from '../../extensionVariables';
-import { type IDatabaseInfo } from '../../tree/mongo/IDatabaseInfo';
-import { type MongoAccountModel } from '../../tree/mongo/MongoAccountModel';
 import * as cpUtils from '../../utils/cp';
 import { nonNullProp, nonNullValue } from '../../utils/nonNull';
 import { connectToMongoClient } from '../connectToMongoClient';
@@ -31,81 +31,79 @@ import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
 const mongoExecutableFileName = process.platform === 'win32' ? 'mongo.exe' : 'mongo';
 const executingInShellMsg = 'Executing command in Mongo shell';
 
-export class MongoDatabaseTreeItem implements TreeElementBase {
-    // public static contextValue: string = 'mongoDb';
-    // public readonly contextValue: string = MongoDatabaseTreeItem.contextValue;
-    // public readonly childTypeLabel: string = 'Collection';
+export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
+    public static contextValue: string = 'mongoDb';
+    public readonly contextValue: string = MongoDatabaseTreeItem.contextValue;
+    public readonly childTypeLabel: string = 'Collection';
     public readonly connectionString: string;
+    public readonly databaseName: string;
     public declare readonly parent: MongoAccountTreeItem;
 
     private _previousShellPathSetting: string | undefined;
     private _cachedShellPathOrCmd: string | undefined;
 
-    id: string;
-
-    constructor(
-        readonly account: MongoAccountModel,
-        readonly databaseInfo: IDatabaseInfo,
-    ) {
-        this.id = `${account.id}/${databaseInfo.name}`;
-
-        this.connectionString = addDatabaseToAccountConnectionString(account.connectionString, databaseInfo.name);
-    }
-
-    async getChildren(): Promise<TreeElementBase[]> {
-        const db: Db = await this.connectToDb();
-        const collections: Collection[] = await db.collections();
-        return collections.map(
-            (collection) => new MongoCollectionTreeItem(this.account, this.databaseInfo, collection),
-        );
-    }
-    getTreeItem(): TreeItem {
-        return {
-            id: this.id,
-            contextValue: 'mongo.item.database',
-            label: this.databaseInfo.name,
-            iconPath: new vscode.ThemeIcon('database'),
-            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
-            description: ext.connectedMongoDB && ext.connectedMongoDB.id === this.id ? 'Connected' : '',
-        };
+    constructor(parent: MongoAccountTreeItem, databaseName: string, connectionString: string) {
+        super(parent);
+        this.databaseName = databaseName;
+        this.connectionString = addDatabaseToAccountConnectionString(connectionString, this.databaseName);
     }
 
     public get root(): IMongoTreeRoot {
         return this.parent.root;
     }
 
-    // public async loadMoreChildrenImpl(_clearCache: boolean): Promise<MongoCollectionTreeItem[]> {
-    //     const db: Db = await this.connectToDb();
-    //     const collections: Collection[] = await db.collections();
-    //     return collections.map((collection) => new MongoCollectionTreeItem(this, collection));
-    // }
+    public get label(): string {
+        return this.databaseName;
+    }
 
-    // public async createChildImpl(context: ICreateChildImplContext): Promise<MongoCollectionTreeItem> {
-    //     const collectionName = await context.ui.showInputBox({
-    //         placeHolder: 'Collection Name',
-    //         prompt: 'Enter the name of the collection',
-    //         stepName: 'createMongoCollection',
-    //         validateInput: validateMongoCollectionName,
-    //     });
+    public get description(): string {
+        return ext.connectedMongoDB && ext.connectedMongoDB.fullId === this.fullId ? 'Connected' : '';
+    }
 
-    //     context.showCreatingTreeItem(collectionName);
-    //     return await this.createCollection(collectionName);
-    // }
+    public get id(): string {
+        return this.databaseName;
+    }
 
-    // public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
-    //     const message: string = `Are you sure you want to delete database '${this.databaseInfo.name}'?`;
-    //     await context.ui.showWarningMessage(
-    //         message,
-    //         { modal: true, stepName: 'deleteMongoDatabase' },
-    //         DialogResponses.deleteResponse,
-    //     );
-    //     const db = await this.connectToDb();
-    //     await db.dropDatabase();
-    // }
+    public get iconPath(): TreeItemIconPath {
+        return new vscode.ThemeIcon('database');
+    }
+
+    public hasMoreChildrenImpl(): boolean {
+        return false;
+    }
+
+    public async loadMoreChildrenImpl(_clearCache: boolean): Promise<MongoCollectionTreeItem[]> {
+        const db: Db = await this.connectToDb();
+        const collections: Collection[] = await db.collections();
+        return collections.map((collection) => new MongoCollectionTreeItem(this, collection));
+    }
+
+    public async createChildImpl(context: ICreateChildImplContext): Promise<MongoCollectionTreeItem> {
+        const collectionName = await context.ui.showInputBox({
+            placeHolder: 'Collection Name',
+            prompt: 'Enter the name of the collection',
+            stepName: 'createMongoCollection',
+            validateInput: validateMongoCollectionName,
+        });
+
+        context.showCreatingTreeItem(collectionName);
+        return await this.createCollection(collectionName);
+    }
+
+    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
+        const message: string = `Are you sure you want to delete database '${this.label}'?`;
+        await context.ui.showWarningMessage(
+            message,
+            { modal: true, stepName: 'deleteMongoDatabase' },
+            DialogResponses.deleteResponse,
+        );
+        const db = await this.connectToDb();
+        await db.dropDatabase();
+    }
 
     public async connectToDb(): Promise<Db> {
         const accountConnection = await connectToMongoClient(this.connectionString, appendExtensionUserAgent());
-        return accountConnection.db(this.databaseInfo.name);
+        return accountConnection.db(this.databaseName);
     }
 
     public async executeCommand(command: MongoCommand, context: IActionContext): Promise<string> {
@@ -113,7 +111,7 @@ export class MongoDatabaseTreeItem implements TreeElementBase {
             const db = await this.connectToDb();
             const collection = db.collection(command.collection);
             if (collection) {
-                const collectionTreeItem = new MongoCollectionTreeItem(this.account, this.databaseInfo, collection);
+                const collectionTreeItem = new MongoCollectionTreeItem(this, collection, command.arguments);
                 const result = await collectionTreeItem.tryExecuteCommandDirectly(command);
                 if (!result.deferToShell) {
                     return result.result;
@@ -147,7 +145,7 @@ export class MongoDatabaseTreeItem implements TreeElementBase {
         const result = await newCollection.insertOne({});
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         await newCollection.deleteOne({ _id: result.insertedId });
-        return new MongoCollectionTreeItem(this.account, this.databaseInfo, newCollection);
+        return new MongoCollectionTreeItem(this, newCollection);
     }
 
     private async executeCommandInShell(command: MongoCommand, context: IActionContext): Promise<string> {
@@ -163,7 +161,7 @@ export class MongoDatabaseTreeItem implements TreeElementBase {
         //  requests.
         const shell = await this.createShell(context);
         try {
-            await shell.useDatabase(this.databaseInfo.name);
+            await shell.useDatabase(this.databaseName);
             return await shell.executeScript(command.text);
         } finally {
             shell.dispose();

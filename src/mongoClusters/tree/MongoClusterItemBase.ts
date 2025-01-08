@@ -8,11 +8,14 @@ import {
     createGenericElement,
     type IActionContext,
     type TreeElementBase,
+    type TreeElementWithId,
 } from '@microsoft/vscode-azext-utils';
 import { type TreeItem } from 'vscode';
 
 import * as vscode from 'vscode';
+import { type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
+import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { localize } from '../../utils/localize';
 import { regionToDisplayName } from '../../utils/regionToDisplayName';
 import { CredentialCache } from '../CredentialCache';
@@ -21,11 +24,13 @@ import { DatabaseItem } from './DatabaseItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
 // This info will be available at every level in the tree for immediate access
-export abstract class MongoClusterItemBase implements TreeElementBase {
+export abstract class MongoClusterItemBase implements TreeElementWithId, TreeElementWithExperience {
     id: string;
+    experience?: Experience;
 
     constructor(public mongoCluster: MongoClusterModel) {
         this.id = mongoCluster.id ?? '';
+        this.experience = mongoCluster.dbExperience;
     }
 
     /**

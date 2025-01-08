@@ -3,14 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createContextValue, type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import { createContextValue, type TreeElementBase, type TreeElementWithId } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
+import { type Experience } from '../../AzureDBExperiences';
+import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { MongoClustersClient, type CollectionItemModel, type DatabaseItemModel } from '../MongoClustersClient';
 import { IndexItem } from './IndexItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class IndexesItem {
+export class IndexesItem implements TreeElementWithId, TreeElementWithExperience {
     id: string;
+    experience?: Experience;
 
     constructor(
         readonly mongoCluster: MongoClusterModel,
@@ -18,6 +21,7 @@ export class IndexesItem {
         readonly collectionInfo: CollectionItemModel,
     ) {
         this.id = `${mongoCluster.id}/${databaseInfo.name}/${collectionInfo.name}/indexes`;
+        this.experience = mongoCluster.dbExperience;
     }
 
     async getChildren(): Promise<TreeElementBase[]> {

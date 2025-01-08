@@ -8,7 +8,6 @@ import { type CollectionItem } from '../tree/CollectionItem';
 
 import * as vscode from 'vscode';
 
-
 export async function createDocument(context: IActionContext, node?: CollectionItem): Promise<void> {
     context.telemetry.properties.experience = node?.mongoCluster.dbExperience?.api;
 

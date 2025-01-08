@@ -8,12 +8,13 @@ import {
     createGenericElement,
     type IActionContext,
     type TreeElementBase,
-    type TreeElementWithId
+    type TreeElementWithId,
 } from '@microsoft/vscode-azext-utils';
 import { type Document } from 'bson';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
+import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import {
     MongoClustersClient,
     type CollectionItemModel,
@@ -23,7 +24,7 @@ import {
 import { IndexesItem } from './IndexesItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class CollectionItem implements TreeElementWithId {
+export class CollectionItem implements TreeElementWithId, TreeElementWithExperience {
     id: string;
     experience?: Experience;
 
@@ -57,7 +58,7 @@ export class CollectionItem implements TreeElementWithId {
                 ],
                 iconPath: new ThemeIcon('explorer-view-icon'),
             }),
-            new IndexesItem(this.mongoCluster, this.databaseInfo, this.collectionInfo)
+            new IndexesItem(this.mongoCluster, this.databaseInfo, this.collectionInfo),
         ];
     }
 

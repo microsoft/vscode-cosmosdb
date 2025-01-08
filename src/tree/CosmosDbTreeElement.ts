@@ -5,13 +5,10 @@
 
 import { type TreeElementWithId } from '@microsoft/vscode-azext-utils';
 import type * as vscode from 'vscode';
-import { type Experience } from '../AzureDBExperiences';
 
 export interface ExtTreeElementBase extends TreeElementWithId {
     getChildren?(): vscode.ProviderResult<ExtTreeElementBase[]>;
     getTreeItem(): vscode.TreeItem | Thenable<vscode.TreeItem>;
 }
 
-export type CosmosDbTreeElement = TreeElementWithId & {
-    experience?: Experience;
-};
+export type CosmosDbTreeElement = TreeElementWithId;

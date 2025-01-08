@@ -3,19 +3,22 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createGenericElement, type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import { createGenericElement, type TreeElementBase, type TreeElementWithId } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
-import { MongoClustersExprience } from '../../../AzureDBExperiences';
+import { MongoClustersExprience, type Experience } from '../../../AzureDBExperiences';
+import { type TreeElementWithExperience } from '../../../tree/TreeElementWithExperience';
 import { WorkspaceResourceType } from '../../../tree/workspace/sharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../../tree/workspace/sharedWorkspaceStorage';
 import { type MongoClusterModel } from '../MongoClusterModel';
 import { MongoClusterWorkspaceItem } from './MongoClusterWorkspaceItem';
 
-export class MongoDBAccountsWorkspaceItem implements TreeElementBase {
+export class MongoDBAccountsWorkspaceItem implements TreeElementWithId, TreeElementWithExperience {
     id: string;
+    experience?: Experience;
 
     constructor() {
         this.id = `vscode.cosmosdb.workspace.mongoclusters.accounts`;
+        this.experience = MongoClustersExprience;
     }
 
     async getChildren(): Promise<TreeElementBase[]> {

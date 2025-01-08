@@ -14,12 +14,13 @@ import * as vscode from 'vscode';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
+import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { localize } from '../../utils/localize';
 import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersClient';
 import { CollectionItem } from './CollectionItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class DatabaseItem implements TreeElementWithId {
+export class DatabaseItem implements TreeElementWithId, TreeElementWithExperience {
     id: string;
     experience?: Experience;
 

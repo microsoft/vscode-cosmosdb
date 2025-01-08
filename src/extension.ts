@@ -7,6 +7,7 @@
 
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
 import {
+    AzExtTreeItem,
     callWithTelemetryAndErrorHandling,
     createApiProvider,
     createAzExtLogOutputChannel,
@@ -18,10 +19,9 @@ import {
     TreeElementStateManager,
     type apiUtils,
     type AzExtParentTreeItem,
-    type AzExtTreeItem,
     type AzureExtensionApi,
     type IActionContext,
-    type ITreeItemPickerContext
+    type ITreeItemPickerContext,
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import { platform } from 'os';
@@ -60,8 +60,8 @@ import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider'
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { CosmosDBBranchDataProvider } from './tree/CosmosDBBranchDataProvider';
-import { type CosmosDbTreeElement } from './tree/CosmosDbTreeElement';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
+import { isTreeElementWithExperience } from './tree/TreeElementWithExperience';
 import { localize } from './utils/localize';
 
 const cosmosDBTopLevelContextValues: string[] = [
@@ -161,24 +161,27 @@ export async function activateInternal(
         });
         registerCommandWithTreeNodeUnwrapping(
             'azureDatabases.refresh',
-            async (actionContext: IActionContext, node?: AzExtTreeItem) => {
-                if (node) {
-                    await node.refresh(actionContext);
-                } else {
-                    await ext.rgApi.appResourceTree.refresh(actionContext, node);
-                }
-            },
-        );
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            async (actionContext: IActionContext, node?: any) => {
+                if (node instanceof AzExtTreeItem) {
+                    if (node) {
+                        await node.refresh(actionContext);
+                    } else {
+                        await ext.rgApi.appResourceTree.refresh(actionContext, node);
+                    }
 
-        registerCommandWithTreeNodeUnwrapping(
-            'azureDatabases.refresh_v2',
-            (context: IActionContext, node?: CosmosDbTreeElement) => {
-                if (node?.experience) {
-                    context.telemetry.properties.experience = node.experience.api;
+                    return;
                 }
 
-                if (node?.id) {
-                    ext.state.notifyChildrenChanged(node.id);
+                // the node is not an AzExtTreeItem, so we assume it's a TreeElementWithId, etc., based on the V2 of the Tree API from Azure-Resources
+
+                if (isTreeElementWithExperience(node)) {
+                    actionContext.telemetry.properties.experience = node.experience?.api;
+                }
+
+                if (node && typeof node === 'object' && 'id' in node) {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    ext.state.notifyChildrenChanged(node.id as string);
                 }
             },
         );

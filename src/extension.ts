@@ -51,7 +51,6 @@ import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
 import { registerMongoCommands } from './mongo/registerMongoCommands';
 import { setConnectedNode } from './mongo/setConnectedNode';
 import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
-import { type MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
 import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { MongoClustersExtension } from './mongoClusters/MongoClustersExtension';
 import { registerPostgresCommands } from './postgres/commands/registerPostgresCommands';
@@ -215,7 +214,7 @@ export async function activateInternal(
             'cosmosDB.importDocument',
             async (
                 actionContext: IActionContext,
-                selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem,
+                selectedNode: vscode.Uri | DocDBCollectionTreeItem,
                 uris: vscode.Uri[],
             ) => {
                 if (selectedNode instanceof vscode.Uri) {
@@ -230,16 +229,13 @@ export async function activateInternal(
             'cosmosDB.openDocument',
             async (actionContext: IActionContext, node?: DocDBDocumentTreeItem) => {
                 if (!node) {
-                    node = await ext.rgApi.pickAppResource<DocDBDocumentTreeItem>(
-                        actionContext,
-                        {
-                            filter: [cosmosMongoFilter, sqlFilter],
-                            expectedChildContextValue: [
-                                MongoDocumentTreeItem.contextValue,
-                                DocDBDocumentTreeItem.contextValue,
-                            ],
-                        },
-                    );
+                    node = await ext.rgApi.pickAppResource<DocDBDocumentTreeItem>(actionContext, {
+                        filter: [cosmosMongoFilter, sqlFilter],
+                        expectedChildContextValue: [
+                            MongoDocumentTreeItem.contextValue,
+                            DocDBDocumentTreeItem.contextValue,
+                        ],
+                    });
                 }
 
                 // Clear un-uploaded local changes to the document before opening https://github.com/microsoft/vscode-cosmosdb/issues/1619

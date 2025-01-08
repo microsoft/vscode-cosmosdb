@@ -13,8 +13,6 @@ import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemB
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
-import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
-import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import {
     createPostgresConnectionString,
@@ -28,6 +26,10 @@ import { type DatabaseAccountTreeItem, type DatabaseTreeItem, type TreeItemQuery
 import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
+
+/**
+ * TODO: This needs a rewrite to match v2
+ */
 
 export async function findTreeItem(
     query: TreeItemQuery,
@@ -115,9 +117,10 @@ async function searchDbAccounts(
             }
 
             let actual: ParsedConnectionString;
-            if (dbAccount instanceof MongoAccountTreeItem) {
-                actual = await parseMongoConnectionString(dbAccount.connectionString);
-            } else if (dbAccount instanceof DocDBAccountTreeItemBase) {
+            // if (dbAccount instanceof MongoAccountTreeItem) {
+            //     actual = await parseMongoConnectionString(dbAccount.connectionString);
+            // } else
+            if (dbAccount instanceof DocDBAccountTreeItemBase) {
                 actual = parseDocDBConnectionString(dbAccount.connectionString);
             } else if (dbAccount instanceof PostgresServerTreeItem) {
                 actual = dbAccount.partialConnectionString;
@@ -129,10 +132,7 @@ async function searchDbAccounts(
                 if (expected.databaseName) {
                     const dbs = await dbAccount.getCachedChildren(context);
                     for (const db of dbs) {
-                        if (
-                            (db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) &&
-                            expected.databaseName === db.databaseName
-                        ) {
+                        if (db instanceof DocDBDatabaseTreeItemBase && expected.databaseName === db.databaseName) {
                             return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
                         }
                         if (

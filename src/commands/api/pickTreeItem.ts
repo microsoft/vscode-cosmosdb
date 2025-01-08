@@ -12,9 +12,7 @@ import { DocDBDatabaseTreeItem } from '../../docdb/tree/DocDBDatabaseTreeItem';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { GraphDatabaseTreeItem } from '../../graph/tree/GraphDatabaseTreeItem';
-import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
-import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
-import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
+import { type MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
@@ -29,16 +27,17 @@ import { cacheTreeItem } from './apiCache';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
 
+/**
+ * TODO: This needs a rewrite to match v2
+ */
+
 const databaseContextValues = [
-    MongoDatabaseTreeItem.contextValue,
     DocDBDatabaseTreeItem.contextValue,
     GraphDatabaseTreeItem.contextValue,
     PostgresDatabaseTreeItem.contextValue,
 ];
 function getDatabaseContextValue(apiType: AzureDatabasesApiType): string {
     switch (apiType) {
-        case 'Mongo':
-            return MongoDatabaseTreeItem.contextValue;
         case 'SQL':
             return DocDBDatabaseTreeItem.contextValue;
         case 'Graph':
@@ -76,20 +75,17 @@ export async function pickTreeItem(
 
         let parsedCS: ParsedConnectionString;
         let accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem;
-        let databaseNode: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase | PostgresDatabaseTreeItem | undefined;
-        if (pickedItem instanceof MongoAccountTreeItem) {
-            parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
-            accountNode = pickedItem;
-        } else if (pickedItem instanceof DocDBAccountTreeItemBase) {
+        let databaseNode: DocDBDatabaseTreeItemBase | PostgresDatabaseTreeItem | undefined;
+        // if (pickedItem instanceof MongoAccountTreeItem) {
+        //     parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
+        //     accountNode = pickedItem;
+        // } else
+        if (pickedItem instanceof DocDBAccountTreeItemBase) {
             parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
             accountNode = pickedItem;
         } else if (pickedItem instanceof PostgresServerTreeItem) {
             parsedCS = await pickedItem.getFullConnectionString();
             accountNode = pickedItem;
-        } else if (pickedItem instanceof MongoDatabaseTreeItem) {
-            parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
-            accountNode = pickedItem.parent;
-            databaseNode = pickedItem;
         } else if (pickedItem instanceof DocDBDatabaseTreeItemBase) {
             parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
             accountNode = pickedItem.parent;

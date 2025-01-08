@@ -7,7 +7,6 @@
 
 import {
     createGenericElement,
-    DialogResponses,
     type IActionContext,
     type TreeElementBase,
     type TreeElementWithId,
@@ -256,14 +255,15 @@ export class MongoCollectionTreeItem implements TreeElementWithId {
         return { deferToShell: true, result: undefined };
     }
 
-    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
-        const message: string = `Are you sure you want to delete collection '${this.collection.collectionName}'?`;
-        await context.ui.showWarningMessage(
-            message,
-            { modal: true, stepName: 'deleteMongoCollection' },
-            DialogResponses.deleteResponse,
-        );
-        await this.drop();
+    public async deleteTreeItemImpl(_context: IActionContext): Promise<void> {
+        // TODO: this file is about to be deleted
+        // const message: string = `Are you sure you want to delete collection '${this.collection.collectionName}'?`;
+        // await context.ui.showWarningMessage(
+        //     message,
+        //     { modal: true, stepName: 'deleteMongoCollection' },
+        //     DialogResponses.deleteResponse,
+        // );
+        // await this.drop();
     }
 
     private async drop(): Promise<string> {

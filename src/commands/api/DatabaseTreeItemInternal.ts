@@ -12,7 +12,6 @@ import { type DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTree
 import { type DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { type MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
-import { type MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import { type PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { type PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
@@ -26,8 +25,8 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
     constructor(
         parsedCS: ParsedConnectionString,
         databaseName: string,
-        accountNode?: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem,
-        dbNode?: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase | PostgresDatabaseTreeItem,
+        accountNode?: DocDBAccountTreeItemBase | PostgresServerTreeItem,
+        dbNode?: DocDBDatabaseTreeItemBase | PostgresDatabaseTreeItem,
     ) {
         super(parsedCS, accountNode);
         this.databaseName = databaseName;

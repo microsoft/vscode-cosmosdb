@@ -11,7 +11,6 @@ import {
     parseError,
     type AzExtTreeItem,
     type IActionContext,
-    type ICreateChildImplContext,
 } from '@microsoft/vscode-azext-utils';
 import { type MongoClient } from 'mongodb';
 import type * as vscode from 'vscode';
@@ -132,17 +131,17 @@ export class MongoAccountTreeItem extends AzExtParentTreeItem {
         return result ?? [];
     }
 
-    public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDatabaseTreeItem> {
-        const databaseName = await context.ui.showInputBox({
-            placeHolder: 'Database Name',
-            prompt: 'Enter the name of the database',
-            stepName: 'createMongoDatabase',
-            validateInput: validateDatabaseName,
-        });
-        context.showCreatingTreeItem(databaseName);
+    // public async createChildImpl(context: ICreateChildImplContext): Promise<MongoDatabaseTreeItem> {
+    //     const databaseName = await context.ui.showInputBox({
+    //         placeHolder: 'Database Name',
+    //         prompt: 'Enter the name of the database',
+    //         stepName: 'createMongoDatabase',
+    //         validateInput: validateDatabaseName,
+    //     });
+    //     context.showCreatingTreeItem(databaseName);
 
-        return new MongoDatabaseTreeItem(this, databaseName, this.connectionString);
-    }
+    //     return new MongoDatabaseTreeItem(this, databaseName, this.connectionString);
+    // }
 
     public isAncestorOfImpl(contextValue: string): boolean {
         switch (contextValue) {

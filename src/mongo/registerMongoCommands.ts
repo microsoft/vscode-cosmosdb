@@ -14,16 +14,10 @@ import {
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { connectMongoDatabase, loadPersistedMongoDB } from './commands/connectMongoDatabase';
-import { createMongoCollection } from './commands/createMongoCollection';
-import { createMongoDatabase } from './commands/createMongoDatabase';
 import { createMongoSrapbook } from './commands/createMongoScrapbook';
-import { deleteMongoCollection } from './commands/deleteMongoCollection';
-import { deleteMongoDB } from './commands/deleteMongoDatabase';
-import { deleteMongoDocument } from './commands/deleteMongoDocument';
 import { executeAllMongoCommand } from './commands/executeAllMongoCommand';
 import { executeMongoCommand } from './commands/executeMongoCommand';
 import { launchMongoShell } from './commands/launchMongoShell';
-import { openMongoCollection } from './commands/openMongoCollection';
 import { MongoConnectError } from './connectToMongoClient';
 import { MongoDBLanguageClient } from './languageClient';
 import { getAllErrorsFromTextDocument } from './MongoScrapbook';
@@ -51,30 +45,9 @@ export function registerMongoCommands(): void {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.executeMongoCommand', executeMongoCommand);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.executeAllMongoCommands', executeAllMongoCommand);
 
-    // #region Account command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createMongoDatabase', createMongoDatabase);
-
-    // #endregion
-
     // #region Database command
 
     registerCommandWithTreeNodeUnwrapping('cosmosDB.connectMongoDB', connectMongoDatabase);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createMongoCollection', createMongoCollection);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteMongoDB', deleteMongoDB);
-
-    // #endregion
-
-    // #region Collection command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.openCollection', openMongoCollection);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteMongoCollection', deleteMongoCollection);
-
-    // #endregion
-
-    // #region Document command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteMongoDocument', deleteMongoDocument);
 
     // #endregion
 }

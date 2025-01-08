@@ -19,7 +19,7 @@ import { getRootPath } from '../utils/workspacUtils';
 export async function importDocuments(
     context: IActionContext,
     uris: vscode.Uri[] | undefined,
-    collectionNode: MongoCollectionTreeItem | DocDBCollectionTreeItem | CollectionItem | undefined,
+    collectionNode: DocDBCollectionTreeItem | CollectionItem | undefined,
 ): Promise<void> {
     if (!uris) {
         uris = await askForDocuments(context);
@@ -39,9 +39,9 @@ export async function importDocuments(
         ext.outputChannel.show();
     }
     if (!collectionNode) {
-        collectionNode = await ext.rgApi.pickAppResource<MongoCollectionTreeItem | DocDBCollectionTreeItem>(context, {
+        collectionNode = await ext.rgApi.pickAppResource<DocDBCollectionTreeItem>(context, {
             filter: [cosmosMongoFilter, sqlFilter],
-            expectedChildContextValue: [MongoCollectionTreeItem.contextValue, DocDBCollectionTreeItem.contextValue],
+            expectedChildContextValue: [DocDBCollectionTreeItem.contextValue],
         });
     }
 

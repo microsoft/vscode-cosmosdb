@@ -3,21 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    AzExtTreeItem,
-    DialogResponses,
-    type IActionContext,
-    type TreeItemIconPath,
-} from '@microsoft/vscode-azext-utils';
+import { AzExtTreeItem, type IActionContext, type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import { EJSON } from 'bson';
 import { omit } from 'lodash';
-import {
-    type Collection,
-    type DeleteResult,
-    type Document as MongoDocument,
-    type ObjectId,
-    type UpdateResult,
-} from 'mongodb';
+import { type Collection, type Document as MongoDocument, type ObjectId, type UpdateResult } from 'mongodb';
 import * as vscode from 'vscode';
 import { type IEditableTreeItem } from '../../DatabasesFileSystem';
 import { ext } from '../../extensionVariables';
@@ -90,18 +79,18 @@ export class MongoDocumentTreeItem extends AzExtTreeItem implements IEditableTre
         ext.fileSystem.fireChangedEvent(this);
     }
 
-    public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
-        const message: string = `Are you sure you want to delete document '${this._label}'?`;
-        await context.ui.showWarningMessage(
-            message,
-            { modal: true, stepName: 'deleteMongoDocument' },
-            DialogResponses.deleteResponse,
-        );
-        const deleteResult: DeleteResult = await this.parent.collection.deleteOne({ _id: this.document._id });
-        if (deleteResult.deletedCount !== 1) {
-            throw new Error(`Failed to delete document with _id '${this.document._id}'.`);
-        }
-    }
+    // public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
+    //     const message: string = `Are you sure you want to delete document '${this._label}'?`;
+    //     await context.ui.showWarningMessage(
+    //         message,
+    //         { modal: true, stepName: 'deleteMongoDocument' },
+    //         DialogResponses.deleteResponse,
+    //     );
+    //     const deleteResult: DeleteResult = await this.parent.collection.deleteOne({ _id: this.document._id });
+    //     if (deleteResult.deletedCount !== 1) {
+    //         throw new Error(`Failed to delete document with _id '${this.document._id}'.`);
+    //     }
+    // }
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call

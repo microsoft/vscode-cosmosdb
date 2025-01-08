@@ -228,9 +228,9 @@ export async function activateInternal(
         registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', cosmosDBCopyConnectionString);
         registerCommandWithTreeNodeUnwrapping(
             'cosmosDB.openDocument',
-            async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
+            async (actionContext: IActionContext, node?: DocDBDocumentTreeItem) => {
                 if (!node) {
-                    node = await ext.rgApi.pickAppResource<MongoDocumentTreeItem | DocDBDocumentTreeItem>(
+                    node = await ext.rgApi.pickAppResource<DocDBDocumentTreeItem>(
                         actionContext,
                         {
                             filter: [cosmosMongoFilter, sqlFilter],

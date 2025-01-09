@@ -43,6 +43,14 @@ export abstract class MongoClusterItemBase implements TreeElementWithId, TreeEle
     protected abstract authenticateAndConnect(): Promise<MongoClustersClient | null>;
 
     /**
+     * Abstract method to get the connection string for the MongoDB cluster.
+     * Must be implemented by subclasses.
+     *
+     * @returns A promise that resolves to the connection string if successful; otherwise, undefined.
+     */
+    public abstract discoverConnectionString(): Promise<string | undefined>;
+
+    /**
      * Authenticates and connects to the cluster to list all available databases.
      * Here, the MongoDB client is created and cached for future use.
      *

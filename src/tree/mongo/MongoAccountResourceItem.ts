@@ -31,14 +31,14 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
 
     constructor(
         account: MongoAccountModel,
-        protected experience: Experience,
+        readonly experience: Experience,
         readonly databaseAccount?: DatabaseAccountGetResults, // TODO: exploring during v1->v2 migration
         readonly isEmulator?: boolean, // TODO: exploring during v1->v2 migration
     ) {
         super(account);
     }
 
-    async discoverConnectionStringFromAccountInfo(): Promise<string | undefined> {
+    async discoverConnectionString(): Promise<string | undefined> {
         const result = await callWithTelemetryAndErrorHandling(
             'cosmosDB.mongo.discoverConnectionString',
             async (context: IActionContext) => {
@@ -88,7 +88,7 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
             );
 
             if (this.account.subscription) {
-                const cString = await this.discoverConnectionStringFromAccountInfo();
+                const cString = await this.discoverConnectionString();
                 this.account.connectionString = cString;
             }
 

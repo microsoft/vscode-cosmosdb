@@ -31,6 +31,11 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
         super(mongoCluster);
     }
 
+    // eslint-disable-next-line @typescript-eslint/require-await
+    public async discoverConnectionString(): Promise<string | undefined> {
+        return this.mongoCluster.connectionString;
+    }
+
     /**
      * Authenticates and connects to the MongoDB cluster.
      * @param context The action context.

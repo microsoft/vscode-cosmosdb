@@ -586,6 +586,11 @@
             },
             {
                 "category": "MongoDB Clusters",
+                "command": "command.mongoClusters.copyConnectionString",
+                "title": "Copy Connection String"
+            },
+            {
+                "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.exportDocuments",
                 "title": "Export Documents from Collection..."
             },
@@ -1090,6 +1095,11 @@
                 {
                     "command": "command.mongoClusters.createDatabase",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.mongoCluster/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "group": "1@1"
+                },
+                {
+                    "command": "command.mongoClusters.copyConnectionString",
+                    "when": "viewItem =~ /mongodb.item.account/i || viewItem =~ /treeitem.mongoCluster/i && viewItem =~ /(mongocluster)/i",
                     "group": "1@1"
                 },
                 {

@@ -26,6 +26,7 @@ export abstract class DocumentDBContainerResourceItem implements CosmosDBTreeEle
         const result = await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
             context.telemetry.properties.experience = this.experience.api;
             context.telemetry.properties.parentContext = this.contextValue;
+            context.errorHandling.rethrow = true;
 
             const triggers = await this.getChildrenTriggersImpl();
             const storedProcedures = await this.getChildrenStoredProceduresImpl();

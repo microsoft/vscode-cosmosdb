@@ -28,6 +28,7 @@ export abstract class DocumentDBTriggersResourceItem implements CosmosDBTreeElem
         const result = await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
             context.telemetry.properties.experience = this.experience.api;
             context.telemetry.properties.parentContext = this.contextValue;
+            context.errorHandling.rethrow = true;
 
             const { endpoint, credentials, isEmulator } = this.model.accountInfo;
             const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);

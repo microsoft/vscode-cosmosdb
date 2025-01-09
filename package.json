@@ -608,6 +608,11 @@
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.removeWorkspaceConnection",
                 "title": "Remove Connection..."
+            },
+            {
+                "category": "MongoDB Clusters",
+                "command": "command.mongoClusters.openColllection",
+                "title": "Open Collection"
             }
         ],
         "submenus": [
@@ -1078,11 +1083,13 @@
                 },
                 {
                     "command": "command.mongoClusters.dropCollection",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i"
+                    "when": "viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "group": "3@1"
                 },
                 {
                     "command": "command.mongoClusters.dropDatabase",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.database/i && viewItem =~ /(mongocluster|mongodb)/i"
+                    "when": "viewItem =~ /treeitem.database/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "group": "1@1"
                 },
                 {
                     "command": "command.mongoClusters.removeWorkspaceConnection",
@@ -1090,52 +1097,63 @@
                 },
                 {
                     "command": "command.mongoClusters.createCollection",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.database/i && viewItem =~ /(mongocluster|mongodb)/i"
+                    "when": "viewItem =~ /treeitem.database/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "group": "1@1"
                 },
                 {
                     "command": "command.mongoClusters.createDatabase",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.mongoCluster/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "when": "viewItem =~ /treeitem.mongoCluster|mongodb.item.account/i",
                     "group": "1@1"
                 },
                 {
                     "command": "command.mongoClusters.copyConnectionString",
                     "when": "viewItem =~ /mongodb.item.account/i || viewItem =~ /treeitem.mongoCluster/i && viewItem =~ /(mongocluster)/i",
-                    "group": "1@1"
+                    "group": "2@1"
                 },
                 {
                     "command": "command.mongoClusters.importDocuments",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
-                    "group": "1@1"
+                    "group": "2@1"
                 },
                 {
                     "command": "command.mongoClusters.exportDocuments",
                     "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
-                    "group": "1@2"
+                    "group": "2@2"
                 },
                 {
-                    "command": "command.mongoClusters.createDocument",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "command": "command.mongoClusters.openColllection",
+                    "when": "viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
                     "group": "1@1"
                 },
                 {
+                    "command": "command.mongoClusters.createDocument",
+                    "when": "viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "group": "1@2"
+                },
+                {
                     "command": "command.mongoClusters.launchShell",
-                    "when": "vscodeDatabases.mongoClustersSupportEnabled && viewItem =~ /treeitem.(mongoCluster|database|collection)/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "when": "viewItem =~  /treeitem.mongoCluster|mongodb.item.account/i",
                     "group": "2@1"
                 },
                 {
-                    "command": "azureDatabases.refresh",
-                    "when" : "viewItem =~ /treeitem.mongocluster/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "command": "command.mongoClusters.launchShell",
+                    "when": "viewItem =~ /treeitem.database/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "group": "2@1"
+                },
+                {
+                    "command": "command.mongoClusters.launchShell",
+                    "when": "viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
                     "group": "4@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
                     "when" : "viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
-                    "group": "4@1"
+                    "group": "5@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
                     "when" : "viewItem =~ /treeitem.database/i && viewItem =~ /(mongocluster|mongodb)/i",
-                    "group": "4@1"
+                    "group": "3@1"
                 },
                 {
                     "command": "azureDatabases.refresh",

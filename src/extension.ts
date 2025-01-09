@@ -61,11 +61,11 @@ import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { CosmosDBBranchDataProvider } from './tree/CosmosDBBranchDataProvider';
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/CosmosDBWorkspaceBranchDataProvider';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
+import { isTreeElementWithExperience } from './tree/TreeElementWithExperience';
 import {
     SharedWorkspaceResourceProvider,
     WorkspaceResourceType,
 } from './tree/workspace/SharedWorkspaceResourceProvider';
-import { isTreeElementWithExperience } from './tree/TreeElementWithExperience';
 import { localize } from './utils/localize';
 
 const cosmosDBTopLevelContextValues: string[] = [

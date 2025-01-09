@@ -4,12 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
-import {
-    callWithTelemetryAndErrorHandling,
-    nonNullProp,
-    type IActionContext,
-    type TreeElementWithId,
-} from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, nonNullProp, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import ConnectionString from 'mongodb-connection-string-url';
 import { type Experience } from '../../AzureDBExperiences';
@@ -20,9 +15,7 @@ import { DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type MongoClusterModel } from '../../mongoClusters/tree/MongoClusterModel';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { DatabaseItem } from './DatabaseItem';
-import { type IDatabaseInfo } from './IDatabaseInfo';
+import { type CosmosDBTreeElement, type ExtTreeElementBase } from '../CosmosDBTreeElement';
 import { type MongoAccountModel } from './MongoAccountModel';
 
 /**
@@ -78,6 +71,8 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
 
     async getChildren(): Promise<CosmosDBTreeElement[]> {
         ext.outputChannel.appendLine(`Cosmos DB for MongoDB (RU): Loading details for "${this.account.name}"`);
+
+        let mongoClient: MongoClustersClient | null = null;
 
         // Check if credentials are cached, and return the cached client if available
         if (CredentialCache.hasCredentials(this.id)) {
@@ -151,7 +146,7 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
                 empty: database.empty,
             };
 
-            return new DatabaseItem(clusterInfo, databaseInfo);
+            return new DatabaseItem(clusterInfo, databaseInfo) as ExtTreeElementBase;
         });
 
         // } catch (error) {

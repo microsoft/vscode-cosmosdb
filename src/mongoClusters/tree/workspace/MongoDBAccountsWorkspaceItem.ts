@@ -5,12 +5,10 @@
 
 import { createGenericElement, type TreeElementBase, type TreeElementWithId } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
-import { WorkspaceResourceType } from '../../../tree/workspace/SharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage } from '../../../tree/workspace/SharedWorkspaceStorage';
 import { MongoClustersExprience, type Experience } from '../../../AzureDBExperiences';
 import { type TreeElementWithExperience } from '../../../tree/TreeElementWithExperience';
-import { WorkspaceResourceType } from '../../../tree/workspace/sharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage } from '../../../tree/workspace/sharedWorkspaceStorage';
+import { WorkspaceResourceType } from '../../../tree/workspace/SharedWorkspaceResourceProvider';
+import { SharedWorkspaceStorage } from '../../../tree/workspace/SharedWorkspaceStorage';
 import { type MongoClusterModel } from '../MongoClusterModel';
 import { MongoClusterWorkspaceItem } from './MongoClusterWorkspaceItem';
 

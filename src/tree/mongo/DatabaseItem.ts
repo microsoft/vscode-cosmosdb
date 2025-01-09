@@ -5,11 +5,11 @@
 
 import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
-import { type CosmosDbTreeElement } from '../CosmosDbTreeElement';
+import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type IDatabaseInfo } from './IDatabaseInfo';
 import { type MongoAccountModel } from './MongoAccountModel';
 
-export class DatabaseItem implements CosmosDbTreeElement {
+export class DatabaseItem implements CosmosDBTreeElement {
     id: string;
 
     constructor(
@@ -19,7 +19,7 @@ export class DatabaseItem implements CosmosDbTreeElement {
         this.id = `${account.id}/${databaseInfo.name}`;
     }
 
-    async getChildren(): Promise<CosmosDbTreeElement[]> {
+    async getChildren(): Promise<CosmosDBTreeElement[]> {
         return [
             createGenericElement({
                 contextValue: 'mongoClusters.item.no-collection',
@@ -27,7 +27,7 @@ export class DatabaseItem implements CosmosDbTreeElement {
                 label: 'Create collection...',
                 commandId: 'command.mongoClusters.createCollection',
                 commandArgs: [this],
-            }) as CosmosDbTreeElement,
+            }) as CosmosDBTreeElement,
         ];
     }
     // const client: MongoClustersClient = await MongoClustersClient.getClient(this.mongoCluster.id);

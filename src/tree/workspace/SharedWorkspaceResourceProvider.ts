@@ -32,6 +32,7 @@ import type * as vscode from 'vscode';
  */
 export enum WorkspaceResourceType {
     MongoClusters = 'vscode.cosmosdb.workspace.mongoclusters-resourceType',
+    AttachedAccounts = 'vscode.cosmosdb.workspace.attachedaccounts-resourceType',
 }
 
 /**
@@ -56,6 +57,11 @@ export class SharedWorkspaceResourceProvider implements WorkspaceResourceProvide
                 resourceType: WorkspaceResourceType.MongoClusters,
                 id: 'vscode.cosmosdb.workspace.mongoclusters',
                 name: 'MongoDB Cluster Accounts', // this name will be displayed in the workspace view, when no WorkspaceResourceBranchDataProvider is registered
+            },
+            {
+                resourceType: WorkspaceResourceType.AttachedAccounts,
+                id: 'vscode.cosmosdb.workspace.attachedaccounts',
+                name: 'Attached Database Accounts',
             },
         ];
     }

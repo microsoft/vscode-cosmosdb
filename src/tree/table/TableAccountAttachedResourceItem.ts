@@ -9,12 +9,12 @@ import {
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import { type Experience } from '../../AzureDBExperiences';
+import { type CosmosDBAttachedAccountModel } from '../attached/CosmosDBAttachedAccountModel';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { DocumentDBAccountResourceItem } from '../docdb/DocumentDBAccountResourceItem';
-import { type DocumentDBAccountModel } from '../docdb/models/DocumentDBAccountModel';
+import { DocumentDBAccountAttachedResourceItem } from '../docdb/DocumentDBAccountAttachedResourceItem';
 
-export class TableAccountResourceItem extends DocumentDBAccountResourceItem {
-    constructor(account: DocumentDBAccountModel, experience: Experience) {
+export class TableAccountAttachedResourceItem extends DocumentDBAccountAttachedResourceItem {
+    constructor(account: CosmosDBAttachedAccountModel, experience: Experience) {
         super(account, experience);
     }
 

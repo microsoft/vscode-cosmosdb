@@ -19,7 +19,7 @@ import { connectToMongoClient } from '../../mongo/connectToMongoClient';
 import { getDatabaseNameFromConnectionString } from '../../mongo/mongoConnectionStrings';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
-import { type CosmosDbTreeElement } from '../CosmosDbTreeElement';
+import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { DatabaseItem } from './DatabaseItem';
 import { type IDatabaseInfo } from './IDatabaseInfo';
 import { type MongoAccountModel } from './MongoAccountModel';
@@ -73,7 +73,7 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
         return result ?? undefined;
     }
 
-    async getChildren(): Promise<CosmosDbTreeElement[]> {
+    async getChildren(): Promise<CosmosDBTreeElement[]> {
         ext.outputChannel.appendLine(`Cosmos DB for MongoDB (RU): Loading details for "${this.account.name}"`);
 
         let mongoClient: MongoClient | undefined;

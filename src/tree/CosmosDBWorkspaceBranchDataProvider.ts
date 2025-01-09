@@ -6,19 +6,12 @@
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type BranchDataProvider } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
-import { API, tryGetExperience } from '../AzureDBExperiences';
-import { databaseAccountType } from '../constants';
 import { ext } from '../extensionVariables';
-import { nonNullProp } from '../utils/nonNull';
-import { type CosmosAccountModel, type CosmosDBResource } from './CosmosAccountModel';
+import { type CosmosDBResource } from './CosmosAccountModel';
 import { type CosmosDBTreeElement } from './CosmosDBTreeElement';
-import { GraphAccountResourceItem } from './graph/GraphAccountResourceItem';
-import { type MongoAccountModel } from './mongo/MongoAccountModel';
-import { MongoAccountResourceItem } from './mongo/MongoAccountResourceItem';
-import { NoSqlAccountResourceItem } from './nosql/NoSqlAccountResourceItem';
-import { TableAccountResourceItem } from './table/TableAccountResourceItem';
+import { CosmosDBAttachedAccountsResourceItem } from './attached/CosmosDBAttachedAccountsResourceItem';
 
-export class CosmosDBBranchDataProvider
+export class CosmosDBWorkspaceBranchDataProvider
     extends vscode.Disposable
     implements BranchDataProvider<CosmosDBResource, CosmosDBTreeElement>
 {
@@ -37,10 +30,11 @@ export class CosmosDBBranchDataProvider
      */
     async getChildren(element: CosmosDBTreeElement): Promise<CosmosDBTreeElement[]> {
         const result = await callWithTelemetryAndErrorHandling(
-            'CosmosDBBranchDataProvider.getChildren',
+            'CosmosDBWorkspaceBranchDataProvider.getChildren',
             async (context: IActionContext) => {
                 const elementTreeItem = await element.getTreeItem();
 
+                context.telemetry.properties.view = 'workspace';
                 context.telemetry.properties.parentContext = elementTreeItem.contextValue ?? 'unknown';
 
                 return (await element.getChildren?.())?.map((child) => {
@@ -56,50 +50,11 @@ export class CosmosDBBranchDataProvider
 
     /**
      * This function is being called when the resource tree is being built, it is called for every top level of resources.
-     * @param resource
      */
-    async getResourceItem(resource: CosmosDBResource): Promise<CosmosDBTreeElement> {
+    async getResourceItem(): Promise<CosmosDBTreeElement> {
         const resourceItem = await callWithTelemetryAndErrorHandling(
-            'CosmosDBBranchDataProvider.getResourceItem',
-            async (context: IActionContext) => {
-                const id = nonNullProp(resource, 'id');
-                const name = nonNullProp(resource, 'name');
-                const type = nonNullProp(resource, 'type');
-
-                context.valuesToMask.push(id);
-                context.valuesToMask.push(name);
-
-                if (type.toLocaleLowerCase() === databaseAccountType.toLocaleLowerCase()) {
-                    const accountModel = resource as CosmosAccountModel;
-                    const experience = tryGetExperience(resource);
-
-                    if (experience?.api === API.MongoDB) {
-                        return new MongoAccountResourceItem(accountModel as MongoAccountModel, resource.subscription);
-                    }
-
-                    if (experience?.api === API.Cassandra) {
-                        return new NoSqlAccountResourceItem(accountModel, experience);
-                    }
-
-                    if (experience?.api === API.Core) {
-                        return new NoSqlAccountResourceItem(accountModel, experience);
-                    }
-
-                    if (experience?.api === API.Graph) {
-                        return new GraphAccountResourceItem(accountModel, experience);
-                    }
-
-                    if (experience?.api === API.Table) {
-                        return new TableAccountResourceItem(accountModel, experience);
-                    }
-
-                    // Unknown experience
-                } else {
-                    // Unknown resource type
-                }
-
-                return null as unknown as CosmosDBTreeElement;
-            },
+            'CosmosDBWorkspaceBranchDataProvider.getResourceItem',
+            () => new CosmosDBAttachedAccountsResourceItem(),
         );
 
         if (resourceItem) {

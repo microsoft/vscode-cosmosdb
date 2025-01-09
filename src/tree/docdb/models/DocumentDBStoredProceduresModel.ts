@@ -3,6 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import  { type CosmosAccountModel } from '../CosmosAccountModel';
+import { type ContainerDefinition, type DatabaseDefinition, type Resource } from '@azure/cosmos';
+import { type AccountInfo } from '../AccountInfo';
 
-export type GraphAccountModel = CosmosAccountModel;
+export type DocumentDBStoredProceduresModel = {
+    accountInfo: AccountInfo;
+    database: DatabaseDefinition & Resource;
+    container: ContainerDefinition & Resource;
+};

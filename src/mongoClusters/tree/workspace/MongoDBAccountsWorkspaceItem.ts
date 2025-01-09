@@ -5,8 +5,8 @@
 
 import { createGenericElement, type TreeElementBase } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
-import { WorkspaceResourceType } from '../../../tree/workspace/sharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage } from '../../../tree/workspace/sharedWorkspaceStorage';
+import { WorkspaceResourceType } from '../../../tree/workspace/SharedWorkspaceResourceProvider';
+import { SharedWorkspaceStorage } from '../../../tree/workspace/SharedWorkspaceStorage';
 import { type MongoClusterModel } from '../MongoClusterModel';
 import { MongoClusterWorkspaceItem } from './MongoClusterWorkspaceItem';
 

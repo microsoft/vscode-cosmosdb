@@ -18,10 +18,7 @@ import {
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
-import {
-    SharedWorkspaceResourceProvider,
-    WorkspaceResourceType,
-} from '../tree/workspace/sharedWorkspaceResourceProvider';
+import { WorkspaceResourceType } from '../tree/workspace/SharedWorkspaceResourceProvider';
 import { addWorkspaceConnection } from './commands/addWorkspaceConnection';
 import { createCollection } from './commands/createCollection';
 import { createDatabase } from './commands/createDatabase';
@@ -71,8 +68,9 @@ export class MongoClustersExtension implements vscode.Disposable {
                     ext.mongoClustersBranchDataProvider,
                 );
 
-                ext.workspaceDataProvider = new SharedWorkspaceResourceProvider();
-                ext.rgApiV2.resources.registerWorkspaceResourceProvider(ext.workspaceDataProvider);
+                // Moved to extension.ts
+                // ext.workspaceDataProvider = new SharedWorkspaceResourceProvider();
+                // ext.rgApiV2.resources.registerWorkspaceResourceProvider(ext.workspaceDataProvider);
 
                 ext.mongoClustersWorkspaceBranchDataProvider = new MongoClustersWorkspaceBranchDataProvider();
                 ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(

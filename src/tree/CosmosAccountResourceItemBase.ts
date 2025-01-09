@@ -7,10 +7,11 @@ import * as vscode from 'vscode';
 import { type TreeItem } from 'vscode';
 import { getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
 import { type CosmosAccountModel } from './CosmosAccountModel';
-import { type CosmosDbTreeElement } from './CosmosDbTreeElement';
+import { type CosmosDBTreeElement } from './CosmosDBTreeElement';
 
-export abstract class CosmosAccountResourceItemBase implements CosmosDbTreeElement {
+export abstract class CosmosAccountResourceItemBase implements CosmosDBTreeElement {
     public id: string;
+    public contextValue: string = 'cosmosDB.item.account';
 
     protected constructor(protected readonly account: CosmosAccountModel) {
         this.id = account.id ?? '';
@@ -20,7 +21,7 @@ export abstract class CosmosAccountResourceItemBase implements CosmosDbTreeEleme
      * Returns the children of the cluster.
      * @returns The children of the cluster.
      */
-    getChildren(): Promise<CosmosDbTreeElement[]> {
+    getChildren(): Promise<CosmosDBTreeElement[]> {
         return Promise.resolve([]);
     }
 

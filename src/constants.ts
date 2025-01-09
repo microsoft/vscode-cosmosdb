@@ -153,3 +153,5 @@ export const postgresFlexibleFilter = {
 export const postgresSingleFilter = {
     type: 'Microsoft.DBForPostgreSQL/servers',
 };
+
+export const DocumentDBHiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts'];

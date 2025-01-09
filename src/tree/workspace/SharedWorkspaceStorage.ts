@@ -25,7 +25,7 @@ export type SharedWorkspaceStorageItem = {
     /**
      * Optional properties associated with the item.
      */
-    properties?: Record<string, string>;
+    properties?: Record<string, string | boolean>;
 
     /**
      * Optional array of secrets associated with the item.

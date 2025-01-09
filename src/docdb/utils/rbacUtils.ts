@@ -7,10 +7,12 @@ import { type SqlRoleAssignmentCreateUpdateParameters } from '@azure/arm-cosmosd
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import {
     callWithTelemetryAndErrorHandling,
+    createSubscriptionContext,
     type IActionContext,
     type IAzureMessageOptions,
     type ISubscriptionContext,
 } from '@microsoft/vscode-azext-utils';
+import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 import { createCosmosDBClient } from '../../utils/azureClients';
@@ -35,6 +37,39 @@ export async function ensureRbacPermission(docDbItem: DocDBAccountTreeItemBase, 
                     resourceGroup,
                     context,
                     docDbItem.subscription,
+                );
+                //send duration of the previous call (in seconds) in addition to the duration of the whole event including user prompt
+                context.telemetry.measurements['createRoleAssignment'] = (Date.now() - start) / 1000;
+
+                return true;
+            }
+            return false;
+        })) ?? false
+    );
+}
+
+export async function ensureRbacPermissionV2(
+    fullId: string,
+    subscription: AzureSubscription,
+    principalId: string,
+): Promise<boolean> {
+    return (
+        (await callWithTelemetryAndErrorHandling('cosmosDB.addMissingRbacRole', async (context: IActionContext) => {
+            context.errorHandling.suppressDisplay = false;
+            context.errorHandling.rethrow = false;
+
+            const subscriptionContext = createSubscriptionContext(subscription);
+            const accountName: string = getDatabaseAccountNameFromId(fullId);
+            if (await askForRbacPermissions(accountName, subscriptionContext.subscriptionDisplayName, context)) {
+                context.telemetry.properties.lastStep = 'addRbacContributorPermission';
+                const resourceGroup: string = getResourceGroupFromId(fullId);
+                const start: number = Date.now();
+                await addRbacContributorPermission(
+                    accountName,
+                    principalId,
+                    resourceGroup,
+                    context,
+                    subscriptionContext,
                 );
                 //send duration of the previous call (in seconds) in addition to the duration of the whole event including user prompt
                 context.telemetry.measurements['createRoleAssignment'] = (Date.now() - start) / 1000;

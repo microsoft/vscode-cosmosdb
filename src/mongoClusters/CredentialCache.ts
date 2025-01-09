@@ -7,7 +7,7 @@ import { addAuthenticationDataToConnectionString } from './utils/connectionStrin
 
 export interface MongoClustersCredentials {
     mongoClusterId: string;
-    connectionStringWithPassword?: string; // wipe it after use
+    connectionStringWithPassword?: string;
     connectionString: string;
     connectionUser: string;
 }

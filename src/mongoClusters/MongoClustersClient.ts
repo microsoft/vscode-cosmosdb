@@ -130,6 +130,10 @@ export class MongoClustersClient {
         return CredentialCache.getCredentials(this._credentialId)?.connectionString;
     }
 
+    getConnectionStringWithPassword() {
+        return CredentialCache.getConnectionStringWithPassword(this._credentialId);
+    }
+
     async listDatabases(): Promise<DatabaseItemModel[]> {
         const rawDatabases: ListDatabasesResult = await this._mongoClient.db().admin().listDatabases();
         const databases: DatabaseItemModel[] = rawDatabases.databases.filter(

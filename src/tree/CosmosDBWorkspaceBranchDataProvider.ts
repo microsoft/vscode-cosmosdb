@@ -3,10 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import {
+    callWithTelemetryAndErrorHandling,
+    createGenericElement,
+    type IActionContext,
+    parseError,
+} from '@microsoft/vscode-azext-utils';
 import { type BranchDataProvider } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import { localize } from '../utils/localize';
 import { type CosmosDBResource } from './CosmosAccountModel';
 import { type CosmosDBTreeElement } from './CosmosDBTreeElement';
 import { CosmosDBAttachedAccountsResourceItem } from './attached/CosmosDBAttachedAccountsResourceItem';
@@ -29,23 +35,29 @@ export class CosmosDBWorkspaceBranchDataProvider
      * This function is called for every element in the tree when expanding, the element being expanded is being passed as an argument
      */
     async getChildren(element: CosmosDBTreeElement): Promise<CosmosDBTreeElement[]> {
-        const result = await callWithTelemetryAndErrorHandling(
-            'CosmosDBWorkspaceBranchDataProvider.getChildren',
-            async (context: IActionContext) => {
-                const elementTreeItem = await element.getTreeItem();
+        try {
+            const result = await callWithTelemetryAndErrorHandling(
+                'CosmosDBWorkspaceBranchDataProvider.getChildren',
+                async (context: IActionContext) => {
+                    context.telemetry.properties.view = 'workspace';
 
-                context.telemetry.properties.view = 'workspace';
-                context.telemetry.properties.parentContext = elementTreeItem.contextValue ?? 'unknown';
+                    return (await element.getChildren?.())?.map((child) => {
+                        return ext.state.wrapItemInStateHandling(child, (child: CosmosDBTreeElement) =>
+                            this.refresh(child),
+                        ) as CosmosDBTreeElement;
+                    });
+                },
+            );
 
-                return (await element.getChildren?.())?.map((child) => {
-                    return ext.state.wrapItemInStateHandling(child, (child: CosmosDBTreeElement) =>
-                        this.refresh(child),
-                    ) as CosmosDBTreeElement;
-                });
-            },
-        );
-
-        return result ?? [];
+            return result ?? [];
+        } catch (error) {
+            return [
+                createGenericElement({
+                    contextValue: 'cosmosDB.workspace.item.error',
+                    label: localize('Error: {0}', parseError(error).message),
+                }) as CosmosDBTreeElement,
+            ];
+        }
     }
 
     /**

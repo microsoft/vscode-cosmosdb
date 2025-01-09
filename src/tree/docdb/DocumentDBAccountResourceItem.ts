@@ -37,6 +37,7 @@ export abstract class DocumentDBAccountResourceItem implements CosmosDBTreeEleme
         const result = await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
             context.telemetry.properties.experience = this.experience.api;
             context.telemetry.properties.parentContext = this.contextValue;
+            context.errorHandling.rethrow = true;
 
             const accountInfo = await this.getAccountInfo(context, this.account);
             const cosmosClient = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, false);

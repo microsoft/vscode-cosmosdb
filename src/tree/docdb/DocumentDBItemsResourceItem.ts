@@ -37,6 +37,7 @@ export abstract class DocumentDBItemsResourceItem implements CosmosDBTreeElement
         const result = await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
             context.telemetry.properties.experience = this.experience.api;
             context.telemetry.properties.parentContext = this.contextValue;
+            context.errorHandling.rethrow = true;
 
             if (this.iterator && this.cachedItems.length > 0) {
                 // ignore

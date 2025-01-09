@@ -3,12 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import {
+    callWithTelemetryAndErrorHandling,
+    createGenericElement,
+    parseError,
+    type IActionContext,
+} from '@microsoft/vscode-azext-utils';
 import { type BranchDataProvider } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { API, tryGetExperience } from '../AzureDBExperiences';
 import { databaseAccountType } from '../constants';
 import { ext } from '../extensionVariables';
+import { localize } from '../utils/localize';
 import { nonNullProp } from '../utils/nonNull';
 import { type CosmosAccountModel, type CosmosDBResource } from './CosmosAccountModel';
 import { type CosmosDBTreeElement } from './CosmosDBTreeElement';
@@ -36,22 +42,31 @@ export class CosmosDBBranchDataProvider
      * This function is called for every element in the tree when expanding, the element being expanded is being passed as an argument
      */
     async getChildren(element: CosmosDBTreeElement): Promise<CosmosDBTreeElement[]> {
-        const result = await callWithTelemetryAndErrorHandling(
-            'CosmosDBBranchDataProvider.getChildren',
-            async (context: IActionContext) => {
-                const elementTreeItem = await element.getTreeItem();
+        try {
+            const result = await callWithTelemetryAndErrorHandling(
+                'CosmosDBBranchDataProvider.getChildren',
+                async (context: IActionContext) => {
+                    context.errorHandling.suppressDisplay = true;
+                    context.errorHandling.rethrow = true;
+                    context.errorHandling.forceIncludeInReportIssueCommand = true;
 
-                context.telemetry.properties.parentContext = elementTreeItem.contextValue ?? 'unknown';
+                    return (await element.getChildren?.())?.map((child) => {
+                        return ext.state.wrapItemInStateHandling(child, (child: CosmosDBTreeElement) =>
+                            this.refresh(child),
+                        ) as CosmosDBTreeElement;
+                    });
+                },
+            );
 
-                return (await element.getChildren?.())?.map((child) => {
-                    return ext.state.wrapItemInStateHandling(child, (child: CosmosDBTreeElement) =>
-                        this.refresh(child),
-                    ) as CosmosDBTreeElement;
-                });
-            },
-        );
-
-        return result ?? [];
+            return result ?? [];
+        } catch (error) {
+            return [
+                createGenericElement({
+                    contextValue: 'cosmosDB.item.error',
+                    label: localize('Error: {0}', parseError(error).message),
+                }) as CosmosDBTreeElement,
+            ];
+        }
     }
 
     /**

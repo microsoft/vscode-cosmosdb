@@ -12,6 +12,7 @@ import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { type CosmosDBCredential, type CosmosDBKeyCredential, getCosmosClient } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
+import { localize } from '../../utils/localize';
 import { type CosmosDBAttachedAccountModel } from '../attached/CosmosDBAttachedAccountModel';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type AccountInfo } from './AccountInfo';
@@ -62,7 +63,7 @@ export abstract class DocumentDBAccountAttachedResourceItem implements CosmosDBT
         const isEmulator = account.isEmulator;
         const parsedCS = parseDocDBConnectionString(account.connectionString);
         const documentEndpoint = parsedCS.documentEndpoint;
-        const credentials = await this.getCredentials(account.connectionString);
+        const credentials = await this.getCredentials(account);
 
         return {
             credentials,
@@ -96,7 +97,7 @@ export abstract class DocumentDBAccountAttachedResourceItem implements CosmosDBT
         }
     }
 
-    protected async getCredentials(connectionString: string): Promise<CosmosDBCredential[]> {
+    protected async getCredentials(account: CosmosDBAttachedAccountModel): Promise<CosmosDBCredential[]> {
         const result = await callWithTelemetryAndErrorHandling('getCredentials', async (context: IActionContext) => {
             context.telemetry.properties.experience = this.experience.api;
             context.telemetry.properties.parentContext = this.contextValue;
@@ -107,11 +108,49 @@ export abstract class DocumentDBAccountAttachedResourceItem implements CosmosDBT
             let keyCred: CosmosDBKeyCredential | undefined = undefined;
             // disable key auth if the user has opted in to OAuth (AAD/Entra ID)
             if (!forceOAuth) {
-                const parsedCS = parseDocDBConnectionString(connectionString);
-                keyCred = {
-                    type: 'key',
-                    key: parsedCS.masterKey,
-                };
+                let localAuthDisabled = false;
+
+                const parsedCS = parseDocDBConnectionString(account.connectionString);
+                if (parsedCS.masterKey) {
+                    context.telemetry.properties.receivedKeyCreds = 'true';
+
+                    keyCred = {
+                        type: 'key',
+                        key: parsedCS.masterKey,
+                    };
+
+                    try {
+                        // Since here we don't have subscription,
+                        // we can't get DatabaseAccountGetResults to retrieve disableLocalAuth property
+                        // Will try to connect to the account and if it fails, we will assume local auth is disabled
+                        const cosmosClient = getCosmosClient(parsedCS.documentEndpoint, [keyCred], account.isEmulator);
+                        await cosmosClient.getDatabaseAccount();
+                    } catch {
+                        context.telemetry.properties.receivedKeyCreds = 'false';
+                        localAuthDisabled = true;
+                    }
+                }
+
+                context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
+                if (localAuthDisabled) {
+                    // Clean up keyCred if local auth is disabled
+                    keyCred = undefined;
+
+                    const message = localize(
+                        'keyPermissionErrorMsg',
+                        'You do not have the required permissions to list auth keys for [{0}].\nFalling back to using Entra ID.\nYou can change the default authentication in the settings.',
+                        account.name,
+                    );
+                    const openSettingsItem = localize('openSettings', 'Open Settings');
+                    void vscode.window.showWarningMessage(message, ...[openSettingsItem]).then((item) => {
+                        if (item === openSettingsItem) {
+                            void vscode.commands.executeCommand(
+                                'workbench.action.openSettings',
+                                'azureDatabases.useCosmosOAuth',
+                            );
+                        }
+                    });
+                }
             }
 
             // OAuth is always enabled for Cosmos DB and will be used as a fallback if key auth is unavailable

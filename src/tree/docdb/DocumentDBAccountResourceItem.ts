@@ -119,7 +119,6 @@ export abstract class DocumentDBAccountResourceItem implements CosmosDBTreeEleme
             context.telemetry.properties.experience = this.experience.api;
             context.telemetry.properties.parentContext = this.contextValue;
 
-            const localAuthDisabled = databaseAccount.disableLocalAuth === true;
             const forceOAuth = vscode.workspace.getConfiguration().get<boolean>('azureDatabases.useCosmosOAuth');
             context.telemetry.properties.useCosmosOAuth = (forceOAuth ?? false).toString();
 
@@ -127,6 +126,7 @@ export abstract class DocumentDBAccountResourceItem implements CosmosDBTreeEleme
             // disable key auth if the user has opted in to OAuth (AAD/Entra ID)
             if (!forceOAuth) {
                 try {
+                    const localAuthDisabled = databaseAccount.disableLocalAuth === true;
                     context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
 
                     let keyResult: DatabaseAccountListKeysResult | undefined;

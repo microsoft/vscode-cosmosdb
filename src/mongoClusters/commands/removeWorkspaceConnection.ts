@@ -5,8 +5,8 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../../extensionVariables';
-import { WorkspaceResourceType } from '../../tree/workspace/sharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage } from '../../tree/workspace/sharedWorkspaceStorage';
+import { WorkspaceResourceType } from '../../tree/workspace/SharedWorkspaceResourceProvider';
+import { SharedWorkspaceStorage } from '../../tree/workspace/SharedWorkspaceStorage';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { localize } from '../../utils/localize';
 import { type MongoClusterWorkspaceItem } from '../tree/workspace/MongoClusterWorkspaceItem';

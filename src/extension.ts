@@ -59,7 +59,12 @@ import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider'
 import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
 import { CosmosDBBranchDataProvider } from './tree/CosmosDBBranchDataProvider';
+import { CosmosDBWorkspaceBranchDataProvider } from './tree/CosmosDBWorkspaceBranchDataProvider';
 import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
+import {
+    SharedWorkspaceResourceProvider,
+    WorkspaceResourceType,
+} from './tree/workspace/SharedWorkspaceResourceProvider';
 import { isTreeElementWithExperience } from './tree/TreeElementWithExperience';
 import { localize } from './utils/localize';
 
@@ -101,6 +106,11 @@ export async function activateInternal(
         ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
             AzExtResourceType.AzureCosmosDb,
             new CosmosDBBranchDataProvider(),
+        );
+        ext.rgApiV2.resources.registerWorkspaceResourceProvider(new SharedWorkspaceResourceProvider());
+        ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
+            WorkspaceResourceType.AttachedAccounts,
+            new CosmosDBWorkspaceBranchDataProvider(),
         );
 
         ext.rgApi.registerApplicationResourceResolver(

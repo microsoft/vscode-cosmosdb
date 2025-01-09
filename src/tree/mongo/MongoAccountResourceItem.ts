@@ -20,6 +20,9 @@ import { DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type MongoClusterModel } from '../../mongoClusters/tree/MongoClusterModel';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
+import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { DatabaseItem } from './DatabaseItem';
+import { type IDatabaseInfo } from './IDatabaseInfo';
 import { type MongoAccountModel } from './MongoAccountModel';
 
 /**
@@ -73,8 +76,8 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
         return result ?? undefined;
     }
 
-    async getChildren(): Promise<TreeElementWithId[]> {
-        let mongoClient: MongoClustersClient | null;
+    async getChildren(): Promise<CosmosDBTreeElement[]> {
+        ext.outputChannel.appendLine(`Cosmos DB for MongoDB (RU): Loading details for "${this.account.name}"`);
 
         // Check if credentials are cached, and return the cached client if available
         if (CredentialCache.hasCredentials(this.id)) {

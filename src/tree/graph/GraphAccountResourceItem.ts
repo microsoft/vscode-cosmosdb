@@ -3,27 +3,33 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { tryGetGremlinEndpointFromAzure } from '../../graph/gremlinEndpoints';
-import { nonNullProp } from '../../utils/nonNull';
-import { type IGremlinEndpoint } from '../../vscode-cosmosdbgraph.api';
-import { DocumentDBAccountResourceItem } from '../DocumentDBAccountResourceItem';
+import { type DatabaseDefinition, type Resource } from '@azure/cosmos';
+import { type Experience } from '../../AzureDBExperiences';
+import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type AccountInfo } from '../docdb/AccountInfo';
+import { DocumentDBAccountResourceItem } from '../docdb/DocumentDBAccountResourceItem';
+import { type DocumentDBAccountModel } from '../docdb/models/DocumentDBAccountModel';
+import { GraphDatabaseResourceItem } from './GraphDatabaseResourceItem';
 
 export class GraphAccountResourceItem extends DocumentDBAccountResourceItem {
-    public gremlinEndpoint?: IGremlinEndpoint;
-
-    protected override async init(): Promise<void> {
-        await super.init();
-
-        const name = nonNullProp(this.account, 'name');
-        const resourceGroup = nonNullProp(this.account, 'resourceGroup');
-        const client = await this.getClient();
-
-        if (!client) {
-            return;
-        }
-
-        this.gremlinEndpoint = await tryGetGremlinEndpointFromAzure(client, resourceGroup, name);
+    constructor(account: DocumentDBAccountModel, experience: Experience) {
+        super(account, experience);
     }
 
-    // here, we can add more methods or properties specific to MongoDB
+    protected getChildrenImpl(
+        accountInfo: AccountInfo,
+        databases: (DatabaseDefinition & Resource)[],
+    ): Promise<CosmosDBTreeElement[]> {
+        return Promise.resolve(
+            databases.map((db) => {
+                return new GraphDatabaseResourceItem(
+                    {
+                        accountInfo: accountInfo,
+                        database: db,
+                    },
+                    this.experience,
+                );
+            }),
+        );
+    }
 }

@@ -34,7 +34,7 @@ import { localize } from '../utils/localize';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { SubscriptionTreeItem } from './SubscriptionTreeItem';
 
-interface IPersistedAccount {
+export interface IPersistedAccount {
     id: string;
     // defaultExperience is not the same as API but we can't change the name due to backwards compatibility
     defaultExperience: API;

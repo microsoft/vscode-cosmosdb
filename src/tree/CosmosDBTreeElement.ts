@@ -11,4 +11,4 @@ export interface ExtTreeElementBase extends TreeElementWithId {
     getTreeItem(): vscode.TreeItem | Thenable<vscode.TreeItem>;
 }
 
-export type CosmosDbTreeElement = TreeElementWithId;
+export type CosmosDBTreeElement = ExtTreeElementBase;

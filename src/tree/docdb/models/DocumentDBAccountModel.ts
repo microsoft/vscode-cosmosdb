@@ -3,6 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosAccountModel } from '../CosmosAccountModel';
+import { type CosmosAccountModel } from '../../CosmosAccountModel';
 
-export type NoSqlAccountModel = CosmosAccountModel;
+export type DocumentDBAccountModel = CosmosAccountModel;

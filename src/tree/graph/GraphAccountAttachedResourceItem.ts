@@ -5,14 +5,14 @@
 
 import { type DatabaseDefinition, type Resource } from '@azure/cosmos';
 import { type Experience } from '../../AzureDBExperiences';
+import { type CosmosDBAttachedAccountModel } from '../attached/CosmosDBAttachedAccountModel';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type AccountInfo } from '../docdb/AccountInfo';
-import { DocumentDBAccountResourceItem } from '../docdb/DocumentDBAccountResourceItem';
-import { type DocumentDBAccountModel } from '../docdb/models/DocumentDBAccountModel';
-import { NoSqlDatabaseResourceItem } from './NoSqlDatabaseResourceItem';
+import { DocumentDBAccountAttachedResourceItem } from '../docdb/DocumentDBAccountAttachedResourceItem';
+import { GraphDatabaseResourceItem } from './GraphDatabaseResourceItem';
 
-export class NoSqlAccountResourceItem extends DocumentDBAccountResourceItem {
-    constructor(account: DocumentDBAccountModel, experience: Experience) {
+export class GraphAccountAttachedResourceItem extends DocumentDBAccountAttachedResourceItem {
+    constructor(account: CosmosDBAttachedAccountModel, experience: Experience) {
         super(account, experience);
     }
 
@@ -22,7 +22,7 @@ export class NoSqlAccountResourceItem extends DocumentDBAccountResourceItem {
     ): Promise<CosmosDBTreeElement[]> {
         return Promise.resolve(
             databases.map((db) => {
-                return new NoSqlDatabaseResourceItem(
+                return new GraphDatabaseResourceItem(
                     {
                         accountInfo: accountInfo,
                         database: db,

@@ -22,7 +22,7 @@ export const extractPartitionKey = (document: ItemDefinition, partitionKey: Part
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 interim = interim[prop];
             } else {
-                return null; // It is not correct to return null, in other cases it should exception
+                return null; // It is not correct to return null, in other cases it should be an exception
             }
         }
         if (

@@ -5,14 +5,14 @@
 
 import { type DatabaseDefinition, type Resource } from '@azure/cosmos';
 import { type Experience } from '../../AzureDBExperiences';
+import { type CosmosDBAttachedAccountModel } from '../attached/CosmosDBAttachedAccountModel';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type AccountInfo } from '../docdb/AccountInfo';
-import { DocumentDBAccountResourceItem } from '../docdb/DocumentDBAccountResourceItem';
-import { type DocumentDBAccountModel } from '../docdb/models/DocumentDBAccountModel';
+import { DocumentDBAccountAttachedResourceItem } from '../docdb/DocumentDBAccountAttachedResourceItem';
 import { NoSqlDatabaseResourceItem } from './NoSqlDatabaseResourceItem';
 
-export class NoSqlAccountResourceItem extends DocumentDBAccountResourceItem {
-    constructor(account: DocumentDBAccountModel, experience: Experience) {
+export class NoSqlAccountAttachedResourceItem extends DocumentDBAccountAttachedResourceItem {
+    constructor(account: CosmosDBAttachedAccountModel, experience: Experience) {
         super(account, experience);
     }
 

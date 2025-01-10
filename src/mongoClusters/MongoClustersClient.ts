@@ -363,7 +363,7 @@ export class MongoClustersClient {
             const newCollection = await this._mongoClient
                 .db(databaseName)
                 .createCollection('_dummy_collection_creation_forces_db_creation');
-            await newCollection.drop();
+            await newCollection.drop({ writeConcern: { w: 'majority', wtimeout: 5000 } });
         } catch (_e) {
             console.error(_e); //todo: add to telemetry
             return false;

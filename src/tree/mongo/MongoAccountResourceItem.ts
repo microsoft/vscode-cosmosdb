@@ -14,6 +14,7 @@ import { MongoClustersClient, type DatabaseItemModel } from '../../mongoClusters
 import { DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type MongoClusterModel } from '../../mongoClusters/tree/MongoClusterModel';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
+import { localize } from '../../utils/localize';
 import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
 import { type CosmosDBTreeElement, type ExtTreeElementBase } from '../CosmosDBTreeElement';
 import { type MongoAccountModel } from './MongoAccountModel';
@@ -22,8 +23,11 @@ import { type MongoAccountModel } from './MongoAccountModel';
  * This implementation relies on information from the MongoAccountModel, i.e.
  * will only behave as expected when used in the context of an Azure Subscription.
  */
+
+// TODO: currently MongoAccountResourceItem does not reuse MongoClusterItemBase, this will be refactored after the v1 to v2 tree migration
+
 export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
-    protected declare account: MongoAccountModel;
+    declare account: MongoAccountModel;
 
     constructor(
         account: MongoAccountModel,
@@ -161,5 +165,41 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
         //         void mongoClient.close();
         //     }
         // }
+    }
+
+    /**
+     * Creates a new database in the cluster.
+     *
+     * TODO: this is a plain copy&paste from mongoclusters. It will be cleaned up in one shared base class after v1 to v2 tree migration
+     *
+     * @param _context The action context.
+     * @param databaseName The name of the database to create.
+     * @returns A boolean indicating success.
+     */
+    /**
+     * Creates a new MongoDB database with the specified name.
+     *
+     * @param _context - The action context.
+     * @param databaseName - The name of the database to create.
+     * @returns A promise that resolves to a boolean indicating the success of the operation.
+     */
+    async createDatabase(_context: IActionContext, databaseName: string): Promise<boolean> {
+        const client = await MongoClustersClient.getClient(this.id);
+
+        return ext.state.showCreatingChild<boolean>(
+            this.id,
+            localize('mongoClusters.tree.creating', 'Creating "{0}"...', databaseName),
+            async (): Promise<boolean> => {
+                // Adding a delay to ensure the "creating child" animation is visible.
+                // The `showCreatingChild` function refreshes the parent to show the
+                // "creating child" animation and label. Refreshing the parent triggers its
+                // `getChildren` method. If the database creation completes too quickly,
+                // the dummy node with the animation might be shown alongside the actual
+                // database entry, as it will already be available in the database.
+                // Note to future maintainers: Do not remove this delay.
+                await new Promise((resolve) => setTimeout(resolve, 250));
+                return client.createDatabase(databaseName);
+            },
+        );
     }
 }

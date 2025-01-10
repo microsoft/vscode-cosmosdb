@@ -124,17 +124,22 @@ export abstract class MongoClusterItemBase implements TreeElementWithId, TreeEle
     async createDatabase(_context: IActionContext, databaseName: string): Promise<boolean> {
         const client = await MongoClustersClient.getClient(this.mongoCluster.id);
 
-        let success = false;
-
-        await ext.state.showCreatingChild(
+        return ext.state.showCreatingChild<boolean>(
             this.id,
             localize('mongoClusters.tree.creating', 'Creating "{0}"...', databaseName),
-            async () => {
-                success = await client.createDatabase(databaseName);
+            async (): Promise<boolean> => {
+                // Adding a delay to ensure the "creating child" animation is visible.
+                // The `showCreatingChild` function refreshes the parent to show the
+                // "creating child" animation and label. Refreshing the parent triggers its
+                // `getChildren` method. If the database creation completes too quickly,
+                // the dummy node with the animation might be shown alongside the actual
+                // database entry, as it will already be available in the database.
+                // Note to future maintainers: Do not remove this delay.
+                await new Promise((resolve) => setTimeout(resolve, 250));
+
+                return client.createDatabase(databaseName);
             },
         );
-
-        return success;
     }
 
     /**

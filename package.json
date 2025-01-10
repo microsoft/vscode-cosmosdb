@@ -703,7 +703,7 @@
                 },
                 {
                     "command": "cosmosDB.deleteAccount",
-                    "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /cosmosDBMongoServer(?![a-z])/i",
+                    "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /mongodb.item.account(?![a-z])/i",
                     "group": "1@2"
                 },
                 {

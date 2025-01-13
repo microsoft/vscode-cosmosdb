@@ -611,7 +611,7 @@
             },
             {
                 "category": "MongoDB Clusters",
-                "command": "command.mongoClusters.openColllection",
+                "command": "command.mongoClusters.containerView.open",
                 "title": "Open Collection"
             }
         ],
@@ -1121,7 +1121,7 @@
                     "group": "2@2"
                 },
                 {
-                    "command": "command.mongoClusters.openColllection",
+                    "command": "command.mongoClusters.containerView.open",
                     "when": "viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
                     "group": "1@1"
                 },

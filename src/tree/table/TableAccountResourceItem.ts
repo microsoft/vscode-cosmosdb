@@ -25,9 +25,9 @@ export class TableAccountResourceItem extends DocumentDBAccountResourceItem {
 
             return Promise.resolve([
                 createGenericElement({
-                    contextValue: this.contextValue,
+                    contextValue: `${this.contextValue}/notSupported`,
                     label: 'Table Accounts are not supported yet.',
-                    id: `${this.id}/no-databases`,
+                    id: `${this.id}/notSupported`,
                 }) as CosmosDBTreeElement,
             ]);
         });

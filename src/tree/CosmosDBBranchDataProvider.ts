@@ -11,7 +11,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { type BranchDataProvider } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
-import { API, tryGetExperience } from '../AzureDBExperiences';
+import { API, CoreExperience, tryGetExperience } from '../AzureDBExperiences';
 import { databaseAccountType } from '../constants';
 import { ext } from '../extensionVariables';
 import { localize } from '../utils/localize';
@@ -42,22 +42,12 @@ export class CosmosDBBranchDataProvider
      */
     async getChildren(element: CosmosDBTreeElement): Promise<CosmosDBTreeElement[]> {
         try {
-            const result = await callWithTelemetryAndErrorHandling(
-                'CosmosDBBranchDataProvider.getChildren',
-                async (context: IActionContext) => {
-                    context.errorHandling.suppressDisplay = true;
-                    context.errorHandling.rethrow = true;
-                    context.errorHandling.forceIncludeInReportIssueCommand = true;
-
-                    return (await element.getChildren?.())?.map((child) => {
-                        return ext.state.wrapItemInStateHandling(child, (child: CosmosDBTreeElement) =>
-                            this.refresh(child),
-                        ) as CosmosDBTreeElement;
-                    });
-                },
-            );
-
-            return result ?? [];
+            const children = (await element.getChildren?.()) ?? [];
+            return children.map((child) => {
+                return ext.state.wrapItemInStateHandling(child, (child: CosmosDBTreeElement) =>
+                    this.refresh(child),
+                ) as CosmosDBTreeElement;
+            });
         } catch (error) {
             return [
                 createGenericElement({
@@ -75,7 +65,7 @@ export class CosmosDBBranchDataProvider
     async getResourceItem(resource: CosmosDBResource): Promise<CosmosDBTreeElement> {
         const resourceItem = await callWithTelemetryAndErrorHandling(
             'CosmosDBBranchDataProvider.getResourceItem',
-            async (context: IActionContext) => {
+            (context: IActionContext) => {
                 const id = nonNullProp(resource, 'id');
                 const name = nonNullProp(resource, 'name');
                 const type = nonNullProp(resource, 'type');
@@ -107,7 +97,8 @@ export class CosmosDBBranchDataProvider
                         return new TableAccountResourceItem(accountModel, experience);
                     }
 
-                    // Unknown experience
+                    // Unknown experience fallback
+                    return new NoSqlAccountResourceItem(accountModel, CoreExperience);
                 } else {
                     // Unknown resource type
                 }

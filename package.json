@@ -708,6 +708,11 @@
                 },
                 {
                     "command": "cosmosDB.deleteAccount",
+                    "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /mongoclusters/i && viewItem =~ /treeitem.mongoCluster/i",
+                    "group": "1@2"
+                },
+                {
+                    "command": "cosmosDB.deleteAccount",
                     "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
                     "group": "1@2"
                 },
@@ -1147,22 +1152,22 @@
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when" : "viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "when": "viewItem =~ /treeitem.collection/i && viewItem =~ /(mongocluster|mongodb)/i",
                     "group": "5@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when" : "viewItem =~ /treeitem.database/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "when": "viewItem =~ /treeitem.database/i && viewItem =~ /(mongocluster|mongodb)/i",
                     "group": "3@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when" : "viewItem =~ /treeitem.indexes/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "when": "viewItem =~ /treeitem.indexes/i && viewItem =~ /(mongocluster|mongodb)/i",
                     "group": "4@1"
                 },
                 {
                     "command": "azureDatabases.refresh",
-                    "when" : "viewItem =~ /treeitem.index/i && viewItem =~ /(mongocluster|mongodb)/i",
+                    "when": "viewItem =~ /treeitem.index/i && viewItem =~ /(mongocluster|mongodb)/i",
                     "group": "4@1"
                 }
             ],

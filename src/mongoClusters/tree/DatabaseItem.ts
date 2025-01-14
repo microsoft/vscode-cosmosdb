@@ -74,17 +74,21 @@ export class DatabaseItem implements TreeElementWithId, TreeElementWithExperienc
     async createCollection(_context: IActionContext, collectionName: string): Promise<boolean> {
         const client = await MongoClustersClient.getClient(this.mongoCluster.id);
 
-        let success = false;
-
-        await ext.state.showCreatingChild(
+        return ext.state.showCreatingChild(
             this.id,
             localize('mongoClusters.tree.creating', 'Creating "{0}"...', collectionName),
             async () => {
-                success = await client.createCollection(this.databaseInfo.name, collectionName);
+                // Adding a delay to ensure the "creating child" animation is visible.
+                // The `showCreatingChild` function refreshes the parent to show the
+                // "creating child" animation and label. Refreshing the parent triggers its
+                // `getChildren` method. If the database creation completes too quickly,
+                // the dummy node with the animation might be shown alongside the actual
+                // database entry, as it will already be available in the database.
+                // Note to future maintainers: Do not remove this delay.
+                await new Promise((resolve) => setTimeout(resolve, 250));
+                return client.createCollection(this.databaseInfo.name, collectionName);
             },
         );
-
-        return success;
     }
 
     getTreeItem(): TreeItem {

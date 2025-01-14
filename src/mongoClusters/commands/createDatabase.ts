@@ -4,38 +4,57 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizard, nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { MongoAccountResourceItem } from '../../tree/mongo/MongoAccountResourceItem';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { localize } from '../../utils/localize';
 import { CredentialCache } from '../CredentialCache';
-import { type MongoClusterResourceItem } from '../tree/MongoClusterResourceItem';
+import { MongoClusterItemBase } from '../tree/MongoClusterItemBase';
 import {
     type CreateCollectionWizardContext,
     type CreateDatabaseWizardContext,
 } from '../wizards/create/createWizardContexts';
 import { DatabaseNameStep } from '../wizards/create/PromptDatabaseNameStep';
 
-export async function createDatabase(context: IActionContext, clusterNode?: MongoClusterResourceItem): Promise<void> {
-    context.telemetry.properties.experience = clusterNode?.mongoCluster.dbExperience?.api;
-
+export async function createDatabase(
+    context: IActionContext,
+    clusterNode?: MongoClusterItemBase | MongoAccountResourceItem,
+): Promise<void> {
     // node ??= ... pick a node if not provided
     if (!clusterNode) {
         throw new Error('No cluster selected.');
     }
 
-    if (!CredentialCache.hasCredentials(clusterNode.mongoCluster.id)) {
+    let connectionId: string = '';
+    let clusterName: string = '';
+
+    // TODO: currently MongoAccountResourceItem does not reuse MongoClusterItemBase, this will be refactored after the v1 to v2 tree migration
+
+    if (clusterNode instanceof MongoAccountResourceItem) {
+        context.telemetry.properties.experience = clusterNode.experience?.api;
+        connectionId = clusterNode.id;
+        clusterName = clusterNode.account.name;
+    }
+
+    if (clusterNode instanceof MongoClusterItemBase) {
+        context.telemetry.properties.experience = clusterNode.mongoCluster.dbExperience?.api;
+        connectionId = clusterNode.mongoCluster.id;
+        clusterName = clusterNode.mongoCluster.name;
+    }
+
+    if (!CredentialCache.hasCredentials(connectionId)) {
         throw new Error(
             localize(
                 'mongoClusters.notSignedIn',
                 'You are not signed in to the MongoDB Cluster. Please sign in (by expanding the node "{0}") and try again.',
-                clusterNode.mongoCluster.name,
+                clusterName,
             ),
         );
     }
 
     const wizardContext: CreateDatabaseWizardContext = {
         ...context,
-        credentialsId: clusterNode.mongoCluster.id,
-        mongoClusterItem: clusterNode,
+        credentialsId: connectionId,
+        clusterName: clusterName,
     };
 
     const wizard: AzureWizard<CreateCollectionWizardContext> = new AzureWizard(wizardContext, {

@@ -5,18 +5,36 @@
 
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
-import { type AzExtTreeItem } from '@microsoft/vscode-azext-utils';
+import { AzExtTreeItem, createSubscriptionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
+import { CosmosAccountResourceItemBase } from '../../tree/CosmosAccountResourceItemBase';
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
 import { type IDeleteWizardContext } from './IDeleteWizardContext';
 
-export async function deleteCosmosDBAccount(context: IDeleteWizardContext, node: AzExtTreeItem): Promise<void> {
-    const client: CosmosDBManagementClient = await createCosmosDBClient([context, node.subscription]);
-    const resourceGroup: string = getResourceGroupFromId(node.fullId);
-    const accountName: string = getDatabaseAccountNameFromId(node.fullId);
+export async function deleteCosmosDBAccount(
+    context: IDeleteWizardContext,
+    node: AzExtTreeItem | CosmosAccountResourceItemBase,
+): Promise<void> {
+    let client: CosmosDBManagementClient;
+    let resourceGroup: string;
+    let accountName: string;
+
+    if (node instanceof AzExtTreeItem) {
+        client = await createCosmosDBClient([context, node.subscription]);
+        resourceGroup = getResourceGroupFromId(node.fullId);
+        accountName = getDatabaseAccountNameFromId(node.fullId);
+    } else if (node instanceof CosmosAccountResourceItemBase) {
+        const subscriptionContext = createSubscriptionContext(node.account.subscription);
+        client = await createCosmosDBClient([context, subscriptionContext]);
+        resourceGroup = getResourceGroupFromId(node.account.id);
+        accountName = node.account.name;
+    } else {
+        throw new Error('Unexpected node type');
+    }
+
     const deletePromise = client.databaseAccounts.beginDeleteAndWait(resourceGroup, accountName);
     if (!context.suppressNotification) {
         const deletingMessage: string = `Deleting account "${accountName}"...`;

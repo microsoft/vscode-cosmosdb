@@ -15,6 +15,7 @@ import * as vscode from 'vscode';
 import { API, MongoClustersExprience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { createMongoClustersManagementClient } from '../../utils/azureClients';
+import { type MongoClusterItemBase } from './MongoClusterItemBase';
 import { type MongoClusterModel } from './MongoClusterModel';
 import { MongoClusterResourceItem } from './MongoClusterResourceItem';
 
@@ -115,7 +116,7 @@ export class MongoClustersBranchDataProvider
         );
 
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return ext.state.wrapItemInStateHandling(resourceItem!, () => this.refresh(resourceItem));
+        return ext.state.wrapItemInStateHandling(resourceItem!, (item: MongoClusterItemBase) => this.refresh(item));
     }
 
     async updateResourceCache(

@@ -25,8 +25,8 @@ export abstract class DocumentDBAccountAttachedResourceItem implements CosmosDBT
     protected hasShownRbacNotification: boolean = false;
 
     protected constructor(
-        protected account: CosmosDBAttachedAccountModel,
-        protected experience: Experience,
+        public readonly account: CosmosDBAttachedAccountModel,
+        public readonly experience: Experience,
     ) {
         this.contextValue = `${experience.api}.workspace.item.account`;
     }

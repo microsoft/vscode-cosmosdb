@@ -49,7 +49,7 @@ const localMongoConnectionString: string = 'mongodb://127.0.0.1:27017';
 export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = 'cosmosDBAttachedAccounts' + (isWindows ? 'WithEmulator' : 'WithoutEmulator');
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
-    public readonly label: string = 'Attached Database Accounts';
+    public readonly label: string = 'Attached Database Accounts (Postgres)';
     public childTypeLabel: string = 'Account';
     public suppressMaskLabel = true;
 
@@ -359,7 +359,10 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
                         await ext.secretStorage.get(getSecretStorageKey(this._serviceName, id)),
                         'connectionString',
                     );
-                    persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
+                    // TODO: Left only Postgres, other types are moved to new tree api v2
+                    if (api === API.PostgresSingle || api === API.PostgresFlexible) {
+                        persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
+                    }
                 }),
             );
         }

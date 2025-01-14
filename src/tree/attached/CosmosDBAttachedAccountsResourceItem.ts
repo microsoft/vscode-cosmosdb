@@ -55,7 +55,7 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
             context.telemetry.properties.parentContext = this.contextValue;
 
             // TODO: remove after a few releases
-            await this.migrateV1AccountsToV2(); // Move accounts from the old storage format to the new one
+            await this.pickSupportedAccounts(); // Move accounts from the old storage format to the new one
 
             const items = await SharedWorkspaceStorage.getItems(this.id);
 
@@ -117,6 +117,62 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
                     return undefined;
                 })
                 .filter((r) => r !== undefined),
+        );
+    }
+
+    protected async pickSupportedAccounts(): Promise<void> {
+        return callWithTelemetryAndErrorHandling(
+            'CosmosDBAttachedAccountsResourceItem.pickSupportedAccounts',
+            async () => {
+                const serviceName = 'ms-azuretools.vscode-cosmosdb.connectionStrings';
+                const value: string | undefined = ext.context.globalState.get(serviceName);
+
+                if (!value) {
+                    return;
+                }
+
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                const accounts: (string | IPersistedAccount)[] = JSON.parse(value);
+                for (const account of accounts) {
+                    let id: string;
+                    let name: string;
+                    let isEmulator: boolean;
+                    let api: API;
+
+                    if (typeof account === 'string') {
+                        // Default to Mongo if the value is a string for the sake of backwards compatibility
+                        // (Mongo was originally the only account type that could be attached)
+                        id = account;
+                        name = account;
+                        api = API.MongoDB;
+                        isEmulator = false;
+                    } else {
+                        id = (<IPersistedAccount>account).id;
+                        name = (<IPersistedAccount>account).id;
+                        api = (<IPersistedAccount>account).defaultExperience;
+                        isEmulator = (<IPersistedAccount>account).isEmulator ?? false;
+                    }
+
+                    // TODO: Ignore Postgres accounts until we have a way to handle them
+                    if (api === API.PostgresSingle || api === API.PostgresFlexible) {
+                        continue;
+                    }
+
+                    const connectionString: string = nonNullValue(
+                        await ext.secretStorage.get(`${serviceName}.${id}`),
+                        'connectionString',
+                    );
+
+                    const storageItem: SharedWorkspaceStorageItem = {
+                        id,
+                        name,
+                        properties: { isEmulator, api },
+                        secrets: [connectionString],
+                    };
+
+                    await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
+                }
+            },
         );
     }
 

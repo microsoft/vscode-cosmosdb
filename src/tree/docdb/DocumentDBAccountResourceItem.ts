@@ -16,20 +16,22 @@ import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
+import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type AccountInfo } from './AccountInfo';
 
-export abstract class DocumentDBAccountResourceItem implements CosmosDBTreeElement {
-    public id: string;
-    public contextValue: string = 'cosmosDB.item.account';
+export abstract class DocumentDBAccountResourceItem extends CosmosAccountResourceItemBase {
+    public declare id: string;
+    public declare contextValue: string;
 
     // To prevent the RBAC notification from showing up multiple times
     protected hasShownRbacNotification: boolean = false;
 
     protected constructor(
-        protected account: CosmosAccountModel,
-        protected experience: Experience,
+        public readonly account: CosmosAccountModel,
+        public readonly experience: Experience,
     ) {
+        super(account);
         this.contextValue = `${experience.api}.item.account`;
     }
 

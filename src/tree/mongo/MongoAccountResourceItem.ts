@@ -23,7 +23,7 @@ import { type MongoAccountModel } from './MongoAccountModel';
  * will only behave as expected when used in the context of an Azure Subscription.
  */
 export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
-    protected declare account: MongoAccountModel;
+    public declare readonly account: MongoAccountModel;
 
     constructor(
         account: MongoAccountModel,

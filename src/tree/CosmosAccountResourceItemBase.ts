@@ -13,7 +13,7 @@ export abstract class CosmosAccountResourceItemBase implements CosmosDBTreeEleme
     public id: string;
     public contextValue: string = 'cosmosDB.item.account';
 
-    protected constructor(protected readonly account: CosmosAccountModel) {
+    protected constructor(public readonly account: CosmosAccountModel) {
         this.id = account.id ?? '';
     }
 

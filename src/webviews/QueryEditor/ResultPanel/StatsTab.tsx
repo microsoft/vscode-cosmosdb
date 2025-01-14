@@ -17,6 +17,7 @@ import {
 } from '@fluentui/react-components';
 import { queryMetricsToTable } from '../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
+import { IndexMetricsView } from './IndexMetricsView';
 
 const useStyles = makeStyles({
     topLabel: {
@@ -89,14 +90,11 @@ export const StatsTab = () => {
                         </TableBody>
                     </Table>
                 </div>
-                <div className={styles.panel2}>
-                    <div className={styles.bottomLabel}>
-                        <Label size={'large'}>Index metrics</Label>
+                {indexMetrics && (
+                    <div className={styles.panel2}>
+                        <IndexMetricsView indexMetricsStr={indexMetrics} topLabelStyle={styles.topLabel} />
                     </div>
-                    <div>
-                        <pre className={styles.pre}>{indexMetrics}</pre>
-                    </div>
-                </div>
+                )}
             </div>
         </>
     );

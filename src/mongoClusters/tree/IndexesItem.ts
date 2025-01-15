@@ -5,15 +5,19 @@
 
 import { createContextValue, type TreeElementBase, type TreeElementWithId } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
-import { type Experience } from '../../AzureDBExperiences';
+import { API, type Experience } from '../../AzureDBExperiences';
+import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { MongoClustersClient, type CollectionItemModel, type DatabaseItemModel } from '../MongoClustersClient';
 import { IndexItem } from './IndexItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class IndexesItem implements TreeElementWithId, TreeElementWithExperience {
-    id: string;
-    experience?: Experience;
+export class IndexesItem implements TreeElementWithId, TreeElementWithExperience, TreeElementWithContextValue {
+    public readonly id: string;
+    public readonly experience?: Experience;
+    public readonly contextValue: string = 'treeItem.indexes';
+
+    private readonly experienceContextValue: string = '';
 
     constructor(
         readonly mongoCluster: MongoClusterModel,
@@ -22,6 +26,8 @@ export class IndexesItem implements TreeElementWithId, TreeElementWithExperience
     ) {
         this.id = `${mongoCluster.id}/${databaseInfo.name}/${collectionInfo.name}/indexes`;
         this.experience = mongoCluster.dbExperience;
+        this.experienceContextValue = `experience.${this.experience?.api ?? API.Common}`;
+        this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
     async getChildren(): Promise<TreeElementBase[]> {
@@ -35,7 +41,7 @@ export class IndexesItem implements TreeElementWithId, TreeElementWithExperience
     getTreeItem(): TreeItem {
         return {
             id: this.id,
-            contextValue: createContextValue(['treeitem.indexes', this.mongoCluster.dbExperience?.api ?? '']),
+            contextValue: this.contextValue,
             label: 'Indexes',
             iconPath: new ThemeIcon('combine'), // TODO: create our onw icon here, this one's shape can change
             collapsibleState: TreeItemCollapsibleState.Collapsed,

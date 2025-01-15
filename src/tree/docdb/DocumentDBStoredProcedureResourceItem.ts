@@ -3,22 +3,26 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { v4 as uuid } from 'uuid';
+import { createContextValue } from '@microsoft/vscode-azext-utils';
 import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
+import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type DocumentDBStoredProcedureModel } from './models/DocumentDBStoredProcedureModel';
 
-export abstract class DocumentDBStoredProcedureResourceItem implements CosmosDBTreeElement {
-    public id: string;
-    public contextValue: string = 'cosmosDB.item.storedProcedure';
+export abstract class DocumentDBStoredProcedureResourceItem
+    implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
+{
+    public readonly id: string;
+    public readonly contextValue: string = 'treeItem.storedProcedure';
 
     protected constructor(
-        protected readonly model: DocumentDBStoredProcedureModel,
-        protected readonly experience: Experience,
+        public readonly model: DocumentDBStoredProcedureModel,
+        public readonly experience: Experience,
     ) {
-        this.id = uuid();
-        this.contextValue = `${experience.api}.item.storedProcedure`;
+        this.id = `${model.accountInfo.id}/${model.database.id}/${model.container.id}/storedProcedures/${model.procedure.id}`;
+        this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
     }
 
     getTreeItem(): TreeItem {

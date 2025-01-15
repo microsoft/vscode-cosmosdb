@@ -4,58 +4,51 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type CosmosClient, type FeedOptions, type ItemDefinition, type QueryIterator } from '@azure/cosmos';
-import {
-    callWithTelemetryAndErrorHandling,
-    createGenericElement,
-    type IActionContext,
-} from '@microsoft/vscode-azext-utils';
-import { v4 as uuid } from 'uuid';
+import { createContextValue, createGenericElement, type IActionContext } from '@microsoft/vscode-azext-utils';
 import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
+import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type DocumentDBItemsModel } from './models/DocumentDBItemsModel';
 
-export abstract class DocumentDBItemsResourceItem implements CosmosDBTreeElement {
-    public id: string;
-    public contextValue: string = 'cosmosDB.item.items';
+export abstract class DocumentDBItemsResourceItem
+    implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
+{
+    public readonly id: string;
+    public readonly contextValue: string = 'treeItem.documents';
 
     protected iterator: QueryIterator<ItemDefinition> | undefined;
     protected cachedItems: ItemDefinition[] = [];
     protected hasMoreChildren: boolean = true;
 
     protected constructor(
-        protected readonly model: DocumentDBItemsModel,
-        protected readonly experience: Experience,
+        public readonly model: DocumentDBItemsModel,
+        public readonly experience: Experience,
     ) {
-        this.id = uuid();
-        this.contextValue = `${experience.api}.item.items`;
+        this.id = `${model.accountInfo.id}/${model.database.id}/${model.container.id}/documents`;
+        this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
     }
 
     public async getChildren(): Promise<CosmosDBTreeElement[]> {
-        const result = await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
-            context.telemetry.properties.experience = this.experience.api;
-            context.telemetry.properties.parentContext = this.contextValue;
-            context.errorHandling.rethrow = true;
+        if (this.iterator && this.cachedItems.length > 0) {
+            // ignore
+        } else {
+            // Fetch the first batch
+            const batchSize = getBatchSizeSetting();
+            const { endpoint, credentials, isEmulator } = this.model.accountInfo;
+            const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
 
-            if (this.iterator && this.cachedItems.length > 0) {
-                // ignore
-            } else {
-                // Fetch the first batch
-                const batchSize = getBatchSizeSetting();
-                const { endpoint, credentials, isEmulator } = this.model.accountInfo;
-                const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
+            this.iterator = this.getIterator(cosmosClient, { maxItemCount: batchSize });
 
-                this.iterator = this.getIterator(cosmosClient, { maxItemCount: batchSize });
+            await this.getItems(this.iterator);
+        }
 
-                await this.getItems(this.iterator);
-            }
+        const result = await this.getChildrenImpl(this.cachedItems);
 
-            return await this.getChildrenImpl(this.cachedItems);
-        });
-
-        if (result && this.hasMoreChildren) {
+        if (this.hasMoreChildren) {
             result.push(
                 createGenericElement({
                     contextValue: this.contextValue,
@@ -81,7 +74,7 @@ export abstract class DocumentDBItemsResourceItem implements CosmosDBTreeElement
             );
         }
 
-        return result ?? [];
+        return result;
     }
 
     getTreeItem(): TreeItem {

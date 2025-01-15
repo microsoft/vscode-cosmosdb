@@ -3,39 +3,34 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { v4 as uuid } from 'uuid';
+import { createContextValue } from '@microsoft/vscode-azext-utils';
 import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
+import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type DocumentDBContainerModel } from './models/DocumentDBContainerModel';
 
-export abstract class DocumentDBContainerResourceItem implements CosmosDBTreeElement {
-    public id: string;
-    public contextValue: string = 'cosmosDB.item.container';
+export abstract class DocumentDBContainerResourceItem
+    implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
+{
+    public readonly id: string;
+    public readonly contextValue: string = 'treeItem.container';
 
     protected constructor(
-        protected readonly model: DocumentDBContainerModel,
-        protected readonly experience: Experience,
+        public readonly model: DocumentDBContainerModel,
+        public readonly experience: Experience,
     ) {
-        this.id = uuid();
-        this.contextValue = `${experience.api}.item.container`;
+        this.id = `${model.accountInfo.id}/${model.database.id}/${model.container.id}`;
+        this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
     }
 
     async getChildren(): Promise<CosmosDBTreeElement[]> {
-        const result = await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
-            context.telemetry.properties.experience = this.experience.api;
-            context.telemetry.properties.parentContext = this.contextValue;
-            context.errorHandling.rethrow = true;
+        const triggers = await this.getChildrenTriggersImpl();
+        const storedProcedures = await this.getChildrenStoredProceduresImpl();
+        const items = await this.getChildrenItemsImpl();
 
-            const triggers = await this.getChildrenTriggersImpl();
-            const storedProcedures = await this.getChildrenStoredProceduresImpl();
-            const items = await this.getChildrenItemsImpl();
-
-            return [items, storedProcedures, triggers].filter((r) => r !== undefined);
-        });
-
-        return result ?? [];
+        return [items, storedProcedures, triggers].filter((r) => r !== undefined);
     }
 
     getTreeItem(): TreeItem {

@@ -3,26 +3,28 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { v4 as uuid } from 'uuid';
+import { createContextValue } from '@microsoft/vscode-azext-utils';
 import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { extractPartitionKey, getDocumentId } from '../../utils/document';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
+import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type DocumentDBItemModel } from './models/DocumentDBItemModel';
 
-export abstract class DocumentDBItemResourceItem implements CosmosDBTreeElement {
-    public id: string;
-    public contextValue: string = 'cosmosDB.item.item';
+export abstract class DocumentDBItemResourceItem
+    implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
+{
+    public readonly id: string;
+    public readonly contextValue: string = 'treeItem.document';
 
     protected constructor(
-        protected readonly model: DocumentDBItemModel,
-        protected readonly experience: Experience,
+        public readonly model: DocumentDBItemModel,
+        public readonly experience: Experience,
     ) {
-        // Generate a unique ID for the item
-        // This is used to identify the item in the tree, not the item itself
-        // The item id is not guaranteed to be unique
-        this.id = uuid();
-        this.contextValue = `${experience.api}.item.item`;
+        const uniqueId = this.generateUniqueId(this.model);
+        this.id = `${model.accountInfo.id}/${model.database.id}/${model.container.id}/documents/${uniqueId}`;
+        this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
     }
 
     getTreeItem(): TreeItem {
@@ -60,27 +62,49 @@ export abstract class DocumentDBItemResourceItem implements CosmosDBTreeElement 
         if (!this.model.container.partitionKey || this.model.container.partitionKey.paths.length === 0) {
             return '';
         }
+
         const partitionKeyPaths = this.model.container.partitionKey.paths.join(', ');
-        let partitionKeyValues = extractPartitionKey(this.model.item, this.model.container.partitionKey);
-        partitionKeyValues = Array.isArray(partitionKeyValues) ? partitionKeyValues : [partitionKeyValues];
-        partitionKeyValues = partitionKeyValues.map((v) => {
-            if (v === null) {
-                return '\\<null>';
-            }
-            if (v === undefined) {
-                return '\\<undefined>';
-            }
-            if (typeof v === 'object') {
-                return JSON.stringify(v);
-            }
-            return v;
-        });
+        const partitionKeyValues = this.generatePartitionKeyValue(this.model);
 
         return (
             '### Partition Key\n' +
             '---\n' +
             `- Paths: **${partitionKeyPaths}**\n` +
-            `- Values: **${partitionKeyValues.join(', ')}**\n`
+            `- Values: **${partitionKeyValues}**\n`
         );
+    }
+
+    protected generateUniqueId(model: DocumentDBItemModel): string {
+        const documentId = getDocumentId(model.item, model.container.partitionKey);
+        const id = documentId?.id;
+        const rid = documentId?._rid;
+        const partitionKeyValues = this.generatePartitionKeyValue(model);
+
+        return `${id || '<empty id>'}|${partitionKeyValues || '<empty partition key>'}|${rid || '<empty rid>'}`;
+    }
+
+    protected generatePartitionKeyValue(model: DocumentDBItemModel): string {
+        if (!model.container.partitionKey || model.container.partitionKey.paths.length === 0) {
+            return '';
+        }
+
+        let partitionKeyValues = extractPartitionKey(model.item, model.container.partitionKey);
+        partitionKeyValues = Array.isArray(partitionKeyValues) ? partitionKeyValues : [partitionKeyValues];
+        partitionKeyValues = partitionKeyValues
+            .map((v) => {
+                if (v === null) {
+                    return '\\<null>';
+                }
+                if (v === undefined) {
+                    return '\\<undefined>';
+                }
+                if (typeof v === 'object') {
+                    return JSON.stringify(v);
+                }
+                return v;
+            })
+            .join(', ');
+
+        return partitionKeyValues;
     }
 }

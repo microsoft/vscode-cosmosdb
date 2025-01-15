@@ -5,9 +5,9 @@
 
 import {
     callWithTelemetryAndErrorHandling,
+    createContextValue,
     createGenericElement,
     nonNullValue,
-    type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import vscode, { ThemeIcon, TreeItemCollapsibleState } from 'vscode';
 import { API, getExperienceFromApi } from '../../AzureDBExperiences';
@@ -18,18 +18,22 @@ import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { GraphAccountAttachedResourceItem } from '../graph/GraphAccountAttachedResourceItem';
 import { NoSqlAccountAttachedResourceItem } from '../nosql/NoSqlAccountAttachedResourceItem';
 import { TableAccountAttachedResourceItem } from '../table/TableAccountAttachedResourceItem';
+import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../workspace/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from '../workspace/SharedWorkspaceStorage';
 import { type CosmosDBAttachedAccountModel } from './CosmosDBAttachedAccountModel';
 
-export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement {
-    public id: string = WorkspaceResourceType.AttachedAccounts;
-    public contextValue: string = 'cosmosDB.workspace.item.accounts';
+export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement, TreeElementWithContextValue {
+    public readonly id: string = WorkspaceResourceType.AttachedAccounts;
+    public readonly contextValue: string = 'treeItem.accounts';
 
     private readonly attachDatabaseAccount: CosmosDBTreeElement;
     private readonly attachEmulator: CosmosDBTreeElement;
 
     constructor() {
+        this.id = WorkspaceResourceType.AttachedAccounts;
+        this.contextValue = createContextValue([this.contextValue, `attachedAccounts`]);
+
         this.attachDatabaseAccount = createGenericElement({
             id: `${this.id}/attachAccount`,
             contextValue: `${this.contextValue}/attachAccount`,
@@ -50,31 +54,20 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
     }
 
     public async getChildren(): Promise<CosmosDBTreeElement[]> {
-        const items = await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
-            context.telemetry.properties.view = 'workspace';
-            context.telemetry.properties.parentContext = this.contextValue;
+        // TODO: remove after a few releases
+        await this.pickSupportedAccounts(); // Move accounts from the old storage format to the new one
 
-            // TODO: remove after a few releases
-            await this.pickSupportedAccounts(); // Move accounts from the old storage format to the new one
-
-            const items = await SharedWorkspaceStorage.getItems(this.id);
-
-            return await this.getChildrenImpl(items);
-        });
-
+        const items = await SharedWorkspaceStorage.getItems(this.id);
+        const children = await this.getChildrenImpl(items);
         const auxItems = isWindows ? [this.attachDatabaseAccount, this.attachEmulator] : [this.attachDatabaseAccount];
 
-        const result: CosmosDBTreeElement[] = [];
-        result.push(...(items ?? []));
-        result.push(...auxItems);
-
-        return result;
+        return [...children, ...auxItems];
     }
 
     public getTreeItem() {
         return {
             id: this.id,
-            contextValue: 'cosmosDB.workspace.item.accounts',
+            contextValue: this.contextValue,
             label: 'Attached Database Accounts',
             iconPath: new ThemeIcon('plug'),
             collapsibleState: TreeItemCollapsibleState.Collapsed,

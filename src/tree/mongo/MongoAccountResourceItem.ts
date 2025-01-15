@@ -28,14 +28,15 @@ import { type MongoAccountModel } from './MongoAccountModel';
 
 export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
     public declare readonly account: MongoAccountModel;
+    public readonly contextValue: string = 'treeItem.mongoCluster';
 
     constructor(
         account: MongoAccountModel,
-        readonly experience: Experience,
+        experience: Experience,
         readonly databaseAccount?: DatabaseAccountGetResults, // TODO: exploring during v1->v2 migration
         readonly isEmulator?: boolean, // TODO: exploring during v1->v2 migration
     ) {
-        super(account);
+        super(account, experience);
     }
 
     async discoverConnectionString(): Promise<string | undefined> {

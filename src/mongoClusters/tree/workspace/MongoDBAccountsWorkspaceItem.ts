@@ -35,7 +35,7 @@ export class MongoDBAccountsWorkspaceItem implements TreeElementWithId, TreeElem
                 return new MongoClusterWorkspaceItem(model);
             }),
             createGenericElement({
-                contextValue: 'treeitem.newConnection',
+                contextValue: 'treeItem.newConnection',
                 id: this.id + '/newConnection',
                 label: 'New Connection...',
                 iconPath: new ThemeIcon('plus'),

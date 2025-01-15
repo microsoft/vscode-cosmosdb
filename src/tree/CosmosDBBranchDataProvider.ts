@@ -22,6 +22,8 @@ import { GraphAccountResourceItem } from './graph/GraphAccountResourceItem';
 import { MongoAccountResourceItem } from './mongo/MongoAccountResourceItem';
 import { NoSqlAccountResourceItem } from './nosql/NoSqlAccountResourceItem';
 import { TableAccountResourceItem } from './table/TableAccountResourceItem';
+import { isTreeElementWithContextValue } from './TreeElementWithContextValue';
+import { isTreeElementWithExperience } from './TreeElementWithExperience';
 
 export class CosmosDBBranchDataProvider
     extends vscode.Disposable
@@ -42,12 +44,35 @@ export class CosmosDBBranchDataProvider
      */
     async getChildren(element: CosmosDBTreeElement): Promise<CosmosDBTreeElement[]> {
         try {
-            const children = (await element.getChildren?.()) ?? [];
-            return children.map((child) => {
-                return ext.state.wrapItemInStateHandling(child, (child: CosmosDBTreeElement) =>
-                    this.refresh(child),
-                ) as CosmosDBTreeElement;
-            });
+            const result = await callWithTelemetryAndErrorHandling(
+                'CosmosDBBranchDataProvider.getChildren',
+                async (context: IActionContext) => {
+                    context.errorHandling.suppressDisplay = true;
+                    context.errorHandling.rethrow = true;
+                    context.errorHandling.forceIncludeInReportIssueCommand = true;
+
+                    if (isTreeElementWithContextValue(element)) {
+                        context.telemetry.properties.parentContext = element.contextValue;
+                    }
+
+                    if (isTreeElementWithExperience(element)) {
+                        context.telemetry.properties.experience = element.experience?.api ?? API.Common;
+                    }
+
+                    // TODO: values to mask. New TreeElements do not have valueToMask field
+                    // I assume this array should be filled after element.getChildren() call
+                    // And these values should be masked in the context
+
+                    const children = (await element.getChildren?.()) ?? [];
+                    return children.map((child) => {
+                        return ext.state.wrapItemInStateHandling(child, (child: CosmosDBTreeElement) =>
+                            this.refresh(child),
+                        ) as CosmosDBTreeElement;
+                    });
+                },
+            );
+
+            return result ?? [];
         } catch (error) {
             return [
                 createGenericElement({

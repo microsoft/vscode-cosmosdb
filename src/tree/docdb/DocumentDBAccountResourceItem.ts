@@ -9,6 +9,7 @@ import { type CosmosClient, type DatabaseDefinition, type Resource } from '@azur
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
+import { getThemeAgnosticIconPath } from '../../constants';
 import { type CosmosDBCredential, type CosmosDBKeyCredential, getCosmosClient } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
@@ -21,51 +22,39 @@ import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type AccountInfo } from './AccountInfo';
 
 export abstract class DocumentDBAccountResourceItem extends CosmosAccountResourceItemBase {
-    public declare id: string;
-    public declare contextValue: string;
+    public declare readonly account: CosmosAccountModel;
 
     // To prevent the RBAC notification from showing up multiple times
     protected hasShownRbacNotification: boolean = false;
 
-    protected constructor(
-        public readonly account: CosmosAccountModel,
-        public readonly experience: Experience,
-    ) {
-        super(account);
-        this.contextValue = `${experience.api}.item.account`;
+    protected constructor(account: CosmosAccountModel, experience: Experience) {
+        super(account, experience);
     }
 
     public async getChildren(): Promise<CosmosDBTreeElement[]> {
-        const result = await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
-            context.telemetry.properties.experience = this.experience.api;
-            context.telemetry.properties.parentContext = this.contextValue;
-            context.errorHandling.rethrow = true;
+        const accountInfo = await this.getAccountInfo(this.account);
+        const cosmosClient = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, false);
+        const databases = await this.getDatabases(accountInfo, cosmosClient);
 
-            const accountInfo = await this.getAccountInfo(context, this.account);
-            const cosmosClient = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, false);
-            const databases = await this.getDatabases(accountInfo, cosmosClient);
-            return await this.getChildrenImpl(accountInfo, databases);
-        });
-
-        return result ?? [];
+        return this.getChildrenImpl(accountInfo, databases);
     }
 
     public getTreeItem(): TreeItem {
-        // This function is a bit easier than the ancestor's getTreeItem function
-        return {
-            id: this.id,
-            contextValue: this.contextValue,
-            label: this.account.name,
-            description: `(${this.experience.shortName})`,
-            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
-        };
+        return { ...super.getTreeItem(), iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg') };
     }
 
-    protected async getAccountInfo(context: IActionContext, account: CosmosAccountModel): Promise<AccountInfo> | never {
+    protected async getAccountInfo(account: CosmosAccountModel): Promise<AccountInfo> | never {
         const id = nonNullProp(account, 'id');
         const name = nonNullProp(account, 'name');
         const resourceGroup = nonNullProp(account, 'resourceGroup');
-        const client = await createCosmosDBManagementClient(context, account.subscription);
+
+        const client = await callWithTelemetryAndErrorHandling('getAccountInfo', async (context: IActionContext) => {
+            return createCosmosDBManagementClient(context, account.subscription);
+        });
+
+        if (!client) {
+            throw new Error('Failed to connect to Cosmos DB account');
+        }
 
         const databaseAccount = await client.databaseAccounts.get(resourceGroup, name);
         const credentials = await this.getCredentials(name, resourceGroup, client, databaseAccount);

@@ -13,8 +13,9 @@ import {
 import { type TreeItem } from 'vscode';
 
 import * as vscode from 'vscode';
-import { type Experience } from '../../AzureDBExperiences';
+import { API, type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
+import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { localize } from '../../utils/localize';
 import { regionToDisplayName } from '../../utils/regionToDisplayName';
@@ -24,13 +25,20 @@ import { DatabaseItem } from './DatabaseItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
 // This info will be available at every level in the tree for immediate access
-export abstract class MongoClusterItemBase implements TreeElementWithId, TreeElementWithExperience {
-    id: string;
-    experience?: Experience;
+export abstract class MongoClusterItemBase
+    implements TreeElementWithId, TreeElementWithExperience, TreeElementWithContextValue
+{
+    public readonly id: string;
+    public readonly experience?: Experience;
+    public readonly contextValue: string = 'treeItem.mongoCluster';
 
-    constructor(public mongoCluster: MongoClusterModel) {
+    private readonly experienceContextValue: string = '';
+
+    protected constructor(public mongoCluster: MongoClusterModel) {
         this.id = mongoCluster.id ?? '';
         this.experience = mongoCluster.dbExperience;
+        this.experienceContextValue = `experience.${this.experience?.api ?? API.Common}`;
+        this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
     /**
@@ -97,10 +105,7 @@ export abstract class MongoClusterItemBase implements TreeElementWithId, TreeEle
             if (databases.length === 0) {
                 return [
                     createGenericElement({
-                        contextValue: createContextValue([
-                            'treeitem.no-databases',
-                            this.mongoCluster.dbExperience?.api ?? '',
-                        ]),
+                        contextValue: createContextValue(['treeItem.no-databases', this.experienceContextValue]),
                         id: `${this.id}/no-databases`,
                         label: 'Create database...',
                         iconPath: new vscode.ThemeIcon('plus'),
@@ -149,7 +154,7 @@ export abstract class MongoClusterItemBase implements TreeElementWithId, TreeEle
     getTreeItem(): TreeItem {
         return {
             id: this.id,
-            contextValue: createContextValue(['treeitem.mongocluster', this.mongoCluster.dbExperience?.api ?? '']),
+            contextValue: this.contextValue,
             label: this.mongoCluster.name,
             description: this.mongoCluster.sku !== undefined ? `(${this.mongoCluster.sku})` : false,
             // iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg'), // Uncomment if icon is available

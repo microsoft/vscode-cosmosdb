@@ -843,13 +843,7 @@
                     "group": "2@1"
                 },
                 {
-                    "//": "[Account] Copy connection string to Mongo DB account",
-                    "command": "cosmosDB.copyConnectionString",
-                    "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]mongoCluster(?![a-z.\\/])/i",
-                    "group": "2@1"
-                },
-                {
-                    "//": "[Account] Copy connection string to Mongo Cluster account",
+                    "//": "[Account] Copy connection string to Mongo Cluster or MongoDB (RU) account",
                     "command": "command.mongoClusters.copyConnectionString",
                     "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]mongoCluster(?![a-z.\\/])/i",
                     "group": "2@1"

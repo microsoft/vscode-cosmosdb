@@ -28,7 +28,7 @@ import { type MongoAccountModel } from './MongoAccountModel';
 
 export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
     public declare readonly account: MongoAccountModel;
-    public readonly contextValue: string = 'treeItem.mongoCluster';
+    public readonly contextValue: string = 'treeItem.mongoCluster'; // TODO: this is a bug and overwrites the contextValue from the base class, fix this.
 
     constructor(
         account: MongoAccountModel,

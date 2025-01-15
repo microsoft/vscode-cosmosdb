@@ -16,7 +16,7 @@ interface IIndexMetrics {
     sections: IIndexMetricsSection[];
 }
 
-const INDEX_METRICS_DOC_URL = "https://learn.microsoft.com/azure/cosmos-db/nosql/index-metrics?tabs=dotnet";
+const INDEX_METRICS_DOC_URL = "https://learn.microsoft.com/azure/cosmos-db/nosql/index-metrics";
 
 export const IndexMetricsView: React.FC<{ indexMetricsStr: string, topLabelStyle?: string }> = ({ indexMetricsStr, topLabelStyle }) => {
     // TODO Uncomment this example for testing
@@ -26,17 +26,17 @@ export const IndexMetricsView: React.FC<{ indexMetricsStr: string, topLabelStyle
 
     return (<>
         <div className={topLabelStyle}>
-            <Label size={'large'}>{parsed.title}</Label>
+            <Label size={'large'}>{parsed.title}</Label> (<Link href={INDEX_METRICS_DOC_URL}>Learn More…</Link>)
         </div>
-        <Link href={INDEX_METRICS_DOC_URL}>Learn More</Link>
+
         <Table arial-label="Index metrics table" style={{ minWidth: '510px' }}>
             <TableHeader>
                 <TableRow>
-                    <TableHeaderCell />
+                    <TableHeaderCell>Metric</TableHeaderCell>
                     <TableHeaderCell>
                         <Table>
                             <TableBody>
-                                <TableRow>
+                                <TableRow style={{ borderBottom: '0px' }}>
                                     {columns.map((column) => (
                                         <TableCell key={column}>{column}</TableCell>
                                     ))}
@@ -56,7 +56,7 @@ export const IndexMetricsView: React.FC<{ indexMetricsStr: string, topLabelStyle
                                 <Table>
                                     <TableBody>
                                         {section.indexes.map((cosmosdbIndex, index) => (
-                                            <TableRow key={index}>
+                                            <TableRow key={index} {...(index === section.indexes.length - 1 ? { style: { borderBottom: '0px' } } : {})}>
                                                 {columns.map((column) => (
                                                     <TableCell>{cosmosdbIndex[column]}</TableCell>
                                                 ))}

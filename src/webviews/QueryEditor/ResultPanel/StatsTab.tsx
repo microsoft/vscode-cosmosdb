@@ -55,14 +55,15 @@ export const StatsTab = () => {
     const state = useQueryEditorState();
     const items = queryMetricsToTable(state.currentQueryResult);
     const indexMetrics = state.currentQueryResult?.indexMetrics?.trim();
-    const QUERY_METRICS_DOC_URL = "https://learn.microsoft.com/azure/cosmos-db/nosql/query-metrics";
+    const QUERY_METRICS_DOC_URL = 'https://learn.microsoft.com/azure/cosmos-db/nosql/query-metrics';
 
     return (
         <>
             <div className={styles.container}>
                 <div className={styles.panel1}>
                     <div className={styles.topLabel}>
-                        <Label size={'large'}>Query metrics</Label> (<Link href={QUERY_METRICS_DOC_URL}>Learn More…</Link>)
+                        <Label size={'large'}>Query metrics</Label> (
+                        <Link href={QUERY_METRICS_DOC_URL}>Learn More…</Link>)
                     </div>
                     <Table arial-label="Stats table" style={{ minWidth: '510px' }}>
                         <TableHeader>

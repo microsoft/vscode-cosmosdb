@@ -11,22 +11,26 @@ import {
     type TreeElementWithId,
 } from '@microsoft/vscode-azext-utils';
 import { type Document } from 'bson';
-import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
-import { type Experience } from '../../AzureDBExperiences';
+import { ThemeIcon, type TreeItem, TreeItemCollapsibleState } from 'vscode';
+import { API, type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
+import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import {
-    MongoClustersClient,
     type CollectionItemModel,
     type DatabaseItemModel,
     type InsertDocumentsResult,
+    MongoClustersClient,
 } from '../MongoClustersClient';
 import { IndexesItem } from './IndexesItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class CollectionItem implements TreeElementWithId, TreeElementWithExperience {
-    id: string;
-    experience?: Experience;
+export class CollectionItem implements TreeElementWithId, TreeElementWithExperience, TreeElementWithContextValue {
+    public readonly id: string;
+    public readonly experience?: Experience;
+    public readonly contextValue: string = 'treeItem.collection';
+
+    private readonly experienceContextValue: string = '';
 
     constructor(
         readonly mongoCluster: MongoClusterModel,
@@ -35,12 +39,14 @@ export class CollectionItem implements TreeElementWithId, TreeElementWithExperie
     ) {
         this.id = `${mongoCluster.id}/${databaseInfo.name}/${collectionInfo.name}`;
         this.experience = mongoCluster.dbExperience;
+        this.experienceContextValue = `experience.${this.experience?.api ?? API.Common}`;
+        this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
     async getChildren(): Promise<TreeElementBase[]> {
         return [
             createGenericElement({
-                contextValue: createContextValue(['treeitem.documents', this.mongoCluster.dbExperience?.api ?? '']),
+                contextValue: createContextValue(['treeItem.documents', this.experienceContextValue]),
                 id: `${this.id}/documents`,
                 label: 'Documents',
                 commandId: 'command.internal.mongoClusters.containerView.open',
@@ -90,7 +96,7 @@ export class CollectionItem implements TreeElementWithId, TreeElementWithExperie
     getTreeItem(): TreeItem {
         return {
             id: this.id,
-            contextValue: createContextValue(['treeitem.collection', this.mongoCluster.dbExperience?.api ?? '']),
+            contextValue: this.contextValue,
             label: this.collectionInfo.name,
             iconPath: new ThemeIcon('folder-opened'),
             collapsibleState: TreeItemCollapsibleState.Collapsed,

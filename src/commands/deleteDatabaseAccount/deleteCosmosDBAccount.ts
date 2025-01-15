@@ -6,6 +6,7 @@
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import { AzExtTreeItem, createSubscriptionContext } from '@microsoft/vscode-azext-utils';
+import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { CosmosAccountResourceItemBase } from '../../tree/CosmosAccountResourceItemBase';
@@ -27,7 +28,13 @@ export async function deleteCosmosDBAccount(
         resourceGroup = getResourceGroupFromId(node.fullId);
         accountName = getDatabaseAccountNameFromId(node.fullId);
     } else if (node instanceof CosmosAccountResourceItemBase) {
-        const subscriptionContext = createSubscriptionContext(node.account.subscription);
+        // Not all CosmosAccountResourceItemBase instances have a subscription property (attached account does not),
+        // so we need to create a subscription context
+        if (!('subscription' in node.account)) {
+            throw new Error('Subscription is required to delete an account.');
+        }
+
+        const subscriptionContext = createSubscriptionContext(node.account.subscription as AzureSubscription);
         client = await createCosmosDBClient([context, subscriptionContext]);
         resourceGroup = getResourceGroupFromId(node.account.id);
         accountName = node.account.name;

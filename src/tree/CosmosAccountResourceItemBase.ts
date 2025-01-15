@@ -3,18 +3,28 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { createContextValue } from '@microsoft/vscode-azext-utils';
+import { type ResourceBase } from '@microsoft/vscode-azureresources-api';
+import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { type TreeItem } from 'vscode';
-import { getExperienceLabel, tryGetExperience } from '../AzureDBExperiences';
-import { type CosmosAccountModel } from './CosmosAccountModel';
+import { type Experience } from '../AzureDBExperiences';
 import { type CosmosDBTreeElement } from './CosmosDBTreeElement';
+import { type TreeElementWithContextValue } from './TreeElementWithContextValue';
+import { type TreeElementWithExperience } from './TreeElementWithExperience';
 
-export abstract class CosmosAccountResourceItemBase implements CosmosDBTreeElement {
-    public id: string;
-    public contextValue: string = 'cosmosDB.item.account';
+export abstract class CosmosAccountResourceItemBase
+    implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
+{
+    public readonly id: string;
+    public readonly contextValue: string = 'treeItem.account';
 
-    protected constructor(readonly account: CosmosAccountModel) {
-        this.id = account.id ?? '';
+    protected constructor(
+        public readonly account: ResourceBase,
+        public readonly experience: Experience,
+    ) {
+        this.id = account.id ?? uuid();
+        this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
     }
 
     /**
@@ -30,22 +40,11 @@ export abstract class CosmosAccountResourceItemBase implements CosmosDBTreeEleme
      * @returns The TreeItem object.
      */
     getTreeItem(): TreeItem {
-        const experience = tryGetExperience(this.account);
-        if (!experience) {
-            const accountKindLabel = getExperienceLabel(this.account);
-            const label: string = this.account.name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
-            return {
-                id: this.id,
-                contextValue: 'cosmosDB.item.account',
-                label: label,
-                collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
-            };
-        }
         return {
             id: this.id,
-            contextValue: `${experience.api}.item.account`,
+            contextValue: this.contextValue,
             label: this.account.name,
-            description: `(${experience.shortName})`,
+            description: `(${this.experience.shortName})`,
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }

@@ -3,15 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    type AzExtTreeDataProvider,
-    type AzExtTreeItem,
-    type IAzExtLogOutputChannel,
-    type TreeElementStateManager,
-} from '@microsoft/vscode-azext-utils';
+import { type IAzExtLogOutputChannel, type TreeElementStateManager } from '@microsoft/vscode-azext-utils';
 import { type AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostapi';
 import { type AzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
-import { type ExtensionContext, type SecretStorage, type TreeView } from 'vscode';
+import { type ExtensionContext, type SecretStorage } from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
 import { type MongoDBLanguageClient } from './mongo/languageClient';
@@ -22,8 +17,6 @@ import { type MongoClustersWorkspaceBranchDataProvider } from './mongoClusters/t
 import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
 import { type AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
-import { type AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
-import { type SharedWorkspaceResourceProvider } from './tree/workspace/SharedWorkspaceResourceProvider';
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -33,11 +26,8 @@ export namespace ext {
     export let connectedPostgresDB: PostgresDatabaseTreeItem | undefined;
     export let context: ExtensionContext;
     export let outputChannel: IAzExtLogOutputChannel;
-    export let tree: AzExtTreeDataProvider;
-    export let treeView: TreeView<AzExtTreeItem>;
     export let attachedAccountsNode: AttachedAccountsTreeItem;
     export let isBundle: boolean | undefined;
-    export let azureAccountTreeItem: AzureAccountTreeItemWithAttached;
     export let secretStorage: SecretStorage;
     export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;
     export const prefix: string = 'azureDatabases';
@@ -52,9 +42,6 @@ export namespace ext {
 
     // used for the resources tree
     export let mongoClustersBranchDataProvider: MongoClustersBranchDataProvider;
-
-    // used for the workspace: this is the general provider
-    export let workspaceDataProvider: SharedWorkspaceResourceProvider;
 
     // used for the workspace: these are the dedicated providers
     export let mongoClustersWorkspaceBranchDataProvider: MongoClustersWorkspaceBranchDataProvider;

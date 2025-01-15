@@ -11,7 +11,8 @@ import {
     type IActionContext,
     type ISubscriptionContext,
 } from '@microsoft/vscode-azext-utils';
-import { type MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
+import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
+import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
 import { CosmosAccountResourceItemBase } from '../../tree/CosmosAccountResourceItemBase';
 import { createActivityContext } from '../../utils/activityUtils';
 import { localize } from '../../utils/localize';
@@ -26,10 +27,14 @@ export async function deleteDatabaseAccount(
     let subscription: ISubscriptionContext;
     if (node instanceof AzExtTreeItem) {
         subscription = node.subscription;
-    } else if (node instanceof CosmosAccountResourceItemBase) {
-        subscription = createSubscriptionContext(node.account.subscription);
+    } else if (node instanceof CosmosAccountResourceItemBase && 'subscription' in node.account) {
+        subscription = createSubscriptionContext(node.account.subscription as AzureSubscription);
+    } else if (node instanceof MongoClusterResourceItem) {
+        subscription = createSubscriptionContext(node.subscription);
     } else {
-        subscription = createSubscriptionContext((node as MongoClusterResourceItem).subscription);
+        // Not all CosmosAccountResourceItemBase instances have a subscription property (attached account does not),
+        // so we need to create a subscription context
+        throw new Error('Subscription is required to delete an account.');
     }
 
     let accountName: string;

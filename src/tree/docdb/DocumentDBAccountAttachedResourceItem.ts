@@ -14,48 +14,30 @@ import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azur
 import { isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
 import { localize } from '../../utils/localize';
 import { type CosmosDBAttachedAccountModel } from '../attached/CosmosDBAttachedAccountModel';
+import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type AccountInfo } from './AccountInfo';
 
-export abstract class DocumentDBAccountAttachedResourceItem implements CosmosDBTreeElement {
-    public id: string;
-    public contextValue: string = 'cosmosDB.workspace.item.account';
+export abstract class DocumentDBAccountAttachedResourceItem extends CosmosAccountResourceItemBase {
+    public declare readonly account: CosmosDBAttachedAccountModel;
 
     // To prevent the RBAC notification from showing up multiple times
     protected hasShownRbacNotification: boolean = false;
 
-    protected constructor(
-        protected account: CosmosDBAttachedAccountModel,
-        protected experience: Experience,
-    ) {
-        this.contextValue = `${experience.api}.workspace.item.account`;
+    protected constructor(account: CosmosDBAttachedAccountModel, experience: Experience) {
+        super(account, experience);
     }
 
     public async getChildren(): Promise<CosmosDBTreeElement[]> {
-        const result = await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
-            context.telemetry.properties.experience = this.experience.api;
-            context.telemetry.properties.parentContext = this.contextValue;
-            context.errorHandling.rethrow = true;
+        const accountInfo = await this.getAccountInfo(this.account);
+        const cosmosClient = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, false);
+        const databases = await this.getDatabases(accountInfo, cosmosClient);
 
-            const accountInfo = await this.getAccountInfo(this.account);
-            const cosmosClient = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, false);
-            const databases = await this.getDatabases(accountInfo, cosmosClient);
-            return await this.getChildrenImpl(accountInfo, databases);
-        });
-
-        return result ?? [];
+        return this.getChildrenImpl(accountInfo, databases);
     }
 
     public getTreeItem(): TreeItem {
-        // This function is a bit easier than the ancestor's getTreeItem function
-        return {
-            id: this.id,
-            contextValue: this.contextValue,
-            iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg'),
-            label: this.account.name,
-            description: `(${this.experience.shortName})`,
-            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
-        };
+        return { ...super.getTreeItem(), iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg') };
     }
 
     protected async getAccountInfo(account: CosmosDBAttachedAccountModel): Promise<AccountInfo> | never {

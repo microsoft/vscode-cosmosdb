@@ -11,7 +11,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { type BranchDataProvider } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
-import { API, tryGetExperience } from '../AzureDBExperiences';
+import { API, CoreExperience, tryGetExperience } from '../AzureDBExperiences';
 import { databaseAccountType } from '../constants';
 import { ext } from '../extensionVariables';
 import { localize } from '../utils/localize';
@@ -22,6 +22,8 @@ import { GraphAccountResourceItem } from './graph/GraphAccountResourceItem';
 import { MongoAccountResourceItem } from './mongo/MongoAccountResourceItem';
 import { NoSqlAccountResourceItem } from './nosql/NoSqlAccountResourceItem';
 import { TableAccountResourceItem } from './table/TableAccountResourceItem';
+import { isTreeElementWithContextValue } from './TreeElementWithContextValue';
+import { isTreeElementWithExperience } from './TreeElementWithExperience';
 
 export class CosmosDBBranchDataProvider
     extends vscode.Disposable
@@ -49,7 +51,20 @@ export class CosmosDBBranchDataProvider
                     context.errorHandling.rethrow = true;
                     context.errorHandling.forceIncludeInReportIssueCommand = true;
 
-                    return (await element.getChildren?.())?.map((child) => {
+                    if (isTreeElementWithContextValue(element)) {
+                        context.telemetry.properties.parentContext = element.contextValue;
+                    }
+
+                    if (isTreeElementWithExperience(element)) {
+                        context.telemetry.properties.experience = element.experience?.api ?? API.Common;
+                    }
+
+                    // TODO: values to mask. New TreeElements do not have valueToMask field
+                    // I assume this array should be filled after element.getChildren() call
+                    // And these values should be masked in the context
+
+                    const children = (await element.getChildren?.()) ?? [];
+                    return children.map((child) => {
                         return ext.state.wrapItemInStateHandling(child, (child: CosmosDBTreeElement) =>
                             this.refresh(child),
                         ) as CosmosDBTreeElement;
@@ -75,7 +90,7 @@ export class CosmosDBBranchDataProvider
     async getResourceItem(resource: CosmosDBResource): Promise<CosmosDBTreeElement> {
         const resourceItem = await callWithTelemetryAndErrorHandling(
             'CosmosDBBranchDataProvider.getResourceItem',
-            async (context: IActionContext) => {
+            (context: IActionContext) => {
                 const id = nonNullProp(resource, 'id');
                 const name = nonNullProp(resource, 'name');
                 const type = nonNullProp(resource, 'type');
@@ -107,7 +122,8 @@ export class CosmosDBBranchDataProvider
                         return new TableAccountResourceItem(accountModel, experience);
                     }
 
-                    // Unknown experience
+                    // Unknown experience fallback
+                    return new NoSqlAccountResourceItem(accountModel, CoreExperience);
                 } else {
                     // Unknown resource type
                 }

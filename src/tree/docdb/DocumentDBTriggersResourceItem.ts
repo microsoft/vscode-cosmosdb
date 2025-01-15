@@ -4,40 +4,35 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type CosmosClient, type Resource, type TriggerDefinition } from '@azure/cosmos';
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { v4 as uuid } from 'uuid';
+import { createContextValue } from '@microsoft/vscode-azext-utils';
 import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
+import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type DocumentDBTriggersModel } from './models/DocumentDBTriggersModel';
 
-export abstract class DocumentDBTriggersResourceItem implements CosmosDBTreeElement {
-    public id: string;
-    public contextValue: string = 'cosmosDB.item.triggers';
+export abstract class DocumentDBTriggersResourceItem
+    implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
+{
+    public readonly id: string;
+    public readonly contextValue: string = 'treeItem.triggers';
 
     protected constructor(
-        protected readonly model: DocumentDBTriggersModel,
-        protected readonly experience: Experience,
+        public readonly model: DocumentDBTriggersModel,
+        public readonly experience: Experience,
     ) {
-        this.id = uuid();
-        this.contextValue = `${experience.api}.item.triggers`;
+        this.id = `${model.accountInfo.id}/${model.database.id}/${model.container.id}/triggers`;
+        this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
     }
 
     public async getChildren(): Promise<CosmosDBTreeElement[]> {
-        const result = await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
-            context.telemetry.properties.experience = this.experience.api;
-            context.telemetry.properties.parentContext = this.contextValue;
-            context.errorHandling.rethrow = true;
+        const { endpoint, credentials, isEmulator } = this.model.accountInfo;
+        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
+        const triggers = await this.getTriggers(cosmosClient);
 
-            const { endpoint, credentials, isEmulator } = this.model.accountInfo;
-            const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-            const triggers = await this.getTriggers(cosmosClient);
-
-            return await this.getChildrenImpl(triggers);
-        });
-
-        return result ?? [];
+        return this.getChildrenImpl(triggers);
     }
 
     getTreeItem(): TreeItem {

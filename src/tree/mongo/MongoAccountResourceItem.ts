@@ -27,15 +27,16 @@ import { type MongoAccountModel } from './MongoAccountModel';
 // TODO: currently MongoAccountResourceItem does not reuse MongoClusterItemBase, this will be refactored after the v1 to v2 tree migration
 
 export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
-    declare account: MongoAccountModel;
+    public declare readonly account: MongoAccountModel;
+    public readonly contextValue: string = 'treeItem.mongoCluster'; // TODO: this is a bug and overwrites the contextValue from the base class, fix this.
 
     constructor(
         account: MongoAccountModel,
-        readonly experience: Experience,
+        experience: Experience,
         readonly databaseAccount?: DatabaseAccountGetResults, // TODO: exploring during v1->v2 migration
         readonly isEmulator?: boolean, // TODO: exploring during v1->v2 migration
     ) {
-        super(account);
+        super(account, experience);
     }
 
     async discoverConnectionString(): Promise<string | undefined> {

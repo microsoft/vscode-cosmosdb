@@ -4,40 +4,35 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type CosmosClient, type Resource, type StoredProcedureDefinition } from '@azure/cosmos';
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { v4 as uuid } from 'uuid';
+import { createContextValue } from '@microsoft/vscode-azext-utils';
 import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
+import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type DocumentDBStoredProceduresModel } from './models/DocumentDBStoredProceduresModel';
 
-export abstract class DocumentDBStoredProceduresResourceItem implements CosmosDBTreeElement {
-    public id: string;
-    public contextValue: string = 'cosmosDB.item.storedProcedures';
+export abstract class DocumentDBStoredProceduresResourceItem
+    implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
+{
+    public readonly id: string;
+    public readonly contextValue: string = 'treeItem.storedProcedures';
 
     protected constructor(
-        protected readonly model: DocumentDBStoredProceduresModel,
-        protected readonly experience: Experience,
+        public readonly model: DocumentDBStoredProceduresModel,
+        public readonly experience: Experience,
     ) {
-        this.id = uuid();
-        this.contextValue = `${experience.api}.item.storedProcedures`;
+        this.id = `${model.accountInfo.id}/${model.database.id}/${model.container.id}/storedProcedures`;
+        this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
     }
 
     public async getChildren(): Promise<CosmosDBTreeElement[]> {
-        const result = await callWithTelemetryAndErrorHandling('getChildren', async (context: IActionContext) => {
-            context.telemetry.properties.experience = this.experience.api;
-            context.telemetry.properties.parentContext = this.contextValue;
-            context.errorHandling.rethrow = true;
+        const { endpoint, credentials, isEmulator } = this.model.accountInfo;
+        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
+        const storedProcedures = await this.getStoredProcedures(cosmosClient);
 
-            const { endpoint, credentials, isEmulator } = this.model.accountInfo;
-            const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-            const storedProcedures = await this.getStoredProcedures(cosmosClient);
-
-            return await this.getChildrenImpl(storedProcedures);
-        });
-
-        return result ?? [];
+        return this.getChildrenImpl(storedProcedures);
     }
 
     getTreeItem(): TreeItem {

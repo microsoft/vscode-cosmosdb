@@ -12,17 +12,21 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
-import { type Experience } from '../../AzureDBExperiences';
+import { API, type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
+import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { localize } from '../../utils/localize';
 import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersClient';
 import { CollectionItem } from './CollectionItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class DatabaseItem implements TreeElementWithId, TreeElementWithExperience {
-    id: string;
-    experience?: Experience;
+export class DatabaseItem implements TreeElementWithId, TreeElementWithExperience, TreeElementWithContextValue {
+    public readonly id: string;
+    public readonly experience?: Experience;
+    public readonly contextValue: string = 'treeItem.database';
+
+    private readonly experienceContextValue: string = '';
 
     constructor(
         readonly mongoCluster: MongoClusterModel,
@@ -30,6 +34,8 @@ export class DatabaseItem implements TreeElementWithId, TreeElementWithExperienc
     ) {
         this.id = `${mongoCluster.id}/${databaseInfo.name}`;
         this.experience = mongoCluster.dbExperience;
+        this.experienceContextValue = `experience.${this.experience?.api ?? API.Common}`;
+        this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
     async getChildren(): Promise<TreeElementBase[]> {
@@ -40,11 +46,8 @@ export class DatabaseItem implements TreeElementWithId, TreeElementWithExperienc
             // no databases in there:
             return [
                 createGenericElement({
-                    contextValue: createContextValue([
-                        'treeitem.no-collections',
-                        this.mongoCluster.dbExperience?.api ?? '',
-                    ]),
-                    id: `${this.id}/no-databases`,
+                    contextValue: createContextValue(['treeItem.no-collections', this.experienceContextValue]),
+                    id: `${this.id}/no-collections`,
                     label: 'Create collection...',
                     iconPath: new vscode.ThemeIcon('plus'),
                     commandId: 'command.mongoClusters.createCollection',
@@ -94,7 +97,7 @@ export class DatabaseItem implements TreeElementWithId, TreeElementWithExperienc
     getTreeItem(): TreeItem {
         return {
             id: this.id,
-            contextValue: createContextValue(['treeitem.database', this.mongoCluster.dbExperience?.api ?? '']),
+            contextValue: this.contextValue,
             label: this.databaseInfo.name,
             iconPath: new ThemeIcon('database'), // TODO: create our own icon here, this one's shape can change
             collapsibleState: TreeItemCollapsibleState.Collapsed,

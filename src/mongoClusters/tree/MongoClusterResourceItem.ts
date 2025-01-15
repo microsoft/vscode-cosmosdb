@@ -29,7 +29,7 @@ import ConnectionString from 'mongodb-connection-string-url';
 
 export class MongoClusterResourceItem extends MongoClusterItemBase {
     constructor(
-        private readonly subscription: AzureSubscription,
+        readonly subscription: AzureSubscription,
         mongoCluster: MongoClusterModel,
     ) {
         super(mongoCluster);

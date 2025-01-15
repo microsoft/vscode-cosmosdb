@@ -12,7 +12,8 @@ import {
     type ISubscriptionContext,
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
-import { type CosmosAccountResourceItemBase } from '../../tree/CosmosAccountResourceItemBase';
+import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
+import { CosmosAccountResourceItemBase } from '../../tree/CosmosAccountResourceItemBase';
 import { createActivityContext } from '../../utils/activityUtils';
 import { localize } from '../../utils/localize';
 import { DatabaseAccountDeleteStep } from './DatabaseAccountDeleteStep';
@@ -20,18 +21,29 @@ import { type IDeleteWizardContext } from './IDeleteWizardContext';
 
 export async function deleteDatabaseAccount(
     context: IActionContext,
-    node: AzExtTreeItem | CosmosAccountResourceItemBase,
+    node: AzExtTreeItem | CosmosAccountResourceItemBase | MongoClusterResourceItem,
     isPostgres: boolean = false,
 ): Promise<void> {
     let subscription: ISubscriptionContext;
     if (node instanceof AzExtTreeItem) {
         subscription = node.subscription;
-    } else if ('subscription' in node.account) {
+    } else if (node instanceof CosmosAccountResourceItemBase && 'subscription' in node.account) {
         subscription = createSubscriptionContext(node.account.subscription as AzureSubscription);
+    } else if (node instanceof MongoClusterResourceItem) {
+        subscription = createSubscriptionContext(node.subscription);
     } else {
         // Not all CosmosAccountResourceItemBase instances have a subscription property (attached account does not),
         // so we need to create a subscription context
         throw new Error('Subscription is required to delete an account.');
+    }
+
+    let accountName: string;
+    if (node instanceof AzExtTreeItem) {
+        accountName = node.label;
+    } else if (node instanceof CosmosAccountResourceItemBase) {
+        accountName = node.account.name;
+    } else {
+        accountName = (node as MongoClusterResourceItem).mongoCluster.name;
     }
 
     const wizardContext: IDeleteWizardContext = Object.assign(context, {
@@ -42,27 +54,19 @@ export async function deleteDatabaseAccount(
     });
 
     const title = wizardContext.deletePostgres
-        ? localize(
-              'deletePoSer',
-              'Delete Postgres Server "{0}"',
-              node instanceof AzExtTreeItem ? node.label : node.account.name,
-          )
-        : localize(
-              'deleteDbAcc',
-              'Delete Database Account "{0}"',
-              node instanceof AzExtTreeItem ? node.label : node.account.name,
-          );
+        ? localize('deletePoSer', 'Delete Postgres Server "{0}"', accountName)
+        : localize('deleteDbAcc', 'Delete Database Account "{0}"', accountName);
 
     const confirmationMessage = wizardContext.deletePostgres
         ? localize(
               'deleteAccountConfirm',
               'Are you sure you want to delete server "{0}" and its contents?',
-              node instanceof AzExtTreeItem ? node.label : node.account.name,
+              accountName,
           )
         : localize(
               'deleteAccountConfirm',
               'Are you sure you want to delete account "{0}" and its contents?',
-              node instanceof AzExtTreeItem ? node.label : node.account.name,
+              accountName,
           );
 
     const wizard = new AzureWizard(wizardContext, {

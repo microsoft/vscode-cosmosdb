@@ -8,7 +8,23 @@ import { CollectionViewController } from '../../webviews/mongoClusters/collectio
 import { MongoClustersSession } from '../MongoClusterSession';
 import { type CollectionItem } from '../tree/CollectionItem';
 
-export async function openCollectionView(
+export async function openCollectionView(context: IActionContext, node?: CollectionItem) {
+    if (!node) {
+        throw new Error('Invalid collection node');
+    }
+
+    context.telemetry.properties.experience = node?.mongoCluster.dbExperience?.api;
+
+    return openCollectionViewInternal(context, {
+        id: node.id,
+        clusterId: node.mongoCluster.id,
+        databaseName: node.databaseInfo.name,
+        collectionName: node.collectionInfo.name,
+        collectionTreeItem: node,
+    });
+}
+
+export async function openCollectionViewInternal(
     _context: IActionContext,
     props: {
         id: string;

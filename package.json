@@ -611,7 +611,7 @@
             },
             {
                 "category": "MongoDB Clusters",
-                "command": "command.mongoClusters.openColllection",
+                "command": "command.mongoClusters.containerView.open",
                 "title": "Open Collection"
             }
         ],
@@ -976,7 +976,7 @@
 
                 {
                     "//": "[Collection] Open Mongo DB|Cluster collection",
-                    "command": "command.mongoClusters.openColllection",
+                    "command": "command.mongoClusters.containerView.open",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "1@1"
                 },

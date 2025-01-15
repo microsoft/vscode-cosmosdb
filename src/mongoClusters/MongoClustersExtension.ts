@@ -29,7 +29,7 @@ import { dropDatabase } from './commands/dropDatabase';
 import { mongoClustersExportEntireCollection, mongoClustersExportQueryResults } from './commands/exportDocuments';
 import { mongoClustersImportDocuments } from './commands/importDocuments';
 import { launchShell } from './commands/launchShell';
-import { openCollectionView } from './commands/openCollectionView';
+import { openCollectionView, openCollectionViewInternal } from './commands/openCollectionView';
 import { openDocumentView } from './commands/openDocumentView';
 import { removeWorkspaceConnection } from './commands/removeWorkspaceConnection';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
@@ -83,7 +83,19 @@ export class MongoClustersExtension implements vscode.Disposable {
                 // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
                 // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
 
-                registerCommand('command.internal.mongoClusters.containerView.open', openCollectionView);
+                /**
+                 * Here, opening the collection view is done in two ways: one is accessible from the tree view
+                 * via a context menu, and the other is accessible programmatically. Both of them
+                 * use the same underlying function to open the collection view.
+                 *
+                 * openCollectionView calls openCollectionViewInternal with no additional parameters.
+                 *
+                 * It was possible to merge the two commands into one, but it would result in code that is
+                 * harder to understand and maintain.
+                 */
+                registerCommand('command.internal.mongoClusters.containerView.open', openCollectionViewInternal);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.containerView.open', openCollectionView);
+
                 registerCommand('command.internal.mongoClusters.documentView.open', openDocumentView);
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.launchShell', launchShell);

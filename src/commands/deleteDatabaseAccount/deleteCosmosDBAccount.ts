@@ -13,10 +13,10 @@ import { CosmosAccountResourceItemBase } from '../../tree/CosmosAccountResourceI
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
-import { type IDeleteWizardContext } from './IDeleteWizardContext';
+import { type DeleteWizardContext } from './DeleteWizardContext';
 
 export async function deleteCosmosDBAccount(
-    context: IDeleteWizardContext,
+    context: DeleteWizardContext,
     node: AzExtTreeItem | CosmosAccountResourceItemBase,
 ): Promise<void> {
     let client: CosmosDBManagementClient;

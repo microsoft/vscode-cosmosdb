@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IAzExtLogOutputChannel, type TreeElementStateManager } from '@microsoft/vscode-azext-utils';
+import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-azext-utils/activity';
 import { type AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostapi';
-import { type AzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import { type ExtensionContext, type SecretStorage } from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
@@ -17,6 +17,8 @@ import { type MongoClustersWorkspaceBranchDataProvider } from './mongoClusters/t
 import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
 import { type AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
+import { type CosmosDBBranchDataProvider } from './tree/CosmosDBBranchDataProvider';
+import { type CosmosDBWorkspaceBranchDataProvider } from './tree/CosmosDBWorkspaceBranchDataProvider';
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -36,9 +38,21 @@ export namespace ext {
     export let noSqlCodeLensProvider: NoSqlCodeLensProvider;
     export let mongoLanguageClient: MongoDBLanguageClient;
     export let rgApi: AzureHostExtensionApi;
-    export let rgApiV2: AzureResourcesExtensionApi;
+    // Since the Azure Resources extension did not update API interface, but added a new interface with activity
+    // we have to use the new interface AzureResourcesExtensionApiWithActivity instead of AzureResourcesExtensionApi
+    export let rgApiV2: AzureResourcesExtensionApiWithActivity;
 
     export let state: TreeElementStateManager;
+
+    // TODO: To avoid these stupid variables the rgApiV2 should have the following public fields (but they are private):
+    // - AzureResourceProviderManager,
+    // - AzureResourceBranchDataProviderManager,
+    // - WorkspaceResourceProviderManager,
+    // - WorkspaceResourceBranchDataProviderManager,
+
+    // used for the resources tree and the workspace tree REFRESH
+    export let cosmosDBBranchDataProvider: CosmosDBBranchDataProvider;
+    export let cosmosDBWorkspaceBranchDataProvider: CosmosDBWorkspaceBranchDataProvider;
 
     // used for the resources tree
     export let mongoClustersBranchDataProvider: MongoClustersBranchDataProvider;

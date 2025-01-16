@@ -21,7 +21,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import type * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
-import { type IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
+import { type DeleteWizardContext } from '../../commands/deleteDatabaseAccount/DeleteWizardContext';
 import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
 import { getThemeAgnosticIconPath, SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
@@ -152,7 +152,7 @@ export abstract class DocDBAccountTreeItemBase extends DocDBTreeItemBase<Databas
         return result ?? [];
     }
 
-    public async deleteTreeItemImpl(context: IDeleteWizardContext): Promise<void> {
+    public async deleteTreeItemImpl(context: DeleteWizardContext): Promise<void> {
         await deleteCosmosDBAccount(context, this);
     }
 }

@@ -12,7 +12,7 @@ import {
 import { type MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
 import { type CosmosAccountResourceItemBase } from '../../tree/CosmosAccountResourceItemBase';
 
-export interface IDeleteWizardContext extends IActionContext, ExecuteActivityContext {
+export interface DeleteWizardContext extends IActionContext, ExecuteActivityContext {
     node: AzExtTreeItem | CosmosAccountResourceItemBase | MongoClusterResourceItem;
     deletePostgres: boolean;
     resourceGroupToDelete?: string;

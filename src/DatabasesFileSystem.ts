@@ -13,8 +13,8 @@ import {
 import { FileType, workspace, type FileStat, type MessageItem, type Uri } from 'vscode';
 import { FileChangeType } from 'vscode-languageclient';
 import { ext } from './extensionVariables';
+import { SettingsService } from './services/SettingsService';
 import { localize } from './utils/localize';
-import { getWorkspaceSetting, updateGlobalSetting } from './utils/settingUtils';
 import { getNodeEditorLabel } from './utils/vscodeUtils';
 
 export interface IEditableTreeItem extends AzExtTreeItem {
@@ -50,7 +50,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
         // NOTE: Using "cosmosDB" instead of "azureDatabases" here for the sake of backwards compatibility. If/when this file system adds support for non-cosmosdb items, we should consider changing this to "azureDatabases"
         const prefix: string = 'cosmosDB';
         const nodeEditorLabel: string = getNodeEditorLabel(node);
-        if (this._showSaveConfirmation && getWorkspaceSetting<boolean>(showSavePromptKey, undefined, prefix)) {
+        if (this._showSaveConfirmation && SettingsService.getSetting<boolean>(showSavePromptKey, undefined, prefix)) {
             const message: string = localize(
                 'saveConfirmation',
                 'Saving "{0}" will update the entity "{1}" to the cloud.',
@@ -65,7 +65,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
                 DialogResponses.dontUpload,
             );
             if (result === DialogResponses.alwaysUpload) {
-                await updateGlobalSetting(showSavePromptKey, false, prefix);
+                await SettingsService.updateGlobalSetting(showSavePromptKey, false, prefix);
             } else if (result === DialogResponses.dontUpload) {
                 throw new UserCancelledError('dontUpload');
             }

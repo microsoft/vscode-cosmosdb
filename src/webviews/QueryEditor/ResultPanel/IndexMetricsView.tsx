@@ -15,14 +15,14 @@ import {
 } from '@fluentui/react-components';
 import type React from 'react';
 
-interface IIndexMetricsSection {
+interface IndexMetricsSection {
     title: string;
     indexes: { [key: string]: string }[];
 }
 
-interface IIndexMetrics {
+interface IndexMetrics {
     title: string;
-    sections: IIndexMetricsSection[];
+    sections: IndexMetricsSection[];
 }
 
 const INDEX_METRICS_DOC_URL = 'https://learn.microsoft.com/azure/cosmos-db/nosql/index-metrics';
@@ -93,7 +93,7 @@ export const IndexMetricsView: React.FC<{ indexMetricsStr: string; topLabelStyle
     );
 };
 
-/*
+/**
 Parse the indexMetricsStr and display the following information in a table format:
 Index Utilization Information
   Utilized Single Indexes
@@ -103,26 +103,30 @@ Index Utilization Information
   Potential Single Indexes
   Utilized Composite Indexes
   Potential Composite Indexes
-  */
+*/
 
-const parseIndexMetrics = (indexMetricsStr: string): IIndexMetrics => {
+const oneSpace = ' ';
+const twoSpaces = oneSpace.repeat(2);
+const fourSpaces = oneSpace.repeat(4);
+
+const parseIndexMetrics = (indexMetricsStr: string): IndexMetrics => {
     const lines = indexMetricsStr.split('\n');
     let title: string = '';
-    const sections: IIndexMetricsSection[] = [];
+    const sections: IndexMetricsSection[] = [];
 
-    let currentSection: IIndexMetricsSection | undefined = undefined;
+    let currentSection: IndexMetricsSection | undefined = undefined;
     let currentIndex: { [key: string]: string } | undefined = undefined;
 
     for (const line of lines) {
         if (line.length === 0) {
             continue;
         }
-        if (line[0] !== ' ') {
+        if (line[0] !== oneSpace) {
             title = line;
             continue;
         }
 
-        if (line.startsWith('  ') && line[2] !== ' ') {
+        if (line.startsWith(twoSpaces) && line[twoSpaces.length] !== oneSpace) {
             currentSection = {
                 title: line.trim(),
                 indexes: [],
@@ -133,8 +137,8 @@ const parseIndexMetrics = (indexMetricsStr: string): IIndexMetrics => {
             continue;
         }
 
-        if (line.startsWith('    ') && line[4] !== ' ' && currentSection) {
-            if (line === '    ---') {
+        if (line.startsWith(fourSpaces) && line[fourSpaces.length] !== oneSpace && currentSection) {
+            if (line === `${fourSpaces}---`) {
                 currentIndex = undefined;
                 continue;
             }

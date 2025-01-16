@@ -41,12 +41,12 @@ const useStyles = makeStyles({
     panel1: {
         flexGrow: '1',
         flexShrink: '1',
-        flexBasis: '70%',
+        flexBasis: '49%',
     },
     panel2: {
         flexGrow: '1',
         flexShrink: '1',
-        flexBasis: '28%',
+        flexBasis: '49%',
     },
 });
 

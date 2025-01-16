@@ -586,11 +586,6 @@
             },
             {
                 "category": "MongoDB Clusters",
-                "command": "command.mongoClusters.copyConnectionString",
-                "title": "Copy Connection String"
-            },
-            {
-                "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.exportDocuments",
                 "title": "Export Documents from Collection..."
             },
@@ -844,7 +839,7 @@
                 },
                 {
                     "//": "[Account] Copy connection string to Mongo Cluster or MongoDB (RU) account",
-                    "command": "command.mongoClusters.copyConnectionString",
+                    "command": "cosmosDB.copyConnectionString",
                     "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]mongoCluster(?![a-z.\\/])/i",
                     "group": "2@1"
                 },

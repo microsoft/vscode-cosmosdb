@@ -43,6 +43,21 @@ export abstract class DocumentDBAccountResourceItem extends CosmosAccountResourc
         return { ...super.getTreeItem(), iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg') };
     }
 
+    public async getConnectionString(): Promise<string | undefined> {
+        const accountInfo = await this.getAccountInfo(this.account);
+
+        // supporting only one known success path
+        if (
+            accountInfo.credentials.length === 2 &&
+            accountInfo.credentials[0].type === 'key' &&
+            accountInfo.credentials[1].type === 'auth'
+        ) {
+            return `AccountEndpoint=${accountInfo.endpoint};AccountKey=${accountInfo.credentials[0].key}`;
+        } else {
+            return undefined;
+        }
+    }
+
     protected async getAccountInfo(account: CosmosAccountModel): Promise<AccountInfo> | never {
         const id = nonNullProp(account, 'id');
         const name = nonNullProp(account, 'name');

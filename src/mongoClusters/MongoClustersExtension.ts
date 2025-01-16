@@ -20,7 +20,6 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { WorkspaceResourceType } from '../tree/workspace/SharedWorkspaceResourceProvider';
 import { addWorkspaceConnection } from './commands/addWorkspaceConnection';
-import { copyConnectionString } from './commands/copyConnectionString';
 import { createCollection } from './commands/createCollection';
 import { createDatabase } from './commands/createDatabase';
 import { createDocument } from './commands/createDocument';
@@ -99,10 +98,6 @@ export class MongoClustersExtension implements vscode.Disposable {
                 registerCommand('command.internal.mongoClusters.documentView.open', openDocumentView);
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.launchShell', launchShell);
-                registerCommandWithTreeNodeUnwrapping(
-                    'command.mongoClusters.copyConnectionString',
-                    copyConnectionString,
-                );
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropCollection', dropCollection);
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropDatabase', dropDatabase);

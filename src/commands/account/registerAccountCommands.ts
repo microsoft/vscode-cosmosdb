@@ -13,7 +13,6 @@ import { platform } from 'os';
 import vscode from 'vscode';
 import { cosmosGremlinFilter, cosmosMongoFilter, cosmosTableFilter, sqlFilter } from '../../constants';
 import { DocDBAccountTreeItem } from '../../docdb/tree/DocDBAccountTreeItem';
-import { type DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { GraphAccountTreeItem } from '../../graph/tree/GraphAccountTreeItem';
 import { setConnectedNode } from '../../mongo/setConnectedNode';
@@ -23,6 +22,7 @@ import { AttachedAccountSuffix } from '../../tree/AttachedAccountsTreeItem';
 import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
 import { localize } from '../../utils/localize';
 import { deleteDatabaseAccount } from '../deleteDatabaseAccount/deleteDatabaseAccount';
+import { copyConnectionString } from './copyConnectionString';
 
 const cosmosDBTopLevelContextValues: string[] = [
     GraphAccountTreeItem.contextValue,
@@ -72,7 +72,7 @@ export function registerAccountCommands() {
             }
         },
     );
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', cosmosDBCopyConnectionString);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', copyConnectionString);
 }
 
 export async function createServer(context: IActionContext, node?: SubscriptionTreeItem): Promise<void> {
@@ -96,19 +96,4 @@ export async function deleteAccount(context: IActionContext, node?: AzExtTreeIte
     }
 
     await deleteDatabaseAccount(context, node, false);
-}
-
-export async function cosmosDBCopyConnectionString(
-    context: IActionContext,
-    node?: MongoAccountTreeItem | DocDBAccountTreeItemBase,
-): Promise<void> {
-    const message = 'The connection string has been copied to the clipboard';
-    if (!node) {
-        node = await ext.rgApi.pickAppResource<MongoAccountTreeItem | DocDBAccountTreeItemBase>(context, {
-            filter: [cosmosMongoFilter, cosmosTableFilter, cosmosGremlinFilter, sqlFilter],
-        });
-    }
-
-    await vscode.env.clipboard.writeText(node.connectionString);
-    void vscode.window.showInformationMessage(message);
 }

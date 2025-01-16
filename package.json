@@ -294,9 +294,9 @@
                 "icon": "$(plug)"
             },
             {
-                "category": "Cosmos DB",
+                "category": "Azure Databases",
                 "command": "azureDatabases.detachDatabaseAccount",
-                "title": "Detach Database Account..."
+                "title": "Detach Database Account"
             },
             {
                 "category": "Cosmos DB",

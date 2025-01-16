@@ -11,7 +11,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { API } from '../../AzureDBExperiences';
 import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
-import { type IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
+import { type DeleteWizardContext } from '../../commands/deleteDatabaseAccount/DeleteWizardContext';
 import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 
 export class TableAccountTreeItem extends DocDBAccountTreeItemBase {
@@ -45,7 +45,7 @@ export class TableAccountTreeItem extends DocDBAccountTreeItemBase {
         return result ?? [];
     }
 
-    public async deleteTreeItemImpl(context: IDeleteWizardContext): Promise<void> {
+    public async deleteTreeItemImpl(context: DeleteWizardContext): Promise<void> {
         await deleteCosmosDBAccount(context, this);
     }
 

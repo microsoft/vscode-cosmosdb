@@ -5,34 +5,34 @@
 
 import { AzExtTreeItem, AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import { ext } from '../../extensionVariables';
-import { MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
-import { type MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
+import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
 import { CosmosAccountResourceItemBase } from '../../tree/CosmosAccountResourceItemBase';
-import { type IDeleteWizardContext } from './IDeleteWizardContext';
+import { type DeleteWizardContext } from './DeleteWizardContext';
 import { deleteCosmosDBAccount } from './deleteCosmosDBAccount';
 import { deleteMongoClustersAccount } from './deleteMongoClustersAccount';
 
-export class DatabaseAccountDeleteStep extends AzureWizardExecuteStep<IDeleteWizardContext> {
+export class DatabaseAccountDeleteStep extends AzureWizardExecuteStep<DeleteWizardContext> {
     public priority: number = 100;
 
-    public async execute(context: IDeleteWizardContext): Promise<void> {
+    public async execute(context: DeleteWizardContext): Promise<void> {
         if (context.node instanceof AzExtTreeItem) {
             await context.node.deleteTreeItem(context);
         } else if (context.node instanceof CosmosAccountResourceItemBase) {
-            await ext.state.showDeleting(context.node.id, async () => {
-                return deleteCosmosDBAccount(context, context.node as CosmosAccountResourceItemBase);
-            });
-        } else if (context.node instanceof MongoClusterItemBase) {
-            await ext.state.showDeleting(context.node.id, async () => {
-                return deleteMongoClustersAccount(context, context.node as MongoClusterResourceItem);
-            });
+            await ext.state.showDeleting(context.node.id, () =>
+                deleteCosmosDBAccount(context, context.node as CosmosAccountResourceItemBase),
+            );
+            ext.cosmosDBBranchDataProvider.refresh();
+        } else if (context.node instanceof MongoClusterResourceItem) {
+            await ext.state.showDeleting(context.node.id, () =>
+                deleteMongoClustersAccount(context, context.node as MongoClusterResourceItem),
+            );
             ext.mongoClustersBranchDataProvider.refresh();
         } else {
             throw new Error('Unexpected node type');
         }
     }
 
-    public shouldExecute(_wizardContext: IDeleteWizardContext): boolean {
+    public shouldExecute(_wizardContext: DeleteWizardContext): boolean {
         return true;
     }
 }

@@ -8,10 +8,10 @@ import { ext } from '../../extensionVariables';
 import { type MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
 import { createMongoClustersManagementClient } from '../../utils/azureClients';
 import { localize } from '../../utils/localize';
-import { type IDeleteWizardContext } from './IDeleteWizardContext';
+import { type DeleteWizardContext } from './DeleteWizardContext';
 
 export async function deleteMongoClustersAccount(
-    context: IDeleteWizardContext,
+    context: DeleteWizardContext,
     node: MongoClusterResourceItem,
 ): Promise<void> {
     const client = createMongoClustersManagementClient(context, node.subscription);

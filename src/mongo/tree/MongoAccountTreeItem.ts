@@ -16,7 +16,7 @@ import { type MongoClient } from 'mongodb';
 import type * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
 import { deleteCosmosDBAccount } from '../../commands/deleteDatabaseAccount/deleteCosmosDBAccount';
-import { type IDeleteWizardContext } from '../../commands/deleteDatabaseAccount/IDeleteWizardContext';
+import { type DeleteWizardContext } from '../../commands/deleteDatabaseAccount/DeleteWizardContext';
 import { getThemeAgnosticIconPath, Links, testDb } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
 import { connectToMongoClient } from '../connectToMongoClient';
@@ -154,7 +154,7 @@ export class MongoAccountTreeItem extends AzExtParentTreeItem {
         }
     }
 
-    public async deleteTreeItemImpl(context: IDeleteWizardContext): Promise<void> {
+    public async deleteTreeItemImpl(context: DeleteWizardContext): Promise<void> {
         await deleteCosmosDBAccount(context, this);
     }
 }

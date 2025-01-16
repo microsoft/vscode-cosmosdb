@@ -24,13 +24,7 @@ export { emulatorPassword, isWindows } from './src/constants';
 export { ParsedDocDBConnectionString, parseDocDBConnectionString } from './src/docdb/docDBConnectionStrings';
 export { getCosmosClient } from './src/docdb/getCosmosClient';
 export * from './src/docdb/registerDocDBCommands';
-export {
-    activateInternal,
-    cosmosDBCopyConnectionString,
-    createServer,
-    deactivateInternal,
-    deleteAccount,
-} from './src/extension';
+export { activateInternal, deactivateInternal } from './src/extension';
 export { ext } from './src/extensionVariables';
 export * from './src/graph/registerGraphCommands';
 export { connectToMongoClient, isCosmosEmulatorConnectionString } from './src/mongo/connectToMongoClient';
@@ -50,7 +44,6 @@ export * from './src/utils/azureClients';
 export { getPublicIpv4, isIpInRanges } from './src/utils/getIp';
 export { improveError } from './src/utils/improveError';
 export { randomUtils } from './src/utils/randomUtils';
-export { getGlobalSetting, updateGlobalSetting } from './src/utils/settingUtils';
 export { rejectOnTimeout, valueOnTimeout } from './src/utils/timeout';
 export { IDisposable, getDocumentTreeItemLabel } from './src/utils/vscodeUtils';
 export { wrapError } from './src/utils/wrapError';

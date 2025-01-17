@@ -13,7 +13,6 @@ import { platform } from 'os';
 import vscode from 'vscode';
 import { cosmosGremlinFilter, cosmosMongoFilter, cosmosTableFilter, sqlFilter } from '../../constants';
 import { DocDBAccountTreeItem } from '../../docdb/tree/DocDBAccountTreeItem';
-import { type DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { GraphAccountTreeItem } from '../../graph/tree/GraphAccountTreeItem';
 import { setConnectedNode } from '../../mongo/setConnectedNode';

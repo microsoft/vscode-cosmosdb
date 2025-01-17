@@ -29,7 +29,7 @@ export async function copyConnectionString(
     }
 
     const connectionString = await ext.state.runWithTemporaryDescription(
-        node.id as string, // wip, temporary hack for v1
+        node.id,
         localize('copyConnectionString.working', 'Working...'),
         async () => {
             if (node instanceof DocumentDBAccountResourceItem) {

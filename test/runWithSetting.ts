@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ext, getGlobalSetting, updateGlobalSetting } from '../extension.bundle';
+import { ext } from '../extension.bundle';
+import { SettingsService } from '../src/services/SettingsService';
 
 export async function runWithDatabasesSetting(
     key: string,
@@ -27,11 +28,11 @@ async function runWithSettingInternal(
     prefix: string,
     callback: () => Promise<void>,
 ): Promise<void> {
-    const oldValue: string | boolean | undefined = getGlobalSetting(key, prefix);
+    const oldValue: string | boolean | undefined = SettingsService.getGlobalSetting(key, prefix);
     try {
-        await updateGlobalSetting(key, value, prefix);
+        await SettingsService.updateGlobalSetting(key, value, prefix);
         await callback();
     } finally {
-        await updateGlobalSetting(key, oldValue, prefix);
+        await SettingsService.updateGlobalSetting(key, oldValue, prefix);
     }
 }

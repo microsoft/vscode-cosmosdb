@@ -42,6 +42,8 @@ export async function copyConnectionString(
                 return node.discoverConnectionString();
             }
 
+            // TODO: revisit when updating "Attached Accounts" storage and migration: runWithTemporaryDescription was not showing the temporary description
+            // most likely due to a mismatching node.id.
             if (node instanceof DocumentDBAccountAttachedResourceItem) {
                 context.telemetry.properties.experience = node.experience.api;
                 return node.account.connectionString;

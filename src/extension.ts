@@ -38,6 +38,7 @@ import {
     doubleClickDebounceDelay,
     sqlFilter,
 } from './constants';
+import { CosmosShellExtension } from './cosmosShell/CosmosShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { registerDocDBCommands } from './docdb/registerDocDBCommands';
 import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
@@ -123,6 +124,9 @@ export async function activateInternal(
         const mongoClustersSupport: MongoClustersExtension = new MongoClustersExtension();
         context.subscriptions.push(mongoClustersSupport); // to be disposed when extension is deactivated.
         await mongoClustersSupport.activate();
+
+        const cosmosShellSupport: CosmosShellExtension = new CosmosShellExtension();
+        await cosmosShellSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),

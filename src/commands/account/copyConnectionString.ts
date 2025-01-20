@@ -7,7 +7,6 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
-import { type CosmosDBAttachedAccountsResourceItem } from '../../tree/attached/CosmosDBAttachedAccountsResourceItem';
 import { DocumentDBAccountAttachedResourceItem } from '../../tree/docdb/DocumentDBAccountAttachedResourceItem';
 import { DocumentDBAccountResourceItem } from '../../tree/docdb/DocumentDBAccountResourceItem';
 import { MongoAccountResourceItem } from '../../tree/mongo/MongoAccountResourceItem';
@@ -16,10 +15,10 @@ import { localize } from '../../utils/localize';
 export async function copyConnectionString(
     context: IActionContext,
     node?:
-        | DocumentDBAccountAttachedResourceItem // NoSQL and other DocuemntDB accounts (except Mongo RU) in the resource area
-        | CosmosDBAttachedAccountsResourceItem // NoSQL and other DocumentDB accounts (except Mongo RU) in the workspace area
+        | DocumentDBAccountAttachedResourceItem // NoSQL and other DocumentDB accounts (except Mongo RU) in the resource area
+        | DocumentDBAccountResourceItem // NoSQL and other DocumentDB accounts (except Mongo RU) in the workspace area
         | MongoAccountResourceItem // Mongo (RU), WIP/work in progress, currently only the resource area
-        | MongoClusterItemBase, // Mongo Cluster (vCore), in buth, the resource and in the workspace area
+        | MongoClusterItemBase, // Mongo Cluster (vCore), in both, the resource and in the workspace area
 ): Promise<void> {
     if (!node) {
         throw new Error('WIP: No node selected.'); // wip, wire up a picker
@@ -39,19 +38,19 @@ export async function copyConnectionString(
 
             if (node instanceof MongoAccountResourceItem) {
                 context.telemetry.properties.experience = node.experience.api;
-                return node.discoverConnectionString();
+                return node.getConnectionString();
             }
 
             // TODO: revisit when updating "Attached Accounts" storage and migration: runWithTemporaryDescription was not showing the temporary description
             // most likely due to a mismatching node.id.
             if (node instanceof DocumentDBAccountAttachedResourceItem) {
                 context.telemetry.properties.experience = node.experience.api;
-                return node.account.connectionString;
+                return node.getConnectionString();
             }
 
             if (node instanceof MongoClusterItemBase) {
                 context.telemetry.properties.experience = node.mongoCluster.dbExperience?.api;
-                return node.discoverConnectionString();
+                return node.getConnectionString();
             }
 
             return undefined;

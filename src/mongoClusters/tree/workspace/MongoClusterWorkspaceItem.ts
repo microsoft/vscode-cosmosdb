@@ -30,9 +30,8 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
         super(mongoCluster);
     }
 
-    // eslint-disable-next-line @typescript-eslint/require-await
-    public async discoverConnectionString(): Promise<string | undefined> {
-        return this.mongoCluster.connectionString;
+    public getConnectionString(): Promise<string | undefined> {
+        return Promise.resolve(this.mongoCluster.connectionString);
     }
 
     /**

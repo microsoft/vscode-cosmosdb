@@ -45,16 +45,13 @@ export abstract class DocumentDBAccountResourceItem extends CosmosAccountResourc
 
     public async getConnectionString(): Promise<string | undefined> {
         const accountInfo = await this.getAccountInfo(this.account);
+        const keyCred = accountInfo.credentials.find((cred) => cred.type === 'key');
 
         // supporting only one known success path
-        if (
-            accountInfo.credentials.length === 2 &&
-            accountInfo.credentials[0].type === 'key' &&
-            accountInfo.credentials[1].type === 'auth'
-        ) {
-            return `AccountEndpoint=${accountInfo.endpoint};AccountKey=${accountInfo.credentials[0].key}`;
+        if (keyCred) {
+            return `AccountEndpoint=${accountInfo.endpoint};AccountKey=${keyCred.key}`;
         } else {
-            return undefined;
+            return `AccountEndpoint=${accountInfo.endpoint}`;
         }
     }
 

@@ -48,4 +48,6 @@ export abstract class CosmosAccountResourceItemBase
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }
+
+    abstract getConnectionString(): Promise<string | undefined>;
 }

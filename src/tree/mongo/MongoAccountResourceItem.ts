@@ -4,13 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
-import { callWithTelemetryAndErrorHandling, nonNullProp, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, type IActionContext, nonNullProp } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import ConnectionString from 'mongodb-connection-string-url';
 import { type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { CredentialCache } from '../../mongoClusters/CredentialCache';
-import { MongoClustersClient, type DatabaseItemModel } from '../../mongoClusters/MongoClustersClient';
+import { type DatabaseItemModel, MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
 import { DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type MongoClusterModel } from '../../mongoClusters/tree/MongoClusterModel';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
@@ -39,9 +39,9 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
         super(account, experience);
     }
 
-    async discoverConnectionString(): Promise<string | undefined> {
-        const result = await callWithTelemetryAndErrorHandling(
-            'cosmosDB.mongo.discoverConnectionString',
+    async getConnectionString(): Promise<string | undefined> {
+        return callWithTelemetryAndErrorHandling(
+            'cosmosDB.mongo.getConnectionString',
             async (context: IActionContext) => {
                 // Create a client to interact with the MongoDB vCore management API and read the cluster details
                 const managementClient = await createCosmosDBManagementClient(
@@ -70,8 +70,6 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
                 return cString;
             },
         );
-
-        return result ?? undefined;
     }
 
     async getChildren(): Promise<CosmosDBTreeElement[]> {
@@ -91,8 +89,7 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
             );
 
             if (this.account.subscription) {
-                const cString = await this.discoverConnectionString();
-                this.account.connectionString = cString;
+                this.account.connectionString = await this.getConnectionString();
             }
 
             if (!this.account.connectionString) {

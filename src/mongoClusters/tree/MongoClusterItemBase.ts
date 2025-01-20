@@ -56,7 +56,7 @@ export abstract class MongoClusterItemBase
      *
      * @returns A promise that resolves to the connection string if successful; otherwise, undefined.
      */
-    public abstract discoverConnectionString(): Promise<string | undefined>;
+    public abstract getConnectionString(): Promise<string | undefined>;
 
     /**
      * Authenticates and connects to the cluster to list all available databases.

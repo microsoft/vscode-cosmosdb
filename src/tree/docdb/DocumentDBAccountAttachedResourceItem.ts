@@ -40,6 +40,10 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosAccoun
         return { ...super.getTreeItem(), iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg') };
     }
 
+    public getConnectionString(): Promise<string> {
+        return Promise.resolve(this.account.connectionString);
+    }
+
     protected async getAccountInfo(account: CosmosDBAttachedAccountModel): Promise<AccountInfo> | never {
         const id = account.id;
         const name = account.name;

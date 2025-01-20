@@ -35,12 +35,12 @@ export async function launchShell(
         rawConnectionString = await ext.state.runWithTemporaryDescription(node.id, 'Working...', async () => {
             if (node instanceof MongoAccountResourceItem) {
                 context.telemetry.properties.experience = node.experience?.api;
-                return node.discoverConnectionString();
+                return node.getConnectionString();
             }
 
             if (node instanceof MongoClusterResourceItem) {
                 context.telemetry.properties.experience = node.mongoCluster.dbExperience?.api;
-                return node.discoverConnectionString();
+                return node.getConnectionString();
             }
 
             return undefined;
@@ -48,7 +48,7 @@ export async function launchShell(
         // WorkspaceItems are fast as there is no connnestion string discovery happening
     } else if (node instanceof MongoClusterWorkspaceItem) {
         context.telemetry.properties.experience = node.mongoCluster.dbExperience?.api;
-        rawConnectionString = await node.discoverConnectionString();
+        rawConnectionString = await node.getConnectionString();
         // TODO: add an entry work mongodb workspaceitem once ready
     } // everything else has the connection string available in memory as we're connected to the server
     else {

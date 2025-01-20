@@ -17,11 +17,11 @@ import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
-import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type AccountInfo } from './AccountInfo';
 
-export abstract class DocumentDBAccountResourceItem extends CosmosAccountResourceItemBase {
+export abstract class DocumentDBAccountResourceItem extends CosmosDBAccountResourceItemBase {
     public declare readonly account: CosmosAccountModel;
 
     // To prevent the RBAC notification from showing up multiple times

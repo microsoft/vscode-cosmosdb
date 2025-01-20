@@ -15,7 +15,7 @@ import { DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type MongoClusterModel } from '../../mongoClusters/tree/MongoClusterModel';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { localize } from '../../utils/localize';
-import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement, type ExtTreeElementBase } from '../CosmosDBTreeElement';
 import { type MongoAccountModel } from './MongoAccountModel';
 
@@ -26,7 +26,7 @@ import { type MongoAccountModel } from './MongoAccountModel';
 
 // TODO: currently MongoAccountResourceItem does not reuse MongoClusterItemBase, this will be refactored after the v1 to v2 tree migration
 
-export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
+export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
     public declare readonly account: MongoAccountModel;
     public readonly contextValue: string = 'treeItem.mongoCluster'; // TODO: this is a bug and overwrites the contextValue from the base class, fix this.
 

@@ -13,7 +13,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
-import { CosmosAccountResourceItemBase } from '../../tree/CosmosAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
 import { createActivityContextV2 } from '../../utils/activityUtils';
 import { localize } from '../../utils/localize';
 import { DatabaseAccountDeleteStep } from './DatabaseAccountDeleteStep';
@@ -21,7 +21,7 @@ import { type DeleteWizardContext } from './DeleteWizardContext';
 
 export async function deleteDatabaseAccount(
     context: IActionContext,
-    node: AzExtTreeItem | CosmosAccountResourceItemBase | MongoClusterResourceItem,
+    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | MongoClusterResourceItem,
     isPostgres: boolean = false,
 ): Promise<void> {
     let subscription: ISubscriptionContext;
@@ -29,7 +29,7 @@ export async function deleteDatabaseAccount(
     if (node instanceof AzExtTreeItem) {
         subscription = node.subscription;
         accountName = node.label;
-    } else if (node instanceof CosmosAccountResourceItemBase && 'subscription' in node.account) {
+    } else if (node instanceof CosmosDBAccountResourceItemBase && 'subscription' in node.account) {
         subscription = createSubscriptionContext(node.account.subscription as AzureSubscription);
         accountName = node.account.name;
     } else if (node instanceof MongoClusterResourceItem) {

@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.24.2
+
+### Added
+- Added a new telemetry event to count the number of Cosmos DB engine types used.
+
 ## 0.24.1
 
 ### Changed

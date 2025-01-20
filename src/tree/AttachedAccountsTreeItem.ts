@@ -6,6 +6,7 @@
 import {
     appendExtensionUserAgent,
     AzExtParentTreeItem,
+    callWithTelemetryAndErrorHandling,
     GenericTreeItem,
     type AzExtTreeItem,
     type IActionContext,
@@ -335,31 +336,46 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             const accounts: (string | IPersistedAccount)[] = JSON.parse(value);
             await Promise.all(
                 accounts.map(async (account) => {
-                    let id: string;
-                    let label: string;
-                    let api: API;
-                    let isEmulator: boolean | undefined;
-                    if (typeof account === 'string') {
-                        // Default to Mongo if the value is a string for the sake of backwards compatibility
-                        // (Mongo was originally the only account type that could be attached)
-                        id = account;
-                        api = API.MongoDB;
-                        label = `${account} (${getExperienceFromApi(api).shortName})`;
-                        isEmulator = false;
-                    } else {
-                        id = (<IPersistedAccount>account).id;
-                        api = (<IPersistedAccount>account).defaultExperience;
-                        isEmulator = (<IPersistedAccount>account).isEmulator;
-                        label = isEmulator
-                            ? `${getExperienceFromApi(api).shortName} Emulator`
-                            : `${id} (${getExperienceFromApi(api).shortName})`;
-                    }
-                    // TODO: keytar: migration plan?
-                    const connectionString: string = nonNullValue(
-                        await ext.secretStorage.get(getSecretStorageKey(this._serviceName, id)),
-                        'connectionString',
+                    await callWithTelemetryAndErrorHandling(
+                        'cosmosDB.initCosmosDBChild', // The same name as for CosmosDB because API has Postgres in it
+                        async (context: IActionContext) => {
+                            let id: string;
+                            let label: string;
+                            let api: API;
+                            let isEmulator: boolean | undefined;
+                            if (typeof account === 'string') {
+                                // Default to Mongo if the value is a string for the sake of backwards compatibility
+                                // (Mongo was originally the only account type that could be attached)
+                                id = account;
+                                api = API.MongoDB;
+                                label = `${account} (${getExperienceFromApi(api).shortName})`;
+                                isEmulator = false;
+                            } else {
+                                id = (<IPersistedAccount>account).id;
+                                api = (<IPersistedAccount>account).defaultExperience;
+                                isEmulator = (<IPersistedAccount>account).isEmulator;
+                                label = isEmulator
+                                    ? `${getExperienceFromApi(api).shortName} Emulator`
+                                    : `${id} (${getExperienceFromApi(api).shortName})`;
+                            }
+                            // TODO: keytar: migration plan?
+                            const connectionString: string = nonNullValue(
+                                await ext.secretStorage.get(getSecretStorageKey(this._serviceName, id)),
+                                'connectionString',
+                            );
+
+                            context.valuesToMask.push(id);
+                            context.valuesToMask.push(label);
+                            context.valuesToMask.push(connectionString);
+                            context.telemetry.properties.experience = api;
+                            context.telemetry.properties.isAttached = 'true';
+                            context.telemetry.properties.isEmulator = String(isEmulator);
+
+                            persistedAccounts.push(
+                                await this.createTreeItem(connectionString, api, label, id, isEmulator),
+                            );
+                        },
                     );
-                    persistedAccounts.push(await this.createTreeItem(connectionString, api, label, id, isEmulator));
                 }),
             );
         }

@@ -308,10 +308,25 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         server: PostgresAbstractServer,
         parent: AzExtParentTreeItem,
     ): Promise<AzExtTreeItem> {
-        const connectionString: string = createPostgresConnectionString(
-            nonNullProp(server, 'fullyQualifiedDomainName'),
+        const newNode = await callWithTelemetryAndErrorHandling(
+            'cosmosDB.initCosmosDBChild', // The same name as for CosmosDB because API has Postgres in it
+            (context: IActionContext) => {
+                // leave error handling to the caller (command or tree node)
+                context.errorHandling.suppressDisplay = true;
+                context.telemetry.properties.experience =
+                    server.serverType === PostgresServerType.Single ? API.PostgresSingle : API.PostgresFlexible;
+
+                const connectionString: string = createPostgresConnectionString(
+                    nonNullProp(server, 'fullyQualifiedDomainName'),
+                );
+                const parsedCS: ParsedPostgresConnectionString = parsePostgresConnectionString(connectionString);
+                return new PostgresServerTreeItem(parent, parsedCS, server);
+            },
         );
-        const parsedCS: ParsedPostgresConnectionString = parsePostgresConnectionString(connectionString);
-        return new PostgresServerTreeItem(parent, parsedCS, server);
+        if (!(newNode instanceof AzExtTreeItem)) {
+            // note: this should never happen, callWithTelemetryAndErrorHandling will rethrow all errors
+            throw new Error(localize('invalidCosmosDBAccount', 'Invalid Cosmos DB account.'));
+        }
+        return newNode;
     }
 }

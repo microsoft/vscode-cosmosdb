@@ -13,7 +13,7 @@ import { type CosmosDBTreeElement } from './CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from './TreeElementWithContextValue';
 import { type TreeElementWithExperience } from './TreeElementWithExperience';
 
-export abstract class CosmosAccountResourceItemBase
+export abstract class CosmosDBAccountResourceItemBase
     implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
 {
     public readonly id: string;

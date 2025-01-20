@@ -14,11 +14,11 @@ import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azur
 import { isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
 import { localize } from '../../utils/localize';
 import { type CosmosDBAttachedAccountModel } from '../attached/CosmosDBAttachedAccountModel';
-import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type AccountInfo } from './AccountInfo';
 
-export abstract class DocumentDBAccountAttachedResourceItem extends CosmosAccountResourceItemBase {
+export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAccountResourceItemBase {
     public declare readonly account: CosmosDBAttachedAccountModel;
 
     // To prevent the RBAC notification from showing up multiple times

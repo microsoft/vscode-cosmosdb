@@ -337,7 +337,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             await Promise.all(
                 accounts.map(async (account) => {
                     await callWithTelemetryAndErrorHandling(
-                        'cosmosDB.initAttachedChild', // The same name as for CosmosDB because API has Postgres in it
+                        'cosmosDB.initCosmosDBChild', // The same name as for CosmosDB because API has Postgres in it
                         async (context: IActionContext) => {
                             let id: string;
                             let label: string;
@@ -368,6 +368,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
                             context.valuesToMask.push(label);
                             context.valuesToMask.push(connectionString);
                             context.telemetry.properties.experience = api;
+                            context.telemetry.properties.isAttached = 'true';
                             context.telemetry.properties.isEmulator = String(isEmulator);
 
                             persistedAccounts.push(

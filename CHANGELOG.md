@@ -2,8 +2,11 @@
 
 ## 0.24.2
 
-### Added
-- Added a new telemetry event to count the number of Cosmos DB engine types used.
+### Changed
+
+- Enhanced error handling.
+- Improved index metrics display.
+- Made minor adjustments.
 
 ## 0.24.1
 

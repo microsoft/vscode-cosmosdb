@@ -51,12 +51,14 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
         const parsedCS = parseDocDBConnectionString(account.connectionString);
         const documentEndpoint = parsedCS.documentEndpoint;
         const credentials = await this.getCredentials(account);
+        const isServerless = false;
 
         return {
             credentials,
             endpoint: documentEndpoint,
             id,
             isEmulator,
+            isServerless,
             name,
         };
     }

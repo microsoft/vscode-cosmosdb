@@ -322,7 +322,7 @@
             },
             {
                 "category": "NoSQL",
-                "command": "cosmosDB.createDocDBCollection",
+                "command": "cosmosDB.createDocDBContainer",
                 "title": "Create Container..."
             },
             {
@@ -865,7 +865,7 @@
                 },
                 {
                     "//": "[Database] Create NoSql container",
-                    "command": "cosmosDB.createDocDBCollection",
+                    "command": "cosmosDB.createDocDBContainer",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
                     "group": "1@1"
                 },

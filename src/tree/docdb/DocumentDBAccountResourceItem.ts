@@ -9,7 +9,7 @@ import { type CosmosClient, type DatabaseDefinition, type Resource } from '@azur
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { getThemeAgnosticIconPath, SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { type CosmosDBCredential, type CosmosDBKeyCredential, getCosmosClient } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
@@ -71,12 +71,16 @@ export abstract class DocumentDBAccountResourceItem extends CosmosDBAccountResou
         const databaseAccount = await client.databaseAccounts.get(resourceGroup, name);
         const credentials = await this.getCredentials(name, resourceGroup, client, databaseAccount);
         const documentEndpoint = nonNullProp(databaseAccount, 'documentEndpoint', `of the database account ${id}`);
+        const isServerless = databaseAccount?.capabilities
+            ? databaseAccount.capabilities.some((cap) => cap.name === SERVERLESS_CAPABILITY_NAME)
+            : false;
 
         return {
             credentials,
             endpoint: documentEndpoint,
             id,
             isEmulator: false,
+            isServerless,
             name,
         };
     }

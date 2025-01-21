@@ -10,5 +10,6 @@ export interface AccountInfo {
     endpoint: string;
     id: string;
     isEmulator: boolean;
+    isServerless: boolean;
     name: string;
 }

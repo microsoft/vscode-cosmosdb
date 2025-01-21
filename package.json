@@ -820,12 +820,6 @@
                     "group": "1@2"
                 },
                 {
-                    "//": "[Account] Detach Mongo DB account (workspace only)",
-                    "command": "azureDatabases.detachDatabaseAccount",
-                    "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]mongoCluster(?![a-z.\\/])/i",
-                    "group": "1@2"
-                },
-                {
                     "//": "[Account] Detach Mongo Cluster account (workspace only)",
                     "command": "command.mongoClusters.removeWorkspaceConnection",
                     "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]mongoCluster(?![a-z.\\/])/i",

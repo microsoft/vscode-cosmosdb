@@ -11,18 +11,34 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { platform } from 'os';
 import vscode from 'vscode';
-import { cosmosGremlinFilter, cosmosMongoFilter, cosmosTableFilter, sqlFilter } from '../../constants';
-import { DocDBAccountTreeItem } from '../../docdb/tree/DocDBAccountTreeItem';
-import { ext } from '../../extensionVariables';
-import { GraphAccountTreeItem } from '../../graph/tree/GraphAccountTreeItem';
-import { setConnectedNode } from '../../mongo/setConnectedNode';
-import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
-import { TableAccountTreeItem } from '../../table/tree/TableAccountTreeItem';
-import { AttachedAccountSuffix } from '../../tree/AttachedAccountsTreeItem';
-import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
-import { localize } from '../../utils/localize';
-import { deleteDatabaseAccount } from '../deleteDatabaseAccount/deleteDatabaseAccount';
-import { copyConnectionString } from './copyConnectionString';
+import { createDocDBDatabase } from '../docdb/commands/createDocDBDatabase';
+import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
+import { ext } from '../extensionVariables';
+import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
+import { setConnectedNode } from '../mongo/setConnectedNode';
+import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
+import { createPostgresDatabase } from '../postgres/commands/createPostgresDatabase';
+import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
+import { AttachedAccountSuffix } from '../tree/AttachedAccountsTreeItem';
+import { localize } from '../utils/localize';
+import { copyAzureConnectionString } from './copyConnectionString/copyConnectionString';
+import { createServer } from './createServer/createServer';
+import { deleteAzureDatabaseAccount, deletePostgresServer } from './deleteDatabaseAccount/deleteDatabaseAccount';
+
+/**
+ * DISCLAIMER:
+ * It does not any matter to which category the command belongs to as long as it is a command.
+ * Today it might be a resource group command, tomorrow it might be a subscription command.
+ * Therefore, it is better to categorize the command as a command.
+ *
+ * However, in this file the commands might be categorized using different functions.
+ */
+
+export function registerCommands(): void {
+    registerCommandWithTreeNodeUnwrapping('azureDatabases.createServer', createServer);
+
+    registerAccountCommands();
+}
 
 const cosmosDBTopLevelContextValues: string[] = [
     GraphAccountTreeItem.contextValue,
@@ -32,8 +48,11 @@ const cosmosDBTopLevelContextValues: string[] = [
 ];
 
 export function registerAccountCommands() {
-    registerCommandWithTreeNodeUnwrapping('azureDatabases.createServer', createServer);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteAccount', deleteAccount);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.createDatabase', createPostgresDatabase);
+    /*[x]*/ registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteServer', deletePostgresServer);
+
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDatabase', createDocDBDatabase);
+    /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteAccount', deleteAzureDatabaseAccount);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.attachDatabaseAccount', async (actionContext: IActionContext) => {
         await ext.attachedAccountsNode.attachNewAccount(actionContext);
         await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
@@ -72,28 +91,5 @@ export function registerAccountCommands() {
             }
         },
     );
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', copyConnectionString);
-}
-
-export async function createServer(context: IActionContext, node?: SubscriptionTreeItem): Promise<void> {
-    if (!node) {
-        node = await ext.rgApi.appResourceTree.showTreeItemPicker<SubscriptionTreeItem>(
-            SubscriptionTreeItem.contextValue,
-            context,
-        );
-    }
-
-    await SubscriptionTreeItem.createChild(context, node);
-}
-
-export async function deleteAccount(context: IActionContext, node?: AzExtTreeItem): Promise<void> {
-    const suppressCreateContext: ITreeItemPickerContext = context;
-    suppressCreateContext.suppressCreatePick = true;
-    if (!node) {
-        node = await ext.rgApi.pickAppResource<AzExtTreeItem>(context, {
-            filter: [cosmosMongoFilter, cosmosTableFilter, cosmosGremlinFilter, sqlFilter],
-        });
-    }
-
-    await deleteDatabaseAccount(context, node, false);
+    /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', copyAzureConnectionString);
 }

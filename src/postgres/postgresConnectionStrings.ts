@@ -44,7 +44,7 @@ export function createPostgresConnectionString(
     return connectionString;
 }
 
-export function copyPostgresConnectionString(
+export function buildPostgresConnectionString(
     hostName: string,
     port: string = postgresDefaultPort,
     username?: string,

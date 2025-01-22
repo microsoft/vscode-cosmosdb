@@ -18,5 +18,5 @@ export async function deletePostgresServer(context: IActionContext, node?: Postg
         });
     }
 
-    await deleteDatabaseAccount(context, node, true);
+    await deleteDatabaseAccount(context, node);
 }

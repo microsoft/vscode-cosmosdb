@@ -7,11 +7,9 @@
 
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
 import {
-    AzExtTreeItem,
     callWithTelemetryAndErrorHandling,
     createApiProvider,
     createAzExtLogOutputChannel,
-    registerCommandWithTreeNodeUnwrapping,
     registerErrorHandler,
     registerEvent,
     registerReportIssueCommand,
@@ -25,28 +23,18 @@ import {
 import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-azext-utils/activity';
 import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
-import { registerAccountCommands } from './commands/account/registerAccountCommands';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
-import { importDocuments } from './commands/importDocuments';
-import { cosmosMongoFilter, doubleClickDebounceDelay, sqlFilter } from './constants';
+import { registerCommands } from './commands/registerCommands';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
-import { registerDocDBCommands } from './docdb/registerDocDBCommands';
-import { type DocDBCollectionTreeItem } from './docdb/tree/DocDBCollectionTreeItem';
-import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
 import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';
-import { registerGraphCommands } from './graph/registerGraphCommands';
-import { registerMongoCommands } from './mongo/registerMongoCommands';
-import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
 import { MongoClustersExtension } from './mongoClusters/MongoClustersExtension';
-import { registerPostgresCommands } from './postgres/commands/registerPostgresCommands';
 import { DatabaseResolver } from './resolver/AppResolver';
 import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider';
 import { CosmosDBBranchDataProvider } from './tree/CosmosDBBranchDataProvider';
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/CosmosDBWorkspaceBranchDataProvider';
-import { isTreeElementWithExperience } from './tree/TreeElementWithExperience';
 import {
     SharedWorkspaceResourceProvider,
     WorkspaceResourceType,
@@ -108,11 +96,9 @@ export async function activateInternal(
 
         ext.fileSystem = new DatabasesFileSystem(ext.rgApi.appResourceTree);
 
-        registerAccountCommands();
-        registerDocDBCommands();
-        registerGraphCommands();
-        registerPostgresCommands();
-        registerMongoCommands();
+        registerCommands();
+        // Old commands for old tree view. If need to be quickly returned to V1, uncomment the line below
+        // registerCommandsCompatibility();
 
         // init and activate mongoClusters-support (branch data provider, commands, ...)
         const mongoClustersSupport: MongoClustersExtension = new MongoClustersExtension();
@@ -123,76 +109,6 @@ export async function activateInternal(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
         );
 
-        registerCommandWithTreeNodeUnwrapping(
-            'azureDatabases.refresh',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            async (actionContext: IActionContext, node?: any) => {
-                if (node instanceof AzExtTreeItem) {
-                    if (node) {
-                        await node.refresh(actionContext);
-                    } else {
-                        await ext.rgApi.appResourceTree.refresh(actionContext, node);
-                    }
-
-                    return;
-                }
-
-                // the node is not an AzExtTreeItem, so we assume it's a TreeElementWithId, etc., based on the V2 of the Tree API from Azure-Resources
-
-                if (isTreeElementWithExperience(node)) {
-                    actionContext.telemetry.properties.experience = node.experience?.api;
-                }
-
-                if (node && typeof node === 'object' && 'id' in node) {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                    ext.state.notifyChildrenChanged(node.id as string);
-                }
-            },
-        );
-
-        registerCommandWithTreeNodeUnwrapping(
-            'cosmosDB.importDocument',
-            async (
-                actionContext: IActionContext,
-                selectedNode: vscode.Uri | DocDBCollectionTreeItem,
-                uris: vscode.Uri[],
-            ) => {
-                if (selectedNode instanceof vscode.Uri) {
-                    await importDocuments(actionContext, uris || [selectedNode], undefined);
-                } else {
-                    await importDocuments(actionContext, undefined, selectedNode);
-                }
-            },
-        );
-
-        registerCommandWithTreeNodeUnwrapping(
-            'cosmosDB.openDocument',
-            async (actionContext: IActionContext, node?: DocDBDocumentTreeItem) => {
-                if (!node) {
-                    node = await ext.rgApi.pickAppResource<DocDBDocumentTreeItem>(actionContext, {
-                        filter: [cosmosMongoFilter, sqlFilter],
-                        expectedChildContextValue: [
-                            MongoDocumentTreeItem.contextValue,
-                            DocDBDocumentTreeItem.contextValue,
-                        ],
-                    });
-                }
-
-                // Clear un-uploaded local changes to the document before opening https://github.com/microsoft/vscode-cosmosdb/issues/1619
-                ext.fileSystem.fireChangedEvent(node);
-                await ext.fileSystem.showTextDocument(node);
-            },
-            doubleClickDebounceDelay,
-        );
-        registerCommandWithTreeNodeUnwrapping(
-            'azureDatabases.update',
-            async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
-        );
-        registerCommandWithTreeNodeUnwrapping(
-            'azureDatabases.loadMore',
-            async (actionContext: IActionContext, node: AzExtTreeItem) =>
-                await ext.rgApi.appResourceTree.loadMore(node, actionContext),
-        );
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',
             vscode.workspace.onDidChangeConfiguration,

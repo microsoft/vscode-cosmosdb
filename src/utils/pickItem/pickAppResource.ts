@@ -3,17 +3,20 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { azureResourceExperience, type ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
+import {
+    azureResourceExperience,
+    type ITreeItemPickerContext,
+    type TreeElementWithId,
+} from '@microsoft/vscode-azext-utils';
 import { type AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { ext } from '../../extensionVariables';
-import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
 
 export interface PickAppResourceOptions {
     type?: AzExtResourceType | AzExtResourceType[];
     expectedChildContextValue?: string | RegExp | (string | RegExp)[];
 }
 
-export async function pickAppResource<T extends CosmosDBTreeElement>(
+export async function pickAppResource<T extends TreeElementWithId>(
     context: ITreeItemPickerContext,
     options?: PickAppResourceOptions,
 ): Promise<T> {

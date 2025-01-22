@@ -17,7 +17,6 @@ import { connectMongoDatabase, loadPersistedMongoDB } from './commands/connectMo
 import { createMongoSrapbook } from './commands/createMongoScrapbook';
 import { executeAllMongoCommand } from './commands/executeAllMongoCommand';
 import { executeMongoCommand } from './commands/executeMongoCommand';
-import { launchMongoShell } from './commands/launchMongoShell';
 import { MongoConnectError } from './connectToMongoClient';
 import { MongoDBLanguageClient } from './languageClient';
 import { getAllErrorsFromTextDocument } from './MongoScrapbook';
@@ -40,7 +39,6 @@ export function registerMongoCommands(): void {
     setUpErrorReporting();
     void loadPersistedMongoDB();
 
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.launchMongoShell', launchMongoShell);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.newMongoScrapbook', createMongoSrapbook);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.executeMongoCommand', executeMongoCommand);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.executeAllMongoCommands', executeAllMongoCommand);

@@ -7,6 +7,26 @@ import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microso
 import * as vscode from 'vscode';
 import { getAllCommandsFromTextDocument } from '../MongoScrapbook';
 
+/**
+ * Provides Code Lens functionality for the Mongo Scrapbook editor.
+ *
+ * @remarks
+ * This provider enables several helpful actions directly within the editor:
+ *
+ * 1. **Connection Status Lens**:
+ *    - Displays the current database connection state (e.g., connecting, connected).
+ *    - Offers the ability to connect to a MongoDB database if one is not yet connected.
+ *
+ * 2. **Execute All Commands Lens**:
+ *    - Runs all detected MongoDB commands in the scrapbook document at once when triggered.
+ *
+ * 3. **Execute Single Command Lens**:
+ *    - Appears for each individual MongoDB command found in the scrapbook.
+ *    - Invokes execution of the command located at the specified range in the document.
+ *
+ * By leveraging these lenses, the user can initialize or change the database connection, as well
+ * as selectively run or run all commands without manually invoking relevant commands.
+ */
 export class MongoCodeLensProvider implements vscode.CodeLensProvider {
     private _onDidChangeEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     private _connectedDatabase: string | undefined;
@@ -36,40 +56,39 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
             const lenses: vscode.CodeLens[] = [];
 
             // Allow displaying and changing connected database
+            const title = !isInitialized
+                ? 'Initializing...'
+                : isConnected
+                  ? `Connected to "${database}"`
+                  : 'Connect to a database';
+
             lenses.push(<vscode.CodeLens>{
                 command: {
-                    title: !isInitialized
-                        ? 'Initializing...'
-                        : isConnected
-                          ? `Connected to ${database}`
-                          : `Connect to a database`,
+                    title: '🌐 ' + title,
                     command: isInitialized && 'cosmosDB.connectMongoDB',
                 },
                 range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
             });
 
-            if (isConnected) {
-                // Run all
+            lenses.push(<vscode.CodeLens>{
+                command: {
+                    title: '⏩ Execute All',
+                    command: 'cosmosDB.executeAllMongoCommands',
+                },
+                range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
+            });
+
+            const commands = getAllCommandsFromTextDocument(document);
+            for (const cmd of commands) {
+                // run individual
                 lenses.push(<vscode.CodeLens>{
                     command: {
-                        title: 'Execute All',
-                        command: 'cosmosDB.executeAllMongoCommands',
+                        title: '▶️ Execute',
+                        command: 'cosmosDB.executeMongoCommand',
+                        arguments: [cmd.range.start],
                     },
-                    range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
+                    range: cmd.range,
                 });
-
-                const commands = getAllCommandsFromTextDocument(document);
-                for (const cmd of commands) {
-                    // run individual
-                    lenses.push(<vscode.CodeLens>{
-                        command: {
-                            title: 'Execute',
-                            command: 'cosmosDB.executeMongoCommand',
-                            arguments: [cmd.range.start],
-                        },
-                        range: cmd.range,
-                    });
-                }
             }
 
             return lenses;

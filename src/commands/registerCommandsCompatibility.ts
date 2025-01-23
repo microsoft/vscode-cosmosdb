@@ -9,7 +9,6 @@ import {
     type IActionContext,
     type ITreeItemPickerContext,
 } from '@microsoft/vscode-azext-utils';
-import { platform } from 'os';
 import * as vscode from 'vscode';
 import { cosmosMongoFilter, doubleClickDebounceDelay, sqlFilter } from '../constants';
 import { registerDocDBCommands } from '../docdb/registerDocDBCommands';
@@ -27,9 +26,11 @@ import { registerPostgresCommands } from '../postgres/commands/registerPostgresC
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from '../tree/AttachedAccountsTreeItem';
 import { localize } from '../utils/localize';
+import { attachEmulator } from './attachEmulator/attachEmulator';
 import { cosmosDBCopyConnectionString } from './copyConnectionString/copyConnectionString';
 import { createServer } from './createServer/createServer';
 import { deleteAccount } from './deleteDatabaseAccount/deleteDatabaseAccount';
+import { detachDatabaseAccountV1 } from './detachDatabaseAccount/detachDatabaseAccount';
 import { importDocuments } from './importDocuments';
 
 const cosmosDBTopLevelContextValues: string[] = [
@@ -51,19 +52,8 @@ export function registerCommandsCompatibility(): void {
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.createServer', createServer);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteAccount', deleteAccount);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.attachDatabaseAccount', async (actionContext: IActionContext) => {
-        await ext.attachedAccountsNode.attachNewAccount(actionContext);
-        await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
-    });
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', async (actionContext: IActionContext) => {
-        if (platform() !== 'win32') {
-            actionContext.errorHandling.suppressReportIssue = true;
-            throw new Error(localize('emulatorNotSupported', 'The Cosmos DB emulator is only supported on Windows.'));
-        }
-
-        await ext.attachedAccountsNode.attachEmulator(actionContext);
-        await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
-    });
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.attachDatabaseAccount', detachDatabaseAccountV1);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', attachEmulator);
     registerCommandWithTreeNodeUnwrapping(
         'azureDatabases.refresh',
         async (actionContext: IActionContext, node?: AzExtTreeItem) => {

@@ -3,20 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    createContextValue,
-    createGenericElement,
-    type TreeElementBase,
-    type TreeElementWithId,
-} from '@microsoft/vscode-azext-utils';
+import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { API, type Experience } from '../../AzureDBExperiences';
+import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { type CollectionItemModel, type DatabaseItemModel, type IndexItemModel } from '../MongoClustersClient';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class IndexItem implements TreeElementWithId, TreeElementWithExperience, TreeElementWithContextValue {
+export class IndexItem implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
     public readonly experience?: Experience;
     public readonly contextValue: string = 'treeItem.index';
@@ -35,7 +31,7 @@ export class IndexItem implements TreeElementWithId, TreeElementWithExperience, 
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
-    async getChildren(): Promise<TreeElementBase[]> {
+    async getChildren(): Promise<CosmosDBTreeElement[]> {
         return Object.keys(this.indexInfo.key).map((key) => {
             const value = this.indexInfo.key[key];
 
@@ -46,7 +42,7 @@ export class IndexItem implements TreeElementWithId, TreeElementWithExperience, 
                 // TODO: add a custom icons, and more options here
                 description: value === -1 ? 'desc' : value === 1 ? 'asc' : value.toString(),
                 iconPath: new ThemeIcon('combine'),
-            });
+            }) as CosmosDBTreeElement;
         });
     }
 

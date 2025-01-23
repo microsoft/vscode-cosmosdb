@@ -502,6 +502,12 @@
                 "title": "Delete Server..."
             },
             {
+                "//": "Moved",
+                "category": "PostgreSQL",
+                "command": "postgreSQL.detachServer",
+                "title": "Detach Server..."
+            },
+            {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.deleteStoredProcedure",
                 "title": "Delete Stored Procedure..."
@@ -715,7 +721,7 @@
                 },
                 {
                     "//": "[Account] (Postgres) Detached Database",
-                    "command": "azureDatabases.detachDatabaseAccount",
+                    "command": "postgreSQL.detachServer",
                     "when": "view =~ /azureWorkspace/ && viewItem == postgresServerAttached",
                     "group": "1@2"
                 },

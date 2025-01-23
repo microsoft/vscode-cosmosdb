@@ -16,7 +16,7 @@ import { type MongoClusterModel } from '../../mongoClusters/tree/MongoClusterMod
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { localize } from '../../utils/localize';
 import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
-import { type CosmosDBTreeElement, type ExtTreeElementBase } from '../CosmosDBTreeElement';
+import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type MongoAccountModel } from './MongoAccountModel';
 
 /**
@@ -148,7 +148,7 @@ export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
                 empty: database.empty,
             };
 
-            return new DatabaseItem(clusterInfo, databaseInfo) as ExtTreeElementBase;
+            return new DatabaseItem(clusterInfo, databaseInfo);
         });
 
         // } catch (error) {

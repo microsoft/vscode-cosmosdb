@@ -3,27 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    type AzExtTreeItem,
-    type IActionContext,
-    type ITreeItemPickerContext,
-    registerCommandWithTreeNodeUnwrapping,
-} from '@microsoft/vscode-azext-utils';
-import vscode from 'vscode';
+import { type IActionContext, registerCommandWithTreeNodeUnwrapping } from '@microsoft/vscode-azext-utils';
 import { createDocDBDatabase } from '../docdb/commands/createDocDBDatabase';
-import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { ext } from '../extensionVariables';
-import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
-import { setConnectedNode } from '../mongo/setConnectedNode';
-import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { createPostgresDatabase } from '../postgres/commands/createPostgresDatabase';
-import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
-import { AttachedAccountSuffix } from '../tree/AttachedAccountsTreeItem';
-import { localize } from '../utils/localize';
 import { attachEmulator } from './attachEmulator/attachEmulator';
 import { copyAzureConnectionString } from './copyConnectionString/copyConnectionString';
 import { createServer } from './createServer/createServer';
 import { deleteAzureDatabaseAccount, deletePostgresServer } from './deleteDatabaseAccount/deleteDatabaseAccount';
+import { detachAzureDatabaseAccount, detachDatabaseAccountV1 } from './detachDatabaseAccount/detachDatabaseAccount';
 
 /**
  * DISCLAIMER:
@@ -40,16 +28,10 @@ export function registerCommands(): void {
     registerAccountCommands();
 }
 
-const cosmosDBTopLevelContextValues: string[] = [
-    GraphAccountTreeItem.contextValue,
-    DocDBAccountTreeItem.contextValue,
-    TableAccountTreeItem.contextValue,
-    MongoAccountTreeItem.contextValue,
-];
-
 export function registerAccountCommands() {
     registerCommandWithTreeNodeUnwrapping('postgreSQL.createDatabase', createPostgresDatabase);
     /*[x]*/ registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteServer', deletePostgresServer);
+    /*[x]*/ registerCommandWithTreeNodeUnwrapping('postgreSQL.detachServer', detachDatabaseAccountV1);
 
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDatabase', createDocDBDatabase);
     /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteAccount', deleteAzureDatabaseAccount);
@@ -58,30 +40,6 @@ export function registerAccountCommands() {
         await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
     });
     /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', attachEmulator);
-    registerCommandWithTreeNodeUnwrapping(
-        'azureDatabases.detachDatabaseAccount',
-        async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzExtTreeItem) => {
-            const children = await ext.attachedAccountsNode.loadAllChildren(actionContext);
-            if (children.length < 2) {
-                const message = localize('noAttachedAccounts', 'There are no Attached Accounts.');
-                void vscode.window.showInformationMessage(message);
-            } else {
-                if (!node) {
-                    node = await ext.rgApi.workspaceResourceTree.showTreeItemPicker<AzExtTreeItem>(
-                        cosmosDBTopLevelContextValues.map((val: string) => (val += AttachedAccountSuffix)),
-                        actionContext,
-                    );
-                }
-                if (node instanceof MongoAccountTreeItem) {
-                    if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
-                        setConnectedNode(undefined);
-                        await node.refresh(actionContext);
-                    }
-                }
-                await ext.attachedAccountsNode.detach(node);
-                await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
-            }
-        },
-    );
+    /*[x]*/ registerCommandWithTreeNodeUnwrapping('azureDatabases.detachDatabaseAccount', detachAzureDatabaseAccount);
     /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', copyAzureConnectionString);
 }

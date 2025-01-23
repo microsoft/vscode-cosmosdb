@@ -3,16 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createGenericElement, type TreeElementBase, type TreeElementWithId } from '@microsoft/vscode-azext-utils';
+import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { MongoClustersExprience, type Experience } from '../../../AzureDBExperiences';
+import { type CosmosDBTreeElement } from '../../../tree/CosmosDBTreeElement';
 import { type TreeElementWithExperience } from '../../../tree/TreeElementWithExperience';
 import { WorkspaceResourceType } from '../../../tree/workspace/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../../tree/workspace/SharedWorkspaceStorage';
 import { type MongoClusterModel } from '../MongoClusterModel';
 import { MongoClusterWorkspaceItem } from './MongoClusterWorkspaceItem';
 
-export class MongoDBAccountsWorkspaceItem implements TreeElementWithId, TreeElementWithExperience {
+export class MongoDBAccountsWorkspaceItem implements CosmosDBTreeElement, TreeElementWithExperience {
     id: string;
     experience?: Experience;
 
@@ -21,7 +22,7 @@ export class MongoDBAccountsWorkspaceItem implements TreeElementWithId, TreeElem
         this.experience = MongoClustersExprience;
     }
 
-    async getChildren(): Promise<TreeElementBase[]> {
+    async getChildren(): Promise<CosmosDBTreeElement[]> {
         const items = await SharedWorkspaceStorage.getItems(WorkspaceResourceType.MongoClusters);
 
         return [
@@ -40,7 +41,7 @@ export class MongoDBAccountsWorkspaceItem implements TreeElementWithId, TreeElem
                 label: 'New Connection...',
                 iconPath: new ThemeIcon('plus'),
                 commandId: 'command.mongoClusters.addWorkspaceConnection',
-            }),
+            }) as CosmosDBTreeElement,
         ];
     }
 

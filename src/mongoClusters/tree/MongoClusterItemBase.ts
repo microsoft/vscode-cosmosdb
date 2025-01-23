@@ -3,18 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    createContextValue,
-    createGenericElement,
-    type IActionContext,
-    type TreeElementBase,
-    type TreeElementWithId,
-} from '@microsoft/vscode-azext-utils';
+import { createContextValue, createGenericElement, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type TreeItem } from 'vscode';
 
 import * as vscode from 'vscode';
 import { API, type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
+import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { localize } from '../../utils/localize';
@@ -26,7 +21,7 @@ import { type MongoClusterModel } from './MongoClusterModel';
 
 // This info will be available at every level in the tree for immediate access
 export abstract class MongoClusterItemBase
-    implements TreeElementWithId, TreeElementWithExperience, TreeElementWithContextValue
+    implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
 {
     public readonly id: string;
     public readonly experience?: Experience;
@@ -71,7 +66,7 @@ export abstract class MongoClusterItemBase
      *
      * @returns A list of databases in the cluster or a single element to create a new database.
      */
-    async getChildren(): Promise<TreeElementBase[]> {
+    async getChildren(): Promise<CosmosDBTreeElement[]> {
         ext.outputChannel.appendLine(`MongoDB Clusters: Loading cluster details for "${this.mongoCluster.name}"`);
 
         let mongoClustersClient: MongoClustersClient | null;
@@ -96,7 +91,7 @@ export abstract class MongoClusterItemBase
                     label: 'Failed to authenticate (click to retry)',
                     iconPath: new vscode.ThemeIcon('error'),
                     commandId: 'azureResourceGroups.refreshTree',
-                }),
+                }) as CosmosDBTreeElement,
             ];
         }
 
@@ -111,7 +106,7 @@ export abstract class MongoClusterItemBase
                         iconPath: new vscode.ThemeIcon('plus'),
                         commandId: 'command.mongoClusters.createDatabase',
                         commandArgs: [this],
-                    }),
+                    }) as CosmosDBTreeElement,
                 ];
             }
 

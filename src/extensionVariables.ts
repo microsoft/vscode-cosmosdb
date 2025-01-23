@@ -14,11 +14,13 @@ import { type MongoCodeLensProvider } from './mongo/services/MongoCodeLensProvid
 import { type MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
 import { type MongoClustersBranchDataProvider } from './mongoClusters/tree/MongoClustersBranchDataProvider';
 import { type MongoClustersWorkspaceBranchDataProvider } from './mongoClusters/tree/workspace/MongoClustersWorkbenchBranchDataProvider';
+import { type MongoDBAccountsWorkspaceItem } from './mongoClusters/tree/workspace/MongoDBAccountsWorkspaceItem';
 import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
 import { type AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
 import { type CosmosDBBranchDataProvider } from './tree/CosmosDBBranchDataProvider';
 import { type CosmosDBWorkspaceBranchDataProvider } from './tree/CosmosDBWorkspaceBranchDataProvider';
+import { type CosmosDBAttachedAccountsResourceItem } from './tree/attached/CosmosDBAttachedAccountsResourceItem';
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -44,7 +46,7 @@ export namespace ext {
 
     export let state: TreeElementStateManager;
 
-    // TODO: To avoid these stupid variables the rgApiV2 should have the following public fields (but they are private):
+    // TODO: To avoid these stupid variables below the rgApiV2 should have the following public fields (but they are private):
     // - AzureResourceProviderManager,
     // - AzureResourceBranchDataProviderManager,
     // - WorkspaceResourceProviderManager,
@@ -52,13 +54,15 @@ export namespace ext {
 
     // used for the resources tree and the workspace tree REFRESH
     export let cosmosDBBranchDataProvider: CosmosDBBranchDataProvider;
+    // used for the workspace: these are the dedicated providers
     export let cosmosDBWorkspaceBranchDataProvider: CosmosDBWorkspaceBranchDataProvider;
+    export let cosmosDBWorkspaceBranchDataResource: CosmosDBAttachedAccountsResourceItem;
 
     // used for the resources tree
     export let mongoClustersBranchDataProvider: MongoClustersBranchDataProvider;
-
     // used for the workspace: these are the dedicated providers
     export let mongoClustersWorkspaceBranchDataProvider: MongoClustersWorkspaceBranchDataProvider;
+    export let mongoClusterWorkspaceBranchDataResource: MongoDBAccountsWorkspaceItem;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

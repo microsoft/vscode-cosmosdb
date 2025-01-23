@@ -3,13 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    callWithTelemetryAndErrorHandling,
-    createContextValue,
-    createGenericElement,
-    nonNullValue,
-} from '@microsoft/vscode-azext-utils';
-import vscode, { ThemeIcon, TreeItemCollapsibleState } from 'vscode';
+import { callWithTelemetryAndErrorHandling, createContextValue, nonNullValue } from '@microsoft/vscode-azext-utils';
+import { ThemeIcon, TreeItemCollapsibleState } from 'vscode';
 import { API, getExperienceFromApi } from '../../AzureDBExperiences';
 import { isWindows } from '../../constants';
 import { ext } from '../../extensionVariables';
@@ -21,45 +16,28 @@ import { TableAccountAttachedResourceItem } from '../table/TableAccountAttachedR
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../workspace/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from '../workspace/SharedWorkspaceStorage';
+import { CosmosDBAttachAccountResourceItem } from './CosmosDBAttachAccountResourceItem';
 import { type CosmosDBAttachedAccountModel } from './CosmosDBAttachedAccountModel';
+import { CosmosDBAttachEmulatorResourceItem } from './CosmosDBAttachEmulatorResourceItem';
 
 export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement, TreeElementWithContextValue {
     public readonly id: string = WorkspaceResourceType.AttachedAccounts;
     public readonly contextValue: string = 'treeItem.accounts';
 
-    private readonly attachDatabaseAccount: CosmosDBTreeElement;
-    private readonly attachEmulator: CosmosDBTreeElement;
-
     constructor() {
-        this.id = WorkspaceResourceType.AttachedAccounts;
         this.contextValue = createContextValue([this.contextValue, `attachedAccounts`]);
-
-        this.attachDatabaseAccount = createGenericElement({
-            id: `${this.id}/attachAccount`,
-            contextValue: `${this.contextValue}/attachAccount`,
-            label: 'Attach Database Account\u2026',
-            iconPath: new vscode.ThemeIcon('plus'),
-            commandId: 'cosmosDB.attachDatabaseAccount',
-            includeInTreeItemPicker: true,
-        }) as CosmosDBTreeElement;
-
-        this.attachEmulator = createGenericElement({
-            id: `${this.id}/attachEmulator`,
-            contextValue: `${this.contextValue}/attachEmulator`,
-            label: 'Attach Emulator\u2026',
-            iconPath: new vscode.ThemeIcon('plus'),
-            commandId: 'cosmosDB.attachEmulator',
-            includeInTreeItemPicker: true,
-        }) as CosmosDBTreeElement;
     }
 
     public async getChildren(): Promise<CosmosDBTreeElement[]> {
         // TODO: remove after a few releases
         await this.pickSupportedAccounts(); // Move accounts from the old storage format to the new one
 
+        const attachDatabaseAccount = new CosmosDBAttachAccountResourceItem(this.id);
+        const attachEmulator = new CosmosDBAttachEmulatorResourceItem(this.id);
+
         const items = await SharedWorkspaceStorage.getItems(this.id);
         const children = await this.getChildrenImpl(items);
-        const auxItems = isWindows ? [this.attachDatabaseAccount, this.attachEmulator] : [this.attachDatabaseAccount];
+        const auxItems = isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
 
         return [...children, ...auxItems];
     }

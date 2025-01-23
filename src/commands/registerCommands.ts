@@ -9,7 +9,6 @@ import {
     type ITreeItemPickerContext,
     registerCommandWithTreeNodeUnwrapping,
 } from '@microsoft/vscode-azext-utils';
-import { platform } from 'os';
 import vscode from 'vscode';
 import { createDocDBDatabase } from '../docdb/commands/createDocDBDatabase';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
@@ -21,6 +20,7 @@ import { createPostgresDatabase } from '../postgres/commands/createPostgresDatab
 import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { AttachedAccountSuffix } from '../tree/AttachedAccountsTreeItem';
 import { localize } from '../utils/localize';
+import { attachEmulator } from './attachEmulator/attachEmulator';
 import { copyAzureConnectionString } from './copyConnectionString/copyConnectionString';
 import { createServer } from './createServer/createServer';
 import { deleteAzureDatabaseAccount, deletePostgresServer } from './deleteDatabaseAccount/deleteDatabaseAccount';
@@ -57,15 +57,7 @@ export function registerAccountCommands() {
         await ext.attachedAccountsNode.attachNewAccount(actionContext);
         await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
     });
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', async (actionContext: IActionContext) => {
-        if (platform() !== 'win32') {
-            actionContext.errorHandling.suppressReportIssue = true;
-            throw new Error(localize('emulatorNotSupported', 'The Cosmos DB emulator is only supported on Windows.'));
-        }
-
-        await ext.attachedAccountsNode.attachEmulator(actionContext);
-        await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
-    });
+    /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', attachEmulator);
     registerCommandWithTreeNodeUnwrapping(
         'azureDatabases.detachDatabaseAccount',
         async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzExtTreeItem) => {

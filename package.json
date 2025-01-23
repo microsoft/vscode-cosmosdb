@@ -278,6 +278,7 @@
                 "icon": "$(refresh)"
             },
             {
+                "//": "Moved",
                 "category": "Azure Databases",
                 "command": "azureDatabases.reportIssue",
                 "title": "Report Issue..."
@@ -295,6 +296,7 @@
                 "icon": "$(plug)"
             },
             {
+                "//": "Moved",
                 "category": "Cosmos DB",
                 "command": "azureDatabases.detachDatabaseAccount",
                 "title": "Detach Database Account..."
@@ -610,8 +612,9 @@
                 "title": "Launch Shell"
             },
             {
+                "//": "Moved",
                 "category": "MongoDB Clusters",
-                "command": "command.mongoClusters.removeWorkspaceConnection",
+                "command": "azureDatabases.detachDatabaseAccount",
                 "title": "Remove Connection..."
             },
             {
@@ -851,7 +854,7 @@
                 },
                 {
                     "//": "[Account] Detach Mongo Cluster account (workspace only)",
-                    "command": "command.mongoClusters.removeWorkspaceConnection",
+                    "command": "azureDatabases.detachDatabaseAccount",
                     "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]mongoCluster(?![a-z.\\/])/i",
                     "group": "1@2"
                 },

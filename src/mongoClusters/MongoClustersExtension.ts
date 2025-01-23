@@ -30,7 +30,6 @@ import { mongoClustersImportDocuments } from './commands/importDocuments';
 import { launchShell } from './commands/launchShell';
 import { openCollectionView, openCollectionViewInternal } from './commands/openCollectionView';
 import { openDocumentView } from './commands/openDocumentView';
-import { removeWorkspaceConnection } from './commands/removeWorkspaceConnection';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
 import { MongoClustersWorkspaceBranchDataProvider } from './tree/workspace/MongoClustersWorkbenchBranchDataProvider';
 import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
@@ -129,10 +128,6 @@ export class MongoClustersExtension implements vscode.Disposable {
                 );
 
                 registerCommand('command.mongoClusters.addWorkspaceConnection', addWorkspaceConnection);
-                registerCommandWithTreeNodeUnwrapping(
-                    'command.mongoClusters.removeWorkspaceConnection',
-                    removeWorkspaceConnection,
-                );
 
                 ext.outputChannel.appendLine(`MongoDB Clusters: activated.`);
             },

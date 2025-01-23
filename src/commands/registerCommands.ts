@@ -3,8 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IActionContext, registerCommandWithTreeNodeUnwrapping } from '@microsoft/vscode-azext-utils';
+import {
+    type AzExtTreeItem,
+    type IActionContext,
+    registerCommandWithTreeNodeUnwrapping,
+} from '@microsoft/vscode-azext-utils';
+import vscode from 'vscode';
 import { createDocDBDatabase } from '../docdb/commands/createDocDBDatabase';
+import { type DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
 import { createPostgresDatabase } from '../postgres/commands/createPostgresDatabase';
 import { attachEmulator } from './attachEmulator/attachEmulator';
@@ -12,6 +18,7 @@ import { copyAzureConnectionString } from './copyConnectionString/copyConnection
 import { createServer } from './createServer/createServer';
 import { deleteAzureDatabaseAccount, deletePostgresServer } from './deleteDatabaseAccount/deleteDatabaseAccount';
 import { detachAzureDatabaseAccount, detachDatabaseAccountV1 } from './detachDatabaseAccount/detachDatabaseAccount';
+import { importDocuments } from './importDocuments';
 
 /**
  * DISCLAIMER:
@@ -26,6 +33,42 @@ export function registerCommands(): void {
     registerCommandWithTreeNodeUnwrapping('azureDatabases.createServer', createServer);
 
     registerAccountCommands();
+
+    registerCommandWithTreeNodeUnwrapping(
+        'azureDatabases.refresh',
+        async (actionContext: IActionContext, node?: AzExtTreeItem) => {
+            if (node) {
+                await node.refresh(actionContext);
+            } else {
+                await ext.rgApi.appResourceTree.refresh(actionContext, node);
+            }
+        },
+    );
+
+    registerCommandWithTreeNodeUnwrapping(
+        'cosmosDB.importDocument',
+        async (
+            actionContext: IActionContext,
+            selectedNode: vscode.Uri | DocDBCollectionTreeItem,
+            uris: vscode.Uri[],
+        ) => {
+            if (selectedNode instanceof vscode.Uri) {
+                await importDocuments(actionContext, uris || [selectedNode], undefined);
+            } else {
+                await importDocuments(actionContext, undefined, selectedNode);
+            }
+        },
+    );
+
+    registerCommandWithTreeNodeUnwrapping(
+        'azureDatabases.update',
+        async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
+    );
+    registerCommandWithTreeNodeUnwrapping(
+        'azureDatabases.loadMore',
+        async (actionContext: IActionContext, node: AzExtTreeItem) =>
+            await ext.rgApi.appResourceTree.loadMore(node, actionContext),
+    );
 }
 
 export function registerAccountCommands() {

@@ -24,6 +24,7 @@ import { createServer } from './createServer/createServer';
 import { deleteAccount } from './deleteDatabaseAccount/deleteDatabaseAccount';
 import { detachDatabaseAccountV1 } from './detachDatabaseAccount/detachDatabaseAccount';
 import { importDocuments } from './importDocuments';
+import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
 
 export function registerCommandsCompatibility(): void {
     registerDocDBCommands();
@@ -42,16 +43,7 @@ export function registerCommandsCompatibility(): void {
         await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
     });
     registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', attachEmulator);
-    registerCommandWithTreeNodeUnwrapping(
-        'azureDatabases.refresh',
-        async (actionContext: IActionContext, node?: AzExtTreeItem) => {
-            if (node) {
-                await node.refresh(actionContext);
-            } else {
-                await ext.rgApi.appResourceTree.refresh(actionContext, node);
-            }
-        },
-    );
+    registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.detachDatabaseAccount', detachDatabaseAccountV1);
     registerCommandWithTreeNodeUnwrapping(

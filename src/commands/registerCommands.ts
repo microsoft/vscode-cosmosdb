@@ -19,6 +19,7 @@ import { createServer } from './createServer/createServer';
 import { deleteAzureDatabaseAccount, deletePostgresServer } from './deleteDatabaseAccount/deleteDatabaseAccount';
 import { detachAzureDatabaseAccount, detachDatabaseAccountV1 } from './detachDatabaseAccount/detachDatabaseAccount';
 import { importDocuments } from './importDocuments';
+import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
 
 /**
  * DISCLAIMER:
@@ -34,16 +35,7 @@ export function registerCommands(): void {
 
     registerAccountCommands();
 
-    registerCommandWithTreeNodeUnwrapping(
-        'azureDatabases.refresh',
-        async (actionContext: IActionContext, node?: AzExtTreeItem) => {
-            if (node) {
-                await node.refresh(actionContext);
-            } else {
-                await ext.rgApi.appResourceTree.refresh(actionContext, node);
-            }
-        },
-    );
+    registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
 
     registerCommandWithTreeNodeUnwrapping(
         'cosmosDB.importDocument',

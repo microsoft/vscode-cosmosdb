@@ -13,14 +13,14 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
-import { connectMongoDatabase, loadPersistedMongoDB } from './commands/connectMongoDatabase';
+import { connectMongoDatabase } from './commands/connectMongoDatabase';
 import { createMongoSrapbook } from './commands/createMongoScrapbook';
 import { executeAllMongoCommand } from './commands/executeAllMongoCommand';
 import { executeMongoCommand } from './commands/executeMongoCommand';
 import { MongoConnectError } from './connectToMongoClient';
 import { MongoDBLanguageClient } from './languageClient';
 import { getAllErrorsFromTextDocument } from './MongoScrapbook';
-import { MongoCodeLensProvider } from './services/MongoCodeLensProvider';
+import { MongoScrapbookService } from './MongoScrapbookService';
 
 let diagnosticsCollection: vscode.DiagnosticCollection;
 const mongoLanguageId: string = 'mongo';
@@ -28,16 +28,15 @@ const mongoLanguageId: string = 'mongo';
 export function registerMongoCommands(): void {
     ext.mongoLanguageClient = new MongoDBLanguageClient();
 
-    ext.mongoCodeLensProvider = new MongoCodeLensProvider();
     ext.context.subscriptions.push(
-        vscode.languages.registerCodeLensProvider(mongoLanguageId, ext.mongoCodeLensProvider),
+        vscode.languages.registerCodeLensProvider(mongoLanguageId, MongoScrapbookService.getCodeLensProvider()),
     );
 
     diagnosticsCollection = vscode.languages.createDiagnosticCollection('cosmosDB.mongo');
     ext.context.subscriptions.push(diagnosticsCollection);
 
     setUpErrorReporting();
-    void loadPersistedMongoDB();
+    // void loadPersistedMongoDB();
 
     registerCommandWithTreeNodeUnwrapping('cosmosDB.newMongoScrapbook', createMongoSrapbook);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.executeMongoCommand', executeMongoCommand);

@@ -5,9 +5,8 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { executeAllCommandsFromActiveEditor } from '../MongoScrapbook';
-import { loadPersistedMongoDB } from './connectMongoDatabase';
 
 export async function executeAllMongoCommand(context: IActionContext): Promise<void> {
-    await loadPersistedMongoDB();
+    // await loadPersistedMongoDB();
     await executeAllCommandsFromActiveEditor(context);
 }

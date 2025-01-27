@@ -10,7 +10,6 @@ import { type ExtensionContext, type SecretStorage } from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
 import { type MongoDBLanguageClient } from './mongo/languageClient';
-import { type MongoCodeLensProvider } from './mongo/services/MongoCodeLensProvider';
 import { type MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
 import { type MongoClustersBranchDataProvider } from './mongoClusters/tree/MongoClustersBranchDataProvider';
 import { type MongoClustersWorkspaceBranchDataProvider } from './mongoClusters/tree/workspace/MongoClustersWorkbenchBranchDataProvider';
@@ -28,7 +27,6 @@ export namespace ext {
      * These are used to support MongoDB scrapbook feature
      * */
     export let connectedMongoDB: MongoDatabaseTreeItem | undefined;
-    export let mongoCodeLensProvider: MongoCodeLensProvider;
 
     export let connectedPostgresDB: PostgresDatabaseTreeItem | undefined;
     export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;

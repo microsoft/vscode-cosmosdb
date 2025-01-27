@@ -16,10 +16,10 @@ import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { type ParseTree } from 'antlr4ts/tree/ParseTree';
 import { TerminalNode } from 'antlr4ts/tree/TerminalNode';
 import { EJSON, ObjectId } from 'bson';
-import { type Collection } from 'mongodb';
 import { EOL } from 'os';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import { CredentialCache } from '../mongoClusters/CredentialCache';
 import { filterType, findType } from '../utils/array';
 import { localize } from '../utils/localize';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
@@ -28,9 +28,9 @@ import { mongoLexer } from './grammar/mongoLexer';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
 import { type ErrorDescription, type MongoCommand } from './MongoCommand';
-import { MongoCollectionTreeItem } from './tree/MongoCollectionTreeItem';
+import { MongoScrapbookService } from './MongoScrapbookService';
+import { MongoShellScriptRunner } from './MongoShellScriptRunner';
 import { stripQuotes, type MongoDatabaseTreeItem } from './tree/MongoDatabaseTreeItem';
-import { MongoDocumentTreeItem, type IMongoDocument } from './tree/MongoDocumentTreeItem';
 
 const notInScrapbookMessage = 'You must have a MongoDB scrapbook (*.mongo) open to run a MongoDB command.';
 
@@ -48,7 +48,7 @@ export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vsc
 }
 
 export async function executeAllCommandsFromActiveEditor(context: IActionContext): Promise<void> {
-    ext.outputChannel.appendLog('Executing all commands in scrapbook...');
+    ext.outputChannel.appendLog('Running all commands in the scrapbook...');
     const commands = getAllCommandsFromActiveEditor();
     await executeCommands(context, commands);
 }
@@ -77,24 +77,51 @@ export function getAllCommandsFromTextDocument(document: vscode.TextDocument): M
 }
 
 async function executeCommands(context: IActionContext, commands: MongoCommand[]): Promise<void> {
-    const label: string = 'Scrapbook-execute-all-results';
+    // Provide a label for grouping the outputs in one place
+    const label: string = 'Scrapbook-run-all-results';
     const fullId: string = `${ext.connectedMongoDB?.fullId}/${label}`;
-    const readOnlyContent: ReadOnlyContent = await openReadOnlyContent({ label, fullId }, '', '.txt', {
-        viewColumn: vscode.ViewColumn.Beside,
-    });
 
-    for (const command of commands) {
-        try {
-            await executeCommand(context, command, readOnlyContent);
-        } catch (e) {
-            const err = parseError(e);
-            if (err.isUserCancelledError) {
-                throw e;
-            } else {
-                const message = `${command.text.split('(')[0]} at ${command.range.start.line + 1}:${command.range.start.character + 1}: ${err.message}`;
-                throw new Error(message);
+    // Open a read-only document for appending command outputs
+    const readOnlyContent: ReadOnlyContent = await openReadOnlyContent(
+        { label, fullId },
+        'evaluating input...',
+        '.txt',
+        { viewColumn: vscode.ViewColumn.Beside },
+    );
+
+    // Keep a single shell runner for all commands
+    let shellRunner: MongoShellScriptRunner | undefined;
+
+    try {
+        // Create the shell runner once
+        shellRunner = await MongoShellScriptRunner.createShell(context, {
+            connectionString: CredentialCache.getConnectionStringWithPassword(
+                MongoScrapbookService.getClusterId() as string,
+            ),
+            isEmulator: false,
+        });
+
+        // Execute each command in a loop
+        for (const command of commands) {
+            try {
+                await executeCommand(context, command, readOnlyContent, shellRunner);
+            } catch (e) {
+                // Check if the user cancelled
+                const err = parseError(e);
+                if (err.isUserCancelledError) {
+                    throw e;
+                } else {
+                    // Annotate error with command location
+                    const message = `${command.text.split('(')[0]} at ${
+                        command.range.start.line + 1
+                    }:${command.range.start.character + 1}: ${err.message}`;
+                    throw new Error(message);
+                }
             }
         }
+    } finally {
+        // Dispose the shell runner
+        shellRunner?.dispose();
     }
 }
 
@@ -102,81 +129,93 @@ async function executeCommand(
     context: IActionContext,
     command: MongoCommand,
     readOnlyContent?: ReadOnlyContent,
+    scriptRunner?: MongoShellScriptRunner,
 ): Promise<void> {
-    if (command) {
-        try {
-            context.telemetry.properties.command = command.name;
-            context.telemetry.properties.argsCount = String(command.arguments ? command.arguments.length : 0);
-        } catch {
-            // Ignore
-        }
-
-        const database = ext.connectedMongoDB;
-        if (!database) {
-            throw new Error(
-                'Please select a MongoDB database to run against by selecting it in the explorer and selecting the "Connect" context menu item',
-            );
-        }
-        if (command.errors && command.errors.length > 0) {
-            //Currently, we take the first error pushed. Tests correlate that the parser visits errors in left-to-right, top-to-bottom.
-            const err = command.errors[0];
-            throw new Error(
-                localize(
-                    'unableToParseSyntax',
-                    `Unable to parse syntax. Error near line ${err.range.start.line + 1}, column ${err.range.start.character + 1}: "${err.message}"`,
-                ),
-            );
-        }
-
-        // we don't handle chained commands so we can only handle "find" if isn't chained
-        if (command.name === 'find' && !command.chained) {
-            const db = await database.connectToDb();
-            const collectionName: string = nonNullProp(command, 'collection');
-            const collection: Collection = db.collection(collectionName);
-            // NOTE: Intentionally creating a _new_ tree item rather than searching for a cached node in the tree because
-            // the executed 'find' command could have a filter or projection that is not handled by a cached tree node
-            const node = new MongoCollectionTreeItem(database, collection, command.argumentObjects);
-            await ext.fileSystem.showTextDocument(node, { viewColumn: vscode.ViewColumn.Beside });
-        } else {
-            const result = await database.executeCommand(command, context);
-            if (command.name === 'findOne') {
-                if (result === 'null') {
-                    throw new Error(`Could not find any documents`);
-                }
-
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-                const document: IMongoDocument = EJSON.parse(result);
-                const collectionName: string = nonNullProp(command, 'collection');
-
-                const collectionId: string = `${database.fullId}/${collectionName}`;
-                const colNode: MongoCollectionTreeItem | undefined = await ext.rgApi.appResourceTree.findTreeItem(
-                    collectionId,
-                    context,
-                );
-                if (!colNode) {
-                    throw new Error(localize('failedToFind', 'Failed to find collection "{0}".', collectionName));
-                }
-                const docNode = new MongoDocumentTreeItem(colNode, document);
-                await ext.fileSystem.showTextDocument(docNode, { viewColumn: vscode.ViewColumn.Beside });
-            } else {
-                if (readOnlyContent) {
-                    await readOnlyContent.append(`${result}${EOL}${EOL}`);
-                } else {
-                    const label: string = 'Scrapbook-results';
-                    const fullId: string = `${database.fullId}/${label}`;
-                    await openReadOnlyContent({ label, fullId }, result, '.json', {
-                        viewColumn: vscode.ViewColumn.Beside,
-                    });
-                }
-
-                await refreshTreeAfterCommand(database, command, context);
-            }
-        }
-    } else {
+    // Return early if no command is provided
+    if (!command) {
         throw new Error('No MongoDB command found at the current cursor location.');
+    }
+
+    // Collect telemetry data; if the command property is already set, store calls in arrays
+    try {
+        const argCountStr = String(command.arguments?.length ?? 0);
+        if (context.telemetry.properties.command) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const commandsArray = JSON.parse(context.telemetry.properties.commands ?? '[]');
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const argsCountsArray = JSON.parse(context.telemetry.properties.argsCounts ?? '[]');
+
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+            commandsArray.push(command.name);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+            argsCountsArray.push(argCountStr);
+
+            context.telemetry.properties.commands = JSON.stringify(commandsArray);
+            context.telemetry.properties.argsCounts = JSON.stringify(argsCountsArray);
+        } else {
+            context.telemetry.properties.command = command.name;
+            context.telemetry.properties.argsCount = argCountStr;
+        }
+    } catch {
+        // Ignore telemetry errors
+    }
+
+    // Ensure we are connected to a database
+    if (!MongoScrapbookService.isConnected()) {
+        throw new Error(
+            'Please select a MongoDB database to run against by selecting it in the explorer and selecting the "Connect" context menu item.',
+        );
+    }
+
+    // Throw first syntax or parse error if present
+    if (command.errors?.length) {
+        const err = command.errors[0];
+        throw new Error(
+            localize(
+                'unableToParseSyntax',
+                `Unable to parse syntax. Error near line ${err.range.start.line + 1}, column ${
+                    err.range.start.character + 1
+                }: "${err.message}"`,
+            ),
+        );
+    }
+
+    let usedTemporaryShellRunner = false;
+    if (!scriptRunner) {
+        scriptRunner = await MongoShellScriptRunner.createShell(context, {
+            connectionString: CredentialCache.getConnectionStringWithPassword(
+                MongoScrapbookService.getClusterId() as string,
+            ),
+            isEmulator: false,
+        });
+        usedTemporaryShellRunner = true;
+    }
+
+    try {
+        // Execute the command in the shell
+        const result = await scriptRunner.executeScript(command.text);
+        if (!result) {
+            throw new Error('No result returned from the MongoDB shell.');
+        }
+
+        // Append to readOnlyContent or open a new results document
+        if (readOnlyContent) {
+            await readOnlyContent.append(`${result}${EOL}${EOL}`);
+        } else {
+            const label = 'Scrapbook-results';
+            const fullId = `${MongoScrapbookService.getDatabaseName()}/${label}`;
+            await openReadOnlyContent({ label, fullId }, result, '.json', {
+                viewColumn: vscode.ViewColumn.Beside,
+            });
+        }
+    } finally {
+        if (usedTemporaryShellRunner) {
+            scriptRunner?.dispose();
+        }
     }
 }
 
+// TODO: update this to handle V2 tree items
 async function refreshTreeAfterCommand(
     database: MongoDatabaseTreeItem,
     command: MongoCommand,

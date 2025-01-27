@@ -307,7 +307,7 @@
             {
                 "category": "MongoDB",
                 "command": "cosmosDB.connectMongoDB",
-                "title": "Connect to Database..."
+                "title": "Connect to this database"
             },
             {
                 "category": "Cosmos DB",
@@ -613,6 +613,14 @@
                     "dark": "resources/databases.png",
                     "light": "resources/databases.png"
                 }
+            },
+            {
+                "id": "azureDatabases.submenus.mongo.database.scrapbook",
+                "label": "Mongo Scrapbook"
+            },
+            {
+                "id": "azureDatabases.submenus.mongo.collection.scrapbook",
+                "label": "Mongo Scrapbook"
             }
         ],
         "menus": {
@@ -620,6 +628,34 @@
                 {
                     "command": "cosmosDB.attachDatabaseAccount",
                     "group": "1_attach@1"
+                }
+            ],
+            "azureDatabases.submenus.mongo.database.scrapbook": [
+                {
+                    "//": "[Database] Mongo DB|Cluster Create Scrapbook",
+                    "command": "cosmosDB.newMongoScrapbook",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
+                    "group": "1@1"
+                },
+                {
+                    "//": "[Database] Connect to Mongo DB (to be removed?)",
+                    "command": "cosmosDB.connectMongoDB",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
+                    "group": "1@2"
+                }
+            ],
+            "azureDatabases.submenus.mongo.collection.scrapbook": [
+                {
+                    "//": "[Database] Mongo DB|Cluster Create Scrapbook",
+                    "command": "cosmosDB.newMongoScrapbook",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
+                    "group": "1@1"
+                },
+                {
+                    "//": "[Database] Connect to Mongo DB (to be removed?)",
+                    "command": "cosmosDB.connectMongoDB",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
+                    "group": "1@2"
                 }
             ],
             "view/title": [
@@ -691,7 +727,6 @@
                     "when": "view == azureResourceGroups && viewItem =~ /(AzureCosmosDb|PostgreSqlServers(Standard|Flexible))/i && viewItem =~ /azureResourceTypeGroup/i",
                     "group": "1@1"
                 },
-
                 {
                     "command": "azureDatabases.detachDatabaseAccount",
                     "when": "view == azureWorkspace && viewItem == postgresServerAttached",
@@ -782,8 +817,6 @@
                     "when": "view == azureWorkspace && viewItem == postgresServerAttached",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Account] Create Cosmos DB database",
                     "command": "cosmosDB.createDocDBDatabase",
@@ -850,8 +883,6 @@
                     "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
                     "group": "3@1"
                 },
-
-
                 {
                     "//": "[Database] Create Graph container",
                     "command": "cosmosDB.createGraph",
@@ -895,20 +926,14 @@
                     "group": "1@3"
                 },
                 {
-                    "//": "[Database] Connect to Mongo DB (to be removed?)",
-                    "command": "cosmosDB.connectMongoDB",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongodb)/i",
-                    "group": "2@0"
-                },
-                {
-                    "//": "[Database] Mongo DB|Cluster Create Scrapbook",
-                    "command": "cosmosDB.newMongoScrapbook",
+                    "//": "[Database] Mongo DB|Cluster Launch Shell",
+                    "command": "command.mongoClusters.launchShell",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "2@1"
                 },
                 {
-                    "//": "[Database] Mongo DB|Cluster Launch Shell",
-                    "command": "command.mongoClusters.launchShell",
+                    "//": "[Database] Mongo DB|Cluster Scrapbook Submenu",
+                    "submenu": "azureDatabases.submenus.mongo.database.scrapbook",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "2@2"
                 },
@@ -918,8 +943,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i",
                     "group": "3@1"
                 },
-
-
                 {
                     "//": "[Container] Open NoSql query editor",
                     "command": "cosmosDB.openNoSqlQueryEditor",
@@ -962,8 +985,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Collection] Mongo DB|Cluster Open collection",
                     "command": "command.mongoClusters.containerView.open",
@@ -995,25 +1016,23 @@
                     "group": "3@1"
                 },
                 {
-                    "//": "[Collection] Mongo DB|Cluster Create Scrapbook",
-                    "command": "cosmosDB.newMongoScrapbook",
+                    "//": "[Collection] Mongo DB|Cluster Launch shell",
+                    "command": "command.mongoClusters.launchShell",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "4@1"
                 },
                 {
-                    "//": "[Collection] Mongo DB|Cluster Launch shell",
-                    "command": "command.mongoClusters.launchShell",
+                    "//": "[Collection] Mongo DB|Cluster Create Scrapbook",
+                    "submenu": "azureDatabases.submenus.mongo.collection.scrapbook",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "4@2"
                 },
                 {
                     "//": "[Collection] Refresh",
                     "command": "azureDatabases.refresh",
-                    "when" : "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i",
                     "group": "5@1"
                 },
-
-
                 {
                     "//": "[Stored Procedures] Create Stored Procedure",
                     "command": "cosmosDB.createDocDBStoredProcedure",
@@ -1026,8 +1045,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedures(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Stored Procedure] Execute",
                     "command": "cosmosDB.executeDocDBStoredProcedure",
@@ -1040,8 +1057,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedure(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
                     "group": "1@2"
                 },
-
-
                 {
                     "//": "[Triggers] Create Trigger",
                     "command": "cosmosDB.createDocDBTrigger",
@@ -1054,16 +1069,12 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]triggers(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Trigger] Delete",
                     "command": "cosmosDB.deleteDocDBTrigger",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]trigger(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
                     "group": "1@1"
                 },
-
-
                 {
                     "//": "[Documents] Open NoSql query editor",
                     "command": "cosmosDB.openNoSqlQueryEditor",
@@ -1082,8 +1093,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Document] Delete",
                     "command": "cosmosDB.deleteDocDBDocument",
@@ -1096,18 +1105,16 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]document(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Indexes] Refresh",
                     "command": "azureDatabases.refresh",
-                    "when" : "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]indexes(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]indexes(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "1@1"
                 },
                 {
                     "//": "[Index] Refresh",
                     "command": "azureDatabases.refresh",
-                    "when" : "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]index(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]index(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "1@1"
                 }
             ],

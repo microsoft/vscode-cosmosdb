@@ -35,7 +35,7 @@ export {
     getDatabaseNameFromConnectionString
 } from './src/mongo/mongoConnectionStrings';
 export { findCommandAtPosition, getAllCommandsFromText } from './src/mongo/MongoScrapbook';
-export { MongoShell } from './src/mongo/MongoShell';
+export { MongoShellScriptRunner as MongoShell } from './src/mongo/MongoShellScriptRunner';
 export * from './src/mongo/registerMongoCommands';
 export { IDatabaseInfo } from './src/mongo/tree/MongoAccountTreeItem';
 export { addDatabaseToConnectionString } from './src/postgres/postgresConnectionStrings';

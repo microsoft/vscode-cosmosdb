@@ -172,7 +172,7 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
 
             try {
                 previousEnv = setEnvironmentVariables(options.env || {});
-                shell = await MongoShell.create(
+                shell = await MongoShell.createShellProcess(
                     options.mongoPath || mongoPath,
                     options.args || [],
                     '',
@@ -291,7 +291,7 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
     });
 
     await testIfSupported("More results than displayed (type 'it' for more -> (More))", async () => {
-        const shell = await MongoShell.create(mongoPath, [], '', false, new FakeOutputChannel(), 5);
+        const shell = await MongoShell.createShellProcess(mongoPath, [], '', false, new FakeOutputChannel(), 5);
         await shell.executeScript('db.mongoShellTest.drop()');
         await shell.executeScript('for (var i = 0; i < 50; ++i) { db.mongoShellTest.insert({a:i}); }');
 

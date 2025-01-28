@@ -36,7 +36,6 @@ export function registerMongoCommands(): void {
     ext.context.subscriptions.push(diagnosticsCollection);
 
     setUpErrorReporting();
-    // void loadPersistedMongoDB();
 
     registerCommandWithTreeNodeUnwrapping('cosmosDB.newMongoScrapbook', createMongoSrapbook);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.executeMongoCommand', executeMongoCommand);

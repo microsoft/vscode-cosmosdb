@@ -59,7 +59,19 @@ export async function executeCommandFromActiveEditor(
 ): Promise<void> {
     const commands = getAllCommandsFromActiveEditor();
     const command = findCommandAtPosition(commands, position || vscode.window.activeTextEditor?.selection.start);
-    return await executeCommand(context, command);
+
+    // Provide a label for grouping the outputs in one place
+    const label: string = 'Scrapbook-run-all-results';
+    const fullId: string = `${ext.connectedMongoDB?.fullId}/${label}`;
+
+    // Open a read-only document for appending command outputs
+    const readOnlyContent: ReadOnlyContent = await openReadOnlyContent({ label, fullId }, '', '.json', {
+        viewColumn: vscode.ViewColumn.Beside, preserveFocus: true
+    });
+
+    MongoScrapbookService.setSingleCommandInExecution(command.range);
+    await executeCommand(context, command, readOnlyContent);
+    MongoScrapbookService.setSingleCommandInExecution(undefined);
 }
 
 function getAllCommandsFromActiveEditor(): MongoCommand[] {
@@ -82,12 +94,9 @@ async function executeCommands(context: IActionContext, commands: MongoCommand[]
     const fullId: string = `${ext.connectedMongoDB?.fullId}/${label}`;
 
     // Open a read-only document for appending command outputs
-    const readOnlyContent: ReadOnlyContent = await openReadOnlyContent(
-        { label, fullId },
-        'evaluating input...',
-        '.txt',
-        { viewColumn: vscode.ViewColumn.Beside },
-    );
+    const readOnlyContent: ReadOnlyContent = await openReadOnlyContent({ label, fullId }, '', '.txt', {
+        viewColumn: vscode.ViewColumn.Beside, preserveFocus: true
+    });
 
     // Keep a single shell runner for all commands
     let shellRunner: MongoShellScriptRunner | undefined;

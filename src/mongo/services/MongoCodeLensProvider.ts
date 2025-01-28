@@ -38,11 +38,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
         return this._onDidChangeEmitter.event;
     }
 
-    public setConnectedDatabase(_database: string | undefined): void {
-        this._onDidChangeEmitter.fire();
-    }
-
-    public connectionUpdated(): void {
+    public updateCodeLens(): void {
         this._onDidChangeEmitter.fire();
     }
 
@@ -71,18 +67,20 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 
             lenses.push(<vscode.CodeLens>{
                 command: {
-                    title: '⏩ Run All',
+                    title: MongoScrapbookService.isExecutingAllCommands() ? '⏳ Running All...' : '⏩ Run All',
                     command: 'cosmosDB.executeAllMongoCommands',
                 },
                 range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
             });
 
             const commands = getAllCommandsFromTextDocument(document);
+            const currentRangeInExecution = MongoScrapbookService.getSingleCommandInExecution();
+
             for (const cmd of commands) {
                 // run individual
                 lenses.push(<vscode.CodeLens>{
                     command: {
-                        title: '▶️ Run Command',
+                        title: currentRangeInExecution && cmd.range.isEqual(currentRangeInExecution) ? '⏳ Running Command...' : '▶️ Run Command',
                         command: 'cosmosDB.executeMongoCommand',
                         arguments: [cmd.range.start],
                     },

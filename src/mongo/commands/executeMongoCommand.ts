@@ -5,9 +5,9 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import type * as vscode from 'vscode';
+import { withProgress } from '../../utils/withProgress';
 import { executeCommandFromActiveEditor } from '../MongoScrapbook';
 
 export async function executeMongoCommand(context: IActionContext, position?: vscode.Position): Promise<void> {
-    // await loadPersistedMongoDB();
-    await executeCommandFromActiveEditor(context, position);
+    await (withProgress(executeCommandFromActiveEditor(context, position), 'Executing Mongo command in shell...'));
 }

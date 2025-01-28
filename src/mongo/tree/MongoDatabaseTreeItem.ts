@@ -182,7 +182,7 @@ export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
 
         const timeout =
             1000 * nonNullValue(config.get<number>(ext.settingsKeys.mongoShellTimeout), 'mongoShellTimeout');
-        return MongoShellScriptRunner.createShellProcess(
+        return MongoShellScriptRunner.createShellProcessHelper(
             shellPath,
             shellArgs,
             this.connectionString,

@@ -11,7 +11,8 @@ import * as os from 'os';
 import * as path from 'path';
 import { isNumber } from 'util';
 import type * as vscode from 'vscode';
-import { ext, isWindows, MongoShell, parseError, type IDisposable } from '../extension.bundle';
+import { ext, isWindows, parseError, type IDisposable } from '../extension.bundle';
+import { MongoShellScriptRunner } from '../src/mongo/MongoShellScriptRunner';
 import { runWithSetting } from './runWithSetting';
 import { setEnvironmentVariables } from './util/setEnvironmentVariables';
 
@@ -167,12 +168,12 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
             assert(mongoDErrors === '');
 
             let previousEnv: IDisposable | undefined;
-            let shell: MongoShell | undefined;
+            let shell: MongoShellScriptRunner | undefined;
             const outputChannel = new FakeOutputChannel();
 
             try {
                 previousEnv = setEnvironmentVariables(options.env || {});
-                shell = await MongoShell.createShellProcess(
+                shell = await MongoShellScriptRunner.createShellProcessHelper(
                     options.mongoPath || mongoPath,
                     options.args || [],
                     '',
@@ -291,7 +292,14 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
     });
 
     await testIfSupported("More results than displayed (type 'it' for more -> (More))", async () => {
-        const shell = await MongoShell.createShellProcess(mongoPath, [], '', false, new FakeOutputChannel(), 5);
+        const shell = await MongoShellScriptRunner.createShellProcessHelper(
+            mongoPath,
+            [],
+            '',
+            false,
+            new FakeOutputChannel(),
+            5,
+        );
         await shell.executeScript('db.mongoShellTest.drop()');
         await shell.executeScript('for (var i = 0; i < 50; ++i) { db.mongoShellTest.insert({a:i}); }');
 

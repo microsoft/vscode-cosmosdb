@@ -34,7 +34,7 @@ export {
     encodeMongoConnectionString,
     getDatabaseNameFromConnectionString
 } from './src/mongo/mongoConnectionStrings';
-export { findCommandAtPosition, getAllCommandsFromText } from './src/mongo/MongoScrapbook';
+export { findCommandAtPosition, getAllCommandsFromText } from './src/mongo/MongoScrapbookHelpers';
 export { MongoShellScriptRunner as MongoShell } from './src/mongo/MongoShellScriptRunner';
 export * from './src/mongo/registerMongoCommands';
 export { IDatabaseInfo } from './src/mongo/tree/MongoAccountTreeItem';

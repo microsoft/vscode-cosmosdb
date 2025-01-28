@@ -19,7 +19,7 @@ import { executeAllMongoCommand } from './commands/executeAllMongoCommand';
 import { executeMongoCommand } from './commands/executeMongoCommand';
 import { MongoConnectError } from './connectToMongoClient';
 import { MongoDBLanguageClient } from './languageClient';
-import { getAllErrorsFromTextDocument } from './MongoScrapbook';
+import { getAllErrorsFromTextDocument } from './MongoScrapbookHelpers';
 import { MongoScrapbookService } from './MongoScrapbookService';
 
 let diagnosticsCollection: vscode.DiagnosticCollection;

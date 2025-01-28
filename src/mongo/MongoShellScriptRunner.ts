@@ -40,7 +40,7 @@ export class MongoShellScriptRunner extends vscode.Disposable {
         super(() => this.dispose());
     }
 
-    private static async createShellProcessHelper(
+    public static async createShellProcessHelper(
         execPath: string,
         execArgs: string[],
         connectionString: string,

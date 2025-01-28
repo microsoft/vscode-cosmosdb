@@ -4,10 +4,20 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import type * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import { withProgress } from '../../utils/withProgress';
-import { executeCommandFromActiveEditor } from '../MongoScrapbook';
+import { MongoScrapbookService } from '../MongoScrapbookService';
 
 export async function executeMongoCommand(context: IActionContext, position?: vscode.Position): Promise<void> {
-    await (withProgress(executeCommandFromActiveEditor(context, position), 'Executing Mongo command in shell...'));
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        throw new Error('You must open a *.mongo file to run commands.');
+    }
+
+    const pos = position ?? editor.selection.start;
+
+    await withProgress(
+        MongoScrapbookService.executeCommandAtPosition(context, editor.document, pos),
+        'Executing Mongo command in shell...',
+    );
 }

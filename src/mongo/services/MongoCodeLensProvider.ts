@@ -5,7 +5,7 @@
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { getAllCommandsFromTextDocument } from '../MongoScrapbook';
+import { getAllCommandsFromText } from '../MongoScrapbookHelpers';
 import { MongoScrapbookService } from '../MongoScrapbookService';
 
 /**
@@ -41,54 +41,74 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
     public updateCodeLens(): void {
         this._onDidChangeEmitter.fire();
     }
-
     public provideCodeLenses(
         document: vscode.TextDocument,
         _token: vscode.CancellationToken,
     ): vscode.ProviderResult<vscode.CodeLens[]> {
         return callWithTelemetryAndErrorHandling('mongo.provideCodeLenses', (context: IActionContext) => {
-            // Suppress except for errors - this can fire on every keystroke
             context.telemetry.suppressIfSuccessful = true;
 
             const lenses: vscode.CodeLens[] = [];
 
-            // Allow displaying and changing connected database
-            const connectionStatusLabel = MongoScrapbookService.isConnected()
-                ? `Connected to "${MongoScrapbookService.getDisplayName()}"`
-                : 'Connect to a database';
+            // Create connection status lens
+            lenses.push(this.createConnectionStatusLens());
 
-            lenses.push(<vscode.CodeLens>{
-                command: {
-                    title: '🌐 ' + connectionStatusLabel,
-                    command: 'cosmosDB.connectMongoDB',
-                },
-                range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
-            });
+            // Create run-all lens
+            lenses.push(this.createRunAllCommandsLens());
 
-            lenses.push(<vscode.CodeLens>{
-                command: {
-                    title: MongoScrapbookService.isExecutingAllCommands() ? '⏳ Running All...' : '⏩ Run All',
-                    command: 'cosmosDB.executeAllMongoCommands',
-                },
-                range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
-            });
-
-            const commands = getAllCommandsFromTextDocument(document);
-            const currentRangeInExecution = MongoScrapbookService.getSingleCommandInExecution();
-
-            for (const cmd of commands) {
-                // run individual
-                lenses.push(<vscode.CodeLens>{
-                    command: {
-                        title: currentRangeInExecution && cmd.range.isEqual(currentRangeInExecution) ? '⏳ Running Command...' : '▶️ Run Command',
-                        command: 'cosmosDB.executeMongoCommand',
-                        arguments: [cmd.range.start],
-                    },
-                    range: cmd.range,
-                });
-            }
+            // Create lenses for each individual command
+            const commands = getAllCommandsFromText(document.getText());
+            lenses.push(...this.createIndividualCommandLenses(commands));
 
             return lenses;
+        });
+    }
+
+    private createConnectionStatusLens(): vscode.CodeLens {
+        const title = MongoScrapbookService.isConnected()
+            ? `Connected to "${MongoScrapbookService.getDisplayName()}"`
+            : 'Connect to a database';
+
+        const shortenedTitle =
+            title.length > 64 ? title.slice(0, 64 / 2) + '...' + title.slice(-(64 - 3 - 64 / 2)) : title;
+
+        return <vscode.CodeLens>{
+            command: {
+                title: '🌐 ' + shortenedTitle,
+                tooltip: title,
+                command: 'cosmosDB.connectMongoDB',
+            },
+            range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
+        };
+    }
+
+    private createRunAllCommandsLens(): vscode.CodeLens {
+        const title = MongoScrapbookService.isExecutingAllCommands() ? '⏳ Running All...' : '⏩ Run All';
+
+        return <vscode.CodeLens>{
+            command: {
+                title,
+                command: 'cosmosDB.executeAllMongoCommands',
+            },
+            range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
+        };
+    }
+
+    private createIndividualCommandLenses(commands: { range: vscode.Range }[]): vscode.CodeLens[] {
+        const currentCommandInExectution = MongoScrapbookService.getSingleCommandInExecution();
+
+        return commands.map((cmd) => {
+            const running = currentCommandInExectution && cmd.range.isEqual(currentCommandInExectution.range);
+            const title = running ? '⏳ Running Command...' : '▶️ Run Command';
+
+            return <vscode.CodeLens>{
+                command: {
+                    title,
+                    command: 'cosmosDB.executeMongoCommand',
+                    arguments: [cmd.range.start],
+                },
+                range: cmd.range,
+            };
         });
     }
 }

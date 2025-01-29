@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardPromptStep, nonNullValue, parseError } from '@microsoft/vscode-azext-utils';
+import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
 import { API } from '../../AzureDBExperiences';
 import { emulatorPassword } from '../../constants';
 import { ext } from '../../extensionVariables';
@@ -68,9 +68,9 @@ export class PromptPortStep extends AzureWizardPromptStep<AttachEmulatorWizardCo
             if (
                 items.some((item) => {
                     const { properties, secrets } = item;
-                    const itemApi: API = nonNullValue(properties?.api, 'api') as API;
-                    const isEmulator: boolean = !!nonNullValue(properties?.isEmulator, 'isEmulator');
-                    const itemConnectionString: string = nonNullValue(secrets?.[0], 'connectionString');
+                    const itemApi: API = (properties?.api as API) ?? API.Common;
+                    const isEmulator: boolean = !!properties?.isEmulator;
+                    const itemConnectionString: string = secrets?.[0] ?? '';
 
                     return isEmulator && itemApi === api && itemConnectionString === connectionString;
                 })

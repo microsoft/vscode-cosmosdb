@@ -3,16 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    type AzExtTreeItem,
-    type IActionContext,
-    registerCommandWithTreeNodeUnwrapping,
-} from '@microsoft/vscode-azext-utils';
+import { type IActionContext, registerCommandWithTreeNodeUnwrapping } from '@microsoft/vscode-azext-utils';
 import vscode from 'vscode';
 import { createDocDBDatabase } from '../docdb/commands/createDocDBDatabase';
 import { type DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
 import { createPostgresDatabase } from '../postgres/commands/createPostgresDatabase';
+import { attachAccount } from './attachAccount/attachAccount';
 import { attachEmulator } from './attachEmulator/attachEmulator';
 import { copyAzureConnectionString } from './copyConnectionString/copyConnectionString';
 import { createServer } from './createServer/createServer';
@@ -35,7 +32,7 @@ export function registerCommands(): void {
 
     registerAccountCommands();
 
-    registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
+    /*[x]*/ registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
 
     registerCommandWithTreeNodeUnwrapping(
         'cosmosDB.importDocument',
@@ -56,11 +53,6 @@ export function registerCommands(): void {
         'azureDatabases.update',
         async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
     );
-    registerCommandWithTreeNodeUnwrapping(
-        'azureDatabases.loadMore',
-        async (actionContext: IActionContext, node: AzExtTreeItem) =>
-            await ext.rgApi.appResourceTree.loadMore(node, actionContext),
-    );
 }
 
 export function registerAccountCommands() {
@@ -70,10 +62,7 @@ export function registerAccountCommands() {
 
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDatabase', createDocDBDatabase);
     /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteAccount', deleteAzureDatabaseAccount);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.attachDatabaseAccount', async (actionContext: IActionContext) => {
-        await ext.attachedAccountsNode.attachNewAccount(actionContext);
-        await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
-    });
+    /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.attachDatabaseAccount', attachAccount);
     /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', attachEmulator);
     /*[x]*/ registerCommandWithTreeNodeUnwrapping('azureDatabases.detachDatabaseAccount', detachAzureDatabaseAccount);
     /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', copyAzureConnectionString);

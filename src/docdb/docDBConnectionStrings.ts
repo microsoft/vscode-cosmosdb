@@ -11,9 +11,11 @@ export function parseDocDBConnectionString(connectionString: string): ParsedDocD
     const endpoint = getPropertyFromConnectionString(connectionString, 'AccountEndpoint');
     const masterKey = getPropertyFromConnectionString(connectionString, 'AccountKey');
     const databaseName = getPropertyFromConnectionString(connectionString, 'Database');
+
     if (!endpoint || !masterKey) {
         throw new Error('Invalid Document DB connection string.');
     }
+
     return new ParsedDocDBConnectionString(connectionString, endpoint, masterKey, databaseName);
 }
 
@@ -36,7 +38,7 @@ export class ParsedDocDBConnectionString extends ParsedConnectionString {
         this.masterKey = masterKey;
 
         const parsedEndpoint = url.parse(endpoint);
-        this.hostName = nonNullProp(parsedEndpoint, 'hostname');
-        this.port = nonNullProp(parsedEndpoint, 'port');
+        this.hostName = nonNullProp(parsedEndpoint, 'hostname', 'hostname');
+        this.port = nonNullProp(parsedEndpoint, 'port', 'port');
     }
 }

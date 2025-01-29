@@ -118,28 +118,23 @@ export interface Experience {
     tag?: string;
 }
 
-export function getExperienceQuickPicks(attached?: boolean): IAzureQuickPickItem<Experience>[] {
-    if (attached) {
-        return experiencesArray.map((exp) => getExperienceQuickPickForAttached(exp.api));
-    } else {
-        return experiencesArray.map((exp) => getExperienceQuickPick(exp.api));
-    }
+export function getExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
+    return experiencesArray.map((exp) => getExperienceQuickPick(exp.api));
 }
 
-export function getCosmosExperienceQuickPicks(attached?: boolean): IAzureQuickPickItem<Experience>[] {
-    if (attached) {
-        return cosmosExperiencesArray.map((exp) => getExperienceQuickPickForAttached(exp.api));
-    } else {
-        return cosmosExperiencesArray.map((exp) => getExperienceQuickPick(exp.api));
-    }
+export function getCosmosExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
+    return cosmosExperiencesArray.map((exp) => getExperienceQuickPick(exp.api));
+}
+
+export function getPostgresExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
+    return postgresExperiencesArray.map((exp) => getExperienceQuickPick(exp.api));
+}
+
+export function getMongoCoreExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
+    return mongoCoreExperienceArray.map((exp) => getExperienceQuickPick(exp.api));
 }
 
 export function getExperienceQuickPick(api: API): IAzureQuickPickItem<Experience> {
-    const exp = getExperienceFromApi(api);
-    return { label: exp.longName, description: exp.description, data: exp };
-}
-
-export function getExperienceQuickPickForAttached(api: API): IAzureQuickPickItem<Experience> {
     const exp = getExperienceFromApi(api);
     return { label: exp.longName, description: exp.description, data: exp };
 }
@@ -162,7 +157,7 @@ export const MongoExperience: Experience = {
     kind: DBAccountKind.MongoDB,
     tag: 'Azure Cosmos DB for MongoDB API',
 } as const;
-export const MongoClustersExprience: Experience = {
+export const MongoClustersExperience: Experience = {
     api: API.MongoClusters,
     longName: 'Cosmos DB for MongoDB (vCore)',
     shortName: 'MongoDB (vCore)',
@@ -204,11 +199,13 @@ export const PostgresFlexibleExperience: Experience = {
     shortName: 'PostgreSQLFlexible',
 };
 
-const cosmosExperiencesArray: Experience[] = [CoreExperience, MongoExperience, TableExperience, GremlinExperience];
+const cosmosExperiencesArray: Experience[] = [CoreExperience, TableExperience, GremlinExperience];
+const postgresExperiencesArray: Experience[] = [PostgresSingleExperience, PostgresFlexibleExperience];
+const mongoCoreExperienceArray: Experience[] = [MongoExperience, MongoClustersExperience];
 const experiencesArray: Experience[] = [
     ...cosmosExperiencesArray,
-    PostgresSingleExperience,
-    PostgresFlexibleExperience,
+    ...postgresExperiencesArray,
+    ...mongoCoreExperienceArray,
 ];
 const experiencesMap = new Map<API, Experience>(
     experiencesArray.map((info: Experience): [API, Experience] => [info.api, info]),

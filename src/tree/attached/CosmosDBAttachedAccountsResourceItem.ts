@@ -8,7 +8,7 @@ import { ThemeIcon, TreeItemCollapsibleState } from 'vscode';
 import { API, getExperienceFromApi } from '../../AzureDBExperiences';
 import { isWindows } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { type IPersistedAccount } from '../AttachedAccountsTreeItem';
+import { type PersistedAccount } from '../AttachedAccountsTreeItem';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { GraphAccountAttachedResourceItem } from '../graph/GraphAccountAttachedResourceItem';
 import { NoSqlAccountAttachedResourceItem } from '../nosql/NoSqlAccountAttachedResourceItem';
@@ -103,7 +103,7 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
                 }
 
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                const accounts: (string | IPersistedAccount)[] = JSON.parse(value);
+                const accounts: (string | PersistedAccount)[] = JSON.parse(value);
                 for (const account of accounts) {
                     let id: string;
                     let name: string;
@@ -118,10 +118,10 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
                         api = API.MongoDB;
                         isEmulator = false;
                     } else {
-                        id = (<IPersistedAccount>account).id;
-                        name = (<IPersistedAccount>account).id;
-                        api = (<IPersistedAccount>account).defaultExperience;
-                        isEmulator = (<IPersistedAccount>account).isEmulator ?? false;
+                        id = (<PersistedAccount>account).id;
+                        name = (<PersistedAccount>account).id;
+                        api = (<PersistedAccount>account).defaultExperience;
+                        isEmulator = (<PersistedAccount>account).isEmulator ?? false;
                     }
 
                     // TODO: Ignore Postgres accounts until we have a way to handle them
@@ -156,7 +156,7 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
         }
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const accounts: (string | IPersistedAccount)[] = JSON.parse(value);
+        const accounts: (string | PersistedAccount)[] = JSON.parse(value);
         const result = await Promise.allSettled(
             accounts.map(async (account) => {
                 return callWithTelemetryAndErrorHandling(
@@ -178,10 +178,10 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
                             api = API.MongoDB;
                             isEmulator = false;
                         } else {
-                            id = (<IPersistedAccount>account).id;
-                            name = (<IPersistedAccount>account).id;
-                            api = (<IPersistedAccount>account).defaultExperience;
-                            isEmulator = (<IPersistedAccount>account).isEmulator ?? false;
+                            id = (<PersistedAccount>account).id;
+                            name = (<PersistedAccount>account).id;
+                            api = (<PersistedAccount>account).defaultExperience;
+                            isEmulator = (<PersistedAccount>account).isEmulator ?? false;
                         }
 
                         const connectionString: string = nonNullValue(

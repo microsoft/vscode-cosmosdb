@@ -267,6 +267,7 @@
                 "icon": "$(add)"
             },
             {
+                "//": "Moved",
                 "category": "Azure Databases",
                 "command": "azureDatabases.loadMore",
                 "title": "Load More"
@@ -285,12 +286,14 @@
                 "title": "Report Issue..."
             },
             {
+                "//": "Scrapbook",
                 "category": "Azure Databases",
                 "command": "azureDatabases.update",
                 "title": "Update to Cloud",
                 "icon": "$(cloud-upload)"
             },
             {
+                "//": "Moved",
                 "category": "Cosmos DB",
                 "command": "cosmosDB.attachDatabaseAccount",
                 "title": "Attach Database Account...",
@@ -613,12 +616,6 @@
                 "title": "Launch Shell"
             },
             {
-                "//": "Moved",
-                "category": "MongoDB Clusters",
-                "command": "azureDatabases.detachDatabaseAccount",
-                "title": "Remove Connection..."
-            },
-            {
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.containerView.open",
                 "title": "Open Collection"
@@ -718,13 +715,13 @@
                     "group": "1@1"
                 },
                 {
-                    "//": "[Account] (Postgres) Delete Database",
+                    "//": "[Account] (Postgres) Delete Account",
                     "command": "postgreSQL.deleteServer",
-                    "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /postgresServer(?![a-z])/i",
+                    "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /postgresServer(?![a-z])/i",
                     "group": "1@2"
                 },
                 {
-                    "//": "[Account] (Postgres) Detached Database",
+                    "//": "[Account] (Postgres) Detached Account",
                     "command": "postgreSQL.detachServer",
                     "when": "view =~ /azureWorkspace/ && viewItem == postgresServerAttached",
                     "group": "1@2"
@@ -836,39 +833,21 @@
                     "group": "1@1"
                 },
                 {
-                    "//": "[Account] Delete Cosmos DB account",
+                    "//": "[Account] Delete account",
                     "command": "cosmosDB.deleteAccount",
-                    "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
+                    "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
                     "group": "1@2"
                 },
                 {
-                    "//": "[Account] Delete Mongo DB account",
-                    "command": "cosmosDB.deleteAccount",
-                    "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /treeitem[.]mongoCluster(?![a-z.\\/])/i",
-                    "group": "1@2"
-                },
-                {
-                    "//": "[Account] Detach Cosmos DB account (workspace only)",
+                    "//": "[Account] Detach account (workspace only)",
                     "command": "azureDatabases.detachDatabaseAccount",
-                    "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
+                    "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
                     "group": "1@2"
                 },
                 {
-                    "//": "[Account] Detach Mongo Cluster account (workspace only)",
-                    "command": "azureDatabases.detachDatabaseAccount",
-                    "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]mongoCluster(?![a-z.\\/])/i",
-                    "group": "1@2"
-                },
-                {
-                    "//": "[Account] Copy connection string to Cosmos DB account",
+                    "//": "[Account] Copy connection string",
                     "command": "cosmosDB.copyConnectionString",
-                    "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
-                    "group": "2@1"
-                },
-                {
-                    "//": "[Account] Copy connection string to Mongo Cluster or MongoDB (RU) account",
-                    "command": "cosmosDB.copyConnectionString",
-                    "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]mongoCluster(?![a-z.\\/])/i",
+                    "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
                     "group": "2@1"
                 },
                 {
@@ -878,7 +857,7 @@
                     "group": "2@2"
                 },
                 {
-                    "//": "[Account] Refresh",
+                    "//": "[Account] Refresh (workspace only)",
                     "command": "azureDatabases.refresh",
                     "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
                     "group": "3@1"
